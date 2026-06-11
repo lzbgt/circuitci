@@ -254,7 +254,7 @@ pub fn validate_and_write_project_report(
     let project = crate::board_ir::load_project(project_path)?;
     let (library, library_findings) = crate::library::load_library(project_path, &project);
     let bound = crate::library::bind_project(&project, library, library_findings);
-    let outcome = crate::validation::validate(&bound);
+    let outcome = crate::validation::validate(&bound, output);
     let report = ValidationReport::from_parts(
         project.project.name.clone(),
         profile.to_string(),

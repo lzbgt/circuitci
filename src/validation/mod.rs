@@ -9,6 +9,7 @@ mod uart_bootloader;
 use crate::library::BoundBoard;
 use crate::reports::{Finding, Limitation};
 use std::collections::BTreeSet;
+use std::path::Path;
 
 pub(super) const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 pub(super) const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
@@ -34,11 +35,11 @@ pub struct ValidationOutcome {
     pub waveforms: Vec<String>,
 }
 
-pub fn validate(bound: &BoundBoard<'_>) -> ValidationOutcome {
+pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
     let mut findings = bound.findings.clone();
     let mut limitations = model_quality_limitations(bound);
     let mut artifacts = Vec::new();
-    let waveforms = Vec::new();
+    let mut waveforms = Vec::new();
     let mut added_backdrive_limitation = false;
     let mut added_protocol_limitation = false;
     let mut added_control_line_limitation = false;
@@ -125,6 +126,8 @@ pub fn validate(bound: &BoundBoard<'_>) -> ValidationOutcome {
                         scenario,
                         &mut findings,
                         &mut artifacts,
+                        &mut waveforms,
+                        output,
                     )
                 }
                 GPIO_BACKDRIVE

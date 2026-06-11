@@ -75,7 +75,9 @@ scenarios:
       netlist: downloader_q2_q3.cir
       model_files:
         - path: models/downloader_common.lib
+          sha256: 78a76b1fa332eb0a9e444707d70565f05ec62f1e6045c9545a7cf0aa5393853b
         - path: ../../models/spice/onsemi/ss8050_ss8550.lib
+          sha256: 8360ca1f35758e36a5a8dd5ea3cc41ea68f608ac8c000d048e15232565b12145
       node_bindings:
         - node: vdd
           net: vdd_3v3
