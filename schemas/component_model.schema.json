@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/component_model.schema.json",
+  "title": "CircuitCI Component Model",
+  "type": "object",
+  "required": ["component_id", "version", "category", "ports", "model_quality"],
+  "properties": {
+    "component_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "category": { "type": "string", "minLength": 1 },
+    "ports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "electrical_power",
+              "electrical_ground",
+              "digital_electrical_input",
+              "digital_electrical_output",
+              "digital_electrical_io",
+              "passive"
+            ]
+          },
+          "required": { "type": "boolean" },
+          "electrical": {
+            "type": "object",
+            "properties": {
+              "vih_min_V": { "type": "number" },
+              "vil_max_V": { "type": "number" },
+              "injection_current_limit_A": { "type": "number", "exclusiveMinimum": 0 },
+              "drive_high_voltage_V": { "type": "number" },
+              "source_impedance_ohm": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "model_faces": { "type": "object" },
+    "behavior": {
+      "type": "object",
+      "properties": {
+        "reset": {
+          "type": "object",
+          "properties": {
+            "pin": { "type": "string", "minLength": 1 },
+            "active": { "enum": ["low", "high"] },
+            "min_assert_us": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "boot": {
+          "type": "object",
+          "properties": {
+            "sample_time_after_reset_release_us": { "type": "number", "minimum": 0 },
+            "modes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["straps"],
+                "properties": {
+                  "straps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["pin", "required_state"],
+                      "properties": {
+                        "pin": { "type": "string", "minLength": 1 },
+                        "required_state": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "bootloader": {
+          "type": "object",
+          "properties": {
+            "interfaces": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["rx_pin", "sync_byte", "ack_byte"],
+                "properties": {
+                  "rx_pin": { "type": "string", "minLength": 1 },
+                  "tx_pin": { "type": "string", "minLength": 1 },
+                  "sync_byte": { "type": "integer", "minimum": 0, "maximum": 255 },
+                  "ack_byte": { "type": "integer", "minimum": 0, "maximum": 255 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "model_quality": {
+      "type": "object",
+      "required": ["source", "confidence", "intended_use", "not_valid_for"],
+      "properties": {
+        "source": { "enum": ["datasheet", "measured", "estimated", "generic"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "intended_use": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "not_valid_for": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

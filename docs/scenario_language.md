@@ -1,0 +1,165 @@
+# Scenario Language
+
+Scenarios describe validation conditions applied to a bound board. The MVP supports static scenario metadata and selected checks. Later versions add time-ordered events and solver-backed waveforms.
+
+## MVP Scenario
+
+```yaml
+scenarios:
+  - name: usb_hot_plug_mcu_unpowered
+    type: gpio_backdrive
+    checks:
+      - GPIO_BACKDRIVE
+    parameters:
+      diode_drop_V: 0.3
+    pin_states:
+      - component: U2
+        pin: TXD
+        mode: output
+        state: high
+      - component: U1
+        pin: RX
+        mode: input
+    paths:
+      - driver:
+          component: U2
+          pin: TXD
+        victim:
+          component: U1
+          pin: RX
+        series_resistance_ohm: 0
+```
+
+## Future Event Form
+
+```yaml
+events:
+  - at: 0ms
+    action: set_source
+    source: usb_vbus
+    voltage: 5.0
+  - at: 10ms
+    action: serial_open
+    device: U2
+    baud: 115200
+```
+
+## Required MVP Scenario Types
+
+- `power_up`
+- `power_down`
+- `usb_hot_plug`
+- `reset_boot`
+- `serial_programming`
+- `gpio_backdrive`
+- `i2c_bus`
+- `sleep_current`
+- `brownout`
+- `tolerance_sweep`
+
+Executable first-stage scenario types:
+
+- `gpio_backdrive`
+- `reset_boot`
+- `serial_programming`
+
+Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
+
+## Scenario Resolution
+
+For the first Rust implementation:
+
+1. The CLI loads the requested profile name for report metadata.
+2. Project-declared scenarios are the executable source of truth.
+3. A scenario runs each check in its `checks` list once, preserving file order.
+4. Duplicate checks in one scenario are de-duplicated with first occurrence winning.
+5. Unsupported checks produce `UNSUPPORTED_CHECK` limitations.
+6. Unsupported scenario types produce `UNSUPPORTED_SCENARIO` limitations.
+
+Canonical executable check IDs in the first stage:
+
+- `GPIO_BACKDRIVE`
+- `RESET_RELEASE_AFTER_POWER_VALID`
+- `BOOT_STRAP_DEFINED`
+- `UART_BOOTLOADER_SYNC`
+
+## Reset/Boot Scenario Shape
+
+`reset_boot` scenarios use explicit timing metadata until analog waveform extraction exists:
+
+```yaml
+scenarios:
+  - name: reset_boot_valid
+    type: reset_boot
+    target:
+      component: U1
+      power_pin: VDD
+      reset_pin: NRST
+    checks:
+      - RESET_RELEASE_AFTER_POWER_VALID
+      - BOOT_STRAP_DEFINED
+    timing:
+      power_valid_at_us: 1200
+      reset_release_at_us: 5000
+      boot_sample_at_us: 5100
+    straps:
+      - component: U1
+        pin: BOOT0
+        net: boot0
+        actual: low
+    required_boot_mode: application
+```
+
+Timing semantics:
+
+- `power_valid_at_us`: first time the component's operating rail is valid.
+- `reset_release_at_us`: first time reset is deasserted.
+- `boot_sample_at_us`: time boot straps are sampled.
+
+`target.component` is required for `reset_boot`. `target.power_pin` and `target.reset_pin` are optional scenario assertions; if present, they must match the component model behavior and board pin map.
+
+`RESET_RELEASE_AFTER_POWER_VALID` fails when reset releases before power is valid. Missing target/timing data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
+
+`BOOT_STRAP_DEFINED` resolves required strap states from `component.behavior.boot.modes[required_boot_mode]`. It fails when any required strap is missing from scenario observations, observed as `floating` or `undefined`, or not equal to the model-required state. The scenario may not invent the required strap state.
+
+## Serial Programming Scenario Shape
+
+`serial_programming` scenarios model an abstract bootloader sync handshake:
+
+```yaml
+scenarios:
+  - name: stm32_like_uart_bootloader
+    type: serial_programming
+    target:
+      component: U1
+    checks:
+      - UART_BOOTLOADER_SYNC
+    required_boot_mode: bootloader
+    bootloader:
+      component: U1
+      interface: uart
+      sync_byte: 0x7F
+      expected_response: 0x79
+    events:
+      - at_us: 10000
+        action: uart_send
+        from:
+          component: U2
+          pin: TXD
+        to:
+          component: U1
+          pin: RX
+        bytes: [0x7F]
+```
+
+`UART_BOOTLOADER_SYNC` algorithm:
+
+1. Resolve `target.component`.
+2. Resolve `bootloader.interface` from `component.behavior.bootloader.interfaces`.
+3. Require scenario `bootloader.sync_byte` and `expected_response` to match the model interface when provided.
+4. Require `required_boot_mode` to exist in `component.behavior.boot.modes`.
+5. If the same scenario declares strap observations, verify they match the required boot mode before checking sync.
+6. Find an event with `action: uart_send`, `to.component == target.component`, `to.pin == model_interface.rx_pin`, `at_us >= boot_sample_at_us` when `boot_sample_at_us` exists, and `bytes` exactly equal to `[model_interface.sync_byte]`.
+7. ACK is abstract in this slice: matching the sync event and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
+
+Missing required model/scenario data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.

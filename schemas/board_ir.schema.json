@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/board_ir.schema.json",
+  "title": "CircuitCI Board IR Project",
+  "type": "object",
+  "required": ["project", "board"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "libraries": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "board": {
+      "type": "object",
+      "required": ["components", "nets"],
+      "properties": {
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["model", "pins"],
+            "properties": {
+              "model": { "type": "string", "minLength": 1 },
+              "part_number": { "type": "string" },
+              "power_domain": { "type": "string" },
+              "power_domains": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "minLength": 1 }
+              },
+              "pins": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "minLength": 1 }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "nets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "enum": ["power", "ground", "digital_or_analog"]
+              },
+              "nominal_voltage": { "type": "number" },
+              "powered": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "minLength": 1 },
+          "checks": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "parameters": { "type": "object" },
+          "target": {
+            "type": "object",
+            "required": ["component"],
+            "properties": {
+              "component": { "type": "string", "minLength": 1 },
+              "power_pin": { "type": "string", "minLength": 1 },
+              "reset_pin": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          },
+          "pin_states": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["component", "pin", "mode"],
+              "properties": {
+                "component": { "type": "string", "minLength": 1 },
+                "pin": { "type": "string", "minLength": 1 },
+                "mode": { "enum": ["input", "output", "high_z"] },
+                "state": { "enum": ["high", "low", "z"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["driver", "victim"],
+              "properties": {
+                "driver": { "$ref": "#/$defs/endpoint" },
+                "victim": { "$ref": "#/$defs/endpoint" },
+                "series_resistance_ohm": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "timing": {
+            "type": "object",
+            "properties": {
+              "power_valid_at_us": { "type": "number", "minimum": 0 },
+              "reset_release_at_us": { "type": "number", "minimum": 0 },
+              "boot_sample_at_us": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "straps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["component", "pin", "actual"],
+              "properties": {
+                "component": { "type": "string", "minLength": 1 },
+                "pin": { "type": "string", "minLength": 1 },
+                "net": { "type": "string", "minLength": 1 },
+                "actual": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required_boot_mode": { "type": "string", "minLength": 1 },
+          "bootloader": {
+            "type": "object",
+            "properties": {
+              "component": { "type": "string", "minLength": 1 },
+              "interface": { "type": "string", "minLength": 1 },
+              "sync_byte": { "type": "integer", "minimum": 0, "maximum": 255 },
+              "expected_response": { "type": "integer", "minimum": 0, "maximum": 255 }
+            },
+            "additionalProperties": false
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["at_us", "action"],
+              "properties": {
+                "at_us": { "type": "number", "minimum": 0 },
+                "action": { "type": "string", "minLength": 1 },
+                "from": { "$ref": "#/$defs/endpoint" },
+                "to": { "$ref": "#/$defs/endpoint" },
+                "bytes": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": ["component", "pin"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

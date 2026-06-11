@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/report.schema.json",
+  "title": "CircuitCI Validation Report",
+  "type": "object",
+  "required": ["schema_version", "project", "profile", "result", "summary"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "project": { "type": "string" },
+    "profile": { "type": "string" },
+    "result": { "enum": ["pass", "fail"] },
+    "summary": {
+      "type": "object",
+      "required": ["critical", "warning", "info"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "warning": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "failures": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "infos": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "waveforms": { "type": "array" },
+    "artifacts": { "type": "array" },
+    "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
+    "suggested_next_actions": { "type": "array" },
+    "reproduction": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": ["component", "pin"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "severity", "scenario", "message", "suggested_fixes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["critical", "warning", "info"] },
+        "scenario": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "component": { "type": "string" },
+        "net": { "type": "string" },
+        "endpoints": {
+          "type": "object",
+          "properties": {
+            "driver": { "$ref": "#/$defs/endpoint" },
+            "victim": { "$ref": "#/$defs/endpoint" }
+          },
+          "additionalProperties": false
+        },
+        "measured": { "type": "object" },
+        "limit": { "type": "object" },
+        "suggested_fixes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "limitation": {
+      "type": "object",
+      "required": ["id", "scope", "confidence", "blocking", "message"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "blocking": { "type": "boolean" },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

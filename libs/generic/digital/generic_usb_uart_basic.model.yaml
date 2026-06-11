@@ -1,0 +1,36 @@
+component_id: generic.usb_uart.basic
+version: 0.1.0
+category: comms
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+  TXD:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  RXD:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+rules:
+  - GPIO_BACKDRIVE
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_sequence
+    - leakage
+    - protocol
+  not_valid_for:
+    - full_usb_phy
+    - transistor_level_behavior
+

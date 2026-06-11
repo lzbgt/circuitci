@@ -1,0 +1,74 @@
+component_id: generic.c51_isp.basic
+version: 0.1.0
+category: mcu
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+  RST:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  ISP_EN:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  P3_0:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  P3_1:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+behavior:
+  reset:
+    pin: RST
+    active: high
+    min_assert_us: 20
+  boot:
+    sample_time_after_reset_release_us: 200
+    modes:
+      serial_isp:
+        straps:
+          - pin: ISP_EN
+            required_state: low
+      application:
+        straps:
+          - pin: ISP_EN
+            required_state: high
+  bootloader:
+    interfaces:
+      uart:
+        rx_pin: P3_0
+        tx_pin: P3_1
+        sync_byte: 127
+        ack_byte: 6
+rules:
+  - RESET_RELEASE_AFTER_POWER_VALID
+  - BOOT_STRAP_DEFINED
+  - UART_BOOTLOADER_SYNC
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_sequence
+    - protocol
+  not_valid_for:
+    - transistor_level_mcu_behavior
+    - exact_vendor_isp_protocol
+

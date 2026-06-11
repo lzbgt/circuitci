@@ -1,0 +1,48 @@
+project:
+  name: bad_reset_release_board
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        NRST: nrst
+        BOOT0: boot0
+        RX: uart_mcu_rx
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+
+scenarios:
+  - name: reset_releases_too_early
+    type: reset_boot
+    target:
+      component: U1
+      power_pin: VDD
+      reset_pin: NRST
+    checks:
+      - RESET_RELEASE_AFTER_POWER_VALID
+    timing:
+      power_valid_at_us: 1200
+      reset_release_at_us: 500
+      boot_sample_at_us: 600
+

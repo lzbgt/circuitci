@@ -1,0 +1,65 @@
+project:
+  name: good_backdrive_fixed_board
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        RX: uart_rx
+    U2:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: usb_uart_3v3
+      pins:
+        VCC: usb_uart_3v3
+        GND: gnd
+        TXD: uart_rx
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: false
+    usb_uart_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    uart_rx:
+      kind: digital_or_analog
+
+scenarios:
+  - name: usb_hot_plug_mcu_unpowered
+    type: gpio_backdrive
+    checks:
+      - GPIO_BACKDRIVE
+    parameters:
+      diode_drop_V: 0.3
+    pin_states:
+      - component: U2
+        pin: TXD
+        mode: output
+        state: high
+      - component: U1
+        pin: RX
+        mode: input
+    paths:
+      - driver:
+          component: U2
+          pin: TXD
+        victim:
+          component: U1
+          pin: RX
+        series_resistance_ohm: 100000
+
