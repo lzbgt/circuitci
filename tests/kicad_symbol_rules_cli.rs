@@ -17,7 +17,7 @@ fn import_kicad_schematic_rejects_duplicate_refs() {
   (symbol (lib_id "Device:R") (at 10 0 0)
     (property "Reference" "R1") (property "Value" "10k") (pin "1")))
 "#,
-        "Duplicate KiCad schematic component reference",
+        "duplicate unit 1",
     );
 }
 
@@ -362,6 +362,107 @@ fn import_kicad_schematic_selects_multi_unit_pin_geometry() {
     assert_eq!(
         imported["board"]["components"]["U1"]["pins"]["8"],
         "net_vcc"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_merges_multi_unit_package() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("merged_multi_unit.kicad_sch");
+    let output = dir.path().join("merged_multi_unit.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_0_1"
+        (pin power_in line (at 0 -10 90) (length 2.54) hide (name "VCC") (number "8")))
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1"))
+        (pin passive line (at 5 0 180) (length 2.54) (number "2")))
+      (symbol "Device:DualUnit_2_1"
+        (pin passive line (at -5 10 0) (length 2.54) (number "3"))
+        (pin passive line (at 5 10 180) (length 2.54) (number "4")))))
+  (symbol (lib_id "Device:DualUnit") (at 10 10 0) (unit 1)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "1") (pin "2"))
+  (symbol (lib_id "Device:DualUnit") (at 30 10 0) (unit 2)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "3") (pin "4"))
+  (label "IN_A" (at 5 10 0))
+  (label "OUT_A" (at 15 10 0))
+  (label "IN_B" (at 25 20 0))
+  (label "OUT_B" (at 35 20 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let component = &imported["board"]["components"]["U1"];
+    assert_eq!(component["pins"]["1"], "net_in_a");
+    assert_eq!(component["pins"]["2"], "net_out_a");
+    assert_eq!(component["pins"]["3"], "net_in_b");
+    assert_eq!(component["pins"]["4"], "net_out_b");
+    assert_eq!(component["pins"]["8"], "net_vcc");
+    assert!(component["source"]["unit"].is_null());
+    assert_eq!(component["source"]["units"][0], 1);
+    assert_eq!(component["source"]["units"][1], 2);
+}
+
+#[test]
+fn import_kicad_schematic_rejects_multi_unit_package_metadata_conflict() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1")))
+      (symbol "Device:DualUnit_2_1"
+        (pin passive line (at -5 10 0) (length 2.54) (number "2")))))
+  (symbol (lib_id "Device:DualUnit") (at 10 10 0) (unit 1)
+    (property "Reference" "U1") (property "Value" "A") (pin "1"))
+  (symbol (lib_id "Device:DualUnit") (at 30 10 0) (unit 2)
+    (property "Reference" "U1") (property "Value" "B") (pin "2"))
+  (label "IN_A" (at 5 10 0))
+  (label "IN_B" (at 25 20 0)))
+"#,
+        "conflicting package metadata",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_multi_unit_common_pin_on_different_nets() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_0_1"
+        (pin passive line (at 0 -10 90) (length 2.54) (number "8")))
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1")))
+      (symbol "Device:DualUnit_2_1"
+        (pin passive line (at -5 10 0) (length 2.54) (number "2")))))
+  (symbol (lib_id "Device:DualUnit") (at 10 10 0) (unit 1)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "1") (pin "8"))
+  (symbol (lib_id "Device:DualUnit") (at 30 10 0) (unit 2)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "2") (pin "8"))
+  (label "IN_A" (at 5 10 0))
+  (label "IN_B" (at 25 20 0))
+  (label "VCCA" (at 10 0 0))
+  (label "VCCB" (at 30 0 0)))
+"#,
+        "U1.8 appears on more than one net",
     );
 }
 

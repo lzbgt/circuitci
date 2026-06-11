@@ -40,6 +40,7 @@ pub(super) struct ParsedComponent {
     pub(super) fields: BTreeMap<String, String>,
     pub(super) in_bom: Option<bool>,
     pub(super) unit: Option<u32>,
+    pub(super) units: Vec<u32>,
     pub(super) instances: Vec<ParsedComponentInstance>,
 }
 
@@ -289,6 +290,8 @@ struct ComponentSourceYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     unit: Option<u32>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    units: Vec<u32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     instances: Vec<ComponentSourceInstanceYaml>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     fields: BTreeMap<String, String>,
@@ -517,6 +520,7 @@ pub(super) fn parse_kicad_netlist(path: &Path) -> Result<ParsedKicadNetlist> {
                             fields: BTreeMap::new(),
                             in_bom: None,
                             unit: None,
+                            units: Vec::new(),
                             instances: Vec::new(),
                         });
                     }
@@ -665,6 +669,7 @@ fn build_project_yaml(
                         part: component.part.clone(),
                         in_bom: component.in_bom,
                         unit: component.unit,
+                        units: component.units.clone(),
                         instances: component
                             .instances
                             .iter()
@@ -681,7 +686,7 @@ fn build_project_yaml(
             ))
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
-    let mut assigned_pins = BTreeSet::new();
+    let mut assigned_pins = BTreeMap::new();
     for (net_index, net) in parsed.nets.iter().enumerate() {
         let net_name = net_names[net_index].clone();
         for node in &net.nodes {
@@ -692,10 +697,6 @@ fn build_project_yaml(
                     node.refdes
                 );
             };
-            let key = format!("{}.{}", node.refdes, node.pin);
-            if !assigned_pins.insert(key.clone()) {
-                bail!("KiCad component pin {key} appears on more than one net.");
-            }
             let parsed_component = parsed
                 .components
                 .get(&node.refdes)
@@ -707,6 +708,14 @@ fn build_project_yaml(
                 &options.default_model,
                 &node.pin,
             )?;
+            let key = format!("{}.{}", node.refdes, target_pin);
+            if let Some(existing_net) = assigned_pins.get(&key) {
+                if existing_net != &net_name {
+                    bail!("KiCad component pin {key} appears on more than one net.");
+                }
+                continue;
+            }
+            assigned_pins.insert(key, net_name.clone());
             component.pins.insert(target_pin, net_name.clone());
         }
     }

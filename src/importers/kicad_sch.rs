@@ -142,7 +142,7 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
             path.display()
         );
     }
-    validate_unique_refs(&symbols)?;
+    validate_symbol_package_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
     let (mut labels, hierarchical_labels) = parse_labels(root_list, power_labels, mode)?;
     validate_bus_graphics(root_list, &segments, &mut labels)?;
@@ -164,31 +164,7 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
         )?
     };
 
-    let mut components = BTreeMap::new();
-    for symbol in symbols {
-        components.insert(
-            symbol.refdes.clone(),
-            ParsedComponent {
-                refdes: symbol.refdes,
-                value: symbol.value,
-                lib: symbol.lib,
-                part: symbol.part,
-                fields: symbol.fields,
-                in_bom: Some(symbol.in_bom),
-                unit: Some(symbol.unit),
-                instances: symbol
-                    .instances
-                    .into_iter()
-                    .map(|instance| ParsedComponentInstance {
-                        project: instance.project,
-                        path: instance.path,
-                        reference: instance.reference,
-                        unit: instance.unit,
-                    })
-                    .collect(),
-            },
-        );
-    }
+    let components = build_components_from_symbols(symbols)?;
     Ok(ParsedSchematic {
         source_path,
         netlist: ParsedKicadNetlist { components, nets },
@@ -198,16 +174,116 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
     })
 }
 
-fn validate_unique_refs(symbols: &[SymbolInstance]) -> Result<()> {
-    let mut seen = BTreeSet::new();
+fn build_components_from_symbols(
+    symbols: Vec<SymbolInstance>,
+) -> Result<BTreeMap<String, ParsedComponent>> {
+    let mut components = BTreeMap::new();
     for symbol in symbols {
-        if !seen.insert(symbol.refdes.as_str()) {
+        if let Some(component) = components.get_mut(&symbol.refdes) {
+            merge_symbol_unit(component, symbol)?;
+        } else {
+            components.insert(symbol.refdes.clone(), component_from_symbol(symbol));
+        }
+    }
+    Ok(components)
+}
+
+fn validate_symbol_package_refs(symbols: &[SymbolInstance]) -> Result<()> {
+    let mut first_by_ref: BTreeMap<&str, &SymbolInstance> = BTreeMap::new();
+    let mut units_by_ref: BTreeMap<&str, BTreeSet<u32>> = BTreeMap::new();
+    for symbol in symbols {
+        if let Some(first) = first_by_ref.get(symbol.refdes.as_str()) {
+            if first.value != symbol.value
+                || first.lib != symbol.lib
+                || first.part != symbol.part
+                || first.fields != symbol.fields
+                || first.in_bom != symbol.in_bom
+            {
+                bail!(
+                    "KiCad schematic component {} has duplicate units with conflicting package metadata.",
+                    symbol.refdes
+                );
+            }
+        } else {
+            first_by_ref.insert(symbol.refdes.as_str(), symbol);
+        }
+        let units = units_by_ref.entry(symbol.refdes.as_str()).or_default();
+        if !units.insert(symbol.unit) {
             bail!(
-                "Duplicate KiCad schematic component reference {}.",
-                symbol.refdes
+                "KiCad schematic component {} has duplicate unit {}.",
+                symbol.refdes,
+                symbol.unit
             );
         }
     }
+    Ok(())
+}
+
+fn component_from_symbol(symbol: SymbolInstance) -> ParsedComponent {
+    ParsedComponent {
+        refdes: symbol.refdes,
+        value: symbol.value,
+        lib: symbol.lib,
+        part: symbol.part,
+        fields: symbol.fields,
+        in_bom: Some(symbol.in_bom),
+        unit: Some(symbol.unit),
+        units: Vec::new(),
+        instances: symbol
+            .instances
+            .into_iter()
+            .map(|instance| ParsedComponentInstance {
+                project: instance.project,
+                path: instance.path,
+                reference: instance.reference,
+                unit: instance.unit,
+            })
+            .collect(),
+    }
+}
+
+fn merge_symbol_unit(component: &mut ParsedComponent, symbol: SymbolInstance) -> Result<()> {
+    if component.value != symbol.value
+        || component.lib != symbol.lib
+        || component.part != symbol.part
+        || component.fields != symbol.fields
+        || component.in_bom != Some(symbol.in_bom)
+    {
+        bail!(
+            "KiCad schematic component {} has duplicate units with conflicting package metadata.",
+            component.refdes
+        );
+    }
+
+    if component.units.is_empty() {
+        let existing_unit = component
+            .unit
+            .take()
+            .expect("native schematic components keep source.unit until merged");
+        component.units.push(existing_unit);
+    }
+    if component.units.contains(&symbol.unit) {
+        bail!(
+            "KiCad schematic component {} has duplicate unit {}.",
+            component.refdes,
+            symbol.unit
+        );
+    }
+    component.units.push(symbol.unit);
+    component.units.sort_unstable();
+    component
+        .instances
+        .extend(
+            symbol
+                .instances
+                .into_iter()
+                .map(|instance| ParsedComponentInstance {
+                    project: instance.project,
+                    path: instance.path,
+                    reference: instance.reference,
+                    unit: instance.unit,
+                }),
+        );
     Ok(())
 }
 

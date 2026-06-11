@@ -32,10 +32,10 @@ For an instance:
 - unit-specific symbols whose identifier does not match `PARENT_UNIT_STYLE`
   fail closed when they contain pins.
 
-The importer does not infer package-internal cross-unit connectivity. Separate
-units with the same reference designator are not merged into one Board IR
-component in this slice; that requires a later explicit package/unit model so
-physical simulation can map pins to the correct package pins without guessing.
+Separate units with the same reference designator are merged into one Board IR
+component only when they are explicit distinct units of the same symbol and all
+package pins resolve unambiguously. See
+`docs/kicad_multi_unit_package_merge.md` for the package-level merge contract.
 
 ## Rationale
 
