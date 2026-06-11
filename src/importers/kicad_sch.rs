@@ -79,19 +79,15 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
             path.display()
         );
     }
+    validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
     let mut labels = parse_labels(root_list);
     labels.extend(power_labels);
-    let nets = build_nets(&symbols, &segments, &junctions, &labels)?;
+    let no_connects = parse_no_connects(root_list)?;
+    let nets = build_nets(&symbols, &segments, &junctions, &labels, &no_connects)?;
 
     let mut components = BTreeMap::new();
     for symbol in symbols {
-        if components.contains_key(&symbol.refdes) {
-            bail!(
-                "Duplicate KiCad schematic component reference {}.",
-                symbol.refdes
-            );
-        }
         components.insert(
             symbol.refdes.clone(),
             ParsedComponent {
@@ -104,6 +100,19 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
         );
     }
     Ok(ParsedKicadNetlist { components, nets })
+}
+
+fn validate_unique_refs(symbols: &[SymbolInstance]) -> Result<()> {
+    let mut seen = BTreeSet::new();
+    for symbol in symbols {
+        if !seen.insert(symbol.refdes.as_str()) {
+            bail!(
+                "Duplicate KiCad schematic component reference {}.",
+                symbol.refdes
+            );
+        }
+    }
+    Ok(())
 }
 
 fn reject_unsupported_constructs(root: &[Sexp]) -> Result<()> {
@@ -300,12 +309,26 @@ fn parse_labels(root: &[Sexp]) -> BTreeMap<Point, String> {
     labels
 }
 
+fn parse_no_connects(root: &[Sexp]) -> Result<BTreeSet<Point>> {
+    let mut no_connects = BTreeSet::new();
+    for no_connect in list_children(root, "no_connect") {
+        let at = child_list(no_connect, "at")
+            .and_then(parse_at_point)
+            .with_context(|| "KiCad no_connect marker is missing valid coordinates.")?;
+        no_connects.insert(at);
+    }
+    Ok(no_connects)
+}
+
 fn build_nets(
     symbols: &[SymbolInstance],
     segments: &[Segment],
     junctions: &BTreeSet<Point>,
     labels: &BTreeMap<Point, String>,
+    no_connects: &BTreeSet<Point>,
 ) -> Result<Vec<ParsedNet>> {
+    validate_no_connects(symbols, segments, labels, no_connects)?;
+    validate_labels_attached(symbols, segments, labels)?;
     let mut points = BTreeSet::new();
     for segment in segments {
         points.insert(segment.a);
@@ -313,8 +336,38 @@ fn build_nets(
     }
     points.extend(junctions.iter().copied());
     points.extend(labels.keys().copied());
+    let mut connected_pins = Vec::new();
+    let mut connected_pin_counts: BTreeMap<&str, usize> = BTreeMap::new();
     for symbol in symbols {
-        points.extend(symbol.pins.values().copied());
+        let _ = (&symbol.at, &symbol.lib_id, symbol.is_power_symbol);
+        for (pin, point) in &symbol.pins {
+            if no_connects.contains(point) {
+                continue;
+            }
+            if !is_connectivity_attached(*point, segments, labels) {
+                bail!(
+                    "KiCad schematic pin {}.{} is unconnected; add a no_connect marker or wire/label it.",
+                    symbol.refdes,
+                    pin
+                );
+            }
+            connected_pins.push((&symbol.refdes, pin, *point));
+            *connected_pin_counts
+                .entry(symbol.refdes.as_str())
+                .or_default() += 1;
+            points.insert(*point);
+        }
+        if connected_pin_counts
+            .get(symbol.refdes.as_str())
+            .copied()
+            .unwrap_or(0)
+            == 0
+        {
+            bail!(
+                "KiCad schematic component {} has no connected pins; at least one pin must be wired or labeled.",
+                symbol.refdes
+            );
+        }
     }
 
     let mut index = BTreeMap::new();
@@ -334,16 +387,6 @@ fn build_nets(
         }
     }
 
-    for (point, label) in labels {
-        if !segments.iter().any(|segment| segment.contains(*point))
-            && !symbols
-                .iter()
-                .any(|symbol| symbol.pins.values().any(|pin| pin == point))
-        {
-            bail!("KiCad schematic label {label} is not attached to a wire or pin.");
-        }
-    }
-
     let mut labels_by_root: BTreeMap<usize, BTreeSet<String>> = BTreeMap::new();
     for (point, label) in labels {
         let root = uf.find(index[point]);
@@ -360,22 +403,19 @@ fn build_nets(
 
     let mut nodes_by_key: BTreeMap<String, Vec<ParsedNode>> = BTreeMap::new();
     let mut label_by_key = BTreeMap::new();
-    for symbol in symbols {
-        let _ = (&symbol.at, &symbol.lib_id, symbol.is_power_symbol);
-        for (pin, point) in &symbol.pins {
-            let root = uf.find(index[point]);
-            let label = labels_by_root
-                .get(&root)
-                .and_then(|labels| labels.iter().next().cloned());
-            let key = label.clone().unwrap_or_else(|| format!("__root_{root}"));
-            if let Some(label) = label {
-                label_by_key.insert(key.clone(), label);
-            }
-            nodes_by_key.entry(key).or_default().push(ParsedNode {
-                refdes: symbol.refdes.clone(),
-                pin: pin.clone(),
-            });
+    for (refdes, pin, point) in connected_pins {
+        let root = uf.find(index[&point]);
+        let label = labels_by_root
+            .get(&root)
+            .and_then(|labels| labels.iter().next().cloned());
+        let key = label.clone().unwrap_or_else(|| format!("__root_{root}"));
+        if let Some(label) = label {
+            label_by_key.insert(key.clone(), label);
         }
+        nodes_by_key.entry(key).or_default().push(ParsedNode {
+            refdes: refdes.clone(),
+            pin: pin.clone(),
+        });
     }
 
     let mut nets = Vec::new();
@@ -397,6 +437,64 @@ fn build_nets(
         bail!("KiCad schematic has no connected component pins.");
     }
     Ok(nets)
+}
+
+fn validate_labels_attached(
+    symbols: &[SymbolInstance],
+    segments: &[Segment],
+    labels: &BTreeMap<Point, String>,
+) -> Result<()> {
+    for (point, label) in labels {
+        if !segments.iter().any(|segment| segment.contains(*point))
+            && !symbols
+                .iter()
+                .any(|symbol| symbol.pins.values().any(|pin| pin == point))
+        {
+            bail!("KiCad schematic label {label} is not attached to a wire or pin.");
+        }
+    }
+    Ok(())
+}
+
+fn validate_no_connects(
+    symbols: &[SymbolInstance],
+    segments: &[Segment],
+    labels: &BTreeMap<Point, String>,
+    no_connects: &BTreeSet<Point>,
+) -> Result<()> {
+    for point in no_connects {
+        let attached_pins = symbols
+            .iter()
+            .flat_map(|symbol| {
+                symbol.pins.iter().filter_map(|(pin, pin_point)| {
+                    (pin_point == point).then_some((&symbol.refdes, pin))
+                })
+            })
+            .collect::<Vec<_>>();
+        if attached_pins.is_empty() {
+            bail!("KiCad no_connect marker is not attached to any symbol pin.");
+        }
+        if attached_pins.len() > 1 {
+            bail!("KiCad no_connect marker matches multiple symbol pins.");
+        }
+        let (refdes, pin) = attached_pins[0];
+        if is_connectivity_attached(*point, segments, labels) {
+            bail!(
+                "KiCad no_connect marker is attached to connected pin {}.{}.",
+                refdes,
+                pin
+            );
+        }
+    }
+    Ok(())
+}
+
+fn is_connectivity_attached(
+    point: Point,
+    segments: &[Segment],
+    labels: &BTreeMap<Point, String>,
+) -> bool {
+    labels.contains_key(&point) || segments.iter().any(|segment| segment.contains(point))
 }
 
 fn reject_unjunctioned_crossings(segments: &[Segment], junctions: &BTreeSet<Point>) -> Result<()> {
@@ -686,13 +784,14 @@ mod tests {
     (property "Reference" "R1") (property "Value" "10k")
     (pin "1") (pin "2"))
   (wire (pts (xy 7.46 10) (xy 7.46 12)))
-  (label "NET_A" (at 7.46 12 0)))
+  (label "NET_A" (at 7.46 12 0))
+  (no_connect (at 12.54 10)))
 "#,
         )
         .unwrap();
         let parsed = parse_kicad_schematic(&path).unwrap();
         assert_eq!(parsed.components.len(), 1);
-        assert_eq!(parsed.nets.len(), 2);
+        assert_eq!(parsed.nets.len(), 1);
         assert!(parsed.nets.iter().any(|net| net.name == "NET_A"));
     }
 }

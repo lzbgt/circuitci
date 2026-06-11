@@ -31,6 +31,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - straight horizontal or vertical wires,
 - local and global labels as net names,
 - optional KiCad power symbols treated as one-pin labeled symbols.
+- explicit schematic `no_connect` markers for intentionally open symbol pins.
 
 Unsupported constructs fail closed:
 
@@ -39,6 +40,12 @@ Unsupported constructs fail closed:
 - buses and bus entries,
 - rotated symbol instances,
 - missing library pin geometry,
+- malformed `no_connect` markers,
+- unconnected symbol pins without `no_connect` evidence,
+- `no_connect` markers that float, match multiple pins, or overlap live
+  connectivity,
+- importable components with no connected pins,
+- treating library pin electrical type `no_connect` as schematic evidence,
 - unlabeled multi-net ambiguity that would require guessing intended names.
 
 ## Safety Contract

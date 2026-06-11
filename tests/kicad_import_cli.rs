@@ -693,6 +693,165 @@ fn import_kicad_schematic_rejects_floating_label() {
 }
 
 #[test]
+fn import_kicad_schematic_accepts_explicit_no_connect_pin() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("no_connect.kicad_sch");
+    let output = dir.path().join("no_connect.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 7.46 10 0))
+  (no_connect (at 12.54 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert!(imported["board"]["components"]["R1"]["pins"]["2"].is_null());
+    assert_eq!(imported["board"]["nets"].as_object().unwrap().len(), 1);
+}
+
+#[test]
+fn import_kicad_schematic_rejects_unconnected_pin_without_no_connect() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "pin R1.2 is unconnected",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_floating_no_connect_marker() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0))
+  (no_connect (at 20 20)))
+"#,
+        "no_connect marker is not attached",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_no_connect_marker() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0))
+  (no_connect))
+"#,
+        "no_connect marker is missing valid coordinates",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_library_no_connect_pin_without_marker() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin no_connect line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "pin R1.2 is unconnected",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_no_connect_on_connected_pin() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0))
+  (no_connect (at 7.46 10)))
+"#,
+        "no_connect marker is attached to connected pin R1.1",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_ambiguous_no_connect_marker() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:TestPoint"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:TestPoint") (at 10 10 0)
+    (property "Reference" "TP1") (property "Value" "TP") (pin "1"))
+  (symbol (lib_id "Device:TestPoint") (at 10 10 0)
+    (property "Reference" "TP2") (property "Value" "TP") (pin "1"))
+  (no_connect (at 10 10)))
+"#,
+        "no_connect marker matches multiple symbol pins",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_all_no_connect_component() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:TestPoint"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:TestPoint") (at 10 10 0)
+    (property "Reference" "TP1") (property "Value" "TP") (pin "1"))
+  (no_connect (at 10 10)))
+"#,
+        "component TP1 has no connected pins",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_wire_crossing_without_junction() {
     assert_bad_kicad_schematic(
         r#"
