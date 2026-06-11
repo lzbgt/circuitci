@@ -55,6 +55,8 @@ enum Command {
         name: Option<String>,
         #[arg(long, default_value = "generic.schematic.imported_component")]
         default_model: String,
+        #[arg(long)]
+        mapping: Option<PathBuf>,
     },
 }
 
@@ -105,7 +107,8 @@ pub fn run() -> Result<()> {
             output,
             name,
             default_model,
-        }) => run_import_kicad_netlist(netlist, output, name, default_model),
+            mapping,
+        }) => run_import_kicad_netlist(netlist, output, name, default_model, mapping),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -150,6 +153,7 @@ fn run_import_kicad_netlist(
     output: PathBuf,
     name: Option<String>,
     default_model: String,
+    mapping: Option<PathBuf>,
 ) -> Result<()> {
     let name = name.unwrap_or_else(|| sanitized_project_name(&netlist, "imported_kicad_project"));
     crate::importers::kicad::import_kicad_netlist(&crate::importers::kicad::KicadImportOptions {
@@ -157,6 +161,7 @@ fn run_import_kicad_netlist(
         output: output.clone(),
         name,
         default_model,
+        mapping,
     })?;
     println!(
         "CircuitCI imported KiCad XML netlist {} -> {}",

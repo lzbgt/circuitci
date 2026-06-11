@@ -1,10 +1,11 @@
 use anyhow::{Context, Result, bail};
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
 pub struct KicadImportOptions {
@@ -12,6 +13,13 @@ pub struct KicadImportOptions {
     pub output: PathBuf,
     pub name: String,
     pub default_model: String,
+    pub mapping: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+struct LoadedKicadMapping {
+    mapping: KicadMapping,
+    base_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -40,6 +48,77 @@ struct ParsedNet {
 struct ParsedNode {
     refdes: String,
     pin: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ImportedComponentModel {
+    component_id: String,
+    #[serde(default)]
+    ports: BTreeMap<String, serde_yaml_ng::Value>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KicadMapping {
+    #[serde(default)]
+    libraries: Vec<String>,
+    #[serde(default)]
+    components: BTreeMap<String, ComponentMapping>,
+    #[serde(default)]
+    libsource_rules: Vec<LibsourceRuleMapping>,
+    #[serde(default)]
+    nets: BTreeMap<String, NetMapping>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentMapping {
+    model: String,
+    #[serde(default)]
+    pin_map: BTreeMap<String, String>,
+    #[serde(default)]
+    part_number: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LibsourceRuleMapping {
+    lib: String,
+    part: String,
+    #[serde(default)]
+    value: Option<String>,
+    model: String,
+    #[serde(default)]
+    pin_map: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NetMapping {
+    #[serde(default)]
+    kind: Option<MappedNetKind>,
+    #[serde(default)]
+    nominal_voltage: Option<f64>,
+    #[serde(default)]
+    powered: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum MappedNetKind {
+    Power,
+    Ground,
+    DigitalOrAnalog,
+}
+
+impl MappedNetKind {
+    fn as_board_ir(&self) -> &'static str {
+        match self {
+            Self::Power => "power",
+            Self::Ground => "ground",
+            Self::DigitalOrAnalog => "digital_or_analog",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -95,6 +174,10 @@ struct ComponentSourceYaml {
 #[derive(Debug, Serialize)]
 struct NetYaml {
     kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nominal_voltage: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    powered: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -102,6 +185,7 @@ struct ScenarioYaml {}
 
 pub fn import_kicad_netlist(options: &KicadImportOptions) -> Result<()> {
     let parsed = parse_kicad_netlist(&options.input)?;
+    let loaded_mapping = load_mapping(options)?;
     let output_dir = options.output.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(output_dir).with_context(|| {
         format!(
@@ -109,7 +193,7 @@ pub fn import_kicad_netlist(options: &KicadImportOptions) -> Result<()> {
             output_dir.display()
         )
     })?;
-    let project = build_project_yaml(options, &parsed)?;
+    let project = build_project_yaml(options, &parsed, &loaded_mapping)?;
     let mut yaml = serde_yaml_ng::to_string(&project)?;
     yaml.insert_str(
         0,
@@ -257,17 +341,34 @@ fn parse_kicad_netlist(path: &Path) -> Result<ParsedKicadNetlist> {
 fn build_project_yaml(
     options: &KicadImportOptions,
     parsed: &ParsedKicadNetlist,
+    loaded_mapping: &LoadedKicadMapping,
 ) -> Result<ProjectYaml> {
+    let mapping = &loaded_mapping.mapping;
+    validate_mapping_refs(parsed, mapping)?;
+    validate_mapping_models(
+        parsed,
+        mapping,
+        &loaded_mapping.base_dir,
+        &options.default_model,
+    )?;
     let net_names = unique_net_names(&parsed.nets);
     let mut components = parsed
         .components
         .iter()
         .map(|(refdes, component)| {
-            (
+            let component_mapping = mapping_for_component(component, mapping)?;
+            Ok((
                 refdes.clone(),
                 ComponentYaml {
-                    model: model_for_component(component, &options.default_model),
-                    part_number: component.value.clone(),
+                    model: model_for_component(
+                        component,
+                        component_mapping.as_ref(),
+                        &options.default_model,
+                    ),
+                    part_number: component_mapping
+                        .as_ref()
+                        .and_then(|item| item.part_number.clone())
+                        .or_else(|| component.value.clone()),
                     pins: BTreeMap::new(),
                     source: Some(ComponentSourceYaml {
                         format: "kicad_xml_netlist".to_string(),
@@ -277,9 +378,9 @@ fn build_project_yaml(
                         fields: component.fields.clone(),
                     }),
                 },
-            )
+            ))
         })
-        .collect::<BTreeMap<_, _>>();
+        .collect::<Result<BTreeMap<_, _>>>()?;
     let mut assigned_pins = BTreeSet::new();
     for (net_index, net) in parsed.nets.iter().enumerate() {
         let net_name = net_names[net_index].clone();
@@ -295,32 +396,338 @@ fn build_project_yaml(
             if !assigned_pins.insert(key.clone()) {
                 bail!("KiCad component pin {key} appears on more than one net.");
             }
-            component.pins.insert(node.pin.clone(), net_name.clone());
+            let parsed_component = parsed
+                .components
+                .get(&node.refdes)
+                .expect("component existence was checked above");
+            let component_mapping = mapping_for_component(parsed_component, mapping)?;
+            let target_pin = mapped_pin(
+                parsed_component,
+                component_mapping.as_ref(),
+                &options.default_model,
+                &node.pin,
+            )?;
+            component.pins.insert(target_pin, net_name.clone());
         }
     }
+    validate_mapped_component_pins(parsed, mapping, &options.default_model)?;
     let nets = parsed
         .nets
         .iter()
         .enumerate()
         .map(|(index, net)| {
-            (
+            let net_mapping = mapping.nets.get(&net.name);
+            Ok((
                 net_names[index].clone(),
                 NetYaml {
-                    kind: classify_net(&net.name).to_string(),
+                    kind: mapped_net_kind(&net.name, net_mapping)?,
+                    nominal_voltage: net_mapping.and_then(|item| item.nominal_voltage),
+                    powered: net_mapping.and_then(|item| item.powered),
                 },
-            )
+            ))
         })
-        .collect();
+        .collect::<Result<_>>()?;
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
             version: "0.1.0".to_string(),
             import_source: "kicad_xml_netlist".to_string(),
         },
-        libraries: vec![generic_schematic_library_path()],
+        libraries: libraries_for_project(mapping, &loaded_mapping.base_dir),
         board: BoardYaml { components, nets },
         scenarios: Vec::new(),
     })
+}
+
+fn load_mapping(options: &KicadImportOptions) -> Result<LoadedKicadMapping> {
+    let Some(path) = &options.mapping else {
+        let base_dir = options.input.parent().unwrap_or_else(|| Path::new("."));
+        return Ok(LoadedKicadMapping {
+            mapping: KicadMapping::default(),
+            base_dir: base_dir.to_path_buf(),
+        });
+    };
+    let text = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read KiCad mapping file {}", path.display()))?;
+    let mapping = serde_yaml_ng::from_str(&text)
+        .with_context(|| format!("Failed to parse KiCad mapping file {}", path.display()))?;
+    Ok(LoadedKicadMapping {
+        mapping,
+        base_dir: path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf(),
+    })
+}
+
+fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) -> Result<()> {
+    for refdes in mapping.components.keys() {
+        if !parsed.components.contains_key(refdes) {
+            bail!("KiCad mapping references unknown component {refdes}.");
+        }
+    }
+    let net_names = parsed
+        .nets
+        .iter()
+        .map(|net| net.name.as_str())
+        .collect::<BTreeSet<_>>();
+    for net_name in mapping.nets.keys() {
+        if !net_names.contains(net_name.as_str()) {
+            bail!("KiCad mapping references unknown net {net_name}.");
+        }
+    }
+    Ok(())
+}
+
+fn mapping_for_component(
+    component: &ParsedComponent,
+    mapping: &KicadMapping,
+) -> Result<Option<ComponentMapping>> {
+    if let Some(item) = mapping.components.get(&component.refdes) {
+        return Ok(Some(item.clone()));
+    }
+    let matches = mapping
+        .libsource_rules
+        .iter()
+        .filter(|rule| {
+            component.lib.as_deref() == Some(rule.lib.as_str())
+                && component.part.as_deref() == Some(rule.part.as_str())
+                && rule
+                    .value
+                    .as_ref()
+                    .is_none_or(|value| component.value.as_deref() == Some(value.as_str()))
+        })
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [] => Ok(None),
+        [rule] => Ok(Some(ComponentMapping {
+            model: rule.model.clone(),
+            pin_map: rule.pin_map.clone(),
+            part_number: component.value.clone(),
+        })),
+        _ => bail!(
+            "KiCad component {} matches more than one libsource mapping rule.",
+            component.refdes
+        ),
+    }
+}
+
+fn model_for_component(
+    component: &ParsedComponent,
+    mapping: Option<&ComponentMapping>,
+    default_model: &str,
+) -> String {
+    if let Some(mapping) = mapping {
+        return mapping.model.clone();
+    }
+    component
+        .fields
+        .iter()
+        .find(|(name, _)| {
+            name.eq_ignore_ascii_case("CircuitCI_Model")
+                || name.eq_ignore_ascii_case("CircuitCIModel")
+        })
+        .map(|(_, value)| value.trim())
+        .filter(|value| !value.is_empty())
+        .unwrap_or(default_model)
+        .to_string()
+}
+
+fn mapped_pin(
+    component: &ParsedComponent,
+    mapping: Option<&ComponentMapping>,
+    default_model: &str,
+    imported_pin: &str,
+) -> Result<String> {
+    let Some(mapping) = mapping else {
+        return Ok(imported_pin.to_string());
+    };
+    if mapping.model == default_model {
+        return Ok(mapping
+            .pin_map
+            .get(imported_pin)
+            .cloned()
+            .unwrap_or_else(|| imported_pin.to_string()));
+    }
+    mapping
+        .pin_map
+        .get(imported_pin)
+        .cloned()
+        .with_context(|| {
+            format!(
+                "KiCad mapping for component {} changes model to {}, but imported pin {} is not in pin_map.",
+                component.refdes, mapping.model, imported_pin
+            )
+        })
+}
+
+fn validate_mapped_component_pins(
+    parsed: &ParsedKicadNetlist,
+    mapping: &KicadMapping,
+    default_model: &str,
+) -> Result<()> {
+    let connected = connected_pins_by_component(parsed);
+    for component in parsed.components.values() {
+        let Some(component_mapping) = mapping_for_component(component, mapping)? else {
+            continue;
+        };
+        let connected_pins = connected
+            .get(&component.refdes)
+            .cloned()
+            .unwrap_or_else(BTreeSet::new);
+        for mapped_pin in component_mapping.pin_map.keys() {
+            if !connected_pins.contains(mapped_pin) {
+                bail!(
+                    "KiCad mapping for component {} references unconnected imported pin {}.",
+                    component.refdes,
+                    mapped_pin
+                );
+            }
+        }
+        let mut target_pins = BTreeSet::new();
+        for target_pin in component_mapping.pin_map.values() {
+            if !target_pins.insert(target_pin) {
+                bail!(
+                    "KiCad mapping for component {} maps more than one imported pin to model pin {}.",
+                    component.refdes,
+                    target_pin
+                );
+            }
+        }
+        if component_mapping.model != default_model {
+            for imported_pin in &connected_pins {
+                if !component_mapping.pin_map.contains_key(imported_pin) {
+                    bail!(
+                        "KiCad mapping for component {} changes model to {}, but connected imported pin {} is not mapped.",
+                        component.refdes,
+                        component_mapping.model,
+                        imported_pin
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_mapping_models(
+    parsed: &ParsedKicadNetlist,
+    mapping: &KicadMapping,
+    base_dir: &Path,
+    default_model: &str,
+) -> Result<()> {
+    let models = load_import_models(&libraries_for_project(mapping, base_dir))?;
+    let connected = connected_pins_by_component(parsed);
+    for component in parsed.components.values() {
+        let selected_mapping = mapping_for_component(component, mapping)?;
+        let model_id = model_for_component(component, selected_mapping.as_ref(), default_model);
+        let model = models
+            .get(&model_id)
+            .with_context(|| format!("KiCad import selected unresolved model {model_id}."))?;
+        let connected_pins = connected
+            .get(&component.refdes)
+            .cloned()
+            .unwrap_or_else(BTreeSet::new);
+        for imported_pin in connected_pins {
+            let target_pin = mapped_pin(
+                component,
+                selected_mapping.as_ref(),
+                default_model,
+                &imported_pin,
+            )?;
+            if !model.ports.contains_key(&target_pin) {
+                bail!(
+                    "KiCad import maps component {} imported pin {} to {}.{}, but that port is not declared by the selected model.",
+                    component.refdes,
+                    imported_pin,
+                    model_id,
+                    target_pin
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+fn load_import_models(libraries: &[String]) -> Result<BTreeMap<String, ImportedComponentModel>> {
+    let mut models = BTreeMap::new();
+    for root in libraries {
+        let root = Path::new(root);
+        if !root.exists() {
+            bail!(
+                "KiCad import library path {} does not exist.",
+                root.display()
+            );
+        }
+        for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let path = entry.path();
+            if !path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".model.yaml"))
+            {
+                continue;
+            }
+            let text = fs::read_to_string(path)
+                .with_context(|| format!("Failed to read {}", path.display()))?;
+            let model: ImportedComponentModel = serde_yaml_ng::from_str(&text)
+                .with_context(|| format!("Failed to parse {}", path.display()))?;
+            models.insert(model.component_id.clone(), model);
+        }
+    }
+    Ok(models)
+}
+
+fn connected_pins_by_component(parsed: &ParsedKicadNetlist) -> BTreeMap<String, BTreeSet<String>> {
+    let mut connected: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for net in &parsed.nets {
+        for node in &net.nodes {
+            connected
+                .entry(node.refdes.clone())
+                .or_default()
+                .insert(node.pin.clone());
+        }
+    }
+    connected
+}
+
+fn mapped_net_kind(name: &str, mapping: Option<&NetMapping>) -> Result<String> {
+    let Some(mapping) = mapping else {
+        return Ok(classify_net(name).to_string());
+    };
+    Ok(mapping
+        .kind
+        .as_ref()
+        .map(MappedNetKind::as_board_ir)
+        .unwrap_or_else(|| classify_net(name))
+        .to_string())
+}
+
+fn libraries_for_project(mapping: &KicadMapping, base_dir: &Path) -> Vec<String> {
+    let mut seen = BTreeSet::new();
+    let mut libraries = Vec::new();
+    for library in
+        std::iter::once(generic_library_path()).chain(mapping.libraries.iter().map(|library| {
+            let path = Path::new(library);
+            if path.is_absolute() {
+                library.clone()
+            } else {
+                let resolved = base_dir.join(path);
+                fs::canonicalize(&resolved)
+                    .unwrap_or(resolved)
+                    .to_string_lossy()
+                    .to_string()
+            }
+        }))
+    {
+        if seen.insert(library.clone()) {
+            libraries.push(library);
+        }
+    }
+    libraries
 }
 
 fn apply_libsource(
@@ -339,20 +746,6 @@ fn push_node(reader: &Reader<&[u8]>, event: &BytesStart<'_>, net: &mut ParsedNet
         pin: required_attr(reader, event, "pin")?,
     });
     Ok(())
-}
-
-fn model_for_component(component: &ParsedComponent, default_model: &str) -> String {
-    component
-        .fields
-        .iter()
-        .find(|(name, _)| {
-            name.eq_ignore_ascii_case("CircuitCI_Model")
-                || name.eq_ignore_ascii_case("CircuitCIModel")
-        })
-        .map(|(_, value)| value.trim())
-        .filter(|value| !value.is_empty())
-        .unwrap_or(default_model)
-        .to_string()
 }
 
 fn attr_value(
@@ -461,9 +854,9 @@ fn non_empty(value: String) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
 
-fn generic_schematic_library_path() -> String {
-    fs::canonicalize("libs/generic/schematic")
-        .unwrap_or_else(|_| PathBuf::from("libs/generic/schematic"))
+fn generic_library_path() -> String {
+    fs::canonicalize("libs/generic")
+        .unwrap_or_else(|_| PathBuf::from("libs/generic"))
         .to_string_lossy()
         .to_string()
 }

@@ -7,6 +7,14 @@ connectivity project:
 circuitci import-kicad-netlist board.net --output board.project.yaml
 ```
 
+With an explicit mapping file:
+
+```sh
+circuitci import-kicad-netlist board.net \
+  --mapping circuitci.kicad-map.yaml \
+  --output board.project.yaml
+```
+
 This importer is a schematic connectivity bridge, not a full `.kicad_sch`
 parser and not physical sign-off. KiCad XML contains component references,
 values, fields, and net nodes. It does not by itself prove datasheet-backed
@@ -31,14 +39,52 @@ work can attach exact symbol or datasheet models.
 
 Each imported component uses the first available model source:
 
-1. `CircuitCI_Model` field in the KiCad component.
-2. The `--default-model` CLI value.
-3. `generic.schematic.imported_component`.
+1. `components.<ref>` entry in the mapping file.
+2. first matching `libsource_rules` entry in the mapping file.
+3. `CircuitCI_Model` or `CircuitCIModel` field in the KiCad component.
+4. The `--default-model` CLI value.
+5. `generic.schematic.imported_component`.
 
 The generic imported schematic model is a traceability placeholder with passive
 numeric pins. It is useful for connectivity validation and agent repair loops,
 but it is intentionally low-confidence and does not provide datasheet operating
 limits or analog equations.
+
+When a mapping file changes a component away from the default placeholder, every
+connected KiCad pin on that component must appear in `pin_map`. This is a
+fail-closed rule: CircuitCI will not guess that KiCad pin `1` is model pin `A`,
+or that MCU package pin `7` is `NRST`.
+
+Mapping file shape:
+
+```yaml
+libraries:
+  - ../../libs/generic
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+  C1:
+    model: generic.analog.capacitor
+    pin_map: { "1": A, "2": B }
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+nets:
+  +3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+  GND:
+    kind: ground
+```
+
+Mapping files are strictly parsed. Unknown keys, invalid net kinds, unknown
+component refs, unknown net names, unconnected source pins, duplicate target
+model pins, unresolved model IDs, and target pins not declared by the selected
+model all fail import before a project file is written.
 
 ## Net Classification
 
@@ -50,6 +96,7 @@ Net kind is inferred conservatively:
 The importer does not infer `power`, nominal voltage, or powered state from
 names such as `+3V3`, `VDD`, or `VBUS`. Those semantics require an explicit
 user or design-rule mapping before checks that depend on power-domain behavior.
+Mapping-file net entries can set `kind`, `nominal_voltage`, and `powered`.
 
 ## Scenario Contract
 
@@ -69,6 +116,10 @@ Import fails instead of guessing when it sees:
 - duplicate component references,
 - duplicate component pin assignments across nets,
 - net nodes that reference unknown components,
+- mapping entries for unknown component refs,
+- mapping pin names that do not exist on the imported component,
+- mapped components that change model without mapping every connected pin,
+- duplicate mapped model pin names on a component,
 - missing component refs or node pins,
 - XML parse errors,
 - a file with no importable components.

@@ -1,0 +1,25 @@
+libraries:
+  - ../../libs/generic
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+      "2": B
+  - lib: Device
+    part: C
+    model: generic.analog.capacitor
+    pin_map:
+      "1": A
+      "2": B
+components:
+  U1:
+    model: generic.schematic.imported_component
+nets:
+  +3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+  GND:
+    kind: ground

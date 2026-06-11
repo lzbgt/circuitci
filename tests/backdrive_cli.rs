@@ -459,6 +459,61 @@ fn import_kicad_netlist_generates_schema_valid_connectivity_project() {
 }
 
 #[test]
+fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("mapped_kicad.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_xml/board.net",
+            "--mapping",
+            "examples/import_kicad_xml/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "mapped_kicad_xml",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["model"],
+        "generic.analog.resistor"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["model"],
+        "generic.analog.capacitor"
+    );
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["B"], "gnd");
+    assert_eq!(imported["board"]["nets"]["net_3v3"]["kind"], "power");
+    assert_eq!(imported["board"]["nets"]["net_3v3"]["nominal_voltage"], 3.3);
+    assert_eq!(imported["board"]["nets"]["net_3v3"]["powered"], true);
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_netlist_rejects_duplicate_pin_assignment() {
     let dir = tempfile::tempdir().unwrap();
     let netlist = dir.path().join("bad.net");
@@ -487,6 +542,44 @@ fn import_kicad_netlist_rejects_duplicate_pin_assignment() {
         .unwrap();
     assert!(!status.success());
     assert!(!output.exists());
+}
+
+#[test]
+fn import_kicad_netlist_rejects_incomplete_real_model_pin_map() {
+    assert_bad_kicad_mapping(
+        r#"
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+"#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_unknown_mapped_model_pin() {
+    assert_bad_kicad_mapping(
+        r#"
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+      "2": Z
+"#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_mapping_typos() {
+    assert_bad_kicad_mapping(
+        r#"
+nets:
+  +3V3:
+    nominal_votlage: 3.3
+"#,
+    );
 }
 
 #[test]
@@ -1519,6 +1612,26 @@ fn binary_available(binary: &str) -> bool {
         return false;
     };
     std::env::split_paths(&paths).any(|dir| dir.join(binary).is_file())
+}
+
+fn assert_bad_kicad_mapping(mapping: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let mapping_path = dir.path().join("bad.kicad-map.yaml");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_xml/board.net",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!output.exists());
 }
 
 fn assert_yaml_file_valid(path: &std::path::Path, validator: &jsonschema::Validator) {
