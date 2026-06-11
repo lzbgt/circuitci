@@ -9,7 +9,6 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::analog_operating_limits::OperatingLimitProbe;
 use super::analog_util::{absolute_path, executable_on_path, normalize_path, safe_artifact_name};
 
 pub(super) struct NgspiceRun {
@@ -36,7 +35,7 @@ pub(super) fn run_ngspice(
     backend: &str,
     output: &Path,
     source_netlist: &Path,
-    operating_probes: &[OperatingLimitProbe],
+    operating_probe_expressions: &[String],
 ) -> Result<NgspiceRun, NgspiceRunError> {
     let analog = scenario
         .analog
@@ -63,7 +62,7 @@ pub(super) fn run_ngspice(
         scenario,
         source_netlist,
         Path::new("waveform.csv"),
-        operating_probes,
+        operating_probe_expressions,
     )
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
@@ -133,7 +132,7 @@ pub(super) fn run_ngspice(
         ));
     }
     artifacts.push(waveform.clone());
-    let probe_count = analog.probes.len() + operating_probes.len();
+    let probe_count = analog.probes.len() + operating_probe_expressions.len();
     let series = parse_waveform_csv(&waveform, probe_count)
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     Ok(NgspiceRun {
@@ -235,7 +234,7 @@ fn build_ngspice_wrapper(
     scenario: &Scenario,
     netlist: &Path,
     waveform: &Path,
-    operating_probes: &[OperatingLimitProbe],
+    operating_probe_expressions: &[String],
 ) -> Result<String, String> {
     let analog = scenario
         .analog
@@ -275,9 +274,9 @@ fn build_ngspice_wrapper(
         text.push(' ');
         text.push_str(&probe.expression);
     }
-    for probe in operating_probes {
+    for expression in operating_probe_expressions {
         text.push(' ');
-        text.push_str(&probe.expression);
+        text.push_str(expression);
     }
     text.push_str("\nquit\n.endc\n.end\n");
     Ok(text)
@@ -486,7 +485,9 @@ mod tests {
     use crate::board_ir::load_project;
     use crate::library::{bind_project, load_library};
     use crate::validation::analog_assertions::interpolate_at;
-    use crate::validation::analog_operating_limits::operating_limit_probes;
+    use crate::validation::analog_operating_limits::{
+        operating_limit_probes, operating_probe_expressions,
+    };
     use std::path::Path;
 
     #[test]
@@ -549,6 +550,7 @@ mod tests {
         let bound = bind_project(&project, library, findings);
         let scenario = &project.scenarios[0];
         let operating = operating_limit_probes(&bound, scenario);
+        let operating_expressions = operating_probe_expressions(&operating);
         assert!(
             operating
                 .probes
@@ -564,7 +566,7 @@ mod tests {
             scenario,
             &netlist,
             Path::new("waveform.csv"),
-            &operating.probes,
+            &operating_expressions,
         )
         .unwrap();
         let wrdata = wrapper

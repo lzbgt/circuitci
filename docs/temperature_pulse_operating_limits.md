@@ -77,8 +77,9 @@ unqualified pulse ratings from hiding real overstress.
 metadata records `ID_continuous = 12 A`, `ID_pulsed = 266 A`,
 `pulse_width_us = 300`, and `duty_cycle_max = 0.02` from the downloaded onsemi
 datasheet. The same datasheet says pulsed `ID` should refer to the SOA graph;
-CircuitCI does not yet digitize that graph, so this fixture proves scalar
-qualified pulse-current handling rather than complete SOA sign-off.
+CircuitCI now supports explicitly digitized VDS/ID SOA curve points documented
+in `docs/soa_operating_limits.md`. The FDMC86184 points are marked as
+hand-digitized screening evidence, not final SOA sign-off.
 
 ## Report Evidence
 

@@ -57,6 +57,16 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/datasheet_quantity" }
         },
+        "safe_operating_area": {
+          "type": "object",
+          "properties": {
+            "vds_id_curves": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/soa_curve" }
+            }
+          },
+          "additionalProperties": false
+        },
         "electrical_characteristics": {
           "type": "object",
           "additionalProperties": {
@@ -317,6 +327,50 @@
         "derating_basis": { "type": "string", "minLength": 1 },
         "pulse_width_us": { "type": "number", "exclusiveMinimum": 0 },
         "duty_cycle_max": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "soa_curve": {
+      "type": "object",
+      "required": [
+        "name",
+        "pulse_width_us",
+        "duty_cycle_max",
+        "source_document",
+        "source_figure",
+        "digitization",
+        "points"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "pulse_width_us": { "type": "number", "exclusiveMinimum": 0 },
+        "duty_cycle_max": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "temperature_c": { "type": "number" },
+        "source_document": { "type": "string", "minLength": 1 },
+        "source_figure": { "type": "string", "minLength": 1 },
+        "digitization": {
+          "type": "object",
+          "required": ["method", "confidence"],
+          "properties": {
+            "method": { "type": "string", "minLength": 1 },
+            "confidence": { "type": "string", "minLength": 1 },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["vds_v", "id_a"],
+            "properties": {
+              "vds_v": { "type": "number", "exclusiveMinimum": 0 },
+              "id_a": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        }
       },
       "additionalProperties": false
     }

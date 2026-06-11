@@ -11,7 +11,10 @@ use super::analog_assertions::{
     evaluate_waveform_assertions, quantity_name, threshold_count, threshold_for,
     validate_assertion_contract, validate_probe_contract,
 };
-use super::analog_operating_limits::{evaluate_operating_limits, operating_limit_probes};
+use super::analog_operating_limits::{
+    evaluate_operating_limits, evaluate_soa_limits, operating_limit_probes,
+    operating_probe_expressions,
+};
 use super::analog_runner::{
     BackendSelection, backend_name, embedded_solver_unavailable, external_backend_unavailable,
     run_ngspice, select_backend,
@@ -348,13 +351,14 @@ pub(super) fn validate_spice_transient(
         return;
     }
 
+    let operating_expressions = operating_probe_expressions(&operating_limits);
     match run_ngspice(
         bound,
         scenario,
         backend,
         output,
         &source_netlist,
-        &operating_limits.probes,
+        &operating_expressions,
     ) {
         Ok(run) => {
             for artifact in &run.artifacts {
@@ -363,6 +367,7 @@ pub(super) fn validate_spice_transient(
             push_artifact(waveforms, &run.waveform);
             evaluate_waveform_assertions(scenario, &run, findings);
             evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
+            evaluate_soa_limits(scenario, &run, &operating_limits, findings);
         }
         Err(error) => {
             for artifact in &error.artifacts {

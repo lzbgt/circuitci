@@ -16,7 +16,8 @@ engine can grow without returning to a monolithic validator.
   window aggregation, and `SPICE_TRANSIENT_ANALYSIS` assertion findings.
 - `src/validation/analog_operating_limits.rs` owns automatic datasheet-derived
   semiconductor stress checks for MOSFETs, BJTs, diodes, temperature derating,
-  pulse qualifier checks, and `SPICE_OPERATING_LIMIT` findings.
+  pulse qualifier checks, digitized SOA envelope checks, and
+  `SPICE_OPERATING_LIMIT` findings.
 - `src/validation/analog_util.rs` owns shared filesystem and artifact helpers.
 
 ## Preserved Contracts

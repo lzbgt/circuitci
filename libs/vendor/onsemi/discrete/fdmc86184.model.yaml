@@ -45,6 +45,50 @@ datasheet:
       derate_above_c: 25
       derating_per_c: 0.0184
       derating_basis: Derived from PD=2.3W at TA=25C and RthetaJA=53C/W / TJ(max)=150C thermal table values.
+  safe_operating_area:
+    vds_id_curves:
+      - name: forward_bias_100us
+        pulse_width_us: 100
+        duty_cycle_max: 0.02
+        temperature_c: 25
+        source_document: onsemi_fdmc86184-d.pdf
+        source_figure: Figure 11 Forward Bias Safe Operating Area
+        digitization:
+          method: manual
+          confidence: low
+          note: Hand-digitized from datasheet graph; screening evidence only.
+        points:
+          - vds_v: 1
+            id_a: 200
+          - vds_v: 10
+            id_a: 90
+          - vds_v: 20
+            id_a: 45
+          - vds_v: 50
+            id_a: 12
+          - vds_v: 100
+            id_a: 3
+      - name: forward_bias_1ms
+        pulse_width_us: 1000
+        duty_cycle_max: 0.02
+        temperature_c: 25
+        source_document: onsemi_fdmc86184-d.pdf
+        source_figure: Figure 11 Forward Bias Safe Operating Area
+        digitization:
+          method: manual
+          confidence: low
+          note: Hand-digitized from datasheet graph; screening evidence only.
+        points:
+          - vds_v: 1
+            id_a: 160
+          - vds_v: 10
+            id_a: 40
+          - vds_v: 20
+            id_a: 18
+          - vds_v: 50
+            id_a: 5
+          - vds_v: 100
+            id_a: 1
   electrical_characteristics:
     RDSon_10V:
       conditions: VGS=10V, ID=21A, TJ=25C
@@ -106,5 +150,5 @@ model_quality:
     - board_ir_spice_generation
     - pulse_current_operating_limit_validation
   not_valid_for:
-    - soa_curve_signoff_without_digitized_curve_points
+    - soa_curve_signoff_without_vendor_or_bench_validated_curve_points
     - final_hardware_signoff_without_vendor_or_bench_calibration

@@ -129,6 +129,14 @@ id is emitted with measured `component`, `model`, `quantity`,
 `temperature_derating_required`; missing pulse qualifiers use
 `pulse_width_and_duty_required`.
 
+Digitized SOA findings also use `SPICE_OPERATING_LIMIT` with measured
+`rating: SOA`, `vds_v`, `id_a`, `time_us`, `soa_margin_ratio`,
+`pulse_duration_us`, `pulse_duty_cycle`, and flags for curve range and duration
+coverage. Stable SOA limit keys include `id_limit_a`, `soa_curve`,
+`curve_pulse_width_us`, `curve_duty_cycle_max`, `interpolation: log_log`,
+`source_document`, `source_figure`, `digitization_method`,
+`digitization_confidence`, and optional `digitization_warning`.
+
 Declared executable checks with missing required inputs must produce a critical `VALIDATION_INPUT_MISSING` finding so the report cannot pass by skipping validation.
 
 ## Markdown Report

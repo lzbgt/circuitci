@@ -475,8 +475,15 @@ fn generated_mosfet_pulse_duty_fails_with_pulse_evidence() {
     let report = run_validation("examples/bad_mosfet_pulse_duty/project.yaml");
     if binary_available("ngspice") {
         assert_eq!(report["result"], "fail");
-        assert_eq!(report["summary"]["critical"], 1);
-        let failure = &report["failures"][0];
+        let failure = report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|failure| {
+                failure["id"] == "SPICE_OPERATING_LIMIT"
+                    && failure["measured"]["rating"] == "ID_continuous"
+            })
+            .expect("expected continuous current pulse-duty finding");
         assert_eq!(failure["id"], "SPICE_OPERATING_LIMIT");
         assert_eq!(failure["measured"]["component"], "M1");
         assert_eq!(failure["measured"]["rating"], "ID_continuous");
@@ -487,6 +494,35 @@ fn generated_mosfet_pulse_duty_fails_with_pulse_evidence() {
         assert!(failure["measured"]["pulse_duration_us"].as_f64().unwrap() > 300.0);
         assert!(failure["measured"]["pulse_duty_cycle"].as_f64().unwrap() > 0.02);
         assert!(failure["measured"]["max_abs"].as_f64().unwrap() < 266.0);
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_soa_violation_reports_digitized_curve_evidence() {
+    let report = run_validation("examples/bad_mosfet_soa_violation/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "SOA"
+                && failure["measured"]["component"] == "M1"
+                && failure["measured"]["soa_margin_ratio"].as_f64().unwrap() > 1.0
+                && failure["measured"]["vds_v"].as_f64().unwrap() > 40.0
+                && failure["measured"]["id_a"].as_f64().unwrap() > 12.0
+                && failure["limit"]["soa_curve"] == "forward_bias_100us"
+                && failure["limit"]["curve_pulse_width_us"] == 100.0
+                && failure["limit"]["interpolation"] == "log_log"
+                && failure["limit"]["digitization_confidence"] == "low"
+                && failure["limit"]["digitization_warning"]
+                    .as_str()
+                    .unwrap()
+                    .contains("screening evidence")
+        }));
     } else {
         assert_eq!(report["result"], "fail");
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");

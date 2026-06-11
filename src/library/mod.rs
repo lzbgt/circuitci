@@ -28,6 +28,8 @@ pub struct ComponentModel {
 pub struct Datasheet {
     #[serde(default)]
     pub absolute_maximum_ratings: BTreeMap<String, DatasheetQuantity>,
+    #[serde(default)]
+    pub safe_operating_area: SafeOperatingArea,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -48,6 +50,40 @@ pub struct DatasheetQuantity {
     pub pulse_width_us: Option<f64>,
     #[serde(default)]
     pub duty_cycle_max: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct SafeOperatingArea {
+    #[serde(default)]
+    pub vds_id_curves: Vec<SoaCurve>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SoaCurve {
+    pub name: String,
+    pub pulse_width_us: f64,
+    pub duty_cycle_max: f64,
+    #[serde(default)]
+    pub temperature_c: Option<f64>,
+    pub source_document: String,
+    pub source_figure: String,
+    pub digitization: SoaDigitization,
+    #[serde(default)]
+    pub points: Vec<SoaPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SoaDigitization {
+    pub method: String,
+    pub confidence: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SoaPoint {
+    pub vds_v: f64,
+    pub id_a: f64,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

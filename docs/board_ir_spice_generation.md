@@ -79,6 +79,10 @@ metadata. Its companion `examples/bad_mosfet_pulse_duty` proves that current
 below the pulsed-current scalar still fails when pulse width or duty exceeds
 the encoded datasheet limits.
 
+Digitized MOSFET SOA curve checks are documented in
+`docs/soa_operating_limits.md`; `examples/bad_mosfet_soa_violation` exercises
+paired `VDS`/`ID` envelope checking against hand-digitized screening points.
+
 ## Generation Rules
 
 1. Map Board IR nets to SPICE nodes using `node_bindings`.
