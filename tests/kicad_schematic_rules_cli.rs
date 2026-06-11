@@ -231,6 +231,90 @@ fn import_kicad_schematic_resolves_scalar_label_on_bus_graphic() {
 }
 
 #[test]
+fn import_kicad_schematic_accepts_sparse_bus_alias_members() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("sparse_bus_alias.kicad_sch");
+    let output = dir.path().join("sparse_bus_alias.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (label "DATA4" (at 15 -2.54 0))
+  (bus_alias "DATA" (members "DATA[0..1,4,8..9]"))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_data4"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_zero_padded_sparse_bus_alias_members() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("zero_padded_sparse_bus_alias.kicad_sch");
+    let output = dir.path().join("zero_padded_sparse_bus_alias.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "ADDR04" (at 5 0 0))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (bus_alias "ADDR" (members "ADDR[00..03,04]"))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_addr04"
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_unlabelled_bus_entry_stub() {
     assert_bad_kicad_schematic_contains(
         r#"
@@ -308,6 +392,23 @@ fn import_kicad_schematic_rejects_malformed_bus_alias_range() {
   (bus_alias "DATA" (members "DATA[0..]")))
 "#,
         "range bounds must be decimal",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_empty_sparse_bus_alias_term() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "DATA" (members "DATA[0,,2]")))
+"#,
+        "malformed range syntax",
     );
 }
 

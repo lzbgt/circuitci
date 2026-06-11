@@ -736,18 +736,37 @@ fn expand_bus_alias_member(alias_name: &str, member: &str) -> Result<Vec<String>
         bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");
     }
 
-    let range = &member[open + 1..close];
-    let (start_raw, end_raw) = range.split_once("..").with_context(|| {
-        format!("KiCad bus_alias {alias_name} member {member} is missing '..'.")
-    })?;
-    if start_raw.is_empty()
-        || end_raw.is_empty()
-        || !start_raw.chars().all(|ch| ch.is_ascii_digit())
-        || !end_raw.chars().all(|ch| ch.is_ascii_digit())
-    {
-        bail!("KiCad bus_alias {alias_name} member {member} range bounds must be decimal.");
+    let prefix = &member[..open];
+    let suffix = &member[close + 1..];
+    let mut expanded = Vec::new();
+    for term in member[open + 1..close].split(',') {
+        let term = term.trim();
+        if term.is_empty() {
+            bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");
+        }
+        expand_bus_alias_term(alias_name, member, prefix, suffix, term, &mut expanded)?;
+        if expanded.len() > 1024 {
+            bail!("KiCad bus_alias {alias_name} member {member} expands to more than 1024 labels.");
+        }
     }
+    Ok(expanded)
+}
 
+fn expand_bus_alias_term(
+    alias_name: &str,
+    member: &str,
+    prefix: &str,
+    suffix: &str,
+    term: &str,
+    expanded: &mut Vec<String>,
+) -> Result<()> {
+    let Some((start_raw, end_raw)) = term.split_once("..") else {
+        validate_decimal_bus_index(alias_name, member, term)?;
+        expanded.push(format!("{prefix}{term}{suffix}"));
+        return Ok(());
+    };
+    validate_decimal_bus_index(alias_name, member, start_raw)?;
+    validate_decimal_bus_index(alias_name, member, end_raw)?;
     let start = start_raw.parse::<usize>().with_context(|| {
         format!("KiCad bus_alias {alias_name} member {member} range start is invalid.")
     })?;
@@ -757,27 +776,26 @@ fn expand_bus_alias_member(alias_name: &str, member: &str) -> Result<Vec<String>
     if start > end {
         bail!("KiCad bus_alias {alias_name} member {member} descending ranges are unsupported.");
     }
-    let count = end - start + 1;
-    if count > 1024 {
-        bail!("KiCad bus_alias {alias_name} member {member} expands to more than 1024 labels.");
-    }
-
-    let prefix = &member[..open];
-    let suffix = &member[close + 1..];
     let width = if start_raw.len() == end_raw.len() && start_raw.len() > 1 {
         start_raw.len()
     } else {
         0
     };
-    Ok((start..=end)
-        .map(|index| {
-            if width > 0 {
-                format!("{prefix}{index:0width$}{suffix}")
-            } else {
-                format!("{prefix}{index}{suffix}")
-            }
-        })
-        .collect())
+    for index in start..=end {
+        if width > 0 {
+            expanded.push(format!("{prefix}{index:0width$}{suffix}"));
+        } else {
+            expanded.push(format!("{prefix}{index}{suffix}"));
+        }
+    }
+    Ok(())
+}
+
+fn validate_decimal_bus_index(alias_name: &str, member: &str, value: &str) -> Result<()> {
+    if value.is_empty() || !value.chars().all(|ch| ch.is_ascii_digit()) {
+        bail!("KiCad bus_alias {alias_name} member {member} range bounds must be decimal.");
+    }
+    Ok(())
 }
 
 fn parse_junctions(root: &[Sexp]) -> Result<BTreeSet<Point>> {

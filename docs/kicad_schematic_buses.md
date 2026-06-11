@@ -14,7 +14,9 @@ The importer accepts bus graphics only when scalar connectivity is explicit:
   scalar label or be resolvable from exactly one bus label on the attached bus
   segment,
 - `bus_alias` declarations are parsed when every member is an explicit scalar
-  label or one simple decimal range such as `DATA[0..7]`.
+  label, one decimal index such as `DATA[3]`, one decimal range such as
+  `DATA[0..7]`, or comma-separated decimal terms such as
+  `DATA[0..3,8,12..15]`.
 
 The importer does not infer a net name from a bus line or bus entry alone. This
 means a labelled wire such as `DATA0` can be imported even when it visually
@@ -26,19 +28,21 @@ closed.
 
 When one or more `bus_alias` declarations are present, each scalar label on a
 wire entering a bus entry must be declared by exactly one alias member set.
-Duplicate members across aliases are rejected. Range-like members such as
-`DATA[0..7]` are expanded into scalar members before this check.
+Duplicate members across aliases are rejected. Bracketed members such as
+`DATA[0..7]`, `DATA[3]`, and `DATA[0..3,8,12..15]` are expanded into scalar
+members before this check.
 
 Range expansion is intentionally narrow:
 
-- one bracketed decimal range per member,
+- one bracketed decimal term list per member,
+- each term is either one decimal index or one ascending decimal range,
 - ascending bounds only,
 - at most 1024 expanded labels per member,
 - deterministic zero padding only when both range bounds use the same width.
 
-Grouped syntax, malformed bounds, descending ranges, bus labels not listed by
-an alias, and bus-entry wires that cannot be resolved to one scalar member
-remain fail-closed.
+Grouped syntax, malformed/empty terms, malformed bounds, descending ranges, bus
+labels not listed by an alias, and bus-entry wires that cannot be resolved to
+one scalar member remain fail-closed.
 
 This is intentionally stricter than ignoring unknown S-expression sections.
 For analog simulation and board-fix agents, silently expanding a bus can remove
