@@ -68,6 +68,8 @@ struct KicadMapping {
     libsource_rules: Vec<LibsourceRuleMapping>,
     #[serde(default)]
     nets: BTreeMap<String, NetMapping>,
+    #[serde(default)]
+    analog_scenarios: Vec<AnalogScenarioMapping>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -78,6 +80,8 @@ struct ComponentMapping {
     pin_map: BTreeMap<String, String>,
     #[serde(default)]
     part_number: Option<String>,
+    #[serde(default)]
+    spice: Option<ComponentSpiceYaml>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,6 +94,8 @@ struct LibsourceRuleMapping {
     model: String,
     #[serde(default)]
     pin_map: BTreeMap<String, String>,
+    #[serde(default)]
+    spice: Option<ComponentSpiceYaml>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -101,6 +107,65 @@ struct NetMapping {
     nominal_voltage: Option<f64>,
     #[serde(default)]
     powered: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentSpiceYaml {
+    primitive: SpicePrimitiveYaml,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value_ohm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dc_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pulse: Option<PulseSpecYaml>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum SpicePrimitiveYaml {
+    Resistor,
+    Capacitor,
+    DcVoltageSource,
+    PulseVoltageSource,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct PulseSpecYaml {
+    initial_v: f64,
+    pulsed_v: f64,
+    delay_us: f64,
+    rise_us: f64,
+    fall_us: f64,
+    width_us: f64,
+    period_us: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AnalogScenarioMapping {
+    name: String,
+    #[serde(default)]
+    backend: AnalogBackendYaml,
+    components: Vec<String>,
+    ground_net: String,
+    analysis: AnalysisYaml,
+    stimuli: Vec<StimulusYaml>,
+    probes: Vec<ProbeYaml>,
+    assertions: Vec<AssertionYaml>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum AnalogBackendYaml {
+    #[default]
+    Auto,
+    Ngspice,
+    Xyce,
+    EmbeddedNgspice,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -155,6 +220,8 @@ struct ComponentYaml {
     part_number: Option<String>,
     pins: BTreeMap<String, String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    spice: Option<ComponentSpiceYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     source: Option<ComponentSourceYaml>,
 }
 
@@ -181,7 +248,134 @@ struct NetYaml {
 }
 
 #[derive(Debug, Serialize)]
-struct ScenarioYaml {}
+struct ScenarioYaml {
+    name: String,
+    #[serde(rename = "type")]
+    scenario_type: String,
+    checks: Vec<String>,
+    analog: AnalogYaml,
+}
+
+#[derive(Debug, Serialize)]
+struct AnalogYaml {
+    backend: AnalogBackendYaml,
+    netlist_source: String,
+    generated: GeneratedNetlistYaml,
+    model_files: Vec<ModelFileYaml>,
+    node_bindings: Vec<NodeBindingYaml>,
+    pin_bindings: Vec<PinBindingYaml>,
+    analysis: AnalysisYaml,
+    stimuli: Vec<StimulusYaml>,
+    probes: Vec<ProbeYaml>,
+    assertions: Vec<AssertionYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct GeneratedNetlistYaml {
+    components: Vec<String>,
+    ground_net: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ModelFileYaml {
+    path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sha256: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct NodeBindingYaml {
+    node: String,
+    net: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PinBindingYaml {
+    node: String,
+    endpoint: EndpointYaml,
+}
+
+#[derive(Debug, Serialize)]
+struct EndpointYaml {
+    component: String,
+    pin: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct AnalysisYaml {
+    #[serde(rename = "type")]
+    analysis_type: AnalysisTypeYaml,
+    stop_time_us: f64,
+    max_step_us: f64,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum AnalysisTypeYaml {
+    Tran,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct StimulusYaml {
+    name: String,
+    description: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ProbeYaml {
+    name: String,
+    expression: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    quantity: Option<ProbeQuantityYaml>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum ProbeQuantityYaml {
+    Voltage,
+    Current,
+    Power,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct AssertionYaml {
+    name: String,
+    probe: String,
+    relation: AssertionRelationYaml,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    at_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    end_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    aggregation: Option<AssertionAggregationYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threshold_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threshold_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threshold_w: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum AssertionRelationYaml {
+    Below,
+    Above,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum AssertionAggregationYaml {
+    Sample,
+    Min,
+    Max,
+}
 
 pub fn import_kicad_netlist(options: &KicadImportOptions) -> Result<()> {
     let parsed = parse_kicad_netlist(&options.input)?;
@@ -370,6 +564,9 @@ fn build_project_yaml(
                         .and_then(|item| item.part_number.clone())
                         .or_else(|| component.value.clone()),
                     pins: BTreeMap::new(),
+                    spice: component_mapping
+                        .as_ref()
+                        .and_then(|item| item.spice.clone()),
                     source: Some(ComponentSourceYaml {
                         format: "kicad_xml_netlist".to_string(),
                         value: component.value.clone(),
@@ -427,6 +624,7 @@ fn build_project_yaml(
             ))
         })
         .collect::<Result<_>>()?;
+    let scenarios = build_analog_scenarios(parsed, mapping, &components, &nets, &net_names)?;
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
@@ -435,8 +633,238 @@ fn build_project_yaml(
         },
         libraries: libraries_for_project(mapping, &loaded_mapping.base_dir),
         board: BoardYaml { components, nets },
-        scenarios: Vec::new(),
+        scenarios,
     })
+}
+
+fn build_analog_scenarios(
+    parsed: &ParsedKicadNetlist,
+    mapping: &KicadMapping,
+    components: &BTreeMap<String, ComponentYaml>,
+    nets: &BTreeMap<String, NetYaml>,
+    net_names: &[String],
+) -> Result<Vec<ScenarioYaml>> {
+    let raw_net_to_board = raw_net_to_board_map(parsed, net_names)?;
+    mapping
+        .analog_scenarios
+        .iter()
+        .map(|scenario| {
+            validate_analog_scenario_mapping(scenario, components, nets, &raw_net_to_board)?;
+            let generated_components = scenario.components.clone();
+            let ground_net = raw_net_to_board
+                .get(&scenario.ground_net)
+                .cloned()
+                .with_context(|| {
+                    format!(
+                        "KiCad analog scenario {} references unknown ground_net {}.",
+                        scenario.name, scenario.ground_net
+                    )
+                })?;
+            let mut used_nets = BTreeSet::new();
+            used_nets.insert(ground_net.clone());
+            for component_id in &generated_components {
+                let component = components
+                    .get(component_id)
+                    .expect("scenario components were validated before binding generation");
+                used_nets.extend(component.pins.values().cloned());
+            }
+            let node_bindings = used_nets
+                .into_iter()
+                .map(|net| NodeBindingYaml {
+                    node: if net == ground_net {
+                        "0".to_string()
+                    } else {
+                        net.clone()
+                    },
+                    net,
+                })
+                .collect::<Vec<_>>();
+            let node_by_net = node_bindings
+                .iter()
+                .map(|binding| (binding.net.clone(), binding.node.clone()))
+                .collect::<BTreeMap<_, _>>();
+            let mut pin_bindings = Vec::new();
+            for component_id in &generated_components {
+                let component = components
+                    .get(component_id)
+                    .expect("scenario components were validated before pin binding generation");
+                for (pin, net) in &component.pins {
+                    let node = node_by_net
+                        .get(net)
+                        .expect("component net was inserted into node bindings")
+                        .clone();
+                    pin_bindings.push(PinBindingYaml {
+                        node,
+                        endpoint: EndpointYaml {
+                            component: component_id.clone(),
+                            pin: pin.clone(),
+                        },
+                    });
+                }
+            }
+            Ok(ScenarioYaml {
+                name: scenario.name.clone(),
+                scenario_type: "analog_transient".to_string(),
+                checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
+                analog: AnalogYaml {
+                    backend: scenario.backend.clone(),
+                    netlist_source: "generated_from_board".to_string(),
+                    generated: GeneratedNetlistYaml {
+                        components: generated_components,
+                        ground_net,
+                    },
+                    model_files: Vec::new(),
+                    node_bindings,
+                    pin_bindings,
+                    analysis: scenario.analysis.clone(),
+                    stimuli: scenario.stimuli.clone(),
+                    probes: scenario.probes.clone(),
+                    assertions: scenario.assertions.clone(),
+                },
+            })
+        })
+        .collect()
+}
+
+fn validate_analog_scenario_mapping(
+    scenario: &AnalogScenarioMapping,
+    components: &BTreeMap<String, ComponentYaml>,
+    nets: &BTreeMap<String, NetYaml>,
+    raw_net_to_board: &BTreeMap<String, String>,
+) -> Result<()> {
+    if scenario.components.is_empty() {
+        bail!(
+            "KiCad analog scenario {} must declare generated components.",
+            scenario.name
+        );
+    }
+    if scenario.stimuli.is_empty() {
+        bail!(
+            "KiCad analog scenario {} must declare at least one stimulus description.",
+            scenario.name
+        );
+    }
+    if scenario.probes.is_empty() {
+        bail!(
+            "KiCad analog scenario {} must declare at least one probe.",
+            scenario.name
+        );
+    }
+    if scenario.assertions.is_empty() {
+        bail!(
+            "KiCad analog scenario {} must declare at least one quantitative assertion.",
+            scenario.name
+        );
+    }
+    if !scenario.analysis.stop_time_us.is_finite()
+        || !scenario.analysis.max_step_us.is_finite()
+        || scenario.analysis.stop_time_us <= 0.0
+        || scenario.analysis.max_step_us <= 0.0
+        || scenario.analysis.max_step_us > scenario.analysis.stop_time_us
+    {
+        bail!(
+            "KiCad analog scenario {} has invalid transient timing.",
+            scenario.name
+        );
+    }
+    let ground_net = raw_net_to_board
+        .get(&scenario.ground_net)
+        .with_context(|| {
+            format!(
+                "KiCad analog scenario {} references unknown ground_net {}.",
+                scenario.name, scenario.ground_net
+            )
+        })?;
+    if nets.get(ground_net).is_none_or(|net| net.kind != "ground") {
+        bail!(
+            "KiCad analog scenario {} ground_net {} does not map to a ground Board IR net.",
+            scenario.name,
+            scenario.ground_net
+        );
+    }
+    let mut seen_components = BTreeSet::new();
+    for component_id in &scenario.components {
+        if !seen_components.insert(component_id) {
+            bail!(
+                "KiCad analog scenario {} lists component {} more than once.",
+                scenario.name,
+                component_id
+            );
+        }
+        let component = components.get(component_id).with_context(|| {
+            format!(
+                "KiCad analog scenario {} references unknown component {}.",
+                scenario.name, component_id
+            )
+        })?;
+        if component.spice.is_none() {
+            bail!(
+                "KiCad analog scenario {} includes component {}, but the mapping file did not declare explicit spice metadata for it.",
+                scenario.name,
+                component_id
+            );
+        }
+    }
+    validate_probe_assertion_contract(scenario)
+}
+
+fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result<()> {
+    let probes = scenario
+        .probes
+        .iter()
+        .map(|probe| probe.name.as_str())
+        .collect::<BTreeSet<_>>();
+    for assertion in &scenario.assertions {
+        if !probes.contains(assertion.probe.as_str()) {
+            bail!(
+                "KiCad analog scenario {} assertion {} references unknown probe {}.",
+                scenario.name,
+                assertion.name,
+                assertion.probe
+            );
+        }
+        let threshold_count = [
+            assertion.threshold_v,
+            assertion.threshold_a,
+            assertion.threshold_w,
+        ]
+        .into_iter()
+        .filter(|value| value.is_some_and(f64::is_finite))
+        .count();
+        if threshold_count != 1 {
+            bail!(
+                "KiCad analog scenario {} assertion {} must declare exactly one finite threshold.",
+                scenario.name,
+                assertion.name
+            );
+        }
+        let is_window = matches!(
+            assertion.aggregation,
+            Some(AssertionAggregationYaml::Min | AssertionAggregationYaml::Max)
+        );
+        if is_window {
+            if assertion.start_us.is_none()
+                || assertion.end_us.is_none()
+                || assertion.at_us.is_some()
+            {
+                bail!(
+                    "KiCad analog scenario {} assertion {} has an invalid window/sample timing contract.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if assertion.at_us.is_none()
+            || assertion.start_us.is_some()
+            || assertion.end_us.is_some()
+        {
+            bail!(
+                "KiCad analog scenario {} assertion {} has an invalid sample timing contract.",
+                scenario.name,
+                assertion.name
+            );
+        }
+    }
+    Ok(())
 }
 
 fn load_mapping(options: &KicadImportOptions) -> Result<LoadedKicadMapping> {
@@ -504,6 +932,7 @@ fn mapping_for_component(
             model: rule.model.clone(),
             pin_map: rule.pin_map.clone(),
             part_number: component.value.clone(),
+            spice: rule.spice.clone(),
         })),
         _ => bail!(
             "KiCad component {} matches more than one libsource mapping rule.",
@@ -794,6 +1223,27 @@ fn unique_net_names(nets: &[ParsedNet]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+fn raw_net_to_board_map(
+    parsed: &ParsedKicadNetlist,
+    net_names: &[String],
+) -> Result<BTreeMap<String, String>> {
+    let mut map = BTreeMap::new();
+    for (index, net) in parsed.nets.iter().enumerate() {
+        if net.name.trim().is_empty() {
+            continue;
+        }
+        if let Some(previous) = map.insert(net.name.clone(), net_names[index].clone())
+            && previous != net_names[index]
+        {
+            bail!(
+                "KiCad net name {} maps to more than one Board IR net; use unique net names before mapping generated scenarios.",
+                net.name
+            );
+        }
+    }
+    Ok(map)
 }
 
 fn net_name_for(net: &ParsedNet) -> String {

@@ -86,6 +86,45 @@ component refs, unknown net names, unconnected source pins, duplicate target
 model pins, unresolved model IDs, and target pins not declared by the selected
 model all fail import before a project file is written.
 
+## Generated Analog Scenarios
+
+Mapping files may also declare `analog_scenarios`. This is the only KiCad import
+path that emits a validation scenario:
+
+```yaml
+components:
+  V1:
+    model: generic.analog.dc_voltage_source
+    pin_map: { "1": P, "2": N }
+    spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+analog_scenarios:
+  - name: rc_transient
+    components: [V1, R1, C1]
+    ground_net: GND
+    analysis: { type: tran, stop_time_us: 2000.0, max_step_us: 10.0 }
+    stimuli:
+      - { name: mapped_source, description: V1 is an explicit 3.3 V source. }
+    probes:
+      - { name: rc, expression: V(net_reset_rc), quantity: voltage }
+    assertions:
+      - { name: rc_charges, probe: rc, at_us: 2000.0, relation: above, threshold_v: 2.5 }
+```
+
+Scenario generation remains fail-closed:
+
+- `components` is explicit; CircuitCI does not auto-include analog-looking parts.
+- each generated component must have explicit mapping-file `spice` primitive
+  metadata or a future datasheet-backed model path,
+- `stimuli`, `probes`, and `assertions` must be non-empty,
+- node bindings and pin bindings are derived completely from the mapped Board
+  IR endpoints,
+- the declared `ground_net` must map to a Board IR ground net and is bound to
+  SPICE node `0`.
+
+KiCad component values such as `10k` or `100n` are never converted into SPICE
+primitive values unless the mapping file explicitly declares the corresponding
+`spice` block.
+
 ## Net Classification
 
 Net kind is inferred conservatively:
@@ -100,10 +139,11 @@ Mapping-file net entries can set `kind`, `nominal_voltage`, and `powered`.
 
 ## Scenario Contract
 
-The importer emits no scenarios by default. A scenario must be added later to
-run checks such as `SPICE_TRANSIENT_ANALYSIS`, `GPIO_BACKDRIVE`, or boot/reset
-rules. This avoids producing fake pass/fail results from connectivity data that
-does not include physics models or quantitative assertions.
+The importer emits no scenarios by default. A scenario is emitted only when an
+explicit mapping-file `analog_scenarios` entry supplies components, analysis,
+stimuli, probes, and assertions. This avoids producing fake pass/fail results
+from connectivity data that does not include physics models or quantitative
+assertions.
 
 Generated projects include `project.import_source: kicad_xml_netlist`. Runtime
 reports include a `SCHEMATIC_IMPORT_ONLY` limitation for that source, even when

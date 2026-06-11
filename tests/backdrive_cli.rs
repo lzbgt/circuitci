@@ -497,12 +497,34 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
         "generic.analog.capacitor"
     );
     assert_eq!(imported["board"]["components"]["C1"]["pins"]["B"], "gnd");
+    assert_eq!(
+        imported["board"]["components"]["V1"]["model"],
+        "generic.analog.dc_voltage_source"
+    );
+    assert_eq!(imported["board"]["components"]["V1"]["spice"]["dc_v"], 3.3);
     assert_eq!(imported["board"]["nets"]["net_3v3"]["kind"], "power");
     assert_eq!(imported["board"]["nets"]["net_3v3"]["nominal_voltage"], 3.3);
     assert_eq!(imported["board"]["nets"]["net_3v3"]["powered"], true);
+    assert_eq!(
+        imported["scenarios"][0]["name"],
+        "kicad_mapped_rc_transient"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["netlist_source"],
+        "generated_from_board"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "C1"])
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["assertions"][0]["name"],
+        "rc_node_charges"
+    );
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
     assert!(
         report["limitations"]
             .as_array()
@@ -578,6 +600,52 @@ fn import_kicad_netlist_rejects_mapping_typos() {
 nets:
   +3V3:
     nominal_votlage: 3.3
+"#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_generated_scenario_without_assertions() {
+    assert_bad_kicad_mapping(
+        r#"
+components:
+  V1:
+    model: generic.analog.dc_voltage_source
+    pin_map: { "1": P, "2": N }
+    spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+analog_scenarios:
+  - name: no_assertions
+    components: [V1]
+    ground_net: GND
+    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    stimuli:
+      - { name: source, description: explicit source }
+    probes:
+      - { name: vdd, expression: V(net_3v3), quantity: voltage }
+    assertions: []
+"#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_generated_component_without_spice_metadata() {
+    assert_bad_kicad_mapping(
+        r#"
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+analog_scenarios:
+  - name: missing_spice
+    components: [R1]
+    ground_net: GND
+    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    stimuli:
+      - { name: source, description: intentionally incomplete }
+    probes:
+      - { name: rc, expression: V(net_reset_rc), quantity: voltage }
+    assertions:
+      - { name: must_have_assertion, probe: rc, at_us: 100.0, relation: above, threshold_v: 0.1 }
 "#,
     );
 }

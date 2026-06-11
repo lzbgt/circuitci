@@ -9,6 +9,10 @@
       <value>100n</value>
       <libsource lib="Device" part="C"/>
     </comp>
+    <comp ref="V1">
+      <value>3.3V</value>
+      <libsource lib="Simulation_SPICE" part="VSOURCE"/>
+    </comp>
     <comp ref="U1">
       <value>STM32L431VCT6</value>
       <fields>
@@ -19,6 +23,7 @@
   </components>
   <nets>
     <net code="1" name="+3V3">
+      <node ref="V1" pin="1"/>
       <node ref="R1" pin="1"/>
       <node ref="U1" pin="1"/>
     </net>
@@ -28,6 +33,7 @@
       <node ref="U1" pin="7"/>
     </net>
     <net code="3" name="GND">
+      <node ref="V1" pin="2"/>
       <node ref="C1" pin="2"/>
       <node ref="U1" pin="8"/>
     </net>
