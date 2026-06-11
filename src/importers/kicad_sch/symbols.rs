@@ -178,6 +178,12 @@ pub(super) fn parse_symbol_instances(
             .with_context(|| format!("KiCad schematic symbol {lib_id} is missing Reference."))?
             .to_string();
         let value = properties.get("Value").cloned();
+        let (lib, part) = split_lib_id(&lib_id);
+        let is_power_symbol = refdes.starts_with("#PWR") || lib.as_deref() == Some("power");
+        let on_board = parse_yes_no_token(symbol, "on_board", true, &refdes)?;
+        if !is_power_symbol && !on_board {
+            continue;
+        }
         let Some(pin_geometry) = lib_pins.get(&lib_id) else {
             bail!(
                 "KiCad schematic symbol {refdes} uses {lib_id}, but lib_symbols has no pin geometry for it."
@@ -232,8 +238,6 @@ pub(super) fn parse_symbol_instances(
         if pins.is_empty() {
             bail!("KiCad schematic symbol {refdes} has no instance pins.");
         }
-        let (lib, part) = split_lib_id(&lib_id);
-        let is_power_symbol = refdes.starts_with("#PWR") || lib.as_deref() == Some("power");
         if is_power_symbol {
             if pins.len() != 1 {
                 bail!("KiCad power symbol {refdes} must expose exactly one pin.");
@@ -265,6 +269,28 @@ pub(super) fn parse_symbol_instances(
         });
     }
     Ok((symbols, power_labels))
+}
+
+fn parse_yes_no_token(
+    symbol: &[Sexp],
+    token_name: &str,
+    default: bool,
+    refdes: &str,
+) -> Result<bool> {
+    let Some(list) = child_list(symbol, token_name) else {
+        return Ok(default);
+    };
+    if list.len() != 2 {
+        bail!("KiCad schematic symbol {refdes} has malformed {token_name} token.");
+    }
+    let value = string_at(list, 1).with_context(|| {
+        format!("KiCad schematic symbol {refdes} has malformed {token_name} token.")
+    })?;
+    match value {
+        "yes" => Ok(true),
+        "no" => Ok(false),
+        _ => bail!("KiCad schematic symbol {refdes} {token_name} must be yes or no, got {value}."),
+    }
 }
 
 fn parse_symbol_unit(symbol: &[Sexp], lib_id: &str) -> Result<u32> {

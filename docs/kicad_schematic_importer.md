@@ -26,6 +26,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - root `.kicad_sch` files with recursive sheet hierarchy,
 - root `symbol` instances with `lib_id`, `Reference`, and `Value`
   properties,
+- `on_board no` filtering for non-power symbols,
 - root `lib_symbols` pin definitions for symbol pin coordinates, including
   selected unit geometry for KiCad multi-unit symbols,
 - omitted hidden `power_in` library pins with non-empty pin names,
@@ -49,6 +50,7 @@ Unsupported constructs fail closed:
 - ambiguous bus expansion from labels placed only on bus graphics,
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,
+- malformed `on_board` metadata,
 - missing or ambiguous library pin geometry,
 - hidden non-power pins or unnamed hidden power pins,
 - malformed labels,

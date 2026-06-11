@@ -503,6 +503,69 @@ fn import_kicad_schematic_rejects_duplicate_refs() {
 }
 
 #[test]
+fn import_kicad_schematic_skips_on_board_no_symbol() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("on_board_no.kicad_sch");
+    let output = dir.path().join("on_board_no.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0) (on_board no)
+    (property "Reference" "R_SKIP") (property "Value" "10k") (pin "1") (pin "2"))
+  (symbol (lib_id "Device:R") (at 20 0 0)
+    (property "Reference" "R_KEEP") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (label "KEEP_A" (at 10 0 0))
+  (wire (pts (xy 0 10) (xy 20 10)))
+  (label "KEEP_B" (at 10 10 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert!(imported["board"]["components"]["R_SKIP"].is_null());
+    assert_eq!(
+        imported["board"]["components"]["R_KEEP"]["pins"]["1"],
+        "net_keep_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R_KEEP"]["pins"]["2"],
+        "net_keep_b"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_on_board_token() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0) (on_board maybe)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0)))
+"#,
+        "on_board must be yes or no",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_missing_pin_geometry() {
     assert_bad_kicad_schematic_contains(
         r#"
