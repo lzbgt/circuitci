@@ -300,6 +300,76 @@ fn import_kicad_schematic_flattens_one_child_sheet() {
 }
 
 #[test]
+fn import_kicad_schematic_hierarchy_runs_generated_spice() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("hierarchy_spice.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_hierarchy_spice/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_hierarchy_spice/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "hierarchy_spice",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["V1"]["pins"]["P"],
+        "net_vin"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_vin"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_out"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["pins"]["A"],
+        "net_out"
+    );
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["B"], "gnd");
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "C1"])
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["probes"][0]["expression"],
+        "V(net_out)"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["assertions"][0]["name"],
+        "child_rc_node_charges"
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_schematic_rejects_sheet_pin_label_mismatch() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");
