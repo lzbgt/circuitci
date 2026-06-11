@@ -12,13 +12,13 @@ use super::analog_assertions::{
     validate_assertion_contract, validate_probe_contract,
 };
 use super::analog_operating_limits::{
-    evaluate_operating_limits, evaluate_soa_limits, operating_limit_probes,
-    operating_probe_expressions,
+    evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
 use super::analog_runner::{
     BackendSelection, backend_name, embedded_solver_unavailable, external_backend_unavailable,
     run_ngspice, select_backend,
 };
+use super::analog_soa::evaluate_soa_limits;
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;

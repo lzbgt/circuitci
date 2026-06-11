@@ -1,6 +1,7 @@
 mod analog_assertions;
 mod analog_operating_limits;
 mod analog_runner;
+mod analog_soa;
 mod analog_spice;
 mod analog_util;
 mod backdrive;
