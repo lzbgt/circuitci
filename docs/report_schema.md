@@ -114,10 +114,12 @@ Stable rule detail keys:
 `SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
 generated Board IR MOSFET/BJT operating probes exceed datasheet absolute
 maximum ratings. Stable measured keys include `component`, `rating`,
-`quantity`, `expression`, `max_abs`, and `unit`; stable limit keys include
-`rating`, `max_abs`, and `unit`. If a generated semiconductor model lacks the
-required absolute-maximum metadata, the same rule id is emitted with measured
-`component`, `model`, `quantity`, `missing_rating`, and `unit` keys.
+`quantity`, `expression`, `max_abs`, `time_of_max_us`, and `unit`; stable limit
+keys include `rating`, `rating_value`, `max_abs`, and `unit`. `rating_value`
+preserves the signed datasheet value while `max_abs` is the absolute comparison
+limit. If a generated semiconductor model lacks the required absolute-maximum
+metadata, the same rule id is emitted with measured `component`, `model`,
+`quantity`, `missing_rating`, and `unit` keys.
 
 Declared executable checks with missing required inputs must produce a critical `VALIDATION_INPUT_MISSING` finding so the report cannot pass by skipping validation.
 

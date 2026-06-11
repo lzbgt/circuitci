@@ -349,11 +349,15 @@ fn generated_mosfet_overcurrent_fails_operating_limits() {
             failure["measured"]["rating"] == "ID_continuous"
                 && failure["measured"]["unit"] == "A"
                 && failure["measured"]["component"] == "M1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.28
         }));
         assert!(operating_failures.iter().any(|failure| {
             failure["measured"]["rating"] == "PD"
                 && failure["measured"]["unit"] == "W"
                 && failure["measured"]["component"] == "M1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.3
         }));
     } else {
         assert_eq!(report["result"], "fail");
@@ -377,9 +381,33 @@ fn generated_bjt_overcurrent_fails_operating_limits() {
                 failure["measured"]["rating"] == "IC"
                     && failure["measured"]["unit"] == "A"
                     && failure["measured"]["component"] == "Q1"
+                    && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                    && failure["limit"]["rating_value"] == 1.5
             }),
             "expected an SS8050 collector-current operating-limit failure"
         );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_pmos_overcurrent_preserves_signed_datasheet_rating() {
+    let report = run_validation("examples/bad_pmos_overcurrent/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "ID_continuous"
+                && failure["measured"]["unit"] == "A"
+                && failure["measured"]["component"] == "M1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == -0.13
+                && failure["limit"]["max_abs"] == 0.13
+        }));
     } else {
         assert_eq!(report["result"], "fail");
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");

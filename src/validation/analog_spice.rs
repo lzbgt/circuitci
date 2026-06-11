@@ -401,6 +401,7 @@ struct OperatingLimitProbe {
     component_id: String,
     rating: String,
     expression: String,
+    rating_value: f64,
     limit: f64,
     unit: &'static str,
     quantity: &'static str,
@@ -942,11 +943,12 @@ fn push_mosfet_operating_probes(
     let current_sense = current_sense_name("M", component_id);
     let vds = voltage_expression(drain, source);
     let vgs = voltage_expression(gate, source);
-    if let Some((rating, limit)) = rating_abs(model, &["VDSS"], "V") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["VDSS"], "V") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vds})"),
+            rating_value,
             limit,
             unit: "V",
             quantity: "voltage",
@@ -961,11 +963,14 @@ fn push_mosfet_operating_probes(
             &["VDSS"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["VGSS", "VGSS_continuous"], "V") {
+    if let Some((rating, rating_value, limit)) =
+        rating_abs(model, &["VGSS", "VGSS_continuous"], "V")
+    {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vgs})"),
+            rating_value,
             limit,
             unit: "V",
             quantity: "voltage",
@@ -980,11 +985,12 @@ fn push_mosfet_operating_probes(
             &["VGSS", "VGSS_continuous"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["ID_continuous", "ID"], "A") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["ID_continuous", "ID"], "A") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs(I({current_sense}))"),
+            rating_value,
             limit,
             unit: "A",
             quantity: "current",
@@ -999,11 +1005,12 @@ fn push_mosfet_operating_probes(
             &["ID_continuous", "ID"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["PD"], "W") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["PD"], "W") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vds}*I({current_sense}))"),
+            rating_value,
             limit,
             unit: "W",
             quantity: "power",
@@ -1040,11 +1047,12 @@ fn push_bjt_operating_probes(
     let vce = voltage_expression(collector, emitter);
     let vcb = voltage_expression(collector, base);
     let veb = voltage_expression(emitter, base);
-    if let Some((rating, limit)) = rating_abs(model, &["VCEO"], "V") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["VCEO"], "V") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vce})"),
+            rating_value,
             limit,
             unit: "V",
             quantity: "voltage",
@@ -1059,11 +1067,12 @@ fn push_bjt_operating_probes(
             &["VCEO"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["VCBO"], "V") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["VCBO"], "V") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vcb})"),
+            rating_value,
             limit,
             unit: "V",
             quantity: "voltage",
@@ -1078,11 +1087,12 @@ fn push_bjt_operating_probes(
             &["VCBO"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["VEBO"], "V") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["VEBO"], "V") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({veb})"),
+            rating_value,
             limit,
             unit: "V",
             quantity: "voltage",
@@ -1097,11 +1107,12 @@ fn push_bjt_operating_probes(
             &["VEBO"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["IC"], "A") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["IC"], "A") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs(I({current_sense}))"),
+            rating_value,
             limit,
             unit: "A",
             quantity: "current",
@@ -1116,11 +1127,12 @@ fn push_bjt_operating_probes(
             &["IC"],
         ));
     }
-    if let Some((rating, limit)) = rating_abs(model, &["PD"], "W") {
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["PD"], "W") {
         probes.push(OperatingLimitProbe {
             component_id: component_id.to_string(),
             rating,
             expression: format!("abs({vce}*I({current_sense}))"),
+            rating_value,
             limit,
             unit: "W",
             quantity: "power",
@@ -1195,7 +1207,7 @@ fn spice_node_for_pin<'a>(
     node_by_net.get(net.as_str()).copied()
 }
 
-fn rating_abs(model: &ComponentModel, keys: &[&str], unit: &str) -> Option<(String, f64)> {
+fn rating_abs(model: &ComponentModel, keys: &[&str], unit: &str) -> Option<(String, f64, f64)> {
     let ratings = &model.datasheet.as_ref()?.absolute_maximum_ratings;
     for key in keys {
         let Some(rating) = ratings.get(*key) else {
@@ -1204,7 +1216,7 @@ fn rating_abs(model: &ComponentModel, keys: &[&str], unit: &str) -> Option<(Stri
         if rating.unit.eq_ignore_ascii_case(unit) && rating.value.is_finite() {
             let limit = rating.value.abs();
             if limit > 0.0 {
-                return Some(((*key).to_string(), limit));
+                return Some(((*key).to_string(), rating.value, limit));
             }
         }
     }
@@ -1362,12 +1374,26 @@ fn evaluate_operating_limits(
         let Some(values) = run.series.values_by_probe.get(probe_index) else {
             continue;
         };
-        let Some(max_abs) = values.iter().copied().reduce(f64::max) else {
+        let Some((max_index, max_abs)) =
+            values
+                .iter()
+                .copied()
+                .enumerate()
+                .max_by(|(_, left), (_, right)| {
+                    left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal)
+                })
+        else {
             continue;
         };
         if max_abs <= probe.limit {
             continue;
         }
+        let time_of_max_us = run
+            .series
+            .time_s
+            .get(max_index)
+            .copied()
+            .map(|seconds| seconds * 1_000_000.0);
         let mut finding = Finding::critical(
             SPICE_OPERATING_LIMIT,
             &scenario.name,
@@ -1397,12 +1423,20 @@ fn evaluate_operating_limits(
         finding
             .measured
             .insert("max_abs".to_string(), json!(max_abs));
+        if let Some(time_us) = time_of_max_us {
+            finding
+                .measured
+                .insert("time_of_max_us".to_string(), json!(time_us));
+        }
         finding
             .measured
             .insert("unit".to_string(), json!(probe.unit));
         finding
             .limit
             .insert("rating".to_string(), json!(probe.rating));
+        finding
+            .limit
+            .insert("rating_value".to_string(), json!(probe.rating_value));
         finding
             .limit
             .insert("max_abs".to_string(), json!(probe.limit));

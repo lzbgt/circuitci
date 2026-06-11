@@ -1,0 +1,133 @@
+project:
+  name: bad_pmos_overcurrent
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VGATE:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: gate_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 5
+          pulsed_v: 0
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 300
+          period_us: 1000
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: load_node
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 20
+    M1:
+      model: vendor.onsemi.bss84
+      part_number: BSS84
+      pins:
+        D: load_node
+        G: gate_drive
+        S: vdd_5v
+  nets:
+    vdd_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    gnd:
+      kind: ground
+    gate_drive:
+      kind: digital_or_analog
+    load_node:
+      kind: digital_or_analog
+
+scenarios:
+  - name: bss84_high_side_switch_overcurrent
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VGATE
+          - RLOAD
+          - M1
+      model_files:
+        - path: ../../models/spice/onsemi/bss84.lib
+          sha256: 98a9771637a428453a80785ca62886409fadf7983dc22fcd609f171ce8706190
+      node_bindings:
+        - node: vdd
+          net: vdd_5v
+        - node: "0"
+          net: gnd
+        - node: gate
+          net: gate_drive
+        - node: load
+          net: load_node
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: M1
+            pin: S
+        - node: gate
+          endpoint:
+            component: M1
+            pin: G
+        - node: load
+          endpoint:
+            component: M1
+            pin: D
+        - node: "0"
+          endpoint:
+            component: RLOAD
+            pin: B
+      analysis:
+        type: tran
+        stop_time_us: 500
+        max_step_us: 0.2
+      stimuli:
+        - name: gate_turn_on
+          description: PMOS gate drive falls from 5 V to 0 V into a low-value load.
+      probes:
+        - name: load_node
+          expression: V(load)
+        - name: source_current
+          expression: abs(I(VDD))
+          quantity: current
+      assertions:
+        - name: load_low_before_gate_pull_down
+          probe: load_node
+          at_us: 50
+          relation: below
+          threshold_v: 0.2
+        - name: load_high_after_gate_pull_down
+          probe: load_node
+          at_us: 250
+          relation: above
+          threshold_v: 3
+        - name: source_current_flows_after_turn_on
+          probe: source_current
+          at_us: 250
+          relation: above
+          threshold_a: 0.15

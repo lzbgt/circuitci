@@ -138,6 +138,9 @@ artifacts.
 - `examples/bad_mosfet_overcurrent` proves generated MOSFET drain current and
   power can be checked automatically against datasheet absolute maximum ratings
   without a hand-authored current-limit assertion.
+- `examples/bad_pmos_overcurrent` proves signed negative P-channel datasheet
+  current ratings are preserved in the report while evaluated by absolute
+  magnitude.
 - `examples/bad_bjt_overcurrent` proves generated BJT collector current can be
   checked automatically against datasheet absolute maximum ratings without a
   hand-authored transistor-limit assertion.
@@ -155,7 +158,8 @@ Generated MOSFET/BJT models fail closed if these rating groups are absent or
 use the wrong unit, because a missing datasheet limit is not pass evidence. The
 operating-limit probes are evaluated over the full transient using maximum
 absolute value. Exceeding a rating emits `SPICE_OPERATING_LIMIT` with the
-component id, datasheet rating key, expression, measured maximum, unit, and
-limit. These checks are supplemental to scenario assertions: a circuit can pass
-its functional voltage/current assertions and still fail because the selected
-part is overstressed.
+component id, datasheet rating key, expression, measured maximum, time of
+maximum, unit, signed datasheet rating value, and absolute comparison limit.
+These checks are supplemental to scenario assertions: a circuit can pass its
+functional voltage/current assertions and still fail because the selected part
+is overstressed.
