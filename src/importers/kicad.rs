@@ -91,6 +91,8 @@ struct KicadMapping {
     #[serde(default)]
     libraries: Vec<String>,
     #[serde(default)]
+    pin_aliases: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(default)]
     components: BTreeMap<String, ComponentMapping>,
     #[serde(default)]
     libsource_rules: Vec<LibsourceRuleMapping>,
@@ -104,6 +106,8 @@ struct KicadMapping {
 #[serde(deny_unknown_fields)]
 struct ComponentMapping {
     model: String,
+    #[serde(default)]
+    pin_alias: Option<String>,
     #[serde(default)]
     pin_map: BTreeMap<String, String>,
     #[serde(default)]
@@ -120,6 +124,8 @@ struct LibsourceRuleMapping {
     #[serde(default)]
     value: Option<String>,
     model: String,
+    #[serde(default)]
+    pin_alias: Option<String>,
     #[serde(default)]
     pin_map: BTreeMap<String, String>,
     #[serde(default)]
@@ -1131,6 +1137,7 @@ fn load_mapping(options: &KicadImportOptions) -> Result<LoadedKicadMapping> {
 }
 
 fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) -> Result<()> {
+    validate_pin_aliases(mapping)?;
     for refdes in mapping.components.keys() {
         if !parsed.components.contains_key(refdes) {
             bail!("KiCad mapping references unknown component {refdes}.");
@@ -1149,12 +1156,39 @@ fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) ->
     Ok(())
 }
 
+fn validate_pin_aliases(mapping: &KicadMapping) -> Result<()> {
+    for (name, pins) in &mapping.pin_aliases {
+        if name.trim().is_empty() {
+            bail!("KiCad mapping declares an empty pin_alias name.");
+        }
+        if pins.is_empty() {
+            bail!("KiCad mapping pin_alias {name} must declare at least one pin.");
+        }
+        let mut target_pins = BTreeSet::new();
+        for (imported_pin, target_pin) in pins {
+            if imported_pin.trim().is_empty() || target_pin.trim().is_empty() {
+                bail!("KiCad mapping pin_alias {name} contains an empty pin name.");
+            }
+            if !target_pins.insert(target_pin) {
+                bail!(
+                    "KiCad mapping pin_alias {name} maps more than one imported pin to model pin {target_pin}."
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 fn mapping_for_component(
     component: &ParsedComponent,
     mapping: &KicadMapping,
 ) -> Result<Option<ComponentMapping>> {
     if let Some(item) = mapping.components.get(&component.refdes) {
-        return Ok(Some(item.clone()));
+        return Ok(Some(resolve_component_mapping_pin_alias(
+            mapping,
+            &format!("component {}", component.refdes),
+            item.clone(),
+        )?));
     }
     let matches = mapping
         .libsource_rules
@@ -1170,17 +1204,43 @@ fn mapping_for_component(
         .collect::<Vec<_>>();
     match matches.as_slice() {
         [] => Ok(None),
-        [rule] => Ok(Some(ComponentMapping {
-            model: rule.model.clone(),
-            pin_map: rule.pin_map.clone(),
-            part_number: component.value.clone(),
-            spice: rule.spice.clone(),
-        })),
+        [rule] => Ok(Some(resolve_component_mapping_pin_alias(
+            mapping,
+            &format!(
+                "libsource rule {}:{} for component {}",
+                rule.lib, rule.part, component.refdes
+            ),
+            ComponentMapping {
+                model: rule.model.clone(),
+                pin_alias: rule.pin_alias.clone(),
+                pin_map: rule.pin_map.clone(),
+                part_number: component.value.clone(),
+                spice: rule.spice.clone(),
+            },
+        )?)),
         _ => bail!(
             "KiCad component {} matches more than one libsource mapping rule.",
             component.refdes
         ),
     }
+}
+
+fn resolve_component_mapping_pin_alias(
+    mapping: &KicadMapping,
+    context: &str,
+    mut component_mapping: ComponentMapping,
+) -> Result<ComponentMapping> {
+    let Some(alias_name) = component_mapping.pin_alias.take() else {
+        return Ok(component_mapping);
+    };
+    if !component_mapping.pin_map.is_empty() {
+        bail!("KiCad mapping {context} cannot declare both pin_alias and pin_map.");
+    }
+    let alias = mapping.pin_aliases.get(&alias_name).with_context(|| {
+        format!("KiCad mapping {context} references unknown pin_alias {alias_name}.")
+    })?;
+    component_mapping.pin_map = alias.clone();
+    Ok(component_mapping)
 }
 
 fn model_for_component(

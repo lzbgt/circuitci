@@ -31,9 +31,9 @@ The importer reads:
 - `nets/net@code`, `nets/net@name`
 - `net/node@ref`, `net/node@pin`
 
-Board IR output preserves KiCad component references and pin numbers. Pins are
-not remapped into package-specific aliases during import; later model-mapping
-work can attach exact symbol or datasheet models.
+Board IR output preserves KiCad component references. Pins remain as imported
+unless an explicit mapping file remaps them with `pin_map` or a named
+`pin_alias`.
 
 ## Model Mapping
 
@@ -60,18 +60,22 @@ Mapping file shape:
 ```yaml
 libraries:
   - ../../libs/generic
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
 components:
   R1:
     model: generic.analog.resistor
-    pin_map: { "1": A, "2": B }
+    pin_alias: two_terminal_ab
   C1:
     model: generic.analog.capacitor
-    pin_map: { "1": A, "2": B }
+    pin_alias: two_terminal_ab
 libsource_rules:
   - lib: Device
     part: R
     model: generic.analog.resistor
-    pin_map: { "1": A, "2": B }
+    pin_alias: two_terminal_ab
 nets:
   +3V3:
     kind: power
@@ -82,9 +86,10 @@ nets:
 ```
 
 Mapping files are strictly parsed. Unknown keys, invalid net kinds, unknown
-component refs, unknown net names, unconnected source pins, duplicate target
-model pins, unresolved model IDs, and target pins not declared by the selected
-model all fail import before a project file is written.
+component refs, unknown net names, unknown pin aliases, simultaneous
+`pin_alias` and `pin_map`, unconnected source pins, duplicate target model pins,
+unresolved model IDs, and target pins not declared by the selected model all
+fail import before a project file is written.
 
 ## Generated Analog Scenarios
 

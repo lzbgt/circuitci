@@ -82,8 +82,9 @@ Unsupported constructs fail closed:
 The native parser performs connectivity extraction only. It does not infer
 component physics, model selection, or simulation scenarios. After parsing, the
 result flows through the existing KiCad mapping and scenario code path,
-preserving SHA-pinned model checks, `SCHEMATIC_IMPORT_ONLY`, strict opt-in
-passive value parsing, and all generated-SPICE fail-closed behavior.
+preserving package `pin_alias` expansion, SHA-pinned model checks,
+`SCHEMATIC_IMPORT_ONLY`, strict opt-in passive value parsing, and all
+generated-SPICE fail-closed behavior.
 
 ## Fixtures
 

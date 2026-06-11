@@ -165,6 +165,68 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
 }
 
 #[test]
+fn import_kicad_netlist_applies_package_pin_alias() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let mapping = dir.path().join("alias.kicad-map.yaml");
+    let output = dir.path().join("alias.project.yaml");
+    std::fs::write(
+        &mapping,
+        format!(
+            r#"
+libraries:
+  - {}
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_alias: two_terminal_ab
+"#,
+            std::env::current_dir()
+                .unwrap()
+                .join("libs/generic")
+                .display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_xml/board.net",
+            "--mapping",
+            mapping.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "alias_kicad_xml",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["model"],
+        "generic.analog.resistor"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_reset_rc"
+    );
+    assert!(imported["board"]["components"]["R1"]["pins"]["1"].is_null());
+    assert!(imported["board"]["components"]["R1"]["pins"]["2"].is_null());
+}
+
+#[test]
 fn import_kicad_netlist_maps_mosfet_soa_scenario() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -341,6 +403,61 @@ nets:
   +3V3:
     nominal_votlage: 3.3
 "#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_unknown_pin_alias() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_alias: missing_alias
+"#,
+        "references unknown pin_alias missing_alias",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_pin_alias_and_direct_pin_map() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
+components:
+  R1:
+    model: generic.analog.resistor
+    pin_alias: two_terminal_ab
+    pin_map: { "1": A, "2": B }
+"#,
+        "cannot declare both pin_alias and pin_map",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_empty_pin_alias() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+pin_aliases:
+  empty: {}
+"#,
+        "pin_alias empty must declare at least one pin",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_duplicate_target_in_pin_alias() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+pin_aliases:
+  bad_duplicate:
+    "1": A
+    "2": A
+"#,
+        "maps more than one imported pin to model pin A",
     );
 }
 
