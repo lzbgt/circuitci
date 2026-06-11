@@ -634,6 +634,179 @@ fn import_kicad_schematic_maps_mosfet_soa_scenario() {
 }
 
 #[test]
+fn import_kicad_schematic_applies_rotated_symbol_pin_coordinates() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("rotated_kicad_schematic.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_schematic/rotated_rc.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_schematic/rotated_rc.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "rotated_kicad_schematic",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_reset_rc"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "C1"])
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_kicad_schematic_accepts_wrapped_cardinal_rotation() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("wrapped_rotation.kicad_sch");
+    let output = dir.path().join("wrapped_rotation.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 450)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 10 7.46 0))
+  (label "NET_B" (at 10 12.54 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_b"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_connects_wire_to_transformed_pin() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("rotated_wire.kicad_sch");
+    let output = dir.path().join("rotated_wire.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 90)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 10 7.46) (xy 20 7.46)))
+  (label "NET_A" (at 20 7.46 0))
+  (wire (pts (xy 10 12.54) (xy 20 12.54)))
+  (label "NET_B" (at 20 12.54 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_b"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_transforms_rotated_power_symbol_pin() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("rotated_power.kicad_sch");
+    let output = dir.path().join("rotated_power.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at -2.54 0 0) (length 2.54) (number "1")))
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "power:+3V3") (at 10 10 90)
+    (property "Reference" "#PWR01") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "Device:R") (at 12.54 7.46 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "LOAD" (at 15.08 7.46 0)))
+"##,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_load"
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_unsupported_sheet() {
     assert_bad_kicad_schematic(
         r#"
@@ -641,6 +814,87 @@ fn import_kicad_schematic_rejects_unsupported_sheet() {
   (lib_symbols)
   (sheet (at 0 0) (size 10 10) (property "Sheetname" "child")))
 "#,
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_non_cardinal_symbol_rotation() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 45)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 8.203051 8.203051 0)))
+"#,
+        "supports only cardinal symbol rotations",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_wrapped_non_cardinal_symbol_rotation() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 450.1)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 10 7.46 0)))
+"#,
+        "supports only cardinal symbol rotations",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_symbol_rotation() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 bad)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "malformed rotation angle",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_non_finite_symbol_rotation() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 NaN)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "non-finite rotation angle",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_mirrored_symbol() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (mirror x)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "does not support mirrored symbol",
     );
 }
 
@@ -848,6 +1102,98 @@ fn import_kicad_schematic_rejects_all_no_connect_component() {
   (no_connect (at 10 10)))
 "#,
         "component TP1 has no connected pins",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_no_connect_at_transformed_open_pin() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("rotated_no_connect.kicad_sch");
+    let output = dir.path().join("rotated_no_connect.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 90)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 10 7.46 0))
+  (no_connect (at 10 12.54)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert!(imported["board"]["components"]["R1"]["pins"]["2"].is_null());
+}
+
+#[test]
+fn import_kicad_schematic_rejects_no_connect_at_transformed_connected_pin() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 90)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 10 7.46 0))
+  (no_connect (at 10 7.46)))
+"#,
+        "no_connect marker is attached to connected pin R1.1",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_no_connect_at_unrotated_old_coordinate() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 90)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 10 7.46 0))
+  (no_connect (at 12.54 10)))
+"#,
+        "no_connect marker is not attached",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_ambiguous_no_connect_after_rotation() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:TestPoint"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:TestPoint") (at 10 10 90)
+    (property "Reference" "TP1") (property "Value" "TP") (pin "1"))
+  (symbol (lib_id "Device:TestPoint") (at 10 4.92 270)
+    (property "Reference" "TP2") (property "Value" "TP") (pin "1"))
+  (no_connect (at 10 7.46)))
+"#,
+        "no_connect marker matches multiple symbol pins",
     );
 }
 

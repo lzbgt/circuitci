@@ -22,8 +22,13 @@ Additional parser fail-closed cases are covered for duplicate references,
 missing library pin geometry, and floating labels. These cases close the main
 gaps called out during review of the first native schematic slice.
 
+Cardinal symbol rotation is now covered by
+`examples/import_kicad_schematic/rotated_rc.kicad_sch`. That fixture rotates the
+resistor by 90 degrees and validates the transformed pin coordinates through the
+same mapped generated-SPICE path used by the unrotated RC schematic.
+
 ## Non-Goals
 
-This slice does not add hierarchy, buses, rotated symbol instances, hidden
-power pins, or value-to-SPICE inference. Those remain unsupported until they
-can be modeled without guessing connectivity or physics.
+This slice does not add hierarchy, buses, non-cardinal symbol rotations, hidden
+power pins, or value-to-SPICE inference. Those remain unsupported until they can
+be modeled without guessing connectivity or physics.

@@ -1,0 +1,37 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "33333333-3333-3333-3333-333333333333")
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2")))
+    (symbol "Device:C"
+      (pin passive line (at 0 -10 90) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 270) (length 2.54) (number "2")))
+    (symbol "Simulation_SPICE:VSOURCE"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+
+  (symbol (lib_id "Simulation_SPICE:VSOURCE") (at 0 0 0)
+    (property "Reference" "V1")
+    (property "Value" "3.3V")
+    (pin "1") (pin "2"))
+  (symbol (lib_id "Device:R") (at 20 10 90)
+    (property "Reference" "R1")
+    (property "Value" "10k")
+    (pin "1") (pin "2"))
+  (symbol (lib_id "Device:C") (at 20 30 0)
+    (property "Reference" "C1")
+    (property "Value" "100n")
+    (pin "1") (pin "2"))
+
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (label "+3V3" (at 0 0 0))
+
+  (wire (pts (xy 20 20) (xy 20 30)))
+  (label "/RESET_RC" (at 20 20 0))
+
+  (wire (pts (xy 0 10) (xy 0 40) (xy 20 40)))
+  (label "GND" (at 0 40 0))
+)

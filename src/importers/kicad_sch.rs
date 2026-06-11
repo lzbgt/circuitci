@@ -187,9 +187,9 @@ fn parse_symbol_instances(
             .with_context(|| format!("KiCad schematic symbol {lib_id} is missing at."))?;
         let at = parse_at_point(at_list)
             .with_context(|| format!("KiCad schematic symbol {lib_id} has invalid at."))?;
-        let rotation = numeric_at(at_list, 3).unwrap_or(0.0);
-        if !approx_zero(rotation) {
-            bail!("Native KiCad schematic import does not support rotated symbol {lib_id}.");
+        let rotation = parse_symbol_rotation(at_list, &lib_id)?;
+        if child_list(symbol, "mirror").is_some() {
+            bail!("Native KiCad schematic import does not support mirrored symbol {lib_id}.");
         }
         let properties = parse_properties(symbol);
         let refdes = properties
@@ -215,11 +215,12 @@ fn parse_symbol_instances(
                     "KiCad schematic symbol {refdes}.{number} has no matching lib_symbols pin geometry."
                 );
             };
+            let rotated = rotate_point(geometry.at, rotation);
             pins.insert(
                 number,
                 Point {
-                    x: at.x + geometry.at.x,
-                    y: at.y + geometry.at.y,
+                    x: at.x + rotated.x,
+                    y: at.y + rotated.y,
                 },
             );
         }
@@ -731,7 +732,8 @@ fn string_at(list: &[Sexp], index: usize) -> Option<&str> {
 }
 
 fn numeric_at(list: &[Sexp], index: usize) -> Option<f64> {
-    string_at(list, index)?.parse().ok()
+    let value = string_at(list, index)?.parse::<f64>().ok()?;
+    value.is_finite().then_some(value)
 }
 
 fn child_list<'a>(list: &'a [Sexp], name: &'a str) -> Option<&'a [Sexp]> {
@@ -760,13 +762,64 @@ fn between(value: i64, a: i64, b: i64) -> bool {
     value >= a.min(b) && value <= a.max(b)
 }
 
-fn approx_zero(value: f64) -> bool {
-    value.abs() < 1e-9
+fn parse_symbol_rotation(at_list: &[Sexp], lib_id: &str) -> Result<u16> {
+    let Some(raw) = at_list.get(3) else {
+        return Ok(0);
+    };
+    let raw = match raw {
+        Sexp::Atom(value) | Sexp::Str(value) => value,
+        Sexp::List(_) => bail!("KiCad schematic symbol {lib_id} has malformed rotation angle."),
+    };
+    let angle = raw.parse::<f64>().with_context(|| {
+        format!("KiCad schematic symbol {lib_id} has malformed rotation angle.")
+    })?;
+    if !angle.is_finite() {
+        bail!("KiCad schematic symbol {lib_id} has non-finite rotation angle.");
+    }
+    parse_cardinal_rotation(angle).with_context(|| {
+        format!(
+            "Native KiCad schematic import supports only cardinal symbol rotations for {lib_id}."
+        )
+    })
+}
+
+fn parse_cardinal_rotation(angle_degrees: f64) -> Result<u16> {
+    if !angle_degrees.is_finite() {
+        bail!("rotation {angle_degrees} is not finite")
+    }
+    let normalized = angle_degrees.rem_euclid(360.0);
+    for candidate in [0_u16, 90, 180, 270] {
+        if (normalized - f64::from(candidate)).abs() < 1e-9 {
+            return Ok(candidate);
+        }
+    }
+    bail!("rotation {angle_degrees} is not a cardinal angle")
+}
+
+fn rotate_point(point: Point, rotation: u16) -> Point {
+    match rotation {
+        0 => point,
+        90 => Point {
+            x: -point.y,
+            y: point.x,
+        },
+        180 => Point {
+            x: -point.x,
+            y: -point.y,
+        },
+        270 => Point {
+            x: point.y,
+            y: -point.x,
+        },
+        _ => unreachable!("rotation is validated by parse_cardinal_rotation"),
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_kicad_schematic;
+    use super::{
+        Point, parse_cardinal_rotation, parse_kicad_schematic, parse_symbol_rotation, rotate_point,
+    };
 
     #[test]
     fn parses_single_sheet_schematic_connectivity() {
@@ -793,5 +846,60 @@ mod tests {
         assert_eq!(parsed.components.len(), 1);
         assert_eq!(parsed.nets.len(), 1);
         assert!(parsed.nets.iter().any(|net| net.name == "NET_A"));
+    }
+
+    #[test]
+    fn rotates_cardinal_pin_offsets() {
+        let point = Point {
+            x: 10_000_000,
+            y: -20_000_000,
+        };
+        assert_eq!(rotate_point(point, 0), point);
+        assert_eq!(
+            rotate_point(point, 90),
+            Point {
+                x: 20_000_000,
+                y: 10_000_000
+            }
+        );
+        assert_eq!(
+            rotate_point(point, 180),
+            Point {
+                x: -10_000_000,
+                y: 20_000_000
+            }
+        );
+        assert_eq!(
+            rotate_point(point, 270),
+            Point {
+                x: -20_000_000,
+                y: -10_000_000
+            }
+        );
+        assert_eq!(parse_cardinal_rotation(-90.0).unwrap(), 270);
+        assert_eq!(parse_cardinal_rotation(360.0).unwrap(), 0);
+        assert_eq!(parse_cardinal_rotation(450.0).unwrap(), 90);
+        assert!(parse_cardinal_rotation(45.0).is_err());
+        assert!(parse_cardinal_rotation(89.999).is_err());
+        assert!(parse_cardinal_rotation(90.1).is_err());
+        assert!(parse_cardinal_rotation(450.1).is_err());
+    }
+
+    #[test]
+    fn rejects_malformed_symbol_rotation() {
+        let malformed = vec![
+            super::Sexp::Atom("at".to_string()),
+            super::Sexp::Atom("0".to_string()),
+            super::Sexp::Atom("0".to_string()),
+            super::Sexp::Atom("bad".to_string()),
+        ];
+        assert!(parse_symbol_rotation(&malformed, "Device:R").is_err());
+        let non_finite = vec![
+            super::Sexp::Atom("at".to_string()),
+            super::Sexp::Atom("0".to_string()),
+            super::Sexp::Atom("0".to_string()),
+            super::Sexp::Atom("NaN".to_string()),
+        ];
+        assert!(parse_symbol_rotation(&non_finite, "Device:R").is_err());
     }
 }

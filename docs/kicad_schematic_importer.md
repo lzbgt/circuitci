@@ -27,7 +27,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - root `symbol` instances with `lib_id`, `Reference`, and `Value`
   properties,
 - root `lib_symbols` pin definitions for symbol pin coordinates,
-- unrotated symbol instances,
+- cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
+  equivalent wrapped values,
 - straight horizontal or vertical wires,
 - local and global labels as net names,
 - optional KiCad power symbols treated as one-pin labeled symbols.
@@ -38,7 +39,8 @@ Unsupported constructs fail closed:
 - hierarchical sheets,
 - hierarchical labels,
 - buses and bus entries,
-- rotated symbol instances,
+- malformed, non-finite, or non-cardinal symbol rotations,
+- mirrored symbols,
 - missing library pin geometry,
 - malformed `no_connect` markers,
 - unconnected symbol pins without `no_connect` evidence,
@@ -63,3 +65,6 @@ and scenario code path, preserving SHA-pinned model checks,
 - `examples/import_kicad_schematic/mosfet_soa.kicad_sch` covers native
   schematic import of a mapped FDMC86184 MOSFET scenario with datasheet-backed
   SOA evidence.
+- `examples/import_kicad_schematic/rotated_rc.kicad_sch` covers cardinal
+  symbol rotation and generated-SPICE validation from transformed pin
+  coordinates.

@@ -37,9 +37,9 @@ A symbol pin is considered connected when its endpoint is on a wire segment or
 has a local/global/power label at the exact pin coordinate. Connected pins flow
 through the existing union-find net extraction and KiCad mapping pipeline.
 
-This first no-connect slice does not add hierarchy, buses, rotated symbols, or
-hidden power-pin support. Those remain fail-closed until each format feature has
-a tested semantic mapping.
+This no-connect slice does not add hierarchy, buses, hidden power-pin support,
+or non-cardinal symbol rotations. Those remain fail-closed until each format
+feature has a tested semantic mapping.
 
 ## Acceptance Fixtures
 
