@@ -335,6 +335,50 @@ fn generated_mosfet_low_side_switch_passes_when_ngspice_available() {
 }
 
 #[test]
+fn generated_mosfet_low_side_switch_runs_with_embedded_ngspice_when_available() {
+    let (_project_dir, project_path) =
+        embedded_backend_project("examples/good_mosfet_low_side_switch/project.yaml");
+    let report = run_validation(project_path.to_str().unwrap());
+    if report["result"] == "pass" {
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("waveform.csv") })
+        );
+    } else {
+        assert_eq!(
+            report["failures"][0]["id"],
+            "ANALOG_EMBEDDED_SOLVER_UNAVAILABLE"
+        );
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn explicit_embedded_ngspice_does_not_fallback_when_configured_library_is_missing() {
+    let (_project_dir, project_path) =
+        embedded_backend_project("examples/good_mosfet_low_side_switch/project.yaml");
+    let missing_library = tempfile::tempdir()
+        .unwrap()
+        .path()
+        .join("missing-libngspice.dylib");
+    let report = run_validation_with_env(
+        project_path.to_str().unwrap(),
+        &[("CIRCUITCI_LIBNGSPICE", missing_library.to_str().unwrap())],
+    );
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "ANALOG_EMBEDDED_SOLVER_UNAVAILABLE"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_mosfet_overcurrent_fails_operating_limits() {
     let report = run_validation("examples/bad_mosfet_overcurrent/project.yaml");
     if binary_available("ngspice") {
@@ -855,9 +899,11 @@ fn generated_contract_errors_do_not_require_solver_on_path() {
 #[test]
 fn generated_valid_netlist_is_artifact_even_without_solver() {
     let path_without_ngspice = tempfile::tempdir().unwrap();
-    let report = run_validation_with_path(
+    let missing_library = path_without_ngspice.path().join("missing-libngspice.dylib");
+    let report = run_validation_with_path_and_env(
         "examples/good_mosfet_low_side_switch/project.yaml",
         path_without_ngspice.path(),
+        &[("CIRCUITCI_LIBNGSPICE", missing_library.to_str().unwrap())],
     );
     assert_eq!(report["result"], "fail");
     assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
@@ -1250,8 +1296,17 @@ fn run_validation(project: &str) -> Value {
 }
 
 fn run_validation_with_path(project: &str, path: &std::path::Path) -> Value {
+    run_validation_with_path_and_env(project, path, &[])
+}
+
+fn run_validation_with_path_and_env(
+    project: &str,
+    path: &std::path::Path,
+    envs: &[(&str, &str)],
+) -> Value {
     let out_dir = tempfile::tempdir().unwrap();
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_circuitci"));
+    command
         .args([
             "validate",
             project,
@@ -1260,12 +1315,48 @@ fn run_validation_with_path(project: &str, path: &std::path::Path) -> Value {
             "--output",
             out_dir.path().to_str().unwrap(),
         ])
-        .env("PATH", path)
-        .status()
-        .unwrap();
+        .env("PATH", path);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let status = command.status().unwrap();
     assert!(status.success());
     serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
         .unwrap()
+}
+
+fn run_validation_with_env(project: &str, envs: &[(&str, &str)]) -> Value {
+    let out_dir = tempfile::tempdir().unwrap();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_circuitci"));
+    command.args([
+        "validate",
+        project,
+        "--profile",
+        "iot_basic_v0",
+        "--output",
+        out_dir.path().to_str().unwrap(),
+    ]);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let status = command.status().unwrap();
+    assert!(status.success());
+    serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+        .unwrap()
+}
+
+fn embedded_backend_project(project: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let text = std::fs::read_to_string(project)
+        .unwrap()
+        .replace("backend: auto", "backend: embedded_ngspice")
+        .replace("../../libs", &repo.join("libs").to_string_lossy())
+        .replace("../../models", &repo.join("models").to_string_lossy());
+    let path = dir.path().join("project.yaml");
+    std::fs::write(&path, text).unwrap();
+    (dir, path)
 }
 
 fn binary_available(binary: &str) -> bool {

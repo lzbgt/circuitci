@@ -73,9 +73,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
 2. Select a backend:
    - `ngspice` means `ngspice` must be executable.
    - `xyce` means `Xyce` or `xyce` must be executable.
-   - `embedded_ngspice` means a mature ngspice-derived solver must be compiled
-     or linked into CircuitCI behind the analog adapter. It must not resolve to
-     a partial in-house SPICE subset.
+   - `embedded_ngspice` means a mature ngspice-derived solver must be
+     dynamically loaded, compiled, or linked into CircuitCI behind the analog
+     adapter. It must not resolve to a partial in-house SPICE subset.
    - `auto` chooses the first available configured backend.
 3. If no required backend is available, emit a critical
    `ANALOG_BACKEND_UNAVAILABLE` finding.
@@ -176,10 +176,14 @@ analysis must be explicit model-quality limitations.
    with ngspice 46 installed it runs the transient deck and fails the bad
    circuit with quantitative `SPICE_TRANSIENT_ANALYSIS` findings. Done.
 5. Add explicit `embedded_ngspice` backend selection that fails unless a mature
-   ngspice-derived engine is actually linked or vendored. Do not implement a
-   toy partial solver.
+   ngspice-derived engine is actually dynamically loaded, linked, or vendored.
+   Do not implement a toy partial solver. Done for system `libngspice`.
 6. Add the real external ngspice runner and waveform parser. Done.
-7. Add generic model-library support for device/subcircuit model packs and
+7. Add the real embedded ngspice shared-library runner. Done for dynamic
+   `libngspice` loading through `ngSpice_Circ` and `ngSpice_Command`, using the
+   same waveform CSV parser and report evidence contract as the external
+   backend.
+8. Add generic model-library support for device/subcircuit model packs and
    board-to-SPICE netlist generation.
-8. Replace UM physical acceptance failure with measured waveform assertions
+9. Replace UM physical acceptance failure with measured waveform assertions
    from the real SPICE run. Done for the hand-authored UM Q2/Q3 fixture.

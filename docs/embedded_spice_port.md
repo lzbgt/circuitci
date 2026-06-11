@@ -56,12 +56,32 @@ Xyce remains valuable as an external/reference backend.
 ## Implementation Slices
 
 1. Keep `embedded_ngspice` as an explicit backend selector that fails until a
-   real mature solver is linked.
+   real mature solver is linked. Done for missing libraries; when
+   `libngspice` is present, CircuitCI dynamically loads the mature shared
+   ngspice engine.
 2. Implement external `ngspice` execution and waveform parsing first, because it
    validates the adapter and assertion contract without changing license shape.
 3. Add a vendored/shared ngspice build under a dedicated third-party boundary.
+   The first implementation dynamically loads a system `libngspice` and keeps
+   the dependency optional at runtime.
 4. Run upstream solver regression tests plus CircuitCI UM downloader physical
    acceptance.
-5. Only after parity is proven, make embedded ngspice the preferred local
+5. Only after broader parity is proven, make embedded ngspice the preferred local
    backend.
 
+## Implemented Shared-Library Adapter
+
+The current adapter uses the public `sharedspice.h` API:
+
+- `ngSpice_Init` initializes callbacks.
+- `ngSpice_Circ` loads a CircuitCI-generated circuit deck.
+- `ngSpice_Command` sends `set wr_vecnames`, `set wr_singlescale`, `tran`, and
+  `wrdata` commands.
+- Callback output is written into the same `ngspice.log` artifact used by the
+  external executable path.
+
+On the tested Homebrew `libngspice` 46 build,
+`ngSpice_nospinit()` crashed before initialization, so CircuitCI does not call
+that optional function. The adapter still records the resulting initialization
+warning in `ngspice.log` and requires waveform evidence before any physical
+pass.

@@ -333,20 +333,21 @@ pub(super) fn validate_spice_transient(
         return;
     };
 
-    if backend != "ngspice" {
+    if !matches!(backend, "ngspice" | "embedded_ngspice") {
         let mut finding = Finding::critical(
             SPICE_TRANSIENT_ANALYSIS,
             &scenario.name,
             format!(
-                "Backend {backend} was detected, but only external ngspice execution is implemented in this runtime slice."
+                "Backend {backend} was detected, but only ngspice-compatible execution is implemented in this runtime slice."
             ),
         );
         finding
             .measured
             .insert("selected_backend".to_string(), json!(backend));
-        finding
-            .limit
-            .insert("implemented_backend".to_string(), json!("ngspice"));
+        finding.limit.insert(
+            "implemented_backend".to_string(),
+            json!("ngspice_or_embedded_ngspice"),
+        );
         findings.push(finding);
         return;
     }
