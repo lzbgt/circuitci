@@ -23,7 +23,7 @@ Saved references:
 The first native importer slice supports only enough schematic semantics to
 produce the same internal `ParsedKicadNetlist` used by the XML importer:
 
-- single-sheet root `.kicad_sch` files,
+- root `.kicad_sch` files with recursive sheet hierarchy,
 - root `symbol` instances with `lib_id`, `Reference`, and `Value`
   properties,
 - root `lib_symbols` pin definitions for symbol pin coordinates,
@@ -38,8 +38,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 
 Unsupported constructs fail closed:
 
-- hierarchical sheets,
-- hierarchical labels,
+- root-level hierarchical labels,
+- hierarchy cycles,
 - buses and bus entries,
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,

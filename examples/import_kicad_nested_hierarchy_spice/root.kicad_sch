@@ -1,0 +1,27 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "c1000000-0000-4000-8000-000000000001")
+  (lib_symbols
+    (symbol "Simulation_SPICE:VSOURCE"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 30 180) (length 2.54) (number "2"))))
+
+  (symbol (lib_id "Simulation_SPICE:VSOURCE") (at 0 0 0)
+    (property "Reference" "V1")
+    (property "Value" "3.3V")
+    (pin "1") (pin "2"))
+
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (wire (pts (xy 50 10) (xy 55 10)))
+  (label "FILTER_OUT" (at 55 10 0))
+  (wire (pts (xy 0 30) (xy 20 30)))
+  (label "GND" (at 0 30 0))
+
+  (sheet (at 20 -10 0) (size 30 50)
+    (property "Sheetname" "Analog Frontend")
+    (property "Sheetfile" "frontend.kicad_sch")
+    (pin "VIN" input (at 20 0 0))
+    (pin "OUT" output (at 50 10 0))
+    (pin "GND" input (at 20 30 0)))
+)

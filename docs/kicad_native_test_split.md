@@ -11,7 +11,7 @@
 coverage:
 
 - rotations and transformed pins,
-- unsupported sheet/bus constructs,
+- unsupported root hierarchical labels and bus constructs,
 - duplicate references and missing pin geometry,
 - label and power-symbol conflicts,
 - no-connect evidence,

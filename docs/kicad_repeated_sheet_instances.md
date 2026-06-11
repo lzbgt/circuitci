@@ -1,7 +1,8 @@
 # KiCad Repeated Sheet Instances
 
-Native KiCad hierarchy import supports repeated one-level child sheets without
-guessing schematic intent.
+Native KiCad hierarchy import supports repeated child sheet instances without
+guessing schematic intent. This applies at recursive hierarchy boundaries as
+well as the root sheet.
 
 The importer preserves component references when they are globally unique after
 flattening. When a child reference collides with a root component or another
@@ -28,4 +29,5 @@ separate:
   import fails closed,
 - ground aliases such as `GND` continue to collapse to ground.
 
-Nested sheets and buses remain unsupported by this importer slice.
+Nested sheets use the same repeated-instance naming rules. Buses remain
+unsupported by this importer slice.

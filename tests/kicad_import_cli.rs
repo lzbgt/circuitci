@@ -624,6 +624,72 @@ fn import_kicad_schematic_repeated_hierarchy_runs_generated_spice() {
 }
 
 #[test]
+fn import_kicad_schematic_nested_hierarchy_runs_generated_spice() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("nested_hierarchy_spice.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_nested_hierarchy_spice/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_nested_hierarchy_spice/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "nested_hierarchy_spice",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["V1"]["pins"]["P"],
+        "net_vin"
+    );
+    assert_eq!(imported["board"]["components"]["V1"]["pins"]["N"], "gnd");
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_vin"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_filter_out"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["pins"]["A"],
+        "net_filter_out"
+    );
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["B"], "gnd");
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "C1"])
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["probes"][0]["expression"],
+        "V(net_filter_out)"
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_schematic_rejects_sheet_pin_label_mismatch() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");
@@ -671,11 +737,76 @@ fn import_kicad_schematic_rejects_sheet_pin_label_mismatch() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_nested_sheet() {
+fn import_kicad_schematic_flattens_nested_sheet() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");
     let child_path = dir.path().join("child.kicad_sch");
     let grandchild_path = dir.path().join("grandchild.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
+  (label "ROOT_RC" (at 25 0 0))
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "child.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (hierarchical_label "RC" (at 0 0 0))
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Nested")
+    (property "Sheetfile" "grandchild.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &grandchild_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:C"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:C") (at 0 0 0)
+    (property "Reference" "C1") (property "Value" "100n") (pin "1"))
+  (hierarchical_label "RC" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["C1"]["pins"]["1"],
+        "net_root_rc"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_sheet_cycle() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("child.kicad_sch");
     let output = dir.path().join("hierarchy.project.yaml");
     std::fs::write(
         &root_path,
@@ -695,14 +826,15 @@ fn import_kicad_schematic_rejects_nested_sheet() {
         r#"
 (kicad_sch
   (lib_symbols)
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (hierarchical_label "RC" (at 0 0 0))
   (sheet (at 0 0 0) (size 20 20)
-    (property "Sheetname" "Nested")
-    (property "Sheetfile" "grandchild.kicad_sch")
+    (property "Sheetname" "Cycle")
+    (property "Sheetfile" "root.kicad_sch")
     (pin "RC" input (at 20 0 0))))
 "#,
     )
     .unwrap();
-    std::fs::write(&grandchild_path, "(kicad_sch (lib_symbols))").unwrap();
     let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-schematic",
@@ -714,7 +846,7 @@ fn import_kicad_schematic_rejects_nested_sheet() {
         .unwrap();
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(stderr.contains("does not support nested sheets yet"));
+    assert!(stderr.contains("hierarchy contains a cycle"));
     assert!(!output.exists());
 }
 

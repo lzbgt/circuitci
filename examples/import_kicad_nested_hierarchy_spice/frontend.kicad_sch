@@ -1,0 +1,22 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "c1000000-0000-4000-8000-000000000002")
+  (lib_symbols)
+
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (hierarchical_label "VIN" (at 0 0 0))
+
+  (wire (pts (xy 50 10) (xy 60 10)))
+  (hierarchical_label "OUT" (at 60 10 0))
+
+  (wire (pts (xy 0 30) (xy 20 30)))
+  (hierarchical_label "GND" (at 0 30 0))
+
+  (sheet (at 20 -10 0) (size 30 50)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "filter.kicad_sch")
+    (pin "VIN" input (at 20 0 0))
+    (pin "OUT" output (at 50 10 0))
+    (pin "GND" input (at 20 30 0)))
+)
