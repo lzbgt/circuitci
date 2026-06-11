@@ -90,8 +90,11 @@ artifacts.
    `analog.model_files` with a SHA-256 pin.
 10. Resolve model metadata paths from the Board IR project directory and its
     ancestors so CLI launch location does not change the physical model.
-11. Emit generated deck, wrapper, solver log, and waveform as report artifacts.
-12. Keep all solver execution, convergence checks, waveform parsing, and
+11. Prepare generated source decks before solver backend selection so Board IR,
+    body-pin, subcircuit pin-order, and model-provenance contract errors are
+    visible even on hosts without `ngspice` or `Xyce` installed.
+12. Emit generated deck, wrapper, solver log, and waveform as report artifacts.
+13. Keep all solver execution, convergence checks, waveform parsing, and
    assertion evaluation in the existing ngspice runner path.
 
 ## Review Notes

@@ -274,6 +274,39 @@ pub(super) fn validate_spice_transient(
         }
     }
 
+    let run_dir = output
+        .join("analog")
+        .join(safe_artifact_name(&scenario.name));
+    if let Err(error) = fs::create_dir_all(&run_dir) {
+        findings.push(Finding::critical(
+            SPICE_TRANSIENT_ANALYSIS,
+            &scenario.name,
+            format!(
+                "Failed to create analog run directory {}: {error}",
+                run_dir.display()
+            ),
+        ));
+        return;
+    }
+    let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
+        Ok(source_netlist) => {
+            push_artifact(artifacts, &source_netlist);
+            source_netlist
+        }
+        Err(message) => {
+            let mut finding = Finding::critical(SPICE_TRANSIENT_ANALYSIS, &scenario.name, message);
+            finding
+                .limit
+                .insert("required_artifact".to_string(), json!("spice_netlist"));
+            finding.suggested_fixes.push(
+                "Fix the generated Board IR to SPICE contract before selecting a solver backend."
+                    .to_string(),
+            );
+            findings.push(finding);
+            return;
+        }
+    };
+
     let selected = select_backend(&analog.backend);
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
@@ -309,7 +342,7 @@ pub(super) fn validate_spice_transient(
         return;
     }
 
-    match run_ngspice(bound, scenario, backend, output) {
+    match run_ngspice(bound, scenario, backend, output, &source_netlist) {
         Ok(run) => {
             for artifact in &run.artifacts {
                 push_artifact(artifacts, artifact);
@@ -360,6 +393,7 @@ fn run_ngspice(
     scenario: &Scenario,
     backend: &str,
     output: &Path,
+    source_netlist: &Path,
 ) -> Result<NgspiceRun, NgspiceRunError> {
     let analog = scenario
         .analog
@@ -377,15 +411,12 @@ fn run_ngspice(
             Vec::new(),
         )
     })?;
-    let mut artifacts = Vec::new();
+    let mut artifacts = vec![source_netlist.to_path_buf()];
     let wrapper = run_dir.join("circuitci_ngspice.cir");
     let log = run_dir.join("ngspice.log");
     let waveform = run_dir.join("waveform.csv");
-    let source_netlist = prepare_source_netlist(bound, scenario, &run_dir)
-        .map_err(|message| ngspice_error(message, artifacts.clone()))?;
-    artifacts.push(source_netlist.clone());
     let wrapper_text =
-        build_ngspice_wrapper(bound, scenario, &source_netlist, Path::new("waveform.csv"))
+        build_ngspice_wrapper(bound, scenario, source_netlist, Path::new("waveform.csv"))
             .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(

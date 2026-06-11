@@ -392,18 +392,15 @@ fn generated_subckt_rc_delay_passes_when_ngspice_available() {
 fn generated_mosfet_without_body_policy_fails_closed() {
     let report = run_validation("examples/bad_mosfet_missing_body_policy/project.yaml");
     assert_eq!(report["result"], "fail");
-    if binary_available("ngspice") {
-        assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
-        assert!(
-            report["failures"][0]["message"]
-                .as_str()
-                .unwrap()
-                .contains("body_pin_policy=tie_to_source_when_absent")
-        );
-        assert!(report["waveforms"].as_array().unwrap().is_empty());
-    } else {
-        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
-    }
+    assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("body_pin_policy=tie_to_source_when_absent")
+    );
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
+    assert_no_generated_solver_artifacts(&report);
     assert_report_schema_valid(&report);
 }
 
@@ -411,18 +408,74 @@ fn generated_mosfet_without_body_policy_fails_closed() {
 fn generated_mosfet_model_file_requires_sha_pin() {
     let report = run_validation("examples/bad_mosfet_model_missing_sha/project.yaml");
     assert_eq!(report["result"], "fail");
-    if binary_available("ngspice") {
-        assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
-        assert!(
-            report["failures"][0]["message"]
-                .as_str()
-                .unwrap()
-                .contains("has no SHA-256 pin")
-        );
-        assert!(report["waveforms"].as_array().unwrap().is_empty());
-    } else {
-        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
-    }
+    assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("has no SHA-256 pin")
+    );
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
+    assert_no_generated_solver_artifacts(&report);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_contract_errors_do_not_require_solver_on_path() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let missing_body = run_validation_with_path(
+        "examples/bad_mosfet_missing_body_policy/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(missing_body["result"], "fail");
+    assert_eq!(
+        missing_body["failures"][0]["id"],
+        "SPICE_TRANSIENT_ANALYSIS"
+    );
+    assert!(
+        missing_body["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("body_pin_policy=tie_to_source_when_absent")
+    );
+    assert!(missing_body["waveforms"].as_array().unwrap().is_empty());
+    assert_no_generated_solver_artifacts(&missing_body);
+    assert_report_schema_valid(&missing_body);
+
+    let missing_sha = run_validation_with_path(
+        "examples/bad_mosfet_model_missing_sha/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(missing_sha["result"], "fail");
+    assert_eq!(missing_sha["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+    assert!(
+        missing_sha["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("has no SHA-256 pin")
+    );
+    assert!(missing_sha["waveforms"].as_array().unwrap().is_empty());
+    assert_no_generated_solver_artifacts(&missing_sha);
+    assert_report_schema_valid(&missing_sha);
+}
+
+#[test]
+fn generated_valid_netlist_is_artifact_even_without_solver() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let report = run_validation_with_path(
+        "examples/good_mosfet_low_side_switch/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert_eq!(
+        artifacts
+            .iter()
+            .filter(|artifact| artifact.as_str().unwrap().ends_with("generated_board.cir"))
+            .count(),
+        1
+    );
     assert_report_schema_valid(&report);
 }
 
@@ -803,6 +856,25 @@ fn run_validation(project: &str) -> Value {
         .unwrap()
 }
 
+fn run_validation_with_path(project: &str, path: &std::path::Path) -> Value {
+    let out_dir = tempfile::tempdir().unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project,
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .env("PATH", path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+        .unwrap()
+}
+
 fn binary_available(binary: &str) -> bool {
     let Some(paths) = std::env::var_os("PATH") else {
         return false;
@@ -844,4 +916,21 @@ fn assert_suite_report_schema_valid(report: &Value) {
         .map(|error| format!("{} at {}", error, error.instance_path()))
         .collect();
     assert!(errors.is_empty(), "suite report schema errors: {errors:#?}");
+}
+
+fn assert_no_generated_solver_artifacts(report: &Value) {
+    let artifacts = report["artifacts"].as_array().unwrap();
+    for suffix in [
+        "generated_board.cir",
+        "circuitci_ngspice.cir",
+        "ngspice.log",
+        "waveform.csv",
+    ] {
+        assert!(
+            !artifacts
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with(suffix)),
+            "unexpected generated solver artifact {suffix} in {artifacts:#?}"
+        );
+    }
 }
