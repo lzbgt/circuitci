@@ -1,0 +1,3 @@
+* Generic small-signal switching diode model for preliminary board simulation.
+* Use a vendor or bench-calibrated model for final hardware sign-off.
+.model GENERIC_1N4148 D(Is=4.352n Rs=0.6458 N=1.906 Cjo=0.764p M=0.03 Eg=1.11)

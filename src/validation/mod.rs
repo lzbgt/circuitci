@@ -3,6 +3,7 @@ mod backdrive;
 mod common;
 mod control_line;
 mod resident_protocol;
+mod spice_netlist;
 mod target_contract;
 mod uart_bootloader;
 

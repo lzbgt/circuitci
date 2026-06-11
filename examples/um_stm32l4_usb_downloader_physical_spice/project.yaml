@@ -3,12 +3,51 @@ project:
   version: 0.1.0
 
 libraries:
+  - ../../libs/generic/analog
   - ../../libs/vendor/st
   - ../../libs/vendor/wch
   - ../../libs/vendor/onsemi/discrete
 
 board:
   components:
+    VVDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_3v3
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 3.3
+    VDTR:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: ch340_dtr_n
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 3.3
+          delay_us: 4900
+          rise_us: 0.02
+          fall_us: 0.02
+          width_us: 10000
+          period_us: 20000
+    VRTS:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: ch340_rts_n
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 3.3
+          delay_us: 5000
+          rise_us: 0.02
+          fall_us: 0.02
+          width_us: 10000
+          period_us: 20000
     U1:
       model: vendor.st.stm32l431vct6
       part_number: STM32L431VCT6
@@ -29,6 +68,43 @@ board:
         GND: gnd
         DTR_N: ch340_dtr_n
         RTS_N: ch340_rts_n
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: ch340_dtr_n
+        B: q3_base
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    R26:
+      model: generic.analog.resistor
+      pins:
+        A: ch340_rts_n
+        B: q2_base
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    R27:
+      model: generic.analog.resistor
+      pins:
+        A: boot0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    R8:
+      model: generic.analog.resistor
+      pins:
+        A: nrst
+        B: vdd_3v3
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    D13:
+      model: generic.analog.switching_diode
+      pins:
+        A: nrst
+        K: q2_collector
     Q2:
       model: vendor.onsemi.ss8050
       part_number: SS8050
@@ -43,6 +119,22 @@ board:
         C: boot0
         B: q3_base
         E: vdd_3v3
+    CBOOT:
+      model: generic.analog.capacitor
+      pins:
+        A: boot0
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.00000000002
+    CNRST:
+      model: generic.analog.capacitor
+      pins:
+        A: nrst
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.00000000005
   nets:
     vdd_3v3:
       kind: power
@@ -72,10 +164,25 @@ scenarios:
       - SPICE_TRANSIENT_ANALYSIS
     analog:
       backend: auto
-      netlist: downloader_q2_q3.cir
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VVDD
+          - VDTR
+          - VRTS
+          - R1
+          - R26
+          - R27
+          - R8
+          - D13
+          - Q2
+          - Q3
+          - CBOOT
+          - CNRST
       model_files:
-        - path: models/downloader_common.lib
-          sha256: 78a76b1fa332eb0a9e444707d70565f05ec62f1e6045c9545a7cf0aa5393853b
+        - path: ../../models/spice/generic/switching_diode.lib
+          sha256: fc342b911921bd850bb110203d87646333e58d573f73b3b5e9b1e7082fa78193
         - path: ../../models/spice/onsemi/ss8050_ss8550.lib
           sha256: 8360ca1f35758e36a5a8dd5ea3cc41ea68f608ac8c000d048e15232565b12145
       node_bindings:

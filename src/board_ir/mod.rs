@@ -40,6 +40,41 @@ pub struct ComponentSpec {
     pub power_domains: BTreeMap<String, String>,
     #[serde(default)]
     pub pins: BTreeMap<String, String>,
+    #[serde(default)]
+    pub spice: Option<ComponentSpiceSpec>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ComponentSpiceSpec {
+    pub primitive: SpicePrimitive,
+    #[serde(default)]
+    pub value_ohm: Option<f64>,
+    #[serde(default)]
+    pub value_f: Option<f64>,
+    #[serde(default)]
+    pub dc_v: Option<f64>,
+    #[serde(default)]
+    pub pulse: Option<SpicePulseSpec>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SpicePrimitive {
+    Resistor,
+    Capacitor,
+    DcVoltageSource,
+    PulseVoltageSource,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpicePulseSpec {
+    pub initial_v: f64,
+    pub pulsed_v: f64,
+    pub delay_us: f64,
+    pub rise_us: f64,
+    pub fall_us: f64,
+    pub width_us: f64,
+    pub period_us: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -195,7 +230,12 @@ pub struct ProtocolScenario {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnalogScenario {
     pub backend: AnalogBackend,
-    pub netlist: String,
+    #[serde(default)]
+    pub netlist_source: AnalogNetlistSource,
+    #[serde(default)]
+    pub netlist: Option<String>,
+    #[serde(default)]
+    pub generated: Option<AnalogGeneratedNetlist>,
     pub model_files: Vec<AnalogModelFile>,
     pub node_bindings: Vec<AnalogNodeBinding>,
     pub pin_bindings: Vec<AnalogPinBinding>,
@@ -203,6 +243,20 @@ pub struct AnalogScenario {
     pub stimuli: Vec<AnalogStimulus>,
     pub probes: Vec<AnalogProbe>,
     pub assertions: Vec<AnalogAssertion>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogNetlistSource {
+    #[default]
+    File,
+    GeneratedFromBoard,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogGeneratedNetlist {
+    pub components: Vec<String>,
+    pub ground_net: String,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

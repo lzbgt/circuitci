@@ -14,10 +14,39 @@ pub struct ComponentModel {
     #[serde(default)]
     pub ports: BTreeMap<String, Port>,
     #[serde(default)]
+    pub simulation: Simulation,
+    #[serde(default)]
     pub rules: Vec<String>,
     #[serde(default)]
     pub behavior: Behavior,
     pub model_quality: ModelQuality,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Simulation {
+    #[serde(default)]
+    pub spice: Option<SpiceModel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpiceModel {
+    pub model_name: String,
+    pub model_type: SpiceModelType,
+    pub model_path: String,
+    pub provenance: String,
+    #[serde(default)]
+    pub valid_operating_notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SpiceModelType {
+    BjtNpn,
+    BjtPnp,
+    MosfetN,
+    MosfetP,
+    Diode,
+    Subckt,
 }
 
 #[derive(Debug, Clone, Deserialize)]

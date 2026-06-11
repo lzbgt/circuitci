@@ -1,0 +1,18 @@
+component_id: generic.analog.capacitor
+version: 0.1.0
+category: capacitor
+ports:
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - linear_passive_transient
+  not_valid_for:
+    - voltage_dependent_or_esr_esl_capacitor_modeling

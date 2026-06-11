@@ -38,6 +38,46 @@
               "pins": {
                 "type": "object",
                 "additionalProperties": { "type": "string", "minLength": 1 }
+              },
+              "spice": {
+                "type": "object",
+                "required": ["primitive"],
+                "properties": {
+                  "primitive": {
+                    "enum": [
+                      "resistor",
+                      "capacitor",
+                      "dc_voltage_source",
+                      "pulse_voltage_source"
+                    ]
+                  },
+                  "value_ohm": { "type": "number", "exclusiveMinimum": 0 },
+                  "value_f": { "type": "number", "exclusiveMinimum": 0 },
+                  "dc_v": { "type": "number" },
+                  "pulse": {
+                    "type": "object",
+                    "required": [
+                      "initial_v",
+                      "pulsed_v",
+                      "delay_us",
+                      "rise_us",
+                      "fall_us",
+                      "width_us",
+                      "period_us"
+                    ],
+                    "properties": {
+                      "initial_v": { "type": "number" },
+                      "pulsed_v": { "type": "number" },
+                      "delay_us": { "type": "number", "minimum": 0 },
+                      "rise_us": { "type": "number", "minimum": 0 },
+                      "fall_us": { "type": "number", "minimum": 0 },
+                      "width_us": { "type": "number", "exclusiveMinimum": 0 },
+                      "period_us": { "type": "number", "exclusiveMinimum": 0 }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": true
@@ -190,7 +230,6 @@
             "type": "object",
             "required": [
               "backend",
-              "netlist",
               "model_files",
               "node_bindings",
               "pin_bindings",
@@ -201,7 +240,21 @@
             ],
             "properties": {
               "backend": { "enum": ["auto", "ngspice", "xyce", "embedded_ngspice"] },
+              "netlist_source": { "enum": ["file", "generated_from_board"] },
               "netlist": { "type": "string", "minLength": 1 },
+              "generated": {
+                "type": "object",
+                "required": ["components", "ground_net"],
+                "properties": {
+                  "components": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "minLength": 1 }
+                  },
+                  "ground_net": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              },
               "model_files": {
                 "type": "array",
                 "minItems": 1,
@@ -302,6 +355,18 @@
                 }
               }
             },
+            "allOf": [
+              {
+                "if": {
+                  "required": ["netlist_source"],
+                  "properties": {
+                    "netlist_source": { "const": "generated_from_board" }
+                  }
+                },
+                "then": { "required": ["generated"] },
+                "else": { "required": ["netlist"] }
+              }
+            ],
             "additionalProperties": false
           },
           "events": {

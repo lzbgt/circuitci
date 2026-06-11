@@ -250,19 +250,33 @@ fn um_stm32l4_physical_spice_requires_backend() {
     assert_eq!(report["result"], "fail");
     if binary_available("ngspice") {
         let failures = report["failures"].as_array().unwrap();
-        assert!(failures
-            .iter()
-            .any(|failure| failure["id"] == "SPICE_TRANSIENT_ANALYSIS"));
-        assert!(failures.iter().any(|failure| failure["measured"]
-            .as_object()
-            .is_some_and(|measured| measured.contains_key("nrst"))));
-        assert!(failures.iter().any(|failure| failure["measured"]
-            .as_object()
-            .is_some_and(|measured| measured.contains_key("q2_collector"))));
-        assert!(failures.iter().any(|failure| failure["measured"]
-            .as_object()
-            .is_some_and(|measured| measured.contains_key("q2_base"))));
+        assert!(
+            failures
+                .iter()
+                .any(|failure| failure["id"] == "SPICE_TRANSIENT_ANALYSIS")
+        );
+        assert!(failures.iter().any(|failure| {
+            failure["measured"]
+                .as_object()
+                .is_some_and(|measured| measured.contains_key("nrst"))
+        }));
+        assert!(failures.iter().any(|failure| {
+            failure["measured"]
+                .as_object()
+                .is_some_and(|measured| measured.contains_key("q2_collector"))
+        }));
+        assert!(failures.iter().any(|failure| {
+            failure["measured"]
+                .as_object()
+                .is_some_and(|measured| measured.contains_key("q2_base"))
+        }));
         assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
     } else {
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
         assert!(
@@ -277,7 +291,7 @@ fn um_stm32l4_physical_spice_requires_backend() {
         artifact
             .as_str()
             .unwrap()
-            .ends_with("examples/um_stm32l4_usb_downloader_physical_spice/downloader_q2_q3.cir")
+            .ends_with("models/spice/generic/switching_diode.lib")
     }));
     assert!(artifacts.iter().any(|artifact| {
         artifact

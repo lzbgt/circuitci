@@ -1,0 +1,26 @@
+component_id: generic.analog.switching_diode
+version: 0.1.0
+category: diode
+ports:
+  A:
+    kind: passive
+    required: true
+  K:
+    kind: passive
+    required: true
+simulation:
+  spice:
+    model_name: GENERIC_1N4148
+    model_type: diode
+    model_path: models/spice/generic/switching_diode.lib
+    provenance: estimated
+    valid_operating_notes:
+      - Generic small-signal switching diode model for preliminary board simulation.
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - preliminary_switching_diode_transient
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration

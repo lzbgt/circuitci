@@ -1,0 +1,18 @@
+component_id: generic.analog.dc_voltage_source
+version: 0.1.0
+category: voltage_source
+ports:
+  P:
+    kind: electrical_power
+    required: true
+  N:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - deterministic_test_supply
+  not_valid_for:
+    - regulator_startup_or_supply_impedance_modeling

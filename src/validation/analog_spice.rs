@@ -1,4 +1,4 @@
-use crate::board_ir::{AnalogBackend, AnalogRelation, Scenario};
+use crate::board_ir::{AnalogBackend, AnalogNetlistSource, AnalogRelation, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use super::SPICE_TRANSIENT_ANALYSIS;
 use super::common::validation_input_missing;
+use super::spice_netlist::generate_board_netlist;
 
 pub(super) fn validate_spice_transient(
     bound: &BoundBoard<'_>,
@@ -32,26 +33,10 @@ pub(super) fn validate_spice_transient(
         return;
     };
 
-    let netlist = bound.project.source_dir.join(&analog.netlist);
-    if !netlist.is_file() {
-        let mut finding = Finding::critical(
-            "ANALOG_NETLIST_UNAVAILABLE",
-            &scenario.name,
-            format!(
-                "SPICE netlist {} is required for physical analog simulation.",
-                netlist.display()
-            ),
-        );
-        finding
-            .limit
-            .insert("required_artifact".to_string(), json!("spice_netlist"));
-        finding.suggested_fixes.push(
-            "Add a SPICE-compatible deck with device models for this board region.".to_string(),
-        );
+    if let Some(finding) = validate_netlist_source(bound, scenario, artifacts) {
         findings.push(finding);
         return;
     }
-    push_artifact(artifacts, &netlist);
 
     if analog.model_files.is_empty()
         || analog.node_bindings.is_empty()
@@ -361,8 +346,12 @@ fn run_ngspice(
     let wrapper = run_dir.join("circuitci_ngspice.cir");
     let log = run_dir.join("ngspice.log");
     let waveform = run_dir.join("waveform.csv");
-    let wrapper_text = build_ngspice_wrapper(bound, scenario, Path::new("waveform.csv"))
+    let source_netlist = prepare_source_netlist(bound, scenario, &run_dir)
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    artifacts.push(source_netlist.clone());
+    let wrapper_text =
+        build_ngspice_wrapper(bound, scenario, &source_netlist, Path::new("waveform.csv"))
+            .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(
             format!(
@@ -506,6 +495,88 @@ fn ngspice_error(message: impl Into<String>, artifacts: Vec<PathBuf>) -> Ngspice
     }
 }
 
+fn validate_netlist_source(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    artifacts: &mut Vec<String>,
+) -> Option<Finding> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before netlist source validation");
+    match analog.netlist_source {
+        AnalogNetlistSource::File => {
+            let Some(netlist) = &analog.netlist else {
+                let mut finding = Finding::critical(
+                    "ANALOG_NETLIST_UNAVAILABLE",
+                    &scenario.name,
+                    "analog.netlist is required when analog.netlist_source is file.",
+                );
+                finding
+                    .limit
+                    .insert("required_artifact".to_string(), json!("spice_netlist"));
+                return Some(finding);
+            };
+            let netlist = bound.project.source_dir.join(netlist);
+            if !netlist.is_file() {
+                let mut finding = Finding::critical(
+                    "ANALOG_NETLIST_UNAVAILABLE",
+                    &scenario.name,
+                    format!(
+                        "SPICE netlist {} is required for physical analog simulation.",
+                        netlist.display()
+                    ),
+                );
+                finding
+                    .limit
+                    .insert("required_artifact".to_string(), json!("spice_netlist"));
+                finding.suggested_fixes.push(
+                    "Add a SPICE-compatible deck with device models for this board region."
+                        .to_string(),
+                );
+                return Some(finding);
+            }
+            push_artifact(artifacts, &netlist);
+            None
+        }
+        AnalogNetlistSource::GeneratedFromBoard => {
+            if analog.generated.is_none() {
+                return Some(Finding::critical(
+                    "ANALOG_NETLIST_UNAVAILABLE",
+                    &scenario.name,
+                    "analog.generated is required when analog.netlist_source is generated_from_board.",
+                ));
+            }
+            None
+        }
+    }
+}
+
+fn prepare_source_netlist(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    run_dir: &Path,
+) -> Result<PathBuf, String> {
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("analog was validated before source netlist preparation");
+    match analog.netlist_source {
+        AnalogNetlistSource::File => {
+            let netlist = analog
+                .netlist
+                .as_ref()
+                .ok_or_else(|| "analog.netlist is required for file netlist source.".to_string())?;
+            Ok(bound.project.source_dir.join(netlist))
+        }
+        AnalogNetlistSource::GeneratedFromBoard => {
+            let path = run_dir.join("generated_board.cir");
+            generate_board_netlist(bound, analog, &path)?;
+            Ok(path)
+        }
+    }
+}
+
 fn detect_nonconvergence(log: &str) -> Option<&'static str> {
     let lower = log.to_ascii_lowercase();
     for (pattern, reason) in [
@@ -528,14 +599,14 @@ fn detect_nonconvergence(log: &str) -> Option<&'static str> {
 fn build_ngspice_wrapper(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
+    netlist: &Path,
     waveform: &Path,
 ) -> Result<String, String> {
     let analog = scenario
         .analog
         .as_ref()
         .expect("analog was validated before wrapper generation");
-    let netlist = bound.project.source_dir.join(&analog.netlist);
-    let source = fs::read_to_string(&netlist).map_err(|error| {
+    let source = fs::read_to_string(netlist).map_err(|error| {
         format!(
             "Failed to read SPICE netlist {}: {error}",
             netlist.display()
@@ -546,6 +617,7 @@ fn build_ngspice_wrapper(
     text.push_str("* Source netlist: ");
     text.push_str(&netlist.to_string_lossy());
     text.push('\n');
+    let include_base = netlist.parent().unwrap_or(&bound.project.source_dir);
     for line in source.lines() {
         let trimmed = line.trim_start();
         let directive = trimmed.to_ascii_lowercase();
@@ -553,7 +625,7 @@ fn build_ngspice_wrapper(
         if matches!(first_token, ".end" | ".tran") {
             continue;
         }
-        text.push_str(&rewrite_include_line(line, &bound.project.source_dir));
+        text.push_str(&rewrite_include_line(line, include_base));
         text.push('\n');
     }
     let step_s = analog.analysis.max_step_us / 1_000_000.0;
