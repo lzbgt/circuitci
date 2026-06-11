@@ -33,7 +33,8 @@ or unsupported mirror tokens.
 
 ## Non-Goals
 
-This slice does not add buses, non-cardinal symbol rotations, or hidden power
-pins. Passive value parsing is supported only when the mapping file explicitly
+This slice does not add non-cardinal symbol rotations or hidden power pins.
+Passive value parsing is supported only when the mapping file explicitly
 requests strict `schematic_value` parsing for resistor or capacitor SPICE
-primitive values; no other value-to-SPICE inference is performed.
+primitive values; no other value-to-SPICE inference is performed. Later slices
+added conservative bus handling and multi-unit symbol pin selection.

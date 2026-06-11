@@ -23,6 +23,12 @@ struct PinGeometry {
     at: Point,
 }
 
+#[derive(Debug, Default)]
+struct LibSymbolGeometry {
+    common_pins: BTreeMap<String, PinGeometry>,
+    unit_pins: BTreeMap<u32, BTreeMap<String, PinGeometry>>,
+}
+
 #[derive(Debug)]
 struct SymbolInstance {
     refdes: String,
@@ -425,7 +431,7 @@ fn sheet_pin_names(sheet: &SheetInstance) -> BTreeSet<String> {
     sheet.pins.keys().cloned().collect()
 }
 
-fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, BTreeMap<String, PinGeometry>>> {
+fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, LibSymbolGeometry>> {
     let mut pins_by_lib = BTreeMap::new();
     let Some(lib_symbols) = child_list(root, "lib_symbols") else {
         bail!("Native KiCad schematic import requires root lib_symbols pin geometry.");
@@ -434,38 +440,89 @@ fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, BTreeMap<Stri
         let Some(lib_id) = string_at(child, 1) else {
             continue;
         };
-        let mut pins = BTreeMap::new();
-        collect_pin_geometry(child, &mut pins)?;
-        pins_by_lib.insert(lib_id.to_string(), pins);
+        let geometry = parse_lib_symbol_geometry(child, lib_id)?;
+        pins_by_lib.insert(lib_id.to_string(), geometry);
     }
     Ok(pins_by_lib)
 }
 
-fn collect_pin_geometry(list: &[Sexp], pins: &mut BTreeMap<String, PinGeometry>) -> Result<()> {
+fn parse_lib_symbol_geometry(list: &[Sexp], lib_id: &str) -> Result<LibSymbolGeometry> {
+    let mut geometry = LibSymbolGeometry::default();
     for child in list.iter().skip(1).filter_map(maybe_list) {
         match tag(child) {
-            Some("pin") => {
-                let number = child_list(child, "number")
-                    .and_then(|number| string_at(number, 1))
-                    .with_context(|| "KiCad library pin is missing a number.")?
-                    .to_string();
-                let at = child_list(child, "at")
-                    .and_then(parse_at_point)
-                    .with_context(|| {
-                        format!("KiCad library pin {number} is missing coordinates.")
-                    })?;
-                pins.insert(number, PinGeometry { at });
+            Some("pin") => insert_pin_geometry(&mut geometry.common_pins, child, lib_id)?,
+            Some("symbol") => {
+                let Some(unit_id) = string_at(child, 1) else {
+                    continue;
+                };
+                let direct_pin_count = child
+                    .iter()
+                    .skip(1)
+                    .filter_map(maybe_list)
+                    .filter(|entry| tag(entry) == Some("pin"))
+                    .count();
+                if direct_pin_count == 0 {
+                    continue;
+                }
+                let unit = parse_lib_symbol_unit_id(lib_id, unit_id)?;
+                let target = if unit == 0 {
+                    &mut geometry.common_pins
+                } else {
+                    geometry.unit_pins.entry(unit).or_default()
+                };
+                for pin in child
+                    .iter()
+                    .skip(1)
+                    .filter_map(maybe_list)
+                    .filter(|entry| tag(entry) == Some("pin"))
+                {
+                    insert_pin_geometry(target, pin, unit_id)?;
+                }
             }
-            Some("symbol") => collect_pin_geometry(child, pins)?,
             _ => {}
         }
+    }
+    Ok(geometry)
+}
+
+fn insert_pin_geometry(
+    pins: &mut BTreeMap<String, PinGeometry>,
+    pin: &[Sexp],
+    context: &str,
+) -> Result<()> {
+    let number = child_list(pin, "number")
+        .and_then(|number| string_at(number, 1))
+        .with_context(|| format!("KiCad library symbol {context} pin is missing a number."))?
+        .to_string();
+    let at = child_list(pin, "at")
+        .and_then(parse_at_point)
+        .with_context(|| {
+            format!("KiCad library symbol {context} pin {number} is missing coordinates.")
+        })?;
+    if pins.insert(number.clone(), PinGeometry { at }).is_some() {
+        bail!("KiCad library symbol {context} has duplicate pin geometry for pin {number}.");
     }
     Ok(())
 }
 
+fn parse_lib_symbol_unit_id(parent: &str, unit_id: &str) -> Result<u32> {
+    let (name_and_unit, _style) = unit_id.rsplit_once('_').with_context(|| {
+        format!("KiCad library unit symbol {unit_id} does not match NAME_UNIT_STYLE.")
+    })?;
+    let (name, unit) = name_and_unit.rsplit_once('_').with_context(|| {
+        format!("KiCad library unit symbol {unit_id} does not match NAME_UNIT_STYLE.")
+    })?;
+    if name != parent {
+        bail!("KiCad library unit symbol {unit_id} does not belong to parent {parent}.");
+    }
+    unit.parse::<u32>().with_context(|| {
+        format!("KiCad library unit symbol {unit_id} has a non-integer unit ordinal.")
+    })
+}
+
 fn parse_symbol_instances(
     root: &[Sexp],
-    lib_pins: &BTreeMap<String, BTreeMap<String, PinGeometry>>,
+    lib_pins: &BTreeMap<String, LibSymbolGeometry>,
 ) -> Result<ParsedSymbols> {
     let mut symbols = Vec::new();
     let mut power_labels = Vec::new();
@@ -480,6 +537,7 @@ fn parse_symbol_instances(
             .with_context(|| format!("KiCad schematic symbol {lib_id} has invalid at."))?;
         let rotation = parse_symbol_rotation(at_list, &lib_id)?;
         let mirror = parse_symbol_mirror(symbol, &lib_id)?;
+        let unit = parse_symbol_unit(symbol, &lib_id)?;
         let properties = parse_properties(symbol);
         let refdes = properties
             .get("Reference")
@@ -492,6 +550,7 @@ fn parse_symbol_instances(
                 "KiCad schematic symbol {refdes} uses {lib_id}, but lib_symbols has no pin geometry for it."
             );
         };
+        let pin_geometry = select_lib_symbol_pins(pin_geometry, unit, &refdes, &lib_id)?;
         let mut pins = BTreeMap::new();
         for pin in list_children(symbol, "pin") {
             let number = string_at(pin, 1)
@@ -549,6 +608,47 @@ fn parse_symbol_instances(
         });
     }
     Ok((symbols, power_labels))
+}
+
+fn parse_symbol_unit(symbol: &[Sexp], lib_id: &str) -> Result<u32> {
+    let Some(unit_list) = child_list(symbol, "unit") else {
+        return Ok(1);
+    };
+    let unit = numeric_at(unit_list, 1)
+        .with_context(|| format!("KiCad schematic symbol {lib_id} has malformed unit."))?;
+    if !unit.is_finite() || unit.fract() != 0.0 || unit < 1.0 {
+        bail!("KiCad schematic symbol {lib_id} unit must be a positive integer.");
+    }
+    Ok(unit as u32)
+}
+
+fn select_lib_symbol_pins<'a>(
+    geometry: &'a LibSymbolGeometry,
+    unit: u32,
+    refdes: &str,
+    lib_id: &str,
+) -> Result<BTreeMap<String, &'a PinGeometry>> {
+    let mut selected = geometry
+        .common_pins
+        .iter()
+        .map(|(pin, geometry)| (pin.clone(), geometry))
+        .collect::<BTreeMap<_, _>>();
+    if !geometry.unit_pins.is_empty() {
+        let Some(unit_pins) = geometry.unit_pins.get(&unit) else {
+            let units = geometry.unit_pins.keys().copied().collect::<Vec<_>>();
+            bail!(
+                "KiCad schematic symbol {refdes} selects unit {unit}, but {lib_id} declares units {units:?}."
+            );
+        };
+        for (pin, pin_geometry) in unit_pins {
+            if selected.insert(pin.clone(), pin_geometry).is_some() {
+                bail!(
+                    "KiCad schematic symbol {refdes} unit {unit} duplicates common pin {pin} in {lib_id}."
+                );
+            }
+        }
+    }
+    Ok(selected)
 }
 
 fn parse_properties(symbol: &[Sexp]) -> BTreeMap<String, String> {

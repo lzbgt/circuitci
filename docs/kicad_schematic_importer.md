@@ -26,7 +26,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - root `.kicad_sch` files with recursive sheet hierarchy,
 - root `symbol` instances with `lib_id`, `Reference`, and `Value`
   properties,
-- root `lib_symbols` pin definitions for symbol pin coordinates,
+- root `lib_symbols` pin definitions for symbol pin coordinates, including
+  selected unit geometry for KiCad multi-unit symbols,
 - cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
   equivalent wrapped values,
 - `mirror x` and `mirror y` symbol transforms,
@@ -47,7 +48,7 @@ Unsupported constructs fail closed:
 - ambiguous bus expansion from labels placed only on bus graphics,
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,
-- missing library pin geometry,
+- missing or ambiguous library pin geometry,
 - malformed labels,
 - duplicate or conflicting labels at one coordinate,
 - conflicting labels on one connected net group,

@@ -518,6 +518,95 @@ fn import_kicad_schematic_rejects_missing_pin_geometry() {
 }
 
 #[test]
+fn import_kicad_schematic_selects_multi_unit_pin_geometry() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("multi_unit.kicad_sch");
+    let output = dir.path().join("multi_unit.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_0_1"
+        (pin power_in line (at 0 -10 90) (length 2.54) (number "8")))
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1"))
+        (pin passive line (at 5 0 180) (length 2.54) (number "2")))
+      (symbol "Device:DualUnit_2_1"
+        (pin passive line (at -5 10 0) (length 2.54) (number "3"))
+        (pin passive line (at 5 10 180) (length 2.54) (number "4")))))
+  (symbol (lib_id "Device:DualUnit") (at 10 10 0) (unit 2)
+    (property "Reference" "U1") (property "Value" "DualUnit")
+    (pin "3") (pin "4") (pin "8"))
+  (label "IN_B" (at 5 20 0))
+  (label "OUT_B" (at 15 20 0))
+  (label "VCC" (at 10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["3"],
+        "net_in_b"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["4"],
+        "net_out_b"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["8"],
+        "net_vcc"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_missing_multi_unit_geometry() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1")))))
+  (symbol (lib_id "Device:DualUnit") (at 0 0 0) (unit 2)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "1"))
+  (label "NET_A" (at -5 0 0)))
+"#,
+        "selects unit 2",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_multi_unit_pin_geometry() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:DualUnit"
+      (symbol "Device:DualUnit_1_1"
+        (pin passive line (at -5 0 0) (length 2.54) (number "1"))
+        (pin passive line (at 5 0 180) (length 2.54) (number "1")))))
+  (symbol (lib_id "Device:DualUnit") (at 0 0 0) (unit 1)
+    (property "Reference" "U1") (property "Value" "DualUnit") (pin "1"))
+  (label "NET_A" (at -5 0 0)))
+"#,
+        "duplicate pin geometry",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_floating_label() {
     assert_bad_kicad_schematic_contains(
         r#"

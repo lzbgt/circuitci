@@ -12,7 +12,8 @@ coverage:
 
 - rotations and transformed pins,
 - unsupported root hierarchical labels and inferred bus constructs,
-- duplicate references and missing pin geometry,
+- duplicate references, missing pin geometry, and multi-unit symbol pin
+  selection,
 - label and power-symbol conflicts,
 - no-connect evidence,
 - wire junction semantics.
