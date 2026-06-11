@@ -73,6 +73,13 @@ This is still not a full safe-operating-area model. It is a conservative,
 machine-checkable contract for short-pulse board simulation, and it keeps
 unqualified pulse ratings from hiding real overstress.
 
+`vendor.onsemi.fdmc86184` is the first qualified pulse-current fixture. Its
+metadata records `ID_continuous = 12 A`, `ID_pulsed = 266 A`,
+`pulse_width_us = 300`, and `duty_cycle_max = 0.02` from the downloaded onsemi
+datasheet. The same datasheet says pulsed `ID` should refer to the SOA graph;
+CircuitCI does not yet digitize that graph, so this fixture proves scalar
+qualified pulse-current handling rather than complete SOA sign-off.
+
 ## Report Evidence
 
 Operating-limit findings include the original datasheet rating and the

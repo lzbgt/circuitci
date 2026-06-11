@@ -1,0 +1,134 @@
+project:
+  name: good_mosfet_qualified_pulse_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VGATE:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: gate_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 10
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 20
+          period_us: 2000
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: vdd_5v
+        B: switched_node
+      spice:
+        primitive: resistor
+        value_ohm: 0.3
+    M1:
+      model: vendor.onsemi.fdmc86184
+      part_number: FDMC86184
+      pins:
+        D: switched_node
+        G: gate_drive
+        S: gnd
+  nets:
+    vdd_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    gnd:
+      kind: ground
+    gate_drive:
+      kind: digital_or_analog
+    switched_node:
+      kind: digital_or_analog
+
+scenarios:
+  - name: fdmc86184_qualified_short_pulse_current
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VGATE
+          - RLOAD
+          - M1
+      operating_conditions:
+        allow_pulse_ratings: true
+      model_files:
+        - path: ../../models/spice/onsemi/fdmc86184.lib
+          sha256: c22b2f13d52a4545933f3d97588e0d626562e4813bda3ead62f103bd64e19c01
+      node_bindings:
+        - node: vdd
+          net: vdd_5v
+        - node: "0"
+          net: gnd
+        - node: gate
+          net: gate_drive
+        - node: sw
+          net: switched_node
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: VDD
+            pin: P
+        - node: "0"
+          endpoint:
+            component: VDD
+            pin: N
+        - node: gate
+          endpoint:
+            component: M1
+            pin: G
+        - node: sw
+          endpoint:
+            component: M1
+            pin: D
+        - node: "0"
+          endpoint:
+            component: M1
+            pin: S
+      analysis:
+        type: tran
+        stop_time_us: 2000
+        max_step_us: 0.2
+      stimuli:
+        - name: short_gate_pulse
+          description: Gate pulse drives current above continuous ID but within the datasheet pulse width and duty metadata.
+      probes:
+        - name: switched_node
+          expression: V(sw)
+        - name: load_current
+          expression: abs(I(VDD))
+          quantity: current
+      assertions:
+        - name: drain_low_during_pulse
+          probe: switched_node
+          at_us: 110
+          relation: below
+          threshold_v: 1.0
+        - name: pulsed_current_above_continuous_rating
+          probe: load_current
+          at_us: 110
+          relation: above
+          threshold_a: 12

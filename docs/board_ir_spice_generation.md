@@ -73,6 +73,12 @@ temperature enables datasheet power derating when the model provides linear
 derating metadata. `allow_pulse_ratings` only permits pulse-current waivers
 when the pulse rating declares both pulse width and duty cycle.
 
+The first qualified pulse-current example is
+`examples/good_mosfet_qualified_pulse_current`, which uses onsemi FDMC86184
+metadata. Its companion `examples/bad_mosfet_pulse_duty` proves that current
+below the pulsed-current scalar still fails when pulse width or duty exceeds
+the encoded datasheet limits.
+
 ## Generation Rules
 
 1. Map Board IR nets to SPICE nodes using `node_bindings`.

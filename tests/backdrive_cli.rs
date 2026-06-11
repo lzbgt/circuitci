@@ -450,6 +450,51 @@ fn generated_mosfet_pulse_rating_requires_width_and_duty() {
 }
 
 #[test]
+fn generated_mosfet_qualified_pulse_current_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_mosfet_qualified_pulse_current/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/onsemi/fdmc86184.lib")
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_pulse_duty_fails_with_pulse_evidence() {
+    let report = run_validation("examples/bad_mosfet_pulse_duty/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["summary"]["critical"], 1);
+        let failure = &report["failures"][0];
+        assert_eq!(failure["id"], "SPICE_OPERATING_LIMIT");
+        assert_eq!(failure["measured"]["component"], "M1");
+        assert_eq!(failure["measured"]["rating"], "ID_continuous");
+        assert_eq!(failure["limit"]["pulse_rating"], "ID_pulsed");
+        assert_eq!(failure["limit"]["pulse_rating_value"], 266.0);
+        assert_eq!(failure["limit"]["pulse_width_us"], 300.0);
+        assert_eq!(failure["limit"]["pulse_duty_cycle_max"], 0.02);
+        assert!(failure["measured"]["pulse_duration_us"].as_f64().unwrap() > 300.0);
+        assert!(failure["measured"]["pulse_duty_cycle"].as_f64().unwrap() > 0.02);
+        assert!(failure["measured"]["max_abs"].as_f64().unwrap() < 266.0);
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_pmos_overcurrent_preserves_signed_datasheet_rating() {
     let report = run_validation("examples/bad_pmos_overcurrent/project.yaml");
     if binary_available("ngspice") {

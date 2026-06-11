@@ -1,0 +1,110 @@
+component_id: vendor.onsemi.fdmc86184
+version: 0.1.0
+category: mosfet_n
+ports:
+  D:
+    kind: passive
+  G:
+    kind: passive
+  S:
+    kind: passive
+  B:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: onsemi
+  part_number: FDMC86184
+  package: WDFN-8 3.3x3.3
+  polarity: n_channel_power_mosfet
+  pinout:
+    G: G
+    D: D
+    S: S
+  absolute_maximum_ratings:
+    VDSS:
+      value: 100
+      unit: V
+    VGSS:
+      value: 20
+      unit: V
+    ID_continuous:
+      value: 12
+      unit: A
+      conditions: Continuous drain current at TA=25C, note 1, from maximum ratings table.
+    ID_pulsed:
+      value: 266
+      unit: A
+      conditions: Pulsed drain current; datasheet note says pulsed ID refers to SOA graph and pulse test width is <300us with duty cycle <2.0%.
+      pulse_width_us: 300
+      duty_cycle_max: 0.02
+    PD:
+      value: 2.3
+      unit: W
+      conditions: TA=25C, note 1.
+      reference_temperature_c: 25
+      derate_above_c: 25
+      derating_per_c: 0.0184
+      derating_basis: Derived from PD=2.3W at TA=25C and RthetaJA=53C/W / TJ(max)=150C thermal table values.
+  electrical_characteristics:
+    RDSon_10V:
+      conditions: VGS=10V, ID=21A, TJ=25C
+      typ: 0.0064
+      max: 0.0085
+      unit: ohm
+    VGSth:
+      conditions: VGS=VDS, ID=110uA
+      min: 2
+      typ: 3.1
+      max: 4
+      unit: V
+  device_parameters:
+    Ciss:
+      conditions: VDS=50V, VGS=0V, f=1MHz
+      typ: 1490
+      max: 2090
+      unit: pF
+      simulation_relevance: Gate input capacitance affects drive loading and switching edges.
+    Coss:
+      conditions: VDS=50V, VGS=0V, f=1MHz
+      typ: 906
+      max: 1270
+      unit: pF
+      simulation_relevance: Drain capacitance affects switch-node release and transient power.
+    Crss:
+      conditions: VDS=50V, VGS=0V, f=1MHz
+      typ: 13
+      max: 25
+      unit: pF
+      simulation_relevance: Miller capacitance couples drain transitions back to the gate.
+    Qg_10V:
+      conditions: VGS=0V to 10V, VDD=50V, ID=21A
+      typ: 21
+      max: 30
+      unit: nC
+      simulation_relevance: Gate charge affects required driver current and switching time.
+  documents:
+    - title: FDMC86184 - MOSFET N-Channel Shielded Gate PowerTrench 100 V
+      path: docs/research/datasheets/onsemi_fdmc86184-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/fdmc86184-d.pdf
+      sha256: d338e4ae50dfd32e06bfeea148fc369220a837f36dd3b97610dcc8c33a46fa4e
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_FDMC86184
+    model_type: mosfet_n
+    model_path: models/spice/onsemi/fdmc86184.lib
+    provenance: datasheet_fit
+    body_pin_policy: tie_to_source_when_absent
+    valid_operating_notes:
+      - Level-1 datasheet fit for generated-deck plumbing and qualified pulse-current operating-limit checks.
+      - SOA graph points are not digitized in this model; only the scalar pulse current, pulse width, and duty metadata are machine-checked.
+      - Replace with vendor or bench-calibrated model before final physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - pulse_current_operating_limit_validation
+  not_valid_for:
+    - soa_curve_signoff_without_digitized_curve_points
+    - final_hardware_signoff_without_vendor_or_bench_calibration

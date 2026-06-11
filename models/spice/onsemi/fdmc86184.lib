@@ -1,0 +1,8 @@
+* Datasheet-fit placeholder for onsemi FDMC86184 generated-deck validation.
+* Replace with a vendor or bench-calibrated model before final physical sign-off.
+
+.model ONSEMI_FDMC86184 NMOS(
++ LEVEL=1 VTO=3.1 KP=2000 LAMBDA=0.01
++ RD=0.0005 RS=0.0005 CGS=1p CGD=1p CBD=1p CBS=1p
++ IS=1e-12 PB=0.8
++)
