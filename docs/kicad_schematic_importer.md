@@ -26,6 +26,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - root `.kicad_sch` files with recursive sheet hierarchy,
 - root `symbol` instances with `lib_id`, `Reference`, and `Value`
   properties,
+- source metadata preservation for `in_bom`, selected `unit`, and validated
+  KiCad `instances` path records,
 - `on_board no` filtering for non-power symbols,
 - root `lib_symbols` pin definitions for symbol pin coordinates, including
   selected unit geometry for KiCad multi-unit symbols,
@@ -51,6 +53,8 @@ Unsupported constructs fail closed:
 - ambiguous bus expansion from labels placed only on bus graphics,
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,
+- malformed `in_bom` metadata,
+- malformed or mismatched symbol `instances` metadata,
 - malformed `on_board` metadata,
 - missing or ambiguous library pin geometry,
 - malformed, missing-base, cyclic, or connectivity-redefining library symbol

@@ -23,10 +23,21 @@ pub(super) struct SymbolInstance {
     pub(super) lib: Option<String>,
     pub(super) part: Option<String>,
     pub(super) fields: BTreeMap<String, String>,
+    pub(super) in_bom: bool,
+    pub(super) unit: u32,
+    pub(super) instances: Vec<SymbolProjectInstance>,
     pub(super) at: Point,
     pub(super) lib_id: String,
     pub(super) pins: BTreeMap<String, Point>,
     pub(super) is_power_symbol: bool,
+}
+
+#[derive(Debug)]
+pub(super) struct SymbolProjectInstance {
+    pub(super) project: String,
+    pub(super) path: String,
+    pub(super) reference: String,
+    pub(super) unit: u32,
 }
 
 pub(super) type PowerLabel = (Point, String);
@@ -252,7 +263,9 @@ pub(super) fn parse_symbol_instances(
         let value = properties.get("Value").cloned();
         let (lib, part) = split_lib_id(&lib_id);
         let is_power_symbol = refdes.starts_with("#PWR") || lib.as_deref() == Some("power");
+        let in_bom = parse_yes_no_token(symbol, "in_bom", true, &refdes)?;
         let on_board = parse_yes_no_token(symbol, "on_board", true, &refdes)?;
+        let instances = parse_symbol_project_instances(symbol, &refdes, unit)?;
         if !is_power_symbol && !on_board {
             continue;
         }
@@ -334,6 +347,9 @@ pub(super) fn parse_symbol_instances(
             lib,
             part,
             fields,
+            in_bom,
+            unit,
+            instances,
             at,
             lib_id,
             pins,
@@ -341,6 +357,76 @@ pub(super) fn parse_symbol_instances(
         });
     }
     Ok((symbols, power_labels))
+}
+
+fn parse_symbol_project_instances(
+    symbol: &[Sexp],
+    refdes: &str,
+    symbol_unit: u32,
+) -> Result<Vec<SymbolProjectInstance>> {
+    let Some(instances) = child_list(symbol, "instances") else {
+        return Ok(Vec::new());
+    };
+    let mut parsed = Vec::new();
+    for project in instances.iter().skip(1).filter_map(maybe_list) {
+        if tag(project) != Some("project") {
+            bail!("KiCad schematic symbol {refdes} has malformed instances project entry.");
+        }
+        let project_name = string_at(project, 1)
+            .filter(|value| !value.trim().is_empty())
+            .with_context(|| {
+                format!("KiCad schematic symbol {refdes} has an instance project without a name.")
+            })?
+            .to_string();
+        for path in project.iter().skip(2).filter_map(maybe_list) {
+            if tag(path) != Some("path") {
+                bail!("KiCad schematic symbol {refdes} has malformed instance path entry.");
+            }
+            let path_name = string_at(path, 1)
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| {
+                    format!("KiCad schematic symbol {refdes} has an instance path without a name.")
+                })?
+                .to_string();
+            let reference = child_list(path, "reference")
+                .and_then(|reference| string_at(reference, 1))
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| {
+                    format!(
+                        "KiCad schematic symbol {refdes} instance path {path_name} is missing reference."
+                    )
+                })?
+                .to_string();
+            let unit = child_list(path, "unit")
+                .map(|unit| parse_positive_unit_token(unit, refdes, "instance unit"))
+                .transpose()?
+                .with_context(|| {
+                    format!(
+                        "KiCad schematic symbol {refdes} instance path {path_name} is missing unit."
+                    )
+                })?;
+            if reference != refdes {
+                bail!(
+                    "KiCad schematic symbol {refdes} instance path {path_name} references {reference}."
+                );
+            }
+            if unit != symbol_unit {
+                bail!(
+                    "KiCad schematic symbol {refdes} instance path {path_name} unit {unit} does not match symbol unit {symbol_unit}."
+                );
+            }
+            parsed.push(SymbolProjectInstance {
+                project: project_name.clone(),
+                path: path_name,
+                reference,
+                unit,
+            });
+        }
+    }
+    if parsed.is_empty() {
+        bail!("KiCad schematic symbol {refdes} instances block has no path records.");
+    }
+    Ok(parsed)
 }
 
 fn parse_yes_no_token(
@@ -369,10 +455,14 @@ fn parse_symbol_unit(symbol: &[Sexp], lib_id: &str) -> Result<u32> {
     let Some(unit_list) = child_list(symbol, "unit") else {
         return Ok(1);
     };
-    let unit = numeric_at(unit_list, 1)
-        .with_context(|| format!("KiCad schematic symbol {lib_id} has malformed unit."))?;
+    parse_positive_unit_token(unit_list, lib_id, "unit")
+}
+
+fn parse_positive_unit_token(list: &[Sexp], context: &str, token_name: &str) -> Result<u32> {
+    let unit = numeric_at(list, 1)
+        .with_context(|| format!("KiCad schematic symbol {context} has malformed {token_name}."))?;
     if !unit.is_finite() || unit.fract() != 0.0 || unit < 1.0 {
-        bail!("KiCad schematic symbol {lib_id} unit must be a positive integer.");
+        bail!("KiCad schematic symbol {context} {token_name} must be a positive integer.");
     }
     Ok(unit as u32)
 }

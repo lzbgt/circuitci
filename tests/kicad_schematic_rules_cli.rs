@@ -566,6 +566,124 @@ fn import_kicad_schematic_rejects_malformed_on_board_token() {
 }
 
 #[test]
+fn import_kicad_schematic_preserves_in_bom_and_instance_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("symbol_metadata.kicad_sch");
+    let output = dir.path().join("symbol_metadata.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 0) (unit 1) (in_bom no)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2")
+    (instances
+      (project "demo"
+        (path "/11111111-1111-1111-1111-111111111111"
+          (reference "R1")
+          (unit 1)))))
+  (label "NET_A" (at 7.46 10 0))
+  (label "NET_B" (at 12.54 10 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["in_bom"],
+        false
+    );
+    assert_eq!(imported["board"]["components"]["R1"]["source"]["unit"], 1);
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["instances"][0]["project"],
+        "demo"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["instances"][0]["path"],
+        "/11111111-1111-1111-1111-111111111111"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["instances"][0]["reference"],
+        "R1"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["instances"][0]["unit"],
+        1
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_in_bom_token() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0) (in_bom maybe)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0)))
+"#,
+        "in_bom must be yes or no",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_instance_reference_mismatch() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1")
+    (instances
+      (project "demo"
+        (path "/11111111-1111-1111-1111-111111111111"
+          (reference "R2")
+          (unit 1)))))
+  (label "NET_A" (at 0 0 0)))
+"#,
+        "references R2",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_instance_unit_mismatch() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0) (unit 1)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1")
+    (instances
+      (project "demo"
+        (path "/11111111-1111-1111-1111-111111111111"
+          (reference "R1")
+          (unit 2)))))
+  (label "NET_A" (at 0 0 0)))
+"#,
+        "does not match symbol unit",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_missing_pin_geometry() {
     assert_bad_kicad_schematic_contains(
         r#"

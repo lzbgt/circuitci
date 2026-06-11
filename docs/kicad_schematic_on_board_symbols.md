@@ -21,6 +21,8 @@ board through the netlist.
 
 `in_bom` is intentionally not used for physical connectivity. A symbol can be
 excluded from the bill of materials while still being present on the board.
+Native schematic import preserves it as `component.source.in_bom`, but only
+`on_board` filters physical Board IR components.
 
 ## Rationale
 

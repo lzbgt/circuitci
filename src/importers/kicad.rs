@@ -38,6 +38,17 @@ pub(super) struct ParsedComponent {
     pub(super) lib: Option<String>,
     pub(super) part: Option<String>,
     pub(super) fields: BTreeMap<String, String>,
+    pub(super) in_bom: Option<bool>,
+    pub(super) unit: Option<u32>,
+    pub(super) instances: Vec<ParsedComponentInstance>,
+}
+
+#[derive(Debug)]
+pub(super) struct ParsedComponentInstance {
+    pub(super) project: String,
+    pub(super) path: String,
+    pub(super) reference: String,
+    pub(super) unit: u32,
 }
 
 #[derive(Debug)]
@@ -273,8 +284,22 @@ struct ComponentSourceYaml {
     lib: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     part: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    in_bom: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unit: Option<u32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    instances: Vec<ComponentSourceInstanceYaml>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     fields: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ComponentSourceInstanceYaml {
+    project: String,
+    path: String,
+    reference: String,
+    unit: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -490,6 +515,9 @@ pub(super) fn parse_kicad_netlist(path: &Path) -> Result<ParsedKicadNetlist> {
                             lib: None,
                             part: None,
                             fields: BTreeMap::new(),
+                            in_bom: None,
+                            unit: None,
+                            instances: Vec::new(),
                         });
                     }
                     ("net", Some("nets")) => {
@@ -635,6 +663,18 @@ fn build_project_yaml(
                         value: component.value.clone(),
                         lib: component.lib.clone(),
                         part: component.part.clone(),
+                        in_bom: component.in_bom,
+                        unit: component.unit,
+                        instances: component
+                            .instances
+                            .iter()
+                            .map(|instance| ComponentSourceInstanceYaml {
+                                project: instance.project.clone(),
+                                path: instance.path.clone(),
+                                reference: instance.reference.clone(),
+                                unit: instance.unit,
+                            })
+                            .collect(),
                         fields: component.fields.clone(),
                     }),
                 },

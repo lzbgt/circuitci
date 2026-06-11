@@ -1,6 +1,6 @@
 use super::kicad::{
-    KicadImportOptions, ParsedComponent, ParsedKicadNetlist, ParsedNet, ParsedNode,
-    import_parsed_kicad,
+    KicadImportOptions, ParsedComponent, ParsedComponentInstance, ParsedKicadNetlist, ParsedNet,
+    ParsedNode, import_parsed_kicad,
 };
 mod sexp;
 mod symbols;
@@ -174,6 +174,18 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
                 lib: symbol.lib,
                 part: symbol.part,
                 fields: symbol.fields,
+                in_bom: Some(symbol.in_bom),
+                unit: Some(symbol.unit),
+                instances: symbol
+                    .instances
+                    .into_iter()
+                    .map(|instance| ParsedComponentInstance {
+                        project: instance.project,
+                        path: instance.path,
+                        reference: instance.reference,
+                        unit: instance.unit,
+                    })
+                    .collect(),
             },
         );
     }
