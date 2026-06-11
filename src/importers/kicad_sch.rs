@@ -85,23 +85,23 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
     if parsed.sheets.is_empty() {
         return Ok(parsed.netlist);
     }
-    if parsed.sheets.len() > 1 {
-        bail!("Native KiCad schematic import currently supports only one hierarchical sheet.");
+    let mut netlist = parsed.netlist;
+    for sheet in &parsed.sheets {
+        let child = parse_schematic_file(&sheet.file, SchematicMode::Child)?;
+        if !child.sheets.is_empty() {
+            bail!("Native KiCad schematic import does not support nested sheets yet.");
+        }
+        if sheet.pins != child.hierarchical_labels {
+            bail!(
+                "KiCad sheet {} pins {:?} do not exactly match child hierarchical labels {:?}.",
+                sheet.name,
+                sheet.pins,
+                child.hierarchical_labels
+            );
+        }
+        netlist = merge_hierarchical_netlists(netlist, child.netlist, sheet)?;
     }
-    let sheet = parsed.sheets.first().expect("checked non-empty sheets");
-    let child = parse_schematic_file(&sheet.file, SchematicMode::Child)?;
-    if !child.sheets.is_empty() {
-        bail!("Native KiCad schematic import does not support nested sheets yet.");
-    }
-    if sheet.pins != child.hierarchical_labels {
-        bail!(
-            "KiCad sheet {} pins {:?} do not exactly match child hierarchical labels {:?}.",
-            sheet.name,
-            sheet.pins,
-            child.hierarchical_labels
-        );
-    }
-    merge_hierarchical_netlists(parsed.netlist, child.netlist, sheet)
+    Ok(netlist)
 }
 
 fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchematic> {
@@ -240,41 +240,72 @@ fn parse_sheets(
     mode: SchematicMode,
 ) -> Result<Vec<SheetInstance>> {
     let mut sheets = Vec::new();
+    let mut sheet_names = BTreeSet::new();
+    let mut sheet_prefixes = BTreeMap::new();
+    let mut non_ground_pin_names = BTreeMap::new();
     for sheet in list_children(root, "sheet") {
         if mode == SchematicMode::Child {
             bail!("Native KiCad schematic import does not support nested sheets yet.");
         }
         let properties = parse_properties(sheet);
-        let name = properties
+        let sheet_name = properties
             .get("Sheetname")
             .filter(|value| !value.trim().is_empty())
             .with_context(|| "KiCad sheet is missing Sheetname property.")?
             .to_string();
+        if !sheet_names.insert(sheet_name.clone()) {
+            bail!("KiCad schematic has duplicate sheet name {sheet_name}.");
+        }
+        let sheet_prefix = sanitize_sheet_net_prefix(&sheet_name);
+        if let Some(existing_sheet) = sheet_prefixes.insert(sheet_prefix.clone(), sheet_name.clone())
+        {
+            bail!(
+                "KiCad sheets {existing_sheet} and {sheet_name} sanitize to the same local-net prefix {sheet_prefix}; use distinct sheet names before importing hierarchy."
+            );
+        }
         let file = properties
             .get("Sheetfile")
             .filter(|value| !value.trim().is_empty())
-            .with_context(|| format!("KiCad sheet {name} is missing Sheetfile property."))?;
+            .with_context(|| format!("KiCad sheet {sheet_name} is missing Sheetfile property."))?;
         let file = resolve_sheet_file(schematic_path, file);
         if !file.is_file() {
-            bail!("KiCad sheet {name} file {} does not exist.", file.display());
+            bail!(
+                "KiCad sheet {sheet_name} file {} does not exist.",
+                file.display()
+            );
         }
         let mut pins = BTreeSet::new();
         for pin in list_children(sheet, "pin") {
-            let name = string_at(pin, 1)
+            let pin_name = string_at(pin, 1)
                 .filter(|value| !value.trim().is_empty())
                 .with_context(|| "KiCad sheet pin is missing a name.")?
                 .to_string();
-            if !pins.insert(name.clone()) {
-                bail!("KiCad sheet has duplicate pin {name}.");
+            if !pins.insert(pin_name.clone()) {
+                bail!("KiCad sheet {sheet_name} has duplicate pin {pin_name}.");
+            }
+            if is_ground_net_name(&pin_name) {
+                // Ground aliases are intentionally allowed across sheet instances.
+            } else if let Some(existing_sheet) =
+                non_ground_pin_names.insert(pin_name.clone(), sheet_name.clone())
+            {
+                bail!(
+                    "KiCad sheet pin {pin_name} appears on multiple root sheets ({existing_sheet} and {sheet_name}); use unique non-ground interface names instead of merging sheet pins by name."
+                );
             }
             child_list(pin, "at")
                 .and_then(parse_at_point)
-                .with_context(|| format!("KiCad sheet pin {name} is missing valid coordinates."))?;
+                .with_context(|| {
+                    format!("KiCad sheet pin {pin_name} is missing valid coordinates.")
+                })?;
         }
         if pins.is_empty() {
-            bail!("KiCad sheet {name} must declare at least one hierarchical pin.");
+            bail!("KiCad sheet {sheet_name} must declare at least one hierarchical pin.");
         }
-        sheets.push(SheetInstance { name, file, pins });
+        sheets.push(SheetInstance {
+            name: sheet_name,
+            file,
+            pins,
+        });
     }
     Ok(sheets)
 }
