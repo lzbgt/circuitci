@@ -111,6 +111,29 @@
               "additionalProperties": false
             }
           },
+          "control_effects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "source",
+                "target",
+                "asserted_state",
+                "released_state",
+                "release_delay_us"
+              ],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "source": { "$ref": "#/$defs/endpoint" },
+                "target": { "$ref": "#/$defs/endpoint" },
+                "asserted_state": { "enum": ["high", "low", "z"] },
+                "released_state": { "enum": ["high", "low", "z"] },
+                "release_delay_us": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          },
           "timing": {
             "type": "object",
             "properties": {
@@ -183,7 +206,9 @@
                 "state": { "type": "string", "minLength": 1 },
                 "offset": { "type": "integer", "minimum": 0 },
                 "chunk_len": { "type": "integer", "minimum": 0 },
-                "activate_mode": { "type": "string", "minLength": 1 }
+                "activate_mode": { "type": "string", "minLength": 1 },
+                "line": { "type": "string", "minLength": 1 },
+                "asserted": { "type": "boolean" }
               },
               "additionalProperties": false
             }

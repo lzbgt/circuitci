@@ -63,6 +63,7 @@ Executable first-stage scenario types:
 - `reset_boot`
 - `serial_programming`
 - `firmware_update`
+- `control_line_sequence`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -84,6 +85,7 @@ Canonical executable check IDs in the first stage:
 - `BOOT_STRAP_DEFINED`
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
+- `CONTROL_LINE_RELEASE_SEQUENCE`
 
 ## Reset/Boot Scenario Shape
 
@@ -221,3 +223,56 @@ scenarios:
 7. Require the final observed state to match `expected_final_state` when declared.
 
 This is an abstract protocol-trace check. It does not execute firmware, decode raw serial frames, recompute CRCs, emulate flash, or prove HIL behavior.
+
+## Control-Line Sequence Scenario Shape
+
+`control_line_sequence` scenarios model semantic host control-line effects:
+
+```yaml
+scenarios:
+  - name: derived_app_boot_release
+    type: control_line_sequence
+    target:
+      component: U1
+      reset_pin: NRST
+    checks:
+      - CONTROL_LINE_RELEASE_SEQUENCE
+    required_boot_mode: application
+    timing:
+      power_valid_at_us: 1200
+      reset_release_at_us: 5000
+      boot_sample_at_us: 5100
+    control_effects:
+      - name: boot_select
+        source: { component: U5, pin: DTR_N }
+        target: { component: U1, pin: BOOT0 }
+        asserted_state: high
+        released_state: low
+        release_delay_us: 400
+      - name: reset
+        source: { component: U5, pin: RTS_N }
+        target: { component: U1, pin: NRST }
+        asserted_state: low
+        released_state: high
+        release_delay_us: 0
+    events:
+      - at_us: 0
+        action: control_line
+        line: boot_select
+        asserted: true
+      - at_us: 4900
+        action: control_line
+        line: boot_select
+        asserted: false
+```
+
+`CONTROL_LINE_RELEASE_SEQUENCE` validates reduced line effects:
+
+1. Resolve the target component, boot mode, and reset behavior.
+2. Validate effect source pins as output-capable and effect target pins as input-capable on the target component.
+3. Require explicit `control_line` events before reset and boot sample times; no defaults are inferred.
+4. Derive reset at `reset_release_at_us` and `boot_sample_at_us`.
+5. Derive boot straps at `boot_sample_at_us`.
+6. Compare derived states with reset polarity and required boot-mode straps.
+
+This is an abstract control-line timing check. It does not solve transistor storage, hidden RC networks, or physical CH340 modem-pin voltage truth tables.

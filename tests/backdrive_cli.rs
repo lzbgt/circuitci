@@ -204,6 +204,47 @@ fn um_stm32l4_resident_update_wrong_sender_fails() {
 }
 
 #[test]
+fn um_stm32l4_control_line_bad_release_fails() {
+    let report = run_validation("examples/um_stm32l4_control_line_app_release_bad/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "CONTROL_LINE_RELEASE_SEQUENCE");
+    assert_eq!(report["failures"][0]["measured"]["derived_BOOT0"], "high");
+    assert_eq!(report["failures"][0]["limit"]["required_BOOT0"], "low");
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "ABSTRACT_CONTROL_LINE_MODEL")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_control_line_fixed_release_passes() {
+    let report = run_validation("examples/um_stm32l4_control_line_app_release_fixed/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_control_line_rom_entry_passes() {
+    let report = run_validation("examples/um_stm32l4_control_line_rom_entry/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn c51_control_line_release_uses_generic_reset_polarity() {
+    let report = run_validation("examples/good_c51_control_line_app_release/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn example_projects_and_component_models_match_schemas() {
     let board_schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();

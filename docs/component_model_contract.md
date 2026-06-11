@@ -215,6 +215,17 @@ Operation names are model-local. Generic validation keys off operation metadata 
 - Fail if `data_chunk` roles do not cover the declared package size exactly.
 - Pass/fail is abstract trace validation, not full firmware execution or flash emulation.
 
+`CONTROL_LINE_RELEASE_SEQUENCE`:
+
+- Severity: `critical`.
+- Uses scenario `control_effects`; no component-model protocol extension is required.
+- Fail if a control source is unresolved, unconnected, or not output-capable.
+- Fail if a control target is unresolved, unconnected, not input-capable, or not on the target component.
+- Fail if an evaluated effect has no explicit prior `control_line` event.
+- Fail if derived reset state is not released at reset release or boot sample time.
+- Fail if derived boot strap states do not match the required boot mode.
+- Pass/fail is abstract line-effect timing, not transistor-level or RC waveform simulation.
+
 ## Quality Policy
 
 Every model must declare model quality. Reports emit `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models so users do not over-trust behavioral library metadata.

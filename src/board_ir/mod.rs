@@ -73,6 +73,8 @@ pub struct Scenario {
     #[serde(default)]
     pub paths: Vec<BackdrivePath>,
     #[serde(default)]
+    pub control_effects: Vec<ControlEffect>,
+    #[serde(default)]
     pub timing: Option<ScenarioTiming>,
     #[serde(default)]
     pub straps: Vec<BootStrapObservation>,
@@ -126,6 +128,16 @@ pub struct BackdrivePath {
     pub victim: Endpoint,
     #[serde(default)]
     pub series_resistance_ohm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlEffect {
+    pub name: String,
+    pub source: Endpoint,
+    pub target: Endpoint,
+    pub asserted_state: String,
+    pub released_state: String,
+    pub release_delay_us: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -201,6 +213,10 @@ pub struct ScenarioEvent {
     pub chunk_len: Option<u64>,
     #[serde(default)]
     pub activate_mode: Option<String>,
+    #[serde(default)]
+    pub line: Option<String>,
+    #[serde(default)]
+    pub asserted: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
