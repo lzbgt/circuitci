@@ -685,18 +685,16 @@ fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>
             if member.is_empty() {
                 bail!("KiCad bus_alias {name} has an empty member.");
             }
-            if is_unexpanded_bus_member(member) {
-                bail!(
-                    "KiCad bus_alias {name} member {member} is not a scalar label; expand ranges before import."
-                );
-            }
-            if !members.insert(member.to_string()) {
-                bail!("KiCad bus_alias {name} has duplicate member {member}.");
-            }
-            if let Some(existing_alias) = global_members.insert(member.to_string(), name.clone()) {
-                bail!(
-                    "KiCad bus_alias member {member} appears in both {existing_alias} and {name}."
-                );
+            for expanded in expand_bus_alias_member(&name, member)? {
+                if !members.insert(expanded.clone()) {
+                    bail!("KiCad bus_alias {name} has duplicate member {expanded}.");
+                }
+                if let Some(existing_alias) = global_members.insert(expanded.clone(), name.clone())
+                {
+                    bail!(
+                        "KiCad bus_alias member {expanded} appears in both {existing_alias} and {name}."
+                    );
+                }
             }
         }
         if members.is_empty() {
@@ -707,12 +705,68 @@ fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>
     Ok(aliases)
 }
 
-fn is_unexpanded_bus_member(member: &str) -> bool {
-    member.contains('[')
-        || member.contains(']')
-        || member.contains('{')
-        || member.contains('}')
-        || member.contains("..")
+fn expand_bus_alias_member(alias_name: &str, member: &str) -> Result<Vec<String>> {
+    if member.contains('{') || member.contains('}') {
+        bail!("KiCad bus_alias {alias_name} member {member} uses unsupported grouped syntax.");
+    }
+
+    let Some(open) = member.find('[') else {
+        if member.contains(']') || member.contains("..") {
+            bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");
+        }
+        return Ok(vec![member.to_string()]);
+    };
+
+    let Some(close_offset) = member[open + 1..].find(']') else {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");
+    };
+    let close = open + 1 + close_offset;
+    if member[open + 1..close].contains('[') || member[close + 1..].contains(['[', ']']) {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");
+    }
+
+    let range = &member[open + 1..close];
+    let (start_raw, end_raw) = range.split_once("..").with_context(|| {
+        format!("KiCad bus_alias {alias_name} member {member} is missing '..'.")
+    })?;
+    if start_raw.is_empty()
+        || end_raw.is_empty()
+        || !start_raw.chars().all(|ch| ch.is_ascii_digit())
+        || !end_raw.chars().all(|ch| ch.is_ascii_digit())
+    {
+        bail!("KiCad bus_alias {alias_name} member {member} range bounds must be decimal.");
+    }
+
+    let start = start_raw.parse::<usize>().with_context(|| {
+        format!("KiCad bus_alias {alias_name} member {member} range start is invalid.")
+    })?;
+    let end = end_raw.parse::<usize>().with_context(|| {
+        format!("KiCad bus_alias {alias_name} member {member} range end is invalid.")
+    })?;
+    if start > end {
+        bail!("KiCad bus_alias {alias_name} member {member} descending ranges are unsupported.");
+    }
+    let count = end - start + 1;
+    if count > 1024 {
+        bail!("KiCad bus_alias {alias_name} member {member} expands to more than 1024 labels.");
+    }
+
+    let prefix = &member[..open];
+    let suffix = &member[close + 1..];
+    let width = if start_raw.len() == end_raw.len() && start_raw.len() > 1 {
+        start_raw.len()
+    } else {
+        0
+    };
+    Ok((start..=end)
+        .map(|index| {
+            if width > 0 {
+                format!("{prefix}{index:0width$}{suffix}")
+            } else {
+                format!("{prefix}{index}{suffix}")
+            }
+        })
+        .collect())
 }
 
 fn parse_junctions(root: &[Sexp]) -> Result<BTreeSet<Point>> {

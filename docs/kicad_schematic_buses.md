@@ -13,7 +13,7 @@ The importer accepts bus graphics only when scalar connectivity is explicit:
 - every scalar wire touching a `bus_entry` endpoint must carry an explicit
   scalar label,
 - `bus_alias` declarations are parsed when every member is an explicit scalar
-  label.
+  label or one simple decimal range such as `DATA[0..7]`.
 
 The importer does not infer a net name from a bus line or bus entry. This means
 a labelled wire such as `DATA0` can be imported even when it visually enters a
@@ -22,8 +22,17 @@ bus, but an unlabeled wire entering a bus fails closed.
 When one or more `bus_alias` declarations are present, each scalar label on a
 wire entering a bus entry must be declared by exactly one alias member set.
 Duplicate members across aliases are rejected. Range-like members such as
-`DATA[0..7]` are rejected until the importer has a dedicated range-expansion
-contract.
+`DATA[0..7]` are expanded into scalar members before this check.
+
+Range expansion is intentionally narrow:
+
+- one bracketed decimal range per member,
+- ascending bounds only,
+- at most 1024 expanded labels per member,
+- deterministic zero padding only when both range bounds use the same width.
+
+Grouped syntax, malformed bounds, descending ranges, and labels that are not
+listed by an alias remain fail-closed.
 
 This is intentionally stricter than ignoring unknown S-expression sections.
 For analog simulation and board-fix agents, silently expanding a bus can remove
@@ -31,7 +40,7 @@ or merge reset, boot, enable, address, or data nets incorrectly.
 
 ## Future Support
 
-Future bus support should expand KiCad range aliases into individual scalar
-nets before Board IR generation. It should still fail closed for unresolved
-ranges, duplicate members, conflicting member labels, and bus entries that
-cannot be associated with a scalar net.
+Future bus support may associate labels placed on bus graphics with alias
+members. It should still fail closed for unresolved ranges, duplicate members,
+conflicting member labels, and bus entries that cannot be associated with a
+scalar net.

@@ -161,10 +161,10 @@ fn import_kicad_schematic_accepts_labelled_bus_graphics() {
   (symbol (lib_id "Device:R") (at 0 0 0)
     (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
   (wire (pts (xy 0 0) (xy 10 0)))
-  (label "DATA0" (at 5 0 0))
+  (label "DATA7" (at 5 0 0))
   (bus_entry (at 10 0) (size 2.54 -2.54))
   (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
-  (bus_alias "DATA" (members "DATA0" "DATA1"))
+  (bus_alias "DATA" (members "DATA[0..7]"))
   (no_connect (at 0 10)))
 "#,
     )
@@ -183,7 +183,7 @@ fn import_kicad_schematic_accepts_labelled_bus_graphics() {
         serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
     assert_eq!(
         imported["board"]["components"]["R1"]["pins"]["1"],
-        "net_data0"
+        "net_data7"
     );
 }
 
@@ -222,7 +222,7 @@ fn import_kicad_schematic_rejects_bus_entry_label_outside_alias() {
   (label "ADDR0" (at 5 0 0))
   (bus_entry (at 10 0) (size 2.54 -2.54))
   (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
-  (bus_alias "DATA" (members "DATA0" "DATA1"))
+  (bus_alias "DATA" (members "DATA[0..7]"))
   (no_connect (at 0 10)))
 "#,
         "is not declared by any bus_alias member",
@@ -230,7 +230,7 @@ fn import_kicad_schematic_rejects_bus_entry_label_outside_alias() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_unexpanded_bus_alias_range() {
+fn import_kicad_schematic_rejects_malformed_bus_alias_range() {
     assert_bad_kicad_schematic_contains(
         r#"
 (kicad_sch
@@ -240,9 +240,26 @@ fn import_kicad_schematic_rejects_unexpanded_bus_alias_range() {
   (symbol (lib_id "Device:R") (at 0 0 0)
     (property "Reference" "R1") (property "Value" "10k") (pin "1"))
   (label "NET_A" (at 0 0 0))
-  (bus_alias "DATA" (members "DATA[0..7]")))
+  (bus_alias "DATA" (members "DATA[0..]")))
 "#,
-        "is not a scalar label",
+        "range bounds must be decimal",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_descending_bus_alias_range() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "DATA" (members "DATA[7..0]")))
+"#,
+        "descending ranges are unsupported",
     );
 }
 
