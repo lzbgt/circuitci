@@ -307,16 +307,47 @@ pub struct AnalogStimulus {
 pub struct AnalogProbe {
     pub name: String,
     pub expression: String,
+    #[serde(default)]
+    pub quantity: AnalogQuantity,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogQuantity {
+    #[default]
+    Voltage,
+    Current,
+    Power,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnalogAssertion {
     pub name: String,
     pub probe: String,
-    #[serde(rename = "at_us")]
-    pub at_us: f64,
+    #[serde(default, rename = "at_us")]
+    pub at_us: Option<f64>,
+    #[serde(default, rename = "start_us")]
+    pub start_us: Option<f64>,
+    #[serde(default, rename = "end_us")]
+    pub end_us: Option<f64>,
+    #[serde(default)]
+    pub aggregation: AnalogAggregation,
     pub relation: AnalogRelation,
-    pub threshold_v: f64,
+    #[serde(default)]
+    pub threshold_v: Option<f64>,
+    #[serde(default)]
+    pub threshold_a: Option<f64>,
+    #[serde(default)]
+    pub threshold_w: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogAggregation {
+    #[default]
+    Sample,
+    Min,
+    Max,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -272,6 +272,9 @@ scenarios:
           expression: V(q2c)
         - name: q2_base
           expression: V(q2b)
+        - name: q2_base_drive_current
+          expression: abs(I(VRTS))
+          quantity: current
       assertions:
         - name: boot0_low_before_app_sample
           probe: boot0
@@ -281,6 +284,13 @@ scenarios:
         - name: nrst_released_before_app_sample
           probe: nrst
           at_us: 5100
+          relation: above
+          threshold_v: 2.31
+        - name: nrst_released_through_observation_window
+          probe: nrst
+          aggregation: min
+          start_us: 5100
+          end_us: 8000
           relation: above
           threshold_v: 2.31
         - name: q2_collector_released_before_app_sample
@@ -293,3 +303,8 @@ scenarios:
           at_us: 5100
           relation: below
           threshold_v: 0.3
+        - name: q2_base_drive_current_removed_after_release
+          probe: q2_base_drive_current
+          at_us: 5100
+          relation: below
+          threshold_a: 0.0003

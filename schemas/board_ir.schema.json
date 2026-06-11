@@ -327,7 +327,8 @@
                   "required": ["name", "expression"],
                   "properties": {
                     "name": { "type": "string", "minLength": 1 },
-                    "expression": { "type": "string", "minLength": 1 }
+                    "expression": { "type": "string", "minLength": 1 },
+                    "quantity": { "enum": ["voltage", "current", "power"] }
                   },
                   "additionalProperties": false
                 }
@@ -340,17 +341,37 @@
                   "required": [
                     "name",
                     "probe",
-                    "at_us",
-                    "relation",
-                    "threshold_v"
+                    "relation"
                   ],
                   "properties": {
                     "name": { "type": "string", "minLength": 1 },
                     "probe": { "type": "string", "minLength": 1 },
                     "at_us": { "type": "number", "minimum": 0 },
+                    "start_us": { "type": "number", "minimum": 0 },
+                    "end_us": { "type": "number", "minimum": 0 },
+                    "aggregation": { "enum": ["sample", "min", "max"] },
                     "relation": { "enum": ["below", "above"] },
-                    "threshold_v": { "type": "number" }
+                    "threshold_v": { "type": "number" },
+                    "threshold_a": { "type": "number" },
+                    "threshold_w": { "type": "number" }
                   },
+                  "allOf": [
+                    {
+                      "if": {
+                        "required": ["aggregation"],
+                        "properties": { "aggregation": { "enum": ["min", "max"] } }
+                      },
+                      "then": { "required": ["start_us", "end_us"] },
+                      "else": { "required": ["at_us"] }
+                    },
+                    {
+                      "anyOf": [
+                        { "required": ["threshold_v"] },
+                        { "required": ["threshold_a"] },
+                        { "required": ["threshold_w"] }
+                      ]
+                    }
+                  ],
                   "additionalProperties": false
                 }
               }

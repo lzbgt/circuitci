@@ -270,6 +270,11 @@ fn um_stm32l4_physical_spice_requires_backend() {
                 .as_object()
                 .is_some_and(|measured| measured.contains_key("q2_base"))
         }));
+        assert!(failures.iter().any(|failure| {
+            failure["measured"]
+                .as_object()
+                .is_some_and(|measured| measured.contains_key("q2_base_drive_current"))
+        }));
         assert!(!report["waveforms"].as_array().unwrap().is_empty());
         let artifacts = report["artifacts"].as_array().unwrap();
         assert!(

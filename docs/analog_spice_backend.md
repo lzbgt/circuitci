@@ -116,10 +116,10 @@ The physical assertion should check waveforms such as:
 - Release timing is robust across declared process/model corners when those
   corners are available.
 
-Single-point threshold assertions are only the first executable form. A complete
-physical acceptance language also needs crossing-time, setup/hold window,
-minimum pulse width, ringing/no-recross, current, power, and corner-sweep
-assertions.
+Executable assertions now support single-point samples, min/max windows, and
+voltage/current/power thresholds. A complete physical acceptance language also
+needs crossing-time, setup/hold, minimum pulse width, ringing/no-recross,
+integration/energy, and corner-sweep assertions.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode

@@ -14,7 +14,8 @@ This slice implements orchestration around an installed `ngspice` executable:
 3. Run `ngspice -b` from the per-scenario artifact directory on that wrapper.
 4. Capture solver stdout/stderr into artifacts.
 5. Parse a CSV-like waveform export.
-6. Evaluate the declared single-point `below` / `above` voltage assertions.
+6. Evaluate declared `below` / `above` waveform assertions for voltage,
+   current, and power probes.
 7. Populate report `artifacts` and `waveforms`.
 
 It does not implement any SPICE numerical algorithm. If `ngspice` is missing,
@@ -45,10 +46,17 @@ missing-file diagnostics during bring-up.
 
 ## Assertion Semantics
 
-The first executable assertion form samples a named probe at a declared time.
-If no exact sample exists, CircuitCI uses linear interpolation between adjacent
-samples. A failed assertion emits a critical `SPICE_TRANSIENT_ANALYSIS` finding
-with measured and limit data.
+Assertions can sample a named probe at `at_us` or evaluate `min` / `max` over a
+`start_us` to `end_us` window. If a requested boundary is between solver
+samples, CircuitCI uses linear interpolation between adjacent samples. Probe
+`quantity` selects the required threshold unit:
+
+- `voltage`: `threshold_v`
+- `current`: `threshold_a`
+- `power`: `threshold_w`
+
+A failed assertion emits a critical `SPICE_TRANSIENT_ANALYSIS` finding with
+measured and limit data.
 
 The runner fails closed. These conditions are critical failures:
 
@@ -61,12 +69,12 @@ The runner fails closed. These conditions are critical failures:
 - empty or malformed waveform file,
 - non-finite waveform sample,
 - missing probe column,
-- assertion sample time outside waveform range,
+- assertion sample/window time outside waveform range,
 - declared model-file SHA-256 mismatch.
 
-This is intentionally minimal but real. Later assertion forms must add windows,
-crossing times, setup/hold, no-recross, pulse-width, current, power, and corner
-sweeps.
+This is intentionally minimal but real. Later assertion forms must add
+crossing times, setup/hold, no-recross, pulse-width, integration/energy, and
+corner sweeps.
 
 ## Evidence Requirements
 
