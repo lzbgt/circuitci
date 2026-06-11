@@ -1,5 +1,6 @@
 libraries:
   - ../../libs/generic
+  - ../../libs/vendor/onsemi/diodes
 libsource_rules:
   - lib: Device
     part: R
@@ -28,6 +29,11 @@ components:
     spice:
       primitive: dc_voltage_source
       dc_v: 3.3
+  D1:
+    model: vendor.onsemi.1n4148ws
+    pin_map:
+      "1": A
+      "2": K
   U1:
     model: generic.schematic.imported_component
 nets:
@@ -40,8 +46,11 @@ nets:
 analog_scenarios:
   - name: kicad_mapped_rc_transient
     backend: auto
-    components: [V1, R1, C1]
+    components: [V1, R1, D1, C1]
     ground_net: GND
+    model_files:
+      - path: ../../models/spice/onsemi/1n4148ws.lib
+        sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
     analysis:
       type: tran
       stop_time_us: 2000.0

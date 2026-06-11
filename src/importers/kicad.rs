@@ -2,6 +2,7 @@ use anyhow::{Context, Result, bail};
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -55,6 +56,19 @@ struct ImportedComponentModel {
     component_id: String,
     #[serde(default)]
     ports: BTreeMap<String, serde_yaml_ng::Value>,
+    #[serde(default)]
+    simulation: ImportedModelSimulation,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct ImportedModelSimulation {
+    #[serde(default)]
+    spice: Option<ImportedSpiceModel>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ImportedSpiceModel {
+    model_path: String,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -152,6 +166,8 @@ struct AnalogScenarioMapping {
     backend: AnalogBackendYaml,
     components: Vec<String>,
     ground_net: String,
+    #[serde(default)]
+    model_files: Vec<ModelFileYaml>,
     analysis: AnalysisYaml,
     stimuli: Vec<StimulusYaml>,
     probes: Vec<ProbeYaml>,
@@ -276,7 +292,8 @@ struct GeneratedNetlistYaml {
     ground_net: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 struct ModelFileYaml {
     path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -624,7 +641,17 @@ fn build_project_yaml(
             ))
         })
         .collect::<Result<_>>()?;
-    let scenarios = build_analog_scenarios(parsed, mapping, &components, &nets, &net_names)?;
+    let import_models =
+        load_import_models(&libraries_for_project(mapping, &loaded_mapping.base_dir))?;
+    let scenarios = build_analog_scenarios(
+        parsed,
+        mapping,
+        &loaded_mapping.base_dir,
+        &components,
+        &nets,
+        &net_names,
+        &import_models,
+    )?;
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
@@ -640,16 +667,26 @@ fn build_project_yaml(
 fn build_analog_scenarios(
     parsed: &ParsedKicadNetlist,
     mapping: &KicadMapping,
+    mapping_base_dir: &Path,
     components: &BTreeMap<String, ComponentYaml>,
     nets: &BTreeMap<String, NetYaml>,
     net_names: &[String],
+    models: &BTreeMap<String, ImportedComponentModel>,
 ) -> Result<Vec<ScenarioYaml>> {
     let raw_net_to_board = raw_net_to_board_map(parsed, net_names)?;
     mapping
         .analog_scenarios
         .iter()
         .map(|scenario| {
-            validate_analog_scenario_mapping(scenario, components, nets, &raw_net_to_board)?;
+            let model_files = scenario_model_files(scenario, mapping_base_dir)?;
+            validate_analog_scenario_mapping(
+                scenario,
+                components,
+                nets,
+                &raw_net_to_board,
+                models,
+                &model_files,
+            )?;
             let generated_components = scenario.components.clone();
             let ground_net = raw_net_to_board
                 .get(&scenario.ground_net)
@@ -713,7 +750,7 @@ fn build_analog_scenarios(
                         components: generated_components,
                         ground_net,
                     },
-                    model_files: Vec::new(),
+                    model_files,
                     node_bindings,
                     pin_bindings,
                     analysis: scenario.analysis.clone(),
@@ -731,6 +768,8 @@ fn validate_analog_scenario_mapping(
     components: &BTreeMap<String, ComponentYaml>,
     nets: &BTreeMap<String, NetYaml>,
     raw_net_to_board: &BTreeMap<String, String>,
+    models: &BTreeMap<String, ImportedComponentModel>,
+    model_files: &[ModelFileYaml],
 ) -> Result<()> {
     if scenario.components.is_empty() {
         bail!(
@@ -798,14 +837,121 @@ fn validate_analog_scenario_mapping(
             )
         })?;
         if component.spice.is_none() {
-            bail!(
-                "KiCad analog scenario {} includes component {}, but the mapping file did not declare explicit spice metadata for it.",
-                scenario.name,
-                component_id
-            );
+            let model = models.get(&component.model).with_context(|| {
+                format!(
+                    "KiCad analog scenario {} selected unresolved model {} for component {}.",
+                    scenario.name, component.model, component_id
+                )
+            })?;
+            let spice = model.simulation.spice.as_ref().with_context(|| {
+                format!(
+                    "KiCad analog scenario {} includes component {}, but neither mapping-file spice metadata nor selected model simulation.spice metadata is available.",
+                    scenario.name,
+                    component_id
+                )
+            })?;
+            require_model_file_for_component(
+                scenario,
+                component_id,
+                &spice.model_path,
+                model_files,
+            )?;
         }
     }
     validate_probe_assertion_contract(scenario)
+}
+
+fn require_model_file_for_component(
+    scenario: &AnalogScenarioMapping,
+    component_id: &str,
+    model_path: &str,
+    model_files: &[ModelFileYaml],
+) -> Result<()> {
+    let expected = Path::new(model_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(model_path);
+    let Some(model_file) = model_files.iter().find(|file| {
+        file.path == model_path
+            || Path::new(&file.path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                == Some(expected)
+    }) else {
+        bail!(
+            "KiCad analog scenario {} component {} requires SPICE model file {}, but scenario.model_files does not declare it.",
+            scenario.name,
+            component_id,
+            model_path
+        );
+    };
+    if model_file.sha256.is_none() {
+        bail!(
+            "KiCad analog scenario {} component {} model file {} must declare a SHA-256 pin.",
+            scenario.name,
+            component_id,
+            model_file.path
+        );
+    }
+    Ok(())
+}
+
+fn scenario_model_files(
+    scenario: &AnalogScenarioMapping,
+    mapping_base_dir: &Path,
+) -> Result<Vec<ModelFileYaml>> {
+    scenario
+        .model_files
+        .iter()
+        .map(|file| {
+            let resolved = resolve_mapping_path(mapping_base_dir, &file.path);
+            if !resolved.is_file() {
+                bail!(
+                    "KiCad analog scenario {} model file {} does not exist.",
+                    scenario.name,
+                    resolved.display()
+                );
+            }
+            let actual_sha = file_sha256_hex(&resolved)?;
+            let Some(expected_sha) = &file.sha256 else {
+                bail!(
+                    "KiCad analog scenario {} model file {} must declare sha256.",
+                    scenario.name,
+                    file.path
+                );
+            };
+            if !actual_sha.eq_ignore_ascii_case(expected_sha) {
+                bail!(
+                    "KiCad analog scenario {} model file {} SHA-256 mismatch.",
+                    scenario.name,
+                    resolved.display()
+                );
+            }
+            Ok(ModelFileYaml {
+                path: fs::canonicalize(&resolved)
+                    .unwrap_or(resolved)
+                    .to_string_lossy()
+                    .to_string(),
+                sha256: Some(expected_sha.to_ascii_lowercase()),
+            })
+        })
+        .collect()
+}
+
+fn file_sha256_hex(path: &Path) -> Result<String> {
+    let bytes = fs::read(path).with_context(|| format!("Failed to read {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn resolve_mapping_path(mapping_base_dir: &Path, path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        mapping_base_dir.join(path)
+    }
 }
 
 fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result<()> {

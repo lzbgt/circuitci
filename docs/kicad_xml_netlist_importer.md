@@ -97,10 +97,16 @@ components:
     model: generic.analog.dc_voltage_source
     pin_map: { "1": P, "2": N }
     spice: { primitive: dc_voltage_source, dc_v: 3.3 }
+  D1:
+    model: vendor.onsemi.1n4148ws
+    pin_map: { "1": A, "2": K }
 analog_scenarios:
   - name: rc_transient
-    components: [V1, R1, C1]
+    components: [V1, R1, D1, C1]
     ground_net: GND
+    model_files:
+      - path: ../../models/spice/onsemi/1n4148ws.lib
+        sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
     analysis: { type: tran, stop_time_us: 2000.0, max_step_us: 10.0 }
     stimuli:
       - { name: mapped_source, description: V1 is an explicit 3.3 V source. }
@@ -114,7 +120,9 @@ Scenario generation remains fail-closed:
 
 - `components` is explicit; CircuitCI does not auto-include analog-looking parts.
 - each generated component must have explicit mapping-file `spice` primitive
-  metadata or a future datasheet-backed model path,
+  metadata or selected model `simulation.spice` metadata,
+- every generated component whose selected model uses `simulation.spice` must
+  have a matching SHA-pinned `model_files` entry,
 - `stimuli`, `probes`, and `assertions` must be non-empty,
 - node bindings and pin bindings are derived completely from the mapped Board
   IR endpoints,

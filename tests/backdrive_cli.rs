@@ -515,7 +515,21 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
     );
     assert_eq!(
         imported["scenarios"][0]["analog"]["generated"]["components"],
-        serde_json::json!(["V1", "R1", "C1"])
+        serde_json::json!(["V1", "R1", "D1", "C1"])
+    );
+    assert_eq!(
+        imported["board"]["components"]["D1"]["model"],
+        "vendor.onsemi.1n4148ws"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["model_files"][0]["sha256"],
+        "dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504"
+    );
+    assert!(
+        imported["scenarios"][0]["analog"]["model_files"][0]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with("models/spice/onsemi/1n4148ws.lib")
     );
     assert_eq!(
         imported["scenarios"][0]["analog"]["assertions"][0]["name"],
@@ -647,6 +661,83 @@ analog_scenarios:
     assertions:
       - { name: must_have_assertion, probe: rc, at_us: 100.0, relation: above, threshold_v: 0.1 }
 "#,
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_model_backed_component_without_model_file() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+components:
+  D1:
+    model: vendor.onsemi.1n4148ws
+    pin_map: { "1": A, "2": K }
+analog_scenarios:
+  - name: missing_model_file
+    components: [D1]
+    ground_net: GND
+    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    stimuli:
+      - { name: diode, description: explicit diode model should require model file }
+    probes:
+      - { name: reset, expression: V(net_reset_rc), quantity: voltage }
+    assertions:
+      - { name: reset_sample, probe: reset, at_us: 100.0, relation: above, threshold_v: 0.1 }
+"#,
+        "scenario.model_files does not declare it",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_model_file_without_sha() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+components:
+  D1:
+    model: vendor.onsemi.1n4148ws
+    pin_map: { "1": A, "2": K }
+analog_scenarios:
+  - name: missing_sha
+    components: [D1]
+    ground_net: GND
+    model_files:
+      - path: ../../models/spice/onsemi/1n4148ws.lib
+    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    stimuli:
+      - { name: diode, description: explicit diode model should require sha }
+    probes:
+      - { name: reset, expression: V(net_reset_rc), quantity: voltage }
+    assertions:
+      - { name: reset_sample, probe: reset, at_us: 100.0, relation: above, threshold_v: 0.1 }
+"#,
+        "must declare sha256",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_model_file_sha_mismatch() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+components:
+  D1:
+    model: vendor.onsemi.1n4148ws
+    pin_map: { "1": A, "2": K }
+analog_scenarios:
+  - name: wrong_sha
+    components: [D1]
+    ground_net: GND
+    model_files:
+      - path: ../../models/spice/onsemi/1n4148ws.lib
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+    analysis: { type: tran, stop_time_us: 100.0, max_step_us: 1.0 }
+    stimuli:
+      - { name: diode, description: explicit diode model should reject wrong sha }
+    probes:
+      - { name: reset, expression: V(net_reset_rc), quantity: voltage }
+    assertions:
+      - { name: reset_sample, probe: reset, at_us: 100.0, relation: above, threshold_v: 0.1 }
+"#,
+        "SHA-256 mismatch",
     );
 }
 
@@ -1683,11 +1774,38 @@ fn binary_available(binary: &str) -> bool {
 }
 
 fn assert_bad_kicad_mapping(mapping: &str) {
+    let output = bad_kicad_mapping_output(mapping);
+    assert!(!output.status.success());
+}
+
+fn assert_bad_kicad_mapping_contains(mapping: &str, expected: &str) {
+    let output = bad_kicad_mapping_output(mapping);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "expected stderr to contain {expected:?}, got:\n{stderr}"
+    );
+}
+
+fn bad_kicad_mapping_output(mapping: &str) -> std::process::Output {
     let dir = tempfile::tempdir().unwrap();
     let mapping_path = dir.path().join("bad.kicad-map.yaml");
     let output = dir.path().join("bad.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    let mapping = if mapping.contains("libraries:") {
+        mapping.to_string()
+    } else {
+        format!(
+            "libraries:\n  - {}\n  - {}\n{}",
+            repo.join("libs/generic").display(),
+            repo.join("libs/vendor/onsemi/diodes").display(),
+            mapping
+        )
+    }
+    .replace("../../models", &repo.join("models").to_string_lossy());
     std::fs::write(&mapping_path, mapping).unwrap();
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-netlist",
             "examples/import_kicad_xml/board.net",
@@ -1696,10 +1814,10 @@ fn assert_bad_kicad_mapping(mapping: &str) {
             "--output",
             output.to_str().unwrap(),
         ])
-        .status()
+        .output()
         .unwrap();
-    assert!(!status.success());
     assert!(!output.exists());
+    result
 }
 
 fn assert_yaml_file_valid(path: &std::path::Path, validator: &jsonschema::Validator) {
