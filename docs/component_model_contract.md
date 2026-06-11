@@ -154,10 +154,11 @@ This metadata can represent STM32-like boot flows, ESP32-like EN/IO0 flows, STM8
 - Fail if the model lacks the requested bootloader interface.
 - Fail if scenario-declared sync/ACK bytes conflict with the model.
 - Fail if no scenario event sends exactly `[sync_byte]` to the model's bootloader RX pin.
+- Fail if the event sender is missing, unresolved, not output-capable, or not connected to the target RX net.
 - Fail if the event target is not the target component and model RX pin.
 - Fail if event time is before `boot_sample_at_us` when that timing is declared.
 - Pass/fail is abstract protocol behavior, not full firmware execution.
 
 ## Quality Policy
 
-Every model must declare model quality. Reports must surface low-confidence models and unsupported use cases so users do not over-trust generic models.
+Every model must declare model quality. Reports emit `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models so users do not over-trust behavioral library metadata.

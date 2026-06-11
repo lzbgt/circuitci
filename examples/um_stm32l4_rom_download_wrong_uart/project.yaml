@@ -1,0 +1,86 @@
+project:
+  name: um_stm32l4_rom_download_wrong_uart
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/st
+  - ../../libs/vendor/wch
+
+board:
+  components:
+    U1:
+      model: vendor.st.stm32l431vct6
+      part_number: STM32L431VCT6
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        VSS: gnd
+        NRST: nrst
+        BOOT0: boot0
+        PA9: usart1_tx
+        PA10: usart1_rx
+    U5:
+      model: vendor.wch.ch340c
+      part_number: CH340C
+      power_domains:
+        VCC: vdd_3v3
+      pins:
+        VCC: vdd_3v3
+        GND: gnd
+        TXD: usart1_tx
+        RXD: usart1_rx
+        DTR_N: ch340_dtr_n
+        RTS_N: ch340_rts_n
+  nets:
+    vdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    usart1_tx:
+      kind: digital_or_analog
+    usart1_rx:
+      kind: digital_or_analog
+    ch340_dtr_n:
+      kind: digital_or_analog
+    ch340_rts_n:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ch340_wrong_net_to_rom_usart1_sync
+    type: serial_programming
+    target:
+      component: U1
+    checks:
+      - UART_BOOTLOADER_SYNC
+    required_boot_mode: rom_bootloader
+    timing:
+      power_valid_at_us: 1200
+      reset_release_at_us: 5000
+      boot_sample_at_us: 5100
+    bootloader:
+      component: U1
+      interface: usart1_rom
+      sync_byte: 127
+      expected_response: 121
+    straps:
+      - component: U1
+        pin: BOOT0
+        net: boot0
+        actual: high
+    events:
+      - at_us: 10000
+        action: uart_send
+        from:
+          component: U5
+          pin: TXD
+        to:
+          component: U1
+          pin: PA10
+        bytes: [127]

@@ -22,5 +22,6 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - Waveform exports are represented by report artifact placeholders until the analog backend lands.
 - Only YAML project input is supported.
 - Component models are low-confidence generic behavioral models unless a vendor pack says otherwise.
+- Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.
 
 Reports must include these limitations so automated agents and human users know when a pass does not imply full physical coverage.

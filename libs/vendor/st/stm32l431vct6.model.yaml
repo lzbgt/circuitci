@@ -1,0 +1,75 @@
+component_id: vendor.st.stm32l431vct6
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+  VSS:
+    kind: electrical_ground
+    required: true
+  NRST:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  BOOT0:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  PA9:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PA10:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+behavior:
+  reset:
+    pin: NRST
+    active: low
+    min_assert_us: 20
+  boot:
+    sample_time_after_reset_release_us: 100
+    modes:
+      rom_bootloader:
+        straps:
+          - pin: BOOT0
+            required_state: high
+      application:
+        straps:
+          - pin: BOOT0
+            required_state: low
+  bootloader:
+    interfaces:
+      usart1_rom:
+        rx_pin: PA10
+        tx_pin: PA9
+        sync_byte: 127
+        ack_byte: 121
+rules:
+  - RESET_RELEASE_AFTER_POWER_VALID
+  - BOOT_STRAP_DEFINED
+  - UART_BOOTLOADER_SYNC
+model_quality:
+  source: estimated
+  confidence: medium
+  intended_use:
+    - power_sequence
+    - boot_mode
+    - uart_bootloader_sync
+  not_valid_for:
+    - transistor_level_mcu_behavior
+    - exact_st_rom_protocol_timing
+    - full_firmware_execution

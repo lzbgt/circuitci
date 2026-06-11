@@ -8,13 +8,27 @@ const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
+const SUPPORTED_SCENARIO_TYPES: &[&str] = &["gpio_backdrive", "reset_boot", "serial_programming"];
 
 pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
     let mut findings = bound.findings.clone();
-    let mut limitations = Vec::new();
+    let mut limitations = model_quality_limitations(bound);
     let mut added_backdrive_limitation = false;
 
     for scenario in &bound.project.scenarios {
+        if !SUPPORTED_SCENARIO_TYPES.contains(&scenario.scenario_type.as_str()) {
+            limitations.push(Limitation {
+                id: "UNSUPPORTED_SCENARIO".to_string(),
+                scope: format!("scenario:{}", scenario.name),
+                confidence: "low".to_string(),
+                blocking: true,
+                message: format!(
+                    "Scenario type {} is not implemented in this runtime.",
+                    scenario.scenario_type
+                ),
+            });
+        }
+
         let mut seen = BTreeSet::new();
         for check in &scenario.checks {
             if !seen.insert(check) {
@@ -35,7 +49,7 @@ pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
                     validate_backdrive(bound, scenario, &mut findings)
                 }
                 RESET_RELEASE_AFTER_POWER_VALID if scenario.scenario_type == "reset_boot" => {
-                    validate_reset_release(scenario, &mut findings)
+                    validate_reset_release(bound, scenario, &mut findings)
                 }
                 BOOT_STRAP_DEFINED if scenario.scenario_type == "reset_boot" => {
                     validate_boot_straps(bound, scenario, &mut findings)
@@ -66,6 +80,30 @@ pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
     }
 
     (findings, limitations)
+}
+
+fn model_quality_limitations(bound: &BoundBoard<'_>) -> Vec<Limitation> {
+    let mut limitations = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        let source = model.model_quality.source.as_str();
+        let confidence = model.model_quality.confidence.as_str();
+        if matches!(source, "estimated" | "generic") || confidence == "low" {
+            limitations.push(Limitation {
+                id: "LOW_CONFIDENCE_MODEL".to_string(),
+                scope: format!("component:{component_id}:model:{}", model.component_id),
+                confidence: model.model_quality.confidence.clone(),
+                blocking: false,
+                message: format!(
+                    "Component {component_id} uses {} model {} with {} confidence.",
+                    model.model_quality.source, model.component_id, model.model_quality.confidence
+                ),
+            });
+        }
+    }
+    limitations
 }
 
 fn validate_backdrive(bound: &BoundBoard<'_>, scenario: &Scenario, findings: &mut Vec<Finding>) {
@@ -289,7 +327,11 @@ fn validate_backdrive(bound: &BoundBoard<'_>, scenario: &Scenario, findings: &mu
     }
 }
 
-fn validate_reset_release(scenario: &Scenario, findings: &mut Vec<Finding>) {
+fn validate_reset_release(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
     let Some(target) = &scenario.target else {
         validation_input_missing(
             findings,
@@ -298,6 +340,7 @@ fn validate_reset_release(scenario: &Scenario, findings: &mut Vec<Finding>) {
         );
         return;
     };
+    validate_reset_target_assertions(bound, scenario, findings);
     let Some(timing) = &scenario.timing else {
         validation_input_missing(findings, scenario, "reset_boot timing is required.");
         return;
@@ -335,6 +378,142 @@ fn validate_reset_release(scenario: &Scenario, findings: &mut Vec<Finding>) {
             "Tie reset release to regulator power-good when available.".to_string(),
         ];
         findings.push(finding);
+    }
+}
+
+fn validate_reset_target_assertions(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("Target component {} is not declared.", target.component),
+        );
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("Target component {} model is unresolved.", target.component),
+        );
+        return;
+    };
+
+    if let Some(reset_pin) = &target.reset_pin {
+        if let Some(reset) = &model.behavior.reset {
+            if reset.pin != *reset_pin {
+                let mut finding = Finding::critical(
+                    "TARGET_RESET_PIN_MISMATCH",
+                    &scenario.name,
+                    format!(
+                        "Scenario reset pin {}.{} does not match model reset pin {}.",
+                        target.component, reset_pin, reset.pin
+                    ),
+                );
+                finding.component = Some(target.component.clone());
+                finding
+                    .measured
+                    .insert("scenario_reset_pin".to_string(), json!(reset_pin));
+                finding
+                    .limit
+                    .insert("model_reset_pin".to_string(), json!(reset.pin));
+                finding.suggested_fixes = vec![
+                    "Use the reset pin declared by the target component model.".to_string(),
+                    "Correct the component model only when the datasheet identifies a different reset pin."
+                        .to_string(),
+                ];
+                findings.push(finding);
+            }
+        } else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Component model {} does not declare reset behavior.",
+                    model.component_id
+                ),
+            );
+        }
+
+        match model.ports.get(reset_pin) {
+            Some(port)
+                if matches!(
+                    port.kind,
+                    PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+                ) => {}
+            Some(_) => findings.push(Finding::critical(
+                "TARGET_RESET_PIN_KIND_INVALID",
+                &scenario.name,
+                format!(
+                    "Scenario reset pin {}.{} is not input-capable.",
+                    target.component, reset_pin
+                ),
+            )),
+            None => validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Scenario reset pin {}.{} is not declared by model {}.",
+                    target.component, reset_pin, model.component_id
+                ),
+            ),
+        }
+
+        if !component.pins.contains_key(reset_pin) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Scenario reset pin {}.{} is not connected in the board pin map.",
+                    target.component, reset_pin
+                ),
+            );
+        }
+    }
+
+    if let Some(power_pin) = &target.power_pin {
+        match model.ports.get(power_pin) {
+            Some(port) if port.kind == PortKind::ElectricalPower => {}
+            Some(_) => findings.push(Finding::critical(
+                "TARGET_POWER_PIN_KIND_INVALID",
+                &scenario.name,
+                format!(
+                    "Scenario power pin {}.{} is not an electrical power port.",
+                    target.component, power_pin
+                ),
+            )),
+            None => validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Scenario power pin {}.{} is not declared by model {}.",
+                    target.component, power_pin, model.component_id
+                ),
+            ),
+        }
+
+        let rail = component
+            .power_domains
+            .get(power_pin)
+            .or_else(|| component.pins.get(power_pin))
+            .or(component.power_domain.as_ref());
+        if rail.is_none() {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Scenario power pin {}.{} does not resolve to a board rail.",
+                    target.component, power_pin
+                ),
+            );
+        }
     }
 }
 
@@ -481,6 +660,38 @@ fn validate_uart_bootloader_sync(
         findings.push(finding);
         return;
     };
+    let Some((_target_model, target_rx_port)) =
+        model_port(bound, &target_component, &interface.rx_pin)
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "Target RX pin {}.{} is not declared and connected.",
+                target_component, interface.rx_pin
+            ),
+        );
+        return;
+    };
+    if !matches!(
+        target_rx_port.kind,
+        PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+    ) {
+        let mut finding = Finding::critical(
+            UART_BOOTLOADER_SYNC,
+            &scenario.name,
+            format!(
+                "Target RX pin {}.{} is not input-capable.",
+                target_component, interface.rx_pin
+            ),
+        );
+        finding.component = Some(target_component.clone());
+        finding
+            .limit
+            .insert("rx_pin".to_string(), json!(interface.rx_pin));
+        findings.push(finding);
+        return;
+    }
     if bootloader
         .sync_byte
         .is_some_and(|sync_byte| sync_byte != interface.sync_byte)
@@ -516,16 +727,34 @@ fn validate_uart_bootloader_sync(
         .as_ref()
         .and_then(|timing| timing.boot_sample_at_us)
         .unwrap_or(0.0);
-    let sync_event = scenario.events.iter().find(|event| {
-        event.action == "uart_send"
-            && event.at_us >= min_event_time
-            && event
-                .to
-                .as_ref()
-                .is_some_and(|to| to.component == target_component && to.pin == interface.rx_pin)
-            && event.bytes == [interface.sync_byte]
+    let mut sync_candidate_problem = None;
+    let sync_event_found = scenario.events.iter().any(|event| {
+        if event.action != "uart_send"
+            || event.at_us < min_event_time
+            || event.bytes != [interface.sync_byte]
+        {
+            return false;
+        }
+        let Some(to) = &event.to else {
+            return false;
+        };
+        if to.component != target_component || to.pin != interface.rx_pin {
+            return false;
+        }
+
+        match validate_uart_sender(bound, scenario, event, &target_component, &interface.rx_pin) {
+            Ok(()) => true,
+            Err(finding) => {
+                sync_candidate_problem.get_or_insert(*finding);
+                false
+            }
+        }
     });
-    if sync_event.is_none() {
+    if !sync_event_found {
+        if let Some(finding) = sync_candidate_problem {
+            findings.push(finding);
+            return;
+        }
         let mut finding = Finding::critical(
             UART_BOOTLOADER_SYNC,
             &scenario.name,
@@ -592,6 +821,94 @@ fn validate_uart_bootloader_sync(
             );
         }
     }
+}
+
+fn validate_uart_sender(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    event: &crate::board_ir::ScenarioEvent,
+    target_component: &str,
+    target_rx_pin: &str,
+) -> Result<(), Box<Finding>> {
+    let Some(from) = &event.from else {
+        let mut finding = Finding::critical(
+            UART_BOOTLOADER_SYNC,
+            &scenario.name,
+            "UART bootloader sync event is missing the sender endpoint.",
+        );
+        finding.component = Some(target_component.to_string());
+        finding.limit.insert(
+            "required_sender_endpoint".to_string(),
+            json!("event.from.component and event.from.pin"),
+        );
+        finding.suggested_fixes = vec![
+            "Declare the USB-UART TX endpoint that sends the sync byte.".to_string(),
+            "Ensure the sender endpoint is connected to the target RX net.".to_string(),
+        ];
+        return Err(Box::new(finding));
+    };
+    let Some((_sender_model, sender_port)) = model_port(bound, &from.component, &from.pin) else {
+        let mut finding = Finding::critical(
+            UART_BOOTLOADER_SYNC,
+            &scenario.name,
+            format!(
+                "UART sender endpoint {}.{} is unresolved.",
+                from.component, from.pin
+            ),
+        );
+        finding.component = Some(from.component.clone());
+        finding.suggested_fixes = vec![
+            "Use a sender component and pin declared in the board and component model.".to_string(),
+        ];
+        return Err(Box::new(finding));
+    };
+    if !matches!(
+        sender_port.kind,
+        PortKind::DigitalElectricalOutput | PortKind::DigitalElectricalIo
+    ) {
+        let mut finding = Finding::critical(
+            UART_BOOTLOADER_SYNC,
+            &scenario.name,
+            format!(
+                "UART sender endpoint {}.{} is not output-capable.",
+                from.component, from.pin
+            ),
+        );
+        finding.component = Some(from.component.clone());
+        finding.suggested_fixes =
+            vec!["Use the USB-UART transmit pin as the event sender.".to_string()];
+        return Err(Box::new(finding));
+    }
+
+    let target_endpoint = Endpoint {
+        component: target_component.to_string(),
+        pin: target_rx_pin.to_string(),
+    };
+    if shared_net(bound.project, from, &target_endpoint).is_none() {
+        let mut finding = Finding::critical(
+            UART_BOOTLOADER_SYNC,
+            &scenario.name,
+            format!(
+                "UART sync sender {}.{} is not connected to target RX {}.{}.",
+                from.component, from.pin, target_component, target_rx_pin
+            ),
+        );
+        finding.component = Some(target_component.to_string());
+        finding.endpoints = Some(EndpointPair {
+            driver: from.clone(),
+            victim: target_endpoint,
+        });
+        finding
+            .limit
+            .insert("target_rx_pin".to_string(), json!(target_rx_pin));
+        finding.suggested_fixes = vec![
+            "Cross USB-UART TXD to the target bootloader RX pin.".to_string(),
+            "Correct the board netlist if the schematic already has the intended connection."
+                .to_string(),
+        ];
+        return Err(Box::new(finding));
+    }
+    Ok(())
 }
 
 fn shared_net<'a>(

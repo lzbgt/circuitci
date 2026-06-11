@@ -83,6 +83,61 @@ fn missing_uart_bootloader_sync_fails() {
 }
 
 #[test]
+fn wrong_reset_target_pin_fails() {
+    let report = run_validation("examples/bad_reset_pin_board/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "TARGET_RESET_PIN_MISMATCH");
+    assert_eq!(report["failures"][0]["limit"]["model_reset_pin"], "NRST");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_rom_download_entry_passes() {
+    let report = run_validation("examples/um_stm32l4_rom_download_entry/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "LOW_CONFIDENCE_MODEL")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_wrong_uart_wiring_fails() {
+    let report = run_validation("examples/um_stm32l4_rom_download_wrong_uart/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "UART_BOOTLOADER_SYNC");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("not connected to target RX")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_bad_app_boot_release_fails() {
+    let report = run_validation("examples/um_stm32l4_app_boot_bad_release/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "BOOT_STRAP_DEFINED");
+    assert_eq!(report["failures"][0]["limit"]["required_BOOT0"], "low");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_fixed_app_boot_release_passes() {
+    let report = run_validation("examples/um_stm32l4_app_boot_fixed_release/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn example_projects_and_component_models_match_schemas() {
     let board_schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();

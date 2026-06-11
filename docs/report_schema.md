@@ -83,6 +83,8 @@ Warnings and limitations remain visible in the report but do not change `result`
 
 Unsupported `iot_basic_v0` checks are blocking for fabrication readiness even when the executable subset has no critical finding.
 
+Projects using `generic`, `estimated`, or `low` confidence component models must include non-blocking `LOW_CONFIDENCE_MODEL` limitations scoped to the component and model.
+
 ## Additional Rule Findings
 
 Reset/boot/download rules use the same finding object. Required IDs:

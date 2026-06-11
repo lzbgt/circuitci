@@ -160,6 +160,8 @@ scenarios:
 4. Require `required_boot_mode` to exist in `component.behavior.boot.modes`.
 5. If the same scenario declares strap observations, verify they match the required boot mode before checking sync.
 6. Find an event with `action: uart_send`, `to.component == target.component`, `to.pin == model_interface.rx_pin`, `at_us >= boot_sample_at_us` when `boot_sample_at_us` exists, and `bytes` exactly equal to `[model_interface.sync_byte]`.
-7. ACK is abstract in this slice: matching the sync event and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
+7. Require the event `from` endpoint to resolve to an output-capable board pin.
+8. Require the event `from` endpoint and target RX endpoint to share the same board net.
+9. ACK is abstract in this slice: matching the sync event, sender connectivity, and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
 
 Missing required model/scenario data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
