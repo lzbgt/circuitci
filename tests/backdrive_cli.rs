@@ -304,6 +304,20 @@ fn um_stm32l4_acceptance_suite_passes() {
     assert_eq!(report["result"], "pass");
     assert_eq!(report["summary"]["cases"], 12);
     assert_eq!(report["summary"]["failed"], 0);
+    assert_eq!(report["summary"]["repairs"], 7);
+    assert_eq!(report["summary"]["repairs_failed"], 0);
+    assert_eq!(report["repairs"][0]["id"], "fix_backdrive");
+    assert_eq!(report["repairs"][0]["result"], "pass");
+    assert_eq!(
+        report["repairs"][0]["matched_findings"][0]["id"],
+        "GPIO_BACKDRIVE"
+    );
+    assert!(
+        !report["repairs"][0]["suggested_fixes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
     assert!(
         out_dir
             .path()
@@ -355,6 +369,51 @@ fn suite_expectation_mismatch_exits_nonzero_after_report() {
 }
 
 #[test]
+fn suite_repair_missing_finding_exits_nonzero_after_report() {
+    let suite_dir = tempfile::tempdir().unwrap();
+    let out_dir = tempfile::tempdir().unwrap();
+    let bad_project = std::env::current_dir()
+        .unwrap()
+        .join("examples/bad_backdrive_board/project.yaml");
+    let fixed_project = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_backdrive_fixed_board/project.yaml");
+    let manifest = suite_dir.path().join("bad_repair.yaml");
+    std::fs::write(
+        &manifest,
+        format!(
+            "suite:\n  name: bad_repair_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: detect\n    project: {}\n    expect: fail\n    required_findings:\n      - id: GPIO_BACKDRIVE\n        severity: critical\n  - id: fixed\n    project: {}\n    expect: pass\nrepairs:\n  - id: wrong_rule\n    detects_case: detect\n    fixed_case: fixed\n    fixes_findings:\n      - BOOT_STRAP_DEFINED\n",
+            bad_project.display(),
+            fixed_project.display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            manifest.to_str().unwrap(),
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["repairs_failed"], 1);
+    assert!(
+        report["repairs"][0]["messages"][0]
+            .as_str()
+            .unwrap()
+            .contains("does not contain critical finding BOOT_STRAP_DEFINED")
+    );
+    assert_suite_report_schema_valid(&report);
+}
+
+#[test]
 fn suite_rejects_duplicate_case_ids() {
     let suite_dir = tempfile::tempdir().unwrap();
     let out_dir = tempfile::tempdir().unwrap();
@@ -367,6 +426,68 @@ fn suite_rejects_duplicate_case_ids() {
         format!(
             "suite:\n  name: duplicate_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: same\n    project: {}\n    expect: pass\n  - id: same\n    project: {}\n    expect: pass\n",
             project_path.display(),
+            project_path.display()
+        ),
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            manifest.to_str().unwrap(),
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!out_dir.path().join("report.json").exists());
+}
+
+#[test]
+fn suite_rejects_duplicate_repair_ids() {
+    let suite_dir = tempfile::tempdir().unwrap();
+    let out_dir = tempfile::tempdir().unwrap();
+    let bad_project = std::env::current_dir()
+        .unwrap()
+        .join("examples/bad_backdrive_board/project.yaml");
+    let fixed_project = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_backdrive_fixed_board/project.yaml");
+    let manifest = suite_dir.path().join("duplicate_repair.yaml");
+    std::fs::write(
+        &manifest,
+        format!(
+            "suite:\n  name: duplicate_repair_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: detect\n    project: {}\n    expect: fail\n    required_findings:\n      - id: GPIO_BACKDRIVE\n        severity: critical\n  - id: fixed\n    project: {}\n    expect: pass\nrepairs:\n  - id: same\n    detects_case: detect\n    fixed_case: fixed\n    fixes_findings:\n      - GPIO_BACKDRIVE\n  - id: same\n    detects_case: detect\n    fixed_case: fixed\n    fixes_findings:\n      - GPIO_BACKDRIVE\n",
+            bad_project.display(),
+            fixed_project.display()
+        ),
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            manifest.to_str().unwrap(),
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!out_dir.path().join("report.json").exists());
+}
+
+#[test]
+fn suite_rejects_unknown_manifest_fields() {
+    let suite_dir = tempfile::tempdir().unwrap();
+    let out_dir = tempfile::tempdir().unwrap();
+    let project_path = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_backdrive_fixed_board/project.yaml");
+    let manifest = suite_dir.path().join("unknown_field.yaml");
+    std::fs::write(
+        &manifest,
+        format!(
+            "suite:\n  name: unknown_field_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: fixed\n    project: {}\n    expect: pass\nignored_by_old_runtime: true\n",
             project_path.display()
         ),
     )

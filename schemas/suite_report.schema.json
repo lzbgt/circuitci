@@ -10,6 +10,7 @@
     "result",
     "summary",
     "cases",
+    "repairs",
     "reproduction"
   ],
   "properties": {
@@ -19,11 +20,21 @@
     "result": { "enum": ["pass", "fail"] },
     "summary": {
       "type": "object",
-      "required": ["cases", "passed", "failed"],
+      "required": [
+        "cases",
+        "passed",
+        "failed",
+        "repairs",
+        "repairs_passed",
+        "repairs_failed"
+      ],
       "properties": {
         "cases": { "type": "integer", "minimum": 0 },
         "passed": { "type": "integer", "minimum": 0 },
-        "failed": { "type": "integer", "minimum": 0 }
+        "failed": { "type": "integer", "minimum": 0 },
+        "repairs": { "type": "integer", "minimum": 0 },
+        "repairs_passed": { "type": "integer", "minimum": 0 },
+        "repairs_failed": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
@@ -70,6 +81,53 @@
         "additionalProperties": false
       }
     },
+    "repairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "detects_case",
+          "fixed_case",
+          "fixes_findings",
+          "detect_project",
+          "fixed_project",
+          "detect_report",
+          "fixed_report",
+          "matched_findings",
+          "suggested_fixes",
+          "result",
+          "messages"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "detects_case": { "type": "string", "minLength": 1 },
+          "fixed_case": { "type": "string", "minLength": 1 },
+          "fixes_findings": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "detect_project": { "type": "string", "minLength": 1 },
+          "fixed_project": { "type": "string", "minLength": 1 },
+          "detect_report": { "type": "string", "minLength": 1 },
+          "fixed_report": { "type": "string", "minLength": 1 },
+          "matched_findings": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/finding_evidence" }
+          },
+          "suggested_fixes": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "result": { "enum": ["pass", "fail"] },
+          "messages": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "reproduction": {
       "type": "object",
       "required": ["command"],
@@ -86,6 +144,23 @@
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "severity": { "enum": ["critical", "warning", "info"] }
+      },
+      "additionalProperties": false
+    },
+    "finding_evidence": {
+      "type": "object",
+      "required": ["id", "severity", "scenario", "message", "suggested_fixes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["critical", "warning", "info"] },
+        "scenario": { "type": "string", "minLength": 1 },
+        "component": { "type": "string" },
+        "net": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 },
+        "suggested_fixes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       },
       "additionalProperties": false
     }

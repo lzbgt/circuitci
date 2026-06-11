@@ -45,6 +45,24 @@
         },
         "additionalProperties": false
       }
+    },
+    "repairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "detects_case", "fixed_case", "fixes_findings"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+          "detects_case": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+          "fixed_case": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+          "fixes_findings": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

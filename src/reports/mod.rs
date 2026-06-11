@@ -71,6 +71,7 @@ pub struct SuiteReport {
     pub result: String,
     pub summary: SuiteSummary,
     pub cases: Vec<SuiteCaseReport>,
+    pub repairs: Vec<SuiteRepairReport>,
     pub reproduction: Reproduction,
 }
 
@@ -79,6 +80,9 @@ pub struct SuiteSummary {
     pub cases: usize,
     pub passed: usize,
     pub failed: usize,
+    pub repairs: usize,
+    pub repairs_passed: usize,
+    pub repairs_failed: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -99,6 +103,35 @@ pub struct SuiteCaseReport {
 pub struct SuiteFindingExpectation {
     pub id: String,
     pub severity: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuiteRepairReport {
+    pub id: String,
+    pub detects_case: String,
+    pub fixed_case: String,
+    pub fixes_findings: Vec<String>,
+    pub detect_project: String,
+    pub fixed_project: String,
+    pub detect_report: String,
+    pub fixed_report: String,
+    pub matched_findings: Vec<SuiteFindingEvidence>,
+    pub suggested_fixes: Vec<String>,
+    pub result: String,
+    pub messages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuiteFindingEvidence {
+    pub id: String,
+    pub severity: String,
+    pub scenario: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub net: Option<String>,
+    pub message: String,
+    pub suggested_fixes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -243,8 +276,14 @@ fn suite_markdown_report(report: &SuiteReport) -> String {
     text.push_str(&format!("# CircuitCI Suite Report: {}\n\n", report.suite));
     text.push_str("## Executive Summary\n\n");
     text.push_str(&format!(
-        "- Result: `{}`\n- Cases: {}\n- Passed: {}\n- Failed: {}\n\n",
-        report.result, report.summary.cases, report.summary.passed, report.summary.failed
+        "- Result: `{}`\n- Cases: {}\n- Passed: {}\n- Failed: {}\n- Repairs: {}\n- Repairs passed: {}\n- Repairs failed: {}\n\n",
+        report.result,
+        report.summary.cases,
+        report.summary.passed,
+        report.summary.failed,
+        report.summary.repairs,
+        report.summary.repairs_passed,
+        report.summary.repairs_failed
     ));
     text.push_str("## Cases\n\n");
     for case in &report.cases {
@@ -254,6 +293,20 @@ fn suite_markdown_report(report: &SuiteReport) -> String {
         ));
         for message in &case.messages {
             text.push_str(&format!("  - {message}\n"));
+        }
+    }
+    text.push_str("\n## Repairs\n\n");
+    if report.repairs.is_empty() {
+        text.push_str("None.\n");
+    } else {
+        for repair in &report.repairs {
+            text.push_str(&format!(
+                "- `{}`: `{}` ({} -> {})\n",
+                repair.id, repair.result, repair.detects_case, repair.fixed_case
+            ));
+            for message in &repair.messages {
+                text.push_str(&format!("  - {message}\n"));
+            }
         }
     }
     text.push_str("\n## Reproduction\n\n");

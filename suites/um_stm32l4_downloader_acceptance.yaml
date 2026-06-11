@@ -74,3 +74,46 @@ cases:
   - id: control_line_fixed_release_passes
     project: ../examples/um_stm32l4_control_line_app_release_fixed/project.yaml
     expect: pass
+
+repairs:
+  - id: fix_backdrive
+    detects_case: bad_backdrive_detected
+    fixed_case: fixed_backdrive_passes
+    fixes_findings:
+      - GPIO_BACKDRIVE
+
+  - id: fix_reset_release
+    detects_case: bad_reset_release_detected
+    fixed_case: fixed_app_boot_passes
+    fixes_findings:
+      - RESET_RELEASE_AFTER_POWER_VALID
+
+  - id: fix_app_boot_strap
+    detects_case: bad_app_boot_strap_detected
+    fixed_case: fixed_app_boot_passes
+    fixes_findings:
+      - BOOT_STRAP_DEFINED
+
+  - id: fix_uart_wiring
+    detects_case: wrong_uart_wiring_detected
+    fixed_case: rom_downloader_entry_passes
+    fixes_findings:
+      - UART_BOOTLOADER_SYNC
+
+  - id: fix_resident_update_sequence
+    detects_case: resident_update_missing_finish_detected
+    fixed_case: resident_update_activate_passes
+    fixes_findings:
+      - RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+
+  - id: fix_resident_update_chunking
+    detects_case: resident_update_oversize_chunk_detected
+    fixed_case: resident_update_activate_passes
+    fixes_findings:
+      - RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+
+  - id: fix_control_line_release
+    detects_case: control_line_bad_release_detected
+    fixed_case: control_line_fixed_release_passes
+    fixes_findings:
+      - CONTROL_LINE_RELEASE_SEQUENCE

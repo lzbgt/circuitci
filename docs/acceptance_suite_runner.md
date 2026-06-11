@@ -26,6 +26,11 @@ suite.yaml
 This gives the agent repair loop one stable acceptance target while preserving
 the generic board IR and model-library architecture.
 
+Suites may also declare repair links from a known-bad case to a fixed case.
+Those links are evaluated into agent-readable repair evidence: failing project
+path, fixed project path, report paths, matched finding details, and suggested
+fixes.
+
 ## Suite Manifest
 
 Proposed manifest path for the current acceptance target:
@@ -95,6 +100,9 @@ report.md
 cases/<case-id>/report.json
 cases/<case-id>/report.md
 ```
+
+When the manifest declares `repairs`, `report.json` also includes a `repairs`
+array and repair summary counters.
 
 ## Suite Report JSON
 
