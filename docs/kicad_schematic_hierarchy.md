@@ -10,7 +10,8 @@ Native `.kicad_sch` import supports a strict one-level hierarchy slice:
 - nested sheets are rejected,
 - duplicate component references across root and child sheets are rejected,
 - duplicate non-ground sheet-pin names across root sheet instances are rejected,
-- distinct non-ground sheet-pin names wired onto one root net are rejected,
+- distinct non-ground sheet-pin names wired onto one root net require an
+  explicit root label as the canonical flattened net name,
 - sheet names that sanitize to the same child-local net prefix are rejected,
 - unsupported buses remain rejected.
 

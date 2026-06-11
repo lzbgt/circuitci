@@ -477,6 +477,7 @@ fn import_kicad_schematic_rejects_sheet_pin_label_mismatch() {
         r#"
 (kicad_sch
   (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
   (sheet (at 0 0 0) (size 20 20)
     (property "Sheetname" "Filter")
     (property "Sheetfile" "child.kicad_sch")
@@ -524,6 +525,7 @@ fn import_kicad_schematic_rejects_nested_sheet() {
         r#"
 (kicad_sch
   (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
   (sheet (at 0 0 0) (size 20 20)
     (property "Sheetname" "Filter")
     (property "Sheetfile" "child.kicad_sch")
@@ -718,8 +720,230 @@ fn import_kicad_schematic_rejects_distinct_sheet_pins_on_one_root_net() {
         .unwrap();
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(stderr.contains("net has conflicting labels"));
+    assert!(stderr.contains("without an explicit root label"));
     assert!(!output.exists());
+}
+
+#[test]
+fn import_kicad_schematic_allows_distinct_sheet_pins_on_labelled_root_net() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let first_path = dir.path().join("first.kicad_sch");
+    let second_path = dir.path().join("second.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 20 0) (xy 60 0)))
+  (label "SENSE_NODE" (at 40 0 0))
+  (wire (pts (xy 20 10) (xy 60 10)))
+  (label "GND" (at 40 10 0))
+  (sheet (at 20 -10 0) (size 20 30)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "first.kicad_sch")
+    (pin "FILTER_OUT" output (at 20 0 0))
+    (pin "GND" input (at 20 10 0)))
+  (sheet (at 60 -10 0) (size 20 30)
+    (property "Sheetname" "Adc")
+    (property "Sheetfile" "second.kicad_sch")
+    (pin "ADC_IN" input (at 60 0 0))
+    (pin "GND" input (at 60 10 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &first_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (hierarchical_label "FILTER_OUT" (at 0 0 0))
+  (hierarchical_label "GND" (at 0 10 0)))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &second_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R2") (property "Value" "47k") (pin "1") (pin "2"))
+  (hierarchical_label "ADC_IN" (at 0 0 0))
+  (hierarchical_label "GND" (at 0 10 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_sense_node"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R2"]["pins"]["1"],
+        "net_sense_node"
+    );
+    assert_eq!(imported["board"]["components"]["R1"]["pins"]["2"], "gnd");
+    assert_eq!(imported["board"]["components"]["R2"]["pins"]["2"], "gnd");
+}
+
+#[test]
+fn import_kicad_schematic_rejects_disconnected_alias_name_collision() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let first_path = dir.path().join("first.kicad_sch");
+    let second_path = dir.path().join("second.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
+  (label "B" (at 25 0 0))
+  (wire (pts (xy 60 0) (xy 65 0)))
+  (sheet (at 20 -10 0) (size 20 20)
+    (property "Sheetname" "First")
+    (property "Sheetfile" "first.kicad_sch")
+    (pin "A" output (at 20 0 0)))
+  (sheet (at 60 -10 0) (size 20 20)
+    (property "Sheetname" "Second")
+    (property "Sheetfile" "second.kicad_sch")
+    (pin "B" input (at 60 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &first_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (hierarchical_label "A" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &second_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R2") (property "Value" "47k") (pin "1"))
+  (hierarchical_label "B" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("both resolve to sheet alias B"));
+    assert!(!output.exists());
+}
+
+#[test]
+fn import_kicad_schematic_keeps_duplicate_ground_aliases_per_sheet() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let first_path = dir.path().join("first.kicad_sch");
+    let second_path = dir.path().join("second.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
+  (label "VREF" (at 25 0 0))
+  (wire (pts (xy 60 0) (xy 65 0)))
+  (label "GND" (at 65 0 0))
+  (sheet (at 20 -10 0) (size 20 20)
+    (property "Sheetname" "First")
+    (property "Sheetfile" "first.kicad_sch")
+    (pin "GND" input (at 20 0 0)))
+  (sheet (at 60 -10 0) (size 20 20)
+    (property "Sheetname" "Second")
+    (property "Sheetfile" "second.kicad_sch")
+    (pin "GND" input (at 60 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &first_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (hierarchical_label "GND" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &second_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R2") (property "Value" "47k") (pin "1"))
+  (hierarchical_label "GND" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_vref"
+    );
+    assert_eq!(imported["board"]["components"]["R2"]["pins"]["1"], "gnd");
 }
 
 #[test]

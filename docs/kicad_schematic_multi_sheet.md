@@ -12,16 +12,16 @@ The conservative multi-sheet contract is:
 - child sheets must not contain nested sheets,
 - component references must remain globally unique after flattening,
 - non-ground sheet-pin names must be unique across root sheet instances,
-- distinct non-ground sheet-pin names must not be wired onto the same root net,
 - sanitized sheet-name prefixes must be unique.
 
 These rules are intentional. CircuitCI currently flattens a sheet pin into a
-net label at the pin coordinate. Duplicate non-ground sheet-pin names on
-different root sheet instances could otherwise merge unrelated child interfaces
-by name, while distinct sheet-pin names wired onto one root net would create an
-ambiguous multi-label net. Agents should use explicit unique independent
-interface names, such as `FILTER_OUT` and `SENSE_IN`, until instance-scoped
-hierarchical net names are implemented.
+root-net alias. Duplicate non-ground sheet-pin names on different root sheet
+instances could otherwise merge unrelated child interfaces by name. Distinct
+sheet-pin names may share a root net only when an explicit root label provides
+the canonical flattened net name. Agents should use explicit interface names,
+such as `FILTER_OUT` and `SENSE_IN`, and explicit root labels when connecting
+interfaces together until instance-scoped hierarchical net names are
+implemented.
 
 Child-local unlabeled nets are still prefixed with the sheet name. Nets that
 match declared sheet pins, and ground aliases such as `GND`, are merged into

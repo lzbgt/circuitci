@@ -44,11 +44,14 @@ struct Segment {
 
 type PowerLabel = (Point, String);
 type ParsedSymbols = (Vec<SymbolInstance>, Vec<PowerLabel>);
+type SheetPinKey = (String, String);
+type SheetPinAliases = BTreeMap<SheetPinKey, String>;
 
 #[derive(Debug)]
 struct ParsedSchematic {
     netlist: ParsedKicadNetlist,
     sheets: Vec<SheetInstance>,
+    sheet_pin_aliases: SheetPinAliases,
     hierarchical_labels: BTreeSet<String>,
 }
 
@@ -56,7 +59,7 @@ struct ParsedSchematic {
 struct SheetInstance {
     name: String,
     file: PathBuf,
-    pins: BTreeSet<String>,
+    pins: BTreeMap<String, Point>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,15 +94,21 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
         if !child.sheets.is_empty() {
             bail!("Native KiCad schematic import does not support nested sheets yet.");
         }
-        if sheet.pins != child.hierarchical_labels {
+        let sheet_pin_names = sheet_pin_names(sheet);
+        if sheet_pin_names != child.hierarchical_labels {
             bail!(
                 "KiCad sheet {} pins {:?} do not exactly match child hierarchical labels {:?}.",
                 sheet.name,
-                sheet.pins,
+                sheet_pin_names,
                 child.hierarchical_labels
             );
         }
-        netlist = merge_hierarchical_netlists(netlist, child.netlist, sheet)?;
+        netlist = merge_hierarchical_netlists(
+            netlist,
+            child.netlist,
+            sheet,
+            &parsed.sheet_pin_aliases,
+        )?;
     }
     Ok(netlist)
 }
@@ -127,17 +136,23 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
     }
     validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
-    let sheet_pin_labels = sheets
-        .iter()
-        .flat_map(|sheet| sheet_pin_labels(root_list, sheet))
-        .collect::<Vec<_>>();
-    let (labels, hierarchical_labels) =
-        parse_labels(root_list, power_labels, sheet_pin_labels, mode)?;
+    let (labels, hierarchical_labels) = parse_labels(root_list, power_labels, mode)?;
     let no_connects = parse_no_connects(root_list)?;
+    let (effective_labels, sheet_pin_aliases) = if mode == SchematicMode::Root {
+        hierarchy_net_aliases(&sheets, &symbols, &segments, &junctions, &labels)?
+    } else {
+        (labels.clone(), BTreeMap::new())
+    };
     let nets = if symbols.is_empty() {
         Vec::new()
     } else {
-        build_nets(&symbols, &segments, &junctions, &labels, &no_connects)?
+        build_nets(
+            &symbols,
+            &segments,
+            &junctions,
+            &effective_labels,
+            &no_connects,
+        )?
     };
 
     let mut components = BTreeMap::new();
@@ -156,6 +171,7 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
     Ok(ParsedSchematic {
         netlist: ParsedKicadNetlist { components, nets },
         sheets,
+        sheet_pin_aliases,
         hierarchical_labels,
     })
 }
@@ -177,6 +193,7 @@ fn merge_hierarchical_netlists(
     mut root: ParsedKicadNetlist,
     child: ParsedKicadNetlist,
     sheet: &SheetInstance,
+    aliases: &SheetPinAliases,
 ) -> Result<ParsedKicadNetlist> {
     for (refdes, component) in child.components {
         if root.components.contains_key(&refdes) {
@@ -190,8 +207,11 @@ fn merge_hierarchical_netlists(
         nodes_by_name.entry(net.name).or_default().extend(net.nodes);
     }
     for net in child.nets {
-        let name = if sheet.pins.contains(&net.name) || is_ground_net_name(&net.name) {
-            net.name
+        let name = if sheet.pins.contains_key(&net.name) || is_ground_net_name(&net.name) {
+            aliases
+                .get(&(sheet.name.clone(), net.name.clone()))
+                .cloned()
+                .unwrap_or(net.name)
         } else {
             format!("{}_{}", sanitize_sheet_net_prefix(&sheet.name), net.name)
         };
@@ -274,13 +294,13 @@ fn parse_sheets(
                 file.display()
             );
         }
-        let mut pins = BTreeSet::new();
+        let mut pins = BTreeMap::new();
         for pin in list_children(sheet, "pin") {
             let pin_name = string_at(pin, 1)
                 .filter(|value| !value.trim().is_empty())
                 .with_context(|| "KiCad sheet pin is missing a name.")?
                 .to_string();
-            if !pins.insert(pin_name.clone()) {
+            if pins.contains_key(&pin_name) {
                 bail!("KiCad sheet {sheet_name} has duplicate pin {pin_name}.");
             }
             if is_ground_net_name(&pin_name) {
@@ -292,11 +312,12 @@ fn parse_sheets(
                     "KiCad sheet pin {pin_name} appears on multiple root sheets ({existing_sheet} and {sheet_name}); use unique non-ground interface names instead of merging sheet pins by name."
                 );
             }
-            child_list(pin, "at")
+            let point = child_list(pin, "at")
                 .and_then(parse_at_point)
                 .with_context(|| {
                     format!("KiCad sheet pin {pin_name} is missing valid coordinates.")
                 })?;
+            pins.insert(pin_name, point);
         }
         if pins.is_empty() {
             bail!("KiCad sheet {sheet_name} must declare at least one hierarchical pin.");
@@ -322,20 +343,8 @@ fn resolve_sheet_file(schematic_path: &Path, sheet_file: &str) -> PathBuf {
     }
 }
 
-fn sheet_pin_labels(root: &[Sexp], sheet: &SheetInstance) -> Vec<PowerLabel> {
-    list_children(root, "sheet")
-        .filter(|candidate| {
-            let properties = parse_properties(candidate);
-            properties.get("Sheetname") == Some(&sheet.name)
-        })
-        .flat_map(|candidate| {
-            list_children(candidate, "pin").filter_map(|pin| {
-                let name = string_at(pin, 1)?;
-                let at = child_list(pin, "at").and_then(parse_at_point)?;
-                Some((at, name.to_string()))
-            })
-        })
-        .collect()
+fn sheet_pin_names(sheet: &SheetInstance) -> BTreeSet<String> {
+    sheet.pins.keys().cloned().collect()
 }
 
 fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, BTreeMap<String, PinGeometry>>> {
@@ -535,15 +544,11 @@ fn validate_junctions(segments: &[Segment], junctions: &BTreeSet<Point>) -> Resu
 fn parse_labels(
     root: &[Sexp],
     power_labels: Vec<PowerLabel>,
-    sheet_pin_labels: Vec<PowerLabel>,
     mode: SchematicMode,
 ) -> Result<(BTreeMap<Point, String>, BTreeSet<String>)> {
     let mut labels = BTreeMap::new();
     let mut hierarchical_labels = BTreeSet::new();
     for (point, name) in power_labels {
-        insert_label(&mut labels, point, name)?;
-    }
-    for (point, name) in sheet_pin_labels {
         insert_label(&mut labels, point, name)?;
     }
     for label_tag in ["label", "global_label", "hierarchical_label"] {
@@ -590,6 +595,128 @@ fn parse_no_connects(root: &[Sexp]) -> Result<BTreeSet<Point>> {
         no_connects.insert(at);
     }
     Ok(no_connects)
+}
+
+fn hierarchy_net_aliases(
+    sheets: &[SheetInstance],
+    symbols: &[SymbolInstance],
+    segments: &[Segment],
+    junctions: &BTreeSet<Point>,
+    labels: &BTreeMap<Point, String>,
+) -> Result<(BTreeMap<Point, String>, SheetPinAliases)> {
+    let mut effective_labels = labels.clone();
+    let sheet_pins = sheets
+        .iter()
+        .flat_map(|sheet| {
+            sheet
+                .pins
+                .iter()
+                .map(move |(name, point)| (sheet.name.as_str(), name.as_str(), *point))
+        })
+        .collect::<Vec<_>>();
+    if sheet_pins.is_empty() {
+        return Ok((effective_labels, BTreeMap::new()));
+    }
+
+    let mut points = BTreeSet::new();
+    for segment in segments {
+        points.insert(segment.a);
+        points.insert(segment.b);
+    }
+    points.extend(junctions.iter().copied());
+    points.extend(labels.keys().copied());
+    for symbol in symbols {
+        points.extend(symbol.pins.values().copied());
+    }
+    for (_, _, point) in &sheet_pins {
+        if !is_connectivity_attached(*point, segments, labels)
+            && !symbols
+                .iter()
+                .any(|symbol| symbol.pins.values().any(|pin| pin == point))
+        {
+            bail!(
+                "KiCad sheet pin at root coordinate is not attached to a wire, symbol pin, or label."
+            );
+        }
+        points.insert(*point);
+    }
+
+    let mut index = BTreeMap::new();
+    for point in &points {
+        let next = index.len();
+        index.insert(*point, next);
+    }
+    let mut uf = UnionFind::new(index.len());
+    for segment in segments {
+        let segment_points = points
+            .iter()
+            .filter(|point| segment.contains(**point))
+            .copied()
+            .collect::<Vec<_>>();
+        for pair in segment_points.windows(2) {
+            uf.union(index[&pair[0]], index[&pair[1]]);
+        }
+    }
+
+    let mut labels_by_root: BTreeMap<usize, BTreeSet<String>> = BTreeMap::new();
+    for (point, label) in labels {
+        let root = uf.find(index[point]);
+        labels_by_root
+            .entry(root)
+            .or_default()
+            .insert(label.clone());
+    }
+
+    let mut pins_by_root: BTreeMap<usize, Vec<(&str, &str, Point)>> = BTreeMap::new();
+    for (sheet, pin, point) in sheet_pins {
+        let root = uf.find(index[&point]);
+        pins_by_root
+            .entry(root)
+            .or_default()
+            .push((sheet, pin, point));
+    }
+
+    let mut aliases = BTreeMap::new();
+    let mut canonical_roots = BTreeMap::new();
+    for (root, pins) in pins_by_root {
+        let user_labels = labels_by_root.get(&root).cloned().unwrap_or_default();
+        if user_labels.len() > 1 {
+            bail!("KiCad schematic net has conflicting labels {user_labels:?}.");
+        }
+        let pin_names = pins
+            .iter()
+            .map(|(_, pin, _)| (*pin).to_string())
+            .collect::<BTreeSet<_>>();
+        let canonical = if let Some(label) = user_labels.iter().next() {
+            label.clone()
+        } else if pin_names.len() == 1 {
+            pin_names.iter().next().expect("checked one pin").clone()
+        } else if pin_names.iter().all(|name| is_ground_net_name(name)) {
+            "GND".to_string()
+        } else {
+            bail!(
+                "KiCad root net connects multiple sheet pins {pin_names:?} without an explicit root label."
+            );
+        };
+        if user_labels.is_empty() {
+            let point = pins
+                .first()
+                .map(|(_, _, point)| *point)
+                .expect("checked non-empty pins");
+            insert_label(&mut effective_labels, point, canonical.clone())?;
+        }
+        if !is_ground_net_name(&canonical)
+            && canonical_roots.insert(canonical.clone(), root).is_some()
+        {
+            bail!(
+                "KiCad disconnected root nets both resolve to sheet alias {canonical}; add distinct explicit root labels."
+            );
+        }
+        for (sheet, pin, _) in pins {
+            aliases.insert((sheet.to_string(), pin.to_string()), canonical.clone());
+        }
+    }
+    Ok((effective_labels, aliases))
 }
 
 fn build_nets(
