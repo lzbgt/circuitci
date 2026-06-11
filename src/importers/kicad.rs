@@ -167,11 +167,22 @@ struct AnalogScenarioMapping {
     components: Vec<String>,
     ground_net: String,
     #[serde(default)]
+    operating_conditions: OperatingConditionsYaml,
+    #[serde(default)]
     model_files: Vec<ModelFileYaml>,
     analysis: AnalysisYaml,
     stimuli: Vec<StimulusYaml>,
     probes: Vec<ProbeYaml>,
     assertions: Vec<AssertionYaml>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct OperatingConditionsYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ambient_temperature_c: Option<f64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    allow_pulse_ratings: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -277,6 +288,8 @@ struct AnalogYaml {
     backend: AnalogBackendYaml,
     netlist_source: String,
     generated: GeneratedNetlistYaml,
+    #[serde(skip_serializing_if = "OperatingConditionsYaml::is_default")]
+    operating_conditions: OperatingConditionsYaml,
     model_files: Vec<ModelFileYaml>,
     node_bindings: Vec<NodeBindingYaml>,
     pin_bindings: Vec<PinBindingYaml>,
@@ -284,6 +297,16 @@ struct AnalogYaml {
     stimuli: Vec<StimulusYaml>,
     probes: Vec<ProbeYaml>,
     assertions: Vec<AssertionYaml>,
+}
+
+impl OperatingConditionsYaml {
+    fn is_default(value: &Self) -> bool {
+        value.ambient_temperature_c.is_none() && !value.allow_pulse_ratings
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Serialize)]
@@ -750,6 +773,7 @@ fn build_analog_scenarios(
                         components: generated_components,
                         ground_net,
                     },
+                    operating_conditions: scenario.operating_conditions.clone(),
                     model_files,
                     node_bindings,
                     pin_bindings,

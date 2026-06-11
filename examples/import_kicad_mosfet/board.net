@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<export version="E">
+  <components>
+    <comp ref="VDD">
+      <value>50V</value>
+      <libsource lib="Simulation_SPICE" part="VSOURCE"/>
+    </comp>
+    <comp ref="VGATE">
+      <value>PULSE</value>
+      <libsource lib="Simulation_SPICE" part="VPULSE"/>
+    </comp>
+    <comp ref="RLOAD">
+      <value>0.45R</value>
+      <libsource lib="Device" part="R"/>
+    </comp>
+    <comp ref="M1">
+      <value>FDMC86184</value>
+      <libsource lib="Transistor_FET" part="FDMC86184"/>
+    </comp>
+  </components>
+  <nets>
+    <net code="1" name="+50V">
+      <node ref="VDD" pin="1"/>
+      <node ref="RLOAD" pin="1"/>
+    </net>
+    <net code="2" name="/SWITCHED">
+      <node ref="RLOAD" pin="2"/>
+      <node ref="M1" pin="1"/>
+    </net>
+    <net code="3" name="/GATE">
+      <node ref="VGATE" pin="1"/>
+      <node ref="M1" pin="2"/>
+    </net>
+    <net code="4" name="GND">
+      <node ref="VDD" pin="2"/>
+      <node ref="VGATE" pin="2"/>
+      <node ref="M1" pin="3"/>
+    </net>
+  </nets>
+</export>

@@ -123,6 +123,8 @@ Scenario generation remains fail-closed:
   metadata or selected model `simulation.spice` metadata,
 - every generated component whose selected model uses `simulation.spice` must
   have a matching SHA-pinned `model_files` entry,
+- `operating_conditions`, such as `allow_pulse_ratings`, are copied only when
+  explicitly declared in the mapping file,
 - `stimuli`, `probes`, and `assertions` must be non-empty,
 - node bindings and pin bindings are derived completely from the mapped Board
   IR endpoints,
@@ -132,6 +134,13 @@ Scenario generation remains fail-closed:
 KiCad component values such as `10k` or `100n` are never converted into SPICE
 primitive values unless the mapping file explicitly declares the corresponding
 `spice` block.
+
+MOSFET pulse/SOA scenarios can explicitly enable qualified pulse ratings:
+
+```yaml
+operating_conditions:
+  allow_pulse_ratings: true
+```
 
 ## Net Classification
 
@@ -157,6 +166,13 @@ Generated projects include `project.import_source: kicad_xml_netlist`. Runtime
 reports include a `SCHEMATIC_IMPORT_ONLY` limitation for that source, even when
 the connectivity project otherwise validates cleanly.
 
+See also:
+
+- `examples/import_kicad_xml/board.net`
+- `examples/import_kicad_xml/circuitci.kicad-map.yaml`
+- `examples/import_kicad_mosfet/board.net`
+- `examples/import_kicad_mosfet/circuitci.kicad-map.yaml`
+
 ## Fail-Closed Rules
 
 Import fails instead of guessing when it sees:
@@ -168,6 +184,9 @@ Import fails instead of guessing when it sees:
 - mapping pin names that do not exist on the imported component,
 - mapped components that change model without mapping every connected pin,
 - duplicate mapped model pin names on a component,
+- generated components whose selected model uses `simulation.spice` but whose
+  scenario omits a matching SHA-pinned `model_files` entry,
+- model files that are missing, unpinned, or whose SHA-256 does not match,
 - missing component refs or node pins,
 - XML parse errors,
 - a file with no importable components.

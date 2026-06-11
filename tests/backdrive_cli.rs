@@ -550,6 +550,117 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
 }
 
 #[test]
+fn import_kicad_netlist_maps_mosfet_soa_scenario() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("mapped_kicad_mosfet.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_mosfet/board.net",
+            "--mapping",
+            "examples/import_kicad_mosfet/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "mapped_kicad_mosfet",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analog = &imported["scenarios"][0]["analog"];
+    assert_eq!(
+        imported["board"]["components"]["M1"]["model"],
+        "vendor.onsemi.fdmc86184"
+    );
+    assert_eq!(
+        imported["board"]["components"]["M1"]["pins"]["D"],
+        "net_switched"
+    );
+    assert_eq!(imported["board"]["components"]["M1"]["pins"]["S"], "gnd");
+    assert!(imported["board"]["components"]["M1"]["pins"]["B"].is_null());
+    assert_eq!(
+        analog["generated"]["components"],
+        serde_json::json!(["VDD", "VGATE", "RLOAD", "M1"])
+    );
+    assert_eq!(analog["operating_conditions"]["allow_pulse_ratings"], true);
+    assert_eq!(
+        analog["model_files"][0]["sha256"],
+        "c22b2f13d52a4545933f3d97588e0d626562e4813bda3ead62f103bd64e19c01"
+    );
+    assert!(
+        analog["model_files"][0]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with("models/spice/onsemi/fdmc86184.lib")
+    );
+
+    let validate_out = dir.path().join("validate");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            output.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            validate_out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(validate_out.join("report.json")).unwrap())
+            .unwrap();
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(artifacts.iter().any(|artifact| {
+        artifact
+            .as_str()
+            .unwrap()
+            .ends_with("models/spice/onsemi/fdmc86184.lib")
+    }));
+    let generated_deck = artifacts
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with("generated_board.cir"))
+        .expect("generated deck artifact");
+    let generated_deck_text = std::fs::read_to_string(generated_deck).unwrap();
+    assert!(generated_deck_text.contains("M1 cci_m1_d net_gate 0 0 ONSEMI_FDMC86184"));
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        assert!(
+            report["failures"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|failure| {
+                    failure["id"] == "SPICE_OPERATING_LIMIT"
+                        && failure["measured"]["component"] == "M1"
+                        && failure["measured"]["rating"] == "SOA"
+                        && failure["measured"]["soa_margin_ratio"].as_f64().unwrap() > 1.0
+                        && failure["limit"]["soa_curve"] == "forward_bias_100us"
+                })
+        );
+    } else {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_netlist_rejects_duplicate_pin_assignment() {
     let dir = tempfile::tempdir().unwrap();
     let netlist = dir.path().join("bad.net");
