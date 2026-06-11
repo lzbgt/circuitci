@@ -94,6 +94,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
+- `SPICE_OPERATING_LIMIT`
 
 Reports must include `scenario`, `component` when applicable, measured timing values in `measured`, limits or expected states in `limit`, and concrete suggested fixes.
 
@@ -109,6 +110,14 @@ Stable rule detail keys:
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.
+
+`SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
+generated Board IR MOSFET/BJT operating probes exceed datasheet absolute
+maximum ratings. Stable measured keys include `component`, `rating`,
+`quantity`, `expression`, `max_abs`, and `unit`; stable limit keys include
+`rating`, `max_abs`, and `unit`. If a generated semiconductor model lacks the
+required absolute-maximum metadata, the same rule id is emitted with measured
+`component`, `model`, `quantity`, `missing_rating`, and `unit` keys.
 
 Declared executable checks with missing required inputs must produce a critical `VALIDATION_INPUT_MISSING` finding so the report cannot pass by skipping validation.
 

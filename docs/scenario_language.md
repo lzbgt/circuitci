@@ -89,6 +89,10 @@ Canonical executable check IDs in the first stage:
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
+`SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
+automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated
+Board IR device waveforms exceed datasheet absolute maximum ratings.
+
 ## Reset/Boot Scenario Shape
 
 `reset_boot` scenarios use explicit timing metadata until analog waveform extraction exists:

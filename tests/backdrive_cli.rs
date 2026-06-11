@@ -335,6 +335,59 @@ fn generated_mosfet_low_side_switch_passes_when_ngspice_available() {
 }
 
 #[test]
+fn generated_mosfet_overcurrent_fails_operating_limits() {
+    let report = run_validation("examples/bad_mosfet_overcurrent/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        let operating_failures: Vec<&Value> = failures
+            .iter()
+            .filter(|failure| failure["id"] == "SPICE_OPERATING_LIMIT")
+            .collect();
+        assert_eq!(operating_failures.len(), 2);
+        assert!(operating_failures.iter().any(|failure| {
+            failure["measured"]["rating"] == "ID_continuous"
+                && failure["measured"]["unit"] == "A"
+                && failure["measured"]["component"] == "M1"
+        }));
+        assert!(operating_failures.iter().any(|failure| {
+            failure["measured"]["rating"] == "PD"
+                && failure["measured"]["unit"] == "W"
+                && failure["measured"]["component"] == "M1"
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_bjt_overcurrent_fails_operating_limits() {
+    let report = run_validation("examples/bad_bjt_overcurrent/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        let operating_failures: Vec<&Value> = failures
+            .iter()
+            .filter(|failure| failure["id"] == "SPICE_OPERATING_LIMIT")
+            .collect();
+        assert!(
+            operating_failures.iter().any(|failure| {
+                failure["measured"]["rating"] == "IC"
+                    && failure["measured"]["unit"] == "A"
+                    && failure["measured"]["component"] == "Q1"
+            }),
+            "expected an SS8050 collector-current operating-limit failure"
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_pmos_high_side_switch_passes_when_ngspice_available() {
     let report = run_validation("examples/good_pmos_high_side_switch/project.yaml");
     if binary_available("ngspice") {
@@ -417,6 +470,45 @@ fn generated_mosfet_model_file_requires_sha_pin() {
     );
     assert!(report["waveforms"].as_array().unwrap().is_empty());
     assert_no_generated_solver_artifacts(&report);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_operating_limits_require_datasheet_ratings() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let report = run_validation_with_path(
+        "examples/bad_mosfet_missing_operating_ratings/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    assert_eq!(
+        failures
+            .iter()
+            .filter(|failure| failure["id"] == "SPICE_OPERATING_LIMIT")
+            .count(),
+        4
+    );
+    assert!(failures.iter().any(|failure| {
+        failure["measured"]["component"] == "M1"
+            && failure["measured"]["model"] == "fixture.no_rating_mosfet"
+            && failure["measured"]["quantity"] == "current"
+    }));
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("generated_board.cir"))
+    );
+    for suffix in ["circuitci_ngspice.cir", "ngspice.log", "waveform.csv"] {
+        assert!(
+            !artifacts
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with(suffix)),
+            "unexpected solver artifact {suffix} in {artifacts:#?}"
+        );
+    }
     assert_report_schema_valid(&report);
 }
 

@@ -1,12 +1,12 @@
 use crate::board_ir::{
     AnalogAggregation, AnalogAssertion, AnalogBackend, AnalogNetlistSource, AnalogProbe,
-    AnalogQuantity, AnalogRelation, Scenario,
+    AnalogQuantity, AnalogRelation, ComponentSpec, Scenario,
 };
-use crate::library::BoundBoard;
+use crate::library::{BoundBoard, ComponentModel, SpiceModelType};
 use crate::reports::Finding;
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::io::ErrorKind;
@@ -15,9 +15,9 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::SPICE_TRANSIENT_ANALYSIS;
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
+use super::{SPICE_OPERATING_LIMIT, SPICE_TRANSIENT_ANALYSIS};
 
 pub(super) fn validate_spice_transient(
     bound: &BoundBoard<'_>,
@@ -306,6 +306,11 @@ pub(super) fn validate_spice_transient(
             return;
         }
     };
+    let operating_limits = operating_limit_probes(bound, scenario);
+    if !operating_limits.metadata_findings.is_empty() {
+        findings.extend(operating_limits.metadata_findings);
+        return;
+    }
 
     let selected = select_backend(&analog.backend);
     let BackendSelection::Selected(backend) = selected else {
@@ -342,13 +347,21 @@ pub(super) fn validate_spice_transient(
         return;
     }
 
-    match run_ngspice(bound, scenario, backend, output, &source_netlist) {
+    match run_ngspice(
+        bound,
+        scenario,
+        backend,
+        output,
+        &source_netlist,
+        &operating_limits.probes,
+    ) {
         Ok(run) => {
             for artifact in &run.artifacts {
                 push_artifact(artifacts, artifact);
             }
             push_artifact(waveforms, &run.waveform);
             evaluate_waveform_assertions(scenario, &run, findings);
+            evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
         }
         Err(error) => {
             for artifact in &error.artifacts {
@@ -375,12 +388,27 @@ struct NgspiceRun {
     artifacts: Vec<PathBuf>,
     waveform: PathBuf,
     series: WaveformSeries,
+    user_probe_count: usize,
 }
 
 #[derive(Debug)]
 struct WaveformSeries {
     time_s: Vec<f64>,
     values_by_probe: Vec<Vec<f64>>,
+}
+
+struct OperatingLimitProbe {
+    component_id: String,
+    rating: String,
+    expression: String,
+    limit: f64,
+    unit: &'static str,
+    quantity: &'static str,
+}
+
+struct OperatingLimitProbes {
+    probes: Vec<OperatingLimitProbe>,
+    metadata_findings: Vec<Finding>,
 }
 
 struct NgspiceRunError {
@@ -394,6 +422,7 @@ fn run_ngspice(
     backend: &str,
     output: &Path,
     source_netlist: &Path,
+    operating_probes: &[OperatingLimitProbe],
 ) -> Result<NgspiceRun, NgspiceRunError> {
     let analog = scenario
         .analog
@@ -415,9 +444,14 @@ fn run_ngspice(
     let wrapper = run_dir.join("circuitci_ngspice.cir");
     let log = run_dir.join("ngspice.log");
     let waveform = run_dir.join("waveform.csv");
-    let wrapper_text =
-        build_ngspice_wrapper(bound, scenario, source_netlist, Path::new("waveform.csv"))
-            .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    let wrapper_text = build_ngspice_wrapper(
+        bound,
+        scenario,
+        source_netlist,
+        Path::new("waveform.csv"),
+        operating_probes,
+    )
+    .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(
             format!(
@@ -485,12 +519,14 @@ fn run_ngspice(
         ));
     }
     artifacts.push(waveform.clone());
-    let series = parse_waveform_csv(&waveform, analog.probes.len())
+    let probe_count = analog.probes.len() + operating_probes.len();
+    let series = parse_waveform_csv(&waveform, probe_count)
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     Ok(NgspiceRun {
         artifacts,
         waveform,
         series,
+        user_probe_count: analog.probes.len(),
     })
 }
 
@@ -667,6 +703,7 @@ fn build_ngspice_wrapper(
     scenario: &Scenario,
     netlist: &Path,
     waveform: &Path,
+    operating_probes: &[OperatingLimitProbe],
 ) -> Result<String, String> {
     let analog = scenario
         .analog
@@ -703,6 +740,10 @@ fn build_ngspice_wrapper(
     text.push_str("wrdata ");
     text.push_str(&waveform.to_string_lossy());
     for probe in &analog.probes {
+        text.push(' ');
+        text.push_str(&probe.expression);
+    }
+    for probe in operating_probes {
         text.push(' ');
         text.push_str(&probe.expression);
     }
@@ -812,6 +853,388 @@ fn parse_float(value: &str) -> Option<f64> {
         .parse::<f64>()
         .ok()
         .filter(|number| number.is_finite())
+}
+
+fn operating_limit_probes(bound: &BoundBoard<'_>, scenario: &Scenario) -> OperatingLimitProbes {
+    let Some(analog) = &scenario.analog else {
+        return OperatingLimitProbes {
+            probes: Vec::new(),
+            metadata_findings: Vec::new(),
+        };
+    };
+    if analog.netlist_source != AnalogNetlistSource::GeneratedFromBoard {
+        return OperatingLimitProbes {
+            probes: Vec::new(),
+            metadata_findings: Vec::new(),
+        };
+    }
+    let Some(generated) = &analog.generated else {
+        return OperatingLimitProbes {
+            probes: Vec::new(),
+            metadata_findings: Vec::new(),
+        };
+    };
+    let node_by_net: BTreeMap<&str, &str> = analog
+        .node_bindings
+        .iter()
+        .map(|binding| (binding.net.as_str(), binding.node.as_str()))
+        .collect();
+    let mut probes = Vec::new();
+    let mut metadata_findings = Vec::new();
+    for component_id in &generated.components {
+        let Some(component) = bound.project.board.components.get(component_id) else {
+            continue;
+        };
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        let Some(spice) = &model.simulation.spice else {
+            continue;
+        };
+        match spice.model_type {
+            SpiceModelType::MosfetN | SpiceModelType::MosfetP => {
+                push_mosfet_operating_probes(
+                    component_id,
+                    component,
+                    model,
+                    &node_by_net,
+                    &mut probes,
+                    &mut metadata_findings,
+                    &scenario.name,
+                );
+            }
+            SpiceModelType::BjtNpn | SpiceModelType::BjtPnp => {
+                push_bjt_operating_probes(
+                    component_id,
+                    component,
+                    model,
+                    &node_by_net,
+                    &mut probes,
+                    &mut metadata_findings,
+                    &scenario.name,
+                );
+            }
+            SpiceModelType::Diode | SpiceModelType::Subckt => {}
+        }
+    }
+    OperatingLimitProbes {
+        probes,
+        metadata_findings,
+    }
+}
+
+fn push_mosfet_operating_probes(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    node_by_net: &BTreeMap<&str, &str>,
+    probes: &mut Vec<OperatingLimitProbe>,
+    metadata_findings: &mut Vec<Finding>,
+    scenario_name: &str,
+) {
+    let (Some(drain), Some(gate), Some(source)) = (
+        spice_node_for_pin(component, node_by_net, "D"),
+        spice_node_for_pin(component, node_by_net, "G"),
+        spice_node_for_pin(component, node_by_net, "S"),
+    ) else {
+        return;
+    };
+    let current_sense = current_sense_name("M", component_id);
+    let vds = voltage_expression(drain, source);
+    let vgs = voltage_expression(gate, source);
+    if let Some((rating, limit)) = rating_abs(model, &["VDSS"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vds})"),
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VDSS"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["VGSS", "VGSS_continuous"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vgs})"),
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VGSS", "VGSS_continuous"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["ID_continuous", "ID"], "A") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs(I({current_sense}))"),
+            limit,
+            unit: "A",
+            quantity: "current",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "current",
+            "A",
+            &["ID_continuous", "ID"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["PD"], "W") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vds}*I({current_sense}))"),
+            limit,
+            unit: "W",
+            quantity: "power",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "power",
+            "W",
+            &["PD"],
+        ));
+    }
+}
+
+fn push_bjt_operating_probes(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    node_by_net: &BTreeMap<&str, &str>,
+    probes: &mut Vec<OperatingLimitProbe>,
+    metadata_findings: &mut Vec<Finding>,
+    scenario_name: &str,
+) {
+    let (Some(collector), Some(base), Some(emitter)) = (
+        spice_node_for_pin(component, node_by_net, "C"),
+        spice_node_for_pin(component, node_by_net, "B"),
+        spice_node_for_pin(component, node_by_net, "E"),
+    ) else {
+        return;
+    };
+    let current_sense = current_sense_name("Q", component_id);
+    let vce = voltage_expression(collector, emitter);
+    let vcb = voltage_expression(collector, base);
+    let veb = voltage_expression(emitter, base);
+    if let Some((rating, limit)) = rating_abs(model, &["VCEO"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vce})"),
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VCEO"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["VCBO"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vcb})"),
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VCBO"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["VEBO"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({veb})"),
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VEBO"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["IC"], "A") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs(I({current_sense}))"),
+            limit,
+            unit: "A",
+            quantity: "current",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "current",
+            "A",
+            &["IC"],
+        ));
+    }
+    if let Some((rating, limit)) = rating_abs(model, &["PD"], "W") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("abs({vce}*I({current_sense}))"),
+            limit,
+            unit: "W",
+            quantity: "power",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "power",
+            "W",
+            &["PD"],
+        ));
+    }
+}
+
+fn missing_operating_rating_finding(
+    component_id: &str,
+    model: &ComponentModel,
+    scenario_name: &str,
+    quantity: &'static str,
+    unit: &'static str,
+    keys: &[&str],
+) -> Finding {
+    let keys_text = keys.join(" or ");
+    let mut finding = Finding::critical(
+        SPICE_OPERATING_LIMIT,
+        scenario_name,
+        format!(
+            "Component {component_id} model {} is missing datasheet absolute maximum rating {keys_text} ({unit}) required for generated {quantity} operating-limit checks.",
+            model.component_id
+        ),
+    );
+    finding
+        .measured
+        .insert("component".to_string(), json!(component_id));
+    finding
+        .measured
+        .insert("model".to_string(), json!(model.component_id));
+    finding
+        .measured
+        .insert("quantity".to_string(), json!(quantity));
+    finding
+        .measured
+        .insert("missing_rating".to_string(), json!(keys));
+    finding.measured.insert("unit".to_string(), json!(unit));
+    finding
+        .limit
+        .insert("absolute_maximum_rating_required".to_string(), json!(true));
+    finding.suggested_fixes.push(
+        "Add datasheet-backed absolute maximum rating metadata for this generated semiconductor model before treating the simulation as physical evidence.".to_string(),
+    );
+    finding
+}
+
+fn voltage_expression(positive: &str, negative: &str) -> String {
+    if positive == "0" {
+        format!("-V({negative})")
+    } else if negative == "0" {
+        format!("V({positive})")
+    } else {
+        format!("V({positive},{negative})")
+    }
+}
+
+fn spice_node_for_pin<'a>(
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<&'a str, &'a str>,
+    pin: &str,
+) -> Option<&'a str> {
+    let net = component.pins.get(pin)?;
+    node_by_net.get(net.as_str()).copied()
+}
+
+fn rating_abs(model: &ComponentModel, keys: &[&str], unit: &str) -> Option<(String, f64)> {
+    let ratings = &model.datasheet.as_ref()?.absolute_maximum_ratings;
+    for key in keys {
+        let Some(rating) = ratings.get(*key) else {
+            continue;
+        };
+        if rating.unit.eq_ignore_ascii_case(unit) && rating.value.is_finite() {
+            let limit = rating.value.abs();
+            if limit > 0.0 {
+                return Some(((*key).to_string(), limit));
+            }
+        }
+    }
+    None
+}
+
+fn current_sense_name(device_prefix: &str, component_id: &str) -> String {
+    format!(
+        "VCCI_{}",
+        generated_element_name(device_prefix, component_id)
+    )
+}
+
+fn generated_element_name(prefix: &str, component_id: &str) -> String {
+    let mut suffix = String::new();
+    for character in component_id.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            suffix.push(character);
+        } else {
+            suffix.push('_');
+        }
+    }
+    if suffix.is_empty() {
+        suffix.push('X');
+    }
+    if suffix.starts_with(prefix) {
+        suffix
+    } else {
+        format!("{prefix}{suffix}")
+    }
 }
 
 struct AssertionThreshold {
@@ -925,6 +1348,69 @@ fn evaluate_waveform_assertions(
                 .push("Adjust the circuit or device model so the simulated waveform meets the declared physical threshold.".to_string());
             findings.push(finding);
         }
+    }
+}
+
+fn evaluate_operating_limits(
+    scenario: &Scenario,
+    run: &NgspiceRun,
+    operating_probes: &[OperatingLimitProbe],
+    findings: &mut Vec<Finding>,
+) {
+    for (probe_offset, probe) in operating_probes.iter().enumerate() {
+        let probe_index = run.user_probe_count + probe_offset;
+        let Some(values) = run.series.values_by_probe.get(probe_index) else {
+            continue;
+        };
+        let Some(max_abs) = values.iter().copied().reduce(f64::max) else {
+            continue;
+        };
+        if max_abs <= probe.limit {
+            continue;
+        }
+        let mut finding = Finding::critical(
+            SPICE_OPERATING_LIMIT,
+            &scenario.name,
+            format!(
+                "Component {} exceeded datasheet {}: maximum simulated {} was {:.6} {}, limit is {:.6} {}.",
+                probe.component_id,
+                probe.rating,
+                probe.quantity,
+                max_abs,
+                probe.unit,
+                probe.limit,
+                probe.unit
+            ),
+        );
+        finding
+            .measured
+            .insert("component".to_string(), json!(probe.component_id));
+        finding
+            .measured
+            .insert("rating".to_string(), json!(probe.rating));
+        finding
+            .measured
+            .insert("quantity".to_string(), json!(probe.quantity));
+        finding
+            .measured
+            .insert("expression".to_string(), json!(probe.expression));
+        finding
+            .measured
+            .insert("max_abs".to_string(), json!(max_abs));
+        finding
+            .measured
+            .insert("unit".to_string(), json!(probe.unit));
+        finding
+            .limit
+            .insert("rating".to_string(), json!(probe.rating));
+        finding
+            .limit
+            .insert("max_abs".to_string(), json!(probe.limit));
+        finding.limit.insert("unit".to_string(), json!(probe.unit));
+        finding.suggested_fixes.push(
+            "Reduce device stress, choose a higher-rated part, or update the model metadata only if the datasheet value is wrong.".to_string(),
+        );
+        findings.push(finding);
     }
 }
 

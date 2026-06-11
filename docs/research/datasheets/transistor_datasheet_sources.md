@@ -14,11 +14,16 @@ datasheet-fit placeholders. They are sufficient to exercise model provenance
 plumbing, but final physical acceptance requires vendor SPICE models, calibrated
 fits, or bench-validated parameters for the actual board population.
 
+The SS8050 and SS8550 metadata records `PD = 1 W` from the thermal
+characteristics tables at `TA = 25 C`; the same downloaded datasheets list
+`IC = +/-1.5 A`, `VCEO = +/-25 V`, `VCBO = +/-40 V`, and `VEBO = +/-6 V`.
+
 The current NDS7002A SPICE card in `models/spice/onsemi/nds7002a.lib` is also a
 datasheet-fit placeholder. Its metadata records the datasheet values used for
 simulation relevance:
 
 - `VDSS = 60 V`, `VGSS = +/-20 V`, `ID = 280 mA` continuous for NDS7002A.
+- `PD = 300 mW` for NDS7002A SOT-23 at `TA = 25 C`.
 - `VGS(th) = 1.0 V min, 2.1 V typ, 2.5 V max` at `VDS = VGS`, `ID = 250 uA`.
 - `RDS(on) = 1.2 ohm typ, 2.0 ohm max` at `VGS = 10 V`, `ID = 500 mA`.
 - `RDS(on) = 1.7 ohm typ, 3.0 ohm max` at `VGS = 5 V`, `ID = 50 mA`.
@@ -31,6 +36,7 @@ The BSS84 SPICE card in `models/spice/onsemi/bss84.lib` is a datasheet-fit
 placeholder for generated high-side PMOS switch validation:
 
 - `VDSS = -50 V`, `VGSS = +/-20 V`, `ID = -0.13 A` continuous.
+- `PD = 0.36 W` at `TA = 25 C`.
 - `VGS(th) = -0.8 V min, -1.7 V typ, -2.0 V max` at `VDS = VGS`,
   `ID = -1 mA`.
 - `RDS(on) = 1.2 ohm typ, 10 ohm max` at `VGS = -5 V`, `ID = -0.10 A`.

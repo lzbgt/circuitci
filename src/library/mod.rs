@@ -19,7 +19,21 @@ pub struct ComponentModel {
     pub rules: Vec<String>,
     #[serde(default)]
     pub behavior: Behavior,
+    #[serde(default)]
+    pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Datasheet {
+    #[serde(default)]
+    pub absolute_maximum_ratings: BTreeMap<String, DatasheetQuantity>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DatasheetQuantity {
+    pub value: f64,
+    pub unit: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

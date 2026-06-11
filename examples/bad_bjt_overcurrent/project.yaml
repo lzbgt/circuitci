@@ -1,0 +1,145 @@
+project:
+  name: bad_bjt_overcurrent
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VBASE:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: base_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 5
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 300
+          period_us: 1000
+    RBASE:
+      model: generic.analog.resistor
+      pins:
+        A: base_drive
+        B: q1_base
+      spice:
+        primitive: resistor
+        value_ohm: 330
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: vdd_5v
+        B: q1_collector
+      spice:
+        primitive: resistor
+        value_ohm: 2
+    Q1:
+      model: vendor.onsemi.ss8050
+      part_number: SS8050
+      pins:
+        C: q1_collector
+        B: q1_base
+        E: gnd
+  nets:
+    vdd_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    gnd:
+      kind: ground
+    base_drive:
+      kind: digital_or_analog
+    q1_base:
+      kind: digital_or_analog
+    q1_collector:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ss8050_low_side_switch_overcurrent
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VBASE
+          - RBASE
+          - RLOAD
+          - Q1
+      model_files:
+        - path: ../../models/spice/onsemi/ss8050_ss8550.lib
+          sha256: 8360ca1f35758e36a5a8dd5ea3cc41ea68f608ac8c000d048e15232565b12145
+      node_bindings:
+        - node: vdd
+          net: vdd_5v
+        - node: "0"
+          net: gnd
+        - node: base_drive
+          net: base_drive
+        - node: q1b
+          net: q1_base
+        - node: q1c
+          net: q1_collector
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: VDD
+            pin: P
+        - node: "0"
+          endpoint:
+            component: VDD
+            pin: N
+        - node: q1c
+          endpoint:
+            component: Q1
+            pin: C
+        - node: q1b
+          endpoint:
+            component: Q1
+            pin: B
+        - node: "0"
+          endpoint:
+            component: Q1
+            pin: E
+      analysis:
+        type: tran
+        stop_time_us: 500
+        max_step_us: 0.2
+      stimuli:
+        - name: base_turn_on
+          description: Base drive rises through 330 ohm into a very low collector load.
+      probes:
+        - name: collector
+          expression: V(q1c)
+        - name: collector_current
+          expression: abs(I(VDD))
+          quantity: current
+      assertions:
+        - name: collector_low_after_base_drive
+          probe: collector
+          at_us: 250
+          relation: below
+          threshold_v: 1.5
+        - name: collector_current_flows_after_turn_on
+          probe: collector_current
+          at_us: 250
+          relation: above
+          threshold_a: 1

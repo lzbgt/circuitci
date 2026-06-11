@@ -30,6 +30,9 @@ datasheet:
     IC:
       value: 1.5
       unit: A
+    PD:
+      value: 1
+      unit: W
   device_parameters:
     VCEsat:
       conditions: IC=800mA, IB=80mA, TC=25C

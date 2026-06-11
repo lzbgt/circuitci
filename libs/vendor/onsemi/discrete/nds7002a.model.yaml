@@ -33,6 +33,9 @@ datasheet:
     ID_pulsed:
       value: 1.5
       unit: A
+    PD:
+      value: 0.3
+      unit: W
   electrical_characteristics:
     VGSth:
       conditions: VDS=VGS, ID=250uA, TC=25C

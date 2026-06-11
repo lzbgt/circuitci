@@ -88,7 +88,13 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    `SPICE_TRANSIENT_ANALYSIS` finding.
 8. Evaluate waveform assertions. Failed assertions emit critical
    `SPICE_TRANSIENT_ANALYSIS` findings with measured and limit data.
-9. Passing physical analog acceptance requires no critical findings, no
+9. For generated Board IR decks, append datasheet operating-limit probes for
+   MOSFET/BJT voltage, current, and power ratings. Exceeding a rating emits a
+   critical `SPICE_OPERATING_LIMIT` finding with measured maximum absolute
+   transient stress and the datasheet limit. Missing usable MOSFET/BJT
+   absolute-maximum rating metadata also emits `SPICE_OPERATING_LIMIT` before
+   solver execution.
+10. Passing physical analog acceptance requires no critical findings, no
    blocking analog limitations, and suite-required waveform/artifact evidence.
 
 Until steps 5-7 are implemented for a real backend, CircuitCI must not present

@@ -130,5 +130,32 @@ artifacts.
   closed when the model does not explicitly allow body-to-source tying.
 - `examples/bad_mosfet_model_missing_sha` proves generated device models must
   be SHA-pinned in `analog.model_files`.
+- `examples/bad_mosfet_missing_operating_ratings` proves generated MOSFET/BJT
+  semiconductor models must carry usable absolute-maximum ratings before their
+  simulations can be accepted as physical evidence.
 - `examples/bad_subckt_wrong_pin_order` proves wrong subcircuit pin ordering can
   be detected by quantitative waveform assertions.
+- `examples/bad_mosfet_overcurrent` proves generated MOSFET drain current and
+  power can be checked automatically against datasheet absolute maximum ratings
+  without a hand-authored current-limit assertion.
+- `examples/bad_bjt_overcurrent` proves generated BJT collector current can be
+  checked automatically against datasheet absolute maximum ratings without a
+  hand-authored transistor-limit assertion.
+
+## Datasheet Operating Limits
+
+For generated Board IR decks, CircuitCI augments the ngspice waveform export
+with automatic probes derived from component-model
+`datasheet.absolute_maximum_ratings`:
+
+- MOSFET `VDSS`, `VGSS`/`VGSS_continuous`, `ID`/`ID_continuous`, and `PD`.
+- BJT `VCEO`, `VCBO`, `VEBO`, `IC`, and `PD`.
+
+Generated MOSFET/BJT models fail closed if these rating groups are absent or
+use the wrong unit, because a missing datasheet limit is not pass evidence. The
+operating-limit probes are evaluated over the full transient using maximum
+absolute value. Exceeding a rating emits `SPICE_OPERATING_LIMIT` with the
+component id, datasheet rating key, expression, measured maximum, unit, and
+limit. These checks are supplemental to scenario assertions: a circuit can pass
+its functional voltage/current assertions and still fail because the selected
+part is overstressed.

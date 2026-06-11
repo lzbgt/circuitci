@@ -148,22 +148,34 @@ fn generate_component_line(
             pin_node(component_id, component, node_by_net, "K")?,
             spice_model.model_name
         )),
-        SpiceModelType::BjtNpn | SpiceModelType::BjtPnp => Ok(format!(
-            "{} {} {} {} {}",
-            element_name("Q", component_id),
-            pin_node(component_id, component, node_by_net, "C")?,
-            pin_node(component_id, component, node_by_net, "B")?,
-            pin_node(component_id, component, node_by_net, "E")?,
-            spice_model.model_name
-        )),
+        SpiceModelType::BjtNpn | SpiceModelType::BjtPnp => {
+            let collector = pin_node(component_id, component, node_by_net, "C")?;
+            let sensed_collector = sense_node(component_id, "c");
+            Ok(format!(
+                "{} {} {} 0\n{} {} {} {} {}",
+                current_sense_name("Q", component_id),
+                collector,
+                sensed_collector,
+                element_name("Q", component_id),
+                sensed_collector,
+                pin_node(component_id, component, node_by_net, "B")?,
+                pin_node(component_id, component, node_by_net, "E")?,
+                spice_model.model_name
+            ))
+        }
         SpiceModelType::MosfetN | SpiceModelType::MosfetP => {
+            let drain = pin_node(component_id, component, node_by_net, "D")?;
+            let sensed_drain = sense_node(component_id, "d");
             let source = pin_node(component_id, component, node_by_net, "S")?;
             let body =
                 mosfet_body_node(component_id, component, node_by_net, spice_model, &source)?;
             Ok(format!(
-                "{} {} {} {} {} {}",
+                "{} {} {} 0\n{} {} {} {} {} {}",
+                current_sense_name("M", component_id),
+                drain,
+                sensed_drain,
                 element_name("M", component_id),
-                pin_node(component_id, component, node_by_net, "D")?,
+                sensed_drain,
                 pin_node(component_id, component, node_by_net, "G")?,
                 source,
                 body,
@@ -355,6 +367,27 @@ fn positive(value: Option<f64>, component_id: &str, field: &str) -> Result<f64, 
 }
 
 fn element_name(prefix: &str, component_id: &str) -> String {
+    let suffix = element_suffix(component_id);
+    if suffix.starts_with(prefix) {
+        suffix
+    } else {
+        format!("{prefix}{suffix}")
+    }
+}
+
+fn current_sense_name(device_prefix: &str, component_id: &str) -> String {
+    format!("VCCI_{}", element_name(device_prefix, component_id))
+}
+
+fn sense_node(component_id: &str, terminal: &str) -> String {
+    format!(
+        "cci_{}_{}",
+        element_suffix(component_id).to_ascii_lowercase(),
+        terminal
+    )
+}
+
+fn element_suffix(component_id: &str) -> String {
     let mut suffix = String::new();
     for character in component_id.chars() {
         if character.is_ascii_alphanumeric() || character == '_' {
@@ -366,11 +399,7 @@ fn element_name(prefix: &str, component_id: &str) -> String {
     if suffix.is_empty() {
         suffix.push('X');
     }
-    if suffix.starts_with(prefix) {
-        suffix
-    } else {
-        format!("{prefix}{suffix}")
-    }
+    suffix
 }
 
 fn validate_spice_token(label: &str, token: &str) -> Result<(), String> {
