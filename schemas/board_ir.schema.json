@@ -255,6 +255,14 @@
                 },
                 "additionalProperties": false
               },
+              "operating_conditions": {
+                "type": "object",
+                "properties": {
+                  "ambient_temperature_c": { "type": "number" },
+                  "allow_pulse_ratings": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              },
               "model_files": {
                 "type": "array",
                 "minItems": 1,

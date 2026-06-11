@@ -367,6 +367,28 @@ fn generated_mosfet_overcurrent_fails_operating_limits() {
 }
 
 #[test]
+fn generated_mosfet_high_ambient_derates_power_limit() {
+    let report = run_validation("examples/bad_mosfet_high_ambient_derating/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "PD"
+                && failure["measured"]["component"] == "M1"
+                && failure["measured"]["scenario_temperature_c"] == 100.0
+                && failure["limit"]["rating_value"] == 0.3
+                && failure["limit"]["effective_limit"] == 0.12
+                && failure["limit"]["derating_per_c"] == 0.0024
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_bjt_overcurrent_fails_operating_limits() {
     let report = run_validation("examples/bad_bjt_overcurrent/project.yaml");
     if binary_available("ngspice") {
@@ -390,6 +412,40 @@ fn generated_bjt_overcurrent_fails_operating_limits() {
         assert_eq!(report["result"], "fail");
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
     }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_diode_temperature_derating_requires_metadata() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let report = run_validation_with_path(
+        "examples/bad_diode_missing_derating/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SPICE_OPERATING_LIMIT");
+    assert_eq!(failure["measured"]["component"], "D1");
+    assert_eq!(failure["measured"]["rating"], "PD or Ptot");
+    assert_eq!(failure["limit"]["temperature_derating_required"], true);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_pulse_rating_requires_width_and_duty() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let report = run_validation_with_path(
+        "examples/bad_mosfet_unqualified_pulse_rating/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SPICE_OPERATING_LIMIT");
+    assert_eq!(failure["measured"]["component"], "M1");
+    assert_eq!(failure["measured"]["missing_pulse_rating"][0], "ID_pulsed");
+    assert_eq!(failure["limit"]["pulse_width_and_duty_required"], true);
     assert_report_schema_valid(&report);
 }
 

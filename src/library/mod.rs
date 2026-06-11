@@ -34,6 +34,20 @@ pub struct Datasheet {
 pub struct DatasheetQuantity {
     pub value: f64,
     pub unit: String,
+    #[serde(default)]
+    pub conditions: Option<String>,
+    #[serde(default)]
+    pub reference_temperature_c: Option<f64>,
+    #[serde(default)]
+    pub derate_above_c: Option<f64>,
+    #[serde(default)]
+    pub derating_per_c: Option<f64>,
+    #[serde(default)]
+    pub derating_basis: Option<String>,
+    #[serde(default)]
+    pub pulse_width_us: Option<f64>,
+    #[serde(default)]
+    pub duty_cycle_max: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

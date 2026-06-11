@@ -48,9 +48,10 @@ limit.
 `IF_AV` is treated as a conservative continuous/average current limit in this
 slice. That is intentionally fail-closed for board-level agent review, but it
 can false-fail short pulse cases that should instead be checked against
-datasheet pulse/surge limits such as `IFSM`. Future metadata should represent
-time-qualified pulse ratings explicitly rather than folding them into the
-continuous current check.
+datasheet pulse/surge limits such as `IFSM`. Time-qualified pulse and
+temperature derating metadata use the contract in
+`docs/temperature_pulse_operating_limits.md`; unqualified pulse ratings must
+not waive continuous current findings.
 
 ## Datasheet Source
 

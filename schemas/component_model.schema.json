@@ -309,7 +309,14 @@
       "required": ["value", "unit"],
       "properties": {
         "value": { "type": "number" },
-        "unit": { "type": "string", "minLength": 1 }
+        "unit": { "type": "string", "minLength": 1 },
+        "conditions": { "type": "string", "minLength": 1 },
+        "reference_temperature_c": { "type": "number" },
+        "derate_above_c": { "type": "number" },
+        "derating_per_c": { "type": "number", "exclusiveMinimum": 0 },
+        "derating_basis": { "type": "string", "minLength": 1 },
+        "pulse_width_us": { "type": "number", "exclusiveMinimum": 0 },
+        "duty_cycle_max": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
       },
       "additionalProperties": false
     }

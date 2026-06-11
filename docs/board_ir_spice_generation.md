@@ -68,6 +68,11 @@ component model's `simulation.spice` metadata. The scenario still declares
 `model_files` with SHA-256 pins so a physical result is tied to exact model
 artifacts.
 
+Generated analog scenarios may also declare `operating_conditions`. An ambient
+temperature enables datasheet power derating when the model provides linear
+derating metadata. `allow_pulse_ratings` only permits pulse-current waivers
+when the pulse rating declares both pulse width and duty cycle.
+
 ## Generation Rules
 
 1. Map Board IR nets to SPICE nodes using `node_bindings`.
@@ -96,6 +101,9 @@ artifacts.
 12. Emit generated deck, wrapper, solver log, and waveform as report artifacts.
 13. Keep all solver execution, convergence checks, waveform parsing, and
    assertion evaluation in the existing ngspice runner path.
+14. Evaluate generated semiconductor operating limits with any declared
+   scenario `operating_conditions`; fail closed when temperature or pulse
+   metadata is incomplete.
 
 ## Review Notes
 

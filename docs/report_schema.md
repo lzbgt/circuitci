@@ -115,11 +115,19 @@ Stable rule detail keys:
 generated Board IR MOSFET/BJT/diode operating probes exceed datasheet absolute
 maximum ratings. Stable measured keys include `component`, `rating`,
 `quantity`, `expression`, `max_abs`, `time_of_max_us`, and `unit`; stable limit
-keys include `rating`, `rating_value`, `max_abs`, and `unit`. `rating_value`
-preserves the signed datasheet value while `max_abs` is the absolute comparison
-limit. If a generated semiconductor model lacks the required absolute-maximum
-metadata, the same rule id is emitted with measured `component`, `model`,
-`quantity`, `missing_rating`, and `unit` keys.
+keys include `rating`, `rating_value`, `max_abs`, `effective_limit`, and
+`unit`. `rating_value` preserves the signed datasheet value while `max_abs` and
+`effective_limit` are the comparison limit after any scenario derating.
+Temperature-aware findings also include `scenario_temperature_c`,
+`derate_above_c`, and `derating_per_c`. Pulse-aware current findings include
+`pulse_duration_us`, `pulse_duty_cycle`, `pulse_rating`,
+`pulse_rating_value`, `pulse_max_abs`, `pulse_width_us`, and
+`pulse_duty_cycle_max` when pulse metadata was considered. If a generated
+semiconductor model lacks the required absolute-maximum metadata, the same rule
+id is emitted with measured `component`, `model`, `quantity`,
+`missing_rating`, and `unit` keys. Missing derating metadata uses
+`temperature_derating_required`; missing pulse qualifiers use
+`pulse_width_and_duty_required`.
 
 Declared executable checks with missing required inputs must produce a critical `VALIDATION_INPUT_MISSING` finding so the report cannot pass by skipping validation.
 

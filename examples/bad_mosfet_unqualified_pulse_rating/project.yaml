@@ -1,0 +1,126 @@
+project:
+  name: bad_mosfet_unqualified_pulse_rating
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vdd_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    VGATE:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: gate_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 5
+          delay_us: 10
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 20
+          period_us: 1000
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: vdd_5v
+        B: switched_node
+      spice:
+        primitive: resistor
+        value_ohm: 5
+    M1:
+      model: vendor.onsemi.nds7002a
+      part_number: NDS7002A
+      pins:
+        D: switched_node
+        G: gate_drive
+        S: gnd
+  nets:
+    vdd_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    gnd:
+      kind: ground
+    gate_drive:
+      kind: digital_or_analog
+    switched_node:
+      kind: digital_or_analog
+
+scenarios:
+  - name: nds7002a_unqualified_pulse_current
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - VGATE
+          - RLOAD
+          - M1
+      operating_conditions:
+        allow_pulse_ratings: true
+      model_files:
+        - path: ../../models/spice/onsemi/nds7002a.lib
+          sha256: 71ccf52bf0a04ef0966838122e80f6576153c858d51e3c0ec1298870c849487a
+      node_bindings:
+        - node: vdd
+          net: vdd_5v
+        - node: "0"
+          net: gnd
+        - node: gate
+          net: gate_drive
+        - node: sw
+          net: switched_node
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: VDD
+            pin: P
+        - node: "0"
+          endpoint:
+            component: VDD
+            pin: N
+        - node: gate
+          endpoint:
+            component: M1
+            pin: G
+        - node: sw
+          endpoint:
+            component: M1
+            pin: D
+        - node: "0"
+          endpoint:
+            component: M1
+            pin: S
+      analysis:
+        type: tran
+        stop_time_us: 80
+        max_step_us: 0.1
+      stimuli:
+        - name: short_gate_pulse
+          description: Current pulse is short, but the datasheet pulse rating lacks encoded width and duty qualifiers.
+      probes:
+        - name: switched_node
+          expression: V(sw)
+      assertions:
+        - name: drain_low_during_pulse
+          probe: switched_node
+          at_us: 25
+          relation: below
+          threshold_v: 1.5

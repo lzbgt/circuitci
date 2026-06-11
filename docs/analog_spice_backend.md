@@ -91,9 +91,13 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
 9. For generated Board IR decks, append datasheet operating-limit probes for
    MOSFET, BJT, and diode voltage/current/power ratings. Exceeding a rating
    emits a critical `SPICE_OPERATING_LIMIT` finding with measured maximum
-   transient stress and the datasheet limit. Missing usable absolute-maximum
-   rating metadata for these generated semiconductor models also emits
-   `SPICE_OPERATING_LIMIT` before solver execution.
+   transient stress and the effective datasheet limit. Scenario ambient
+   temperature derates power limits only when model metadata declares the
+   derating slope. Pulse current ratings are considered only when model
+   metadata declares pulse width and duty cycle. Missing usable
+   absolute-maximum, derating, or pulse metadata for these generated
+   semiconductor models also emits `SPICE_OPERATING_LIMIT` before solver
+   execution.
 10. Passing physical analog acceptance requires no critical findings, no
    blocking analog limitations, and suite-required waveform/artifact evidence.
 

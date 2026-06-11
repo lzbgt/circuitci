@@ -24,6 +24,11 @@ simulation relevance:
 
 - `VDSS = 60 V`, `VGSS = +/-20 V`, `ID = 280 mA` continuous for NDS7002A.
 - `PD = 300 mW` for NDS7002A SOT-23 at `TA = 25 C`.
+- The thermal table lists NDS7002A power derating above `TA = 25 C` as
+  `2.4 mW/C`; model metadata records this as `derating_per_c = 0.0024`.
+- `ID_pulsed = 1.5 A` is recorded, but the current model metadata does not
+  encode pulse width or duty cycle, so CircuitCI must not use it to waive
+  continuous-current overstress.
 - `VGS(th) = 1.0 V min, 2.1 V typ, 2.5 V max` at `VDS = VGS`, `ID = 250 uA`.
 - `RDS(on) = 1.2 ohm typ, 2.0 ohm max` at `VGS = 10 V`, `ID = 500 mA`.
 - `RDS(on) = 1.7 ohm typ, 3.0 ohm max` at `VGS = 5 V`, `ID = 50 mA`.
@@ -37,6 +42,11 @@ placeholder for generated high-side PMOS switch validation:
 
 - `VDSS = -50 V`, `VGSS = +/-20 V`, `ID = -0.13 A` continuous.
 - `PD = 0.36 W` at `TA = 25 C`.
+- The thermal table lists BSS84 power derating above `TA = 25 C` as
+  `2.88 mW/C`; model metadata records this as `derating_per_c = 0.00288`.
+- `ID_pulsed = -0.52 A` is recorded, but the current model metadata does not
+  encode pulse width or duty cycle, so CircuitCI must not use it to waive
+  continuous-current overstress.
 - `VGS(th) = -0.8 V min, -1.7 V typ, -2.0 V max` at `VDS = VGS`,
   `ID = -1 mA`.
 - `RDS(on) = 1.2 ohm typ, 10 ohm max` at `VGS = -5 V`, `ID = -0.10 A`.

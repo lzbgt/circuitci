@@ -236,6 +236,8 @@ pub struct AnalogScenario {
     pub netlist: Option<String>,
     #[serde(default)]
     pub generated: Option<AnalogGeneratedNetlist>,
+    #[serde(default)]
+    pub operating_conditions: AnalogOperatingConditions,
     pub model_files: Vec<AnalogModelFile>,
     pub node_bindings: Vec<AnalogNodeBinding>,
     pub pin_bindings: Vec<AnalogPinBinding>,
@@ -257,6 +259,14 @@ pub enum AnalogNetlistSource {
 pub struct AnalogGeneratedNetlist {
     pub components: Vec<String>,
     pub ground_net: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AnalogOperatingConditions {
+    #[serde(default)]
+    pub ambient_temperature_c: Option<f64>,
+    #[serde(default)]
+    pub allow_pulse_ratings: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -33,9 +33,15 @@ datasheet:
     ID_pulsed:
       value: -0.52
       unit: A
+      conditions: Pulse limit is recorded from the datasheet table; pulse width and duty cycle are not encoded, so the validator must not use it as a waiver.
     PD:
       value: 0.36
       unit: W
+      conditions: TA=25C
+      reference_temperature_c: 25
+      derate_above_c: 25
+      derating_per_c: 0.00288
+      derating_basis: 2.88 mW/C derating above 25C from the onsemi BSS84 datasheet thermal table.
   electrical_characteristics:
     VGSth:
       conditions: VDS=VGS, ID=-1mA, TA=25C
