@@ -47,6 +47,15 @@ enum Command {
         #[arg(long, default_value_t = 1.0)]
         max_step_us: f64,
     },
+    ImportKicadNetlist {
+        netlist: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long, default_value = "generic.schematic.imported_component")]
+        default_model: String,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -91,11 +100,24 @@ pub fn run() -> Result<()> {
             stop_time_us,
             max_step_us,
         }) => run_import_spice(deck, output, name, backend, stop_time_us, max_step_us),
+        Some(Command::ImportKicadNetlist {
+            netlist,
+            output,
+            name,
+            default_model,
+        }) => run_import_kicad_netlist(netlist, output, name, default_model),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
         }
     }
+}
+
+fn sanitized_project_name(path: &std::path::Path, fallback: &str) -> String {
+    path.file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or(fallback)
+        .replace(|character: char| !character.is_ascii_alphanumeric(), "_")
 }
 
 fn run_import_spice(
@@ -106,12 +128,7 @@ fn run_import_spice(
     stop_time_us: f64,
     max_step_us: f64,
 ) -> Result<()> {
-    let name = name.unwrap_or_else(|| {
-        deck.file_stem()
-            .and_then(|stem| stem.to_str())
-            .unwrap_or("imported_spice_project")
-            .replace(|character: char| !character.is_ascii_alphanumeric(), "_")
-    });
+    let name = name.unwrap_or_else(|| sanitized_project_name(&deck, "imported_spice_project"));
     crate::importers::spice::import_spice(&crate::importers::spice::SpiceImportOptions {
         input: deck.clone(),
         output: output.clone(),
@@ -123,6 +140,27 @@ fn run_import_spice(
     println!(
         "CircuitCI imported SPICE deck {} -> {}",
         deck.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_kicad_netlist(
+    netlist: PathBuf,
+    output: PathBuf,
+    name: Option<String>,
+    default_model: String,
+) -> Result<()> {
+    let name = name.unwrap_or_else(|| sanitized_project_name(&netlist, "imported_kicad_project"));
+    crate::importers::kicad::import_kicad_netlist(&crate::importers::kicad::KicadImportOptions {
+        input: netlist.clone(),
+        output: output.clone(),
+        name,
+        default_model,
+    })?;
+    println!(
+        "CircuitCI imported KiCad XML netlist {} -> {}",
+        netlist.display(),
         output.display()
     );
     Ok(())

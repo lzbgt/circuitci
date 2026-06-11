@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<export version="E">
+  <components>
+    <comp ref="R1">
+      <value>10k</value>
+      <libsource lib="Device" part="R"/>
+    </comp>
+    <comp ref="C1">
+      <value>100n</value>
+      <libsource lib="Device" part="C"/>
+    </comp>
+    <comp ref="U1">
+      <value>STM32L431VCT6</value>
+      <fields>
+        <field name="CircuitCI_Model">generic.schematic.imported_component</field>
+      </fields>
+      <libsource lib="MCU_ST_STM32L4" part="STM32L431VCTx"/>
+    </comp>
+  </components>
+  <nets>
+    <net code="1" name="+3V3">
+      <node ref="R1" pin="1"/>
+      <node ref="U1" pin="1"/>
+    </net>
+    <net code="2" name="/RESET_RC">
+      <node ref="R1" pin="2"/>
+      <node ref="C1" pin="1"/>
+      <node ref="U1" pin="7"/>
+    </net>
+    <net code="3" name="GND">
+      <node ref="C1" pin="2"/>
+      <node ref="U1" pin="8"/>
+    </net>
+  </nets>
+</export>

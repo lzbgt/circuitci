@@ -19,6 +19,8 @@ pub struct BoardProject {
 pub struct ProjectMetadata {
     pub name: String,
     pub version: String,
+    #[serde(default)]
+    pub import_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

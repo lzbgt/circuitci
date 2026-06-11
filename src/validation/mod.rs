@@ -45,6 +45,15 @@ pub struct ValidationOutcome {
 pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
     let mut findings = bound.findings.clone();
     let mut limitations = model_quality_limitations(bound);
+    if bound.project.project.import_source.as_deref() == Some("kicad_xml_netlist") {
+        limitations.push(Limitation {
+            id: "SCHEMATIC_IMPORT_ONLY".to_string(),
+            scope: "project".to_string(),
+            confidence: "high".to_string(),
+            blocking: false,
+            message: "This project was imported from KiCad generic XML connectivity. It is not physical simulation sign-off until explicit component models and validation scenarios are added.".to_string(),
+        });
+    }
     let mut artifacts = Vec::new();
     let mut waveforms = Vec::new();
     let mut added_backdrive_limitation = false;

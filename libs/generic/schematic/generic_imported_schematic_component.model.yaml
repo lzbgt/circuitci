@@ -1,0 +1,78 @@
+component_id: generic.schematic.imported_component
+version: 0.1.0
+category: imported_schematic_component
+ports:
+  "1": { kind: passive }
+  "2": { kind: passive }
+  "3": { kind: passive }
+  "4": { kind: passive }
+  "5": { kind: passive }
+  "6": { kind: passive }
+  "7": { kind: passive }
+  "8": { kind: passive }
+  "9": { kind: passive }
+  "10": { kind: passive }
+  "11": { kind: passive }
+  "12": { kind: passive }
+  "13": { kind: passive }
+  "14": { kind: passive }
+  "15": { kind: passive }
+  "16": { kind: passive }
+  "17": { kind: passive }
+  "18": { kind: passive }
+  "19": { kind: passive }
+  "20": { kind: passive }
+  "21": { kind: passive }
+  "22": { kind: passive }
+  "23": { kind: passive }
+  "24": { kind: passive }
+  "25": { kind: passive }
+  "26": { kind: passive }
+  "27": { kind: passive }
+  "28": { kind: passive }
+  "29": { kind: passive }
+  "30": { kind: passive }
+  "31": { kind: passive }
+  "32": { kind: passive }
+  "33": { kind: passive }
+  "34": { kind: passive }
+  "35": { kind: passive }
+  "36": { kind: passive }
+  "37": { kind: passive }
+  "38": { kind: passive }
+  "39": { kind: passive }
+  "40": { kind: passive }
+  "41": { kind: passive }
+  "42": { kind: passive }
+  "43": { kind: passive }
+  "44": { kind: passive }
+  "45": { kind: passive }
+  "46": { kind: passive }
+  "47": { kind: passive }
+  "48": { kind: passive }
+  "49": { kind: passive }
+  "50": { kind: passive }
+  "51": { kind: passive }
+  "52": { kind: passive }
+  "53": { kind: passive }
+  "54": { kind: passive }
+  "55": { kind: passive }
+  "56": { kind: passive }
+  "57": { kind: passive }
+  "58": { kind: passive }
+  "59": { kind: passive }
+  "60": { kind: passive }
+  "61": { kind: passive }
+  "62": { kind: passive }
+  "63": { kind: passive }
+  "64": { kind: passive }
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - kicad_xml_netlist_import
+    - schematic_connectivity_traceability
+  not_valid_for:
+    - analog_physics_without_datasheet_or_spice_model_mapping
+    - operating_limit_validation
+    - fabrication_signoff_without_model_replacement

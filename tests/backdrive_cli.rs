@@ -406,6 +406,90 @@ fn import_spice_rejects_malformed_element_line() {
 }
 
 #[test]
+fn import_kicad_netlist_generates_schema_valid_connectivity_project() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("imported_kicad.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_xml/board.net",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_kicad_xml",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_xml_netlist");
+    assert_eq!(imported["scenarios"], Value::Array(vec![]));
+    assert_eq!(
+        imported["board"]["components"]["R1"]["model"],
+        "generic.schematic.imported_component"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["7"],
+        "net_reset_rc"
+    );
+    assert_eq!(imported["board"]["nets"]["gnd"]["kind"], "ground");
+    assert_eq!(
+        imported["board"]["nets"]["net_3v3"]["kind"],
+        "digital_or_analog"
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_kicad_netlist_rejects_duplicate_pin_assignment() {
+    let dir = tempfile::tempdir().unwrap();
+    let netlist = dir.path().join("bad.net");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(
+        &netlist,
+        r#"
+<export>
+  <components><comp ref="R1"><value>10k</value></comp></components>
+  <nets>
+    <net code="1" name="A"><node ref="R1" pin="1"/></net>
+    <net code="2" name="B"><node ref="R1" pin="1"/></net>
+  </nets>
+</export>
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            netlist.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!output.exists());
+}
+
+#[test]
 fn generated_mosfet_low_side_switch_runs_with_embedded_ngspice_when_available() {
     let (_project_dir, project_path) =
         embedded_backend_project("examples/good_mosfet_low_side_switch/project.yaml");
