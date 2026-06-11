@@ -947,6 +947,222 @@ fn import_kicad_schematic_rejects_floating_label() {
 }
 
 #[test]
+fn import_kicad_schematic_rejects_label_without_name() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label (at 0 0 0)))
+"#,
+        "label is missing a label name",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_label_without_coordinates() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A"))
+"#,
+        "label NET_A is missing valid coordinates",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_global_label_without_name() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (global_label (at 0 0 0)))
+"#,
+        "global_label is missing a label name",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_global_label_without_coordinates() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (global_label "NET_A"))
+"#,
+        "global_label NET_A is missing valid coordinates",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_label_at_same_coordinate() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (label "NET_A" (at 0 0 0)))
+"#,
+        "duplicate label NET_A",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_conflicting_labels_at_same_coordinate() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (global_label "NET_B" (at 0 0 0)))
+"#,
+        "conflicting labels",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_conflicting_labels_on_one_net_group() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "NET_A" (at 0 0 0))
+  (label "NET_B" (at 10 0 0)))
+"#,
+        "net has conflicting labels",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_power_symbol_label_conflict() {
+    assert_bad_kicad_schematic_contains(
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1")))
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR01") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "OTHER" (at 0 0 0)))
+"##,
+        "conflicting labels",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_power_symbols_same_coordinate() {
+    assert_bad_kicad_schematic_contains(
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1")))
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR01") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR02") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1")))
+"##,
+        "duplicate label +3V3",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_conflicting_power_symbols_same_coordinate() {
+    assert_bad_kicad_schematic_contains(
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1")))
+    (symbol "power:+5V"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1")))
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR01") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "power:+5V") (at 0 0 0)
+    (property "Reference" "#PWR02") (property "Value" "+5V") (pin "1"))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1")))
+"##,
+        "conflicting labels",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_explicit_power_label() {
+    assert_bad_kicad_schematic_contains(
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1")))
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR01") (property "Value" "+3V3") (pin "1"))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "+3V3" (at 0 0 0)))
+"##,
+        "duplicate label +3V3",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_empty_power_symbol_value() {
+    assert_bad_kicad_schematic_contains(
+        r##"
+(kicad_sch
+  (lib_symbols
+    (symbol "power:+3V3"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "power:+3V3") (at 0 0 0)
+    (property "Reference" "#PWR01") (property "Value" "   ") (pin "1")))
+"##,
+        "power symbol #PWR01 is missing a non-empty Value label",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_accepts_explicit_no_connect_pin() {
     let dir = tempfile::tempdir().unwrap();
     let schematic_path = dir.path().join("no_connect.kicad_sch");

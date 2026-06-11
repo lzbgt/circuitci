@@ -44,6 +44,9 @@ struct Segment {
     b: Point,
 }
 
+type PowerLabel = (Point, String);
+type ParsedSymbols = (Vec<SymbolInstance>, Vec<PowerLabel>);
+
 #[derive(Debug)]
 struct UnionFind {
     parent: Vec<usize>,
@@ -81,8 +84,7 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
     }
     validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
-    let mut labels = parse_labels(root_list);
-    labels.extend(power_labels);
+    let labels = parse_labels(root_list, power_labels)?;
     let no_connects = parse_no_connects(root_list)?;
     let nets = build_nets(&symbols, &segments, &junctions, &labels, &no_connects)?;
 
@@ -175,9 +177,9 @@ fn collect_pin_geometry(list: &[Sexp], pins: &mut BTreeMap<String, PinGeometry>)
 fn parse_symbol_instances(
     root: &[Sexp],
     lib_pins: &BTreeMap<String, BTreeMap<String, PinGeometry>>,
-) -> Result<(Vec<SymbolInstance>, BTreeMap<Point, String>)> {
+) -> Result<ParsedSymbols> {
     let mut symbols = Vec::new();
-    let mut power_labels = BTreeMap::new();
+    let mut power_labels = Vec::new();
     for symbol in list_children(root, "symbol") {
         let lib_id = child_list(symbol, "lib_id")
             .and_then(|list| string_at(list, 1))
@@ -233,8 +235,14 @@ fn parse_symbol_instances(
             if pins.len() != 1 {
                 bail!("KiCad power symbol {refdes} must expose exactly one pin.");
             }
-            let label = value.clone().unwrap_or_else(|| refdes.clone());
-            power_labels.insert(*pins.values().next().unwrap(), label);
+            let label = value
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| {
+                    format!("KiCad power symbol {refdes} is missing a non-empty Value label.")
+                })?
+                .to_string();
+            power_labels.push((*pins.values().next().unwrap(), label));
             continue;
         }
         let fields = properties
@@ -295,19 +303,38 @@ fn parse_wires_and_junctions(root: &[Sexp]) -> Result<(Vec<Segment>, BTreeSet<Po
     Ok((segments, junctions))
 }
 
-fn parse_labels(root: &[Sexp]) -> BTreeMap<Point, String> {
+fn parse_labels(root: &[Sexp], power_labels: Vec<PowerLabel>) -> Result<BTreeMap<Point, String>> {
     let mut labels = BTreeMap::new();
+    for (point, name) in power_labels {
+        insert_label(&mut labels, point, name)?;
+    }
     for label_tag in ["label", "global_label"] {
         for label in list_children(root, label_tag) {
-            if let (Some(name), Some(at)) = (
-                string_at(label, 1),
-                child_list(label, "at").and_then(parse_at_point),
-            ) {
-                labels.insert(at, name.to_string());
-            }
+            let name = string_at(label, 1)
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| format!("KiCad {label_tag} is missing a label name."))?;
+            let at = child_list(label, "at")
+                .and_then(parse_at_point)
+                .with_context(|| {
+                    format!("KiCad {label_tag} {name} is missing valid coordinates.")
+                })?;
+            insert_label(&mut labels, at, name.to_string())?;
         }
     }
-    labels
+    Ok(labels)
+}
+
+fn insert_label(labels: &mut BTreeMap<Point, String>, point: Point, name: String) -> Result<()> {
+    if let Some(existing) = labels.get(&point) {
+        if existing == &name {
+            bail!("KiCad schematic has duplicate label {name} at one coordinate.");
+        }
+        bail!(
+            "KiCad schematic has conflicting labels {existing:?} and {name:?} at one coordinate."
+        );
+    }
+    labels.insert(point, name);
+    Ok(())
 }
 
 fn parse_no_connects(root: &[Sexp]) -> Result<BTreeSet<Point>> {

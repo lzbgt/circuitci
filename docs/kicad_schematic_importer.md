@@ -42,6 +42,9 @@ Unsupported constructs fail closed:
 - malformed, non-finite, or non-cardinal symbol rotations,
 - mirrored symbols,
 - missing library pin geometry,
+- malformed labels,
+- duplicate or conflicting labels at one coordinate,
+- conflicting labels on one connected net group,
 - malformed `no_connect` markers,
 - unconnected symbol pins without `no_connect` evidence,
 - `no_connect` markers that float, match multiple pins, or overlap live
