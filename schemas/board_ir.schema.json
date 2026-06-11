@@ -186,6 +186,124 @@
             },
             "additionalProperties": false
           },
+          "analog": {
+            "type": "object",
+            "required": [
+              "backend",
+              "netlist",
+              "model_files",
+              "node_bindings",
+              "pin_bindings",
+              "analysis",
+              "stimuli",
+              "probes",
+              "assertions"
+            ],
+            "properties": {
+              "backend": { "enum": ["auto", "ngspice", "xyce"] },
+              "netlist": { "type": "string", "minLength": 1 },
+              "model_files": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["path"],
+                  "properties": {
+                    "path": { "type": "string", "minLength": 1 },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "node_bindings": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["node", "net"],
+                  "properties": {
+                    "node": { "type": "string", "minLength": 1 },
+                    "net": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "pin_bindings": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["node", "endpoint"],
+                  "properties": {
+                    "node": { "type": "string", "minLength": 1 },
+                    "endpoint": { "$ref": "#/$defs/endpoint" }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "analysis": {
+                "type": "object",
+                "required": ["type", "stop_time_us", "max_step_us"],
+                "properties": {
+                  "type": { "enum": ["tran"] },
+                  "stop_time_us": { "type": "number", "exclusiveMinimum": 0 },
+                  "max_step_us": { "type": "number", "exclusiveMinimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "stimuli": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "description"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "description": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "probes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["name", "expression"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "expression": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "assertions": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "probe",
+                    "at_us",
+                    "relation",
+                    "threshold_v"
+                  ],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "probe": { "type": "string", "minLength": 1 },
+                    "at_us": { "type": "number", "minimum": 0 },
+                    "relation": { "enum": ["below", "above"] },
+                    "threshold_v": { "type": "number" }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
           "events": {
             "type": "array",
             "items": {
@@ -214,7 +332,7 @@
             }
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     }
   },

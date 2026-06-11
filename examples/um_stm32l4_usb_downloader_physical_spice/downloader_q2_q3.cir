@@ -1,0 +1,30 @@
+* UM STM32L4 USB downloader physical transient fixture.
+* This deck is intentionally generic SPICE input, not a CircuitCI behavioral
+* shortcut. Component values should be tightened with schematic extraction and
+* bench measurements before final hardware sign-off.
+
+.include "models/downloader_common.lib"
+.include "../../models/spice/onsemi/ss8050_ss8550.lib"
+
+.param VDD=3.3
+VDD vdd 0 {VDD}
+
+* Host control-line release sequence, active low style signals.
+VDTR dtr 0 PULSE(0 {VDD} 4.9m 20n 20n 10m 20m)
+VRTS rts 0 PULSE(0 {VDD} 5.0m 20n 20n 10m 20m)
+
+* Approximate board-level downloader network from the UM research note.
+R1 dtr q3b 1k
+R26 rts q2b 1k
+R27 boot0 0 1k
+R8 nrst vdd 10k
+D13 nrst q2c D1N4148
+Q2 q2c q2b 0 ONSEMI_SS8050
+Q3 boot0 q3b vdd ONSEMI_SS8550
+
+* Input/load capacitances make the release edge quantitatively observable.
+CBOOT boot0 0 20p
+CNRST nrst 0 50p
+
+.tran 1u 8m
+.end

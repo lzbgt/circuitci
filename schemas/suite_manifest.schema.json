@@ -38,6 +38,14 @@
               "additionalProperties": false
             }
           },
+          "required_artifacts": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "required_waveforms": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
           "allowed_blocking_limitations": {
             "type": "array",
             "items": { "type": "string", "minLength": 1 }

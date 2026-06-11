@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BoardProject {
@@ -11,6 +11,8 @@ pub struct BoardProject {
     pub board: Board,
     #[serde(default)]
     pub scenarios: Vec<Scenario>,
+    #[serde(skip)]
+    pub source_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -84,6 +86,8 @@ pub struct Scenario {
     pub bootloader: Option<BootloaderScenario>,
     #[serde(default)]
     pub protocol: Option<ProtocolScenario>,
+    #[serde(default)]
+    pub analog: Option<AnalogScenario>,
     #[serde(default)]
     pub events: Vec<ScenarioEvent>,
 }
@@ -189,6 +193,85 @@ pub struct ProtocolScenario {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct AnalogScenario {
+    pub backend: AnalogBackend,
+    pub netlist: String,
+    pub model_files: Vec<AnalogModelFile>,
+    pub node_bindings: Vec<AnalogNodeBinding>,
+    pub pin_bindings: Vec<AnalogPinBinding>,
+    pub analysis: AnalogTransientAnalysis,
+    pub stimuli: Vec<AnalogStimulus>,
+    pub probes: Vec<AnalogProbe>,
+    pub assertions: Vec<AnalogAssertion>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogBackend {
+    Auto,
+    Ngspice,
+    Xyce,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogTransientAnalysis {
+    #[serde(rename = "type")]
+    pub analysis_type: String,
+    #[serde(rename = "stop_time_us")]
+    pub stop_time_us: f64,
+    #[serde(rename = "max_step_us")]
+    pub max_step_us: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogModelFile {
+    pub path: String,
+    #[serde(default)]
+    pub sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogNodeBinding {
+    pub node: String,
+    pub net: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogPinBinding {
+    pub node: String,
+    pub endpoint: Endpoint,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogStimulus {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogProbe {
+    pub name: String,
+    pub expression: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogAssertion {
+    pub name: String,
+    pub probe: String,
+    #[serde(rename = "at_us")]
+    pub at_us: f64,
+    pub relation: AnalogRelation,
+    pub threshold_v: f64,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogRelation {
+    Below,
+    Above,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ScenarioEvent {
     #[serde(rename = "at_us")]
     pub at_us: f64,
@@ -227,7 +310,11 @@ pub struct Endpoint {
 
 pub fn load_project(path: &Path) -> anyhow::Result<BoardProject> {
     let text = fs::read_to_string(path)?;
-    let project = serde_yaml_ng::from_str(&text)?;
+    let mut project: BoardProject = serde_yaml_ng::from_str(&text)?;
+    project.source_dir = path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf();
     Ok(project)
 }
 

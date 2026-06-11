@@ -34,6 +34,10 @@ pub struct SuiteCase {
     #[serde(default)]
     pub required_findings: Vec<RequiredFinding>,
     #[serde(default)]
+    pub required_artifacts: Vec<String>,
+    #[serde(default)]
+    pub required_waveforms: Vec<String>,
+    #[serde(default)]
     pub allowed_blocking_limitations: Vec<String>,
 }
 
@@ -281,6 +285,10 @@ fn evaluate_case(
         .iter()
         .map(RequiredFinding::as_suite_expectation)
         .collect();
+    let required_artifacts = case.required_artifacts.clone();
+    let required_waveforms = case.required_waveforms.clone();
+    let mut matched_artifacts = Vec::new();
+    let mut matched_waveforms = Vec::new();
     let mut matched_findings = Vec::new();
     for required in &case.required_findings {
         let expected = required.as_suite_expectation();
@@ -292,6 +300,20 @@ fn evaluate_case(
                 required.severity.as_str(),
                 required.id
             ));
+        }
+    }
+    for artifact in &case.required_artifacts {
+        if report.artifacts.iter().any(|actual| actual == artifact) {
+            matched_artifacts.push(artifact.clone());
+        } else {
+            messages.push(format!("Required artifact {artifact} was not present."));
+        }
+    }
+    for waveform in &case.required_waveforms {
+        if report.waveforms.iter().any(|actual| actual == waveform) {
+            matched_waveforms.push(waveform.clone());
+        } else {
+            messages.push(format!("Required waveform {waveform} was not present."));
         }
     }
 
@@ -323,6 +345,10 @@ fn evaluate_case(
         result,
         required_findings,
         matched_findings,
+        required_artifacts,
+        matched_artifacts,
+        required_waveforms,
+        matched_waveforms,
         blocking_limitations,
         report: report_ref,
         messages,

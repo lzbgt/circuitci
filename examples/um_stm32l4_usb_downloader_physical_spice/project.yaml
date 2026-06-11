@@ -1,0 +1,172 @@
+project:
+  name: um_stm32l4_usb_downloader_physical_spice
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/st
+  - ../../libs/vendor/wch
+  - ../../libs/vendor/onsemi/discrete
+
+board:
+  components:
+    U1:
+      model: vendor.st.stm32l431vct6
+      part_number: STM32L431VCT6
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        VSS: gnd
+        NRST: nrst
+        BOOT0: boot0
+    U5:
+      model: vendor.wch.ch340c
+      part_number: CH340C
+      power_domains:
+        VCC: vdd_3v3
+      pins:
+        VCC: vdd_3v3
+        GND: gnd
+        DTR_N: ch340_dtr_n
+        RTS_N: ch340_rts_n
+    Q2:
+      model: vendor.onsemi.ss8050
+      part_number: SS8050
+      pins:
+        C: q2_collector
+        B: q2_base
+        E: gnd
+    Q3:
+      model: vendor.onsemi.ss8550
+      part_number: SS8550
+      pins:
+        C: boot0
+        B: q3_base
+        E: vdd_3v3
+  nets:
+    vdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    ch340_dtr_n:
+      kind: digital_or_analog
+    ch340_rts_n:
+      kind: digital_or_analog
+    q2_collector:
+      kind: digital_or_analog
+    q2_base:
+      kind: digital_or_analog
+    q3_base:
+      kind: digital_or_analog
+
+scenarios:
+  - name: q2_q3_downloader_release_transient
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist: downloader_q2_q3.cir
+      model_files:
+        - path: models/downloader_common.lib
+        - path: ../../models/spice/onsemi/ss8050_ss8550.lib
+      node_bindings:
+        - node: vdd
+          net: vdd_3v3
+        - node: "0"
+          net: gnd
+        - node: nrst
+          net: nrst
+        - node: boot0
+          net: boot0
+        - node: dtr
+          net: ch340_dtr_n
+        - node: rts
+          net: ch340_rts_n
+        - node: q2c
+          net: q2_collector
+        - node: q2b
+          net: q2_base
+        - node: q3b
+          net: q3_base
+      pin_bindings:
+        - node: vdd
+          endpoint:
+            component: U1
+            pin: VDD
+        - node: "0"
+          endpoint:
+            component: U1
+            pin: VSS
+        - node: nrst
+          endpoint:
+            component: U1
+            pin: NRST
+        - node: boot0
+          endpoint:
+            component: U1
+            pin: BOOT0
+        - node: dtr
+          endpoint:
+            component: U5
+            pin: DTR_N
+        - node: rts
+          endpoint:
+            component: U5
+            pin: RTS_N
+        - node: q2c
+          endpoint:
+            component: Q2
+            pin: C
+        - node: q2b
+          endpoint:
+            component: Q2
+            pin: B
+        - node: "0"
+          endpoint:
+            component: Q2
+            pin: E
+        - node: boot0
+          endpoint:
+            component: Q3
+            pin: C
+        - node: q3b
+          endpoint:
+            component: Q3
+            pin: B
+        - node: vdd
+          endpoint:
+            component: Q3
+            pin: E
+      analysis:
+        type: tran
+        stop_time_us: 8000
+        max_step_us: 1
+      stimuli:
+        - name: host_control_release
+          description: >
+            DTR_N releases at 4.9 ms and RTS_N releases at 5.0 ms in the SPICE
+            deck, matching the intended automated downloader app-boot release
+            sequence.
+      probes:
+        - name: boot0
+          expression: V(boot0)
+        - name: nrst
+          expression: V(nrst)
+      assertions:
+        - name: boot0_low_before_app_sample
+          probe: boot0
+          at_us: 5100
+          relation: below
+          threshold_v: 0.99
+        - name: nrst_released_before_app_sample
+          probe: nrst
+          at_us: 5100
+          relation: above
+          threshold_v: 2.31

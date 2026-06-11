@@ -1,0 +1,16 @@
+suite:
+  name: um_stm32l4_downloader_physical_acceptance
+  version: 0.1.0
+  validation_profile: iot_basic_v0
+  description: >
+    Physical analog acceptance gate for the UM STM32L4 USB downloader reset and
+    boot-control circuit. This suite must not pass unless a SPICE-class backend
+    runs the Q2/Q3/D13 transient deck and evaluates quantitative BOOT0/NRST
+    waveform assertions.
+cases:
+  - id: q2_q3_downloader_requires_spice_transient
+    project: ../examples/um_stm32l4_usb_downloader_physical_spice/project.yaml
+    expect: fail
+    required_findings:
+      - id: ANALOG_BACKEND_UNAVAILABLE
+        severity: critical

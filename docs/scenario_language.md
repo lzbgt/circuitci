@@ -64,6 +64,7 @@ Executable first-stage scenario types:
 - `serial_programming`
 - `firmware_update`
 - `control_line_sequence`
+- `analog_transient`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -86,6 +87,7 @@ Canonical executable check IDs in the first stage:
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
+- `SPICE_TRANSIENT_ANALYSIS`
 
 ## Reset/Boot Scenario Shape
 
@@ -276,3 +278,49 @@ scenarios:
 6. Compare derived states with reset polarity and required boot-mode straps.
 
 This is an abstract control-line timing check. It does not solve transistor storage, hidden RC networks, or physical CH340 modem-pin voltage truth tables.
+
+## Analog Transient Scenario Shape
+
+`analog_transient` scenarios require a SPICE-compatible deck, model artifacts,
+board-to-SPICE node bindings, and quantitative waveform assertions:
+
+```yaml
+scenarios:
+  - name: q2_q3_downloader_release_transient
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist: downloader_q2_q3.cir
+      model_files:
+        - path: models/downloader_common.lib
+      node_bindings:
+        - node: boot0
+          net: boot0
+      pin_bindings:
+        - node: boot0
+          endpoint:
+            component: U1
+            pin: BOOT0
+      analysis:
+        type: tran
+        stop_time_us: 8000
+        max_step_us: 1
+      stimuli:
+        - name: host_control_release
+          description: DTR_N and RTS_N release sequence encoded in the deck.
+      probes:
+        - name: boot0
+          expression: V(boot0)
+      assertions:
+        - name: boot0_low_before_app_sample
+          probe: boot0
+          at_us: 5100
+          relation: below
+          threshold_v: 0.99
+```
+
+This scenario type is the physical analog path. If no SPICE-class backend is
+available, or if the runtime cannot execute the deck and evaluate waveforms, the
+scenario must fail with a critical analog finding.

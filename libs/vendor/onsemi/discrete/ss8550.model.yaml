@@ -1,0 +1,76 @@
+component_id: vendor.onsemi.ss8550
+version: 0.1.0
+category: bjt_pnp
+ports:
+  C:
+    kind: passive
+  B:
+    kind: passive
+  E:
+    kind: passive
+datasheet:
+  manufacturer: onsemi
+  part_number: SS8550
+  package: TO-92-3
+  polarity: pnp
+  pinout:
+    "1": E
+    "2": B
+    "3": C
+  absolute_maximum_ratings:
+    VCBO:
+      value: -40
+      unit: V
+    VCEO:
+      value: -25
+      unit: V
+    VEBO:
+      value: -6
+      unit: V
+    IC:
+      value: -1.5
+      unit: A
+  device_parameters:
+    VCEsat:
+      conditions: IC=-800mA, IB=-80mA, TC=25C
+      max: -0.5
+      unit: V
+      simulation_relevance: Saturated high-side switch release behavior.
+    hFE:
+      conditions: VCE=-1V, IC=-100mA, TC=25C
+      min: 120
+      max: 400
+      unit: ratio
+      simulation_relevance: Base overdrive and saturation depth.
+    Cob:
+      conditions: VCB=-10V, IE=0, f=1MHz
+      typ: 10
+      unit: pF
+      simulation_relevance: Collector-base capacitance affects boot strap release edge.
+    transition_frequency:
+      conditions: VCE=-10V, IC=-50mA, f=100MHz
+      typ: 100
+      unit: MHz
+      simulation_relevance: Bounds high-frequency small-signal behavior.
+  documents:
+    - title: SS8550 - PNP Epitaxial Silicon Transistor
+      path: docs/research/datasheets/onsemi_ss8550-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/ss8550-d.pdf
+      sha256: 82c3aab9b43a6c887d8360cf1c57e3bb89d7a5437ff01b5d0b7368340c575063
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_SS8550
+    model_type: bjt_pnp
+    model_path: models/spice/onsemi/ss8050_ss8550.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Placeholder fit; replace with vendor or bench-calibrated model before physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - analog_transient_model_provenance
+    - saturated_switch_preliminary_simulation
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration

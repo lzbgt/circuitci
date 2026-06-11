@@ -25,5 +25,9 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` validates declared transaction traces and does not execute firmware, decode raw serial frames, recompute CRCs, emulate flash, or prove HIL behavior.
 - `CONTROL_LINE_RELEASE_SEQUENCE` validates declared line effects and release delays and does not solve transistor storage, hidden RC networks, or physical modem-pin voltage truth tables.
+- `analog_transient` scenarios are the only path intended for quantitative
+  voltage/current waveform proof. Until a SPICE-class backend run and waveform
+  parser are implemented and available, these scenarios fail with critical
+  analog findings rather than producing fake passes.
 
 Reports must include these limitations so automated agents and human users know when a pass does not imply full physical coverage.

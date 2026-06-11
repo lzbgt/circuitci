@@ -1378,9 +1378,14 @@ Add:
 
 Ensure the bad board fails and the fixed board passes.
 
-### Task J — Only then add analog simulation
+### Task J — Add physics-complete analog simulation
 
-Do not start with analog backend before the IR, reports, and rule pipeline work.
+The IR, reports, and rule pipeline now exist. The next core requirement is a
+generic SPICE-class analog path for quantitative voltage/current analysis. The
+engine must not fake analog physics with circuit-specific behavioral delays:
+physical acceptance needs backend execution, device models parameterized from
+datasheets or measurements, board-to-netlist bindings, waveform artifacts, and
+numeric assertions.
 
 ---
 
@@ -1909,4 +1914,3 @@ That is a very coherent and buildable product architecture.
 [1]: https://github.com/emilk/egui?utm_source=chatgpt.com "egui: an easy-to-use immediate mode GUI in Rust that runs ..."
 [2]: https://slint.dev/?utm_source=chatgpt.com "Slint | Declarative GUI for Rust, C++, JavaScript & Python"
 [3]: https://v2.tauri.app/?utm_source=chatgpt.com "Tauri 2.0 | Tauri"
-

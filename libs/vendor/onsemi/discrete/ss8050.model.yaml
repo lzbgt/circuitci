@@ -1,0 +1,76 @@
+component_id: vendor.onsemi.ss8050
+version: 0.1.0
+category: bjt_npn
+ports:
+  C:
+    kind: passive
+  B:
+    kind: passive
+  E:
+    kind: passive
+datasheet:
+  manufacturer: onsemi
+  part_number: SS8050
+  package: TO-92-3
+  polarity: npn
+  pinout:
+    "1": E
+    "2": B
+    "3": C
+  absolute_maximum_ratings:
+    VCBO:
+      value: 40
+      unit: V
+    VCEO:
+      value: 25
+      unit: V
+    VEBO:
+      value: 6
+      unit: V
+    IC:
+      value: 1.5
+      unit: A
+  device_parameters:
+    VCEsat:
+      conditions: IC=800mA, IB=80mA, TC=25C
+      max: 0.5
+      unit: V
+      simulation_relevance: Saturated switch release and reset clamp voltage.
+    hFE:
+      conditions: VCE=1V, IC=100mA, TC=25C
+      min: 120
+      max: 400
+      unit: ratio
+      simulation_relevance: Base overdrive and saturation depth.
+    Cob:
+      conditions: VCB=10V, IE=0, f=1MHz
+      typ: 9
+      unit: pF
+      simulation_relevance: Collector-base capacitance affects release edge.
+    transition_frequency:
+      conditions: VCE=10V, IC=50mA, f=100MHz
+      typ: 100
+      unit: MHz
+      simulation_relevance: Bounds high-frequency small-signal behavior.
+  documents:
+    - title: SS8050 - NPN Epitaxial Silicon Transistor
+      path: docs/research/datasheets/onsemi_ss8050-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/ss8050-d.pdf
+      sha256: 50d1896f9ea662a42c176077b3e87b81a0b561f128b8642bdc6804d3fafb1188
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_SS8050
+    model_type: bjt_npn
+    model_path: models/spice/onsemi/ss8050_ss8550.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Placeholder fit; replace with vendor or bench-calibrated model before physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - analog_transient_model_provenance
+    - saturated_switch_preliminary_simulation
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration

@@ -1,0 +1,5 @@
+* SPICE model placeholders for SS8050/SS8550 analog validation fixtures.
+* These cards must be replaced or calibrated before final physical sign-off.
+
+.model ONSEMI_SS8050 NPN(Is=1e-14 Bf=180 Vaf=100 Cje=20p Cjc=8p Tf=400n Tr=4u)
+.model ONSEMI_SS8550 PNP(Is=1e-14 Bf=160 Vaf=80 Cje=22p Cjc=10p Tf=450n Tr=5u)

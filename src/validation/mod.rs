@@ -1,3 +1,4 @@
+mod analog_spice;
 mod backdrive;
 mod common;
 mod control_line;
@@ -15,12 +16,14 @@ pub(super) const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 pub(super) const RESIDENT_BOOTLOADER_UPDATE_SEQUENCE: &str = "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE";
 pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQUENCE";
+pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "gpio_backdrive",
     "reset_boot",
     "serial_programming",
     "firmware_update",
     "control_line_sequence",
+    "analog_transient",
 ];
 
 pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
@@ -106,12 +109,16 @@ pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
                     }
                     control_line::validate_control_line_release(bound, scenario, &mut findings)
                 }
+                SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
+                    analog_spice::validate_spice_transient(bound, scenario, &mut findings)
+                }
                 GPIO_BACKDRIVE
                 | RESET_RELEASE_AFTER_POWER_VALID
                 | BOOT_STRAP_DEFINED
                 | UART_BOOTLOADER_SYNC
                 | RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
-                | CONTROL_LINE_RELEASE_SEQUENCE => findings.push(Finding::critical(
+                | CONTROL_LINE_RELEASE_SEQUENCE
+                | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,
                     format!(

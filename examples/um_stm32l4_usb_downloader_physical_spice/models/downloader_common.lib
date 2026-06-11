@@ -1,0 +1,5 @@
+* Common downloader analog models for the UM physical acceptance fixture.
+* Discrete transistor models live in models/spice/onsemi/ss8050_ss8550.lib and
+* are linked to datasheet-backed component model metadata.
+
+.model D1N4148 D(Is=4.352n Rs=0.6458 N=1.906 Cjo=0.764p M=0.03 Eg=1.11)

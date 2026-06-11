@@ -50,6 +50,10 @@
           "result",
           "required_findings",
           "matched_findings",
+          "required_artifacts",
+          "matched_artifacts",
+          "required_waveforms",
+          "matched_waveforms",
           "blocking_limitations",
           "report",
           "messages"
@@ -67,6 +71,22 @@
           "matched_findings": {
             "type": "array",
             "items": { "$ref": "#/$defs/finding_expectation" }
+          },
+          "required_artifacts": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "matched_artifacts": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "required_waveforms": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "matched_waveforms": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
           },
           "blocking_limitations": {
             "type": "array",

@@ -245,6 +245,20 @@ fn c51_control_line_release_uses_generic_reset_polarity() {
 }
 
 #[test]
+fn um_stm32l4_physical_spice_requires_backend() {
+    let report = run_validation("examples/um_stm32l4_usb_downloader_physical_spice/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Physical analog simulation requires ngspice or Xyce")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn example_projects_and_component_models_match_schemas() {
     let board_schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -323,6 +337,33 @@ fn um_stm32l4_acceptance_suite_passes() {
             .path()
             .join("cases/control_line_bad_release_detected/report.json")
             .exists()
+    );
+    assert_suite_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_physical_acceptance_suite_reports_solver_gap() {
+    let out_dir = tempfile::tempdir().unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            "suites/um_stm32l4_downloader_physical_acceptance.yaml",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["suite"], "um_stm32l4_downloader_physical_acceptance");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["cases"], 1);
+    assert_eq!(report["cases"][0]["actual"], "fail");
+    assert_eq!(
+        report["cases"][0]["matched_findings"][0]["id"],
+        "ANALOG_BACKEND_UNAVAILABLE"
     );
     assert_suite_report_schema_valid(&report);
 }
