@@ -335,6 +335,77 @@ fn generated_mosfet_low_side_switch_passes_when_ngspice_available() {
 }
 
 #[test]
+fn import_spice_generates_schema_valid_file_backed_project() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("imported.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            "examples/import_spice_rc/deck.cir",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_rc",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["name"], "import_spice_rc");
+    assert_eq!(imported["scenarios"][0]["analog"]["netlist_source"], "file");
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["assertions"],
+        Value::Array(vec![])
+    );
+    assert!(imported["board"]["components"].get("R1").is_some());
+    assert!(imported["board"]["components"].get("D1").is_some());
+    let model_file = &imported["scenarios"][0]["analog"]["model_files"][0];
+    assert!(
+        model_file["path"]
+            .as_str()
+            .unwrap()
+            .ends_with("examples/import_spice_rc/models/imported_switch.model")
+    );
+    assert_eq!(model_file["sha256"].as_str().unwrap().len(), 64);
+
+    let report = run_validation(output.to_str().unwrap());
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["infos"][0]["id"], "ANALOG_ASSERTIONS_ABSENT");
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_rejects_malformed_element_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let deck = dir.path().join("bad.cir");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(&deck, "R1 only_one_node\n.end\n").unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!output.exists());
+}
+
+#[test]
 fn generated_mosfet_low_side_switch_runs_with_embedded_ngspice_when_available() {
     let (_project_dir, project_path) =
         embedded_backend_project("examples/good_mosfet_low_side_switch/project.yaml");

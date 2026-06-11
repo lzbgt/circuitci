@@ -45,14 +45,11 @@ pub(super) fn validate_spice_transient(
         return;
     }
 
-    if analog.model_files.is_empty()
-        || analog.node_bindings.is_empty()
-        || analog.pin_bindings.is_empty()
-    {
+    if analog.node_bindings.is_empty() || analog.pin_bindings.is_empty() {
         validation_input_missing(
             findings,
             scenario,
-            "analog_transient requires model_files, node_bindings, and pin_bindings.",
+            "analog_transient requires node_bindings and pin_bindings.",
         );
         return;
     }
@@ -202,11 +199,11 @@ pub(super) fn validate_spice_transient(
         );
         return;
     }
-    if analog.probes.is_empty() || analog.assertions.is_empty() {
+    if analog.probes.is_empty() {
         validation_input_missing(
             findings,
             scenario,
-            "SPICE_TRANSIENT_ANALYSIS requires probes and quantitative waveform assertions.",
+            "SPICE_TRANSIENT_ANALYSIS requires at least one waveform probe.",
         );
         return;
     }
@@ -276,6 +273,18 @@ pub(super) fn validate_spice_transient(
         match assertion.relation {
             AnalogRelation::Below | AnalogRelation::Above => {}
         }
+    }
+    if analog.assertions.is_empty() {
+        let mut finding = Finding::info(
+            "ANALOG_ASSERTIONS_ABSENT",
+            &scenario.name,
+            "SPICE transient solved and exported probes, but no quantitative waveform assertions were declared.",
+        );
+        finding.limit.insert(
+            "required_for_signoff".to_string(),
+            json!("Add voltage/current/power assertions for the board behavior being verified."),
+        );
+        findings.push(finding);
     }
 
     let run_dir = output

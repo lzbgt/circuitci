@@ -265,7 +265,6 @@
               },
               "model_files": {
                 "type": "array",
-                "minItems": 1,
                 "items": {
                   "type": "object",
                   "required": ["path"],
@@ -343,7 +342,6 @@
               },
               "assertions": {
                 "type": "array",
-                "minItems": 1,
                 "items": {
                   "type": "object",
                   "required": [

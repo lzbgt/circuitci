@@ -1,0 +1,9 @@
+* Simple imported SPICE deck for CircuitCI import-spice coverage.
+.include models/imported_switch.model
+V1 in 0 DC 3.3
+R1 in out
++ 10k
+C1 out 0 100n
+D1 out 0 IMPORTED_DIODE
+.tran 1u 20u
+.end

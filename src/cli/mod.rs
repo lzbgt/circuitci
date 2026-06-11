@@ -1,7 +1,7 @@
 use crate::reports::write_suite_reports;
 use crate::suite::{run_suite, validate_and_write_project_report};
 use anyhow::{Result, bail};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -34,6 +34,38 @@ enum Command {
         #[arg(long, short = 'o', default_value = "out/suite")]
         output: PathBuf,
     },
+    ImportSpice {
+        deck: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long, value_enum, default_value_t = ImportBackend::Auto)]
+        backend: ImportBackend,
+        #[arg(long, default_value_t = 1000.0)]
+        stop_time_us: f64,
+        #[arg(long, default_value_t = 1.0)]
+        max_step_us: f64,
+    },
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+enum ImportBackend {
+    Auto,
+    Ngspice,
+    Xyce,
+    EmbeddedNgspice,
+}
+
+impl ImportBackend {
+    fn as_board_ir(&self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Ngspice => "ngspice",
+            Self::Xyce => "xyce",
+            Self::EmbeddedNgspice => "embedded_ngspice",
+        }
+    }
 }
 
 pub fn run() -> Result<()> {
@@ -51,11 +83,49 @@ pub fn run() -> Result<()> {
             no_open_ui: _,
         }) => run_validate(project, profile, output, json),
         Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
+        Some(Command::ImportSpice {
+            deck,
+            output,
+            name,
+            backend,
+            stop_time_us,
+            max_step_us,
+        }) => run_import_spice(deck, output, name, backend, stop_time_us, max_step_us),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
         }
     }
+}
+
+fn run_import_spice(
+    deck: PathBuf,
+    output: PathBuf,
+    name: Option<String>,
+    backend: ImportBackend,
+    stop_time_us: f64,
+    max_step_us: f64,
+) -> Result<()> {
+    let name = name.unwrap_or_else(|| {
+        deck.file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or("imported_spice_project")
+            .replace(|character: char| !character.is_ascii_alphanumeric(), "_")
+    });
+    crate::importers::spice::import_spice(&crate::importers::spice::SpiceImportOptions {
+        input: deck.clone(),
+        output: output.clone(),
+        name,
+        backend: backend.as_board_ir().to_string(),
+        stop_time_us,
+        max_step_us,
+    })?;
+    println!(
+        "CircuitCI imported SPICE deck {} -> {}",
+        deck.display(),
+        output.display()
+    );
+    Ok(())
 }
 
 fn run_validate(

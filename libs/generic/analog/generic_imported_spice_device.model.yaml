@@ -1,0 +1,31 @@
+component_id: generic.analog.imported_spice_device
+version: 0.1.0
+category: imported_spice_device
+ports:
+  A: { kind: passive }
+  B: { kind: passive }
+  C: { kind: passive }
+  D: { kind: passive }
+  E: { kind: passive }
+  G: { kind: passive }
+  K: { kind: passive }
+  N: { kind: passive }
+  P: { kind: passive }
+  S: { kind: passive }
+  P1: { kind: passive }
+  P2: { kind: passive }
+  P3: { kind: passive }
+  P4: { kind: passive }
+  P5: { kind: passive }
+  P6: { kind: passive }
+  P7: { kind: passive }
+  P8: { kind: passive }
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - file_backed_spice_deck_import
+    - board_ir_binding_placeholder
+  not_valid_for:
+    - datasheet_operating_limit_validation_without_explicit_model_mapping
+    - generated_board_ir_spice_generation
