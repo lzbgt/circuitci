@@ -144,3 +144,36 @@ pub fn assert_no_generated_solver_artifacts(report: &Value) {
         );
     }
 }
+
+pub fn assert_bad_kicad_schematic(schematic: &str) {
+    let output = bad_kicad_schematic_output(schematic);
+    assert!(!output.status.success());
+}
+
+pub fn assert_bad_kicad_schematic_contains(schematic: &str, expected: &str) {
+    let output = bad_kicad_schematic_output(schematic);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "expected stderr to contain {expected:?}, got:\n{stderr}"
+    );
+}
+
+pub fn bad_kicad_schematic_output(schematic: &str) -> std::process::Output {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("bad.kicad_sch");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(&schematic_path, schematic).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.exists());
+    result
+}
