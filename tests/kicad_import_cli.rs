@@ -383,6 +383,42 @@ fn import_kicad_schematic_rejects_unsupported_sheet() {
 }
 
 #[test]
+fn import_kicad_schematic_rejects_bus_wire() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (bus (pts (xy 0 0) (xy 10 0))))
+"#,
+        "does not support buses yet",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_bus_entry() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (bus_entry (at 10 10) (size 2.54 2.54)))
+"#,
+        "does not support buses yet",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_bus_alias() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (bus_alias "DATA" (members "D0" "D1")))
+"#,
+        "does not support buses yet",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_non_cardinal_symbol_rotation() {
     assert_bad_kicad_schematic_contains(
         r#"

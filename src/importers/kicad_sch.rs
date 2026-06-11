@@ -127,7 +127,7 @@ fn reject_unsupported_constructs(root: &[Sexp]) -> Result<()> {
             Some("hierarchical_label") => {
                 bail!("Native KiCad schematic import does not support hierarchical labels yet.")
             }
-            Some("bus") | Some("bus_entry") => {
+            Some("bus") | Some("bus_entry") | Some("bus_alias") => {
                 bail!("Native KiCad schematic import does not support buses yet.")
             }
             _ => {}
