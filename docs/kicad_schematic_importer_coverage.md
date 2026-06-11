@@ -29,6 +29,7 @@ same mapped generated-SPICE path used by the unrotated RC schematic.
 
 ## Non-Goals
 
-This slice does not add hierarchy, buses, non-cardinal symbol rotations, hidden
-power pins, or value-to-SPICE inference. Those remain unsupported until they can
-be modeled without guessing connectivity or physics.
+This slice does not add hierarchy, buses, non-cardinal symbol rotations, or
+hidden power pins. Passive value parsing is supported only when the mapping file
+explicitly requests strict `schematic_value` parsing for resistor or capacitor
+SPICE primitive values; no other value-to-SPICE inference is performed.

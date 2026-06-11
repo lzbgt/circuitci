@@ -85,6 +85,18 @@ fn import_kicad_schematic_applies_mapping_and_runs_generated_spice() {
         serde_json::json!(["V1", "R1", "D1", "C1"])
     );
     assert_eq!(
+        imported["board"]["components"]["R1"]["spice"]["value_ohm"],
+        10000.0
+    );
+    assert!(
+        (imported["board"]["components"]["C1"]["spice"]["value_f"]
+            .as_f64()
+            .unwrap()
+            - 100e-9)
+            .abs()
+            < 1e-18
+    );
+    assert_eq!(
         imported["scenarios"][0]["analog"]["model_files"][0]["sha256"],
         "dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504"
     );

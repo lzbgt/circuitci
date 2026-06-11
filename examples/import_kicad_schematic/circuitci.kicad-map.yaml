@@ -10,7 +10,7 @@ libsource_rules:
       "2": B
     spice:
       primitive: resistor
-      value_ohm: 10000.0
+      value_ohm_from: schematic_value
   - lib: Device
     part: C
     model: generic.analog.capacitor
@@ -19,7 +19,7 @@ libsource_rules:
       "2": B
     spice:
       primitive: capacitor
-      value_f: 0.0000001
+      value_f_from: schematic_value
 components:
   V1:
     model: generic.analog.dc_voltage_source

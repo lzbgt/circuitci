@@ -102,6 +102,20 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
         imported["board"]["components"]["V1"]["model"],
         "generic.analog.dc_voltage_source"
     );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["spice"]["value_ohm"],
+        10000.0
+    );
+    assert!(imported["board"]["components"]["R1"]["spice"]["value_ohm_from"].is_null());
+    assert!(
+        (imported["board"]["components"]["C1"]["spice"]["value_f"]
+            .as_f64()
+            .unwrap()
+            - 100e-9)
+            .abs()
+            < 1e-18
+    );
+    assert!(imported["board"]["components"]["C1"]["spice"]["value_f_from"].is_null());
     assert_eq!(imported["board"]["components"]["V1"]["spice"]["dc_v"], 3.3);
     assert_eq!(imported["board"]["nets"]["net_3v3"]["kind"], "power");
     assert_eq!(imported["board"]["nets"]["net_3v3"]["nominal_voltage"], 3.3);
@@ -331,6 +345,98 @@ nets:
 }
 
 #[test]
+fn import_kicad_netlist_rejects_passive_source_and_numeric_value() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+    spice:
+      primitive: resistor
+      value_ohm: 10000.0
+      value_ohm_from: schematic_value
+"#,
+        "cannot declare both spice.value_ohm and spice.value_ohm_from",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_wrong_passive_source_selector() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+    spice:
+      primitive: resistor
+      value_f_from: schematic_value
+"#,
+        "value_f_from only with primitive capacitor",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_wrong_passive_quantity_field() {
+    assert_bad_kicad_mapping_contains(
+        r#"
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+    spice:
+      primitive: resistor
+      value_f: 0.0000001
+"#,
+        "primitive resistor may declare only spice.value_ohm",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_annotated_resistor_value() {
+    assert_bad_kicad_mapping_for_input_contains(
+        &std::fs::read_to_string("examples/import_kicad_xml/board.net")
+            .unwrap()
+            .replace("<value>10k</value>", "<value>10k 1%</value>"),
+        r#"
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map: { "1": A, "2": B }
+    spice:
+      primitive: resistor
+      value_ohm_from: schematic_value
+"#,
+        "not a strict positive ohm value",
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_plain_numeric_capacitance_value() {
+    assert_bad_kicad_mapping_for_input_contains(
+        &std::fs::read_to_string("examples/import_kicad_xml/board.net")
+            .unwrap()
+            .replace("<value>100n</value>", "<value>100</value>"),
+        r#"
+libsource_rules:
+  - lib: Device
+    part: C
+    model: generic.analog.capacitor
+    pin_map: { "1": A, "2": B }
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
+"#,
+        "not a strict positive farad value",
+    );
+}
+
+#[test]
 fn import_kicad_netlist_rejects_generated_scenario_without_assertions() {
     assert_bad_kicad_mapping(
         r#"
@@ -468,8 +574,26 @@ fn assert_bad_kicad_mapping_contains(mapping: &str, expected: &str) {
     );
 }
 
+fn assert_bad_kicad_mapping_for_input_contains(input: &str, mapping: &str, expected: &str) {
+    let output = bad_kicad_mapping_output_for_input(input, mapping);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "expected stderr to contain {expected:?}, got:\n{stderr}"
+    );
+}
+
 fn bad_kicad_mapping_output(mapping: &str) -> std::process::Output {
+    bad_kicad_mapping_output_for_input(
+        &std::fs::read_to_string("examples/import_kicad_xml/board.net").unwrap(),
+        mapping,
+    )
+}
+
+fn bad_kicad_mapping_output_for_input(input: &str, mapping: &str) -> std::process::Output {
     let dir = tempfile::tempdir().unwrap();
+    let input_path = dir.path().join("board.net");
     let mapping_path = dir.path().join("bad.kicad-map.yaml");
     let output = dir.path().join("bad.project.yaml");
     let repo = std::env::current_dir().unwrap();
@@ -484,11 +608,12 @@ fn bad_kicad_mapping_output(mapping: &str) -> std::process::Output {
         )
     }
     .replace("../../models", &repo.join("models").to_string_lossy());
+    std::fs::write(&input_path, input).unwrap();
     std::fs::write(&mapping_path, mapping).unwrap();
     let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-netlist",
-            "examples/import_kicad_xml/board.net",
+            input_path.to_str().unwrap(),
             "--mapping",
             mapping_path.to_str().unwrap(),
             "--output",

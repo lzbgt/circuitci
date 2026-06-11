@@ -131,9 +131,11 @@ Scenario generation remains fail-closed:
 - the declared `ground_net` must map to a Board IR ground net and is bound to
   SPICE node `0`.
 
-KiCad component values such as `10k` or `100n` are never converted into SPICE
-primitive values unless the mapping file explicitly declares the corresponding
-`spice` block.
+KiCad component values such as `10k` or `100n` are converted into SPICE
+primitive values only when the mapping file explicitly requests strict passive
+value parsing with `value_ohm_from: schematic_value` or
+`value_f_from: schematic_value`. The resolved Board IR still contains numeric
+`value_ohm` or `value_f`, not the source selector.
 
 MOSFET pulse/SOA scenarios can explicitly enable qualified pulse ratings:
 

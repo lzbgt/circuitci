@@ -59,10 +59,10 @@ Unsupported constructs fail closed:
 ## Safety Contract
 
 The native parser performs connectivity extraction only. It does not infer
-component physics, SPICE primitive values, model selection, or simulation
-scenarios. After parsing, the result flows through the existing KiCad mapping
-and scenario code path, preserving SHA-pinned model checks,
-`SCHEMATIC_IMPORT_ONLY`, and all generated-SPICE fail-closed behavior.
+component physics, model selection, or simulation scenarios. After parsing, the
+result flows through the existing KiCad mapping and scenario code path,
+preserving SHA-pinned model checks, `SCHEMATIC_IMPORT_ONLY`, strict opt-in
+passive value parsing, and all generated-SPICE fail-closed behavior.
 
 ## Fixtures
 
