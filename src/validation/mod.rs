@@ -1,4 +1,8 @@
+mod analog_assertions;
+mod analog_operating_limits;
+mod analog_runner;
 mod analog_spice;
+mod analog_util;
 mod backdrive;
 mod common;
 mod control_line;

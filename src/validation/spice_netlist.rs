@@ -375,7 +375,7 @@ fn element_name(prefix: &str, component_id: &str) -> String {
     }
 }
 
-fn current_sense_name(device_prefix: &str, component_id: &str) -> String {
+pub(super) fn current_sense_name(device_prefix: &str, component_id: &str) -> String {
     format!("VCCI_{}", element_name(device_prefix, component_id))
 }
 
