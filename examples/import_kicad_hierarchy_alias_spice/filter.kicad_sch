@@ -1,0 +1,20 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+
+  (symbol (lib_id "Device:R") (at 10 0 0)
+    (property "Reference" "R1")
+    (property "Value" "10k")
+    (pin "1") (pin "2"))
+
+  (hierarchical_label "VIN" (at 0 0 0))
+  (hierarchical_label "FILTER_OUT" (at 20 0 0))
+
+  (wire (pts (xy 0 10) (xy 5 10)))
+  (hierarchical_label "GND" (at 0 10 0))
+)
