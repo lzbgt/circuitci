@@ -28,6 +28,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
   properties,
 - root `lib_symbols` pin definitions for symbol pin coordinates, including
   selected unit geometry for KiCad multi-unit symbols,
+- omitted hidden `power_in` library pins with non-empty pin names,
 - cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
   equivalent wrapped values,
 - `mirror x` and `mirror y` symbol transforms,
@@ -49,6 +50,7 @@ Unsupported constructs fail closed:
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,
 - missing or ambiguous library pin geometry,
+- hidden non-power pins or unnamed hidden power pins,
 - malformed labels,
 - duplicate or conflicting labels at one coordinate,
 - conflicting labels on one connected net group,

@@ -607,6 +607,83 @@ fn import_kicad_schematic_rejects_duplicate_multi_unit_pin_geometry() {
 }
 
 #[test]
+fn import_kicad_schematic_imports_hidden_power_pin_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("hidden_power.kicad_sch");
+    let output = dir.path().join("hidden_power.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:HiddenPower"
+      (pin input line (at -5 0 0) (length 2.54) (name "IN") (number "1"))
+      (pin output line (at 5 0 180) (length 2.54) (name "OUT") (number "2"))
+      (pin power_in line (at 0 -5 90) (length 2.54) hide (name "VCC") (number "8"))))
+  (symbol (lib_id "Device:HiddenPower") (at 10 10 0)
+    (property "Reference" "U1") (property "Value" "HiddenPower")
+    (pin "1") (pin "2"))
+  (label "IN" (at 5 10 0))
+  (label "OUT" (at 15 10 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["board"]["components"]["U1"]["pins"]["1"], "net_in");
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["2"],
+        "net_out"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["8"],
+        "net_vcc"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_hidden_non_power_pin() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:HiddenBad"
+      (pin input line (at 0 0 0) (length 2.54) hide (name "IN") (number "1"))))
+  (symbol (lib_id "Device:HiddenBad") (at 0 0 0)
+    (property "Reference" "U1") (property "Value" "HiddenBad") (pin "1"))
+  (label "IN" (at 0 0 0)))
+"#,
+        "hidden but has unsupported electrical type input",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_hidden_power_pin_without_name() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:HiddenBad"
+      (pin power_in line (at 0 0 0) (length 2.54) hide (number "8"))))
+  (symbol (lib_id "Device:HiddenBad") (at 0 0 0)
+    (property "Reference" "U1") (property "Value" "HiddenBad") (pin "8"))
+  (label "VCC" (at 0 0 0)))
+"#,
+        "hidden power pin 8 is missing a name",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_floating_label() {
     assert_bad_kicad_schematic_contains(
         r#"

@@ -21,6 +21,8 @@ struct Point {
 #[derive(Debug)]
 struct PinGeometry {
     at: Point,
+    name: Option<String>,
+    hidden: bool,
 }
 
 #[derive(Debug, Default)]
@@ -490,16 +492,41 @@ fn insert_pin_geometry(
     pin: &[Sexp],
     context: &str,
 ) -> Result<()> {
+    let electrical_type = string_at(pin, 1)
+        .with_context(|| format!("KiCad library symbol {context} pin is missing electrical type."))?
+        .to_string();
     let number = child_list(pin, "number")
         .and_then(|number| string_at(number, 1))
         .with_context(|| format!("KiCad library symbol {context} pin is missing a number."))?
         .to_string();
+    let name = child_list(pin, "name")
+        .and_then(|name| string_at(name, 1))
+        .map(str::to_string);
     let at = child_list(pin, "at")
         .and_then(parse_at_point)
         .with_context(|| {
             format!("KiCad library symbol {context} pin {number} is missing coordinates.")
         })?;
-    if pins.insert(number.clone(), PinGeometry { at }).is_some() {
+    let hidden = pin
+        .iter()
+        .any(|entry| matches!(entry, Sexp::Atom(atom) if atom == "hide"));
+    if hidden && electrical_type != "power_in" {
+        bail!(
+            "KiCad library symbol {context} pin {number} is hidden but has unsupported electrical type {electrical_type}."
+        );
+    }
+    if hidden
+        && name
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .is_none()
+    {
+        bail!("KiCad library symbol {context} hidden power pin {number} is missing a name.");
+    }
+    if pins
+        .insert(number.clone(), PinGeometry { at, name, hidden })
+        .is_some()
+    {
         bail!("KiCad library symbol {context} has duplicate pin geometry for pin {number}.");
     }
     Ok(())
@@ -552,12 +579,14 @@ fn parse_symbol_instances(
         };
         let pin_geometry = select_lib_symbol_pins(pin_geometry, unit, &refdes, &lib_id)?;
         let mut pins = BTreeMap::new();
+        let mut explicit_pin_numbers = BTreeSet::new();
         for pin in list_children(symbol, "pin") {
             let number = string_at(pin, 1)
                 .with_context(|| {
                     format!("KiCad schematic symbol {refdes} has a pin without a number.")
                 })?
                 .to_string();
+            explicit_pin_numbers.insert(number.clone());
             let Some(geometry) = pin_geometry.get(&number) else {
                 bail!(
                     "KiCad schematic symbol {refdes}.{number} has no matching lib_symbols pin geometry."
@@ -571,6 +600,28 @@ fn parse_symbol_instances(
                     y: at.y + rotated.y,
                 },
             );
+        }
+        for (number, geometry) in &pin_geometry {
+            if !geometry.hidden || explicit_pin_numbers.contains(number) {
+                continue;
+            }
+            let label = geometry
+                .name
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| {
+                    format!(
+                        "KiCad schematic symbol {refdes}.{number} hidden power pin has no name."
+                    )
+                })?
+                .to_string();
+            let rotated = transform_pin_offset(geometry.at, mirror, rotation);
+            let point = Point {
+                x: at.x + rotated.x,
+                y: at.y + rotated.y,
+            };
+            pins.insert(number.clone(), point);
+            power_labels.push((point, label));
         }
         if pins.is_empty() {
             bail!("KiCad schematic symbol {refdes} has no instance pins.");

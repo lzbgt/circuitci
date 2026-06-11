@@ -14,6 +14,7 @@ coverage:
 - unsupported root hierarchical labels and inferred bus constructs,
 - duplicate references, missing pin geometry, and multi-unit symbol pin
   selection,
+- hidden power-pin import and hidden-pin fail-closed cases,
 - label and power-symbol conflicts,
 - no-connect evidence,
 - wire junction semantics.
