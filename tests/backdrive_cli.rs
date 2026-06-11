@@ -335,6 +335,33 @@ fn generated_mosfet_low_side_switch_passes_when_ngspice_available() {
 }
 
 #[test]
+fn generated_pmos_high_side_switch_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_pmos_high_side_switch/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/onsemi/bss84.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_subckt_rc_delay_passes_when_ngspice_available() {
     let report = run_validation("examples/good_subckt_rc_delay/project.yaml");
     if binary_available("ngspice") {
@@ -356,6 +383,76 @@ fn generated_subckt_rc_delay_passes_when_ngspice_available() {
         );
     } else {
         assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_without_body_policy_fails_closed() {
+    let report = run_validation("examples/bad_mosfet_missing_body_policy/project.yaml");
+    assert_eq!(report["result"], "fail");
+    if binary_available("ngspice") {
+        assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+        assert!(
+            report["failures"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("body_pin_policy=tie_to_source_when_absent")
+        );
+        assert!(report["waveforms"].as_array().unwrap().is_empty());
+    } else {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_mosfet_model_file_requires_sha_pin() {
+    let report = run_validation("examples/bad_mosfet_model_missing_sha/project.yaml");
+    assert_eq!(report["result"], "fail");
+    if binary_available("ngspice") {
+        assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+        assert!(
+            report["failures"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("has no SHA-256 pin")
+        );
+        assert!(report["waveforms"].as_array().unwrap().is_empty());
+    } else {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_subckt_wrong_pin_order_fails_waveform_assertion() {
+    let report = run_validation("examples/bad_subckt_wrong_pin_order/project.yaml");
+    assert_eq!(report["result"], "fail");
+    if binary_available("ngspice") {
+        assert_eq!(report["failures"][0]["id"], "SPICE_TRANSIENT_ANALYSIS");
+        assert!(
+            report["failures"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("output_should_still_be_charging_after_four_us failed")
+        );
+        assert_eq!(report["failures"][0]["measured"]["output_unit"], "V");
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/rc_delay_subckt.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
     }
     assert_report_schema_valid(&report);
@@ -410,7 +507,11 @@ fn example_projects_and_component_models_match_schemas() {
             assert_yaml_file_valid(entry.path(), &board_validator);
         }
     }
-    for entry in WalkDir::new("libs").into_iter().filter_map(Result::ok) {
+    for entry in WalkDir::new("libs")
+        .into_iter()
+        .chain(WalkDir::new("examples").into_iter())
+        .filter_map(Result::ok)
+    {
         if entry.file_type().is_file()
             && entry
                 .file_name()

@@ -1,0 +1,91 @@
+project:
+  name: bad_subckt_wrong_pin_order
+  version: 0.1.0
+
+libraries:
+  - ./models
+  - ../../libs/generic/analog
+
+board:
+  components:
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: input
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 5
+          delay_us: 1
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 100
+          period_us: 200
+    XRC:
+      model: fixture.rc_delay_wrong_pin_order
+      pins:
+        IN: input
+        OUT: output
+        VSS: gnd
+  nets:
+    input:
+      kind: digital_or_analog
+    output:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: rc_subckt_wrong_pin_order_detected
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VIN
+          - XRC
+      model_files:
+        - path: ../../models/spice/generic/rc_delay_subckt.lib
+          sha256: 778707cb458ed7cc19a209f76d579e61d43014e15376c7bd5680f779d1baf1a1
+      node_bindings:
+        - node: in
+          net: input
+        - node: out
+          net: output
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: in
+          endpoint:
+            component: XRC
+            pin: IN
+        - node: out
+          endpoint:
+            component: XRC
+            pin: OUT
+        - node: "0"
+          endpoint:
+            component: XRC
+            pin: VSS
+      analysis:
+        type: tran
+        stop_time_us: 60
+        max_step_us: 0.1
+      stimuli:
+        - name: input_step
+          description: Input rises from 0 V to 5 V at 1 us.
+      probes:
+        - name: output
+          expression: V(out)
+      assertions:
+        - name: output_should_still_be_charging_after_four_us
+          probe: output
+          at_us: 5
+          relation: below
+          threshold_v: 2.0

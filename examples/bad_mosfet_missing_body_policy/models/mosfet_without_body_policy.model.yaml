@@ -1,0 +1,28 @@
+component_id: fixture.mosfet.without_body_policy
+version: 0.1.0
+category: mosfet_n
+ports:
+  D:
+    kind: passive
+  G:
+    kind: passive
+  S:
+    kind: passive
+  B:
+    kind: passive
+    required: false
+simulation:
+  spice:
+    model_name: ONSEMI_NDS7002A
+    model_type: mosfet_n
+    model_path: models/spice/onsemi/nds7002a.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Deliberately lacks body_pin_policy for fail-closed contract testing.
+model_quality:
+  source: estimated
+  confidence: low
+  intended_use:
+    - generated_spice_contract_negative_fixture
+  not_valid_for:
+    - physical_simulation

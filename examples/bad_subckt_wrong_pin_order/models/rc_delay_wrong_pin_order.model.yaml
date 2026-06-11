@@ -1,0 +1,26 @@
+component_id: fixture.rc_delay_wrong_pin_order
+version: 0.1.0
+category: subckt
+ports:
+  IN:
+    kind: passive
+  OUT:
+    kind: passive
+  VSS:
+    kind: passive
+simulation:
+  spice:
+    model_name: CIRCUITCI_RC_DELAY
+    model_type: subckt
+    model_path: models/spice/generic/rc_delay_subckt.lib
+    provenance: estimated
+    pin_order: [OUT, IN, VSS]
+    valid_operating_notes:
+      - Deliberately wrong pin order for fail-closed contract testing.
+model_quality:
+  source: generic
+  confidence: high
+  intended_use:
+    - generated_spice_contract_negative_fixture
+  not_valid_for:
+    - physical_component_signoff

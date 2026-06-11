@@ -114,3 +114,18 @@ artifacts.
   `simulation.spice` metadata or a declared model file hash fails.
 - Physical honesty: if a component model is low confidence or estimated, the
   existing limitation mechanism remains visible in the report.
+
+## Contract Fixtures
+
+- `examples/good_mosfet_low_side_switch` proves generated N-channel MOSFET `M`
+  device emission with a SHA-pinned datasheet-fit NDS7002A model.
+- `examples/good_pmos_high_side_switch` proves generated P-channel MOSFET `M`
+  device emission with a SHA-pinned datasheet-fit BSS84 model.
+- `examples/good_subckt_rc_delay` proves generated subcircuit `X` device
+  emission from explicit `simulation.spice.pin_order` metadata.
+- `examples/bad_mosfet_missing_body_policy` proves a three-pin MOSFET fails
+  closed when the model does not explicitly allow body-to-source tying.
+- `examples/bad_mosfet_model_missing_sha` proves generated device models must
+  be SHA-pinned in `analog.model_files`.
+- `examples/bad_subckt_wrong_pin_order` proves wrong subcircuit pin ordering can
+  be detected by quantitative waveform assertions.

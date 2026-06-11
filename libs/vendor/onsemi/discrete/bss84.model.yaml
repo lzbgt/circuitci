@@ -1,0 +1,93 @@
+component_id: vendor.onsemi.bss84
+version: 0.1.0
+category: mosfet_p
+ports:
+  D:
+    kind: passive
+  G:
+    kind: passive
+  S:
+    kind: passive
+  B:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: onsemi
+  part_number: BSS84
+  package: SOT-23 3L
+  polarity: p_channel_enhancement
+  pinout:
+    "1": G
+    "2": S
+    "3": D
+  absolute_maximum_ratings:
+    VDSS:
+      value: -50
+      unit: V
+    VGSS:
+      value: 20
+      unit: V
+    ID_continuous:
+      value: -0.13
+      unit: A
+    ID_pulsed:
+      value: -0.52
+      unit: A
+  electrical_characteristics:
+    VGSth:
+      conditions: VDS=VGS, ID=-1mA, TA=25C
+      min: -0.8
+      typ: -1.7
+      max: -2
+      unit: V
+    RDSon_5V:
+      conditions: VGS=-5V, ID=-0.10A, TA=25C
+      typ: 1.2
+      max: 10
+      unit: ohm
+  device_parameters:
+    Ciss:
+      conditions: VDS=-25V, VGS=0V, f=1MHz
+      typ: 73
+      unit: pF
+      simulation_relevance: Gate input capacitance affects digital-drive edge loading.
+    Coss:
+      conditions: VDS=-25V, VGS=0V, f=1MHz
+      typ: 10
+      unit: pF
+      simulation_relevance: Drain-node capacitance affects switch release and settling.
+    Crss:
+      conditions: VDS=-25V, VGS=0V, f=1MHz
+      typ: 5
+      unit: pF
+      simulation_relevance: Miller capacitance couples drain transitions back to the gate.
+    Qg:
+      conditions: VDS=-25V, ID=-0.10A, VGS=-5V
+      typ: 0.9
+      max: 1.3
+      unit: nC
+      simulation_relevance: Gate charge affects drive current and switching time.
+  documents:
+    - title: BSS84 - P-Channel Enhancement Mode Field-Effect Transistor
+      path: docs/research/datasheets/onsemi_bss84-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/bss84-d.pdf
+      sha256: 8531adc677bb06835cc4dee425b4fa2850be9e80d9b8a26d0ffe86c314c8463a
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_BSS84
+    model_type: mosfet_p
+    model_path: models/spice/onsemi/bss84.lib
+    provenance: datasheet_fit
+    body_pin_policy: tie_to_source_when_absent
+    valid_operating_notes:
+      - Level-1 datasheet fit for generated-deck plumbing and preliminary high-side switch checks.
+      - Replace with vendor or bench-calibrated model before final physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - mosfet_switch_preliminary_simulation
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration
