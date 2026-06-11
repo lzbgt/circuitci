@@ -342,11 +342,6 @@ fn reject_unsupported_constructs(root: &[Sexp], mode: SchematicMode) -> Result<(
             Some("hierarchical_label") if mode == SchematicMode::Root => {
                 bail!("Native KiCad schematic import does not support hierarchical labels yet.")
             }
-            Some("bus_alias") => {
-                bail!(
-                    "Native KiCad schematic import does not support bus aliases yet; expand aliases to scalar labels before import."
-                )
-            }
             _ => {}
         }
     }
@@ -598,6 +593,12 @@ fn validate_bus_graphics(
     wire_segments: &[Segment],
     labels: &BTreeMap<Point, String>,
 ) -> Result<()> {
+    let bus_aliases = parse_bus_aliases(root)?;
+    let alias_members = bus_aliases
+        .values()
+        .flat_map(|members| members.iter().cloned())
+        .collect::<BTreeSet<_>>();
+
     for bus in list_children(root, "bus") {
         let points = child_list(bus, "pts")
             .map(parse_points)
@@ -639,14 +640,79 @@ fn validate_bus_graphics(
             bail!("KiCad bus_entry is not attached to any scalar wire endpoint.");
         }
         for wire in touching_wires {
-            if !labels.iter().any(|(point, _)| wire.contains(*point)) {
+            let wire_labels = labels
+                .iter()
+                .filter_map(|(point, label)| wire.contains(*point).then_some(label))
+                .collect::<Vec<_>>();
+            if wire_labels.is_empty() {
                 bail!(
                     "KiCad bus_entry wire endpoint requires an explicit scalar label; bus expansion is not inferred."
                 );
             }
+            if !alias_members.is_empty() {
+                for label in wire_labels {
+                    if !alias_members.contains(label) {
+                        bail!(
+                            "KiCad bus_entry scalar label {label} is not declared by any bus_alias member."
+                        );
+                    }
+                }
+            }
         }
     }
     Ok(())
+}
+
+fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>> {
+    let mut aliases = BTreeMap::new();
+    let mut global_members = BTreeMap::new();
+    for alias in list_children(root, "bus_alias") {
+        let name = string_at(alias, 1)
+            .filter(|value| !value.trim().is_empty())
+            .with_context(|| "KiCad bus_alias is missing a name.")?
+            .to_string();
+        if aliases.contains_key(&name) {
+            bail!("KiCad schematic has duplicate bus_alias {name}.");
+        }
+        let members_list = child_list(alias, "members")
+            .with_context(|| format!("KiCad bus_alias {name} is missing members."))?;
+        let mut members = BTreeSet::new();
+        for member in members_list.iter().skip(1) {
+            let Sexp::Str(value) = member else {
+                bail!("KiCad bus_alias {name} has malformed member.");
+            };
+            let member = value.trim();
+            if member.is_empty() {
+                bail!("KiCad bus_alias {name} has an empty member.");
+            }
+            if is_unexpanded_bus_member(member) {
+                bail!(
+                    "KiCad bus_alias {name} member {member} is not a scalar label; expand ranges before import."
+                );
+            }
+            if !members.insert(member.to_string()) {
+                bail!("KiCad bus_alias {name} has duplicate member {member}.");
+            }
+            if let Some(existing_alias) = global_members.insert(member.to_string(), name.clone()) {
+                bail!(
+                    "KiCad bus_alias member {member} appears in both {existing_alias} and {name}."
+                );
+            }
+        }
+        if members.is_empty() {
+            bail!("KiCad bus_alias {name} must declare at least one member.");
+        }
+        aliases.insert(name, members);
+    }
+    Ok(aliases)
+}
+
+fn is_unexpanded_bus_member(member: &str) -> bool {
+    member.contains('[')
+        || member.contains(']')
+        || member.contains('{')
+        || member.contains('}')
+        || member.contains("..")
 }
 
 fn parse_junctions(root: &[Sexp]) -> Result<BTreeSet<Point>> {
