@@ -10,7 +10,7 @@ use sexp::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Point {
@@ -46,6 +46,26 @@ type PowerLabel = (Point, String);
 type ParsedSymbols = (Vec<SymbolInstance>, Vec<PowerLabel>);
 
 #[derive(Debug)]
+struct ParsedSchematic {
+    netlist: ParsedKicadNetlist,
+    sheets: Vec<SheetInstance>,
+    hierarchical_labels: BTreeSet<String>,
+}
+
+#[derive(Debug)]
+struct SheetInstance {
+    name: String,
+    file: PathBuf,
+    pins: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SchematicMode {
+    Root,
+    Child,
+}
+
+#[derive(Debug)]
 struct UnionFind {
     parent: Vec<usize>,
 }
@@ -61,6 +81,30 @@ pub fn import_kicad_schematic(options: &KicadImportOptions) -> Result<()> {
 }
 
 pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
+    let parsed = parse_schematic_file(path, SchematicMode::Root)?;
+    if parsed.sheets.is_empty() {
+        return Ok(parsed.netlist);
+    }
+    if parsed.sheets.len() > 1 {
+        bail!("Native KiCad schematic import currently supports only one hierarchical sheet.");
+    }
+    let sheet = parsed.sheets.first().expect("checked non-empty sheets");
+    let child = parse_schematic_file(&sheet.file, SchematicMode::Child)?;
+    if !child.sheets.is_empty() {
+        bail!("Native KiCad schematic import does not support nested sheets yet.");
+    }
+    if sheet.pins != child.hierarchical_labels {
+        bail!(
+            "KiCad sheet {} pins {:?} do not exactly match child hierarchical labels {:?}.",
+            sheet.name,
+            sheet.pins,
+            child.hierarchical_labels
+        );
+    }
+    merge_hierarchical_netlists(parsed.netlist, child.netlist, sheet)
+}
+
+fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchematic> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("Failed to read KiCad schematic {}", path.display()))?;
     let root = parse_sexp_document(&text)?;
@@ -71,10 +115,11 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
             path.display()
         );
     }
-    reject_unsupported_constructs(root_list)?;
+    reject_unsupported_constructs(root_list, mode)?;
+    let sheets = parse_sheets(root_list, path, mode)?;
     let lib_pins = parse_lib_symbol_pins(root_list)?;
     let (symbols, power_labels) = parse_symbol_instances(root_list, &lib_pins)?;
-    if symbols.is_empty() {
+    if symbols.is_empty() && sheets.is_empty() {
         bail!(
             "KiCad schematic {} contains no importable symbols.",
             path.display()
@@ -82,9 +127,18 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
     }
     validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
-    let labels = parse_labels(root_list, power_labels)?;
+    let sheet_pin_labels = sheets
+        .iter()
+        .flat_map(|sheet| sheet_pin_labels(root_list, sheet))
+        .collect::<Vec<_>>();
+    let (labels, hierarchical_labels) =
+        parse_labels(root_list, power_labels, sheet_pin_labels, mode)?;
     let no_connects = parse_no_connects(root_list)?;
-    let nets = build_nets(&symbols, &segments, &junctions, &labels, &no_connects)?;
+    let nets = if symbols.is_empty() {
+        Vec::new()
+    } else {
+        build_nets(&symbols, &segments, &junctions, &labels, &no_connects)?
+    };
 
     let mut components = BTreeMap::new();
     for symbol in symbols {
@@ -99,7 +153,11 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
             },
         );
     }
-    Ok(ParsedKicadNetlist { components, nets })
+    Ok(ParsedSchematic {
+        netlist: ParsedKicadNetlist { components, nets },
+        sheets,
+        hierarchical_labels,
+    })
 }
 
 fn validate_unique_refs(symbols: &[SymbolInstance]) -> Result<()> {
@@ -115,14 +173,56 @@ fn validate_unique_refs(symbols: &[SymbolInstance]) -> Result<()> {
     Ok(())
 }
 
-fn reject_unsupported_constructs(root: &[Sexp]) -> Result<()> {
+fn merge_hierarchical_netlists(
+    mut root: ParsedKicadNetlist,
+    child: ParsedKicadNetlist,
+    sheet: &SheetInstance,
+) -> Result<ParsedKicadNetlist> {
+    for (refdes, component) in child.components {
+        if root.components.contains_key(&refdes) {
+            bail!("KiCad hierarchy has duplicate component reference {refdes}.");
+        }
+        root.components.insert(refdes, component);
+    }
+
+    let mut nodes_by_name: BTreeMap<String, Vec<ParsedNode>> = BTreeMap::new();
+    for net in root.nets {
+        nodes_by_name.entry(net.name).or_default().extend(net.nodes);
+    }
+    for net in child.nets {
+        let name = if sheet.pins.contains(&net.name) || is_ground_net_name(&net.name) {
+            net.name
+        } else {
+            format!("{}_{}", sanitize_sheet_net_prefix(&sheet.name), net.name)
+        };
+        nodes_by_name.entry(name).or_default().extend(net.nodes);
+    }
+
+    let nets = nodes_by_name
+        .into_iter()
+        .enumerate()
+        .map(|(index, (name, nodes))| ParsedNet {
+            code: (index + 1).to_string(),
+            name,
+            nodes,
+        })
+        .collect();
+    Ok(ParsedKicadNetlist {
+        components: root.components,
+        nets,
+    })
+}
+
+fn reject_unsupported_constructs(root: &[Sexp], mode: SchematicMode) -> Result<()> {
     for item in root.iter().skip(1) {
         let Some(list) = maybe_list(item) else {
             continue;
         };
         match tag(list) {
-            Some("sheet") => bail!("Native KiCad schematic import does not support sheets yet."),
-            Some("hierarchical_label") => {
+            Some("sheet") if mode == SchematicMode::Child => {
+                bail!("Native KiCad schematic import does not support nested sheets yet.")
+            }
+            Some("hierarchical_label") if mode == SchematicMode::Root => {
                 bail!("Native KiCad schematic import does not support hierarchical labels yet.")
             }
             Some("bus") | Some("bus_entry") | Some("bus_alias") => {
@@ -132,6 +232,79 @@ fn reject_unsupported_constructs(root: &[Sexp]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn parse_sheets(
+    root: &[Sexp],
+    schematic_path: &Path,
+    mode: SchematicMode,
+) -> Result<Vec<SheetInstance>> {
+    let mut sheets = Vec::new();
+    for sheet in list_children(root, "sheet") {
+        if mode == SchematicMode::Child {
+            bail!("Native KiCad schematic import does not support nested sheets yet.");
+        }
+        let properties = parse_properties(sheet);
+        let name = properties
+            .get("Sheetname")
+            .filter(|value| !value.trim().is_empty())
+            .with_context(|| "KiCad sheet is missing Sheetname property.")?
+            .to_string();
+        let file = properties
+            .get("Sheetfile")
+            .filter(|value| !value.trim().is_empty())
+            .with_context(|| format!("KiCad sheet {name} is missing Sheetfile property."))?;
+        let file = resolve_sheet_file(schematic_path, file);
+        if !file.is_file() {
+            bail!("KiCad sheet {name} file {} does not exist.", file.display());
+        }
+        let mut pins = BTreeSet::new();
+        for pin in list_children(sheet, "pin") {
+            let name = string_at(pin, 1)
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| "KiCad sheet pin is missing a name.")?
+                .to_string();
+            if !pins.insert(name.clone()) {
+                bail!("KiCad sheet has duplicate pin {name}.");
+            }
+            child_list(pin, "at")
+                .and_then(parse_at_point)
+                .with_context(|| format!("KiCad sheet pin {name} is missing valid coordinates."))?;
+        }
+        if pins.is_empty() {
+            bail!("KiCad sheet {name} must declare at least one hierarchical pin.");
+        }
+        sheets.push(SheetInstance { name, file, pins });
+    }
+    Ok(sheets)
+}
+
+fn resolve_sheet_file(schematic_path: &Path, sheet_file: &str) -> PathBuf {
+    let path = Path::new(sheet_file);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        schematic_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(path)
+    }
+}
+
+fn sheet_pin_labels(root: &[Sexp], sheet: &SheetInstance) -> Vec<PowerLabel> {
+    list_children(root, "sheet")
+        .filter(|candidate| {
+            let properties = parse_properties(candidate);
+            properties.get("Sheetname") == Some(&sheet.name)
+        })
+        .flat_map(|candidate| {
+            list_children(candidate, "pin").filter_map(|pin| {
+                let name = string_at(pin, 1)?;
+                let at = child_list(pin, "at").and_then(parse_at_point)?;
+                Some((at, name.to_string()))
+            })
+        })
+        .collect()
 }
 
 fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, BTreeMap<String, PinGeometry>>> {
@@ -328,12 +501,24 @@ fn validate_junctions(segments: &[Segment], junctions: &BTreeSet<Point>) -> Resu
     Ok(())
 }
 
-fn parse_labels(root: &[Sexp], power_labels: Vec<PowerLabel>) -> Result<BTreeMap<Point, String>> {
+fn parse_labels(
+    root: &[Sexp],
+    power_labels: Vec<PowerLabel>,
+    sheet_pin_labels: Vec<PowerLabel>,
+    mode: SchematicMode,
+) -> Result<(BTreeMap<Point, String>, BTreeSet<String>)> {
     let mut labels = BTreeMap::new();
+    let mut hierarchical_labels = BTreeSet::new();
     for (point, name) in power_labels {
         insert_label(&mut labels, point, name)?;
     }
-    for label_tag in ["label", "global_label"] {
+    for (point, name) in sheet_pin_labels {
+        insert_label(&mut labels, point, name)?;
+    }
+    for label_tag in ["label", "global_label", "hierarchical_label"] {
+        if label_tag == "hierarchical_label" && mode != SchematicMode::Child {
+            continue;
+        }
         for label in list_children(root, label_tag) {
             let name = string_at(label, 1)
                 .filter(|value| !value.trim().is_empty())
@@ -343,10 +528,13 @@ fn parse_labels(root: &[Sexp], power_labels: Vec<PowerLabel>) -> Result<BTreeMap
                 .with_context(|| {
                     format!("KiCad {label_tag} {name} is missing valid coordinates.")
                 })?;
+            if label_tag == "hierarchical_label" && !hierarchical_labels.insert(name.to_string()) {
+                bail!("KiCad child schematic has duplicate hierarchical label {name}.");
+            }
             insert_label(&mut labels, at, name.to_string())?;
         }
     }
-    Ok(labels)
+    Ok((labels, hierarchical_labels))
 }
 
 fn insert_label(labels: &mut BTreeMap<Point, String>, point: Point, name: String) -> Result<()> {
@@ -651,6 +839,32 @@ fn split_lib_id(lib_id: &str) -> (Option<String>, Option<String>) {
         .split_once(':')
         .map(|(lib, part)| (Some(lib.to_string()), Some(part.to_string())))
         .unwrap_or((None, Some(lib_id.to_string())))
+}
+
+fn is_ground_net_name(name: &str) -> bool {
+    let normalized = name
+        .trim()
+        .trim_start_matches('/')
+        .replace([' ', '_'], "")
+        .to_ascii_lowercase();
+    normalized == "0" || normalized == "gnd" || normalized == "ground" || normalized.contains("gnd")
+}
+
+fn sanitize_sheet_net_prefix(value: &str) -> String {
+    let mut output = String::new();
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() {
+            output.push(character.to_ascii_lowercase());
+        } else {
+            output.push('_');
+        }
+    }
+    let trimmed = output.trim_matches('_');
+    if trimmed.is_empty() {
+        "sheet".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn quantize_coord(value: f64) -> i64 {

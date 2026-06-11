@@ -241,6 +241,209 @@ fn import_kicad_schematic_applies_rotated_symbol_pin_coordinates() {
 }
 
 #[test]
+fn import_kicad_schematic_flattens_one_child_sheet() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("child.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Simulation_SPICE:VSOURCE"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Simulation_SPICE:VSOURCE") (at 0 0 0)
+    (property "Reference" "V1") (property "Value" "3.3V") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (label "GND" (at 0 10 0))
+  (sheet (at 10 -10 0) (size 20 20)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "child.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:C"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:C") (at 0 0 0)
+    (property "Reference" "C1") (property "Value" "100n") (pin "1") (pin "2"))
+  (hierarchical_label "RC" (at 0 0 0))
+  (label "GND" (at 0 10 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(imported["board"]["components"]["V1"]["pins"]["1"], "net_rc");
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["1"], "net_rc");
+    assert_eq!(imported["board"]["components"]["V1"]["pins"]["2"], "gnd");
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["2"], "gnd");
+}
+
+#[test]
+fn import_kicad_schematic_rejects_sheet_pin_label_mismatch() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("child.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "child.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:C"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:C") (at 0 0 0)
+    (property "Reference" "C1") (property "Value" "100n") (pin "1"))
+  (hierarchical_label "OTHER" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("do not exactly match child hierarchical labels"));
+    assert!(!output.exists());
+}
+
+#[test]
+fn import_kicad_schematic_rejects_nested_sheet() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("child.kicad_sch");
+    let grandchild_path = dir.path().join("grandchild.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "child.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Nested")
+    (property "Sheetfile" "grandchild.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(&grandchild_path, "(kicad_sch (lib_symbols))").unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("does not support nested sheets yet"));
+    assert!(!output.exists());
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_refs_across_sheet() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("child.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (sheet (at 0 10 0) (size 20 20)
+    (property "Sheetname" "Filter")
+    (property "Sheetfile" "child.kicad_sch")
+    (pin "RC" input (at 20 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:C"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:C") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "100n") (pin "1"))
+  (hierarchical_label "RC" (at 0 0 0)))
+"#,
+    )
+    .unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("duplicate component reference R1"));
+    assert!(!output.exists());
+}
+
+#[test]
 fn import_kicad_schematic_accepts_wrapped_cardinal_rotation() {
     let dir = tempfile::tempdir().unwrap();
     let schematic_path = dir.path().join("wrapped_rotation.kicad_sch");
