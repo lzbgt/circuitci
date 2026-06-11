@@ -30,6 +30,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
   equivalent wrapped values,
 - straight horizontal or vertical wires,
+- explicit junctions for mid-span wire crossings,
 - local and global labels as net names,
 - optional KiCad power symbols treated as one-pin labeled symbols.
 - explicit schematic `no_connect` markers for intentionally open symbol pins.
@@ -45,6 +46,8 @@ Unsupported constructs fail closed:
 - malformed labels,
 - duplicate or conflicting labels at one coordinate,
 - conflicting labels on one connected net group,
+- malformed, duplicate, floating, or redundant junctions,
+- mid-span wire crossings without explicit junctions,
 - malformed `no_connect` markers,
 - unconnected symbol pins without `no_connect` evidence,
 - `no_connect` markers that float, match multiple pins, or overlap live

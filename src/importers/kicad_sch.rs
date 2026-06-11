@@ -295,12 +295,39 @@ fn parse_wires_and_junctions(root: &[Sexp]) -> Result<(Vec<Segment>, BTreeSet<Po
             segments.push(segment);
         }
     }
-    let junctions = list_children(root, "junction")
-        .filter_map(|junction| child_list(junction, "at"))
-        .filter_map(parse_at_point)
-        .collect();
+    let junctions = parse_junctions(root)?;
+    validate_junctions(&segments, &junctions)?;
     reject_unjunctioned_crossings(&segments, &junctions)?;
     Ok((segments, junctions))
+}
+
+fn parse_junctions(root: &[Sexp]) -> Result<BTreeSet<Point>> {
+    let mut junctions = BTreeSet::new();
+    for junction in list_children(root, "junction") {
+        let point = child_list(junction, "at")
+            .and_then(parse_at_point)
+            .with_context(|| "KiCad junction is missing valid coordinates.")?;
+        if !junctions.insert(point) {
+            bail!("KiCad schematic has duplicate junction at one coordinate.");
+        }
+    }
+    Ok(junctions)
+}
+
+fn validate_junctions(segments: &[Segment], junctions: &BTreeSet<Point>) -> Result<()> {
+    for junction in junctions {
+        let touches = segments
+            .iter()
+            .filter(|segment| segment.contains(*junction))
+            .count();
+        if touches == 0 {
+            bail!("KiCad junction is not attached to any wire.");
+        }
+        if touches == 1 {
+            bail!("KiCad junction touches only one wire segment.");
+        }
+    }
+    Ok(())
 }
 
 fn parse_labels(root: &[Sexp], power_labels: Vec<PowerLabel>) -> Result<BTreeMap<Point, String>> {

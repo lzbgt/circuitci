@@ -1415,7 +1415,7 @@ fn import_kicad_schematic_rejects_ambiguous_no_connect_after_rotation() {
 
 #[test]
 fn import_kicad_schematic_rejects_wire_crossing_without_junction() {
-    assert_bad_kicad_schematic(
+    assert_bad_kicad_schematic_contains(
         r#"
 (kicad_sch
   (lib_symbols
@@ -1427,6 +1427,299 @@ fn import_kicad_schematic_rejects_wire_crossing_without_junction() {
   (wire (pts (xy 0 -10) (xy 0 10)))
   (wire (pts (xy -10 0) (xy 10 0))))
 "#,
+        "crossing wires without an explicit junction",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_wire_crossing_with_junction() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("junction_crossing.kicad_sch");
+    let output = dir.path().join("junction_crossing.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2")))
+    (symbol "Device:TestPoint"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (symbol (lib_id "Device:TestPoint") (at 0 10 0)
+    (property "Reference" "TP1") (property "Value" "TP") (pin "1"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (wire (pts (xy 0 -10) (xy 0 10)))
+  (junction (at 0 0))
+  (label "NET_A" (at -10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["TP1"]["pins"]["1"],
+        "net_net_a"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_endpoint_touch_without_junction() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("endpoint_touch.kicad_sch");
+    let output = dir.path().join("endpoint_touch.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 0 0)))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "NET_A" (at -10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_a"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_endpoint_to_midspan_t_touch_without_junction() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("endpoint_midspan_touch.kicad_sch");
+    let output = dir.path().join("endpoint_midspan_touch.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2")))
+    (symbol "Device:TestPoint"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (symbol (lib_id "Device:TestPoint") (at 0 10 0)
+    (property "Reference" "TP1") (property "Value" "TP") (pin "1"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (wire (pts (xy 0 0) (xy 0 10)))
+  (label "NET_A" (at -10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["TP1"]["pins"]["1"],
+        "net_net_a"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_corner_junction() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("corner_junction.kicad_sch");
+    let output = dir.path().join("corner_junction.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 270) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 0 0)))
+  (wire (pts (xy 0 0) (xy 0 10)))
+  (junction (at 0 0))
+  (label "NET_A" (at -10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_a"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_collinear_overlap_junction() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("collinear_junction.kicad_sch");
+    let output = dir.path().join("collinear_junction.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 20 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (wire (pts (xy 0 0) (xy 20 0)))
+  (junction (at 0 0))
+  (label "NET_A" (at -10 0 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_a"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_junction() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (label "NET_A" (at -10 0 0))
+  (junction))
+"#,
+        "junction is missing valid coordinates",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_junction() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (wire (pts (xy 0 -10) (xy 0 10)))
+  (junction (at 0 0))
+  (junction (at 0 0))
+  (label "NET_A" (at -10 0 0)))
+"#,
+        "duplicate junction",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_floating_junction() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (label "NET_A" (at -10 0 0))
+  (junction (at 20 20)))
+"#,
+        "junction is not attached to any wire",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_one_segment_junction() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy -10 0) (xy 10 0)))
+  (label "NET_A" (at -10 0 0))
+  (junction (at 0 0)))
+"#,
+        "junction touches only one wire segment",
     );
 }
 
