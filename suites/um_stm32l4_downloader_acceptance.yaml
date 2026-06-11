@@ -1,0 +1,76 @@
+suite:
+  name: um_stm32l4_downloader_acceptance
+  version: 0.1.0
+  validation_profile: iot_basic_v0
+  description: >
+    Acceptance suite for USB-UART power, boot, ROM downloader, resident update,
+    and abstract control-line release behavior around the UM STM32L4 fixture.
+cases:
+  - id: bad_backdrive_detected
+    project: ../examples/bad_backdrive_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: GPIO_BACKDRIVE
+        severity: critical
+
+  - id: fixed_backdrive_passes
+    project: ../examples/good_backdrive_fixed_board/project.yaml
+    expect: pass
+
+  - id: bad_reset_release_detected
+    project: ../examples/bad_reset_release_board/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESET_RELEASE_AFTER_POWER_VALID
+        severity: critical
+
+  - id: bad_app_boot_strap_detected
+    project: ../examples/um_stm32l4_app_boot_bad_release/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_DEFINED
+        severity: critical
+
+  - id: fixed_app_boot_passes
+    project: ../examples/um_stm32l4_app_boot_fixed_release/project.yaml
+    expect: pass
+
+  - id: wrong_uart_wiring_detected
+    project: ../examples/um_stm32l4_rom_download_wrong_uart/project.yaml
+    expect: fail
+    required_findings:
+      - id: UART_BOOTLOADER_SYNC
+        severity: critical
+
+  - id: rom_downloader_entry_passes
+    project: ../examples/um_stm32l4_rom_download_entry/project.yaml
+    expect: pass
+
+  - id: resident_update_activate_passes
+    project: ../examples/um_stm32l4_resident_update_activate/project.yaml
+    expect: pass
+
+  - id: resident_update_missing_finish_detected
+    project: ../examples/um_stm32l4_resident_update_missing_finish/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+        severity: critical
+
+  - id: resident_update_oversize_chunk_detected
+    project: ../examples/um_stm32l4_resident_update_oversize_chunk/project.yaml
+    expect: fail
+    required_findings:
+      - id: RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+        severity: critical
+
+  - id: control_line_bad_release_detected
+    project: ../examples/um_stm32l4_control_line_app_release_bad/project.yaml
+    expect: fail
+    required_findings:
+      - id: CONTROL_LINE_RELEASE_SEQUENCE
+        severity: critical
+
+  - id: control_line_fixed_release_passes
+    project: ../examples/um_stm32l4_control_line_app_release_fixed/project.yaml
+    expect: pass

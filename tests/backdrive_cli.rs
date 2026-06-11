@@ -250,8 +250,11 @@ fn example_projects_and_component_models_match_schemas() {
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
     let model_schema: Value =
         serde_json::from_str(include_str!("../schemas/component_model.schema.json")).unwrap();
+    let suite_schema: Value =
+        serde_json::from_str(include_str!("../schemas/suite_manifest.schema.json")).unwrap();
     let board_validator = jsonschema::validator_for(&board_schema).unwrap();
     let model_validator = jsonschema::validator_for(&model_schema).unwrap();
+    let suite_validator = jsonschema::validator_for(&suite_schema).unwrap();
 
     for entry in WalkDir::new("examples").into_iter().filter_map(Result::ok) {
         if entry.file_type().is_file() && entry.file_name() == "project.yaml" {
@@ -268,6 +271,117 @@ fn example_projects_and_component_models_match_schemas() {
             assert_yaml_file_valid(entry.path(), &model_validator);
         }
     }
+    for entry in WalkDir::new("suites").into_iter().filter_map(Result::ok) {
+        if entry.file_type().is_file()
+            && entry
+                .file_name()
+                .to_str()
+                .is_some_and(|name| name.ends_with(".yaml"))
+        {
+            assert_yaml_file_valid(entry.path(), &suite_validator);
+        }
+    }
+}
+
+#[test]
+fn um_stm32l4_acceptance_suite_passes() {
+    let out_dir = tempfile::tempdir().unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            "suites/um_stm32l4_downloader_acceptance.yaml",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["suite"], "um_stm32l4_downloader_acceptance");
+    assert_eq!(report["validation_profile"], "iot_basic_v0");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["cases"], 12);
+    assert_eq!(report["summary"]["failed"], 0);
+    assert!(
+        out_dir
+            .path()
+            .join("cases/control_line_bad_release_detected/report.json")
+            .exists()
+    );
+    assert_suite_report_schema_valid(&report);
+}
+
+#[test]
+fn suite_expectation_mismatch_exits_nonzero_after_report() {
+    let suite_dir = tempfile::tempdir().unwrap();
+    let out_dir = tempfile::tempdir().unwrap();
+    let project_path = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_backdrive_fixed_board/project.yaml");
+    let manifest = suite_dir.path().join("mismatch.yaml");
+    std::fs::write(
+        &manifest,
+        format!(
+            "suite:\n  name: mismatch_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: expected_failure\n    project: {}\n    expect: fail\n    required_findings:\n      - id: GPIO_BACKDRIVE\n        severity: critical\n",
+            project_path.display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            manifest.to_str().unwrap(),
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["failed"], 1);
+    assert!(
+        report["cases"][0]["messages"][0]
+            .as_str()
+            .unwrap()
+            .contains("Expected project result fail")
+    );
+    assert_suite_report_schema_valid(&report);
+}
+
+#[test]
+fn suite_rejects_duplicate_case_ids() {
+    let suite_dir = tempfile::tempdir().unwrap();
+    let out_dir = tempfile::tempdir().unwrap();
+    let project_path = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_backdrive_fixed_board/project.yaml");
+    let manifest = suite_dir.path().join("duplicate.yaml");
+    std::fs::write(
+        &manifest,
+        format!(
+            "suite:\n  name: duplicate_suite\n  version: 0.1.0\n  validation_profile: iot_basic_v0\ncases:\n  - id: same\n    project: {}\n    expect: pass\n  - id: same\n    project: {}\n    expect: pass\n",
+            project_path.display(),
+            project_path.display()
+        ),
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate-suite",
+            manifest.to_str().unwrap(),
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!out_dir.path().join("report.json").exists());
 }
 
 fn run_validation(project: &str) -> Value {
@@ -311,4 +425,15 @@ fn assert_report_schema_valid(report: &Value) {
         .map(|error| format!("{} at {}", error, error.instance_path()))
         .collect();
     assert!(errors.is_empty(), "report schema errors: {errors:#?}");
+}
+
+fn assert_suite_report_schema_valid(report: &Value) {
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/suite_report.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(errors.is_empty(), "suite report schema errors: {errors:#?}");
 }

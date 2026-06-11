@@ -64,6 +64,44 @@ pub struct ValidationReport {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct SuiteReport {
+    pub schema_version: String,
+    pub suite: String,
+    pub validation_profile: String,
+    pub result: String,
+    pub summary: SuiteSummary,
+    pub cases: Vec<SuiteCaseReport>,
+    pub reproduction: Reproduction,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuiteSummary {
+    pub cases: usize,
+    pub passed: usize,
+    pub failed: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuiteCaseReport {
+    pub id: String,
+    pub project: String,
+    pub expect: String,
+    pub actual: String,
+    pub result: String,
+    pub required_findings: Vec<SuiteFindingExpectation>,
+    pub matched_findings: Vec<SuiteFindingExpectation>,
+    pub blocking_limitations: Vec<String>,
+    pub report: String,
+    pub messages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SuiteFindingExpectation {
+    pub id: String,
+    pub severity: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Summary {
     pub critical: usize,
     pub warning: usize,
@@ -163,6 +201,14 @@ pub fn write_reports(report: &ValidationReport, output: &Path) -> anyhow::Result
     Ok(())
 }
 
+pub fn write_suite_reports(report: &SuiteReport, output: &Path) -> anyhow::Result<()> {
+    fs::create_dir_all(output)?;
+    let json = serde_json::to_string_pretty(report)?;
+    fs::write(output.join("report.json"), json)?;
+    fs::write(output.join("report.md"), suite_markdown_report(report))?;
+    Ok(())
+}
+
 fn markdown_report(report: &ValidationReport) -> String {
     let mut text = String::new();
     text.push_str(&format!("# CircuitCI Report: {}\n\n", report.project));
@@ -188,6 +234,29 @@ fn markdown_report(report: &ValidationReport) -> String {
         text.push('\n');
     }
     text.push_str("## Reproduction\n\n");
+    text.push_str(&format!("```bash\n{}\n```\n", report.reproduction.command));
+    text
+}
+
+fn suite_markdown_report(report: &SuiteReport) -> String {
+    let mut text = String::new();
+    text.push_str(&format!("# CircuitCI Suite Report: {}\n\n", report.suite));
+    text.push_str("## Executive Summary\n\n");
+    text.push_str(&format!(
+        "- Result: `{}`\n- Cases: {}\n- Passed: {}\n- Failed: {}\n\n",
+        report.result, report.summary.cases, report.summary.passed, report.summary.failed
+    ));
+    text.push_str("## Cases\n\n");
+    for case in &report.cases {
+        text.push_str(&format!(
+            "- `{}`: `{}` (expected `{}`, actual `{}`)\n",
+            case.id, case.result, case.expect, case.actual
+        ));
+        for message in &case.messages {
+            text.push_str(&format!("  - {message}\n"));
+        }
+    }
+    text.push_str("\n## Reproduction\n\n");
     text.push_str(&format!("```bash\n{}\n```\n", report.reproduction.command));
     text
 }

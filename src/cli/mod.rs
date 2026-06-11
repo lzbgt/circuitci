@@ -1,8 +1,6 @@
-use crate::board_ir::load_project;
-use crate::library::{bind_project, load_library};
-use crate::reports::{ValidationReport, write_reports};
-use crate::validation::validate;
-use anyhow::Result;
+use crate::reports::write_suite_reports;
+use crate::suite::{run_suite, validate_and_write_project_report};
+use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -31,6 +29,11 @@ enum Command {
         #[arg(long)]
         no_open_ui: bool,
     },
+    ValidateSuite {
+        manifest: PathBuf,
+        #[arg(long, short = 'o', default_value = "out/suite")]
+        output: PathBuf,
+    },
 }
 
 pub fn run() -> Result<()> {
@@ -47,6 +50,7 @@ pub fn run() -> Result<()> {
             json,
             no_open_ui: _,
         }) => run_validate(project, profile, output, json),
+        Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -60,24 +64,13 @@ fn run_validate(
     output: PathBuf,
     json: Option<PathBuf>,
 ) -> Result<()> {
-    let project = load_project(&project_path)?;
-    let (library, library_findings) = load_library(&project_path, &project);
-    let bound = bind_project(&project, library, library_findings);
-    let (findings, limitations) = validate(&bound);
     let command = format!(
         "circuitci validate {} --profile {} --output {}",
         project_path.display(),
         profile,
         output.display()
     );
-    let report = ValidationReport::from_parts(
-        project.project.name.clone(),
-        profile,
-        findings,
-        limitations,
-        command,
-    );
-    write_reports(&report, &output)?;
+    let report = validate_and_write_project_report(&project_path, &profile, &output, command)?;
     if let Some(json_path) = json {
         std::fs::create_dir_all(
             json_path
@@ -94,5 +87,40 @@ fn run_validate(
         report.summary.warning,
         report.summary.info
     );
+    Ok(())
+}
+
+fn run_validate_suite(manifest: PathBuf, output: PathBuf) -> Result<()> {
+    let command = format!(
+        "circuitci validate-suite {} --output {}",
+        manifest.display(),
+        output.display()
+    );
+    let report = run_suite(
+        &manifest,
+        &output,
+        command,
+        |project_path, profile, case_output| {
+            let case_command = format!(
+                "circuitci validate {} --profile {} --output {}",
+                project_path.display(),
+                profile,
+                case_output.display()
+            );
+            validate_and_write_project_report(project_path, profile, case_output, case_command)
+        },
+    )?;
+    write_suite_reports(&report, &output)?;
+    println!(
+        "CircuitCI suite {}: {} (cases={}, passed={}, failed={})",
+        report.suite,
+        report.result,
+        report.summary.cases,
+        report.summary.passed,
+        report.summary.failed
+    );
+    if report.result == "fail" {
+        bail!("Suite {} failed expectations.", report.suite);
+    }
     Ok(())
 }

@@ -29,3 +29,13 @@ The first downloader-related acceptance milestone is not full firmware execution
 4. detect missing abstract UART bootloader sync,
 5. emit JSON findings with concrete fixes,
 6. validate a fixed project fixture as passing.
+
+The current one-command acceptance target is:
+
+```sh
+circuitci validate-suite suites/um_stm32l4_downloader_acceptance.yaml --output out/acceptance/um_stm32l4
+```
+
+The suite is generic orchestration over Board IR projects. It expects deliberate
+bad fixtures to fail with specific critical rule IDs, and fixed fixtures to pass
+without blocking limitations.

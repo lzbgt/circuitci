@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/suite_manifest.schema.json",
+  "title": "CircuitCI Validation Suite Manifest",
+  "type": "object",
+  "required": ["suite", "cases"],
+  "properties": {
+    "suite": {
+      "type": "object",
+      "required": ["name", "version", "validation_profile"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "validation_profile": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "project", "expect"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+          "project": { "type": "string", "minLength": 1 },
+          "expect": { "enum": ["pass", "fail"] },
+          "required_findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "severity"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "severity": { "enum": ["critical", "warning", "info"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "allowed_blocking_limitations": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

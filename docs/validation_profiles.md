@@ -38,6 +38,8 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `RESET_RELEASE_AFTER_POWER_VALID`
 - `BOOT_STRAP_DEFINED`
 - `UART_BOOTLOADER_SYNC`
+- `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
+- `CONTROL_LINE_RELEASE_SEQUENCE`
 
 ## Rule Completion Standard
 
