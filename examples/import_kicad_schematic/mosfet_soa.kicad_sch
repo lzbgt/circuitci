@@ -1,0 +1,47 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "22222222-2222-2222-2222-222222222222")
+  (lib_symbols
+    (symbol "Simulation_SPICE:VSOURCE"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2")))
+    (symbol "Simulation_SPICE:VPULSE"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2")))
+    (symbol "Device:R"
+      (pin passive line (at -10 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2")))
+    (symbol "Transistor_FET:FDMC86184"
+      (pin passive line (at 0 -10 90) (length 2.54) (number "1"))
+      (pin passive line (at -10 0 0) (length 2.54) (number "2"))
+      (pin passive line (at 0 10 270) (length 2.54) (number "3"))))
+
+  (symbol (lib_id "Simulation_SPICE:VSOURCE") (at 0 0 0)
+    (property "Reference" "VDD")
+    (property "Value" "50V")
+    (pin "1") (pin "2"))
+  (symbol (lib_id "Simulation_SPICE:VPULSE") (at 10 10 0)
+    (property "Reference" "VGATE")
+    (property "Value" "PULSE")
+    (pin "1") (pin "2"))
+  (symbol (lib_id "Device:R") (at 20 0 0)
+    (property "Reference" "RLOAD")
+    (property "Value" "0.45R")
+    (pin "1") (pin "2"))
+  (symbol (lib_id "Transistor_FET:FDMC86184") (at 30 10 0)
+    (property "Reference" "M1")
+    (property "Value" "FDMC86184")
+    (pin "1") (pin "2") (pin "3"))
+
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "+50V" (at 0 0 0))
+
+  (label "/SWITCHED" (at 30 0 0))
+
+  (wire (pts (xy 10 10) (xy 20 10)))
+  (label "/GATE" (at 10 10 0))
+
+  (wire (pts (xy 0 10) (xy 0 20) (xy 30 20)))
+  (label "GND" (at 0 20 0))
+)

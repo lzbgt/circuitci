@@ -1,0 +1,83 @@
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/discrete
+components:
+  VDD:
+    model: generic.analog.dc_voltage_source
+    pin_map:
+      "1": P
+      "2": N
+    spice:
+      primitive: dc_voltage_source
+      dc_v: 50
+  VGATE:
+    model: generic.analog.pulse_voltage_source
+    pin_map:
+      "1": P
+      "2": N
+    spice:
+      primitive: pulse_voltage_source
+      pulse:
+        initial_v: 0
+        pulsed_v: 3.21
+        delay_us: 100
+        rise_us: 0.1
+        fall_us: 0.1
+        width_us: 20
+        period_us: 2000
+  RLOAD:
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: resistor
+      value_ohm: 0.45
+  M1:
+    model: vendor.onsemi.fdmc86184
+    pin_map:
+      "1": D
+      "2": G
+      "3": S
+nets:
+  +50V:
+    kind: power
+    nominal_voltage: 50
+    powered: true
+  GND:
+    kind: ground
+analog_scenarios:
+  - name: kicad_fdmc86184_soa_violation
+    backend: auto
+    components: [VDD, VGATE, RLOAD, M1]
+    ground_net: GND
+    operating_conditions:
+      allow_pulse_ratings: true
+    model_files:
+      - path: ../../models/spice/onsemi/fdmc86184.lib
+        sha256: c22b2f13d52a4545933f3d97588e0d626562e4813bda3ead62f103bd64e19c01
+    analysis:
+      type: tran
+      stop_time_us: 2000
+      max_step_us: 0.2
+    stimuli:
+      - name: partial_gate_pulse
+        description: Gate pulse leaves the imported MOSFET in linear-region stress.
+    probes:
+      - name: switched_node
+        expression: V(net_switched)
+        quantity: voltage
+      - name: load_current
+        expression: abs(I(VDD))
+        quantity: current
+    assertions:
+      - name: current_above_continuous_rating
+        probe: load_current
+        at_us: 110
+        relation: above
+        threshold_a: 12
+      - name: vds_remains_high_during_current_pulse
+        probe: switched_node
+        at_us: 110
+        relation: above
+        threshold_v: 20

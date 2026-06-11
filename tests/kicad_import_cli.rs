@@ -550,6 +550,90 @@ fn import_kicad_schematic_applies_mapping_and_runs_generated_spice() {
 }
 
 #[test]
+fn import_kicad_schematic_maps_mosfet_soa_scenario() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir
+        .path()
+        .join("mapped_kicad_schematic_mosfet.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_schematic/mosfet_soa.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_schematic/mosfet.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "mapped_kicad_schematic_mosfet",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let analog = &imported["scenarios"][0]["analog"];
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["M1"]["model"],
+        "vendor.onsemi.fdmc86184"
+    );
+    assert_eq!(
+        imported["board"]["components"]["M1"]["pins"]["D"],
+        "net_switched"
+    );
+    assert_eq!(analog["operating_conditions"]["allow_pulse_ratings"], true);
+    assert_eq!(
+        analog["model_files"][0]["sha256"],
+        "c22b2f13d52a4545933f3d97588e0d626562e4813bda3ead62f103bd64e19c01"
+    );
+
+    let validate_out = dir.path().join("validate");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            output.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            validate_out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(validate_out.join("report.json")).unwrap())
+            .unwrap();
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        assert!(
+            report["failures"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|failure| {
+                    failure["id"] == "SPICE_OPERATING_LIMIT"
+                        && failure["measured"]["component"] == "M1"
+                        && failure["measured"]["rating"] == "SOA"
+                        && failure["measured"]["soa_margin_ratio"].as_f64().unwrap() > 1.0
+                        && failure["limit"]["soa_curve"] == "forward_bias_100us"
+                })
+        );
+    } else {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_schematic_rejects_unsupported_sheet() {
     assert_bad_kicad_schematic(
         r#"
@@ -557,6 +641,54 @@ fn import_kicad_schematic_rejects_unsupported_sheet() {
   (lib_symbols)
   (sheet (at 0 0) (size 10 10) (property "Sheetname" "child")))
 "#,
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_duplicate_refs() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (symbol (lib_id "Device:R") (at 10 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1")))
+"#,
+        "Duplicate KiCad schematic component reference",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_missing_pin_geometry() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "2")))
+"#,
+        "has no matching lib_symbols pin geometry",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_floating_label() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "FLOATING" (at 20 20 0)))
+"#,
+        "is not attached to a wire or pin",
     );
 }
 
@@ -583,21 +715,36 @@ fn assert_bad_kicad_mapping(mapping: &str) {
 }
 
 fn assert_bad_kicad_schematic(schematic: &str) {
+    let output = bad_kicad_schematic_output(schematic);
+    assert!(!output.status.success());
+}
+
+fn assert_bad_kicad_schematic_contains(schematic: &str, expected: &str) {
+    let output = bad_kicad_schematic_output(schematic);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "expected stderr to contain {expected:?}, got:\n{stderr}"
+    );
+}
+
+fn bad_kicad_schematic_output(schematic: &str) -> std::process::Output {
     let dir = tempfile::tempdir().unwrap();
     let schematic_path = dir.path().join("bad.kicad_sch");
     let output = dir.path().join("bad.project.yaml");
     std::fs::write(&schematic_path, schematic).unwrap();
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-schematic",
             schematic_path.to_str().unwrap(),
             "--output",
             output.to_str().unwrap(),
         ])
-        .status()
+        .output()
         .unwrap();
-    assert!(!status.success());
     assert!(!output.exists());
+    result
 }
 
 fn assert_bad_kicad_mapping_contains(mapping: &str, expected: &str) {

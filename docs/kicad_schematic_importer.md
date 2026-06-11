@@ -48,3 +48,11 @@ component physics, SPICE primitive values, model selection, or simulation
 scenarios. After parsing, the result flows through the existing KiCad mapping
 and scenario code path, preserving SHA-pinned model checks,
 `SCHEMATIC_IMPORT_ONLY`, and all generated-SPICE fail-closed behavior.
+
+## Fixtures
+
+- `examples/import_kicad_schematic/basic_rc.kicad_sch` covers native schematic
+  connectivity import and a mapped RC/diode generated-SPICE scenario.
+- `examples/import_kicad_schematic/mosfet_soa.kicad_sch` covers native
+  schematic import of a mapped FDMC86184 MOSFET scenario with datasheet-backed
+  SOA evidence.
