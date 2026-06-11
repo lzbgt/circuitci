@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" itemscope itemtype="http://schema.org/Article">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="generator" content="Hugo 0.128.1">
+    <meta name="generator" content="Relearn 6.0.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Schematic File Format | Developer Documentation | KiCad">
+    <meta property="og:url" content="/en/file-formats/sexpr-schematic/index.html">
+    <meta property="og:site_name" content="Developer Documentation | KiCad">
+    <meta property="og:title" content="Schematic File Format | Developer Documentation | KiCad">
+    <meta property="og:locale" content="en">
+    <meta property="og:type" content="website">
+    <meta itemprop="name" content="Schematic File Format | Developer Documentation | KiCad">
+    <meta itemprop="dateModified" content="2024-11-04T22:06:26+08:00">
+    <meta itemprop="wordCount" content="2117">
+    <title>Schematic File Format | Developer Documentation | KiCad</title>
+    <link href="/en/file-formats/sexpr-schematic/index.xml" rel="alternate" type="application/rss+xml" title="Schematic File Format | Developer Documentation | KiCad">    <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+
+    <link href="/css/fontawesome-all.min.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/fontawesome-all.min.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/nucleus.css?1777466996" rel="stylesheet">
+    <link href="/css/auto-complete.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/auto-complete.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/perfect-scrollbar.min.css?1777466996" rel="stylesheet">
+    <link href="/css/fonts.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/fonts.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/theme.css?1777466996" rel="stylesheet">
+    <link href="/css/theme-auto.css?1777466996" rel="stylesheet" id="R-variant-style">
+    <link href="/css/chroma-auto.css?1777466996" rel="stylesheet" id="R-variant-chroma-style">
+    <link href="/css/variant.css?1777466996" rel="stylesheet">
+    <link href="/css/print.css?1777466996" rel="stylesheet" media="print">
+    <script src="/js/variant.js?1777466996"></script>
+    <script>
+      window.relearn = window.relearn || {};
+      window.relearn.relBasePath='..\/..\/..';
+      window.relearn.relBaseUri='..\/..\/..';
+      window.relearn.absBaseUri='';
+      window.index_js_url="/en/index.search.js";
+      // variant stuff
+      window.variants && variants.init( [ 'auto', 'zen-light', 'zen-dark' ] );
+      // translations
+      window.T_Copy_to_clipboard = `Copy to clipboard`;
+      window.T_Copied_to_clipboard = `Copied to clipboard!`;
+      window.T_Copy_link_to_clipboard = `Copy link to clipboard`;
+      window.T_Link_copied_to_clipboard = `Copied link to clipboard!`;
+      window.T_Reset_view = `Reset view`;
+      window.T_View_reset = `View reset!`;
+      window.T_No_results_found = `No results found for "{0}"`;
+      window.T_N_results_found = `{1} results found for "{0}"`;
+    </script>
+    
+    <link href="/css/asciidoctor.css?1777466996" rel="stylesheet">
+
+    
+    <script type="text/javascript" src="/js/anchor.min.min.db12813a76382a30f979f1f71357f1636c247159a84eb408e7a4d8640dce52f3.js"></script>
+
+
+  </head>
+  <body class="mobile-support html disableInlineCopyToClipboard" data-url="/en/file-formats/sexpr-schematic/index.html">
+    <div id="R-body" class="default-animation">
+      <div id="R-body-overlay"></div>
+      <nav id="R-topbar">
+        <div class="topbar-wrapper">
+          <div class="topbar-sidebar-divider"></div>
+          <div class="topbar-area topbar-area-start" data-area="start">
+            <div class="topbar-button topbar-button-sidebar" data-content-empty="disable" data-width-s="show" data-width-m="hide" data-width-l="hide"><button class="topbar-control" onclick="toggleNav()" type="button" title="Menu (CTRL&#43;ALT&#43;n)"><i class="fa-fw fas fa-bars"></i></button>
+            </div>
+            <div class="topbar-button topbar-button-toc" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show"><button class="topbar-control" onclick="toggleTopbarFlyout(this)" type="button" title="Table of Contents (CTRL&#43;ALT&#43;t)"><i class="fa-fw fas fa-list-alt"></i></button>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper"><nav class="TableOfContents">
+  <ul>
+    <li><a href="#_introduction">Introduction</a>
+      <ul>
+        <li><a href="#_instance_path">Instance Path</a></li>
+        <li><a href="#_label_and_pin_shapes">Label and Pin Shapes</a></li>
+      </ul>
+    </li>
+    <li><a href="#_layout">Layout</a></li>
+    <li><a href="#_header_section">Header Section</a></li>
+    <li><a href="#_unique_identifier_section">Unique Identifier Section</a></li>
+    <li><a href="#_library_symbol_section">Library Symbol Section</a></li>
+    <li><a href="#_junction_section">Junction Section</a></li>
+    <li><a href="#_no_connect_section">No Connect Section</a></li>
+    <li><a href="#_bus_entry_section">Bus Entry Section</a></li>
+    <li><a href="#_wire_and_bus_section">Wire and Bus Section</a></li>
+    <li><a href="#_image_section">Image Section</a></li>
+    <li><a href="#_graphical_line_section">Graphical Line Section</a></li>
+    <li><a href="#_graphical_text_section">Graphical Text Section</a></li>
+    <li><a href="#_local_label_section">Local Label Section</a></li>
+    <li><a href="#_global_label_section">Global Label Section</a></li>
+    <li><a href="#_hierarchical_label_section">Hierarchical Label Section</a></li>
+    <li><a href="#_symbol_section">Symbol Section</a></li>
+    <li><a href="#_hierarchical_sheet_section">Hierarchical Sheet Section</a>
+      <ul>
+        <li><a href="#_hierarchical_sheet_pin_definition">Hierarchical Sheet Pin Definition</a></li>
+      </ul>
+    </li>
+    <li><a href="#_root_sheet_instance_section">Root Sheet Instance Section</a></li>
+  </ul>
+</nav>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="topbar-breadcrumbs breadcrumbs highlightable" itemscope itemtype="http://schema.org/BreadcrumbList"><li
+            itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement"><a itemprop="item" href="/en/file-formats/index.html"><span itemprop="name">File Formats</span></a><meta itemprop="position" content="1">&nbsp;>&nbsp;</li><li
+            itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement"><span itemprop="name">Schematic File Format</span><meta itemprop="position" content="2"></li>
+          </ol>
+          <div class="topbar-area topbar-area-end" data-area="end">
+				
+            <div class="topbar-button topbar-button-edit" data-content-empty="disable" data-width-s="area-more" data-width-m="show" data-width-l="show"><a class="topbar-control" href="https://gitlab.com/kicad/services/kicad-dev-docs/-/edit/master/content/file-formats/sexpr-schematic/_index.en.adoc" target="_blank" title="Edit (CTRL&#43;ALT&#43;w)"><i class="fa-fw fas fa-pen"></i></a>
+            </div>
+            <div class="topbar-button topbar-button-more" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show"><button class="topbar-control" onclick="toggleTopbarFlyout(this)" type="button" title="More"><i class="fa-fw fas fa-ellipsis-v"></i></button>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper">
+                  <div class="topbar-area topbar-area-more" data-area="more">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div id="R-main-overlay"></div>
+      <main id="R-body-inner" class="highlightable default" tabindex="-1">
+        <div class="flex-block-wrapper">
+
+          <article class="default">
+            <header class="headline">
+            </header>
+
+<h1 id="schematic-file-format">Schematic File Format</h1>
+
+<div class="paragraph">
+<div class="sect1">
+<h2 id="_introduction">Introduction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This documents the s-expression schematic file format for all versions of KiCad from 6.0.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Schematic files use the <code>.kicad_sch</code> extension.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="_instance_path">Instance Path</h3>
+<div class="paragraph">
+<p>Because KiCad schematics can support multiple instances of the same schematic using hierarchical
+sheets, information for shared sheets is done using paths consisting of the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifiers</a>
+that represent the hierarchical path for the sheet the instance separated by a forward slash
+(&#39;/&#39;).  A typical instance path would look like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>&#34;/00000000-0000-0000-0000-00004b3a13a4/00000000-0000-0000-0000-00004b617b88&#34;</code></pre>
+</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+The first identifier must be the root <a href="#_hierarchical_sheet_section">sheet</a> which is
+         the same identifier as the root schematic file.
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_label_and_pin_shapes">Label and Pin Shapes</h3>
+<div class="paragraph">
+<p>The table below defines the valid shape tokens <a href="#_global_label_section">global labels</a>,
+<a href="#_hierarchical_label_section">hierarchical labels</a>, and
+<a href="#_hierarchical_sheet_pin_definition">hierarchical sheet pins</a>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;"/>
+<col style="width: 50%;"/>
+<col style="width: 25%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Definition</th>
+<th class="tableblock halign-center valign-top">Image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Label or pin is an input shape</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/label-shape-input.png" alt="images/label_shape_input"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Label or pin is an output shape</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/label-shape-output.png" alt="images/label_shape_output"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bidirectional</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Label or pin is a bidirectional shape</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/label-shape-bidirectional.png" alt="images/label_shape_bidirectional"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tri_state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Label or pin is a tri-state shape</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/label-shape-tristate.png" alt="images/label_shape_tristate"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">passive</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Label or pin is a tri-state shape</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/label-shape-passive.png" alt="images/label_shape_passive"/></span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_layout">Layout</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>A schematic file includes the following sections:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#_header_section">Header</a></p>
+</li>
+<li>
+<p><a href="#_unique_identifier_section">Unique Identifier</a></p>
+</li>
+<li>
+<p><a href="../sexpr-intro/index.html#_page_settings">Page Settings</a></p>
+</li>
+<li>
+<p><a href="../sexpr-intro/index.html#_title_block">Title Block Section</a></p>
+</li>
+<li>
+<p><a href="#_library_symbol_section">Symbol Library Symbol Definition</a></p>
+</li>
+<li>
+<p><a href="#_junction_section">Junction Section</a></p>
+</li>
+<li>
+<p><a href="#_no_connect_section">No Connect Section</a></p>
+</li>
+<li>
+<p><a href="#_wire_and_bus_section">Wire and Bus Section</a></p>
+</li>
+<li>
+<p><a href="#_image_section">Image Section</a></p>
+</li>
+<li>
+<p><a href="#_graphical_line_section">Graphical Line Section</a></p>
+</li>
+<li>
+<p><a href="#_graphical_text_section">Graphical Text Section</a></p>
+</li>
+<li>
+<p><a href="#_local_label_section">Local Label Section</a></p>
+</li>
+<li>
+<p><a href="#_global_label_section">Global Label Section</a></p>
+</li>
+<li>
+<p><a href="#_symbol_section">Symbol Section</a></p>
+</li>
+<li>
+<p><a href="#_hierarchical_sheet_section">Hierarchical Sheet Section</a></p>
+</li>
+<li>
+<p><a href="#_root_sheet_instance_section">Root Sheet Instance Section</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_header_section">Header Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>kicad_sch</code> token indicates that it is KiCad schematic file.  This section is required.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Third party scripts should not use <code>eeschema</code> as the generator identifier.  Please use
+      some other identifier so that bugs introduced by third party generators are not confused
+      with a schematic file created by KiCad.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>(kicad_sch
+  (version VERSION)                                             <i class="conum" data-value="1"></i><b>(1)</b>
+  (generator GENERATOR)                                         <i class="conum" data-value="2"></i><b>(2)</b>
+
+  ;; contents of the schematic file...                          <i class="conum" data-value="3"></i><b>(3)</b>
+)</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>version</code> token attribute defines the schematic version using the YYYYMMDD date format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>generator</code> token attribute defines the program used to write the file.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The schematic sections go here.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unique_identifier_section">Unique Identifier Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>uuid</code> token defines the globally unique identifier that identifies the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  UNIQUE_IDENTIFIER                                             <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>NOTE Only the root schematic identifier is used as the virtual root sheet identifier.  All other
+     identifiers are belong to <a href="#_hierarchical_sheet_section">hierarchical sheet objects</a>.</p>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the schematic file.  This identifier is used when creating hierarchical sheet paths which
+are used to reference symbol instance data and
+<a href="#_hierarchical_sheet_instance_section">hierarchical sheet instance</a> information.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_library_symbol_section">Library Symbol Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>lib_symbols</code> token defines a symbol library contain all of the symbols used in the
+schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (lib_symbols
+    SYMBOL_DEFINITIONS...                                       <i class="conum" data-value="1"></i><b>(1)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A list of 0 or more <a href="../sexpr-intro/index.html#_symbols">symbols</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_junction_section">Junction Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>junction</code> token defines a junction in the schematic.  The junction section will not exist
+if there are no junctions in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (junction
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    (diameter DIAMETER)                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    (color R G B A)                                             <i class="conum" data-value="3"></i><b>(3)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates</a> of the junction.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>diameter</code> token attribute defines the DIAMETER of the junction.  A diameter of 0 is
+the default diameter in the system settings.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>color</code> token attributes define the Red, Green, Blue, and Alpha transparency of the
+junction.  If all four attributes are 0, the default junction color is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the junction.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_no_connect_section">No Connect Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>no_connect</code> token defines a unused pin connection in the schematic.  The no connect section
+will not exist if there are not any no connects in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (no_connect
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates</a> of the no connect.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the no connect.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_bus_entry_section">Bus Entry Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>bus_entry</code> token defines a bus entry in the schematic.  The bus entry section will not
+exist if there are no bus entries in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (bus_entry
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    (size X Y)                                                  <i class="conum" data-value="2"></i><b>(2)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="3"></i><b>(3)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates</a> of the bus entry.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>size</code> token attributes define the X and Y distance of the end point from the position
+of the bus entry.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The STROKE_DEFINITION defines how the bus entry
+<a href="../sexpr-intro/index.html#_stroke_definition">is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the bus entry.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_wire_and_bus_section">Wire and Bus Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>wire</code> and <code>bus</code> tokens define wires and buses in the schematic.  This section will not
+exist if there are no wires or buses in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (wire | bus
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="../sexpr-intro/index.html#_coordinate_point_list">X and Y coordinates</a> of start and end
+points of the wire or bus.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The STROKE_DEFINITION defines how the wire or bus
+<a href="../sexpr-intro/index.html#_stroke_definition">is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the wire or bus.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_image_section">Image Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>See common <a href="../sexpr-intro/index.html#_images">Images</a> section.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_graphical_line_section">Graphical Line Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>polyline</code> token defines one or more lines that may or may not represent a polygon.  This
+section will not exist if there are no lines in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (polyline
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="../sexpr-intro/index.html#_coordinate_point_list">X/Y coordinates</a> of to draw line(s)
+between.  A minimum of two points is required.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The STROKE_DEFINITION defines how the graphical line
+<a href="../sexpr-intro/index.html#_stroke_definition">is drawn</a>..</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the graphical line.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_graphical_text_section">Graphical Text Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>text</code> token defines graphical text in a schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (text
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="3"></i><b>(3)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TEXT is a quoted string that defines the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and rotation angle</a>
+of the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The TEXT_EFFECTS section defines how the
+<a href="../sexpr-intro/index.html#_text_effects">text is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the graphical text.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_local_label_section">Local Label Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>label</code> token defines an wire or bus label name in a schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (label
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="3"></i><b>(3)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TEXT is a quoted string that defines the label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and rotation angle</a>
+of the label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The TEXT_EFFECTS section defines how the
+<a href="../sexpr-intro/index.html#_text_effects">label text is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the label.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_global_label_section">Global Label Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>global_label</code> token defines a label name that is visible across all schematics in
+a design.  This section will not exist if no global labels are defined in the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (global_label
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    (shape SHAPE)                                               <i class="conum" data-value="2"></i><b>(2)</b>
+    [(fields_autoplaced)]                                       <i class="conum" data-value="3"></i><b>(3)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="4"></i><b>(4)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="5"></i><b>(5)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="6"></i><b>(6)</b>
+    PROPERTIES                                                  <i class="conum" data-value="7"></i><b>(7)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TEXT is a quoted string that defines the global label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>shape</code> token attribute defines the way the global label is drawn.  See table below
+for global label shapes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>fields_autoplaced</code> is a flag that indicates that any PROPERTIES associated
+with the global label have been place automatically.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and rotation angle</a>
+of the label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The TEXT_EFFECTS section defines how the
+<a href="../sexpr-intro/index.html#_text_effects">global label text is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the global label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The PROPERTIES section defines the
+<a href="../sexpr-intro/index.html#_symbol_property">properties</a> of the global label.
+Currently, the only supported property is the inter-sheet reference.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_hierarchical_label_section">Hierarchical Label Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>hierarchical_label</code> section defines labels that are used by
+<a href="#_hierarchical_sheet_section">hierarchical sheets</a> to define connections between sheet in
+hierarchical designs.  This section will not exist if no global labels are defined in the
+schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (hierarchical_label
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    (shape SHAPE)                                               <i class="conum" data-value="2"></i><b>(2)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="3"></i><b>(3)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="4"></i><b>(4)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TEXT is a quoted string that defines the hierarchical label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>shape</code> token attribute defines the way the hierarchical label is drawn.  See table below
+for hierarchical label shapes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and rotation angle</a>
+of the label.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The TEXT_EFFECTS section defines how the
+<a href="../sexpr-intro/index.html#_text_effects">hierarchical label text is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the hierarchical label.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_symbol_section">Symbol Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>symbol</code> token in the symbol section of the schematic defines an instance of a symbol from
+<a href="#_library_symbol_section">the library symbol section</a> of the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (symbol
+    &#34;LIBRARY_IDENTIFIER&#34;                                        <i class="conum" data-value="1"></i><b>(1)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    (unit UNIT)                                                 <i class="conum" data-value="3"></i><b>(3)</b>
+    (in_bom yes|no)                                             <i class="conum" data-value="4"></i><b>(4)</b>
+    (on_board yes|no)                                           <i class="conum" data-value="5"></i><b>(5)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="6"></i><b>(6)</b>
+    PROPERTIES                                                  <i class="conum" data-value="7"></i><b>(7)</b>
+    (pin &#34;1&#34; (uuid e148648c-6605-4af1-832a-31eaf808c2f8))       <i class="conum" data-value="8"></i><b>(8)</b>
+    (instances                                                  <i class="conum" data-value="9"></i><b>(9)</b>
+      (project &#34;PROJECT_NAME&#34;                                   <i class="conum" data-value="10"></i><b>(10)</b>
+        (path &#34;PATH_INSTANCE&#34;                                   <i class="conum" data-value="11"></i><b>(11)</b>
+          (reference &#34;REFERENCE&#34;)                               <i class="conum" data-value="12"></i><b>(12)</b>
+          (unit UNIT)                                           <i class="conum" data-value="13"></i><b>(13)</b>
+        )
+
+        ;; Optional symbol instances for this `project`...
+      )
+
+      ;; Optional symbol instances for other `project`...
+    )
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <a href="../sexpr-intro/index.html#_library_identifier">LIBRARY_IDENTIFIER</a> defines which
+symbol in the <a href="#_library_symbol_section">library symbol section</a> of the schematic that
+this schematic symbol references.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and angle of rotation</a>
+of the symbol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>unit</code> token attribute defines which unit in the symbol library definition that the
+schematic symbol represents.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>in_bom</code> token attribute determines whether the schematic symbol appears in any bill of
+materials output.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>on_board</code> token attribute determines if the footprint associated with the symbol is
+exported to the board via the netlist.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the symbol.  This is used to map the symbol the
+<a href="#_symbol_instance_section">symbol instance information</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The PROPERTIES section defines a list of
+<a href="../sexpr-intro/index.html#_symbol_property">symbol properties</a> of the schematic symbol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>pin</code> token attributes define ???.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <code>instances</code> token defines a list of symbol instances grouped by project.  Every symbol
+will have a least one instance.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The <code>project</code> token attribute defines the name of the project to which the instance data
+belongs.  There can be instance data from other project when schematics are shared across
+multiple projects.  The projects will be sorted by the <code>PROJECT_NAME</code> in alphabetical order.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The <code>path</code> token attribute is the <a href="#_instance_path">path to the sheet instance</a> for the
+instance data.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The <code>reference</code> token attribute is a string that defines the reference designator for the
+symbol instance.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The <code>unit</code> token attribute is a integer ordinal that defines the symbol unit for the symbol
+instance.  For symbols that do not define multiple units, this will always be 1.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_hierarchical_sheet_section">Hierarchical Sheet Section</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>sheet</code> token defines a hierarchical sheet of the schematic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (sheet
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    (size WIDTH HEIGHT)                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    [(fields_autoplaced)]                                       <i class="conum" data-value="3"></i><b>(3)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="4"></i><b>(4)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="5"></i><b>(5)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="6"></i><b>(6)</b>
+    SHEET_NAME_PROPERTY                                         <i class="conum" data-value="7"></i><b>(7)</b>
+    FILE_NAME_PROPERTY                                          <i class="conum" data-value="8"></i><b>(8)</b>
+    HIERARCHICAL_PINS                                           <i class="conum" data-value="9"></i><b>(9)</b>
+    (instances                                                  <i class="conum" data-value="10"></i><b>(10)</b>
+      (project &#34;PROJECT_NAME&#34;                                   <i class="conum" data-value="11"></i><b>(11)</b>
+        (path &#34;PATH_INSTANCE&#34;                                   <i class="conum" data-value="12"></i><b>(12)</b>
+          (page &#34;PAGE_NUMBER&#34;)                                  <i class="conum" data-value="13"></i><b>(13)</b>
+        )
+
+        ;; Optional sheet instances for this `project`...
+      )
+
+      ;; Optional sheet instances for other `project`...
+    )
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and angle of rotation</a>
+of the sheet in the schematic.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>size</code> token attributes define the WIDTH and HEIGHT of the sheet.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>fields_autoplaced</code> token indicates if the properties have been automatically
+placed.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The STROKE_DEFINITION defines how the sheet
+<a href="../sexpr-intro/index.html#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The FILL_DEFINITION defines how the sheet is
+<a href="../sexpr-intro/index.html#_fill_definition">filled</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the sheet.  This is used to map the sheet
+<a href="#_symbol_instance_section">symbol instance information</a> and
+<a href="#_hierarchical_sheet_instance_section">sheet instance information</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The SHEET_PROPERTY_NAME is a <a href="../sexpr-intro/index.html#_symbol_property">property</a> that
+defines the name of the sheet.  This property is mandatory.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The FILE_NAME_PROPERTY is a <a href="../sexpr-intro/index.html#_symbol_property">property</a> that
+defines the file name of the sheet.  This property is mandatory.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The HIERARCHICAL_PINS section is a list of
+<a href="#_hierarchical_sheet_pin_definition">hierarchical pins</a> that map a
+<a href="#_hierarchical_label_section">hierarchical label</a> defined in the associated schematic file.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The <code>instances</code> token defines a list of sheet instances grouped by project.  Every sheet
+will have a least one instance.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The <code>project</code> token attribute defines the name of the project to which the instance data
+belongs.  There can be instance data from other project when schematics are shared across
+multiple projects.  The projects will be sorted by the <code>PROJECT_NAME</code> in alphabetical order.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The <code>path</code> token attribute is the <a href="#_instance_path">path to the sheet instance</a> for the
+sheet instance data.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The <code>page</code> token attribute is a string that defines the page number for the sheet instance.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect2">
+<h3 id="_hierarchical_sheet_pin_definition">Hierarchical Sheet Pin Definition</h3>
+<div class="paragraph">
+<p>The <code>pin</code> token in a <a href="#_hierarchical_sheet_section">sheet</a> object defines an electrical connection
+between the sheet in a schematic with the <a href="#_hierarchical_label_section">hierarchical label</a>
+defined in the associated schematic file.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (pin
+    &#34;NAME&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    input | output | bidirectional | tri_state | passive        <i class="conum" data-value="2"></i><b>(2)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="3"></i><b>(3)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="4"></i><b>(4)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;NAME&#34; attribute defines the name of the sheet pin.  It must have an identically named
+<a href="#_hierarchical_label_section">hierarchical label</a> in the associated schematic file.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The electrical connect type token defines the type of electrical connect made by the sheet
+pin.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates and angle of rotation</a>
+of the pin in the sheet.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The TEXT_EFFECTS section defines how the
+<a href="../sexpr-intro/index.html#_text_effects">pin name text is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the pin.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_root_sheet_instance_section">Root Sheet Instance Section</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code> (path
+    &#34;/&#34;                                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    (page &#34;PAGE&#34;)                                               <i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The instance path is always empty (&#34;/&#34;) since there are no sheets pointing to the root sheet.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>page</code> token defines the page number of the root sheet.  Page numbers can be any valid
+string.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+            <footer class="footline"><i class='fa-fw fas fa-calendar'></i> Last Modified <time datetime="2024-11-04">2024-11-04</time>
+            </footer>
+          </article>
+        </div>
+      </main>
+    </div>
+    <aside id="R-sidebar" class="default-animation">
+      <div id="R-header-topbar" class="default-animation"></div>
+      <div id="R-header-wrapper" class="default-animation">
+        <div id="R-header" class="default-animation">
+<a id="logo" href='/en'>
+  <img src="/img/kicad_logo_small.png" alt="Developer Documentation | KiCad">
+</a>
+
+        </div>
+
+        <search><form action="/en/search.html" method="get">
+          <div class="searchbox default-animation">
+            <button class="search-detail" type="submit" title="Search (CTRL+ALT+f)"><i class="fas fa-search"></i></button>
+            <label class="a11y-only" for="R-search-by">Search</label>
+            <input data-search-input id="R-search-by" name="search-by" class="search-by" type="search" placeholder="Search...">
+            <button class="search-clear" type="button" data-search-clear="" title="Clear search"><i class="fas fa-times" title="Clear search"></i></button>
+          </div>
+        </form></search>
+        <script>
+          var contentLangs=['en'];
+        </script>
+        <script src="/js/auto-complete.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.stemmer.support.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.multi.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.en.min.js?1777466996" defer></script>
+        <script src="/js/search.js?1777466996" defer></script>
+      </div>
+      <div id="R-homelinks" class="default-animation">
+        <hr class="padding">
+      </div>
+      <div id="R-content-wrapper" class="highlightable">
+        <div id="R-topics">
+          <ul class="enlarge morespace collapsible-menu">
+          <li data-nav-id="/en/getting-started/index.html" class=""><a class="padding" href="/en/getting-started/index.html"><i class='fas fa-chevron-right'></i> Getting Started</a></li>
+          <li data-nav-id="/en/build/index.html" class=""><a class="padding" href="/en/build/index.html"><i class='fas fa-chevron-right'></i> Build</a><ul id="R-subsections-1a75785def61d04d653c6ae20a89ed06" class="morespace collapsible-menu">
+          <li data-nav-id="/en/build/getting-started/index.html" class=""><a class="padding" href="/en/build/getting-started/index.html">Getting Started</a></li>
+          <li data-nav-id="/en/build/linux/index.html" class=""><a class="padding" href="/en/build/linux/index.html">Linux</a></li>
+          <li data-nav-id="/en/build/macos/index.html" class=""><a class="padding" href="/en/build/macos/index.html">macOS</a></li>
+          <li data-nav-id="/en/build/windows-msys2/index.html" class=""><a class="padding" href="/en/build/windows-msys2/index.html">Windows (MSYS2)</a></li>
+          <li data-nav-id="/en/build/windows-msvc/index.html" class=""><a class="padding" href="/en/build/windows-msvc/index.html">Windows (Visual Studio)</a></li>
+          <li data-nav-id="/en/build/compile-options/index.html" class=""><a class="padding" href="/en/build/compile-options/index.html">Build Options</a></li></ul></li>
+          <li data-nav-id="/en/rules-guidelines/index.html" class=""><a class="padding" href="/en/rules-guidelines/index.html"><i class='fas fa-chevron-right'></i> Rules and Guidelines</a><ul id="R-subsections-36ce08cc34548946f3c78ee15e7e1dd6" class="morespace collapsible-menu">
+          <li data-nav-id="/en/rules-guidelines/code-style/index.html" class=""><a class="padding" href="/en/rules-guidelines/code-style/index.html">Code Style Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/commit/index.html" class=""><a class="padding" href="/en/rules-guidelines/commit/index.html">Commit Message Format Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/feature-proposals/index.html" class=""><a class="padding" href="/en/rules-guidelines/feature-proposals/index.html">Feature Contribution Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/release-policy/index.html" class=""><a class="padding" href="/en/rules-guidelines/release-policy/index.html">Stable Release Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/code-policy/index.html" class=""><a class="padding" href="/en/rules-guidelines/code-policy/index.html">Code Design Guidelines</a></li>
+          <li data-nav-id="/en/rules-guidelines/icon-design/index.html" class=""><a class="padding" href="/en/rules-guidelines/icon-design/index.html">Icon Design Guidelines</a></li>
+          <li data-nav-id="/en/rules-guidelines/culture/index.html" class=""><a class="padding" href="/en/rules-guidelines/culture/index.html">KiCad Developer Culture</a></li>
+          <li data-nav-id="/en/rules-guidelines/ui/index.html" class=""><a class="padding" href="/en/rules-guidelines/ui/index.html">User Interface Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/anti-patterns/index.html" class=""><a class="padding" href="/en/rules-guidelines/anti-patterns/index.html">Anti-Patterns</a></li>
+          <li data-nav-id="/en/rules-guidelines/tool-generated-content/index.html" class=""><a class="padding" href="/en/rules-guidelines/tool-generated-content/index.html">Tool-Generated Content Policy</a></li></ul></li>
+          <li data-nav-id="/en/components/index.html" class=""><a class="padding" href="/en/components/index.html"><i class='fas fa-chevron-right'></i> Components</a><ul id="R-subsections-12b079b79ec0b46cdc7ea4c430acca48" class="morespace collapsible-menu">
+          <li data-nav-id="/en/components/settings/index.html" class=""><a class="padding" href="/en/components/settings/index.html">Settings Framework</a></li>
+          <li data-nav-id="/en/components/tool-framework/index.html" class=""><a class="padding" href="/en/components/tool-framework/index.html">Tool Framework</a></li>
+          <li data-nav-id="/en/components/plugins/index.html" class=""><a class="padding" href="/en/components/plugins/index.html">Plugins Framework</a></li>
+          <li data-nav-id="/en/components/testing/index.html" class=""><a class="padding" href="/en/components/testing/index.html">Testing</a></li>
+          <li data-nav-id="/en/components/sexpr/index.html" class=""><a class="padding" href="/en/components/sexpr/index.html">S-Expressions</a></li></ul></li>
+          <li data-nav-id="/en/apis-and-binding/index.html" class=""><a class="padding" href="/en/apis-and-binding/index.html"><i class='fas fa-chevron-right'></i> APIs and Bindings</a><ul id="R-subsections-0aca3ec26a6e8663f1cfc4da3a1d8d0e" class="morespace collapsible-menu">
+          <li data-nav-id="/en/apis-and-binding/ipc-api/index.html" class="alwaysopen"><a class="padding" href="/en/apis-and-binding/ipc-api/index.html">KiCad IPC API</a><ul id="R-subsections-51f73bcf765ca469590a4b11b899bafb" class="morespace collapsible-menu">
+          <li data-nav-id="/en/apis-and-binding/ipc-api/for-kicad-developers/index.html" class=""><a class="padding" href="/en/apis-and-binding/ipc-api/for-kicad-developers/index.html">For KiCad Developers</a></li>
+          <li data-nav-id="/en/apis-and-binding/ipc-api/for-addon-developers/index.html" class=""><a class="padding" href="/en/apis-and-binding/ipc-api/for-addon-developers/index.html">For Add-on Developers</a></li></ul></li>
+          <li data-nav-id="/en/apis-and-binding/http-libraries/index.html" class=""><a class="padding" href="/en/apis-and-binding/http-libraries/index.html">HTTP Libraries</a></li>
+          <li data-nav-id="/en/apis-and-binding/pcbnew/index.html" class=""><a class="padding" href="/en/apis-and-binding/pcbnew/index.html">PCB Python Bindings</a></li></ul></li>
+          <li data-nav-id="/en/source-doxygen/index.html" class=""><a class="padding" href="/en/source-doxygen/index.html"><i class='fas fa-chevron-right'></i> Source Code Docs</a></li>
+          <li data-nav-id="/en/translation/index.html" class=""><a class="padding" href="/en/translation/index.html"><i class='fas fa-chevron-right'></i> Translation</a></li>
+          <li data-nav-id="/en/addons/index.html" class=""><a class="padding" href="/en/addons/index.html"><i class='fas fa-chevron-right'></i> KiCad Addons</a></li>
+          <li data-nav-id="/en/file-formats/index.html" class="parent "><a class="padding" href="/en/file-formats/index.html"><i class='fas fa-chevron-right'></i> File Formats</a><ul id="R-subsections-5244ac2a8e770cbe23e6f973cccb07ca" class="morespace collapsible-menu">
+          <li data-nav-id="/en/file-formats/sexpr-intro/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-intro/index.html">S-Expression Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-footprint/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-footprint/index.html">Footprint Library File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-pcb/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-pcb/index.html">Board File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-symbol-lib/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-symbol-lib/index.html">Symbol Library File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-schematic/index.html" class="active"><a class="padding" href="/en/file-formats/sexpr-schematic/index.html">Schematic File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-worksheet/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-worksheet/index.html">Work Sheet File Format</a></li>
+          <li data-nav-id="/en/file-formats/legacy-4-to-6/index.html" class=""><a class="padding" href="/en/file-formats/legacy-4-to-6/index.html"><i class='fas fa-chevron-right'></i> Legacy Formats (4.0 up to 6.0)</a></li>
+          <li data-nav-id="/en/file-formats/legacy-pcb/index.html" class=""><a class="padding" href="/en/file-formats/legacy-pcb/index.html">Legacy Board Format (pre 4.0)</a></li></ul></li>
+          <li data-nav-id="/en/import-formats/index.html" class=""><a class="padding" href="/en/import-formats/index.html"><i class='fas fa-chevron-right'></i> Import Formats</a><ul id="R-subsections-1c0fd26620ed8f17a01710ff97907aad" class="morespace collapsible-menu">
+          <li data-nav-id="/en/import-formats/allegro/index.html" class=""><a class="padding" href="/en/import-formats/allegro/index.html">Allegro</a></li>
+          <li data-nav-id="/en/import-formats/altium/index.html" class=""><a class="padding" href="/en/import-formats/altium/index.html">Altium</a></li>
+          <li data-nav-id="/en/import-formats/cadstar/index.html" class=""><a class="padding" href="/en/import-formats/cadstar/index.html">CADSTAR</a></li>
+          <li data-nav-id="/en/import-formats/eagle/index.html" class=""><a class="padding" href="/en/import-formats/eagle/index.html">Eagle</a></li>
+          <li data-nav-id="/en/import-formats/easyeda/index.html" class=""><a class="padding" href="/en/import-formats/easyeda/index.html">EasyEDA</a></li>
+          <li data-nav-id="/en/import-formats/fabmaster/index.html" class=""><a class="padding" href="/en/import-formats/fabmaster/index.html">Fabmaster</a></li>
+          <li data-nav-id="/en/import-formats/geda/index.html" class=""><a class="padding" href="/en/import-formats/geda/index.html">gEDA / Lepton EDA</a></li>
+          <li data-nav-id="/en/import-formats/ltspice/index.html" class=""><a class="padding" href="/en/import-formats/ltspice/index.html">LTspice</a></li>
+          <li data-nav-id="/en/import-formats/pcad/index.html" class=""><a class="padding" href="/en/import-formats/pcad/index.html">P-CAD</a></li>
+          <li data-nav-id="/en/import-formats/pads/index.html" class=""><a class="padding" href="/en/import-formats/pads/index.html">PADS</a></li></ul></li>
+          </ul>
+        </div>
+        <div id="R-shortcuts">
+          <div class="nav-title padding">More</div>
+          <ul class="space">
+            <li><a class="padding" href="https://gitlab.com/kicad/services/kicad-dev-docs"><i class='fab fa-fw fa-gitlab'></i> GitLab repo</a></li>
+          </ul>
+        </div>
+        <div class="padding footermargin footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter showLangSwitch showVariantSwitch showFooter"></div>
+        <div id="R-menu-footer">
+          <hr class="padding default-animation footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter showLangSwitch showVariantSwitch showFooter">
+          <div id="R-prefooter" class="footerLangSwitch footerVariantSwitch footerVisitedLinks showLangSwitch showVariantSwitch">
+            <ul>
+              <li id="R-select-language-container" class="footerLangSwitch showLangSwitch">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-language"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <label class="a11y-only" for="R-select-language">Language</label>
+                    <select id="R-select-language" onchange="location = this.querySelector( this.value ).dataset.url;">
+                      <option id="R-select-language-en" value="#R-select-language-en" data-url="/en/file-formats/sexpr-schematic/index.html" lang="en" selected>English</option>
+                    </select>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+              </li>
+              <li id="R-select-variant-container" class="footerVariantSwitch showVariantSwitch">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-paint-brush"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <label class="a11y-only" for="R-select-variant">Theme</label>
+                    <select id="R-select-variant" onchange="window.variants && variants.changeVariant( this.value );">
+                      <option id="R-select-variant-auto" value="auto" selected>Auto</option>
+                      <option id="R-select-variant-zen-light" value="zen-light">Zen Light</option>
+                      <option id="R-select-variant-zen-dark" value="zen-dark">Zen Dark</option>
+                    </select>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+                <script>window.variants && variants.markSelectedVariant();</script>
+              </li>
+              <li class="footerVisitedLinks">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-history"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <button onclick="clearHistory();">Clear History</button>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div id="R-footer" class="footerFooter showFooter">
+	    <p>Built with <a href="https://github.com/McShelby/hugo-theme-relearn" title="love"><i class="fas fa-heart"></i></a> by <a href="https://gohugo.io/">Hugo</a></p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <script src="/js/clipboard.min.js?1777466996" defer></script>
+    <script src="/js/perfect-scrollbar.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-color.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-dispatch.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-drag.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-ease.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-interpolate.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-selection.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-timer.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-transition.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-zoom.min.js?1777466996" defer></script>
+    <script src="/js/js-yaml.min.js?1777466996" defer></script>
+    <script src="/js/mermaid.min.js?1777466996" defer></script>
+    <script>
+      window.themeUseMermaid = JSON.parse("{}");
+    </script>
+    <script src="/js/theme.js?1777466996" defer></script><script>
+anchors.add();
+</script>
+  </body>
+</html>

@@ -1,0 +1,4123 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" itemscope itemtype="http://schema.org/Article">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="generator" content="Hugo 0.128.1">
+    <meta name="generator" content="Relearn 6.0.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="S-Expression Format | Developer Documentation | KiCad">
+    <meta property="og:url" content="/en/file-formats/sexpr-intro/index.html">
+    <meta property="og:site_name" content="Developer Documentation | KiCad">
+    <meta property="og:title" content="S-Expression Format | Developer Documentation | KiCad">
+    <meta property="og:locale" content="en">
+    <meta property="og:type" content="website">
+    <meta itemprop="name" content="S-Expression Format | Developer Documentation | KiCad">
+    <meta itemprop="dateModified" content="2024-11-04T21:48:29+08:00">
+    <meta itemprop="wordCount" content="9569">
+    <title>S-Expression Format | Developer Documentation | KiCad</title>
+    <link href="/en/file-formats/sexpr-intro/index.xml" rel="alternate" type="application/rss+xml" title="S-Expression Format | Developer Documentation | KiCad">    <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+
+    <link href="/css/fontawesome-all.min.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/fontawesome-all.min.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/nucleus.css?1777466996" rel="stylesheet">
+    <link href="/css/auto-complete.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/auto-complete.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/perfect-scrollbar.min.css?1777466996" rel="stylesheet">
+    <link href="/css/fonts.css?1777466996" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/css/fonts.css?1777466996" rel="stylesheet"></noscript>
+    <link href="/css/theme.css?1777466996" rel="stylesheet">
+    <link href="/css/theme-auto.css?1777466996" rel="stylesheet" id="R-variant-style">
+    <link href="/css/chroma-auto.css?1777466996" rel="stylesheet" id="R-variant-chroma-style">
+    <link href="/css/variant.css?1777466996" rel="stylesheet">
+    <link href="/css/print.css?1777466996" rel="stylesheet" media="print">
+    <script src="/js/variant.js?1777466996"></script>
+    <script>
+      window.relearn = window.relearn || {};
+      window.relearn.relBasePath='..\/..\/..';
+      window.relearn.relBaseUri='..\/..\/..';
+      window.relearn.absBaseUri='';
+      window.index_js_url="/en/index.search.js";
+      // variant stuff
+      window.variants && variants.init( [ 'auto', 'zen-light', 'zen-dark' ] );
+      // translations
+      window.T_Copy_to_clipboard = `Copy to clipboard`;
+      window.T_Copied_to_clipboard = `Copied to clipboard!`;
+      window.T_Copy_link_to_clipboard = `Copy link to clipboard`;
+      window.T_Link_copied_to_clipboard = `Copied link to clipboard!`;
+      window.T_Reset_view = `Reset view`;
+      window.T_View_reset = `View reset!`;
+      window.T_No_results_found = `No results found for "{0}"`;
+      window.T_N_results_found = `{1} results found for "{0}"`;
+    </script>
+    
+    <link href="/css/asciidoctor.css?1777466996" rel="stylesheet">
+
+    
+    <script type="text/javascript" src="/js/anchor.min.min.db12813a76382a30f979f1f71357f1636c247159a84eb408e7a4d8640dce52f3.js"></script>
+
+
+  </head>
+  <body class="mobile-support html disableInlineCopyToClipboard" data-url="/en/file-formats/sexpr-intro/index.html">
+    <div id="R-body" class="default-animation">
+      <div id="R-body-overlay"></div>
+      <nav id="R-topbar">
+        <div class="topbar-wrapper">
+          <div class="topbar-sidebar-divider"></div>
+          <div class="topbar-area topbar-area-start" data-area="start">
+            <div class="topbar-button topbar-button-sidebar" data-content-empty="disable" data-width-s="show" data-width-m="hide" data-width-l="hide"><button class="topbar-control" onclick="toggleNav()" type="button" title="Menu (CTRL&#43;ALT&#43;n)"><i class="fa-fw fas fa-bars"></i></button>
+            </div>
+            <div class="topbar-button topbar-button-toc" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show"><button class="topbar-control" onclick="toggleTopbarFlyout(this)" type="button" title="Table of Contents (CTRL&#43;ALT&#43;t)"><i class="fa-fw fas fa-list-alt"></i></button>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper"><nav class="TableOfContents">
+  <ul>
+    <li><a href="#_introduction">Introduction</a>
+      <ul>
+        <li><a href="#_syntax">Syntax</a></li>
+        <li><a href="#_conventions">Conventions</a></li>
+        <li><a href="#_coordinates_and_sizes">Coordinates and Sizes</a></li>
+      </ul>
+    </li>
+    <li><a href="#_common_syntax">Common Syntax</a>
+      <ul>
+        <li><a href="#_library_identifier">Library Identifier</a></li>
+        <li><a href="#_position_identifier">Position Identifier</a></li>
+        <li><a href="#_coordinate_point_list">Coordinate Point List</a></li>
+        <li><a href="#_stroke_definition">Stroke Definition</a></li>
+        <li><a href="#_text_effects">Text Effects</a></li>
+        <li><a href="#_page_settings">Page Settings</a></li>
+        <li><a href="#_title_block">Title Block</a></li>
+        <li><a href="#_properties">Properties</a></li>
+        <li><a href="#_universally_unique_identifier">Universally Unique Identifier</a></li>
+        <li><a href="#_images">Images</a></li>
+      </ul>
+    </li>
+    <li><a href="#_board_common_syntax">Board Common Syntax</a></li>
+    <li><a href="#_board_coordinates">Board Coordinates</a></li>
+    <li><a href="#_layers">Layers</a>
+      <ul>
+        <li><a href="#_capacity">Capacity</a></li>
+        <li><a href="#_canonical_layer_names">Canonical Layer Names</a></li>
+        <li><a href="#_footprint">Footprint</a></li>
+        <li><a href="#_graphic_items">Graphic Items</a></li>
+        <li><a href="#_graphical_text_box">Graphical Text Box</a></li>
+        <li><a href="#_zone">Zone</a></li>
+      </ul>
+    </li>
+    <li><a href="#_group">Group</a></li>
+    <li><a href="#_schematic_and_symbol_library_common_syntax">Schematic and Symbol Library Common Syntax</a>
+      <ul>
+        <li><a href="#_schematic_coordinates">Schematic Coordinates</a></li>
+        <li><a href="#_symbol_unit_identifier">Symbol Unit Identifier</a></li>
+        <li><a href="#_fill_definition">Fill Definition</a></li>
+        <li><a href="#_symbols">Symbols</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="topbar-breadcrumbs breadcrumbs highlightable" itemscope itemtype="http://schema.org/BreadcrumbList"><li
+            itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement"><a itemprop="item" href="/en/file-formats/index.html"><span itemprop="name">File Formats</span></a><meta itemprop="position" content="1">&nbsp;>&nbsp;</li><li
+            itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement"><span itemprop="name">S-Expression Format</span><meta itemprop="position" content="2"></li>
+          </ol>
+          <div class="topbar-area topbar-area-end" data-area="end">
+				
+            <div class="topbar-button topbar-button-edit" data-content-empty="disable" data-width-s="area-more" data-width-m="show" data-width-l="show"><a class="topbar-control" href="https://gitlab.com/kicad/services/kicad-dev-docs/-/edit/master/content/file-formats/sexpr-intro/_index.en.adoc" target="_blank" title="Edit (CTRL&#43;ALT&#43;w)"><i class="fa-fw fas fa-pen"></i></a>
+            </div>
+            <div class="topbar-button topbar-button-more" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show"><button class="topbar-control" onclick="toggleTopbarFlyout(this)" type="button" title="More"><i class="fa-fw fas fa-ellipsis-v"></i></button>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper">
+                  <div class="topbar-area topbar-area-more" data-area="more">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div id="R-main-overlay"></div>
+      <main id="R-body-inner" class="highlightable default" tabindex="-1">
+        <div class="flex-block-wrapper">
+
+          <article class="default">
+            <header class="headline">
+            </header>
+
+<h1 id="s-expression-format">S-Expression Format</h1>
+
+<div class="paragraph">
+<div class="sect1">
+<h2 id="_introduction">Introduction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>KiCad uses an s-expression file format for symbol libraries, footprint libraries,
+schematics, printed circuit boards, and title block and border worksheets.</p>
+</div>
+<div class="sect2">
+<h3 id="_syntax">Syntax</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>Syntax is based on the Specctra DSN file format.</p>
+</li>
+<li>
+<p>Token definitions are delimited by opening <code>(</code> and closing <code>)</code> parenthesis.</p>
+</li>
+<li>
+<p>All tokens are lowercase.</p>
+</li>
+<li>
+<p>Tokens cannot contain any white space characters or special characters other than the
+underscore &#39;_&#39; character.</p>
+</li>
+<li>
+<p>All strings are quoted using the double quote character (&#34;) and are UTF-8 encoded.</p>
+</li>
+<li>
+<p>Tokens can have zero or more attributes.</p>
+</li>
+<li>
+<p>Human readability is a design goal.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_conventions">Conventions</h3>
+<div class="paragraph">
+<p>In order to use the file format documentation properly, there are a few notation conventions
+ that must be understood.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Token attributes are upper case descriptive names.  For example <code>(at X Y)</code>, X is the
+horizontal coordinate and Y is the vertical coordinate.</p>
+</li>
+<li>
+<p>Some tokens have a limited number of possible attribute values which are separated by a
+logical or character &#39;|&#39;.  For example <code>(visible yes|no)</code> the only valid attributes for
+the <code>visible</code> token are <code>yes</code> or <code>no</code>.</p>
+</li>
+<li>
+<p>Some tokens have optional attributes which are enclosed in square braces.  For example
+<code>(paper A0 [portrait])</code> the page portrait setting is optional.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_coordinates_and_sizes">Coordinates and Sizes</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>All values are given in millimeters.</p>
+</li>
+<li>
+<p>Exponential floating point values are not used for readability purposes.</p>
+</li>
+<li>
+<p>All coordinates are relative to the origin of their containing object.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_common_syntax">Common Syntax</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section defines all syntax that is shared across the symbol library, footprint library,
+schematic, board, and work sheet file formats.</p>
+</div>
+<div class="sect2">
+<h3 id="_library_identifier">Library Identifier</h3>
+<div class="paragraph">
+<p>The <a href="../sexpr-symbol-lib/index.html#_introduction">schematic symbol library</a> and
+<a href="../sexpr-footprint/index.html#_introduction">printed circuit board footprint library</a>
+file formats use library identifiers.  Library identifiers are defined as a quoted string
+using the &#34;LIBRARY_NICKNAME:ENTRY_NAME&#34; format where &#34;LIBRARY_NICKNAME&#34; is the nickname
+of the library in the symbol or footprint library table and &#34;ENTRY_NAME&#34; is the name of
+the symbol or footprint in the library separated by a colon.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The &#34;LIBRARY_NICKNAME&#34; is not stored in the library files because a library cannot know
+      what the assigned library table nickname is in advance.  Only the &#34;ENTRY_NAME&#34; is saved
+      in the library files.
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_position_identifier">Position Identifier</h3>
+<div class="paragraph">
+<p>The <code>at</code> token defines the positional coordinates and rotation of an object.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (at
+    X                                                           <i class="conum" data-value="1"></i><b>(1)</b>
+    Y                                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    [ANGLE]                                                     <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The X attribute defines the horizontal position of the object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The Y attribute defines the vertical position of the object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional ANGLE attribute defines the rotational angle of the object.  Not all objects have
+rotational position definitions.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Symbol <code>text</code> ANGLEs are stored in tenth’s of a degree.  All other ANGLEs are stored in
+      degrees.
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_coordinate_point_list">Coordinate Point List</h3>
+<div class="paragraph">
+<p>The <code>pts</code> token defines a list of X/Y coordinate points.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (pts
+    (xy X Y)                                                    <i class="conum" data-value="1"></i><b>(1)</b>
+    ...
+    (xy X Y)
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>xy</code> token defines a single X and Y coordinate pair.  The number of points is determined
+by the object type.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_stroke_definition">Stroke Definition</h3>
+<div class="paragraph">
+<p>The <code>stroke</code> token defines how the outlines of graphical objects are drawn.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (stroke
+    (width WIDTH)                                               <i class="conum" data-value="1"></i><b>(1)</b>
+    (type TYPE)                                                 <i class="conum" data-value="2"></i><b>(2)</b>
+    (color R G B A)                                             <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>width</code> token attribute defines the line width of the graphic object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>type</code> token attribute defines the line style of the graphic object.  Valid stroke line styles
+are:
+<div class="ulist">
+<ul>
+<li>
+<p><code>dash</code></p>
+</li>
+<li>
+<p><code>dash_dot</code></p>
+</li>
+<li>
+<p><code>dash_dot_dot</code>  (from version 7)</p>
+</li>
+<li>
+<p><code>dot</code></p>
+</li>
+<li>
+<p><code>default</code></p>
+</li>
+<li>
+<p><code>solid</code></p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>color</code> token attributes define the line red, green, blue, and alpha color settings.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_text_effects">Text Effects</h3>
+<div class="paragraph">
+<p>All text objects can have an optional <code>effects</code> section that defines how the text is displayed.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (effects
+    (font                                                       <i class="conum" data-value="1"></i><b>(1)</b>
+      [(face FACE_NAME)]                                        <i class="conum" data-value="2"></i><b>(2)</b>
+      (size HEIGHT WIDTH)                                       <i class="conum" data-value="3"></i><b>(3)</b>
+      [(thickness THICKNESS)]                                   <i class="conum" data-value="4"></i><b>(4)</b>
+      [bold]                                                    <i class="conum" data-value="5"></i><b>(5)</b>
+      [italic]                                                  <i class="conum" data-value="6"></i><b>(6)</b>
+      [(line_spacing LINE_SPACING)]                             <i class="conum" data-value="7"></i><b>(7)</b>
+    )
+    [(justify [left | right] [top | bottom] [mirror])]          <i class="conum" data-value="8"></i><b>(8)</b><i class="conum" data-value="9"></i><b>(9)</b>
+    [hide]                                                      <i class="conum" data-value="10"></i><b>(10)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>font</code> token attributes define how the text is shown.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>face</code> token indicates the font family.  It should be a TrueType font family
+name or &#34;KiCad Font&#34; for the KiCad stroke font.  (from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>size</code> token attributes define the font height and width.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>thickness</code> token attribute defines the line thickness of the font.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>bold</code> token specifies if the font should be bold.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>italic</code> token specifies if the font should be italicized.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>line_spacing</code> token specifies the spacing between lines as a ratio of standard line-spacing.
+(Not yet supported)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The optional <code>justify</code> token attributes define if the text is justified horizontally <code>right</code>
+or <code>left</code> and/or vertically <code>top</code> or <code>bottom</code> and/or mirrored.  If the justification is not
+defined, then the text is center justified both horizontally and vertically and not mirrored.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <code>mirror</code> token is only supported in the PCB Editor and Footprints.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>hide</code> token defines if the text is hidden.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_page_settings">Page Settings</h3>
+<div class="paragraph">
+<p>The <code>paper</code> token defines the drawing page size and orientation.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (paper
+    PAPER_SIZE | WIDTH HEIGHT                                   <i class="conum" data-value="1"></i><b>(1)</b>
+    [portrait]                                                  <i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Valid pages sizes are A0, A1, A2, A3, A4, A5, A, B, C, D, and E or the WIDTH and HEIGHT
+attributes are used for custom user defined page sizes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>portrait</code> token defines if the page is shown in the portrait mode.  If not defined,
+the landscape page layout mode is used.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_title_block">Title Block</h3>
+<div class="paragraph">
+<p>The <code>title_block</code> token defines the contents of the title block.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (title_block
+    (title &#34;TITLE&#34;)                                             <i class="conum" data-value="1"></i><b>(1)</b>
+    (date &#34;DATE&#34;)                                               <i class="conum" data-value="2"></i><b>(2)</b>
+    (rev &#34;REVISION&#34;)                                            <i class="conum" data-value="3"></i><b>(3)</b>
+    (company &#34;COMPANY_NAME&#34;)                                    <i class="conum" data-value="4"></i><b>(4)</b>
+    (comment N &#34;COMMENT&#34;)                                       <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>title</code> token attribute is a quoted string that defines the document title.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>date</code> token attribute is a quoted string that defines the document date using the
+YYYY-MM-DD format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>rev</code> token attribute is a quoted string that defines the document revision.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>company</code> token attribute is a quoted string that defines the document company name.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>comment</code> token attributes define the document comments where N is a number from 1
+to 9 and COMMENT is a quoted string.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_properties">Properties</h3>
+<div class="paragraph">
+<p>The <code>property</code> token defines a key value pair for storing user defined information.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (property
+    &#34;KEY&#34;                                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    &#34;VALUE&#34;                                                     <i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The property key attribute is a string that defines the name of the property.  Property keys
+must be unique.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The property value attribute is a string associated with the key attribute.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_universally_unique_identifier">Universally Unique Identifier</h3>
+<div class="paragraph">
+<p>The <code>uuid</code> token defines an universally unique identifier.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (uuid
+    UUID                                                        <i class="conum" data-value="1"></i><b>(1)</b><i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The UUID attribute is a Version 4 (random) UUID that should be globally unique.  KiCad
+UUIDs are generated using the <a href="https://en.wikipedia.org/wiki/Mersenne_Twister">mt19937 Mersenne Twister</a>
+algorithm.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Files converted from legacy versions of KiCad (prior to 6.0) have their locally-unique
+timestamps re-encoded in UUID format.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_images">Images</h3>
+<div class="paragraph">
+<p>The <code>image</code> token defines an embedded image.  This section will not exist if no images
+are present.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (image
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    [(scale SCALAR)]                                            <i class="conum" data-value="2"></i><b>(2)</b>
+    [(layer LAYER_DEFINITIONS)]                                 <i class="conum" data-value="3"></i><b>(3)</b>
+    UNIQUE_IDENTIFIER                                           <i class="conum" data-value="4"></i><b>(4)</b>
+    (data IMAGE_DATA)                                           <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_position_identifier">X and Y coordinates</a> of the image.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>scale</code> token attribute defines the SCALE_FACTOR of the image.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token attribute defines the associated board layer of the image using one
+<a href="#_canonical_layer_names">canonical layer name</a>.
+Only used by board and footprint images.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The UNIQUE_IDENTIFIER defines the
+<a href="../sexpr-intro/index.html#_universally_unique_identifier">universally unique identifier</a>
+for the image.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>data</code> token attribute defines the image data in the
+<a href="https://en.wikipedia.org/wiki/Portable_Network_Graphics">portable network graphics format (PNG)</a>
+encoded with <a href="https://en.wikipedia.org/wiki/Base64#MIME">MIME type base64</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_board_common_syntax">Board Common Syntax</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section defines all syntax that is shared across the footprint library and printed
+circuit board file formats.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_board_coordinates">Board Coordinates</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>The minimum internal unit for printed circuit board and footprint files is one nanometer so
+there is maximum resolution of six decimal places or 0.000001 mm.  Any precision beyond six
+places will be truncated.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_layers">Layers</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>All drawable board and footprint objects exist on a <code>layer</code> which is defined in the drawable
+ item definition.  All layers can be renamed by the user.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Internally, all layer names are canonical.  User defined layer names are only used for
+      display and output purposes.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (layer
+    LAYER_DEFINITION                                            <i class="conum" data-value="1"></i><b>(1)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Layer definitions can be specified as a list of one or more
+<a href="#_canonical_layer_names">canonical layer names</a> or with a &#39;*&#39; wildcard to represent all
+layers that match the rest of the wildcard.  For instance, <code>*.Cu</code> represents all
+of the  copper layers.  This only applies to
+<a href="#_canonical_layer_names">canonical layers names</a>.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect2">
+<h3 id="_capacity">Capacity</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>60 total layers.</p>
+</li>
+<li>
+<p>32 copper layers.</p>
+</li>
+<li>
+<p>8 paired technical layers for silk screen, solder mask, solder paste, and adhesive.</p>
+</li>
+<li>
+<p>4 user pre-defined layers for drawings, engineering change order (ECO), and comments.</p>
+</li>
+<li>
+<p>1 layer to define the board outline.</p>
+</li>
+<li>
+<p>1 layer to define the board margins.</p>
+</li>
+<li>
+<p>9 optional user definable layers.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canonical_layer_names">Canonical Layer Names</h3>
+<div class="paragraph">
+<p>The table below list all of the canonical layer names used in the file format.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;"/>
+<col style="width: 50%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Canonical Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Front copper layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In1.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In2.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In3.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 3</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In4.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In5.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 5</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In6.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 6</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In7.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In8.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In9.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 9</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In10.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 10</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In11.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 11</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In12.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 12</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In13.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In14.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 14</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In15.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 15</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In16.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 16</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In17.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 17</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In18.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 18</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In19.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 19</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In20.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 20</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In21.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 21</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In22.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 22</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In23.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 23</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In24.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 24</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In25.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 25</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In26.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 26</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In27.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 27</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In28.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 28</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In29.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 29</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In30.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inner copper layer 30</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.Cu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Back copper layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.Adhes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Back adhesive layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.Adhes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Front adhesive layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.Paste</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Back solder paste layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.Paste</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Front solder paste layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.SilkS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Back silk screen layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.SilkS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Front silk screen layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.Mask</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Back solder mask layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.Mask</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Front solder mask layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dwgs.User</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User drawing layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cmts.User</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User comment layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eco1.User</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User engineering change order layer 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eco2.User</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User engineering change order layer 2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edge.Cuts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Board outline layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.CrtYd</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Footprint front courtyard layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.CrtYd</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Footprint back courtyard layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">F.Fab</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Footprint front fabrication layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B.Fab</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Footprint back fabrication layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 3</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 5</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 6</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User.9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User definable layer 9</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_footprint">Footprint</h3>
+<div class="paragraph">
+<p>The <code>footprint</code> token defines a footprint.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Prior to version 6, the <code>footprint</code> token was referred to as <code>module</code>.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (footprint
+    [&#34;LIBRARY_LINK&#34;]                                            <i class="conum" data-value="1"></i><b>(1)</b>
+    [locked]                                                    <i class="conum" data-value="2"></i><b>(2)</b>
+    [placed]                                                    <i class="conum" data-value="3"></i><b>(3)</b>
+    (layer LAYER_DEFINITIONS)                                   <i class="conum" data-value="4"></i><b>(4)</b>
+    (tedit TIME_STAMP)                                          <i class="conum" data-value="5"></i><b>(5)</b>
+    [(uuid UUID)]                                               <i class="conum" data-value="6"></i><b>(6)</b>
+    [POSITION_IDENTIFIER]                                       <i class="conum" data-value="7"></i><b>(7)</b>
+    [(descr &#34;DESCRIPTION&#34;)]                                     <i class="conum" data-value="8"></i><b>(8)</b>
+    [(tags &#34;NAME&#34;)]                                             <i class="conum" data-value="9"></i><b>(9)</b>
+    [(property &#34;KEY&#34; &#34;VALUE&#34;) ...]                              <i class="conum" data-value="10"></i><b>(10)</b>
+    (path &#34;PATH&#34;)                                               <i class="conum" data-value="11"></i><b>(11)</b>
+    [(autoplace_cost90 COST)]                                   <i class="conum" data-value="12"></i><b>(12)</b>
+    [(autoplace_cost180 COST)]                                  <i class="conum" data-value="13"></i><b>(13)</b>
+    [(solder_mask_margin MARGIN)]                               <i class="conum" data-value="14"></i><b>(14)</b>
+    [(solder_paste_margin MARGIN)]                              <i class="conum" data-value="15"></i><b>(15)</b>
+    [(solder_paste_ratio RATIO)]                                <i class="conum" data-value="16"></i><b>(16)</b>
+    [(clearance CLEARANCE)]                                     <i class="conum" data-value="17"></i><b>(17)</b>
+    [(zone_connect CONNECTION_TYPE)]                            <i class="conum" data-value="18"></i><b>(18)</b>
+    [(thermal_width WIDTH)]                                     <i class="conum" data-value="19"></i><b>(19)</b>
+    [(thermal_gap DISTANCE)]                                    <i class="conum" data-value="20"></i><b>(20)</b>
+    [ATTRIBUTES]                                                <i class="conum" data-value="21"></i><b>(21)</b>
+    [(private_layers LAYER_DEFINITIONS)]                        <i class="conum" data-value="22"></i><b>(22)</b>
+    [(net_tie_pad_groups PAD_GROUP_DEFINITIONS)]                <i class="conum" data-value="23"></i><b>(23)</b>
+    GRAPHIC_ITEMS...                                            <i class="conum" data-value="24"></i><b>(24)</b>
+    PADS...                                                     <i class="conum" data-value="25"></i><b>(25)</b>
+    ZONES...                                                    <i class="conum" data-value="26"></i><b>(26)</b>
+    GROUPS...                                                   <i class="conum" data-value="27"></i><b>(27)</b>
+    3D_MODEL                                                    <i class="conum" data-value="28"></i><b>(28)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;LIBRARY_LINK&#34; attribute defines the link to footprint library of the footprint. This
+only applies to footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>locked</code> token defines a flag to indicate the footprint cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>placed</code> token defines a flag to indicate that the footprint has not been placed.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the footprint
+is placed.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>tedit</code> token defines a the last time the footprint was edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier for the footprint.  This only applies to
+footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <a href="#_position_identifier">POSITION_IDENTIFIER</a> defines the X and Y coordinates and rotational
+angle of the footprint.  This only applies to footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The optional <code>tags</code> token defines a string of search tags for the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The optional <code>descr</code> token defines a string containing the description of the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>property</code> token defines a property for the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The <code>path</code> token defines the hierarchical path of the schematic symbol linked to the footprint.
+This only applies to footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The optional <code>autoplace_cost90</code> token defines the vertical cost of when using the automatic
+footprint placement tool.  Valid values are integers 1 through 10.  This only applies to
+footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The optional <code>autoplace_cost180</code> token defines the horizontal cost of when using the automatic
+footprint placement tool.  Valid values are integers 1 through 10.  This only applies to
+footprints defined in the board file format.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="14"></i><b>14</b></td>
+<td>The optional <code>solder_mask_margin</code> token defines the solder mask distance from all pads in the
+footprint.  If not set, the board <code>solder_mask_margin</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="15"></i><b>15</b></td>
+<td>The optional <code>solder_paste_margin</code> token defines the solder paste distance from all pads in
+the footprint.  If not set, the board <code>solder_paste_margin</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="16"></i><b>16</b></td>
+<td>The optional <code>solder_paste_ratio</code> token defines the percentage of the pad size used to define
+the solder paste for all pads in the footprint.  If not set, the board <code>solder_paste_ratio</code>
+setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="17"></i><b>17</b></td>
+<td>The optional <code>clearance</code> token defines the clearance to all board copper objects for all pads
+in the footprint.  If not set, the board <code>clearance</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="18"></i><b>18</b></td>
+<td>The optional <code>zone_connect</code> token defines how all pads are connected to filled zone.  If not
+defined, then the zone <code>connect_pads</code> setting is used.  Valid connection types are integers
+values from 0 to 3 which defines:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Pads are not connect to zone.</p>
+</li>
+<li>
+<p>1 - Pads are connected to zone using thermal reliefs.</p>
+</li>
+<li>
+<p>2 - Pads are connected to zone using solid fill.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="19"></i><b>19</b></td>
+<td>The optional <code>thermal_width</code> token defined the thermal relief spoke width used for zone
+connections for all pads in the footprint.  This only affects pads connected to zones with
+thermal reliefs.  If not set, the zone <code>thermal_width</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="20"></i><b>20</b></td>
+<td>The optional <code>thermal_gap</code> is the distance from the pad to the zone of thermal relief
+connections for all pads in the footprint.  If not set, the zone <code>thermal_gap</code> setting is
+used.  If not set, the zone <code>thermal_gap</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="21"></i><b>21</b></td>
+<td>The optional <a href="#_footprint_attributes">attributes section</a> defines the attributes of the
+footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="22"></i><b>22</b></td>
+<td>An optional list of <a href="#_canonical_layer_names">canonical layer names</a> which are private to
+the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="23"></i><b>23</b></td>
+<td>An optional list of <a href="#_net_tie_pad_groups">net-tie pad groups</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="24"></i><b>24</b></td>
+<td>The graphic objects section is a list of one or more
+<a href="#_footprint_graphics_items">graphical objects</a> in the footprint.  At a minimum, the
+reference designator and value  <a href="#_footprint_text">text objects</a> are defined.  All other
+graphical objects are optional.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="25"></i><b>25</b></td>
+<td>The optional pads section is a list of <a href="#_footprint_pad">pads</a> in the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="26"></i><b>26</b></td>
+<td>The optional zones section is a list of
+<a href="#_zone">keep out zones</a> in the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="27"></i><b>27</b></td>
+<td>The optional groups section is a list of <a href="#_group">grouped objects</a> in the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="28"></i><b>28</b></td>
+<td>The <a href="#_footprint_3d_model">3D model section</a> defines the 3D model object associated with
+the footprint.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect3">
+<h4 id="_footprint_attributes">Footprint Attributes</h4>
+<div class="paragraph">
+<p>Footprint <code>attr</code> token defines the list of attributes of the footprint.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (attr
+      TYPE                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+      [board_only]                                              <i class="conum" data-value="2"></i><b>(2)</b>
+      [exclude_from_pos_files]                                  <i class="conum" data-value="3"></i><b>(3)</b>
+      [exclude_from_bom]                                        <i class="conum" data-value="4"></i><b>(4)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TYPE token defines the type of footprint.  Valid footprint types are <code>smd</code> and
+<code>through_hole</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>board_only</code> token indicates that the footprint is only defined in the board and
+has no reference to any schematic symbol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>exclude_from_pos_files</code> token indicates that the footprint position information
+should not be included when creating position files.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>exclude_from_bom</code> token indicates that the footprint should be excluded when
+creating bill of materials (BOM) files.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_net_tie_pad_groups">Net-tie Pad Groups</h4>
+<div class="paragraph">
+<p>A space-separated list of quoted strings, each containing a comma-separated list of pad names.
+Nets attached to pads within a single pad-group are allowed to short.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_footprint_graphics_items">Footprint Graphics Items</h4>
+<div class="paragraph">
+<p>Footprint graphical items define all of the drawing items that are used in the
+<a href="#_footprint">footprint definition</a>.  This includes <a href="#_footprint_text">text</a>,
+<a href="#_footprint_text_box">text boxes</a>, <a href="#_footprint_line">lines</a>, <a href="#_footprint_rectangle">rectangles</a>,
+<a href="#_footprint_circle">circles</a>, <a href="#_footprint_arc">arcs</a>, <a href="#_footprint_polygon">polygons</a>,
+<a href="#_footprint_curve">curves</a>, and <a href="#_dimension">dimensions</a>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Footprint graphic items starting with <code>fp_</code> are not valid outside of a footprint definition.
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_footprint_images">Footprint Images</h4>
+<div class="paragraph">
+<p>See the <a href="#_images">images</a> section.  This section will not exist if there are no images on the
+footprint.  Footprint images are not displayed on the PCB when a footprint is placed, only in
+the footprint editor.</p>
+</div>
+<div class="sect4">
+<h5 id="_footprint_text">Footprint Text</h5>
+<div class="paragraph">
+<p>The <code>fp_text</code> token defines text in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_text
+      TYPE                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+      &#34;TEXT&#34;                                                    <i class="conum" data-value="2"></i><b>(2)</b>
+      POSITION_IDENTIFIER                                       <i class="conum" data-value="3"></i><b>(3)</b>
+      [unlocked]                                                <i class="conum" data-value="4"></i><b>(4)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="5"></i><b>(5)</b>
+      [hide]                                                    <i class="conum" data-value="6"></i><b>(6)</b>
+      (effects TEXT_EFFECTS)                                    <i class="conum" data-value="7"></i><b>(7)</b>
+      (uuid UUID)                                               <i class="conum" data-value="8"></i><b>(8)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The TYPE attribute defines the type of text.  Valid types are <code>reference</code>, <code>value</code>, and <code>user</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The &#34;TEXT&#34; attribute is a quoted string that defines the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <a href="#_position_identifier">POSITION_IDENTIFIER</a> defines the X and Y position coordinates and
+optional orientation angle of the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>unlocked</code> token indicates if the text orientation can be anything other than
+the upright orientation.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the text resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional [hide] token, defines if the text is hidden.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>effects</code> token defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the text object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_text_box">Footprint Text Box</h5>
+<div class="paragraph">
+<p>(from version 7)</p>
+</div>
+<div class="paragraph">
+<p>The <code>fp_text_box</code> token defines a rectangle containing line-wrapped text.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (fp_text_box
+    [locked]                                                    <i class="conum" data-value="1"></i><b>(1)</b>
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="2"></i><b>(2)</b>
+    [(start X Y)]                                               <i class="conum" data-value="3"></i><b>(3)</b>
+    [(end X Y)]                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+    [(pts (xy X Y) (xy X Y) (xy X Y) (xy X Y))]                 <i class="conum" data-value="5"></i><b>(5)</b>
+    [(angle ROTATION)]                                          <i class="conum" data-value="6"></i><b>(6)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="7"></i><b>(7)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="8"></i><b>(8)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="9"></i><b>(9)</b>
+    [STROKE_DEFINITION]                                         <i class="conum" data-value="10"></i><b>(10)</b>
+    [(render_cache RENDER_CACHE)]                               <i class="conum" data-value="11"></i><b>(11)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The optional <code>locked</code> token specifies if the text box can be moved.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The content of the text box</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>start</code> token defines the top-left of a cardinally oriented text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>end</code> token defines the bottom-right of a cardinally oriented text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>pts</code> token defines the four corners of a non-cardianlly oriented text box.  The corners
+must be in order, but the winding can be either direction.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>angle</code> token defines the rotation of the text box in degrees.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the text box resides
+on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <a href="#_text_effects">TEXT_EFFECTS</a> describe the style of the text in the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the style of an optional border to
+be drawn around the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>If the <code>TEXT_EFFECTS</code> prescribe a TrueType font then a render cache should be given in case the
+font can not be found on the current system.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If <code>angle</code> is not given, or is a cardinal angle (0, 90, 180 or 270), then the text box MUST
+      have <code>start</code> and <code>end</code> tokens.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If <code>angle</code> is given and is not a cardinal angle, then the text box MUST have a <code>pts</code> token
+      (with 4 pts).
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_line">Footprint Line</h5>
+<div class="paragraph">
+<p>The <code>fp_line</code> token defines a graphic line in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_line
+      (start X Y)                                               <i class="conum" data-value="1"></i><b>(1)</b>
+      (end X Y)                                                 <i class="conum" data-value="2"></i><b>(2)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="3"></i><b>(3)</b>
+      (width WIDTH)                                             <i class="conum" data-value="4"></i><b>(4)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="5"></i><b>(5)</b>
+      [(locked)]                                                <i class="conum" data-value="6"></i><b>(6)</b>
+      (uuid UUID)                                               <i class="conum" data-value="7"></i><b>(7)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the beginning of the line.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the end of the line.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the line resides
+on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>width</code> token defines the line width. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the width and style of the line.
+(from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>locked</code> token defines if the line cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the line object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_rectangle">Footprint Rectangle</h5>
+<div class="paragraph">
+<p>The <code>fp_rect</code> token defines a graphic rectangle in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_rect
+      (start X Y)                                               <i class="conum" data-value="1"></i><b>(1)</b>
+      (end X Y)                                                 <i class="conum" data-value="2"></i><b>(2)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="3"></i><b>(3)</b>
+      (width WIDTH)                                             <i class="conum" data-value="4"></i><b>(4)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="5"></i><b>(5)</b>
+      [(fill yes | no)]                                         <i class="conum" data-value="6"></i><b>(6)</b>
+      [(locked)]                                                <i class="conum" data-value="7"></i><b>(7)</b>
+      (uuid UUID)                                               <i class="conum" data-value="8"></i><b>(8)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the upper left corner of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the low right corner of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the rectangle
+resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>width</code> token defines the line width of the rectangle. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the line width and style of the
+rectangle.  (from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>fill</code> token defines if the rectangle is filled. If not defined, the rectangle
+is not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>locked</code> token defines if the rectangle cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the rectangle object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_circle">Footprint Circle</h5>
+<div class="paragraph">
+<p>The <code>fp_circle</code> token defines a graphic circle in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_circle
+      (center X Y)                                              <i class="conum" data-value="1"></i><b>(1)</b>
+      (end X Y)                                                 <i class="conum" data-value="2"></i><b>(2)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="3"></i><b>(3)</b>
+      (width WIDTH)                                             <i class="conum" data-value="4"></i><b>(4)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="5"></i><b>(5)</b>
+      [(fill yes | no)]                                         <i class="conum" data-value="6"></i><b>(6)</b>
+      [(locked)]                                                <i class="conum" data-value="7"></i><b>(7)</b>
+      (uuid UUID)                                               <i class="conum" data-value="8"></i><b>(8)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>center</code> token defines the coordinates of the center of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the end of the radius of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the circle
+resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>width</code> token defines the line width of the circle. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the line width and style of the circle.
+(from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>fill</code> token defines if the circle is filled. If not defined, the circle is
+not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>locked</code> token defines if the circle cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the circle object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_arc">Footprint Arc</h5>
+<div class="paragraph">
+<p>The <code>fp_arc</code> token defines a graphic arc in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_arc
+      (start X Y)                                               <i class="conum" data-value="1"></i><b>(1)</b>
+      (mid X Y)                                                 <i class="conum" data-value="2"></i><b>(2)</b>
+      (end X Y)                                                 <i class="conum" data-value="3"></i><b>(3)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="4"></i><b>(4)</b>
+      (width WIDTH)                                             <i class="conum" data-value="5"></i><b>(5)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="6"></i><b>(6)</b>
+      [(locked)]                                                <i class="conum" data-value="7"></i><b>(7)</b>
+      (uuid UUID)                                               <i class="conum" data-value="8"></i><b>(8)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the start position of the arc radius.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>mid</code> token defines the coordinates of the midpoint along the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>end</code> token defines the coordinates of the end position of the arc radius.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the arc resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>width</code> token defines the line width of the arc. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the line width and style of the arc.
+(from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>locked</code> token defines if the arc cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the arc object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_polygon">Footprint Polygon</h5>
+<div class="paragraph">
+<p>The <code>fp_poly</code> token defines a graphic polygon in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_poly
+      COORDINATE_POINT_LIST                                     <i class="conum" data-value="1"></i><b>(1)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="2"></i><b>(2)</b>
+      (width WIDTH)                                             <i class="conum" data-value="3"></i><b>(3)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="4"></i><b>(4)</b>
+      [(fill yes | no)]                                         <i class="conum" data-value="5"></i><b>(5)</b>
+      [(locked)]                                                <i class="conum" data-value="6"></i><b>(6)</b>
+      (uuid UUID)                                               <i class="conum" data-value="7"></i><b>(7)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="#_coordinate_point_list">X/Y coordinates</a> of the polygon outline.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the polygon resides
+on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>width</code> token defines the line width of the polygon. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the line width and style of the polygon.
+(from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>fill</code> token defines if the polygon is filled. If not defined, the polygon
+is not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>locked</code> token defines if the polygon cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the polygon object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_footprint_curve">Footprint Curve</h5>
+<div class="paragraph">
+<p>The <code>fp_curve</code> token defines a graphic
+<a href="https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Quadratic_B%C3%A9zier_curves">Cubic Bezier curve</a>
+in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fp_curve
+      COORDINATE_POINT_LIST                                     <i class="conum" data-value="1"></i><b>(1)</b>
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="2"></i><b>(2)</b>
+      (width WIDTH)                                             <i class="conum" data-value="3"></i><b>(3)</b>
+      STROKE_DEFINITION                                         <i class="conum" data-value="4"></i><b>(4)</b>
+      [(locked)]                                                <i class="conum" data-value="5"></i><b>(5)</b>
+      (uuid UUID)                                               <i class="conum" data-value="6"></i><b>(6)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the four
+<a href="#_coordinate_point_list">X/Y coordinates</a> of each point of the curve.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the curve resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>width</code> token defines the line width of the curve. (prior to version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the line width and style of the curve.
+(from version 7)</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>locked</code> token defines if the curve cannot be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the curve object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_footprint_pad">Footprint Pad</h4>
+<div class="paragraph">
+<p>The <code>pad</code> token defines a pad in a <a href="#_footprint">footprint definition</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (pad
+      &#34;NUMBER&#34;                                                  <i class="conum" data-value="1"></i><b>(1)</b>
+      TYPE                                                      <i class="conum" data-value="2"></i><b>(2)</b>
+      SHAPE                                                     <i class="conum" data-value="3"></i><b>(3)</b>
+      POSITION_IDENTIFIER                                       <i class="conum" data-value="4"></i><b>(4)</b>
+      [(locked)]                                                <i class="conum" data-value="5"></i><b>(5)</b>
+      (size X Y)                                                <i class="conum" data-value="6"></i><b>(6)</b>
+      [(drill DRILL_DEFINITION)]                                <i class="conum" data-value="7"></i><b>(7)</b>
+      (layers &#34;CANONICAL_LAYER_LIST&#34;)                           <i class="conum" data-value="8"></i><b>(8)</b>
+      [(property PROPERTY)]                                     <i class="conum" data-value="9"></i><b>(9)</b>
+      [(remove_unused_layer)]                                   <i class="conum" data-value="10"></i><b>(10)</b>
+      [(keep_end_layers)]                                       <i class="conum" data-value="11"></i><b>(11)</b>
+      [(roundrect_rratio RATIO)]                                <i class="conum" data-value="12"></i><b>(12)</b>
+      [(chamfer_ratio RATIO)]                                   <i class="conum" data-value="13"></i><b>(13)</b>
+      [(chamfer CORNER_LIST)]                                   <i class="conum" data-value="14"></i><b>(14)</b>
+      (net NUMBER &#34;NAME&#34;)                                       <i class="conum" data-value="15"></i><b>(15)</b>
+      (uuid UUID)                                               <i class="conum" data-value="16"></i><b>(16)</b>
+      [(pinfunction &#34;PIN_FUNCTION&#34;)]                            <i class="conum" data-value="17"></i><b>(17)</b>
+      [(pintype &#34;PIN_TYPE&#34;)]                                    <i class="conum" data-value="18"></i><b>(18)</b>
+      [(die_length LENGTH)]                                     <i class="conum" data-value="19"></i><b>(19)</b>
+      [(solder_mask_margin MARGIN)]                             <i class="conum" data-value="20"></i><b>(20)</b>
+      [(solder_paste_margin MARGIN)]                            <i class="conum" data-value="21"></i><b>(21)</b>
+      [(solder_paste_margin_ratio RATIO)]                       <i class="conum" data-value="22"></i><b>(22)</b>
+      [(clearance CLEARANCE)]                                   <i class="conum" data-value="23"></i><b>(23)</b>
+      [(zone_connect ZONE)]                                     <i class="conum" data-value="24"></i><b>(24)</b>
+      [(thermal_width WIDTH)]                                   <i class="conum" data-value="25"></i><b>(25)</b>
+      [(thermal_gap DISTANCE)]                                  <i class="conum" data-value="26"></i><b>(26)</b>
+      [CUSTOM_PAD_OPTIONS]                                      <i class="conum" data-value="27"></i><b>(27)</b>
+      [CUSTOM_PAD_PRIMITIVES]                                   <i class="conum" data-value="28"></i><b>(28)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;NUMBER&#34; attribute is the pad number.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The pad TYPE can be defined as <code>thru_hole</code>, <code>smd</code>, <code>connect</code>, or <code>np_thru_hole</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The pad SHAPE can be defined as <code>circle</code>, <code>rect</code>, <code>oval</code>, <code>trapezoid</code>, <code>roundrect</code>, or <code>custom</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="#_position_identifier">X and Y coordinates and optional orientation angle</a> of the pad.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>locked</code> token defines if the footprint pad can be edited.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>size</code> token defines the width and height of the pad.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <a href="#_pad_drill_definition">pad DRILL_DEFINITION</a> defines the pad drill
+requirements.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>layers</code> token defines the <a href="#_layers">layer or layers</a> the pad reside on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The optional <code>property</code> token defines any special properties for the pad.  Valid properties are
+<code>pad_prop_bga</code>, <code>pad_prop_fiducial_glob</code>, <code>pad_prop_fiducial_loc</code>, <code>pad_prop_testpoint</code>,
+<code>pad_prop_heatsink</code>, <code>pad_prop_heatsink</code>, and <code>pad_prop_castellated</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>remove_unused_layer</code> token specifies that the copper should be removed from any
+layers the pad is not connected to.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The optional <code>keep_end_layers</code> token specifies that the top and bottom layers should be
+retained when removing the copper from unused layers.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The optional <code>roundrect_rratio</code> token defines the scaling factor of the pad to corner radius
+for rounded rectangular and chamfered corner rectangular pads.  The scaling factor is a number
+between 0 and 1.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The optional <code>chamfer_ratio</code> token defines the scaling factor of the pad to chamfer size.  The
+scaling factor is a number between 0 and 1.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="14"></i><b>14</b></td>
+<td>The optional <code>chamfer</code> token defines a list of one or more rectangular pad corners that get
+chamfered.  Valid chamfer corner attributes are <code>top_left</code>, <code>top_right</code>, <code>bottom_left</code>, and
+<code>bottom_right</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="15"></i><b>15</b></td>
+<td>The optional <code>net</code> token defines the integer number and name string of the net connection for
+the pad.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="16"></i><b>16</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the pad object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="17"></i><b>17</b></td>
+<td>The optional <code>pinfunction</code> token attribute defines the associated schematic symbol pin name.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="18"></i><b>18</b></td>
+<td>The optional <code>pintype</code> token attribute defines the associated schematic pin electrical type.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="19"></i><b>19</b></td>
+<td>The optional <code>die_length</code> token attribute defines the die length between the component pad and
+physical chip inside the component package.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="20"></i><b>20</b></td>
+<td>The optional <code>solder_mask_margin</code> token attribute defines the distance between the pad and the
+solder mask for the pad.  If not set, the footprint <code>solder_mask_margin</code> is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="21"></i><b>21</b></td>
+<td>The optional <code>solder_paste_margin</code> token attribute defines the distance the solder paste
+should be changed for the pad.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="22"></i><b>22</b></td>
+<td>The optional <code>solder_paste_margin_ratio</code> token attribute defines the percentage to reduce the
+pad outline by to generate the solder paste size.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="23"></i><b>23</b></td>
+<td>The optional <code>clearance</code> token attribute defines the clearance from all copper to the pad.  If
+not set, the footprint <code>clearance</code> is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="24"></i><b>24</b></td>
+<td>The optional <code>zone_connection</code> token attribute defines type of zone connect for the pad.  If
+not defined, the footprint <code>zone_connection</code> setting is used.  Valid connection types are
+integers values from 0 to 3 which defines:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Pad is not connect to zone.</p>
+</li>
+<li>
+<p>1 - Pad is connected to zone using thermal relief.</p>
+</li>
+<li>
+<p>2 - Pad is connected to zone using solid fill.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="25"></i><b>25</b></td>
+<td>The optional <code>thermal_width</code> token attribute defines the thermal relief spoke width used for
+zone connection for the pad.  This only affects a pad connected to a zone with a thermal
+relief.  If not set, the footprint <code>thermal_width</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="26"></i><b>26</b></td>
+<td>The optional <code>thermal_gap</code> token attribute defines the distance from the pad to the zone of
+the thermal relief connection for the pad.  This only affects a pad connected to a zone with
+a thermal relief.  If not set, the footprint <code>thermal_gap</code> setting is used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="27"></i><b>27</b></td>
+<td>The optional <a href="#_custom_pad_options">custom pad options</a> defines the options when a custom
+pad is defined.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="28"></i><b>28</b></td>
+<td>The optional <a href="#_custom_pad_primitives">custom pad primitives</a> defines the drawing objects and
+options used to define a custom pad.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect4">
+<h5 id="_pad_drill_definition">Pad Drill Definition</h5>
+<div class="paragraph">
+<p>The <code>drill</code> token defines the drill attributes for a <a href="#_footprint_pad">footprint pad</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>      (drill
+        [oval]                                                  <i class="conum" data-value="1"></i><b>(1)</b>
+        DIAMETER                                                <i class="conum" data-value="2"></i><b>(2)</b>
+        [WIDTH]                                                 <i class="conum" data-value="3"></i><b>(3)</b>
+        [(offset X Y)]                                          <i class="conum" data-value="4"></i><b>(4)</b>
+      )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The optional <code>oval</code> token defines if the drill is oval instead of round.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The diameter attribute defines the drill diameter.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional width attribute defines the width of the slot for oval drills.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>offset</code> token defines the drill offset coordinates from the center of the
+pad.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_custom_pad_options">Custom Pad Options</h5>
+<div class="paragraph">
+<p>The optional <code>options</code> token attributes define the settings used for custom pads.  This token
+is only used when a <a href="#_footprint_pad">custom pad</a> is defined.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>      (options
+        (clearance CLEARANCE_TYPE)                              <i class="conum" data-value="1"></i><b>(1)</b>
+        (anchor PAD_SHAPE)                                      <i class="conum" data-value="2"></i><b>(2)</b>
+      )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>clearance</code> token defines the type of clearance used for a custom pad.  Valid clearance
+types are <code>outline</code> and <code>convexhull</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>anchor</code> token defines the anchor pad shape of a custom pad.  Valid anchor pad shapes are
+<code>rect</code> and <code>circle</code>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_custom_pad_primitives">Custom Pad Primitives</h5>
+<div class="paragraph">
+<p>The optional <code>primitives</code> token defines a list of graphical items used to define the outline of
+a custom pad shape.  This token is only used when a <a href="#_footprint_pad">custom pad</a> is defined.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>      (primitives
+        GRAPHIC_ITEMS...                                        <i class="conum" data-value="1"></i><b>(1)</b>
+        (width WIDTH)                                           <i class="conum" data-value="2"></i><b>(2)</b>
+        [(fill yes)]                                            <i class="conum" data-value="3"></i><b>(3)</b>
+      )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The graphical items is a list of graphical <a href="#_graphical_line">lines</a>,
+<a href="#_graphical_rectangle">rectangles</a>, <a href="#_graphical_arc">arcs</a>, <a href="#_graphical_circle">circles</a>,
+<a href="#_graphical_curve">curves</a>, <a href="#_graphical_polygon">polygons</a>, and
+<a href="#_annotation_bounding_box">annotation bounding boxes</a> that define the shape of the
+custom pad (annotation bounding boxes from version 7).  The item definitions only include
+the geometrical information that defines the item.  The annotation bounding box defines the
+location (and size) of the pad number and netname.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>width</code> token defines the line width of the <a href="#_graphical_items_section">graphical items</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>fill</code> token attribute <code>yes</code> indicates the geometry defined by the
+<a href="#_graphical_items_section">graphical items</a> should be filled.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_footprint_3d_model">Footprint 3D Model</h4>
+<div class="paragraph">
+<p>The <code>model</code> token defines the 3D model associated with a <a href="#_footprint">footprint</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (model
+      &#34;3D_MODEL_FILE&#34;                                           <i class="conum" data-value="1"></i><b>(1)</b>
+      (at (xyz X Y Z))                                          <i class="conum" data-value="2"></i><b>(2)</b>
+      (scale (xyz X Y Z))                                       <i class="conum" data-value="3"></i><b>(3)</b>
+      (rotate (xyz X Y Z))                                      <i class="conum" data-value="4"></i><b>(4)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The 3D_MODEL_FILE attribute is the path and file name of the 3D model.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>at</code> token specifies the 3D position coordinates of the model relative to the footprint.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>scale</code> token specifies the model scale factor for each 3D axis.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>rotate</code> token specifies the model rotation for each 3D axis relative to the footprint.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_graphic_items">Graphic Items</h3>
+<div class="paragraph">
+<p>The graphical items are footprint and board items that are outside of the connectivity
+items.  This includes graphical items on technical, user, and copper layers.  Graphical
+items are also used to define complex <a href="#_footprint_pad">pad</a> geometries.</p>
+</div>
+<div class="sect3">
+<h4 id="_graphical_text">Graphical Text</h4>
+<div class="paragraph">
+<p>The <code>gr_text</code> token defines graphical text.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_text
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    POSITION_INDENTIFIER                                        <i class="conum" data-value="2"></i><b>(2)</b>
+    (layer LAYER_DEFINITION [knockout])                         <i class="conum" data-value="3"></i><b>(3)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+    (effects TEXT_EFFECTS)                                      <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;TEXT&#34; attribute is a quoted string that defines the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The POSITION_IDENTIFER defines the
+<a href="#_position_identifier">X and Y coordinates and optional orientation angle</a> of the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the text resides on.
+It is optionally followed by a <code>knockout</code> token indicating the text should be knocked out.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the text object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The TEXT_EFFECTS defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_graphical_text_box">Graphical Text Box</h3>
+<div class="paragraph">
+<p>(from version 7)</p>
+</div>
+<div class="paragraph">
+<p>The <code>gr_text_box</code> token defines a rectangle containing line-wrapped text.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_text_box
+    [locked]                                                    <i class="conum" data-value="1"></i><b>(1)</b>
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="2"></i><b>(2)</b>
+    [(start X Y)]                                               <i class="conum" data-value="3"></i><b>(3)</b>
+    [(end X Y)]                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+    [(pts (xy X Y) (xy X Y) (xy X Y) (xy X Y))]                 <i class="conum" data-value="5"></i><b>(5)</b>
+    [(angle ROTATION)]                                          <i class="conum" data-value="6"></i><b>(6)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="7"></i><b>(7)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="8"></i><b>(8)</b>
+    TEXT_EFFECTS                                                <i class="conum" data-value="9"></i><b>(9)</b>
+    [STROKE_DEFINITION]                                         <i class="conum" data-value="10"></i><b>(10)</b>
+    [(render_cache RENDER_CACHE)]                               <i class="conum" data-value="11"></i><b>(11)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The optional <code>locked</code> token specifies if the text box can be moved.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The content of the text box</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>start</code> token defines the top-left of a cardinally oriented text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>end</code> token defines the bottom-right of a cardinally oriented text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>pts</code> token defines the four corners of a non-cardianlly oriented text box.  The corners
+must be in order, but the winding can be either direction.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>angle</code> token defines the rotation of the text box in degrees.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the text box resides
+on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <a href="#_text_effects">TEXT_EFFECTS</a> describe the style of the text in the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The <a href="#_stroke_definition">STROKE_DEFINITION</a> describes the style of an optional border to be
+drawn around the text box.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>If the <code>TEXT_EFFECTS</code> prescribe a TrueType font then a render cache should be given in case the
+font can not be found on the current system.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If <code>angle</code> is not given, or is a cardinal angle (0, 90, 180 or 270), then the text box MUST
+      have <code>start</code> and <code>end</code> tokens.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If <code>angle</code> is given and is not a cardinal angle, then the text box MUST have a <code>pts</code> token
+      (with 4 pts).
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect3">
+<h4 id="_graphical_line">Graphical Line</h4>
+<div class="paragraph">
+<p>The <code>gr_line</code> token defines a graphical line.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_line
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (end X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    [(angle ANGLE)]                                             <i class="conum" data-value="3"></i><b>(3)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="4"></i><b>(4)</b>
+    (width WIDTH)                                               <i class="conum" data-value="5"></i><b>(5)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="6"></i><b>(6)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the beginning of the line.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the end of the line.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>angle</code> token defines the rotational angle of the line.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the line resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>width</code> token defines the line width.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the line object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_graphical_rectangle">Graphical Rectangle</h4>
+<div class="paragraph">
+<p>The <code>gr_rect</code> token defines a graphical rectangle.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_rect
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (end X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="3"></i><b>(3)</b>
+    (width WIDTH)                                               <i class="conum" data-value="4"></i><b>(4)</b>
+    [(fill yes | no)]                                           <i class="conum" data-value="5"></i><b>(5)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="6"></i><b>(6)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the upper left corner of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the low right corner of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the rectangle
+resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>width</code> token defines the line width of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>fill</code> token defines how the rectangle is filled. If not defined, the
+rectangle is not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the rectangle object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_graphical_circle">Graphical Circle</h4>
+<div class="paragraph">
+<p>The <code>gr_circle</code> token defines a graphical circle.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_circle
+    (center X Y)                                                <i class="conum" data-value="1"></i><b>(1)</b>
+    (end X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="3"></i><b>(3)</b>
+    (width WIDTH)                                               <i class="conum" data-value="4"></i><b>(4)</b>
+    [(fill yes | no)]                                           <i class="conum" data-value="5"></i><b>(5)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="6"></i><b>(6)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>center</code> token defines the coordinates of the center of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the end of the radius of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the circle
+resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>width</code> token defines the line width of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>fill</code> token defines how the circle is filled. If not defined,
+the circle is not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the circle object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_graphical_arc">Graphical Arc</h4>
+<div class="paragraph">
+<p>The <code>gr_arc</code> token defines a graphical arc.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_arc
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (mid X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    (end X Y)                                                   <i class="conum" data-value="3"></i><b>(3)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="4"></i><b>(4)</b>
+    (width WIDTH)                                               <i class="conum" data-value="5"></i><b>(5)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="6"></i><b>(6)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the start position of the arc radius.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>mid</code> token defines the coordinates of the midpoint along the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>end</code> token defines the coordinates of the end position of the arc radius.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the arc resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>width</code> token defines the line width of the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the arc object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_graphical_polygon">Graphical Polygon</h4>
+<div class="paragraph">
+<p>The <code>gr_poly</code> token defines a graphical polygon.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_poly
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="2"></i><b>(2)</b>
+    (width WIDTH)                                               <i class="conum" data-value="3"></i><b>(3)</b>
+    [(fill yes | no)]                                           <i class="conum" data-value="4"></i><b>(4)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="#_coordinate_point_list">X/Y coordinates</a> of the polygon outline.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the polygon resides
+on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>width</code> token defines the line width of the polygon.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>fill</code> token defines how the polygon is filled.  If not defined, the
+polygon is not filled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the polygon object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_graphical_curve">Graphical Curve</h4>
+<div class="paragraph">
+<p>The <code>bezier</code> token defines a graphic
+<a href="https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Quadratic_B%C3%A9zier_curves">Cubic Bezier curve</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (bezier
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="2"></i><b>(2)</b>
+    (width WIDTH)                                               <i class="conum" data-value="3"></i><b>(3)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="#_coordinate_point_list">X/Y coordinates</a> of the four pointS of the curve.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the curve resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>width</code> token defines the line width of the curve.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the curve object.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_annotation_bounding_box">Annotation Bounding Box</h4>
+<div class="paragraph">
+<p>(from version 7)</p>
+</div>
+<div class="paragraph">
+<p>The <code>gr_bbox</code> token defines a bounding box inside which annotations (such as pad numbers
+and netnames) will be shown.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (gr_bbox
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (end X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of the upper left corner of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token defines the coordinates of the low right corner of the rectangle.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_dimension">Dimension</h4>
+<div class="paragraph">
+<p>The <code>dimension</code> token defines a dimension object.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (dimension
+    [locked]                                                    <i class="conum" data-value="1"></i><b>(1)</b>
+    (type DIMENSION_TYPE)                                       <i class="conum" data-value="2"></i><b>(2)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="3"></i><b>(3)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+    (pts (xy X Y) (xy X Y))                                     <i class="conum" data-value="5"></i><b>(5)</b>
+    [(height HEIGHT)]                                           <i class="conum" data-value="6"></i><b>(6)</b>
+    [(orientation ORIENTATION)]                                 <i class="conum" data-value="7"></i><b>(7)</b>
+    [(leader_length LEADER_LENGTH)]                             <i class="conum" data-value="8"></i><b>(8)</b>
+    [(gr_text GRAPHICAL_TEXT)]                                  <i class="conum" data-value="9"></i><b>(9)</b>
+    [(format DIMENSION_FORMAT)]                                 <i class="conum" data-value="10"></i><b>(10)</b>
+    (style DIMENSION_STYLE)                                     <i class="conum" data-value="11"></i><b>(11)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The optional <code>locked</code> token specifies if the dimension can be moved.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>type</code> token attribute defines the type of dimension.  Valid dimension types are
+<code>aligned</code>, <code>leader</code>, <code>center</code>, <code>orthogonal</code>, and <code>radial</code> (<code>radial</code> from version 7).</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="../sexpr-intro/index.html#_canonical_layer_names">canonical layer</a>
+the polygon resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the dimension object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>pts</code> token attributes define the list of <code>xy</code> coordinates of the dimension.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>height</code> token attribute defines the height of aligned dimensions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>orientation</code> token attribute defines the rotation angle for orthogonal
+dimensions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The optional <code>leader_length</code> token attribute defines the distance from the marked radius to
+the knee for radial dimensions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The optional <code>gr_text</code> token attributes define the dimension text formatting for all dimension
+types except center dimensions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>format</code> token attributes define the <a href="#_dimension_format">dimension formatting</a>
+for all dimension types except center dimensions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The <code>style</code> token attributes define the <a href="#_dimension_style">dimension style</a> information.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect4">
+<h5 id="_dimension_format">Dimension Format</h5>
+<div class="paragraph">
+<p>The <code>format</code> token attributes define the text formatting of the dimension.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (format
+      [(prefix &#34;PREFIX&#34;)]                                       <i class="conum" data-value="1"></i><b>(1)</b>
+      [(suffix &#34;SUFFIX&#34;)]                                       <i class="conum" data-value="2"></i><b>(2)</b>
+      (units UNITS)                                             <i class="conum" data-value="3"></i><b>(3)</b>
+      (units_format UNITS_FORMAT)                               <i class="conum" data-value="4"></i><b>(4)</b>
+      (precision PRECISION)                                     <i class="conum" data-value="5"></i><b>(5)</b>
+      [(override_value &#34;VALUE&#34;)]                                <i class="conum" data-value="6"></i><b>(6)</b>
+      [(suppress_zeros yes | no)]                               <i class="conum" data-value="7"></i><b>(7)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The optional <code>prefix</code> token attribute defines the string to add to the beginning of the
+dimension text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>suffix</code> token attribute defines the string to add to the end of the dimension
+text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>units</code> token attribute defines the dimension units used to display the dimension text.
+Valid units are as follows:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Inches.</p>
+</li>
+<li>
+<p>1 - Mils.</p>
+</li>
+<li>
+<p>2 - Millimeters.</p>
+</li>
+<li>
+<p>3 - Automatic.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>units_format</code> token attribute defines how the unit’s suffix is formatted.  Valid units
+formats are as follows:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - No suffix.</p>
+</li>
+<li>
+<p>1 - Bare suffix.</p>
+</li>
+<li>
+<p>2 - Wrap suffix in parenthesis.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>precision</code> token attribute defines the number of significant digits to display.  From
+version 7, a <code>precision</code> above 5 indicates a units-scaled precision:
+<div class="ulist">
+<ul>
+<li>
+<p>6 - 0.00 in / 0 mils / 0.0 mm</p>
+</li>
+<li>
+<p>7 - 0.000 in / 0 mils / 0.00 mm</p>
+</li>
+<li>
+<p>8 - 0.0000 in / 0.0 mils / 0.000mm</p>
+</li>
+<li>
+<p>9 - 0.00000 in / 0.00 mils / 0.0000mm</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>override_value</code> token attribute defines the text to substitute for the actual
+physical dimension.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>suppress_zeros</code> token removes all trailing zeros from the dimension text.
+The only valid attributes are <code>yes</code> and <code>no</code>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_dimension_style">Dimension Style</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (style
+      (thickness THICKNESS)                                     <i class="conum" data-value="1"></i><b>(1)</b>
+      (arrow_length LENGTH)                                     <i class="conum" data-value="2"></i><b>(2)</b>
+      (text_position_mode MODE)                                 <i class="conum" data-value="3"></i><b>(3)</b>
+      [(arrow_direction DIRECTION)]                             <i class="conum" data-value="4"></i><b>(4)</b>
+      [(extension_height HEIGHT)]                               <i class="conum" data-value="5"></i><b>(5)</b>
+      [(text_frame TEXT_FRAME_TYPE)]                            <i class="conum" data-value="6"></i><b>(6)</b>
+      [(extension_offset OFFSET)]                               <i class="conum" data-value="7"></i><b>(7)</b>
+      [(keep_text_aligned yes | no)]                            <i class="conum" data-value="8"></i><b>(8)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>thickness</code> token attribute defines the line thickness of the dimension.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>arrow_length</code> token attribute defines the length of the dimension arrows.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>text_position_mode</code> token attribute defines the position mode of the dimension text.
+Valid position modes are as follows:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Text is outside the dimension line.</p>
+</li>
+<li>
+<p>1 - Text is in line with the dimension line.</p>
+</li>
+<li>
+<p>2 - Text has been manually placed by the user.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>arrow_direction</code> token attribute defines the direction of the dimension arrows.
+Only <code>aligned</code> and <code>orthogonal</code> dimensions support this attribute.  Valid directions are
+as follows:
+<div class="ulist">
+<ul>
+<li>
+<p><code>outward</code>: The arrows face outward, pointing away from midpoint of the crossbar.</p>
+</li>
+<li>
+<p><code>inward</code>: The arrows face inward, pointing towards the midpoint of the crossbar.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>extension_height</code> token attribute defines the length of the extension lines
+past the dimension crossbar.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>text_frame</code> token attribute defines the style of the frame around the dimension
+text.  This only applies to <code>leader</code> dimensions.  Valid text frames are as follows:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - No text frame.</p>
+</li>
+<li>
+<p>1 - Rectangle.</p>
+</li>
+<li>
+<p>2 - Circle.</p>
+</li>
+<li>
+<p>3 - Rounded rectangle.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>extension_offset</code> token attribute defines the distance from feature points to
+extension line start.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The optional <code>keep_text_aligned</code> token indicates that the dimension text should be kept in
+line with the dimension crossbar.  When not defined, the dimension text is shown horizontally
+regardless of the orientation of the dimension.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_zone">Zone</h3>
+<div class="paragraph">
+<p>The <code>zone</code> token defines a zone on the board or footprint.  Zones serve two purposes in KiCad:
+filled copper zones and keep out areas.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (zone
+    (net NET_NUMBER)                                            <i class="conum" data-value="1"></i><b>(1)</b>
+    (net_name &#34;NET_NAME&#34;)                                       <i class="conum" data-value="2"></i><b>(2)</b>
+    (layer LAYER_DEFINITION)                                    <i class="conum" data-value="3"></i><b>(3)</b>
+    (uuid UUID)                                                 <i class="conum" data-value="4"></i><b>(4)</b>
+    [(name &#34;NAME&#34;)]                                             <i class="conum" data-value="5"></i><b>(5)</b>
+    (hatch STYLE PITCH)                                         <i class="conum" data-value="6"></i><b>(6)</b>
+    [(priority PRIORITY)]                                       <i class="conum" data-value="7"></i><b>(7)</b>
+    (connect_pads [CONNECTION_TYPE] (clearance CLEARANCE))      <i class="conum" data-value="8"></i><b>(8)</b>
+    (min_thickness THICKNESS)                                   <i class="conum" data-value="9"></i><b>(9)</b>
+    [(filled_areas_thickness no)]                               <i class="conum" data-value="10"></i><b>(10)</b>
+    [ZONE_KEEPOUT_SETTINGS]                                     <i class="conum" data-value="11"></i><b>(11)</b>
+    ZONE_FILL_SETTINGS                                          <i class="conum" data-value="12"></i><b>(12)</b>
+    (polygon COORDINATE_POINT_LIST)                             <i class="conum" data-value="13"></i><b>(13)</b>
+    [ZONE_FILL_POLYGONS...]                                     <i class="conum" data-value="14"></i><b>(14)</b>
+    [ZONE_FILL_SEGMENTS...]                                     <i class="conum" data-value="15"></i><b>(15)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>net</code> token attribute defines by the net ordinal number which net in the
+<a href="../sexpr-pcb/index.html#_nets_section">nets section</a> that the zone is part of.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>net_name</code> token attribute defines the
+<a href="../sexpr-pcb/index.html#_nets_section">name of the net</a> if the zone is not a keep out
+area.  The net name attribute will be an empty string if the zone is a keep out area.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>layer</code> token defines the <a href="#_canonical_layer_names">canonical layer</a> the zone resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>uuid</code> token defines the unique identifier of the zone object.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>name</code> token attribute defines the name of the zone if one has been assigned.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>hatch</code> token attributes define the zone outline display hatch style and pitch.  Valid
+hatch styles are <code>none</code>, <code>edge</code>, and <code>full</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>priority</code> attribute defines the zone priority if it is not zero.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <code>connect_pads</code> token attributes define the pad connection type and clearance.  Valid pad
+connection types are <code>thru_hole_only</code>, <code>full</code>, and <code>no</code>.  If the pad connection type is not
+defined, thermal relief pad connections are used.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <code>min_thickness</code> token attributed defines the minimum fill width allowed in the zone.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>filled_areas_thickness</code> attribute <code>no</code> specifies if the zone like width is
+not used when determining the zone fill area.  This is to maintain compatibility with older
+board files that included the line thickness when performing zone fills when it is not
+defined.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The optional <a href="#_zone_keep_out_settings">zone keep out settings</a> section defines the keep
+out items if the zone defines as a keep out area.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The <a href="#_zone_fill_settings">zone fill settings section</a> defines how the zone is to be filled.
+<div class="ulist">
+<ul>
+<li>
+<p>0 - All footprint pads are not connect to zone.</p>
+</li>
+<li>
+<p>1 - All footprint pads are connected to zone using thermal relief.</p>
+</li>
+<li>
+<p>2 - All footprint pads are connected to zone using solid fill.</p>
+</li>
+<li>
+<p>3 - Only footprint through hole pads are connected to zone using thermal relief.  Surface
+mount pads are connected using solid fill.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The <code>polygon</code> token attribute defines the COORDINATE_POINT_LIST of
+     <a href="#_coordinate_point_list">X/Y coordinates</a> of corner points of the polygon outline.
+the corners of the zone outline polygon.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="14"></i><b>14</b></td>
+<td>The optional <a href="#_zone_fill_polygons">zone fill polygons section</a> defines all of the polygons
+used to fill the zone.  This section will not exist if the zone has not been filled or is
+filled with segments.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="15"></i><b>15</b></td>
+<td>The optional <a href="#_zone_fill_segments">zone fill segments section</a> defines a list of track
+segments used to fill the zone.  This is only used when boards prior to version 4 of KiCad
+are loaded.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect3">
+<h4 id="_zone_keep_out_settings">Zone Keep Out Settings</h4>
+<div class="paragraph">
+<p>The optional <code>keepout</code> token attributes define which objects should be kept out of the zone.  This
+section only applies to keep out zones.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (keepout
+      (tracks KEEPOUT)                                          <i class="conum" data-value="1"></i><b>(1)</b>
+      (vias KEEPOUT)                                            <i class="conum" data-value="2"></i><b>(2)</b>
+      (pads KEEPOUT)                                            <i class="conum" data-value="3"></i><b>(3)</b>
+      (copperpour KEEPOUT)                                      <i class="conum" data-value="4"></i><b>(4)</b>
+      (footprints KEEPOUT)                                      <i class="conum" data-value="5"></i><b>(5)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>tracks</code> token attribute defines whether or not tracks should be excluded from the keep
+out area.  Valid attributes are <code>allowed</code> and <code>not_allowed</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>vias</code> token attribute defines whether or not vias should be excluded from the keep
+out area.  Valid attributes are <code>allowed</code> and <code>not_allowed</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>pads</code> token attribute defines whether or not pads should be excluded from the keep
+out area.  Valid attributes are <code>allowed</code> and <code>not_allowed</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>copperpour</code> token attribute defines whether or not copper pours should be excluded from
+the keep out area.  Valid attributes are <code>allowed</code> and <code>not_allowed</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>footprints</code> token attribute defines whether or not footprints should be excluded from
+the keep out area.  Valid attributes are <code>allowed</code> and <code>not_allowed</code>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_zone_fill_settings">Zone Fill Settings</h4>
+<div class="paragraph">
+<p>The <code>fill</code> token attributes define how the zone is to be filled.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fill
+      [yes]                                                     <i class="conum" data-value="1"></i><b>(1)</b>
+      [(mode FILL_MODE)]                                        <i class="conum" data-value="2"></i><b>(2)</b>
+      (thermal_gap GAP)                                         <i class="conum" data-value="3"></i><b>(3)</b>
+      (thermal_bridge_width WIDTH)                              <i class="conum" data-value="4"></i><b>(4)</b>
+      [(smoothing STYLE)]                                       <i class="conum" data-value="5"></i><b>(5)</b>
+      [(radius RADIUS)]                                         <i class="conum" data-value="6"></i><b>(6)</b>
+      [(island_removal_mode MODE)]                              <i class="conum" data-value="7"></i><b>(7)</b>
+      [(island_area_min AREA)]                                  <i class="conum" data-value="8"></i><b>(8)</b>
+      [(hatch_thickness THICKNESS)]                             <i class="conum" data-value="9"></i><b>(9)</b>
+      [(hatch_gap GAP)]                                         <i class="conum" data-value="10"></i><b>(10)</b>
+      [(hatch_orientation ORIENTATION)]                         <i class="conum" data-value="11"></i><b>(11)</b>
+      [(hatch_smoothing_level LEVEL)]                           <i class="conum" data-value="12"></i><b>(12)</b>
+      [(hatch_smoothing_value VALUE)]                           <i class="conum" data-value="13"></i><b>(13)</b>
+      [(hatch_border_algorithm TYPE)]                           <i class="conum" data-value="14"></i><b>(14)</b>
+      [(hatch_min_hole_area AREA)]                              <i class="conum" data-value="15"></i><b>(15)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>yes</code> token specifies if the zone should be filled.  If not specified, the zone is not
+filled and no additional attributes are required.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>mode</code> token attribute defines how the zone is filled.  The only valid fill
+mode is <code>hatched</code>.  When not defined, the fill mode is solid.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>thermal_gap</code> token attribute defines the distance from the zone to all pad
+thermal relief connections to the zone.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>thermal_bridge_width</code> token attribute defines the spoke width for all pad
+thermal relief connection to the zone.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The optional <code>smoothing</code> token attributes define the style of corner smoothing.
+Valid smoothing styles are <code>chamfer</code> and <code>fillet</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The optional <code>radius</code> token defines the radius of the corner smoothing.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The optional <code>island_removal_mode</code> token attribute defines the island removal mode.  Valid
+island removal modes are:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Always remove islands.</p>
+</li>
+<li>
+<p>1 - Never remove islands.</p>
+</li>
+<li>
+<p>2 - Minimum area island to allow.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The optional <code>island_area_min</code> token attribute defines the minimum allowable zone island.
+This only valid when the remove islands mode is set to 2.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The optional <code>hatch_thickness</code> token attribute defines the thickness for hatched fills.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional <code>hatch_gap</code> token attribute defines the distance between lines for hatched fills.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The optional <code>hatch_orientation</code> token attribute defines the line angle for hatched fills.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>The optional <code>hatch_smoothing_level</code> token attribute defines how hatch outlines are smoothed.
+Valid hatch smoothing levels are:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - No smoothing.</p>
+</li>
+<li>
+<p>1 - Fillet.</p>
+</li>
+<li>
+<p>2 - Arc minimum.</p>
+</li>
+<li>
+<p>3 - Arc maximum.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
+<td>The optional <code>hatch_smoothing_value</code> token attribute defines the ratio between the hole
+and the chamfer/fillet size.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="14"></i><b>14</b></td>
+<td>The optional <code>hatch_border_algorithm</code> token attribute defines the if the zone line thickness
+is used when performing a hatch fill.  Valid values for the hatch border algorithm are:
+<div class="ulist">
+<ul>
+<li>
+<p>0 - Use zone minimum thickness.</p>
+</li>
+<li>
+<p>1 - Use hatch thickness.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="15"></i><b>15</b></td>
+<td>The optional <code>hatch_min_hole_area</code> token attribute defines the minimum area a hatch file
+hole can be.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_zone_fill_polygons">Zone Fill Polygons</h4>
+<div class="paragraph">
+<p>The <code>filled_polygon</code> token defines the polygons used to fill the zone.  This token will not exist
+if the zone has not been filled.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (filled_polygon
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="1"></i><b>(1)</b>
+      COORDINATE_POINT_LIST                                     <i class="conum" data-value="2"></i><b>(2)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>layer</code> token attribute defines the <a href="#_canonical_layer_names">canonical layer</a> the zone
+fill resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of polygon
+<a href="#_coordinate_point_list">X/Y coordinates</a> used to fill the zone.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_zone_fill_segments">Zone Fill Segments</h4>
+<div class="paragraph">
+<p>The <code>filled_segments</code> token defines the segments used to fill the zone.  This is only used when
+loading boards prior to version 4 which filled zones with segments.  Once the zone has been
+refilled, it will be filled with polygons and this token will not exist.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (fill_segments
+      (layer LAYER_DEFINITION)                                  <i class="conum" data-value="1"></i><b>(1)</b>
+      COORDINATED_POINT_LIST                                    <i class="conum" data-value="2"></i><b>(2)</b>
+    )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>layer</code> token attribute defines the <a href="#_canonical_layer_names">canonical layer</a> the zone
+fill resides on.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="#_coordinate_point_list">X and Y coordinates</a> of the segments used to fill the zone.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_group">Group</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>group</code> token defines a group of items.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (group
+    &#34;NAME&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    (id UUID)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    (members UUID1 ... UUIDN)                                   <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The name attribute defines the name of the group.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>id</code> token attribute defines the unique identifier of the group.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>members</code> token attributes define a list of unique identifiers of the objects belonging
+to the group.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_schematic_and_symbol_library_common_syntax">Schematic and Symbol Library Common Syntax</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section defines all syntax that is shared across the symbol library and schematic file
+formats.</p>
+</div>
+<div class="sect2">
+<h3 id="_schematic_coordinates">Schematic Coordinates</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>The minimum internal unit for schematic and symbol library files is one nanometer so there is
+maximum resolution of four decimal places or 0.0001 mm.  Any precision beyond four places will
+be truncated.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_symbol_unit_identifier">Symbol Unit Identifier</h3>
+<div class="paragraph">
+<p>Symbol unit identifiers define how symbol units are identified.  The unit identifier is a quoted
+string have the format &#34;NAME_UNIT_STYLE&#34;.  &#34;NAME&#34; is the parent symbol name.  &#34;UNIT&#34; is an integer
+that identifies which unit the symbol represents.  A &#34;UNIT&#34; value of zero (0) indicates that the
+symbol is common to all units.  The &#34;STYLE&#34; indicates which body style the unit represents.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This identifier is a temporary solution until the full symbol inheritance model is
+      implemented.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+KiCad only supports two body styles so the only valid values for the &#34;STYLE&#34; are 1 and 2.
+</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_fill_definition">Fill Definition</h3>
+<div class="paragraph">
+<p>The <code>fill</code> token defines how schematic and symbol library graphical items are filled.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (fill
+    (type none | outline | background)                          <i class="conum" data-value="1"></i><b>(1)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>fill</code> token attributes define how the arc is filled.  The table below describes the fill
+type modes.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="paragraph">
+<p>The table below defines the schematic and symbol graphical object fill modes.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;"/>
+<col style="width: 50%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Graphic item not filled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outline</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Graphic item filled with the line color.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">background</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Graphic filled with the theme background color.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_symbols">Symbols</h3>
+<div class="paragraph">
+<p>The <code>symbol</code> token defines a symbol or sub-unit of a parent symbol.  There can be zero or more
+<code>symbol</code> tokens in a symbol library file.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (symbol
+    &#34;LIBRARY_ID&#34; | &#34;UNIT_ID&#34;                                    <i class="conum" data-value="1"></i><b>(1)</b>
+    [(extends &#34;LIBRARY_ID&#34;)]                                    <i class="conum" data-value="2"></i><b>(2)</b>
+    [(pin_numbers hide)]                                        <i class="conum" data-value="3"></i><b>(3)</b>
+    [(pin_names [(offset OFFSET)] hide)]                        <i class="conum" data-value="4"></i><b>(4)</b>
+    (in_bom yes | no)                                           <i class="conum" data-value="5"></i><b>(5)</b>
+    (on_board yes | no)                                         <i class="conum" data-value="6"></i><b>(6)</b>
+    SYMBOL_PROPERTIES...                                        <i class="conum" data-value="7"></i><b>(7)</b>
+    GRAPHIC_ITEMS...                                            <i class="conum" data-value="8"></i><b>(8)</b>
+    PINS...                                                     <i class="conum" data-value="9"></i><b>(9)</b>
+    UNITS...                                                    <i class="conum" data-value="10"></i><b>(10)</b>
+    [(unit_name &#34;UNIT_NAME&#34;)]                                   <i class="conum" data-value="11"></i><b>(11)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Each symbol must have a unique
+<a href="#_library_identifier">&#34;LIBRARY_ID&#34;</a> for each top level symbol in the library or a unique
+<a href="#_symbol_unit_identifier">&#34;UNIT_ID&#34;</a> for each unit embedded in a parent symbol.  Library
+identifiers are only valid it top level symbols and unit identifiers are on valid as unit
+symbols inside a parent symbol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The optional <code>extends</code> token attribute defines the <a href="#_library_identifier">&#34;LIBRARY_ID&#34;</a>
+of another symbol inside the current library from which to derive a new symbol.  Extended
+symbols currently can only have different <a href="#_symbol_properties">SYMBOL_PROPERTIES</a> than
+their parent symbol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The optional <code>pin_numbers</code> token defines the visibility setting of the symbol pin numbers
+for the entire symbol.  If not defined, the all of the pin numbers in the symbol are visible.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The optional <code>pin_names</code> token defines the attributes for all of the pin names of the symbol.
+The optional <code>offset</code> token defines the pin name offset for all pin names of the symbol.  If
+not defined, the pin name offset is 0.508mm (0.020&#34;).  If the <code>pin_name</code> token is not defined,
+the all symbol pins are shown with the default offset.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>in_bom</code> token, defines if a symbol is to be include in the bill of material output.  The
+only valid attributes are yes and no.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>on_board</code> token, defines if a symbol is to be exported from the schematic to the printed
+circuit board.  The only valid attributes are yes and no.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>The <a href="#_symbol_properties">SYMBOL_PROPERTIES</a> is a list of properties that define the symbol.
+The following properties are mandatory when defining a parent symbol: &#34;Reference&#34;, &#34;Value&#34;,
+&#34;Footprint&#34;, and &#34;Datasheet&#34;.  All other properties are optional.  Unit symbols cannot have
+any properties.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>The <a href="#_symbol_graphic_items">GRAPHIC ITEMS</a> section is list of graphical arcs, circles,
+curves, lines, polygons, rectangles and text that define the symbol drawing.  This section
+can be empty if the symbol has no graphical items.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>The <a href="#_symbol_pin">PINS</a> section is a list of pins that are used by the symbol. This section
+can be empty if the symbol does not have any pins.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>The optional UNITS can be one or more child <code>symbol</code> tokens embedded in a parent <code>symbol</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>The optional <code>unit_name</code> token defines the display name of a subunit in the symbol editor and
+symbol chooser. It is only permitted for child <code>symbol</code> tokens embedded in a parent <code>symbol</code>.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect3">
+<h4 id="_symbol_properties">Symbol Properties</h4>
+<div class="paragraph">
+<p>The <code>property</code> token defines a symbol property when used inside a <code>symbol</code> definition.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tbody><tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Symbol properties are different than <a href="#_properties">general purpose properties</a> defined
+      above.
+</td>
+</tr>
+</tbody></table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    (property
+      &#34;KEY&#34;                                                     <i class="conum" data-value="1"></i><b>(1)</b>
+      &#34;VALUE&#34;                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+      (id N)                                                    <i class="conum" data-value="3"></i><b>(3)</b>
+      POSITION_IDENTIFIER                                       <i class="conum" data-value="4"></i><b>(4)</b>
+      TEXT_EFFECTS                                              <i class="conum" data-value="5"></i><b>(5)</b>
+    }</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;KEY&#34; string defines the name of the property and must be unique.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The &#34;VALUE&#34; string defines the value of the property.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>id</code> token defines an integer ID for the property and must be unique.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="#_position_identifier">X and Y coordinates and rotation angle</a> of the property.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The TEXT_EFFECTS section defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="sect4">
+<h5 id="_mandatory_symbol_properties">Mandatory Symbol Properties</h5>
+<div class="paragraph">
+<p>The table below defines the mandatory properties for parent symbols.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Mandatory Properties</caption>
+<colgroup>
+<col style="width: 20.8333%;"/>
+<col style="width: 12.5%;"/>
+<col style="width: 50%;"/>
+<col style="width: 16.6667%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Ordinal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Empty Allowed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Symbol reference designator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Value</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Symbol value string</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Footprint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Symbol footprint <a href="#_library_identifier">library identifier</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Datasheet</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Symbol datasheet link</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_reserved_symbol_property_keys">Reserved Symbol Property Keys</h5>
+<div class="paragraph">
+<p>The list below is the list of property keys reserve by KiCad and cannot be user for user defined
+properties.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ki_keywords</code></p>
+</li>
+<li>
+<p><code>ki_description</code></p>
+</li>
+<li>
+<p><code>ki_locked</code></p>
+</li>
+<li>
+<p><code>ki_fp_filters</code></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_graphic_items">Symbol Graphic Items</h4>
+<div class="paragraph">
+<p>This section documents the various graphical objects used in symbol definitions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_arc">Symbol Arc</h4>
+<div class="paragraph">
+<p>The <code>arc</code> token defines a graphical arc in a symbol definition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (arc
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (mid X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    (end X Y)                                                   <i class="conum" data-value="3"></i><b>(3)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="4"></i><b>(4)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="5"></i><b>(5)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token defines the coordinates of start point of the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>mid</code> token defines the coordinates of mid point of the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>end</code> token defines the coordinates of end point of the arc.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The STROKE_DEFINITION defines how the arc <a href="#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>fill</code> token attributes define how the arc is <a href="#_fill_definition">filled</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_circle">Symbol Circle</h4>
+<div class="paragraph">
+<p>The <code>circle</code> token defines a graphical circle in a symbol definition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (circle
+    (center X Y)                                                <i class="conum" data-value="1"></i><b>(1)</b>
+    (radius RADIUS)                                             <i class="conum" data-value="2"></i><b>(2)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="3"></i><b>(3)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>center</code> token defines the coordinates of center point of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The radius token defines the length of the radius of the circle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The STROKE_DEFINITION defines how the circle <a href="#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The FILL_DEFINTION defines how the circle is <a href="#_fill_definition">filled</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_curve">Symbol Curve</h4>
+<div class="paragraph">
+<p>The <code>bezier</code> token defines a graphical .
+<a href="https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Quadratic_B%C3%A9zier_curves">Qubic Bezier curve</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (bezier
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the four
+<a href="#_coordinate_point_list">X/Y coordinates</a> of each point of the curve.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The STROKE_DEFINITION defines how the curve <a href="#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The FILL_DEFINTION defines how the curve is <a href="#_fill_definition">filled</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_line">Symbol Line</h4>
+<div class="paragraph">
+<p>The <code>polyline</code> token defines one or more graphical lines that may or may not define a polygon.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (polyline
+    COORDINATE_POINT_LIST                                       <i class="conum" data-value="1"></i><b>(1)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The COORDINATE_POINT_LIST defines the list of
+<a href="#_coordinate_point_list">X/Y coordinates</a> of the line(s).  There must be a minimum of two
+points.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The STROKE_DEFINITION defines how the polygon formed by the lines
+<a href="#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>fill</code> token attributes define how the polygon formed by the lines is
+<a href="#_fill_definition">filled</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_rectangle">Symbol Rectangle</h4>
+<div class="paragraph">
+<p>The <code>rectangle</code> token defines a graphical rectangle in a symbol definition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (rectangle
+    (start X Y)                                                 <i class="conum" data-value="1"></i><b>(1)</b>
+    (end X Y)                                                   <i class="conum" data-value="2"></i><b>(2)</b>
+    STROKE_DEFINITION                                           <i class="conum" data-value="3"></i><b>(3)</b>
+    FILL_DEFINITION                                             <i class="conum" data-value="4"></i><b>(4)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>start</code> token attributes define the coordinates of the start point of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>end</code> token attributes define the coordinates of the end point of the rectangle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The STROKE_DEFINITION defines how the rectangle <a href="#_stroke_definition">outline is drawn</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The FILL_DEFINTION defines how the rectangle is <a href="#_fill_definition">filled</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_text">Symbol Text</h4>
+<div class="paragraph">
+<p>The <code>text</code> token defines graphical text in a symbol definition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (text
+    &#34;TEXT&#34;                                                      <i class="conum" data-value="1"></i><b>(1)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="2"></i><b>(2)</b>
+    (effects TEXT_EFFECTS)                                      <i class="conum" data-value="3"></i><b>(3)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The &#34;TEXT&#34; attribute is a quoted string that defines the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="#_position_identifier">X and Y coordinates and rotation angle</a> of the text.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The TEXT_EFFECTS defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_symbol_pin">Symbol Pin</h4>
+<div class="paragraph">
+<p>The <code>pin</code> token defines a pin in a symbol definition.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>  (pin
+    PIN_ELECTRICAL_TYPE                                         <i class="conum" data-value="1"></i><b>(1)</b>
+    PIN_GRAPHIC_STYLE                                           <i class="conum" data-value="2"></i><b>(2)</b>
+    POSITION_IDENTIFIER                                         <i class="conum" data-value="3"></i><b>(3)</b>
+    (length LENGTH)                                             <i class="conum" data-value="4"></i><b>(4)</b>
+    (name &#34;NAME&#34; TEXT_EFFECTS)                                  <i class="conum" data-value="5"></i><b>(5)</b>
+    (number &#34;NUMBER&#34; TEXT_EFFECTS)                              <i class="conum" data-value="6"></i><b>(6)</b>
+  )</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tbody><tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The PIN_ELECTRICAL_TYPE defines the pin electrical connection.  See table below for valid pin
+electrical connection types and descriptions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The PIN_GRAPHICAL_STYLE defines the graphical style used to draw the pin.  See table below for
+valid pin graphical styles and descriptions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The POSITION_IDENTIFIER defines the
+<a href="#_position_identifier">X and Y coordinates and rotation angle</a> of the connection point of
+the pin relative to the symbol origin position.  The only supported rotation angles for pins
+are 0, 90, 180, and 270 degrees.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>The <code>length</code> token attribute defines the LENGTH of the pin.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>The <code>name</code> token defines a quoted string containing the NAME of the pin and the TEXT_EFFECTS
+defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>The <code>number</code> token defines a quoted string containing the NUMBER of the pin and the
+TEXT_EFFECTS defines how the <a href="#_text_effects">text is displayed</a>.</td>
+</tr>
+</tbody></table>
+</div>
+<div class="paragraph">
+<p>The table below defines the pin electrical types.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;"/>
+<col style="width: 75%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is an input.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is an output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bidirectional</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin can be both input and output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tri_state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is a tri-state output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">passive</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is electrically passive.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">free</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not internally connected.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unspecified</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin does not have a specified electrical type.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">power_in</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is a power input.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">power_out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is a power output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">open_collector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is an open collector output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">open_emitter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin is an open emitter output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">no_connect</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pin has no electrical connection.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The table below defines the pin graphical styles.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;"/>
+<col style="width: 70%;"/>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-center valign-top">Pin Image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">line</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_normal_16.png" alt="images/pinshape_normal_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inverted</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_invert_16.png" alt="images/pinshape_invert_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clock</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_clock_normal_16.png" alt="images/pinshape_clock_normal_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">inverted_clock</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_clock_invert_16.png" alt="images/pinshape_clock_invert_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input_low</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_active_low_input_16.png" alt="images/pinshape_active_low_input_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clock_low</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_clock_active_low_16.png" alt="images/pinshape_clock_active_low_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output_low</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_active_low_output_16.png" alt="images/pinshape_active_low_output_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">edge_clock_high</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_clock_fall_16.png" alt="images/pinshape_clock_fall_16"/></span></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">non_logic</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><span class="image"><img src="images/pinshape_nonlogic_16.png" alt="images/pinshape_nonlogic_16"/></span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+            <footer class="footline"><i class='fa-fw fas fa-calendar'></i> Last Modified <time datetime="2024-11-04">2024-11-04</time>
+            </footer>
+          </article>
+        </div>
+      </main>
+    </div>
+    <aside id="R-sidebar" class="default-animation">
+      <div id="R-header-topbar" class="default-animation"></div>
+      <div id="R-header-wrapper" class="default-animation">
+        <div id="R-header" class="default-animation">
+<a id="logo" href='/en'>
+  <img src="/img/kicad_logo_small.png" alt="Developer Documentation | KiCad">
+</a>
+
+        </div>
+
+        <search><form action="/en/search.html" method="get">
+          <div class="searchbox default-animation">
+            <button class="search-detail" type="submit" title="Search (CTRL+ALT+f)"><i class="fas fa-search"></i></button>
+            <label class="a11y-only" for="R-search-by">Search</label>
+            <input data-search-input id="R-search-by" name="search-by" class="search-by" type="search" placeholder="Search...">
+            <button class="search-clear" type="button" data-search-clear="" title="Clear search"><i class="fas fa-times" title="Clear search"></i></button>
+          </div>
+        </form></search>
+        <script>
+          var contentLangs=['en'];
+        </script>
+        <script src="/js/auto-complete.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.stemmer.support.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.multi.min.js?1777466996" defer></script>
+        <script src="/js/lunr/lunr.en.min.js?1777466996" defer></script>
+        <script src="/js/search.js?1777466996" defer></script>
+      </div>
+      <div id="R-homelinks" class="default-animation">
+        <hr class="padding">
+      </div>
+      <div id="R-content-wrapper" class="highlightable">
+        <div id="R-topics">
+          <ul class="enlarge morespace collapsible-menu">
+          <li data-nav-id="/en/getting-started/index.html" class=""><a class="padding" href="/en/getting-started/index.html"><i class='fas fa-chevron-right'></i> Getting Started</a></li>
+          <li data-nav-id="/en/build/index.html" class=""><a class="padding" href="/en/build/index.html"><i class='fas fa-chevron-right'></i> Build</a><ul id="R-subsections-1a75785def61d04d653c6ae20a89ed06" class="morespace collapsible-menu">
+          <li data-nav-id="/en/build/getting-started/index.html" class=""><a class="padding" href="/en/build/getting-started/index.html">Getting Started</a></li>
+          <li data-nav-id="/en/build/linux/index.html" class=""><a class="padding" href="/en/build/linux/index.html">Linux</a></li>
+          <li data-nav-id="/en/build/macos/index.html" class=""><a class="padding" href="/en/build/macos/index.html">macOS</a></li>
+          <li data-nav-id="/en/build/windows-msys2/index.html" class=""><a class="padding" href="/en/build/windows-msys2/index.html">Windows (MSYS2)</a></li>
+          <li data-nav-id="/en/build/windows-msvc/index.html" class=""><a class="padding" href="/en/build/windows-msvc/index.html">Windows (Visual Studio)</a></li>
+          <li data-nav-id="/en/build/compile-options/index.html" class=""><a class="padding" href="/en/build/compile-options/index.html">Build Options</a></li></ul></li>
+          <li data-nav-id="/en/rules-guidelines/index.html" class=""><a class="padding" href="/en/rules-guidelines/index.html"><i class='fas fa-chevron-right'></i> Rules and Guidelines</a><ul id="R-subsections-36ce08cc34548946f3c78ee15e7e1dd6" class="morespace collapsible-menu">
+          <li data-nav-id="/en/rules-guidelines/code-style/index.html" class=""><a class="padding" href="/en/rules-guidelines/code-style/index.html">Code Style Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/commit/index.html" class=""><a class="padding" href="/en/rules-guidelines/commit/index.html">Commit Message Format Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/feature-proposals/index.html" class=""><a class="padding" href="/en/rules-guidelines/feature-proposals/index.html">Feature Contribution Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/release-policy/index.html" class=""><a class="padding" href="/en/rules-guidelines/release-policy/index.html">Stable Release Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/code-policy/index.html" class=""><a class="padding" href="/en/rules-guidelines/code-policy/index.html">Code Design Guidelines</a></li>
+          <li data-nav-id="/en/rules-guidelines/icon-design/index.html" class=""><a class="padding" href="/en/rules-guidelines/icon-design/index.html">Icon Design Guidelines</a></li>
+          <li data-nav-id="/en/rules-guidelines/culture/index.html" class=""><a class="padding" href="/en/rules-guidelines/culture/index.html">KiCad Developer Culture</a></li>
+          <li data-nav-id="/en/rules-guidelines/ui/index.html" class=""><a class="padding" href="/en/rules-guidelines/ui/index.html">User Interface Policy</a></li>
+          <li data-nav-id="/en/rules-guidelines/anti-patterns/index.html" class=""><a class="padding" href="/en/rules-guidelines/anti-patterns/index.html">Anti-Patterns</a></li>
+          <li data-nav-id="/en/rules-guidelines/tool-generated-content/index.html" class=""><a class="padding" href="/en/rules-guidelines/tool-generated-content/index.html">Tool-Generated Content Policy</a></li></ul></li>
+          <li data-nav-id="/en/components/index.html" class=""><a class="padding" href="/en/components/index.html"><i class='fas fa-chevron-right'></i> Components</a><ul id="R-subsections-12b079b79ec0b46cdc7ea4c430acca48" class="morespace collapsible-menu">
+          <li data-nav-id="/en/components/settings/index.html" class=""><a class="padding" href="/en/components/settings/index.html">Settings Framework</a></li>
+          <li data-nav-id="/en/components/tool-framework/index.html" class=""><a class="padding" href="/en/components/tool-framework/index.html">Tool Framework</a></li>
+          <li data-nav-id="/en/components/plugins/index.html" class=""><a class="padding" href="/en/components/plugins/index.html">Plugins Framework</a></li>
+          <li data-nav-id="/en/components/testing/index.html" class=""><a class="padding" href="/en/components/testing/index.html">Testing</a></li>
+          <li data-nav-id="/en/components/sexpr/index.html" class=""><a class="padding" href="/en/components/sexpr/index.html">S-Expressions</a></li></ul></li>
+          <li data-nav-id="/en/apis-and-binding/index.html" class=""><a class="padding" href="/en/apis-and-binding/index.html"><i class='fas fa-chevron-right'></i> APIs and Bindings</a><ul id="R-subsections-0aca3ec26a6e8663f1cfc4da3a1d8d0e" class="morespace collapsible-menu">
+          <li data-nav-id="/en/apis-and-binding/ipc-api/index.html" class="alwaysopen"><a class="padding" href="/en/apis-and-binding/ipc-api/index.html">KiCad IPC API</a><ul id="R-subsections-51f73bcf765ca469590a4b11b899bafb" class="morespace collapsible-menu">
+          <li data-nav-id="/en/apis-and-binding/ipc-api/for-kicad-developers/index.html" class=""><a class="padding" href="/en/apis-and-binding/ipc-api/for-kicad-developers/index.html">For KiCad Developers</a></li>
+          <li data-nav-id="/en/apis-and-binding/ipc-api/for-addon-developers/index.html" class=""><a class="padding" href="/en/apis-and-binding/ipc-api/for-addon-developers/index.html">For Add-on Developers</a></li></ul></li>
+          <li data-nav-id="/en/apis-and-binding/http-libraries/index.html" class=""><a class="padding" href="/en/apis-and-binding/http-libraries/index.html">HTTP Libraries</a></li>
+          <li data-nav-id="/en/apis-and-binding/pcbnew/index.html" class=""><a class="padding" href="/en/apis-and-binding/pcbnew/index.html">PCB Python Bindings</a></li></ul></li>
+          <li data-nav-id="/en/source-doxygen/index.html" class=""><a class="padding" href="/en/source-doxygen/index.html"><i class='fas fa-chevron-right'></i> Source Code Docs</a></li>
+          <li data-nav-id="/en/translation/index.html" class=""><a class="padding" href="/en/translation/index.html"><i class='fas fa-chevron-right'></i> Translation</a></li>
+          <li data-nav-id="/en/addons/index.html" class=""><a class="padding" href="/en/addons/index.html"><i class='fas fa-chevron-right'></i> KiCad Addons</a></li>
+          <li data-nav-id="/en/file-formats/index.html" class="parent "><a class="padding" href="/en/file-formats/index.html"><i class='fas fa-chevron-right'></i> File Formats</a><ul id="R-subsections-5244ac2a8e770cbe23e6f973cccb07ca" class="morespace collapsible-menu">
+          <li data-nav-id="/en/file-formats/sexpr-intro/index.html" class="active"><a class="padding" href="/en/file-formats/sexpr-intro/index.html">S-Expression Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-footprint/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-footprint/index.html">Footprint Library File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-pcb/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-pcb/index.html">Board File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-symbol-lib/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-symbol-lib/index.html">Symbol Library File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-schematic/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-schematic/index.html">Schematic File Format</a></li>
+          <li data-nav-id="/en/file-formats/sexpr-worksheet/index.html" class=""><a class="padding" href="/en/file-formats/sexpr-worksheet/index.html">Work Sheet File Format</a></li>
+          <li data-nav-id="/en/file-formats/legacy-4-to-6/index.html" class=""><a class="padding" href="/en/file-formats/legacy-4-to-6/index.html"><i class='fas fa-chevron-right'></i> Legacy Formats (4.0 up to 6.0)</a></li>
+          <li data-nav-id="/en/file-formats/legacy-pcb/index.html" class=""><a class="padding" href="/en/file-formats/legacy-pcb/index.html">Legacy Board Format (pre 4.0)</a></li></ul></li>
+          <li data-nav-id="/en/import-formats/index.html" class=""><a class="padding" href="/en/import-formats/index.html"><i class='fas fa-chevron-right'></i> Import Formats</a><ul id="R-subsections-1c0fd26620ed8f17a01710ff97907aad" class="morespace collapsible-menu">
+          <li data-nav-id="/en/import-formats/allegro/index.html" class=""><a class="padding" href="/en/import-formats/allegro/index.html">Allegro</a></li>
+          <li data-nav-id="/en/import-formats/altium/index.html" class=""><a class="padding" href="/en/import-formats/altium/index.html">Altium</a></li>
+          <li data-nav-id="/en/import-formats/cadstar/index.html" class=""><a class="padding" href="/en/import-formats/cadstar/index.html">CADSTAR</a></li>
+          <li data-nav-id="/en/import-formats/eagle/index.html" class=""><a class="padding" href="/en/import-formats/eagle/index.html">Eagle</a></li>
+          <li data-nav-id="/en/import-formats/easyeda/index.html" class=""><a class="padding" href="/en/import-formats/easyeda/index.html">EasyEDA</a></li>
+          <li data-nav-id="/en/import-formats/fabmaster/index.html" class=""><a class="padding" href="/en/import-formats/fabmaster/index.html">Fabmaster</a></li>
+          <li data-nav-id="/en/import-formats/geda/index.html" class=""><a class="padding" href="/en/import-formats/geda/index.html">gEDA / Lepton EDA</a></li>
+          <li data-nav-id="/en/import-formats/ltspice/index.html" class=""><a class="padding" href="/en/import-formats/ltspice/index.html">LTspice</a></li>
+          <li data-nav-id="/en/import-formats/pcad/index.html" class=""><a class="padding" href="/en/import-formats/pcad/index.html">P-CAD</a></li>
+          <li data-nav-id="/en/import-formats/pads/index.html" class=""><a class="padding" href="/en/import-formats/pads/index.html">PADS</a></li></ul></li>
+          </ul>
+        </div>
+        <div id="R-shortcuts">
+          <div class="nav-title padding">More</div>
+          <ul class="space">
+            <li><a class="padding" href="https://gitlab.com/kicad/services/kicad-dev-docs"><i class='fab fa-fw fa-gitlab'></i> GitLab repo</a></li>
+          </ul>
+        </div>
+        <div class="padding footermargin footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter showLangSwitch showVariantSwitch showFooter"></div>
+        <div id="R-menu-footer">
+          <hr class="padding default-animation footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter showLangSwitch showVariantSwitch showFooter">
+          <div id="R-prefooter" class="footerLangSwitch footerVariantSwitch footerVisitedLinks showLangSwitch showVariantSwitch">
+            <ul>
+              <li id="R-select-language-container" class="footerLangSwitch showLangSwitch">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-language"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <label class="a11y-only" for="R-select-language">Language</label>
+                    <select id="R-select-language" onchange="location = this.querySelector( this.value ).dataset.url;">
+                      <option id="R-select-language-en" value="#R-select-language-en" data-url="/en/file-formats/sexpr-intro/index.html" lang="en" selected>English</option>
+                    </select>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+              </li>
+              <li id="R-select-variant-container" class="footerVariantSwitch showVariantSwitch">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-paint-brush"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <label class="a11y-only" for="R-select-variant">Theme</label>
+                    <select id="R-select-variant" onchange="window.variants && variants.changeVariant( this.value );">
+                      <option id="R-select-variant-auto" value="auto" selected>Auto</option>
+                      <option id="R-select-variant-zen-light" value="zen-light">Zen Light</option>
+                      <option id="R-select-variant-zen-dark" value="zen-dark">Zen Dark</option>
+                    </select>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+                <script>window.variants && variants.markSelectedVariant();</script>
+              </li>
+              <li class="footerVisitedLinks">
+                <div class="padding menu-control">
+                  <i class="fa-fw fas fa-history"></i>
+                  <span>&nbsp;</span>
+                  <div class="control-style">
+                    <button onclick="clearHistory();">Clear History</button>
+                  </div>
+                  <div class="clear"></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div id="R-footer" class="footerFooter showFooter">
+	    <p>Built with <a href="https://github.com/McShelby/hugo-theme-relearn" title="love"><i class="fas fa-heart"></i></a> by <a href="https://gohugo.io/">Hugo</a></p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <script src="/js/clipboard.min.js?1777466996" defer></script>
+    <script src="/js/perfect-scrollbar.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-color.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-dispatch.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-drag.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-ease.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-interpolate.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-selection.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-timer.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-transition.min.js?1777466996" defer></script>
+    <script src="/js/d3/d3-zoom.min.js?1777466996" defer></script>
+    <script src="/js/js-yaml.min.js?1777466996" defer></script>
+    <script src="/js/mermaid.min.js?1777466996" defer></script>
+    <script>
+      window.themeUseMermaid = JSON.parse("{}");
+    </script>
+    <script src="/js/theme.js?1777466996" defer></script><script>
+anchors.add();
+</script>
+  </body>
+</html>

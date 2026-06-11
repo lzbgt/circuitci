@@ -453,9 +453,151 @@ analog_scenarios:
     );
 }
 
+#[test]
+fn import_kicad_schematic_generates_schema_valid_connectivity_project() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("imported_kicad_schematic.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_schematic/basic_rc.kicad_sch",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_kicad_schematic",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["format"],
+        "kicad_schematic"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_reset_rc"
+    );
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["2"], "gnd");
+    assert_eq!(imported["board"]["nets"]["gnd"]["kind"], "ground");
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_kicad_schematic_applies_mapping_and_runs_generated_spice() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("mapped_kicad_schematic.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_schematic/basic_rc.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_schematic/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "mapped_kicad_schematic",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "D1", "C1"])
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["model_files"][0]["sha256"],
+        "dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504"
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_kicad_schematic_rejects_unsupported_sheet() {
+    assert_bad_kicad_schematic(
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (sheet (at 0 0) (size 10 10) (property "Sheetname" "child")))
+"#,
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_wire_crossing_without_junction() {
+    assert_bad_kicad_schematic(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 10 0 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 -10) (xy 0 10)))
+  (wire (pts (xy -10 0) (xy 10 0))))
+"#,
+    );
+}
+
 fn assert_bad_kicad_mapping(mapping: &str) {
     let output = bad_kicad_mapping_output(mapping);
     assert!(!output.status.success());
+}
+
+fn assert_bad_kicad_schematic(schematic: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("bad.kicad_sch");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(&schematic_path, schematic).unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!output.exists());
 }
 
 fn assert_bad_kicad_mapping_contains(mapping: &str, expected: &str) {

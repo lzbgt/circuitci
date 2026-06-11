@@ -58,6 +58,17 @@ enum Command {
         #[arg(long)]
         mapping: Option<PathBuf>,
     },
+    ImportKicadSchematic {
+        schematic: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long, default_value = "generic.schematic.imported_component")]
+        default_model: String,
+        #[arg(long)]
+        mapping: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -109,6 +120,13 @@ pub fn run() -> Result<()> {
             default_model,
             mapping,
         }) => run_import_kicad_netlist(netlist, output, name, default_model, mapping),
+        Some(Command::ImportKicadSchematic {
+            schematic,
+            output,
+            name,
+            default_model,
+            mapping,
+        }) => run_import_kicad_schematic(schematic, output, name, default_model, mapping),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -166,6 +184,31 @@ fn run_import_kicad_netlist(
     println!(
         "CircuitCI imported KiCad XML netlist {} -> {}",
         netlist.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_kicad_schematic(
+    schematic: PathBuf,
+    output: PathBuf,
+    name: Option<String>,
+    default_model: String,
+    mapping: Option<PathBuf>,
+) -> Result<()> {
+    let name = name.unwrap_or_else(|| sanitized_project_name(&schematic, "imported_kicad_project"));
+    crate::importers::kicad_sch::import_kicad_schematic(
+        &crate::importers::kicad::KicadImportOptions {
+            input: schematic.clone(),
+            output: output.clone(),
+            name,
+            default_model,
+            mapping,
+        },
+    )?;
+    println!(
+        "CircuitCI imported KiCad schematic {} -> {}",
+        schematic.display(),
         output.display()
     );
     Ok(())
