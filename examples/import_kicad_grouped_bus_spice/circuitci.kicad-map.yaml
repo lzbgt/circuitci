@@ -1,0 +1,59 @@
+libraries:
+  - ../../libs/generic
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_alias: two_terminal_ab
+    spice:
+      primitive: resistor
+      value_ohm_from: schematic_value
+  - lib: Device
+    part: C
+    model: generic.analog.capacitor
+    pin_alias: two_terminal_ab
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
+components:
+  V1:
+    model: generic.analog.dc_voltage_source
+    pin_map:
+      "1": P
+      "2": N
+    spice:
+      primitive: dc_voltage_source
+      dc_v: 3.3
+nets:
+  VIN:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+  GND:
+    kind: ground
+analog_scenarios:
+  - name: kicad_grouped_bus_rc_transient
+    backend: auto
+    components: [V1, R1, C1]
+    ground_net: GND
+    analysis:
+      type: tran
+      stop_time_us: 2000.0
+      max_step_us: 10.0
+    stimuli:
+      - name: grouped_bus_source
+        description: V1 drives an RC node resolved from grouped KiCad bus alias PORT{RESET_RC SPARE}.
+    probes:
+      - name: grouped_bus_rc_voltage
+        expression: V(net_port_reset_rc)
+        quantity: voltage
+    assertions:
+      - name: grouped_bus_rc_node_charges
+        probe: grouped_bus_rc_voltage
+        at_us: 2000.0
+        relation: above
+        threshold_v: 2.5
