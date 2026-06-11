@@ -1,0 +1,67 @@
+libraries:
+  - ../../libs/generic
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: resistor
+      value_ohm_from: schematic_value
+  - lib: Device
+    part: C
+    model: generic.analog.capacitor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
+components:
+  V1:
+    model: generic.analog.dc_voltage_source
+    pin_map:
+      "1": P
+      "2": N
+    spice:
+      primitive: dc_voltage_source
+      dc_v: 3.3
+nets:
+  VIN_SHARED:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+  GND:
+    kind: ground
+analog_scenarios:
+  - name: repeated_hierarchy_rc_transient
+    backend: auto
+    components: [V1, left_filter__R1, left_filter__C1, right_filter__R1, right_filter__C1]
+    ground_net: GND
+    analysis:
+      type: tran
+      stop_time_us: 2000.0
+      max_step_us: 10.0
+    stimuli:
+      - name: repeated_hierarchy_source
+        description: V1 drives two repeated child RC filter instances through one labelled root net.
+    probes:
+      - name: left_out_voltage
+        expression: V(net_left_out)
+        quantity: voltage
+      - name: right_out_voltage
+        expression: V(net_right_out)
+        quantity: voltage
+    assertions:
+      - name: left_repeated_instance_charges
+        probe: left_out_voltage
+        at_us: 2000.0
+        relation: above
+        threshold_v: 2.5
+      - name: right_repeated_instance_charges
+        probe: right_out_voltage
+        at_us: 2000.0
+        relation: above
+        threshold_v: 2.5
