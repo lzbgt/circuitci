@@ -29,6 +29,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - root `lib_symbols` pin definitions for symbol pin coordinates,
 - cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
   equivalent wrapped values,
+- `mirror x` and `mirror y` symbol transforms,
 - straight horizontal or vertical wires,
 - explicit junctions for mid-span wire crossings,
 - local and global labels as net names,
@@ -41,7 +42,7 @@ Unsupported constructs fail closed:
 - hierarchical labels,
 - buses and bus entries,
 - malformed, non-finite, or non-cardinal symbol rotations,
-- mirrored symbols,
+- malformed or unsupported symbol mirror tokens,
 - missing library pin geometry,
 - malformed labels,
 - duplicate or conflicting labels at one coordinate,

@@ -27,9 +27,13 @@ Cardinal symbol rotation is now covered by
 resistor by 90 degrees and validates the transformed pin coordinates through the
 same mapped generated-SPICE path used by the unrotated RC schematic.
 
+Mirrored symbol pin transforms are covered by native schematic parser-rule
+tests. The importer supports `(mirror x)` and `(mirror y)` and rejects malformed
+or unsupported mirror tokens.
+
 ## Non-Goals
 
-This slice does not add hierarchy, buses, non-cardinal symbol rotations, or
-hidden power pins. Passive value parsing is supported only when the mapping file
-explicitly requests strict `schematic_value` parsing for resistor or capacitor
-SPICE primitive values; no other value-to-SPICE inference is performed.
+This slice does not add buses, non-cardinal symbol rotations, or hidden power
+pins. Passive value parsing is supported only when the mapping file explicitly
+requests strict `schematic_value` parsing for resistor or capacitor SPICE
+primitive values; no other value-to-SPICE inference is performed.

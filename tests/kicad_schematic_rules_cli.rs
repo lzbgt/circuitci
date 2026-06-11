@@ -246,7 +246,50 @@ fn import_kicad_schematic_rejects_non_finite_symbol_rotation() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_mirrored_symbol() {
+fn import_kicad_schematic_transforms_mirrored_symbol_pin() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("mirrored_symbol.kicad_sch");
+    let output = dir.path().join("mirrored_symbol.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 -2.54 0) (length 2.54) (number "1"))
+      (pin passive line (at 2.54 2.54 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (mirror x)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (label "NET_A" (at 7.46 12.54 0))
+  (label "NET_B" (at 12.54 7.46 0)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["2"],
+        "net_net_b"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_unsupported_mirror_axis() {
     assert_bad_kicad_schematic_contains(
         r#"
 (kicad_sch
@@ -254,11 +297,28 @@ fn import_kicad_schematic_rejects_mirrored_symbol() {
     (symbol "Device:R"
       (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
   (symbol (lib_id "Device:R") (at 10 10 0)
-    (mirror x)
+    (mirror z)
     (property "Reference" "R1") (property "Value" "10k") (pin "1"))
   (label "NET_A" (at 7.46 10 0)))
 "#,
-        "does not support mirrored symbol",
+        "unsupported mirror axis",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_malformed_mirror_token() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 10 10 0)
+    (mirror x y)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 7.46 10 0)))
+"#,
+        "malformed mirror token",
     );
 }
 

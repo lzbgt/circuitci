@@ -1,17 +1,19 @@
-# Native KiCad Symbol Rotation
+# Native KiCad Symbol Rotation And Mirroring
 
 ## Purpose
 
-Real KiCad schematics commonly rotate symbols, especially passives and source
-symbols. Native `.kicad_sch` import must apply symbol rotation to library pin
-offsets before building nets, otherwise rotated parts either fail import or map
-pins to the wrong coordinates.
+Real KiCad schematics commonly rotate and mirror symbols, especially passives,
+connectors, op-amps, and source symbols. Native `.kicad_sch` import must apply
+symbol transforms to library pin offsets before building nets, otherwise
+transformed parts either fail import or map pins to the wrong coordinates.
 
 ## Source Basis
 
 The saved KiCad S-expression reference under
 `docs/research/kicad/sexpr-intro.html` defines `(at X Y [ANGLE])` as the
 position identifier and states that non-text angles are stored in degrees.
+The schematic importer also accepts observed KiCad symbol mirror tokens in the
+form `(mirror x)` and `(mirror y)`.
 
 ## Import Contract
 
@@ -38,6 +40,14 @@ Non-cardinal rotations fail closed. This keeps coordinate equality, wire
 attachment, label attachment, and `no_connect` matching deterministic on the
 same quantized grid used by the existing importer.
 
+Mirror transforms are applied before cardinal rotation:
+
+- no mirror: `(x, y)`
+- `mirror x`: `(x, -y)`
+- `mirror y`: `(-x, y)`
+
+Malformed mirror tokens and unsupported mirror axes fail closed.
+
 Power symbols use the same transform before their one-pin power label is
 injected. Schematic `no_connect` markers also match transformed pin
 coordinates. A marker at the old unrotated coordinate is treated as unattached
@@ -47,7 +57,6 @@ and rejected.
 
 This slice does not add support for:
 
-- mirrored symbols,
 - rotated labels or text orientation semantics,
 - hidden pins,
 - hierarchical sheets,
@@ -63,7 +72,8 @@ or naming beyond a simple pin-coordinate transform.
 - equivalent wrapped rotations produce the same pin placement,
 - malformed, non-finite, non-cardinal, and wrapped non-cardinal rotations fail
   closed,
-- unsupported mirror syntax fails closed,
+- mirrored symbols transform their pin offsets before label/wire matching,
+- malformed or unsupported mirror syntax fails closed,
 - labels and wire segments attached to transformed pins import successfully,
 - existing no-connect and unconnected-pin checks still operate on transformed
   pin coordinates,

@@ -68,6 +68,13 @@ enum SchematicMode {
     Child,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MirrorAxis {
+    None,
+    X,
+    Y,
+}
+
 #[derive(Debug)]
 struct UnionFind {
     parent: Vec<usize>,
@@ -465,9 +472,7 @@ fn parse_symbol_instances(
         let at = parse_at_point(at_list)
             .with_context(|| format!("KiCad schematic symbol {lib_id} has invalid at."))?;
         let rotation = parse_symbol_rotation(at_list, &lib_id)?;
-        if child_list(symbol, "mirror").is_some() {
-            bail!("Native KiCad schematic import does not support mirrored symbol {lib_id}.");
-        }
+        let mirror = parse_symbol_mirror(symbol, &lib_id)?;
         let properties = parse_properties(symbol);
         let refdes = properties
             .get("Reference")
@@ -492,7 +497,7 @@ fn parse_symbol_instances(
                     "KiCad schematic symbol {refdes}.{number} has no matching lib_symbols pin geometry."
                 );
             };
-            let rotated = rotate_point(geometry.at, rotation);
+            let rotated = transform_pin_offset(geometry.at, mirror, rotation);
             pins.insert(
                 number,
                 Point {
@@ -1118,6 +1123,22 @@ fn parse_symbol_rotation(at_list: &[Sexp], lib_id: &str) -> Result<u16> {
     })
 }
 
+fn parse_symbol_mirror(symbol: &[Sexp], lib_id: &str) -> Result<MirrorAxis> {
+    let Some(mirror) = child_list(symbol, "mirror") else {
+        return Ok(MirrorAxis::None);
+    };
+    if mirror.len() != 2 {
+        bail!("KiCad schematic symbol {lib_id} has malformed mirror token.");
+    }
+    let axis = string_at(mirror, 1)
+        .with_context(|| format!("KiCad schematic symbol {lib_id} has malformed mirror token."))?;
+    match axis.to_ascii_lowercase().as_str() {
+        "x" => Ok(MirrorAxis::X),
+        "y" => Ok(MirrorAxis::Y),
+        _ => bail!("KiCad schematic symbol {lib_id} has unsupported mirror axis {axis}."),
+    }
+}
+
 fn parse_cardinal_rotation(angle_degrees: f64) -> Result<u16> {
     if !angle_degrees.is_finite() {
         bail!("rotation {angle_degrees} is not finite")
@@ -1129,6 +1150,24 @@ fn parse_cardinal_rotation(angle_degrees: f64) -> Result<u16> {
         }
     }
     bail!("rotation {angle_degrees} is not a cardinal angle")
+}
+
+fn transform_pin_offset(point: Point, mirror: MirrorAxis, rotation: u16) -> Point {
+    rotate_point(mirror_point(point, mirror), rotation)
+}
+
+fn mirror_point(point: Point, mirror: MirrorAxis) -> Point {
+    match mirror {
+        MirrorAxis::None => point,
+        MirrorAxis::X => Point {
+            x: point.x,
+            y: -point.y,
+        },
+        MirrorAxis::Y => Point {
+            x: -point.x,
+            y: point.y,
+        },
+    }
 }
 
 fn rotate_point(point: Point, rotation: u16) -> Point {
@@ -1153,7 +1192,8 @@ fn rotate_point(point: Point, rotation: u16) -> Point {
 #[cfg(test)]
 mod tests {
     use super::{
-        Point, parse_cardinal_rotation, parse_kicad_schematic, parse_symbol_rotation, rotate_point,
+        MirrorAxis, Point, mirror_point, parse_cardinal_rotation, parse_kicad_schematic,
+        parse_symbol_mirror, parse_symbol_rotation, rotate_point, transform_pin_offset,
     };
 
     #[test]
@@ -1221,6 +1261,36 @@ mod tests {
     }
 
     #[test]
+    fn mirrors_pin_offsets_before_rotation() {
+        let point = Point {
+            x: 10_000_000,
+            y: -20_000_000,
+        };
+        assert_eq!(mirror_point(point, MirrorAxis::None), point);
+        assert_eq!(
+            mirror_point(point, MirrorAxis::X),
+            Point {
+                x: 10_000_000,
+                y: 20_000_000
+            }
+        );
+        assert_eq!(
+            mirror_point(point, MirrorAxis::Y),
+            Point {
+                x: -10_000_000,
+                y: -20_000_000
+            }
+        );
+        assert_eq!(
+            transform_pin_offset(point, MirrorAxis::X, 90),
+            Point {
+                x: -20_000_000,
+                y: 10_000_000
+            }
+        );
+    }
+
+    #[test]
     fn rejects_malformed_symbol_rotation() {
         let malformed = vec![
             super::Sexp::Atom("at".to_string()),
@@ -1236,5 +1306,48 @@ mod tests {
             super::Sexp::Atom("NaN".to_string()),
         ];
         assert!(parse_symbol_rotation(&non_finite, "Device:R").is_err());
+    }
+
+    #[test]
+    fn parses_and_rejects_symbol_mirror_tokens() {
+        let mirrored_x = vec![
+            super::Sexp::Atom("symbol".to_string()),
+            super::Sexp::List(vec![
+                super::Sexp::Atom("mirror".to_string()),
+                super::Sexp::Atom("x".to_string()),
+            ]),
+        ];
+        assert_eq!(
+            parse_symbol_mirror(&mirrored_x, "Device:R").unwrap(),
+            MirrorAxis::X
+        );
+        let mirrored_y = vec![
+            super::Sexp::Atom("symbol".to_string()),
+            super::Sexp::List(vec![
+                super::Sexp::Atom("mirror".to_string()),
+                super::Sexp::Atom("Y".to_string()),
+            ]),
+        ];
+        assert_eq!(
+            parse_symbol_mirror(&mirrored_y, "Device:R").unwrap(),
+            MirrorAxis::Y
+        );
+        let unsupported = vec![
+            super::Sexp::Atom("symbol".to_string()),
+            super::Sexp::List(vec![
+                super::Sexp::Atom("mirror".to_string()),
+                super::Sexp::Atom("z".to_string()),
+            ]),
+        ];
+        assert!(parse_symbol_mirror(&unsupported, "Device:R").is_err());
+        let malformed = vec![
+            super::Sexp::Atom("symbol".to_string()),
+            super::Sexp::List(vec![
+                super::Sexp::Atom("mirror".to_string()),
+                super::Sexp::Atom("x".to_string()),
+                super::Sexp::Atom("extra".to_string()),
+            ]),
+        ];
+        assert!(parse_symbol_mirror(&malformed, "Device:R").is_err());
     }
 }
