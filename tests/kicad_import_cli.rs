@@ -710,7 +710,7 @@ fn import_kicad_schematic_rejects_duplicate_sanitized_sheet_prefix() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_duplicate_non_ground_sheet_pin_name() {
+fn import_kicad_schematic_allows_duplicate_sheet_pin_names_when_root_labels_disambiguate() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");
     let first_path = dir.path().join("first.kicad_sch");
@@ -721,6 +721,10 @@ fn import_kicad_schematic_rejects_duplicate_non_ground_sheet_pin_name() {
         r#"
 (kicad_sch
   (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
+  (label "LEFT_IN" (at 25 0 0))
+  (wire (pts (xy 60 0) (xy 65 0)))
+  (label "RIGHT_IN" (at 65 0 0))
   (sheet (at 0 0 0) (size 20 20)
     (property "Sheetname" "First")
     (property "Sheetfile" "first.kicad_sch")
@@ -732,21 +736,37 @@ fn import_kicad_schematic_rejects_duplicate_non_ground_sheet_pin_name() {
 "#,
     )
     .unwrap();
-    std::fs::write(&first_path, "(kicad_sch (lib_symbols))").unwrap();
-    std::fs::write(&second_path, "(kicad_sch (lib_symbols))").unwrap();
-    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let child = r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (hierarchical_label "IN" (at 0 0 0)))
+"#;
+    std::fs::write(&first_path, child).unwrap();
+    std::fs::write(&second_path, child).unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-schematic",
             root_path.to_str().unwrap(),
             "--output",
             output.to_str().unwrap(),
         ])
-        .output()
+        .status()
         .unwrap();
-    assert!(!result.status.success());
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(stderr.contains("sheet pin IN appears on multiple root sheets"));
-    assert!(!output.exists());
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["first__R1"]["pins"]["1"],
+        "net_left_in"
+    );
+    assert_eq!(
+        imported["board"]["components"]["second__R1"]["pins"]["1"],
+        "net_right_in"
+    );
 }
 
 #[test]
@@ -1017,7 +1037,7 @@ fn import_kicad_schematic_keeps_duplicate_ground_aliases_per_sheet() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_duplicate_refs_across_sheet() {
+fn import_kicad_schematic_namespaces_duplicate_refs_across_sheet() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");
     let child_path = dir.path().join("child.kicad_sch");
@@ -1052,17 +1072,110 @@ fn import_kicad_schematic_rejects_duplicate_refs_across_sheet() {
 "#,
     )
     .unwrap();
-    let result = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "import-kicad-schematic",
             root_path.to_str().unwrap(),
             "--output",
             output.to_str().unwrap(),
         ])
-        .output()
+        .status()
         .unwrap();
-    assert!(!result.status.success());
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(stderr.contains("duplicate component reference R1"));
-    assert!(!output.exists());
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["board"]["components"]["R1"]["pins"]["1"], "net_rc");
+    assert_eq!(
+        imported["board"]["components"]["filter__R1"]["pins"]["1"],
+        "net_rc"
+    );
+    assert_eq!(
+        imported["board"]["components"]["filter__R1"]["source"]["format"],
+        "kicad_schematic"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_namespaces_repeated_child_sheet_instances() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_path = dir.path().join("root.kicad_sch");
+    let child_path = dir.path().join("filter.kicad_sch");
+    let output = dir.path().join("hierarchy.project.yaml");
+    std::fs::write(
+        &root_path,
+        r#"
+(kicad_sch
+  (lib_symbols)
+  (wire (pts (xy 20 0) (xy 25 0)))
+  (label "LEFT_IN" (at 25 0 0))
+  (wire (pts (xy 60 0) (xy 65 0)))
+  (label "RIGHT_IN" (at 65 0 0))
+  (sheet (at 0 0 0) (size 20 20)
+    (property "Sheetname" "Left Filter")
+    (property "Sheetfile" "filter.kicad_sch")
+    (pin "IN" input (at 20 0 0)))
+  (sheet (at 40 0 0) (size 20 20)
+    (property "Sheetname" "Right Filter")
+    (property "Sheetfile" "filter.kicad_sch")
+    (pin "IN" input (at 60 0 0))))
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &child_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2")))
+    (symbol "Device:C"
+      (pin passive line (at 20 10 0) (length 2.54) (number "1"))
+      (pin passive line (at 20 20 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (symbol (lib_id "Device:C") (at 0 0 0)
+    (property "Reference" "C1") (property "Value" "100n") (pin "1") (pin "2"))
+  (wire (pts (xy 0 10) (xy 20 10)))
+  (hierarchical_label "IN" (at 0 0 0))
+  (no_connect (at 20 20)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            root_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["left_filter__R1"]["pins"]["1"],
+        "net_left_in"
+    );
+    assert_eq!(
+        imported["board"]["components"]["right_filter__R1"]["pins"]["1"],
+        "net_right_in"
+    );
+    assert_eq!(
+        imported["board"]["components"]["left_filter__R1"]["pins"]["2"],
+        "net_left_filter_net_2"
+    );
+    assert_eq!(
+        imported["board"]["components"]["left_filter__C1"]["pins"]["1"],
+        "net_left_filter_net_2"
+    );
+    assert_eq!(
+        imported["board"]["components"]["right_filter__R1"]["pins"]["2"],
+        "net_right_filter_net_2"
+    );
+    assert_eq!(
+        imported["board"]["components"]["right_filter__C1"]["pins"]["1"],
+        "net_right_filter_net_2"
+    );
 }

@@ -88,7 +88,8 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
     if parsed.sheets.is_empty() {
         return Ok(parsed.netlist);
     }
-    let mut netlist = parsed.netlist;
+
+    let mut children = Vec::new();
     for sheet in &parsed.sheets {
         let child = parse_schematic_file(&sheet.file, SchematicMode::Child)?;
         if !child.sheets.is_empty() {
@@ -103,12 +104,19 @@ pub(super) fn parse_kicad_schematic(path: &Path) -> Result<ParsedKicadNetlist> {
                 child.hierarchical_labels
             );
         }
-        netlist = merge_hierarchical_netlists(
-            netlist,
-            child.netlist,
-            sheet,
-            &parsed.sheet_pin_aliases,
-        )?;
+        children.push((sheet, child));
+    }
+
+    let namespaced_sheets = sheets_requiring_component_namespace(&parsed.netlist, &children);
+    let mut netlist = parsed.netlist;
+    for (sheet, child) in children {
+        let child_netlist = if namespaced_sheets.contains(&sheet.name) {
+            namespace_child_components(child.netlist, sheet)?
+        } else {
+            child.netlist
+        };
+        netlist =
+            merge_hierarchical_netlists(netlist, child_netlist, sheet, &parsed.sheet_pin_aliases)?;
     }
     Ok(netlist)
 }
@@ -189,6 +197,71 @@ fn validate_unique_refs(symbols: &[SymbolInstance]) -> Result<()> {
     Ok(())
 }
 
+fn sheets_requiring_component_namespace(
+    root: &ParsedKicadNetlist,
+    children: &[(&SheetInstance, ParsedSchematic)],
+) -> BTreeSet<String> {
+    let mut owners_by_ref: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for refdes in root.components.keys() {
+        owners_by_ref
+            .entry(refdes.clone())
+            .or_default()
+            .insert(String::new());
+    }
+    for (sheet, child) in children {
+        for refdes in child.netlist.components.keys() {
+            owners_by_ref
+                .entry(refdes.clone())
+                .or_default()
+                .insert(sheet.name.clone());
+        }
+    }
+
+    let mut namespaced_sheets = BTreeSet::new();
+    for owners in owners_by_ref.values() {
+        if owners.len() <= 1 {
+            continue;
+        }
+        for owner in owners {
+            if !owner.is_empty() {
+                namespaced_sheets.insert(owner.clone());
+            }
+        }
+    }
+    namespaced_sheets
+}
+
+fn namespace_child_components(
+    mut child: ParsedKicadNetlist,
+    sheet: &SheetInstance,
+) -> Result<ParsedKicadNetlist> {
+    let prefix = sanitize_sheet_net_prefix(&sheet.name);
+    let mut renames = BTreeMap::new();
+    let mut components = BTreeMap::new();
+    for (old_refdes, mut component) in child.components {
+        let new_refdes = format!("{prefix}__{old_refdes}");
+        if components.contains_key(&new_refdes) {
+            bail!(
+                "KiCad sheet {} component references collide after namespacing as {new_refdes}.",
+                sheet.name
+            );
+        }
+        component.refdes = new_refdes.clone();
+        renames.insert(old_refdes, new_refdes.clone());
+        components.insert(new_refdes, component);
+    }
+
+    for net in &mut child.nets {
+        for node in &mut net.nodes {
+            if let Some(new_refdes) = renames.get(&node.refdes) {
+                node.refdes = new_refdes.clone();
+            }
+        }
+    }
+    child.components = components;
+    Ok(child)
+}
+
 fn merge_hierarchical_netlists(
     mut root: ParsedKicadNetlist,
     child: ParsedKicadNetlist,
@@ -262,7 +335,6 @@ fn parse_sheets(
     let mut sheets = Vec::new();
     let mut sheet_names = BTreeSet::new();
     let mut sheet_prefixes = BTreeMap::new();
-    let mut non_ground_pin_names = BTreeMap::new();
     for sheet in list_children(root, "sheet") {
         if mode == SchematicMode::Child {
             bail!("Native KiCad schematic import does not support nested sheets yet.");
@@ -277,7 +349,8 @@ fn parse_sheets(
             bail!("KiCad schematic has duplicate sheet name {sheet_name}.");
         }
         let sheet_prefix = sanitize_sheet_net_prefix(&sheet_name);
-        if let Some(existing_sheet) = sheet_prefixes.insert(sheet_prefix.clone(), sheet_name.clone())
+        if let Some(existing_sheet) =
+            sheet_prefixes.insert(sheet_prefix.clone(), sheet_name.clone())
         {
             bail!(
                 "KiCad sheets {existing_sheet} and {sheet_name} sanitize to the same local-net prefix {sheet_prefix}; use distinct sheet names before importing hierarchy."
@@ -302,15 +375,6 @@ fn parse_sheets(
                 .to_string();
             if pins.contains_key(&pin_name) {
                 bail!("KiCad sheet {sheet_name} has duplicate pin {pin_name}.");
-            }
-            if is_ground_net_name(&pin_name) {
-                // Ground aliases are intentionally allowed across sheet instances.
-            } else if let Some(existing_sheet) =
-                non_ground_pin_names.insert(pin_name.clone(), sheet_name.clone())
-            {
-                bail!(
-                    "KiCad sheet pin {pin_name} appears on multiple root sheets ({existing_sheet} and {sheet_name}); use unique non-ground interface names instead of merging sheet pins by name."
-                );
             }
             let point = child_list(pin, "at")
                 .and_then(parse_at_point)
