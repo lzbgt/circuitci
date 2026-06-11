@@ -161,14 +161,15 @@ analysis must be explicit model-quality limitations.
 2. Add `SPICE_TRANSIENT_ANALYSIS` dispatch for `analog_transient` scenarios. Done.
 3. Add a Rust analog backend module that detects `ngspice`/`Xyce`, resolves
    deck paths, and fails critically when physical prerequisites are missing. Done.
-4. Add a UM physical acceptance fixture and suite that currently fails with
-   `ANALOG_BACKEND_UNAVAILABLE` on this host because no SPICE backend is
-   installed. Done.
+4. Add a UM physical acceptance fixture and suite. On hosts without a mature
+   SPICE backend it fails closed with `ANALOG_BACKEND_UNAVAILABLE`; on this host
+   with ngspice 46 installed it runs the transient deck and fails the bad
+   circuit with quantitative `SPICE_TRANSIENT_ANALYSIS` findings. Done.
 5. Add explicit `embedded_ngspice` backend selection that fails unless a mature
    ngspice-derived engine is actually linked or vendored. Do not implement a
    toy partial solver.
-6. Add the real backend runner and waveform parser.
+6. Add the real external ngspice runner and waveform parser. Done.
 7. Add generic model-library support for device/subcircuit model packs and
    board-to-SPICE netlist generation.
 8. Replace UM physical acceptance failure with measured waveform assertions
-   from the real SPICE run.
+   from the real SPICE run. Done for the hand-authored UM Q2/Q3 fixture.

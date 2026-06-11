@@ -54,10 +54,12 @@ physical analog gate is:
 circuitci validate-suite suites/um_stm32l4_downloader_physical_acceptance.yaml --output out/acceptance/um_stm32l4_physical
 ```
 
-On a host without `ngspice` or `Xyce`, this suite must fail with
-`ANALOG_BACKEND_UNAVAILABLE`. A physical pass requires a SPICE-class backend,
-the Q2/Q3/D13 netlist, model cards, solver logs, waveform artifacts, and
-quantitative BOOT0/NRST assertions.
+On a host with `ngspice`, this suite fails the known bad UM downloader circuit
+with `SPICE_TRANSIENT_ANALYSIS` findings backed by solver logs and waveform
+artifacts. On a host without `ngspice` or `Xyce`, the same physical scenario
+fails closed with `ANALOG_BACKEND_UNAVAILABLE`. A physical pass requires a
+SPICE-class backend, the Q2/Q3/D13 netlist, model cards, solver logs, waveform
+artifacts, and quantitative BOOT0/NRST/Q2 assertions.
 
 The existing `um_stm32l4_downloader_acceptance` suite remains a behavioral
 pre-physics suite. It must not be used as evidence that the Q2/Q3 saturated

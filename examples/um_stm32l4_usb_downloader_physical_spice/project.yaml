@@ -161,6 +161,10 @@ scenarios:
           expression: V(boot0)
         - name: nrst
           expression: V(nrst)
+        - name: q2_collector
+          expression: V(q2c)
+        - name: q2_base
+          expression: V(q2b)
       assertions:
         - name: boot0_low_before_app_sample
           probe: boot0
@@ -172,3 +176,13 @@ scenarios:
           at_us: 5100
           relation: above
           threshold_v: 2.31
+        - name: q2_collector_released_before_app_sample
+          probe: q2_collector
+          at_us: 5100
+          relation: above
+          threshold_v: 2.31
+        - name: q2_base_not_forward_biased_after_release
+          probe: q2_base
+          at_us: 5100
+          relation: below
+          threshold_v: 0.3

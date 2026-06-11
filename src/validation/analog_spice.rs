@@ -361,7 +361,7 @@ fn run_ngspice(
     let wrapper = run_dir.join("circuitci_ngspice.cir");
     let log = run_dir.join("ngspice.log");
     let waveform = run_dir.join("waveform.csv");
-    let wrapper_text = build_ngspice_wrapper(bound, scenario, &waveform)
+    let wrapper_text = build_ngspice_wrapper(bound, scenario, Path::new("waveform.csv"))
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
         ngspice_error(
@@ -378,9 +378,22 @@ fn run_ngspice(
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     let mut log_text = String::new();
     log_text.push_str("COMMAND: ");
+    log_text.push_str("cd ");
+    log_text.push_str(
+        &wrapper
+            .parent()
+            .map(Path::to_string_lossy)
+            .unwrap_or_default(),
+    );
+    log_text.push_str(" && ");
     log_text.push_str(backend);
     log_text.push_str(" -b ");
-    log_text.push_str(&wrapper.to_string_lossy());
+    log_text.push_str(
+        &wrapper
+            .file_name()
+            .map(|name| name.to_string_lossy())
+            .unwrap_or_default(),
+    );
     log_text.push_str("\n\nSTDOUT:\n");
     log_text.push_str(&String::from_utf8_lossy(&output.stdout));
     log_text.push_str("\n\nSTDERR:\n");
@@ -437,9 +450,19 @@ fn run_solver_with_timeout(
     wrapper: &Path,
     timeout: Duration,
 ) -> Result<SolverOutput, String> {
+    let working_dir = wrapper
+        .parent()
+        .ok_or_else(|| format!("ngspice wrapper path {} has no parent.", wrapper.display()))?;
+    let deck_name = wrapper.file_name().ok_or_else(|| {
+        format!(
+            "ngspice wrapper path {} has no filename.",
+            wrapper.display()
+        )
+    })?;
     let mut child = Command::new(backend)
+        .current_dir(working_dir)
         .arg("-b")
-        .arg(wrapper)
+        .arg(deck_name)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -539,9 +562,8 @@ fn build_ngspice_wrapper(
     text.push_str("set wr_vecnames\n");
     text.push_str("set wr_singlescale\n");
     text.push_str(&format!("tran {:.12e} {:.12e}\n", step_s, stop_s));
-    text.push_str("wrdata \"");
+    text.push_str("wrdata ");
     text.push_str(&waveform.to_string_lossy());
-    text.push_str("\" time");
     for probe in &analog.probes {
         text.push(' ');
         text.push_str(&probe.expression);
@@ -574,7 +596,8 @@ fn rewrite_include_line(line: &str, source_dir: &Path) -> String {
     if path.is_absolute() {
         return line.to_string();
     }
-    let absolute = normalize_path(&source_dir.join(path));
+    let absolute = absolute_path(&source_dir.join(path))
+        .unwrap_or_else(|_| normalize_path(&source_dir.join(path)));
     let indent_len = line.len() - trimmed.len();
     let indent = &line[..indent_len];
     format!("{indent}{directive} \"{}\"", absolute.to_string_lossy())
@@ -907,6 +930,13 @@ fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     normalized
+}
+
+fn absolute_path(path: &Path) -> std::io::Result<PathBuf> {
+    if path.is_absolute() {
+        return Ok(normalize_path(path));
+    }
+    Ok(normalize_path(&env::current_dir()?.join(path)))
 }
 
 fn push_artifact(artifacts: &mut Vec<String>, path: &Path) {

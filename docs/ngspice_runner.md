@@ -11,7 +11,7 @@ This slice implements orchestration around an installed `ngspice` executable:
    bindings.
 2. Generate a CircuitCI-owned ngspice control wrapper under the validation
    output directory.
-3. Run `ngspice -b` on that wrapper.
+3. Run `ngspice -b` from the per-scenario artifact directory on that wrapper.
 4. Capture solver stdout/stderr into artifacts.
 5. Parse a CSV-like waveform export.
 6. Evaluate the declared single-point `below` / `above` voltage assertions.
@@ -23,13 +23,15 @@ the scenario still fails with `ANALOG_BACKEND_UNAVAILABLE`.
 ## Netlist Contract
 
 The hand-authored deck remains the physical circuit source. CircuitCI generates
-a wrapper that includes the project deck and adds a `.control` block:
+a wrapper with absolute include paths and a `.control` block:
 
 ```spice
 .include "/absolute/path/to/downloader_q2_q3.cir"
 .control
+set wr_vecnames
+set wr_singlescale
 tran 1u 8m
-wrdata "/output/waveforms/q2_q3_downloader_release_transient.csv" time v(boot0) v(nrst)
+wrdata waveform.csv v(boot0) v(nrst)
 quit
 .endc
 .end
@@ -37,6 +39,9 @@ quit
 
 For this to work, physical fixture decks should not rely on an internal
 `.control` block. The wrapper owns analysis execution and waveform export.
+Ngspice 46 accepts the unquoted `wrdata` basename form reliably when the process
+working directory is the artifact directory; quoted output filenames produced
+missing-file diagnostics during bring-up.
 
 ## Assertion Semantics
 

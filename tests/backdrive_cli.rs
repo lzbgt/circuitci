@@ -248,13 +248,30 @@ fn c51_control_line_release_uses_generic_reset_polarity() {
 fn um_stm32l4_physical_spice_requires_backend() {
     let report = run_validation("examples/um_stm32l4_usb_downloader_physical_spice/project.yaml");
     assert_eq!(report["result"], "fail");
-    assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
-    assert!(
-        report["failures"][0]["message"]
-            .as_str()
-            .unwrap()
-            .contains("Physical analog simulation requires ngspice, Xyce")
-    );
+    if binary_available("ngspice") {
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures
+            .iter()
+            .any(|failure| failure["id"] == "SPICE_TRANSIENT_ANALYSIS"));
+        assert!(failures.iter().any(|failure| failure["measured"]
+            .as_object()
+            .is_some_and(|measured| measured.contains_key("nrst"))));
+        assert!(failures.iter().any(|failure| failure["measured"]
+            .as_object()
+            .is_some_and(|measured| measured.contains_key("q2_collector"))));
+        assert!(failures.iter().any(|failure| failure["measured"]
+            .as_object()
+            .is_some_and(|measured| measured.contains_key("q2_base"))));
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    } else {
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+        assert!(
+            report["failures"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("Physical analog simulation requires ngspice, Xyce")
+        );
+    }
     let artifacts = report["artifacts"].as_array().unwrap();
     assert!(artifacts.iter().any(|artifact| {
         artifact
@@ -355,7 +372,10 @@ fn um_stm32l4_acceptance_suite_passes() {
 }
 
 #[test]
-fn um_stm32l4_physical_acceptance_suite_reports_solver_gap() {
+fn um_stm32l4_physical_acceptance_suite_reports_spice_failure() {
+    if !binary_available("ngspice") {
+        return;
+    }
     let out_dir = tempfile::tempdir().unwrap();
     let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -376,7 +396,7 @@ fn um_stm32l4_physical_acceptance_suite_reports_solver_gap() {
     assert_eq!(report["cases"][0]["actual"], "fail");
     assert_eq!(
         report["cases"][0]["matched_findings"][0]["id"],
-        "ANALOG_BACKEND_UNAVAILABLE"
+        "SPICE_TRANSIENT_ANALYSIS"
     );
     assert_suite_report_schema_valid(&report);
 }
@@ -575,6 +595,13 @@ fn run_validation(project: &str) -> Value {
     assert!(status.success());
     serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
         .unwrap()
+}
+
+fn binary_available(binary: &str) -> bool {
+    let Some(paths) = std::env::var_os("PATH") else {
+        return false;
+    };
+    std::env::split_paths(&paths).any(|dir| dir.join(binary).is_file())
 }
 
 fn assert_yaml_file_valid(path: &std::path::Path, validator: &jsonschema::Validator) {
