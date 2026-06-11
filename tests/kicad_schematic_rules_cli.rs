@@ -146,26 +146,63 @@ fn import_kicad_schematic_rejects_unsupported_sheet() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_bus_wire() {
-    assert_bad_kicad_schematic_contains(
+fn import_kicad_schematic_accepts_labelled_bus_graphics() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("bus_graphics.kicad_sch");
+    let output = dir.path().join("bus_graphics.project.yaml");
+    std::fs::write(
+        &schematic_path,
         r#"
 (kicad_sch
-  (lib_symbols)
-  (bus (pts (xy 0 0) (xy 10 0))))
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "DATA0" (at 5 0 0))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (no_connect (at 0 10)))
 "#,
-        "does not support buses yet",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_data0"
     );
 }
 
 #[test]
-fn import_kicad_schematic_rejects_bus_entry() {
+fn import_kicad_schematic_rejects_unlabelled_bus_entry_stub() {
     assert_bad_kicad_schematic_contains(
         r#"
 (kicad_sch
-  (lib_symbols)
-  (bus_entry (at 10 10) (size 2.54 2.54)))
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (no_connect (at 0 10)))
 "#,
-        "does not support buses yet",
+        "requires an explicit scalar label",
     );
 }
 
@@ -177,7 +214,7 @@ fn import_kicad_schematic_rejects_bus_alias() {
   (lib_symbols)
   (bus_alias "DATA" (members "D0" "D1")))
 "#,
-        "does not support buses yet",
+        "does not support bus aliases yet",
     );
 }
 

@@ -1,23 +1,26 @@
 # KiCad Schematic Bus Handling
 
-Native `.kicad_sch` import remains wire-level only. KiCad bus constructs are
-not scalar wires and must not be treated as ordinary connectivity until the
-importer can expand bus members with explicit labels and deterministic mapping.
+Native `.kicad_sch` import remains wire-level for electrical connectivity.
+KiCad bus constructs are not scalar wires and are not treated as ordinary
+connectivity.
 
 ## Current Contract
 
-The importer fails closed when a schematic contains any top-level bus construct:
+The importer accepts bus graphics only when scalar connectivity is explicit:
 
-- `bus`
-- `bus_entry`
-- `bus_alias`
+- `bus` polylines are parsed and validated as horizontal/vertical graphics,
+- `bus_entry` markers are parsed and validated,
+- every scalar wire touching a `bus_entry` endpoint must carry an explicit
+  scalar label,
+- `bus_alias` remains unsupported and fails closed.
 
-The diagnostic is explicit so an agent does not mistake an imported partial
-schematic for complete connectivity.
+The importer does not infer a net name from a bus line or bus entry. This means
+a labelled wire such as `DATA0` can be imported even when it visually enters a
+bus, but an unlabeled wire entering a bus fails closed.
 
 This is intentionally stricter than ignoring unknown S-expression sections.
-For analog simulation and board-fix agents, silently dropping a bus can remove
-reset, boot, enable, address, or data nets from the generated Board IR.
+For analog simulation and board-fix agents, silently expanding a bus can remove
+or merge reset, boot, enable, address, or data nets incorrectly.
 
 ## Future Support
 

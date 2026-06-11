@@ -170,6 +170,7 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
     validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
     let (labels, hierarchical_labels) = parse_labels(root_list, power_labels, mode)?;
+    validate_bus_graphics(root_list, &segments, &labels)?;
     let no_connects = parse_no_connects(root_list)?;
     let (effective_labels, sheet_pin_aliases) = if sheets.is_empty() {
         (labels.clone(), BTreeMap::new())
@@ -341,8 +342,10 @@ fn reject_unsupported_constructs(root: &[Sexp], mode: SchematicMode) -> Result<(
             Some("hierarchical_label") if mode == SchematicMode::Root => {
                 bail!("Native KiCad schematic import does not support hierarchical labels yet.")
             }
-            Some("bus") | Some("bus_entry") | Some("bus_alias") => {
-                bail!("Native KiCad schematic import does not support buses yet.")
+            Some("bus_alias") => {
+                bail!(
+                    "Native KiCad schematic import does not support bus aliases yet; expand aliases to scalar labels before import."
+                )
             }
             _ => {}
         }
@@ -588,6 +591,62 @@ fn parse_wires_and_junctions(root: &[Sexp]) -> Result<(Vec<Segment>, BTreeSet<Po
     validate_junctions(&segments, &junctions)?;
     reject_unjunctioned_crossings(&segments, &junctions)?;
     Ok((segments, junctions))
+}
+
+fn validate_bus_graphics(
+    root: &[Sexp],
+    wire_segments: &[Segment],
+    labels: &BTreeMap<Point, String>,
+) -> Result<()> {
+    for bus in list_children(root, "bus") {
+        let points = child_list(bus, "pts")
+            .map(parse_points)
+            .transpose()?
+            .with_context(|| "KiCad bus is missing pts.")?;
+        if points.len() < 2 {
+            bail!("KiCad bus must contain at least two points.");
+        }
+        for pair in points.windows(2) {
+            let segment = Segment {
+                a: pair[0],
+                b: pair[1],
+            };
+            if !segment.is_axis_aligned() {
+                bail!("Native KiCad schematic import supports only horizontal or vertical buses.");
+            }
+        }
+    }
+
+    for bus_entry in list_children(root, "bus_entry") {
+        let start = child_list(bus_entry, "at")
+            .and_then(parse_at_point)
+            .with_context(|| "KiCad bus_entry is missing valid coordinates.")?;
+        let size = child_list(bus_entry, "size")
+            .and_then(parse_size_point)
+            .with_context(|| "KiCad bus_entry is missing valid size.")?;
+        let endpoints = [
+            start,
+            Point {
+                x: start.x + size.x,
+                y: start.y + size.y,
+            },
+        ];
+        let touching_wires = wire_segments
+            .iter()
+            .filter(|segment| endpoints.iter().any(|point| segment.is_endpoint(*point)))
+            .collect::<Vec<_>>();
+        if touching_wires.is_empty() {
+            bail!("KiCad bus_entry is not attached to any scalar wire endpoint.");
+        }
+        for wire in touching_wires {
+            if !labels.iter().any(|(point, _)| wire.contains(*point)) {
+                bail!(
+                    "KiCad bus_entry wire endpoint requires an explicit scalar label; bus expansion is not inferred."
+                );
+            }
+        }
+    }
+    Ok(())
 }
 
 fn parse_junctions(root: &[Sexp]) -> Result<BTreeSet<Point>> {
@@ -1068,6 +1127,10 @@ fn parse_at_point(list: &[Sexp]) -> Option<Point> {
         x: quantize_coord(numeric_at(list, 1)?),
         y: quantize_coord(numeric_at(list, 2)?),
     })
+}
+
+fn parse_size_point(list: &[Sexp]) -> Option<Point> {
+    parse_at_point(list)
 }
 
 fn split_lib_id(lib_id: &str) -> (Option<String>, Option<String>) {
