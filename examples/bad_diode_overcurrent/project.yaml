@@ -1,0 +1,108 @@
+project:
+  name: bad_diode_overcurrent
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/diodes
+
+board:
+  components:
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: input
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 5
+          delay_us: 100
+          rise_us: 0.1
+          fall_us: 0.1
+          width_us: 300
+          period_us: 1000
+    RLOAD:
+      model: generic.analog.resistor
+      pins:
+        A: output
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10
+    D1:
+      model: vendor.onsemi.1n4148ws
+      part_number: 1N4148WS
+      pins:
+        A: input
+        K: output
+  nets:
+    input:
+      kind: digital_or_analog
+    output:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: diode_forward_overcurrent
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VIN
+          - RLOAD
+          - D1
+      model_files:
+        - path: ../../models/spice/onsemi/1n4148ws.lib
+          sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
+      node_bindings:
+        - node: in
+          net: input
+        - node: out
+          net: output
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: in
+          endpoint:
+            component: D1
+            pin: A
+        - node: out
+          endpoint:
+            component: D1
+            pin: K
+        - node: "0"
+          endpoint:
+            component: RLOAD
+            pin: B
+      analysis:
+        type: tran
+        stop_time_us: 500
+        max_step_us: 0.2
+      stimuli:
+        - name: diode_turn_on_low_load
+          description: Input rises through a 1N4148WS into a low-value load.
+      probes:
+        - name: output
+          expression: V(out)
+        - name: source_current
+          expression: abs(I(VIN))
+          quantity: current
+      assertions:
+        - name: output_high_after_step
+          probe: output
+          at_us: 250
+          relation: above
+          threshold_v: 2
+        - name: current_flows_after_step
+          probe: source_current
+          at_us: 250
+          relation: above
+          threshold_a: 0.2

@@ -112,7 +112,7 @@ Stable rule detail keys:
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.
 
 `SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
-generated Board IR MOSFET/BJT operating probes exceed datasheet absolute
+generated Board IR MOSFET/BJT/diode operating probes exceed datasheet absolute
 maximum ratings. Stable measured keys include `component`, `rating`,
 `quantity`, `expression`, `max_abs`, `time_of_max_us`, and `unit`; stable limit
 keys include `rating`, `rating_value`, `max_abs`, and `unit`. `rating_value`

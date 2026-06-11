@@ -15,15 +15,16 @@ engine can grow without returning to a monolithic validator.
   probe expression validation, assertion contract validation, interpolation,
   window aggregation, and `SPICE_TRANSIENT_ANALYSIS` assertion findings.
 - `src/validation/analog_operating_limits.rs` owns automatic datasheet-derived
-  semiconductor stress checks and `SPICE_OPERATING_LIMIT` findings.
+  semiconductor stress checks for MOSFETs, BJTs, diodes, and
+  `SPICE_OPERATING_LIMIT` findings.
 - `src/validation/analog_util.rs` owns shared filesystem and artifact helpers.
 
 ## Preserved Contracts
 
 Generated Board IR decks are still prepared before backend selection. Missing
-MOSFET/BJT absolute-maximum metadata still fails with `SPICE_OPERATING_LIMIT`
-after `generated_board.cir` is produced but before wrapper/log/waveform solver
-artifacts exist.
+MOSFET/BJT/diode absolute-maximum metadata still fails with
+`SPICE_OPERATING_LIMIT` after `generated_board.cir` is produced but before
+wrapper/log/waveform solver artifacts exist.
 
 Wrapper waveform columns remain ordered as user probes first, then automatic
 operating-limit probes. `NgspiceRun.user_probe_count` is the boundary that lets

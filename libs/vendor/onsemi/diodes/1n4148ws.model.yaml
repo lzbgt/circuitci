@@ -1,0 +1,72 @@
+component_id: vendor.onsemi.1n4148ws
+version: 0.1.0
+category: diode
+ports:
+  A:
+    kind: passive
+    required: true
+  K:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: onsemi
+  part_number: 1N4148WS
+  package: SOD-323
+  polarity: switching_diode
+  pinout:
+    A: A
+    K: K
+  absolute_maximum_ratings:
+    VRRM:
+      value: 100
+      unit: V
+    IF_AV:
+      value: 0.15
+      unit: A
+    PD:
+      value: 0.2
+      unit: W
+  electrical_characteristics:
+    VF_10mA:
+      conditions: IF=10mA, TA=25C
+      max: 1
+      unit: V
+    IR_75V:
+      conditions: VR=75V, TA=25C
+      max: 5
+      unit: uA
+  device_parameters:
+    CT:
+      conditions: VR=0V, f=1MHz
+      max: 4
+      unit: pF
+      simulation_relevance: Junction capacitance affects clamp/release edges.
+    trr:
+      conditions: IF=10mA, VR=6V, IRR=1mA, RL=100ohm
+      max: 4
+      unit: ns
+      simulation_relevance: Reverse recovery affects switching diode release behavior.
+  documents:
+    - title: 1N4148WS - Small Signal Diodes
+      path: docs/research/datasheets/onsemi_1n4148ws-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/1n4148ws-d.pdf
+      sha256: 11f014f05f4ab6ba5eddb0bd8fc0c27f49f9fc25433800d0a327595d4031f148
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_1N4148WS
+    model_type: diode
+    model_path: models/spice/onsemi/1n4148ws.lib
+    provenance: datasheet_fit
+    valid_operating_notes:
+      - Placeholder SPICE card reused from generic 1N4148 fit; operating limits are datasheet-backed.
+      - Replace with vendor or bench-calibrated model before final physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - diode_operating_limit_validation
+    - preliminary_switching_diode_transient
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration

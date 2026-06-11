@@ -296,7 +296,7 @@ fn um_stm32l4_physical_spice_requires_backend() {
         artifact
             .as_str()
             .unwrap()
-            .ends_with("models/spice/generic/switching_diode.lib")
+            .ends_with("models/spice/onsemi/1n4148ws.lib")
     }));
     assert!(artifacts.iter().any(|artifact| {
         artifact
@@ -443,6 +443,103 @@ fn generated_pmos_high_side_switch_passes_when_ngspice_available() {
 }
 
 #[test]
+fn generated_diode_switching_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_diode_switching/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/onsemi/1n4148ws.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_diode_overcurrent_fails_operating_limits() {
+    let report = run_validation("examples/bad_diode_overcurrent/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "IF_AV"
+                && failure["measured"]["unit"] == "A"
+                && failure["measured"]["component"] == "D1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.15
+        }));
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "PD"
+                && failure["measured"]["unit"] == "W"
+                && failure["measured"]["component"] == "D1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"] == 0.2
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_diode_reverse_voltage_fails_operating_limits() {
+    let report = run_validation("examples/bad_diode_reverse_voltage/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "VRRM"
+                && failure["measured"]["unit"] == "V"
+                && failure["measured"]["component"] == "D1"
+                && failure["measured"]["time_of_max_us"].as_f64().is_some()
+                && failure["limit"]["rating_value"].as_f64() == Some(100.0)
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_diode_offset_reverse_voltage_uses_terminal_difference() {
+    let report = run_validation("examples/bad_diode_reverse_voltage_offset/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "fail");
+        let failures = report["failures"].as_array().unwrap();
+        assert!(failures.iter().any(|failure| {
+            failure["id"] == "SPICE_OPERATING_LIMIT"
+                && failure["measured"]["rating"] == "VRRM"
+                && failure["measured"]["expression"] == "max(0,V(cathode,anode))"
+                && failure["measured"]["component"] == "D1"
+                && failure["limit"]["rating_value"].as_f64() == Some(100.0)
+        }));
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn generated_subckt_rc_delay_passes_when_ngspice_available() {
     let report = run_validation("examples/good_subckt_rc_delay/project.yaml");
     if binary_available("ngspice") {
@@ -520,6 +617,45 @@ fn generated_mosfet_operating_limits_require_datasheet_ratings() {
     assert!(failures.iter().any(|failure| {
         failure["measured"]["component"] == "M1"
             && failure["measured"]["model"] == "fixture.no_rating_mosfet"
+            && failure["measured"]["quantity"] == "current"
+    }));
+    assert!(report["waveforms"].as_array().unwrap().is_empty());
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("generated_board.cir"))
+    );
+    for suffix in ["circuitci_ngspice.cir", "ngspice.log", "waveform.csv"] {
+        assert!(
+            !artifacts
+                .iter()
+                .any(|artifact| artifact.as_str().unwrap().ends_with(suffix)),
+            "unexpected solver artifact {suffix} in {artifacts:#?}"
+        );
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_diode_operating_limits_require_datasheet_ratings() {
+    let path_without_ngspice = tempfile::tempdir().unwrap();
+    let report = run_validation_with_path(
+        "examples/bad_diode_missing_operating_ratings/project.yaml",
+        path_without_ngspice.path(),
+    );
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    assert_eq!(
+        failures
+            .iter()
+            .filter(|failure| failure["id"] == "SPICE_OPERATING_LIMIT")
+            .count(),
+        3
+    );
+    assert!(failures.iter().any(|failure| {
+        failure["measured"]["component"] == "D1"
+            && failure["measured"]["model"] == "fixture.no_rating_diode"
             && failure["measured"]["quantity"] == "current"
     }));
     assert!(report["waveforms"].as_array().unwrap().is_empty());

@@ -7,6 +7,7 @@ libraries:
   - ../../libs/vendor/st
   - ../../libs/vendor/wch
   - ../../libs/vendor/onsemi/discrete
+  - ../../libs/vendor/onsemi/diodes
 
 board:
   components:
@@ -101,7 +102,8 @@ board:
         primitive: resistor
         value_ohm: 10000
     D13:
-      model: generic.analog.switching_diode
+      model: vendor.onsemi.1n4148ws
+      part_number: 1N4148WS
       pins:
         A: nrst
         K: q2_collector
@@ -181,8 +183,8 @@ scenarios:
           - CBOOT
           - CNRST
       model_files:
-        - path: ../../models/spice/generic/switching_diode.lib
-          sha256: fc342b911921bd850bb110203d87646333e58d573f73b3b5e9b1e7082fa78193
+        - path: ../../models/spice/onsemi/1n4148ws.lib
+          sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
         - path: ../../models/spice/onsemi/ss8050_ss8550.lib
           sha256: 8360ca1f35758e36a5a8dd5ea3cc41ea68f608ac8c000d048e15232565b12145
       node_bindings:

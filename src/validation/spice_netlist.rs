@@ -141,13 +141,20 @@ fn generate_component_line(
     validate_spice_token("SPICE model name", &spice_model.model_name)?;
     require_declared_model_file(bound, analog, component_id, &spice_model.model_path)?;
     match spice_model.model_type {
-        SpiceModelType::Diode => Ok(format!(
-            "{} {} {} {}",
-            element_name("D", component_id),
-            pin_node(component_id, component, node_by_net, "A")?,
-            pin_node(component_id, component, node_by_net, "K")?,
-            spice_model.model_name
-        )),
+        SpiceModelType::Diode => {
+            let anode = pin_node(component_id, component, node_by_net, "A")?;
+            let sensed_anode = sense_node(component_id, "a");
+            Ok(format!(
+                "{} {} {} 0\n{} {} {} {}",
+                current_sense_name("D", component_id),
+                anode,
+                sensed_anode,
+                element_name("D", component_id),
+                sensed_anode,
+                pin_node(component_id, component, node_by_net, "K")?,
+                spice_model.model_name
+            ))
+        }
         SpiceModelType::BjtNpn | SpiceModelType::BjtPnp => {
             let collector = pin_node(component_id, component, node_by_net, "C")?;
             let sensed_collector = sense_node(component_id, "c");
@@ -435,4 +442,31 @@ fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     normalized
+}
+
+#[cfg(test)]
+mod tests {
+    use super::generate_board_netlist;
+    use crate::board_ir::load_project;
+    use crate::library::{bind_project, load_library};
+    use std::path::Path;
+
+    #[test]
+    fn generated_diode_inserts_anode_current_sense_before_diode() {
+        let project_path = Path::new("examples/good_diode_switching/project.yaml");
+        let project = load_project(project_path).unwrap();
+        let (library, findings) = load_library(project_path, &project);
+        assert!(findings.is_empty());
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        let sense = text.find("VCCI_D1 in cci_d1_a 0").unwrap();
+        let diode = text.find("D1 cci_d1_a out ONSEMI_1N4148WS").unwrap();
+        assert!(sense < diode);
+    }
 }

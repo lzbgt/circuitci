@@ -1,0 +1,95 @@
+project:
+  name: bad_diode_reverse_voltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/onsemi/diodes
+
+board:
+  components:
+    VHV:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: high_voltage
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 120
+    RLEAK:
+      model: generic.analog.resistor
+      pins:
+        A: high_voltage
+        B: cathode_node
+      spice:
+        primitive: resistor
+        value_ohm: 1000000
+    D1:
+      model: vendor.onsemi.1n4148ws
+      part_number: 1N4148WS
+      pins:
+        A: gnd
+        K: cathode_node
+  nets:
+    high_voltage:
+      kind: power
+      nominal_voltage: 120
+      powered: true
+    cathode_node:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: diode_reverse_overvoltage
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VHV
+          - RLEAK
+          - D1
+      model_files:
+        - path: ../../models/spice/onsemi/1n4148ws.lib
+          sha256: dee84e9189e05a9af600a0224a63cb6d01ebec4df27ff4ed12baeddd34869504
+      node_bindings:
+        - node: hv
+          net: high_voltage
+        - node: cathode
+          net: cathode_node
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: "0"
+          endpoint:
+            component: D1
+            pin: A
+        - node: cathode
+          endpoint:
+            component: D1
+            pin: K
+        - node: hv
+          endpoint:
+            component: VHV
+            pin: P
+      analysis:
+        type: tran
+        stop_time_us: 100
+        max_step_us: 0.2
+      stimuli:
+        - name: reverse_bias
+          description: 120 V reverse bias is applied through a high-value resistor.
+      probes:
+        - name: cathode
+          expression: V(cathode)
+      assertions:
+        - name: reverse_voltage_reaches_fault_level
+          probe: cathode
+          at_us: 50
+          relation: above
+          threshold_v: 110

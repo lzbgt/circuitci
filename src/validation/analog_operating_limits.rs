@@ -85,7 +85,18 @@ pub(super) fn operating_limit_probes(
                     &scenario.name,
                 );
             }
-            SpiceModelType::Diode | SpiceModelType::Subckt => {}
+            SpiceModelType::Diode => {
+                push_diode_operating_probes(
+                    component_id,
+                    component,
+                    model,
+                    &node_by_net,
+                    &mut probes,
+                    &mut metadata_findings,
+                    &scenario.name,
+                );
+            }
+            SpiceModelType::Subckt => {}
         }
     }
     OperatingLimitProbes {
@@ -319,6 +330,86 @@ fn push_bjt_operating_probes(
     }
 }
 
+fn push_diode_operating_probes(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    node_by_net: &BTreeMap<&str, &str>,
+    probes: &mut Vec<OperatingLimitProbe>,
+    metadata_findings: &mut Vec<Finding>,
+    scenario_name: &str,
+) {
+    let (Some(anode), Some(cathode)) = (
+        spice_node_for_pin(component, node_by_net, "A"),
+        spice_node_for_pin(component, node_by_net, "K"),
+    ) else {
+        return;
+    };
+    let current_sense = current_sense_name("D", component_id);
+    let forward_voltage = voltage_expression(anode, cathode);
+    let reverse_voltage = voltage_expression(cathode, anode);
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["VRRM", "VR"], "V") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("max(0,{reverse_voltage})"),
+            rating_value,
+            limit,
+            unit: "V",
+            quantity: "voltage",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "voltage",
+            "V",
+            &["VRRM", "VR"],
+        ));
+    }
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["IF", "IF_AV"], "A") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("max(0,I({current_sense}))"),
+            rating_value,
+            limit,
+            unit: "A",
+            quantity: "current",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "current",
+            "A",
+            &["IF", "IF_AV"],
+        ));
+    }
+    if let Some((rating, rating_value, limit)) = rating_abs(model, &["PD", "Ptot"], "W") {
+        probes.push(OperatingLimitProbe {
+            component_id: component_id.to_string(),
+            rating,
+            expression: format!("max(0,{forward_voltage}*I({current_sense}))"),
+            rating_value,
+            limit,
+            unit: "W",
+            quantity: "power",
+        });
+    } else {
+        metadata_findings.push(missing_operating_rating_finding(
+            component_id,
+            model,
+            scenario_name,
+            "power",
+            "W",
+            &["PD", "Ptot"],
+        ));
+    }
+}
+
 fn missing_operating_rating_finding(
     component_id: &str,
     model: &ComponentModel,
@@ -486,5 +577,7 @@ mod tests {
     fn operating_limit_current_probe_uses_generated_netlist_sense_name() {
         assert_eq!(current_sense_name("M", "M1"), "VCCI_M1");
         assert_eq!(current_sense_name("Q", "Q-2"), "VCCI_Q_2");
+        assert_eq!(current_sense_name("D", "D13"), "VCCI_D13");
+        assert_eq!(current_sense_name("D", "D-2"), "VCCI_D_2");
     }
 }

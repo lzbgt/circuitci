@@ -144,6 +144,9 @@ artifacts.
 - `examples/bad_bjt_overcurrent` proves generated BJT collector current can be
   checked automatically against datasheet absolute maximum ratings without a
   hand-authored transistor-limit assertion.
+- `examples/bad_diode_overcurrent` and `examples/bad_diode_reverse_voltage`
+  prove generated diode forward-current, reverse-voltage, and power stress can
+  be checked automatically against datasheet absolute maximum ratings.
 
 ## Datasheet Operating Limits
 
@@ -153,11 +156,12 @@ with automatic probes derived from component-model
 
 - MOSFET `VDSS`, `VGSS`/`VGSS_continuous`, `ID`/`ID_continuous`, and `PD`.
 - BJT `VCEO`, `VCBO`, `VEBO`, `IC`, and `PD`.
+- Diode `VRRM`/`VR`, `IF`/`IF_AV`, and `PD`/`Ptot`.
 
-Generated MOSFET/BJT models fail closed if these rating groups are absent or
-use the wrong unit, because a missing datasheet limit is not pass evidence. The
-operating-limit probes are evaluated over the full transient using maximum
-absolute value. Exceeding a rating emits `SPICE_OPERATING_LIMIT` with the
+Generated MOSFET/BJT/diode models fail closed if these rating groups are absent
+or use the wrong unit, because a missing datasheet limit is not pass evidence.
+The operating-limit probes are evaluated over the full transient using maximum
+stress magnitude. Exceeding a rating emits `SPICE_OPERATING_LIMIT` with the
 component id, datasheet rating key, expression, measured maximum, time of
 maximum, unit, signed datasheet rating value, and absolute comparison limit.
 These checks are supplemental to scenario assertions: a circuit can pass its

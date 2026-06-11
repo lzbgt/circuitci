@@ -1,0 +1,23 @@
+component_id: fixture.no_rating_diode
+version: 0.1.0
+category: diode
+ports:
+  A:
+    kind: passive
+    required: true
+  K:
+    kind: passive
+    required: true
+model_quality:
+  source: estimated
+  confidence: low
+  intended_use:
+    - generated_spice_contract_negative_test
+  not_valid_for:
+    - physical_simulation_without_datasheet_limits
+simulation:
+  spice:
+    model_name: GENERIC_1N4148
+    model_type: diode
+    model_path: models/spice/onsemi/1n4148ws.lib
+    provenance: estimated
