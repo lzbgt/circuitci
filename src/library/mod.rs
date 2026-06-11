@@ -35,6 +35,10 @@ pub struct SpiceModel {
     pub model_path: String,
     pub provenance: String,
     #[serde(default)]
+    pub body_pin_policy: Option<String>,
+    #[serde(default)]
+    pub pin_order: Vec<String>,
+    #[serde(default)]
     pub valid_operating_notes: Vec<String>,
 }
 

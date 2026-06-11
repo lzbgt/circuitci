@@ -20,7 +20,9 @@ scope:
 - independent DC voltage source,
 - independent pulse voltage source,
 - diode backed by `simulation.spice`,
-- BJT NPN/PNP backed by `simulation.spice`.
+- BJT NPN/PNP backed by `simulation.spice`,
+- N-channel and P-channel MOSFETs backed by `simulation.spice`,
+- subcircuits backed by `simulation.spice` with explicit `pin_order`.
 
 Unsupported components in a generated deck are critical validation-input
 failures. They must not be silently omitted.
@@ -76,8 +78,20 @@ artifacts.
    node bindings.
 5. Reject unsupported primitives and missing required primitive parameters.
 6. Include declared model files with absolute paths in the generated deck.
-7. Emit generated deck, wrapper, solver log, and waveform as report artifacts.
-8. Keep all solver execution, convergence checks, waveform parsing, and
+7. Emit MOSFETs as SPICE `M` devices with required `D`, `G`, and `S` pins.
+   If a body `B` pin is declared on the board component, bind it explicitly.
+   If no `B` pin is declared, tie body to source only when the component model
+   declares `simulation.spice.body_pin_policy: tie_to_source_when_absent`;
+   otherwise fail before solver execution.
+8. Emit subcircuits as SPICE `X` devices only when the component model declares
+   `simulation.spice.pin_order`; a `.subckt` without deterministic pin mapping
+   is a validation-input failure.
+9. Require every generated semiconductor or subcircuit model file to appear in
+   `analog.model_files` with a SHA-256 pin.
+10. Resolve model metadata paths from the Board IR project directory and its
+    ancestors so CLI launch location does not change the physical model.
+11. Emit generated deck, wrapper, solver log, and waveform as report artifacts.
+12. Keep all solver execution, convergence checks, waveform parsing, and
    assertion evaluation in the existing ngspice runner path.
 
 ## Review Notes

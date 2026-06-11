@@ -308,6 +308,92 @@ fn um_stm32l4_physical_spice_requires_backend() {
 }
 
 #[test]
+fn generated_mosfet_low_side_switch_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_mosfet_low_side_switch/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/onsemi/nds7002a.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_subckt_rc_delay_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_subckt_rc_delay/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(artifacts.iter().any(|artifact| {
+            artifact
+                .as_str()
+                .unwrap()
+                .ends_with("models/spice/generic/rc_delay_subckt.lib")
+        }));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn generated_model_paths_do_not_depend_on_process_cwd() {
+    let out_dir = tempfile::tempdir().unwrap();
+    let cwd = tempfile::tempdir().unwrap();
+    let project_path = std::env::current_dir()
+        .unwrap()
+        .join("examples/good_mosfet_low_side_switch/project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .current_dir(cwd.path())
+        .args([
+            "validate",
+            project_path.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            out_dir.path().to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.path().join("report.json")).unwrap())
+            .unwrap();
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn example_projects_and_component_models_match_schemas() {
     let board_schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();

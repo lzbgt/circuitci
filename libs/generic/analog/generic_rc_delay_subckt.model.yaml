@@ -1,0 +1,27 @@
+component_id: generic.analog.rc_delay_subckt
+version: 0.1.0
+category: subckt
+ports:
+  IN:
+    kind: passive
+  OUT:
+    kind: passive
+  VSS:
+    kind: passive
+simulation:
+  spice:
+    model_name: CIRCUITCI_RC_DELAY
+    model_type: subckt
+    model_path: models/spice/generic/rc_delay_subckt.lib
+    provenance: estimated
+    pin_order: [IN, OUT, VSS]
+    valid_operating_notes:
+      - Deterministic test macro-model for generated subcircuit deck emission.
+model_quality:
+  source: generic
+  confidence: high
+  intended_use:
+    - board_ir_spice_generation
+    - generated_subckt_pin_order_validation
+  not_valid_for:
+    - physical_component_signoff

@@ -1,0 +1,8 @@
+* Datasheet-fit placeholder for onsemi NDS7002A generated-deck validation.
+* Replace with a vendor or bench-calibrated model before final physical sign-off.
+
+.model ONSEMI_NDS7002A NMOS(
++ LEVEL=1 VTO=2.1 KP=0.9 LAMBDA=0.02
++ RD=0.8 RS=0.8 CGS=16p CGD=4p CBD=12p CBS=12p
++ IS=1e-12 PB=0.8
++)

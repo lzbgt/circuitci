@@ -1,5 +1,5 @@
 use crate::board_ir::{AnalogScenario, ComponentSpec, SpicePrimitive, SpicePulseSpec};
-use crate::library::{BoundBoard, ComponentModel, SpiceModelType};
+use crate::library::{BoundBoard, ComponentModel, SpiceModel, SpiceModelType};
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -156,11 +156,64 @@ fn generate_component_line(
             pin_node(component_id, component, node_by_net, "E")?,
             spice_model.model_name
         )),
-        SpiceModelType::MosfetN | SpiceModelType::MosfetP | SpiceModelType::Subckt => Err(format!(
-            "Generated SPICE component {component_id} uses unsupported first-slice model type {:?}.",
-            spice_model.model_type
+        SpiceModelType::MosfetN | SpiceModelType::MosfetP => {
+            let source = pin_node(component_id, component, node_by_net, "S")?;
+            let body =
+                mosfet_body_node(component_id, component, node_by_net, spice_model, &source)?;
+            Ok(format!(
+                "{} {} {} {} {} {}",
+                element_name("M", component_id),
+                pin_node(component_id, component, node_by_net, "D")?,
+                pin_node(component_id, component, node_by_net, "G")?,
+                source,
+                body,
+                spice_model.model_name
+            ))
+        }
+        SpiceModelType::Subckt => subckt_line(component_id, component, node_by_net, spice_model),
+    }
+}
+
+fn mosfet_body_node(
+    component_id: &str,
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<String, String>,
+    spice_model: &SpiceModel,
+    source: &str,
+) -> Result<String, String> {
+    if let Some(body) = optional_pin_node(component_id, component, node_by_net, "B")? {
+        return Ok(body);
+    }
+    match spice_model.body_pin_policy.as_deref() {
+        Some("tie_to_source_when_absent") => Ok(source.to_string()),
+        _ => Err(format!(
+            "Generated SPICE MOSFET component {component_id} has no B body pin; model {} must declare simulation.spice.body_pin_policy=tie_to_source_when_absent or the board must bind pin B.",
+            spice_model.model_name
         )),
     }
+}
+
+fn subckt_line(
+    component_id: &str,
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<String, String>,
+    spice_model: &SpiceModel,
+) -> Result<String, String> {
+    if spice_model.pin_order.is_empty() {
+        return Err(format!(
+            "Generated SPICE subckt component {component_id} model {} requires simulation.spice.pin_order.",
+            spice_model.model_name
+        ));
+    }
+    let mut line = element_name("X", component_id);
+    for pin in &spice_model.pin_order {
+        validate_spice_token("SPICE subckt pin", pin)?;
+        line.push(' ');
+        line.push_str(&pin_node(component_id, component, node_by_net, pin)?);
+    }
+    line.push(' ');
+    line.push_str(&spice_model.model_name);
+    Ok(line)
 }
 
 fn pulse_line(
@@ -221,13 +274,31 @@ fn pin_node(
     Ok(node.clone())
 }
 
+fn optional_pin_node(
+    component_id: &str,
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<String, String>,
+    pin: &str,
+) -> Result<Option<String>, String> {
+    let Some(net) = component.pins.get(pin) else {
+        return Ok(None);
+    };
+    let node = node_by_net.get(net).ok_or_else(|| {
+        format!(
+            "Generated SPICE component {component_id}.{pin} is on net {net}, but that net has no analog node binding."
+        )
+    })?;
+    validate_spice_token("SPICE node", node)?;
+    Ok(Some(node.clone()))
+}
+
 fn require_declared_model_file(
     bound: &BoundBoard<'_>,
     analog: &AnalogScenario,
     component_id: &str,
     model_path: &str,
 ) -> Result<(), String> {
-    let expected = absolute_path(Path::new(model_path)).map_err(|error| {
+    let expected = resolve_model_path(bound, model_path).map_err(|error| {
         format!("Failed to resolve model path {model_path} for {component_id}: {error}")
     })?;
     for model_file in &analog.model_files {
@@ -239,11 +310,35 @@ fn require_declared_model_file(
                 )
             })?;
         if declared == expected {
+            if model_file.sha256.is_none() {
+                return Err(format!(
+                    "Generated SPICE component {component_id} requires model file {model_path}, but the matching analog.model_files entry has no SHA-256 pin."
+                ));
+            }
             return Ok(());
         }
     }
     Err(format!(
         "Generated SPICE component {component_id} requires model file {model_path}, but analog.model_files does not declare it."
+    ))
+}
+
+fn resolve_model_path(bound: &BoundBoard<'_>, model_path: &str) -> Result<PathBuf, String> {
+    let path = Path::new(model_path);
+    if path.is_absolute() {
+        return absolute_path(path).map_err(|error| error.to_string());
+    }
+
+    for base in bound.project.source_dir.ancestors() {
+        let candidate = base.join(path);
+        if candidate.exists() {
+            return absolute_path(&candidate).map_err(|error| error.to_string());
+        }
+    }
+
+    Err(format!(
+        "relative model path {model_path} was not found from project directory {} or any ancestor",
+        bound.project.source_dir.display()
     ))
 }
 

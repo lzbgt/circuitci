@@ -1,0 +1,6 @@
+* Deterministic RC delay subcircuit for generated SPICE subckt validation.
+
+.subckt CIRCUITCI_RC_DELAY IN OUT VSS
+RIN IN OUT 1k
+COUT OUT VSS 10n
+.ends CIRCUITCI_RC_DELAY

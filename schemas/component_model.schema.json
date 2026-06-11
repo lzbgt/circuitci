@@ -125,6 +125,13 @@
             "model_type": { "enum": ["bjt_npn", "bjt_pnp", "mosfet_n", "mosfet_p", "diode", "subckt"] },
             "model_path": { "type": "string", "minLength": 1 },
             "provenance": { "enum": ["datasheet_fit", "vendor_model", "measured_fit", "estimated"] },
+            "body_pin_policy": {
+              "enum": ["require_explicit_body_pin", "tie_to_source_when_absent"]
+            },
+            "pin_order": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
             "valid_operating_notes": {
               "type": "array",
               "items": { "type": "string", "minLength": 1 }

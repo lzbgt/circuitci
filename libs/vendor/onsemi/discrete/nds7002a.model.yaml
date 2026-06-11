@@ -1,0 +1,100 @@
+component_id: vendor.onsemi.nds7002a
+version: 0.1.0
+category: mosfet_n
+ports:
+  D:
+    kind: passive
+  G:
+    kind: passive
+  S:
+    kind: passive
+  B:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: onsemi
+  part_number: NDS7002A
+  package: SOT-23 3L
+  polarity: n_channel_enhancement
+  pinout:
+    "1": G
+    "2": S
+    "3": D
+  absolute_maximum_ratings:
+    VDSS:
+      value: 60
+      unit: V
+    VGSS_continuous:
+      value: 20
+      unit: V
+    ID_continuous:
+      value: 0.28
+      unit: A
+    ID_pulsed:
+      value: 1.5
+      unit: A
+  electrical_characteristics:
+    VGSth:
+      conditions: VDS=VGS, ID=250uA, TC=25C
+      min: 1
+      typ: 2.1
+      max: 2.5
+      unit: V
+    RDSon_10V:
+      conditions: VGS=10V, ID=500mA, TC=25C
+      typ: 1.2
+      max: 2
+      unit: ohm
+    RDSon_5V:
+      conditions: VGS=5V, ID=50mA, TC=25C
+      typ: 1.7
+      max: 3
+      unit: ohm
+  device_parameters:
+    Ciss:
+      conditions: VDS=25V, VGS=0V, f=1MHz
+      typ: 20
+      max: 50
+      unit: pF
+      simulation_relevance: Gate input capacitance affects digital-drive edge loading.
+    Coss:
+      conditions: VDS=25V, VGS=0V, f=1MHz
+      typ: 11
+      max: 25
+      unit: pF
+      simulation_relevance: Drain-node capacitance affects switch release and settling.
+    Crss:
+      conditions: VDS=25V, VGS=0V, f=1MHz
+      typ: 4
+      max: 5
+      unit: pF
+      simulation_relevance: Miller capacitance couples drain transitions back to the gate.
+    Qg:
+      conditions: Approximate read from Figure 10, VDS=25V, ID=500mA
+      typ: 1.4
+      unit: nC
+      simulation_relevance: Gate charge affects drive current and switching time.
+  documents:
+    - title: 2N7000, 2N7002, NDS7002A - N-Channel Enhancement Mode Field Effect Transistor
+      path: docs/research/datasheets/onsemi_nds7002a-d.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/nds7002a-d.pdf
+      sha256: 160c0e7cdbee397ba4490112aa442e0df20f159c21519e2e17ae52456152e38e
+      retrieved: "2026-06-12"
+simulation:
+  spice:
+    model_name: ONSEMI_NDS7002A
+    model_type: mosfet_n
+    model_path: models/spice/onsemi/nds7002a.lib
+    provenance: datasheet_fit
+    body_pin_policy: tie_to_source_when_absent
+    valid_operating_notes:
+      - Level-1 datasheet fit for generated-deck plumbing and preliminary low-side switch checks.
+      - Replace with vendor or bench-calibrated model before final physical sign-off.
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - mosfet_switch_preliminary_simulation
+  not_valid_for:
+    - final_hardware_signoff_without_vendor_or_bench_calibration
