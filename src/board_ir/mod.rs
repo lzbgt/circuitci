@@ -81,6 +81,8 @@ pub struct Scenario {
     #[serde(default)]
     pub bootloader: Option<BootloaderScenario>,
     #[serde(default)]
+    pub protocol: Option<ProtocolScenario>,
+    #[serde(default)]
     pub events: Vec<ScenarioEvent>,
 }
 
@@ -157,6 +159,24 @@ pub struct BootloaderScenario {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ProtocolScenario {
+    #[serde(default)]
+    pub component: Option<String>,
+    pub name: String,
+    pub flow: String,
+    #[serde(default)]
+    pub sender: Option<Endpoint>,
+    #[serde(default)]
+    pub package_size_bytes: Option<u64>,
+    #[serde(default)]
+    pub package_sha256: Option<String>,
+    #[serde(default)]
+    pub chunk_size_bytes: Option<u64>,
+    #[serde(default)]
+    pub expected_final_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ScenarioEvent {
     #[serde(rename = "at_us")]
     pub at_us: f64,
@@ -167,6 +187,20 @@ pub struct ScenarioEvent {
     pub to: Option<Endpoint>,
     #[serde(default)]
     pub bytes: Vec<u8>,
+    #[serde(default)]
+    pub operation: Option<String>,
+    #[serde(default)]
+    pub payload_len: Option<u64>,
+    #[serde(default)]
+    pub result_code: Option<u64>,
+    #[serde(default)]
+    pub state: Option<String>,
+    #[serde(default)]
+    pub offset: Option<u64>,
+    #[serde(default)]
+    pub chunk_len: Option<u64>,
+    #[serde(default)]
+    pub activate_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]

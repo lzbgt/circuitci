@@ -133,6 +133,51 @@ behavior:
 
 This metadata can represent STM32-like boot flows, ESP32-like EN/IO0 flows, STM8/C51/STC serial entry flows, or simpler generic boot selectors. Vendor packs provide concrete values; the validation engine reads only the generic contract.
 
+## Resident Protocol Metadata
+
+Firmware-specific models can declare resident update protocols without changing the engine:
+
+```yaml
+behavior:
+  protocols:
+    resident_update:
+      transport_interface: uart
+      frame:
+        magic: [85, 77, 66, 76]
+        version: 1
+        request_type: 1
+        response_type: 2
+        crc: crc32_ieee
+        max_payload_len: 1030
+        ok_result: 0
+      operations:
+        begin:
+          opcode: 2
+          role: start_transfer
+          payload:
+            min_len: 36
+            max_len: 37
+        data:
+          opcode: 3
+          role: data_chunk
+          payload:
+            overhead_len: 6
+        finish:
+          opcode: 4
+          role: finish_transfer
+          payload:
+            len: 36
+      flows:
+        upload:
+          phases:
+            - operation: begin
+            - operation: data
+              repeat: one_or_more
+            - operation: finish
+```
+
+Operation names are model-local. Generic validation keys off operation metadata such as `role`, payload limits, and flow phases, not chip or protocol names.
+
 ## Reset/Boot Rules
 
 `RESET_RELEASE_AFTER_POWER_VALID`:
@@ -158,6 +203,17 @@ This metadata can represent STM32-like boot flows, ESP32-like EN/IO0 flows, STM8
 - Fail if the event target is not the target component and model RX pin.
 - Fail if event time is before `boot_sample_at_us` when that timing is declared.
 - Pass/fail is abstract protocol behavior, not full firmware execution.
+
+`RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`:
+
+- Severity: `critical`.
+- Resolve the named protocol from `behavior.protocols`.
+- Fail if the protocol sender does not resolve to an output-capable pin on the target RX net.
+- Fail if operation order does not match the named flow phases.
+- Fail if any event result code differs from `frame.ok_result`.
+- Fail if payload lengths exceed `frame.max_payload_len` or operation payload limits.
+- Fail if `data_chunk` roles do not cover the declared package size exactly.
+- Pass/fail is abstract trace validation, not full firmware execution or flash emulation.
 
 ## Quality Policy
 

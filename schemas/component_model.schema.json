@@ -101,6 +101,81 @@
             }
           },
           "additionalProperties": false
+        },
+        "protocols": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "transport_interface": { "type": "string", "minLength": 1 },
+              "frame": {
+                "type": "object",
+                "properties": {
+                  "magic": {
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+                  },
+                  "version": { "type": "integer", "minimum": 0 },
+                  "request_type": { "type": "integer", "minimum": 0 },
+                  "response_type": { "type": "integer", "minimum": 0 },
+                  "crc": { "type": "string", "minLength": 1 },
+                  "max_payload_len": { "type": "integer", "minimum": 0 },
+                  "ok_result": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "operations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["opcode"],
+                  "properties": {
+                    "opcode": { "type": "integer", "minimum": 0 },
+                    "role": { "type": "string", "minLength": 1 },
+                    "payload": {
+                      "type": "object",
+                      "properties": {
+                        "kind": { "type": "string", "minLength": 1 },
+                        "min_len": { "type": "integer", "minimum": 0 },
+                        "max_len": { "type": "integer", "minimum": 0 },
+                        "len": { "type": "integer", "minimum": 0 },
+                        "overhead_len": { "type": "integer", "minimum": 0 },
+                        "values": {
+                          "type": "object",
+                          "additionalProperties": { "type": "integer", "minimum": 0 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "flows": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "phases": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["operation"],
+                        "properties": {
+                          "operation": { "type": "string", "minLength": 1 },
+                          "repeat": { "enum": ["zero_or_more", "one_or_more"] }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "final_state": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false

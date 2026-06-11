@@ -138,6 +138,72 @@ fn um_stm32l4_fixed_app_boot_release_passes() {
 }
 
 #[test]
+fn um_stm32l4_resident_update_activate_passes() {
+    let report = run_validation("examples/um_stm32l4_resident_update_activate/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "ABSTRACT_PROTOCOL_TRACE")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_resident_update_missing_finish_fails() {
+    let report = run_validation("examples/um_stm32l4_resident_update_missing_finish/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE"
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("expected operation finish")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_resident_update_oversize_chunk_fails() {
+    let report = run_validation("examples/um_stm32l4_resident_update_oversize_chunk/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE"
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("payload length is outside model limits")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn um_stm32l4_resident_update_wrong_sender_fails() {
+    let report = run_validation("examples/um_stm32l4_resident_update_wrong_sender/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE"
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("not connected to target RX")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn example_projects_and_component_models_match_schemas() {
     let board_schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();

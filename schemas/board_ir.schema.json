@@ -145,6 +145,24 @@
             },
             "additionalProperties": false
           },
+          "protocol": {
+            "type": "object",
+            "required": ["name", "flow"],
+            "properties": {
+              "component": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "flow": { "type": "string", "minLength": 1 },
+              "sender": { "$ref": "#/$defs/endpoint" },
+              "package_size_bytes": { "type": "integer", "minimum": 0 },
+              "package_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              },
+              "chunk_size_bytes": { "type": "integer", "minimum": 0 },
+              "expected_final_state": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          },
           "events": {
             "type": "array",
             "items": {
@@ -158,7 +176,14 @@
                 "bytes": {
                   "type": "array",
                   "items": { "type": "integer", "minimum": 0, "maximum": 255 }
-                }
+                },
+                "operation": { "type": "string", "minLength": 1 },
+                "payload_len": { "type": "integer", "minimum": 0 },
+                "result_code": { "type": "integer", "minimum": 0 },
+                "state": { "type": "string", "minLength": 1 },
+                "offset": { "type": "integer", "minimum": 0 },
+                "chunk_len": { "type": "integer", "minimum": 0 },
+                "activate_mode": { "type": "string", "minLength": 1 }
               },
               "additionalProperties": false
             }

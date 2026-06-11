@@ -62,6 +62,7 @@ Executable first-stage scenario types:
 - `gpio_backdrive`
 - `reset_boot`
 - `serial_programming`
+- `firmware_update`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -82,6 +83,7 @@ Canonical executable check IDs in the first stage:
 - `RESET_RELEASE_AFTER_POWER_VALID`
 - `BOOT_STRAP_DEFINED`
 - `UART_BOOTLOADER_SYNC`
+- `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 
 ## Reset/Boot Scenario Shape
 
@@ -165,3 +167,57 @@ scenarios:
 9. ACK is abstract in this slice: matching the sync event, sender connectivity, and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
 
 Missing required model/scenario data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
+
+## Firmware Update Scenario Shape
+
+`firmware_update` scenarios model abstract host/device resident-bootloader transactions:
+
+```yaml
+scenarios:
+  - name: resident_update_upload_activate
+    type: firmware_update
+    target:
+      component: U1
+    checks:
+      - RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+    protocol:
+      component: U1
+      name: umbl_resident_update
+      flow: upload_activate_next_log
+      sender:
+        component: U5
+        pin: TXD
+      package_size_bytes: 2048
+      package_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      expected_final_state: activate_pending
+    events:
+      - at_us: 8000
+        action: protocol_request
+        operation: status
+        result_code: 0
+        state: recovery_idle
+      - at_us: 10000
+        action: protocol_request
+        operation: begin
+        payload_len: 37
+        result_code: 0
+      - at_us: 12000
+        action: protocol_request
+        operation: data
+        offset: 0
+        chunk_len: 1024
+        payload_len: 1030
+        result_code: 0
+```
+
+`RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` validates the declared trace against `component.behavior.protocols[protocol.name]`:
+
+1. Resolve the target component, protocol, and named flow.
+2. Check protocol sender connectivity to the target RX pin when `transport_interface` is declared.
+3. Require all protocol events to use declared operations and success result codes.
+4. Check payload lengths against operation metadata and global max payload.
+5. Match model flow phases, including repeat phases such as one-or-more data chunks.
+6. For operations with role `data_chunk`, require non-overlapping chunk coverage of `package_size_bytes`.
+7. Require the final observed state to match `expected_final_state` when declared.
+
+This is an abstract protocol-trace check. It does not execute firmware, decode raw serial frames, recompute CRCs, emulate flash, or prove HIL behavior.

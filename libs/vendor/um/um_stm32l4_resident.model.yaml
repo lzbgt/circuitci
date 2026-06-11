@@ -1,0 +1,141 @@
+component_id: vendor.um.um_stm32l4_resident
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+  VSS:
+    kind: electrical_ground
+    required: true
+  NRST:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  BOOT0:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  PA9:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PA10:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+behavior:
+  reset:
+    pin: NRST
+    active: low
+    min_assert_us: 20
+  boot:
+    sample_time_after_reset_release_us: 100
+    modes:
+      rom_bootloader:
+        straps:
+          - pin: BOOT0
+            required_state: high
+      application:
+        straps:
+          - pin: BOOT0
+            required_state: low
+  bootloader:
+    interfaces:
+      usart1_rom:
+        rx_pin: PA10
+        tx_pin: PA9
+        sync_byte: 127
+        ack_byte: 121
+  protocols:
+    umbl_resident_update:
+      transport_interface: usart1_rom
+      frame:
+        magic: [85, 77, 66, 76]
+        version: 1
+        request_type: 1
+        response_type: 2
+        crc: crc32_ieee
+        max_payload_len: 1030
+        ok_result: 0
+      operations:
+        status:
+          opcode: 1
+        begin:
+          opcode: 2
+          role: start_transfer
+          payload:
+            kind: begin_size_sha256_overwrite
+            min_len: 36
+            max_len: 37
+        data:
+          opcode: 3
+          role: data_chunk
+          payload:
+            kind: offset_len_chunk
+            overhead_len: 6
+        finish:
+          opcode: 4
+          role: finish_transfer
+          payload:
+            kind: finish_size_sha256
+            len: 36
+        activate:
+          opcode: 5
+          role: activate
+          payload:
+            kind: enum_u8
+            len: 1
+            values:
+              next: 0
+              now: 1
+        confirm:
+          opcode: 6
+          role: confirm
+        abort:
+          opcode: 7
+        recover_last_good:
+          opcode: 8
+        read_log:
+          opcode: 9
+      flows:
+        upload_activate_next_log:
+          phases:
+            - operation: status
+            - operation: begin
+            - operation: data
+              repeat: one_or_more
+            - operation: finish
+            - operation: status
+            - operation: activate
+            - operation: read_log
+          final_state: activate_pending
+rules:
+  - RESET_RELEASE_AFTER_POWER_VALID
+  - BOOT_STRAP_DEFINED
+  - UART_BOOTLOADER_SYNC
+  - RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
+model_quality:
+  source: estimated
+  confidence: medium
+  intended_use:
+    - power_sequence
+    - boot_mode
+    - uart_bootloader_sync
+    - resident_update_protocol
+  not_valid_for:
+    - transistor_level_mcu_behavior
+    - exact_st_rom_protocol_timing
+    - full_firmware_execution
+    - flash_programming_side_effects

@@ -72,6 +72,8 @@ pub struct Behavior {
     pub boot: Option<BootBehavior>,
     #[serde(default)]
     pub bootloader: Option<BootloaderBehavior>,
+    #[serde(default)]
+    pub protocols: BTreeMap<String, ProtocolBehavior>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -115,6 +117,76 @@ pub struct BootloaderInterface {
     pub tx_pin: Option<String>,
     pub sync_byte: u8,
     pub ack_byte: u8,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProtocolBehavior {
+    #[serde(default)]
+    pub transport_interface: Option<String>,
+    #[serde(default)]
+    pub frame: ProtocolFrame,
+    #[serde(default)]
+    pub operations: BTreeMap<String, ProtocolOperation>,
+    #[serde(default)]
+    pub flows: BTreeMap<String, ProtocolFlow>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ProtocolFrame {
+    #[serde(default)]
+    pub magic: Vec<u8>,
+    #[serde(default)]
+    pub version: Option<u64>,
+    #[serde(default)]
+    pub request_type: Option<u64>,
+    #[serde(default)]
+    pub response_type: Option<u64>,
+    #[serde(default)]
+    pub crc: Option<String>,
+    #[serde(default)]
+    pub max_payload_len: Option<u64>,
+    #[serde(default)]
+    pub ok_result: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProtocolOperation {
+    pub opcode: u64,
+    #[serde(default)]
+    pub role: Option<String>,
+    #[serde(default)]
+    pub payload: Option<ProtocolPayload>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ProtocolPayload {
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub min_len: Option<u64>,
+    #[serde(default)]
+    pub max_len: Option<u64>,
+    #[serde(default)]
+    pub len: Option<u64>,
+    #[serde(default)]
+    pub overhead_len: Option<u64>,
+    #[serde(default)]
+    pub values: BTreeMap<String, u64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ProtocolFlow {
+    #[serde(default)]
+    pub phases: Vec<ProtocolFlowPhase>,
+    #[serde(default)]
+    pub final_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProtocolFlowPhase {
+    pub operation: String,
+    #[serde(default)]
+    pub repeat: Option<String>,
 }
 
 #[derive(Debug, Clone)]

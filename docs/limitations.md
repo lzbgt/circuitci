@@ -23,5 +23,6 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - Only YAML project input is supported.
 - Component models are low-confidence generic behavioral models unless a vendor pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.
+- `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` validates declared transaction traces and does not execute firmware, decode raw serial frames, recompute CRCs, emulate flash, or prove HIL behavior.
 
 Reports must include these limitations so automated agents and human users know when a pass does not imply full physical coverage.
