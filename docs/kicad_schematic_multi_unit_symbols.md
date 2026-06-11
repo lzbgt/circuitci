@@ -19,6 +19,9 @@ The importer builds pin geometry per library symbol as:
 - embedded child symbol `PARENT_0_STYLE`: common pins,
 - embedded child symbol `PARENT_N_STYLE`: unit `N` pins.
 
+Property-only symbols using `extends` inherit their parent's common and
+unit-specific pin geometry before instance unit selection.
+
 For an instance:
 
 - missing `(unit ...)` defaults to unit `1`,

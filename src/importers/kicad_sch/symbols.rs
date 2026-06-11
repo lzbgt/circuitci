@@ -3,14 +3,14 @@ use super::{Point, parse_at_point, parse_properties};
 use anyhow::{Context, Result, bail};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct PinGeometry {
     at: Point,
     name: Option<String>,
     hidden: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(super) struct LibSymbolGeometry {
     common_pins: BTreeMap<String, PinGeometry>,
     unit_pins: BTreeMap<u32, BTreeMap<String, PinGeometry>>,
@@ -40,18 +40,90 @@ enum MirrorAxis {
 }
 
 pub(super) fn parse_lib_symbol_pins(root: &[Sexp]) -> Result<BTreeMap<String, LibSymbolGeometry>> {
-    let mut pins_by_lib = BTreeMap::new();
     let Some(lib_symbols) = child_list(root, "lib_symbols") else {
         bail!("Native KiCad schematic import requires root lib_symbols pin geometry.");
     };
+    let mut raw_symbols = BTreeMap::new();
     for child in list_children(lib_symbols, "symbol") {
         let Some(lib_id) = string_at(child, 1) else {
             continue;
         };
-        let geometry = parse_lib_symbol_geometry(child, lib_id)?;
-        pins_by_lib.insert(lib_id.to_string(), geometry);
+        if raw_symbols.insert(lib_id.to_string(), child).is_some() {
+            bail!("KiCad lib_symbols has duplicate top-level symbol {lib_id}.");
+        }
+    }
+    let mut pins_by_lib = BTreeMap::new();
+    for lib_id in raw_symbols.keys() {
+        resolve_lib_symbol_geometry(lib_id, &raw_symbols, &mut pins_by_lib, &mut Vec::new())?;
     }
     Ok(pins_by_lib)
+}
+
+fn resolve_lib_symbol_geometry(
+    lib_id: &str,
+    raw_symbols: &BTreeMap<String, &[Sexp]>,
+    pins_by_lib: &mut BTreeMap<String, LibSymbolGeometry>,
+    stack: &mut Vec<String>,
+) -> Result<LibSymbolGeometry> {
+    if let Some(geometry) = pins_by_lib.get(lib_id) {
+        return Ok(geometry.clone());
+    }
+    if stack.iter().any(|entry| entry == lib_id) {
+        let mut cycle = stack.join(" -> ");
+        if !cycle.is_empty() {
+            cycle.push_str(" -> ");
+        }
+        cycle.push_str(lib_id);
+        bail!("KiCad library symbol inheritance cycle detected: {cycle}.");
+    }
+    let Some(symbol) = raw_symbols.get(lib_id) else {
+        bail!("KiCad library symbol {lib_id} is referenced but missing from lib_symbols.");
+    };
+    stack.push(lib_id.to_string());
+    let geometry = if let Some(parent) = parse_lib_symbol_extends(symbol, lib_id)? {
+        reject_extended_symbol_connectivity(symbol, lib_id)?;
+        if !raw_symbols.contains_key(&parent) {
+            bail!("KiCad library symbol {lib_id} extends missing base {parent}.");
+        }
+        resolve_lib_symbol_geometry(&parent, raw_symbols, pins_by_lib, stack)?
+    } else {
+        parse_lib_symbol_geometry(symbol, lib_id)?
+    };
+    stack.pop();
+    pins_by_lib.insert(lib_id.to_string(), geometry.clone());
+    Ok(geometry)
+}
+
+fn parse_lib_symbol_extends(list: &[Sexp], lib_id: &str) -> Result<Option<String>> {
+    let Some(extends) = child_list(list, "extends") else {
+        return Ok(None);
+    };
+    if extends.len() != 2 {
+        bail!("KiCad library symbol {lib_id} has malformed extends token.");
+    }
+    let parent = string_at(extends, 1)
+        .filter(|value| !value.trim().is_empty())
+        .with_context(|| format!("KiCad library symbol {lib_id} has empty extends target."))?;
+    Ok(Some(parent.to_string()))
+}
+
+fn reject_extended_symbol_connectivity(list: &[Sexp], lib_id: &str) -> Result<()> {
+    for child in list.iter().skip(1).filter_map(maybe_list) {
+        match tag(child) {
+            Some("pin") => {
+                bail!(
+                    "KiCad library symbol {lib_id} extends another symbol and cannot declare pins."
+                );
+            }
+            Some("symbol") => {
+                bail!(
+                    "KiCad library symbol {lib_id} extends another symbol and cannot declare unit symbols."
+                );
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 fn parse_lib_symbol_geometry(list: &[Sexp], lib_id: &str) -> Result<LibSymbolGeometry> {

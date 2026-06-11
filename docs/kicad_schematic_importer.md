@@ -29,6 +29,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - `on_board no` filtering for non-power symbols,
 - root `lib_symbols` pin definitions for symbol pin coordinates, including
   selected unit geometry for KiCad multi-unit symbols,
+- property-only `lib_symbols` inheritance through `extends`,
 - omitted hidden `power_in` library pins with non-empty pin names,
 - cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
   equivalent wrapped values,
@@ -52,6 +53,8 @@ Unsupported constructs fail closed:
 - malformed or unsupported symbol mirror tokens,
 - malformed `on_board` metadata,
 - missing or ambiguous library pin geometry,
+- malformed, missing-base, cyclic, or connectivity-redefining library symbol
+  `extends` inheritance,
 - hidden non-power pins or unnamed hidden power pins,
 - malformed labels,
 - duplicate or conflicting labels at one coordinate,
