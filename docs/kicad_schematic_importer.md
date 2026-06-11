@@ -32,7 +32,7 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - `mirror x` and `mirror y` symbol transforms,
 - straight horizontal or vertical wires,
 - horizontal/vertical bus graphics and bus entries when scalar wire labels are
-  explicit,
+  explicit or exactly resolvable from a bus label,
 - bus aliases whose members are explicit scalar labels or simple decimal
   ranges,
 - explicit junctions for mid-span wire crossings,
@@ -44,7 +44,7 @@ Unsupported constructs fail closed:
 
 - root-level hierarchical labels,
 - hierarchy cycles,
-- inferred bus expansion from labels placed only on bus graphics,
+- ambiguous bus expansion from labels placed only on bus graphics,
 - malformed, non-finite, or non-cardinal symbol rotations,
 - malformed or unsupported symbol mirror tokens,
 - missing library pin geometry,

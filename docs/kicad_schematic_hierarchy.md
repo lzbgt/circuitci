@@ -14,7 +14,7 @@ Native `.kicad_sch` import supports a strict recursive hierarchy slice:
 - distinct non-ground sheet-pin names wired onto one root net require an
   explicit root label as the canonical flattened net name,
 - sheet names that sanitize to the same child-local net prefix are rejected,
-- inferred bus expansion from labels placed only on bus graphics remains
+- ambiguous bus expansion from labels placed only on bus graphics remains
   rejected.
 
 The importer flattens children bottom-up into the same Board IR graph. Parent

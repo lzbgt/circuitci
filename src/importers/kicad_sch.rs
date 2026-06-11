@@ -169,8 +169,8 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
     }
     validate_unique_refs(&symbols)?;
     let (segments, junctions) = parse_wires_and_junctions(root_list)?;
-    let (labels, hierarchical_labels) = parse_labels(root_list, power_labels, mode)?;
-    validate_bus_graphics(root_list, &segments, &labels)?;
+    let (mut labels, hierarchical_labels) = parse_labels(root_list, power_labels, mode)?;
+    validate_bus_graphics(root_list, &segments, &mut labels)?;
     let no_connects = parse_no_connects(root_list)?;
     let (effective_labels, sheet_pin_aliases) = if sheets.is_empty() {
         (labels.clone(), BTreeMap::new())
@@ -591,13 +591,14 @@ fn parse_wires_and_junctions(root: &[Sexp]) -> Result<(Vec<Segment>, BTreeSet<Po
 fn validate_bus_graphics(
     root: &[Sexp],
     wire_segments: &[Segment],
-    labels: &BTreeMap<Point, String>,
+    labels: &mut BTreeMap<Point, String>,
 ) -> Result<()> {
     let bus_aliases = parse_bus_aliases(root)?;
     let alias_members = bus_aliases
         .values()
         .flat_map(|members| members.iter().cloned())
         .collect::<BTreeSet<_>>();
+    let mut bus_segments = Vec::new();
 
     for bus in list_children(root, "bus") {
         let points = child_list(bus, "pts")
@@ -615,8 +616,11 @@ fn validate_bus_graphics(
             if !segment.is_axis_aligned() {
                 bail!("Native KiCad schematic import supports only horizontal or vertical buses.");
             }
+            bus_segments.push(segment);
         }
     }
+
+    let bus_labels = resolve_bus_labels(&bus_aliases, &alias_members, &bus_segments, labels)?;
 
     for bus_entry in list_children(root, "bus_entry") {
         let start = child_list(bus_entry, "at")
@@ -645,8 +649,29 @@ fn validate_bus_graphics(
                 .filter_map(|(point, label)| wire.contains(*point).then_some(label))
                 .collect::<Vec<_>>();
             if wire_labels.is_empty() {
+                let candidates =
+                    bus_entry_member_candidates(&endpoints, &bus_segments, &bus_labels);
+                if candidates.len() == 1 {
+                    let inferred = candidates
+                        .iter()
+                        .next()
+                        .expect("checked one candidate")
+                        .clone();
+                    let insert_at = endpoints
+                        .iter()
+                        .find(|point| wire.is_endpoint(**point))
+                        .copied()
+                        .expect("touching wire checked");
+                    insert_label(labels, insert_at, inferred)?;
+                    continue;
+                }
+                if candidates.is_empty() {
+                    bail!(
+                        "KiCad bus_entry wire endpoint requires an explicit scalar label or one resolvable bus label."
+                    );
+                }
                 bail!(
-                    "KiCad bus_entry wire endpoint requires an explicit scalar label; bus expansion is not inferred."
+                    "KiCad bus_entry wire endpoint is ambiguous across bus members {candidates:?}."
                 );
             }
             if !alias_members.is_empty() {
@@ -661,6 +686,55 @@ fn validate_bus_graphics(
         }
     }
     Ok(())
+}
+
+fn resolve_bus_labels(
+    bus_aliases: &BTreeMap<String, BTreeSet<String>>,
+    alias_members: &BTreeSet<String>,
+    bus_segments: &[Segment],
+    labels: &mut BTreeMap<Point, String>,
+) -> Result<Vec<(Point, BTreeSet<String>)>> {
+    let mut bus_labels = Vec::new();
+    let mut consumed_points = Vec::new();
+    for (point, label) in labels.iter() {
+        if !bus_segments.iter().any(|segment| segment.contains(*point)) {
+            continue;
+        }
+        let resolved = if let Some(members) = bus_aliases.get(label) {
+            members.clone()
+        } else if alias_members.contains(label) {
+            BTreeSet::from([label.clone()])
+        } else {
+            bail!("KiCad bus label {label} is not a bus_alias name or member.");
+        };
+        bus_labels.push((*point, resolved));
+        consumed_points.push(*point);
+    }
+    for point in consumed_points {
+        labels.remove(&point);
+    }
+    Ok(bus_labels)
+}
+
+fn bus_entry_member_candidates(
+    endpoints: &[Point; 2],
+    bus_segments: &[Segment],
+    bus_labels: &[(Point, BTreeSet<String>)],
+) -> BTreeSet<String> {
+    let attached_bus_segments = bus_segments
+        .iter()
+        .filter(|segment| endpoints.iter().any(|point| segment.contains(*point)))
+        .collect::<Vec<_>>();
+    let mut candidates = BTreeSet::new();
+    for (label_point, members) in bus_labels {
+        if attached_bus_segments
+            .iter()
+            .any(|segment| segment.contains(*label_point))
+        {
+            candidates.extend(members.iter().cloned());
+        }
+    }
+    candidates
 }
 
 fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>> {
