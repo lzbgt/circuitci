@@ -26,9 +26,19 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_transient",
 ];
 
-pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
+#[derive(Debug, Default)]
+pub struct ValidationOutcome {
+    pub findings: Vec<Finding>,
+    pub limitations: Vec<Limitation>,
+    pub artifacts: Vec<String>,
+    pub waveforms: Vec<String>,
+}
+
+pub fn validate(bound: &BoundBoard<'_>) -> ValidationOutcome {
     let mut findings = bound.findings.clone();
     let mut limitations = model_quality_limitations(bound);
+    let mut artifacts = Vec::new();
+    let waveforms = Vec::new();
     let mut added_backdrive_limitation = false;
     let mut added_protocol_limitation = false;
     let mut added_control_line_limitation = false;
@@ -110,7 +120,12 @@ pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
                     control_line::validate_control_line_release(bound, scenario, &mut findings)
                 }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
-                    analog_spice::validate_spice_transient(bound, scenario, &mut findings)
+                    analog_spice::validate_spice_transient(
+                        bound,
+                        scenario,
+                        &mut findings,
+                        &mut artifacts,
+                    )
                 }
                 GPIO_BACKDRIVE
                 | RESET_RELEASE_AFTER_POWER_VALID
@@ -137,7 +152,12 @@ pub fn validate(bound: &BoundBoard<'_>) -> (Vec<Finding>, Vec<Limitation>) {
         }
     }
 
-    (findings, limitations)
+    ValidationOutcome {
+        findings,
+        limitations,
+        artifacts,
+        waveforms,
+    }
 }
 
 fn model_quality_limitations(bound: &BoundBoard<'_>) -> Vec<Limitation> {

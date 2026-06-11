@@ -48,7 +48,7 @@ An `analog_transient` scenario owns a SPICE deck and waveform assertions.
 
 Required fields:
 
-- `backend`: `ngspice`, `xyce`, or `auto`.
+- `backend`: `ngspice`, `xyce`, `embedded_ngspice`, or `auto`.
 - `netlist`: path to a SPICE-compatible transient deck.
 - `model_files`: SPICE model-card or subcircuit files used by the deck.
 - `node_bindings`: mapping from SPICE nodes to Board IR nets.
@@ -73,6 +73,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
 2. Select a backend:
    - `ngspice` means `ngspice` must be executable.
    - `xyce` means `Xyce` or `xyce` must be executable.
+   - `embedded_ngspice` means a mature ngspice-derived solver must be compiled
+     or linked into CircuitCI behind the analog adapter. It must not resolve to
+     a partial in-house SPICE subset.
    - `auto` chooses the first available configured backend.
 3. If no required backend is available, emit a critical
    `ANALOG_BACKEND_UNAVAILABLE` finding.
@@ -154,15 +157,18 @@ analysis must be explicit model-quality limitations.
 
 ## Implementation Plan
 
-1. Add typed `analog` scenario metadata to the board IR and JSON schema.
-2. Add `SPICE_TRANSIENT_ANALYSIS` dispatch for `analog_transient` scenarios.
+1. Add typed `analog` scenario metadata to the Board IR and JSON schema. Done.
+2. Add `SPICE_TRANSIENT_ANALYSIS` dispatch for `analog_transient` scenarios. Done.
 3. Add a Rust analog backend module that detects `ngspice`/`Xyce`, resolves
-   deck paths, and fails critically when physical prerequisites are missing.
+   deck paths, and fails critically when physical prerequisites are missing. Done.
 4. Add a UM physical acceptance fixture and suite that currently fails with
    `ANALOG_BACKEND_UNAVAILABLE` on this host because no SPICE backend is
-   installed.
-5. Add the real backend runner and waveform parser.
-6. Add generic model-library support for device/subcircuit model packs and
+   installed. Done.
+5. Add explicit `embedded_ngspice` backend selection that fails unless a mature
+   ngspice-derived engine is actually linked or vendored. Do not implement a
+   toy partial solver.
+6. Add the real backend runner and waveform parser.
+7. Add generic model-library support for device/subcircuit model packs and
    board-to-SPICE netlist generation.
-7. Replace UM physical acceptance failure with measured waveform assertions
+8. Replace UM physical acceptance failure with measured waveform assertions
    from the real SPICE run.

@@ -4,7 +4,7 @@ use crate::reports::Finding;
 use serde_json::json;
 use std::collections::BTreeSet;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use super::SPICE_TRANSIENT_ANALYSIS;
 use super::common::validation_input_missing;
@@ -13,6 +13,7 @@ pub(super) fn validate_spice_transient(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
+    artifacts: &mut Vec<String>,
 ) {
     let Some(analog) = &scenario.analog else {
         validation_input_missing(
@@ -42,6 +43,7 @@ pub(super) fn validate_spice_transient(
         findings.push(finding);
         return;
     }
+    push_artifact(artifacts, &netlist);
 
     if analog.model_files.is_empty()
         || analog.node_bindings.is_empty()
@@ -75,6 +77,7 @@ pub(super) fn validate_spice_transient(
             findings.push(finding);
             return;
         }
+        push_artifact(artifacts, &path);
     }
     let mut bound_nodes = BTreeSet::new();
     for binding in &analog.node_bindings {
@@ -207,25 +210,17 @@ pub(super) fn validate_spice_transient(
     }
 
     let selected = select_backend(&analog.backend);
-    let Some(backend) = selected else {
-        let mut finding = Finding::critical(
-            "ANALOG_BACKEND_UNAVAILABLE",
-            &scenario.name,
-            "Physical analog simulation requires ngspice or Xyce, but no requested backend executable is available on PATH.",
-        );
+    let BackendSelection::Selected(backend) = selected else {
+        let mut finding = match selected {
+            BackendSelection::EmbeddedUnavailable => embedded_solver_unavailable(&scenario.name),
+            BackendSelection::Unavailable => {
+                external_backend_unavailable(&scenario.name, &analog.backend)
+            }
+            BackendSelection::Selected(_) => unreachable!("handled by let-else pattern"),
+        };
         finding.measured.insert(
             "requested_backend".to_string(),
             json!(backend_name(&analog.backend)),
-        );
-        finding
-            .limit
-            .insert("required_backend".to_string(), json!("ngspice_or_xyce"));
-        finding
-            .suggested_fixes
-            .push("Install ngspice or Xyce and rerun the analog_transient scenario.".to_string());
-        finding.suggested_fixes.push(
-            "Keep behavioral control-line checks marked as non-physical until this simulation runs."
-                .to_string(),
         );
         findings.push(finding);
         return;
@@ -253,25 +248,82 @@ pub(super) fn validate_spice_transient(
     findings.push(finding);
 }
 
-fn select_backend(requested: &AnalogBackend) -> Option<&'static str> {
+enum BackendSelection {
+    Selected(&'static str),
+    Unavailable,
+    EmbeddedUnavailable,
+}
+
+fn external_backend_unavailable(scenario_name: &str, backend: &AnalogBackend) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_BACKEND_UNAVAILABLE",
+        scenario_name,
+        "Physical analog simulation requires ngspice, Xyce, or a linked embedded ngspice backend, but no requested solver is available.",
+    );
+    finding.limit.insert(
+        "required_backend".to_string(),
+        json!("ngspice_xyce_or_embedded_ngspice"),
+    );
+    finding.suggested_fixes.push(
+        "Install ngspice/Xyce or build CircuitCI with a mature embedded ngspice backend."
+            .to_string(),
+    );
+    finding.suggested_fixes.push(
+        "Keep behavioral control-line checks marked as non-physical until this simulation runs."
+            .to_string(),
+    );
+    if *backend == AnalogBackend::EmbeddedNgspice {
+        finding.id = "ANALOG_EMBEDDED_SOLVER_UNAVAILABLE".to_string();
+    }
+    finding
+}
+
+fn embedded_solver_unavailable(scenario_name: &str) -> Finding {
+    let mut finding = Finding::critical(
+        "ANALOG_EMBEDDED_SOLVER_UNAVAILABLE",
+        scenario_name,
+        "The embedded_ngspice backend was requested, but no mature ngspice-derived engine is linked into this CircuitCI build.",
+    );
+    finding
+        .limit
+        .insert("required_backend".to_string(), json!("embedded_ngspice"));
+    finding.suggested_fixes.push(
+        "Vendor or link a mature ngspice-derived solver through the analog adapter; do not replace it with a partial toy SPICE subset."
+            .to_string(),
+    );
+    finding
+}
+
+fn select_backend(requested: &AnalogBackend) -> BackendSelection {
     match requested {
-        AnalogBackend::Ngspice => executable_on_path("ngspice").then_some("ngspice"),
+        AnalogBackend::Ngspice => {
+            if executable_on_path("ngspice") {
+                BackendSelection::Selected("ngspice")
+            } else {
+                BackendSelection::Unavailable
+            }
+        }
         AnalogBackend::Xyce => {
             if executable_on_path("Xyce") {
-                Some("Xyce")
+                BackendSelection::Selected("Xyce")
+            } else if executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
             } else {
-                executable_on_path("xyce").then_some("xyce")
+                BackendSelection::Unavailable
             }
         }
         AnalogBackend::Auto => {
             if executable_on_path("ngspice") {
-                Some("ngspice")
+                BackendSelection::Selected("ngspice")
             } else if executable_on_path("Xyce") {
-                Some("Xyce")
+                BackendSelection::Selected("Xyce")
+            } else if executable_on_path("xyce") {
+                BackendSelection::Selected("xyce")
             } else {
-                executable_on_path("xyce").then_some("xyce")
+                BackendSelection::Unavailable
             }
         }
+        AnalogBackend::EmbeddedNgspice => BackendSelection::EmbeddedUnavailable,
     }
 }
 
@@ -280,6 +332,7 @@ fn backend_name(backend: &AnalogBackend) -> &'static str {
         AnalogBackend::Auto => "auto",
         AnalogBackend::Ngspice => "ngspice",
         AnalogBackend::Xyce => "xyce",
+        AnalogBackend::EmbeddedNgspice => "embedded_ngspice",
     }
 }
 
@@ -295,4 +348,26 @@ fn executable_on_path(binary: &str) -> bool {
         let path: PathBuf = dir.join(binary);
         path.is_file()
     })
+}
+
+fn push_artifact(artifacts: &mut Vec<String>, path: &Path) {
+    let artifact = normalize_artifact_path(path);
+    if !artifacts.iter().any(|existing| existing == &artifact) {
+        artifacts.push(artifact);
+    }
+}
+
+fn normalize_artifact_path(path: &Path) -> String {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                normalized.pop();
+            }
+            Component::Normal(part) => normalized.push(part),
+            Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized.to_string_lossy().replace('\\', "/")
 }

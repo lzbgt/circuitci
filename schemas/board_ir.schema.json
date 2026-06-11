@@ -200,7 +200,7 @@
               "assertions"
             ],
             "properties": {
-              "backend": { "enum": ["auto", "ngspice", "xyce"] },
+              "backend": { "enum": ["auto", "ngspice", "xyce", "embedded_ngspice"] },
               "netlist": { "type": "string", "minLength": 1 },
               "model_files": {
                 "type": "array",

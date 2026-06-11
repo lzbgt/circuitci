@@ -21,8 +21,14 @@
     "failures": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
     "warnings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
     "infos": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-    "waveforms": { "type": "array" },
-    "artifacts": { "type": "array" },
+    "waveforms": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "limitations": { "type": "array", "items": { "$ref": "#/$defs/limitation" } },
     "suggested_next_actions": { "type": "array" },
     "reproduction": {

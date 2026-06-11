@@ -190,6 +190,8 @@ impl ValidationReport {
         profile: String,
         findings: Vec<Finding>,
         limitations: Vec<Limitation>,
+        artifacts: Vec<String>,
+        waveforms: Vec<String>,
         command: String,
     ) -> Self {
         let mut failures = Vec::new();
@@ -221,8 +223,8 @@ impl ValidationReport {
             failures,
             warnings,
             infos,
-            waveforms: Vec::new(),
-            artifacts: Vec::new(),
+            waveforms,
+            artifacts,
             limitations,
             suggested_next_actions,
             reproduction: Reproduction { command },

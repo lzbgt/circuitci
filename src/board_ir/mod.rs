@@ -211,6 +211,7 @@ pub enum AnalogBackend {
     Auto,
     Ngspice,
     Xyce,
+    EmbeddedNgspice,
 }
 
 #[derive(Debug, Clone, Deserialize)]

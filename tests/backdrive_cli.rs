@@ -253,8 +253,21 @@ fn um_stm32l4_physical_spice_requires_backend() {
         report["failures"][0]["message"]
             .as_str()
             .unwrap()
-            .contains("Physical analog simulation requires ngspice or Xyce")
+            .contains("Physical analog simulation requires ngspice, Xyce")
     );
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(artifacts.iter().any(|artifact| {
+        artifact
+            .as_str()
+            .unwrap()
+            .ends_with("examples/um_stm32l4_usb_downloader_physical_spice/downloader_q2_q3.cir")
+    }));
+    assert!(artifacts.iter().any(|artifact| {
+        artifact
+            .as_str()
+            .unwrap()
+            .ends_with("models/spice/onsemi/ss8050_ss8550.lib")
+    }));
     assert_report_schema_valid(&report);
 }
 
