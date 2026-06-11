@@ -55,8 +55,20 @@ samples, CircuitCI uses linear interpolation between adjacent samples. Probe
 - `current`: `threshold_a`
 - `power`: `threshold_w`
 
+Exactly one threshold field is allowed on each assertion. Sample assertions use
+`at_us` and must not also declare a window. Window assertions use
+`aggregation: min|max` with `start_us` and `end_us`, and must not also declare
+`at_us`.
+
+CircuitCI does a conservative expression/quantity check before invoking the
+solver: voltage probes must export `V(...)`, current probes must export `I(...)`
+or a simple sign/magnitude wrapper around `I(...)`, and power probes must
+combine `V(...)` and `I(...)` in one expression. This is not a full ngspice
+expression type system; it is a fail-closed guard against labeling voltage as
+current or power in `report.json`.
+
 A failed assertion emits a critical `SPICE_TRANSIENT_ANALYSIS` finding with
-measured and limit data.
+measured value, unit, quantity, and limit data.
 
 The runner fails closed. These conditions are critical failures:
 

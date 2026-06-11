@@ -206,6 +206,16 @@ pub(super) fn validate_spice_transient(
         );
         return;
     }
+    for probe in &analog.probes {
+        if let Err(message) = validate_probe_contract(probe) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("Analog probe {} {message}.", probe.name),
+            );
+            return;
+        }
+    }
     for assertion in &analog.assertions {
         if !analog
             .probes
@@ -227,6 +237,17 @@ pub(super) fn validate_spice_transient(
                 findings,
                 scenario,
                 format!("Analog assertion {} {message}.", assertion.name),
+            );
+            return;
+        }
+        if threshold_count(assertion) != 1 {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "Analog assertion {} must declare exactly one finite threshold unit.",
+                    assertion.name
+                ),
             );
             return;
         }
@@ -856,6 +877,13 @@ fn evaluate_waveform_assertions(
             finding
                 .measured
                 .insert(assertion.probe.clone(), json!(measured));
+            finding
+                .measured
+                .insert(format!("{}_unit", assertion.probe), json!(threshold.unit));
+            finding.measured.insert(
+                format!("{}_quantity", assertion.probe),
+                json!(quantity_name(&probe.quantity)),
+            );
             insert_measured_time(assertion, &mut finding);
             finding.limit.insert(
                 format!("{relation}{}", threshold.limit_key),
@@ -869,12 +897,43 @@ fn evaluate_waveform_assertions(
     }
 }
 
+fn validate_probe_contract(probe: &AnalogProbe) -> Result<(), String> {
+    let expression = probe
+        .expression
+        .trim()
+        .to_ascii_lowercase()
+        .replace(' ', "");
+    let valid = match probe.quantity {
+        AnalogQuantity::Voltage => expression.starts_with("v("),
+        AnalogQuantity::Current => {
+            expression.starts_with("i(")
+                || expression.starts_with("-i(")
+                || expression.starts_with("abs(i(")
+        }
+        AnalogQuantity::Power => {
+            expression.contains("v(") && expression.contains("i(") && expression.contains('*')
+        }
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(format!(
+            "expression {} is not consistent with declared {} quantity",
+            probe.expression,
+            quantity_name(&probe.quantity)
+        ))
+    }
+}
+
 fn validate_assertion_contract(
     assertion: &AnalogAssertion,
     stop_time_us: f64,
 ) -> Result<(), String> {
     match assertion.aggregation {
         AnalogAggregation::Sample => {
+            if assertion.start_us.is_some() || assertion.end_us.is_some() {
+                return Err("sample aggregation must not declare start_us or end_us".to_string());
+            }
             let Some(at_us) = assertion.at_us else {
                 return Err("requires at_us for sample aggregation".to_string());
             };
@@ -885,6 +944,9 @@ fn validate_assertion_contract(
             }
         }
         AnalogAggregation::Min | AnalogAggregation::Max => {
+            if assertion.at_us.is_some() {
+                return Err("window aggregation must not declare at_us".to_string());
+            }
             let (Some(start_us), Some(end_us)) = (assertion.start_us, assertion.end_us) else {
                 return Err("requires start_us and end_us for window aggregation".to_string());
             };
@@ -902,6 +964,17 @@ fn validate_assertion_contract(
         }
     }
     Ok(())
+}
+
+fn threshold_count(assertion: &AnalogAssertion) -> usize {
+    [
+        assertion.threshold_v,
+        assertion.threshold_a,
+        assertion.threshold_w,
+    ]
+    .into_iter()
+    .filter(|threshold| threshold.is_some_and(f64::is_finite))
+    .count()
 }
 
 fn threshold_for(assertion: &AnalogAssertion, probe: &AnalogProbe) -> Option<AssertionThreshold> {
@@ -1225,8 +1298,13 @@ fn normalize_artifact_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{aggregate_window, interpolate_at, parse_waveform_csv};
-    use crate::board_ir::AnalogAggregation;
+    use super::{
+        aggregate_window, interpolate_at, parse_waveform_csv, threshold_count,
+        validate_assertion_contract, validate_probe_contract,
+    };
+    use crate::board_ir::{
+        AnalogAggregation, AnalogAssertion, AnalogProbe, AnalogQuantity, AnalogRelation,
+    };
 
     #[test]
     fn parser_skips_header_and_interpolates_samples() {
@@ -1279,5 +1357,53 @@ mod tests {
         let values = [0.0, 1.0];
         assert!(aggregate_window(&times, &values, -0.1, 0.5, &AnalogAggregation::Min).is_none());
         assert!(aggregate_window(&times, &values, 0.5, 1.1, &AnalogAggregation::Max).is_none());
+    }
+
+    #[test]
+    fn probe_contract_rejects_mismatched_quantity_expression() {
+        let probe = AnalogProbe {
+            name: "bad_current".to_string(),
+            expression: "V(nrst)".to_string(),
+            quantity: AnalogQuantity::Current,
+        };
+        assert!(validate_probe_contract(&probe).is_err());
+
+        let probe = AnalogProbe {
+            name: "base_current".to_string(),
+            expression: "abs(I(VRTS))".to_string(),
+            quantity: AnalogQuantity::Current,
+        };
+        assert!(validate_probe_contract(&probe).is_ok());
+    }
+
+    #[test]
+    fn assertion_contract_rejects_contradictory_timing_and_thresholds() {
+        let assertion = AnalogAssertion {
+            name: "bad_sample".to_string(),
+            probe: "nrst".to_string(),
+            at_us: Some(100.0),
+            start_us: Some(0.0),
+            end_us: None,
+            aggregation: AnalogAggregation::Sample,
+            relation: AnalogRelation::Above,
+            threshold_v: Some(1.0),
+            threshold_a: None,
+            threshold_w: None,
+        };
+        assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
+
+        let assertion = AnalogAssertion {
+            name: "bad_units".to_string(),
+            probe: "nrst".to_string(),
+            at_us: Some(100.0),
+            start_us: None,
+            end_us: None,
+            aggregation: AnalogAggregation::Sample,
+            relation: AnalogRelation::Above,
+            threshold_v: Some(1.0),
+            threshold_a: Some(0.001),
+            threshold_w: None,
+        };
+        assert_eq!(threshold_count(&assertion), 2);
     }
 }

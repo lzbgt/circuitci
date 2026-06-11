@@ -361,11 +361,22 @@
                         "required": ["aggregation"],
                         "properties": { "aggregation": { "enum": ["min", "max"] } }
                       },
-                      "then": { "required": ["start_us", "end_us"] },
-                      "else": { "required": ["at_us"] }
+                      "then": {
+                        "required": ["start_us", "end_us"],
+                        "not": { "required": ["at_us"] }
+                      },
+                      "else": {
+                        "required": ["at_us"],
+                        "not": {
+                          "anyOf": [
+                            { "required": ["start_us"] },
+                            { "required": ["end_us"] }
+                          ]
+                        }
+                      }
                     },
                     {
-                      "anyOf": [
+                      "oneOf": [
                         { "required": ["threshold_v"] },
                         { "required": ["threshold_a"] },
                         { "required": ["threshold_w"] }
