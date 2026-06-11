@@ -12,7 +12,9 @@ source-file rule.
 
 - Shared CLI helpers live in `tests/common/mod.rs`.
 - Existing non-import CLI and acceptance tests stay in `tests/backdrive_cli.rs`.
-- Native KiCad schematic importer tests live in `tests/kicad_import_cli.rs`.
+- Native KiCad schematic workflow tests live in `tests/kicad_import_cli.rs`.
+- Native KiCad schematic parser-rule tests live in
+  `tests/kicad_schematic_rules_cli.rs`.
 - KiCad XML netlist importer tests live in `tests/kicad_xml_import_cli.rs`.
 - The split is mechanical: no fixture semantics, report assertions, CLI
   arguments, or schema checks change.
