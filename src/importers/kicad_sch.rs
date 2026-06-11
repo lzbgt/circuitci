@@ -675,18 +675,18 @@ fn bus_entry_member_candidates(
 }
 
 fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>> {
-    let mut aliases = BTreeMap::new();
-    let mut global_members = BTreeMap::new();
+    let mut raw_aliases = BTreeMap::new();
     for alias in list_children(root, "bus_alias") {
         let name = string_at(alias, 1)
             .filter(|value| !value.trim().is_empty())
             .with_context(|| "KiCad bus_alias is missing a name.")?
             .to_string();
-        if aliases.contains_key(&name) {
+        if raw_aliases.contains_key(&name) {
             bail!("KiCad schematic has duplicate bus_alias {name}.");
         }
         let members_list = child_list(alias, "members")
             .with_context(|| format!("KiCad bus_alias {name} is missing members."))?;
+        let mut raw_members = Vec::new();
         let mut members = BTreeSet::new();
         for member in members_list.iter().skip(1) {
             let Sexp::Str(value) = member else {
@@ -696,31 +696,142 @@ fn parse_bus_aliases(root: &[Sexp]) -> Result<BTreeMap<String, BTreeSet<String>>
             if member.is_empty() {
                 bail!("KiCad bus_alias {name} has an empty member.");
             }
-            for expanded in expand_bus_alias_member(&name, member)? {
-                if !members.insert(expanded.clone()) {
-                    bail!("KiCad bus_alias {name} has duplicate member {expanded}.");
-                }
-                if let Some(existing_alias) = global_members.insert(expanded.clone(), name.clone())
-                {
-                    bail!(
-                        "KiCad bus_alias member {expanded} appears in both {existing_alias} and {name}."
-                    );
-                }
-            }
+            raw_members.push(member.to_string());
+            members.insert(member.to_string());
         }
         if members.is_empty() {
             bail!("KiCad bus_alias {name} must declare at least one member.");
         }
-        aliases.insert(name, members);
+        raw_aliases.insert(name, raw_members);
+    }
+
+    let mut aliases = BTreeMap::new();
+    let mut global_members = BTreeMap::new();
+    for name in raw_aliases.keys() {
+        let members = expand_bus_alias(name, &raw_aliases, &mut BTreeSet::new(), &mut aliases)?;
+        for expanded in &members {
+            if let Some(existing_alias) = global_members.insert(expanded.clone(), name.clone()) {
+                bail!(
+                    "KiCad bus_alias member {expanded} appears in both {existing_alias} and {name}."
+                );
+            }
+        }
     }
     Ok(aliases)
 }
 
-fn expand_bus_alias_member(alias_name: &str, member: &str) -> Result<Vec<String>> {
+fn expand_bus_alias(
+    alias_name: &str,
+    raw_aliases: &BTreeMap<String, Vec<String>>,
+    visiting: &mut BTreeSet<String>,
+    cache: &mut BTreeMap<String, BTreeSet<String>>,
+) -> Result<BTreeSet<String>> {
+    if let Some(members) = cache.get(alias_name) {
+        return Ok(members.clone());
+    }
+    if !visiting.insert(alias_name.to_string()) {
+        bail!("KiCad bus_alias {alias_name} participates in an alias cycle.");
+    }
+    let raw_members = raw_aliases
+        .get(alias_name)
+        .with_context(|| format!("KiCad bus_alias {alias_name} is not declared."))?;
+    let mut members = BTreeSet::new();
+    for member in raw_members {
+        for expanded in expand_bus_alias_member(alias_name, member, raw_aliases, visiting, cache)? {
+            if !members.insert(expanded.clone()) {
+                bail!("KiCad bus_alias {alias_name} has duplicate member {expanded}.");
+            }
+        }
+    }
+    if members.is_empty() {
+        bail!("KiCad bus_alias {alias_name} must declare at least one member.");
+    }
+    visiting.remove(alias_name);
+    cache.insert(alias_name.to_string(), members.clone());
+    Ok(members)
+}
+
+fn expand_bus_alias_member(
+    alias_name: &str,
+    member: &str,
+    raw_aliases: &BTreeMap<String, Vec<String>>,
+    visiting: &mut BTreeSet<String>,
+    cache: &mut BTreeMap<String, BTreeSet<String>>,
+) -> Result<Vec<String>> {
     if member.contains('{') || member.contains('}') {
-        bail!("KiCad bus_alias {alias_name} member {member} uses unsupported grouped syntax.");
+        return expand_grouped_bus_alias_member(alias_name, member, raw_aliases, visiting, cache);
+    }
+    if raw_aliases.contains_key(member) {
+        return Ok(expand_bus_alias(member, raw_aliases, visiting, cache)?
+            .into_iter()
+            .collect());
+    }
+    expand_simple_bus_alias_member(alias_name, member)
+}
+
+fn expand_grouped_bus_alias_member(
+    alias_name: &str,
+    member: &str,
+    raw_aliases: &BTreeMap<String, Vec<String>>,
+    visiting: &mut BTreeSet<String>,
+    cache: &mut BTreeMap<String, BTreeSet<String>>,
+) -> Result<Vec<String>> {
+    let Some(open) = member.find('{') else {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+    };
+    let Some(close_offset) = member[open + 1..].find('}') else {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+    };
+    let close = open + 1 + close_offset;
+    if member[open + 1..close].contains(['{', '}']) || member[close + 1..].contains(['{', '}']) {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+    }
+    if !member[close + 1..].trim().is_empty() {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
     }
 
+    let prefix = member[..open].trim();
+    if prefix != &member[..open] || prefix.contains(char::is_whitespace) {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+    }
+    if prefix.contains(['[', ']', '.', '{', '}']) || prefix.contains("..") {
+        bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+    }
+
+    let body = member[open + 1..close].trim();
+    if body.is_empty() {
+        bail!("KiCad bus_alias {alias_name} member {member} has empty grouped syntax.");
+    }
+
+    let mut expanded = Vec::new();
+    for term in body.split_whitespace() {
+        if term.contains(['{', '}']) {
+            bail!("KiCad bus_alias {alias_name} member {member} has malformed grouped syntax.");
+        }
+        let signals = if raw_aliases.contains_key(term) {
+            expand_bus_alias(term, raw_aliases, visiting, cache)?
+                .into_iter()
+                .collect()
+        } else {
+            expand_simple_bus_alias_member(alias_name, term)?
+        };
+        for signal in signals {
+            if prefix.is_empty() {
+                expanded.push(signal);
+            } else {
+                expanded.push(format!("{prefix}.{signal}"));
+            }
+            if expanded.len() > 1024 {
+                bail!(
+                    "KiCad bus_alias {alias_name} member {member} expands to more than 1024 labels."
+                );
+            }
+        }
+    }
+    Ok(expanded)
+}
+
+fn expand_simple_bus_alias_member(alias_name: &str, member: &str) -> Result<Vec<String>> {
     let Some(open) = member.find('[') else {
         if member.contains(']') || member.contains("..") {
             bail!("KiCad bus_alias {alias_name} member {member} has malformed range syntax.");

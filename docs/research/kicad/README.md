@@ -7,6 +7,7 @@ native `.kicad_sch` importer design.
 | --- | --- | --- |
 | `sexpr-intro.html` | `https://dev-docs.kicad.org/en/file-formats/sexpr-intro/index.html` | `118b490ce5c5dee804fcf83c061258d7819c4e2f06032e544b1934729f221dca` |
 | `sexpr-schematic.html` | `https://dev-docs.kicad.org/en/file-formats/sexpr-schematic/index.html` | `6ba940642cfde2ee031b140dcd105d05634b3551f7a9cf9be028f6e789c62f08` |
+| `kicad_9_eeschema.html` | `https://docs.kicad.org/9.0/en/eeschema/eeschema.html` | `782771b20a61cdfa9d62ebcfa8006f4b0c9474595334faa9a0b5763fb925fe0c` |
 
 The first importer slice supports only a conservative single-sheet subset and
 routes extracted connectivity into the existing CircuitCI KiCad mapping path.

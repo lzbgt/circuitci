@@ -315,6 +315,133 @@ fn import_kicad_schematic_accepts_zero_padded_sparse_bus_alias_members() {
 }
 
 #[test]
+fn import_kicad_schematic_accepts_grouped_bus_alias_members() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("grouped_bus_alias.kicad_sch");
+    let output = dir.path().join("grouped_bus_alias.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (label "PORT.DATA1" (at 15 -2.54 0))
+  (bus_alias "PORTBUS" (members "PORT{DATA[0..1] CTRL}"))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_port_data1"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_unnamed_grouped_bus_alias_members() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("unnamed_grouped_bus_alias.kicad_sch");
+    let output = dir.path().join("unnamed_grouped_bus_alias.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (label "SCL" (at 5 0 0))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (bus_alias "I2C" (members "{SCL SDA}"))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_scl"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_accepts_grouped_bus_alias_reference() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("grouped_bus_alias_reference.kicad_sch");
+    let output = dir.path().join("grouped_bus_alias_reference.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (wire (pts (xy 0 0) (xy 10 0)))
+  (bus_entry (at 10 0) (size 2.54 -2.54))
+  (bus (pts (xy 12.54 -2.54) (xy 20 -2.54)))
+  (label "USB1.DP" (at 15 -2.54 0))
+  (bus_alias "PAIR" (members "DP" "DM"))
+  (bus_alias "USB" (members "USB1{PAIR}"))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_usb1_dp"
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_unlabelled_bus_entry_stub() {
     assert_bad_kicad_schematic_contains(
         r#"
@@ -443,6 +570,75 @@ fn import_kicad_schematic_rejects_duplicate_bus_alias_member() {
   (bus_alias "DATA" (members "DATA0" "DATA0")))
 "#,
         "duplicate member DATA0",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_empty_grouped_bus_alias_member() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "DATA" (members "DATA{}")))
+"#,
+        "has empty grouped syntax",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_nested_grouped_bus_alias_member() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "DATA" (members "DATA{USB{DP}}")))
+"#,
+        "has malformed grouped syntax",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_grouped_bus_alias_suffix() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "DATA" (members "DATA{0}X")))
+"#,
+        "has malformed grouped syntax",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_bus_alias_reference_cycle() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (bus_alias "A" (members "B"))
+  (bus_alias "B" (members "A")))
+"#,
+        "participates in an alias cycle",
     );
 }
 
