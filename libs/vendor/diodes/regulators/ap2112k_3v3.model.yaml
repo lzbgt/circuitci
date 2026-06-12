@@ -1,0 +1,101 @@
+component_id: vendor.diodes.ap2112k_3v3
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.5
+      operating_voltage_max_V: 6.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.2505
+      operating_voltage_max_V: 3.3495
+  GND:
+    kind: electrical_ground
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.5
+      vil_max_V: 0.4
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  dropout_voltage_V: 0.4
+  max_output_current_A: 0.6
+datasheet:
+  manufacturer: Diodes Incorporated
+  part_number: AP2112K-3.3
+  package: SOT25
+  polarity: fixed_3v3_ldo_active_high_enable
+  pinout:
+    VIN: VIN
+    GND: GND
+    EN: EN
+    VOUT: VOUT
+    NC: NC
+  electrical_characteristics:
+    input_voltage:
+      conditions: Recommended operating supply voltage.
+      min: 2.5
+      max: 6.0
+      unit: V
+    output_voltage:
+      conditions: AP2112-3.3, VIN = 4.3 V, 1 mA <= IOUT <= 30 mA, +/-1.5%.
+      min: 3.2505
+      typ: 3.3
+      max: 3.3495
+      unit: V
+    output_current:
+      conditions: AP2112-3.3, VIN = 4.3 V, VOUT = 3.251 V to 3.350 V.
+      min: 600
+      unit: mA
+    dropout_voltage:
+      conditions: AP2112-3.3 at IOUT = 600 mA.
+      typ: 250
+      max: 400
+      unit: mV
+    quiescent_current:
+      conditions: VIN = 4.3 V, IOUT = 0 mA.
+      typ: 55
+      max: 80
+      unit: uA
+    enable_high:
+      conditions: VEN high voltage, regulator on.
+      min: 1.5
+      unit: V
+    enable_low:
+      conditions: VEN low voltage, regulator off.
+      max: 0.4
+      unit: V
+    startup_time:
+      conditions: No load; typical only, not used as a hard validation limit.
+      typ: 20
+      unit: us
+    input_output_capacitors:
+      conditions: Typical application recommends 1.0 uF input and output capacitors.
+      unit: note
+  documents:
+    - title: AP2112 600mA CMOS LDO Regulator with ENABLE
+      path: docs/research/datasheets/diodes/ap2112.pdf
+      source_url: https://www.diodes.com/datasheet/download/AP2112.pdf
+      sha256: ef8d376f2ec356e29172eb9e053819a0ebdcc576dba7fc9ab0505c568427920f
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - regulator_static_screening
+    - common_iot_3v3_rail_screening
+  not_valid_for:
+    - regulator_transient_or_stability_signoff
+    - regulator_thermal_signoff
+    - load_dependent_dropout_curve
+    - output_capacitor_esr_stability_signoff
+    - enable_startup_waveform_signoff

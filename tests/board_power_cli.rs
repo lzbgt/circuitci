@@ -675,6 +675,57 @@ fn regulator_dropout_fails() {
 }
 
 #[test]
+fn diodes_ap2112k_3v3_regulator_passes_static_power_tree() {
+    let report = run_validation("examples/good_diodes_ap2112k_3v3_regulator/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn diodes_ap2112k_3v3_dropout_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_diodes_ap2112k_3v3_dropout/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("dropout_voltage_V").is_some())
+        .expect("expected AP2112 dropout finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["input_voltage_V"], 3.6);
+    assert_eq!(failure["measured"]["output_voltage_V"], 3.3);
+    let margin = failure["measured"]["dropout_margin_V"].as_f64().unwrap();
+    assert!((margin - 0.3).abs() < 1e-12);
+    assert_eq!(failure["limit"]["dropout_voltage_V"], 0.4);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn diodes_ap2112k_3v3_output_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_diodes_ap2112k_3v3_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected AP2112 output-current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 0.65);
+    assert_eq!(failure["limit"]["regulator_max_output_current_A"], 0.6);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn regulator_output_current_fails() {
     let report = run_validation("examples/bad_regulator_output_current/project.yaml");
     assert_eq!(report["result"], "fail");

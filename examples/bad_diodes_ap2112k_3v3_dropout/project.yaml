@@ -1,0 +1,48 @@
+project:
+  name: bad_diodes_ap2112k_3v3_dropout
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UREG:
+      model: vendor.diodes.ap2112k_3v3
+      part_number: AP2112K-3.3TRG1
+      power_domains:
+        VIN: weak_input
+        VOUT: rail_3v3
+      pins:
+        VIN: weak_input
+        VOUT: rail_3v3
+        GND: gnd
+        EN: regulator_en
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+  nets:
+    weak_input:
+      kind: power
+      nominal_voltage: 3.6
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    regulator_en:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ap2112k_dropout_margin
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

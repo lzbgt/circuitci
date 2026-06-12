@@ -1,0 +1,49 @@
+project:
+  name: bad_diodes_ap2112k_3v3_output_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    UREG:
+      model: vendor.diodes.ap2112k_3v3
+      part_number: AP2112K-3.3TRG1
+      power_domains:
+        VIN: usb_5v
+        VOUT: rail_3v3
+      pins:
+        VIN: usb_5v
+        VOUT: rail_3v3
+        GND: gnd
+        EN: regulator_en
+    ULOAD:
+      model: fixture.ap2112_high_current_load
+      part_number: HIGH_CURRENT_LOAD
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    regulator_en:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ap2112k_output_current
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
