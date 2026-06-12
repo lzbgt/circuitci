@@ -155,7 +155,7 @@ The command is conservative:
   `suggested_cable_entry_clearance_width_mm`, aperture source/front/center
   evidence, optional imported mapping, component-model, or footprint-property
   aperture offsets and width, optional
-  `model_min_cable_entry_clearance_width_mm`, and the nearest
+  `aperture_min_effective_clearance_width_mm`, and the nearest
   forward obstruction candidate when imported component footprint or placement
   evidence is available. Obstruction evidence reports depth in the entry
   direction, lateral offset from the aperture centerline, and whether the

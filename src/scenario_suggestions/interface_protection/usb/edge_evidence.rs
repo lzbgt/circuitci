@@ -339,7 +339,7 @@ pub(super) fn entry_clearance_evidence(
         entry_aperture_front_offset_mm: aperture.front_offset_mm,
         entry_aperture_lateral_offset_mm: aperture.lateral_offset_mm,
         entry_aperture_width_mm: aperture.aperture_width_mm,
-        model_min_cable_entry_clearance_width_mm: aperture.aperture_width_mm,
+        aperture_min_effective_clearance_width_mm: aperture.aperture_width_mm,
         nearest_obstruction: nearest.map(|candidate| SuggestedUsbEntryObstruction {
             component: candidate.component_id.to_string(),
             obstruction_depth_mm: candidate.depth_mm,

@@ -630,7 +630,7 @@
         "entry_aperture_front_offset_mm": { "type": "number" },
         "entry_aperture_lateral_offset_mm": { "type": "number" },
         "entry_aperture_width_mm": { "type": "number" },
-        "model_min_cable_entry_clearance_width_mm": { "type": "number" },
+        "aperture_min_effective_clearance_width_mm": { "type": "number" },
         "nearest_obstruction": { "$ref": "#/$defs/entry_obstruction" }
       },
       "additionalProperties": false

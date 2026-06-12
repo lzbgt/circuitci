@@ -361,7 +361,7 @@ pub struct SuggestedUsbEntryClearance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entry_aperture_width_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_min_cable_entry_clearance_width_mm: Option<f64>,
+    pub aperture_min_effective_clearance_width_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_obstruction: Option<SuggestedUsbEntryObstruction>,
 }

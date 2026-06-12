@@ -765,7 +765,7 @@ fn suggest_scenarios_reports_usb_connector_entry_aperture() {
         0.8
     );
     assert_eq!(
-        entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        entry_evidence["aperture_min_effective_clearance_width_mm"],
         0.5
     );
     assert_eq!(entry_evidence["nearest_obstruction"]["component"], "R1");

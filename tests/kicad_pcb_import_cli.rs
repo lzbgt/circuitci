@@ -516,7 +516,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(entry_evidence["entry_aperture_width_mm"], 1.0);
     assert_eq!(
-        entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        entry_evidence["aperture_min_effective_clearance_width_mm"],
         1.0
     );
     assert_eq!(entry_evidence["nearest_obstruction"]["component"], "UESD");
@@ -814,7 +814,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(mapped_entry_evidence["entry_aperture_width_mm"], 1.2);
     assert_eq!(
-        mapped_entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        mapped_entry_evidence["aperture_min_effective_clearance_width_mm"],
         1.2
     );
 }
