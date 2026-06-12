@@ -260,6 +260,7 @@ connector placement rotation, connector `fabrication` or `courtyard` footprint
 graphics, and nearby component placement or footprint evidence. Stable measured
 keys include `obstructing_component`, `entry_obstruction_depth_mm`,
 `entry_obstruction_lateral_offset_mm`, `entry_direction_deg`,
+`entry_direction_source`, optional `entry_direction_offset_deg`,
 `obstruction_reference`, optional `obstruction_footprint_graphic_layer`, and
 optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.

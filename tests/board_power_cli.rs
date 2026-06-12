@@ -493,6 +493,11 @@ fn usb_connector_entry_clearance_reports_obstruction() {
     assert_eq!(failure["measured"]["obstructing_component"], "R1");
     assert_eq!(failure["measured"]["entry_direction_deg"], 0.0);
     assert_eq!(
+        failure["measured"]["entry_direction_source"],
+        "scenario_parameter"
+    );
+    assert!(failure["measured"]["entry_direction_offset_deg"].is_null());
+    assert_eq!(
         failure["measured"]["obstruction_reference"],
         "footprint_rectangle"
     );
@@ -519,6 +524,11 @@ fn usb_connector_entry_clearance_uses_model_entry_direction_offset() {
     assert_eq!(failure["component"], "J1");
     assert_eq!(failure["measured"]["obstructing_component"], "R1");
     assert_eq!(failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        failure["measured"]["entry_direction_source"],
+        "component_model_offset"
+    );
+    assert_eq!(failure["measured"]["entry_direction_offset_deg"], 90.0);
     assert_eq!(
         failure["measured"]["obstruction_reference"],
         "footprint_rectangle"

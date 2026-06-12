@@ -122,14 +122,18 @@ pub(super) fn validate_usb_connector_entry_clearance(
         ));
         return;
     }
-    let entry_direction_deg = match scenario_numeric_parameter(
+    let entry_direction = match scenario_numeric_parameter(
         scenario,
         "entry_direction_deg",
         findings,
     ) {
-        Some(direction) => direction,
+        Some(direction) => EntryDirectionEvidence {
+            deg: direction,
+            source: "scenario_parameter",
+            offset_deg: None,
+        },
         None => {
-            let Some(entry_direction_deg) = model_entry_direction_deg(placement, connector) else {
+            let Some(entry_direction) = model_entry_direction(placement, connector) else {
                 findings.push(entry_metadata_finding(
                     scenario,
                     &target.component,
@@ -142,9 +146,10 @@ pub(super) fn validate_usb_connector_entry_clearance(
                 ));
                 return;
             };
-            entry_direction_deg
+            entry_direction
         }
     };
+    let entry_direction_deg = entry_direction.deg;
     if !entry_direction_deg.is_finite() {
         validation_input_missing(
             findings,
@@ -177,30 +182,45 @@ pub(super) fn validate_usb_connector_entry_clearance(
             scenario,
             connector_id: &target.component,
             obstruction,
-            entry_direction_deg,
+            entry_direction,
             depth_mm,
             width_mm,
         }));
     }
 }
 
-fn model_entry_direction_deg(
+fn model_entry_direction(
     placement: &ComponentPlacement,
     connector: &UsbConnector,
-) -> Option<f64> {
+) -> Option<EntryDirectionEvidence> {
     let rotation_deg = placement.rotation_deg?;
-    let entry_direction_deg =
-        (rotation_deg + connector.entry_direction_offset_deg.unwrap_or(0.0)).rem_euclid(360.0);
+    let offset_deg = connector.entry_direction_offset_deg;
+    let entry_direction_deg = (rotation_deg + offset_deg.unwrap_or(0.0)).rem_euclid(360.0);
     entry_direction_deg
         .is_finite()
-        .then_some(entry_direction_deg)
+        .then_some(EntryDirectionEvidence {
+            deg: entry_direction_deg,
+            source: if offset_deg.is_some() {
+                "component_model_offset"
+            } else {
+                "placement_rotation"
+            },
+            offset_deg,
+        })
+}
+
+#[derive(Clone, Copy)]
+struct EntryDirectionEvidence {
+    deg: f64,
+    source: &'static str,
+    offset_deg: Option<f64>,
 }
 
 struct EntryClearanceEvidence<'a> {
     scenario: &'a Scenario,
     connector_id: &'a str,
     obstruction: EntryObstruction<'a>,
-    entry_direction_deg: f64,
+    entry_direction: EntryDirectionEvidence,
     depth_mm: f64,
     width_mm: f64,
 }
@@ -717,8 +737,17 @@ fn entry_clearance_finding(evidence: EntryClearanceEvidence<'_>) -> Finding {
     );
     finding.measured.insert(
         "entry_direction_deg".to_string(),
-        json!(evidence.entry_direction_deg),
+        json!(evidence.entry_direction.deg),
     );
+    finding.measured.insert(
+        "entry_direction_source".to_string(),
+        json!(evidence.entry_direction.source),
+    );
+    if let Some(offset_deg) = evidence.entry_direction.offset_deg {
+        finding
+            .measured
+            .insert("entry_direction_offset_deg".to_string(), json!(offset_deg));
+    }
     finding.measured.insert(
         "obstruction_reference".to_string(),
         json!(evidence.obstruction.reference.label()),

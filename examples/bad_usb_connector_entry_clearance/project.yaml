@@ -68,5 +68,6 @@ scenarios:
     target:
       component: J1
     parameters:
+      entry_direction_deg: 0.0
       min_cable_entry_clearance_depth_mm: 2.0
       cable_entry_clearance_width_mm: 1.0
