@@ -1,6 +1,6 @@
 use crate::board_ir::{
-    FirmwareBackend, FirmwareScenario, PinLogicState, PinMode, PinState, QemuFirmwareOptions,
-    Scenario,
+    FirmwareBackend, FirmwareBuildSpec, FirmwareScenario, PinLogicState, PinMode, PinState,
+    QemuFirmwareOptions, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -18,6 +18,7 @@ use super::analog_util::{executable_on_path, push_artifact, safe_artifact_name};
 use super::common::{target_model, validation_input_missing};
 
 const DEFAULT_QEMU_EXECUTABLE: &str = "qemu-system-arm";
+const DEFAULT_FIRMWARE_BUILD_TIMEOUT_MS: u64 = 120_000;
 const DEFAULT_QEMU_TIMEOUT_MS: u64 = 5_000;
 const DEFAULT_PIN_TRACE_PREFIX: &str = "CIRCUITCI_PIN ";
 
@@ -109,6 +110,40 @@ fn validate_qemu_firmware(
         output,
     } = context;
 
+    let scenario_dir = output.join(format!("firmware_{}", safe_artifact_name(&scenario.name)));
+    if let Err(error) = fs::create_dir_all(&scenario_dir) {
+        findings.push(unavailable_finding(
+            scenario,
+            target_component,
+            target_model,
+            firmware,
+            format!(
+                "Failed to create firmware artifact directory {}: {error}",
+                scenario_dir.display()
+            ),
+        ));
+        return;
+    }
+
+    let build_finding = firmware.build.as_ref().and_then(|build| {
+        run_firmware_build(
+            FirmwareBuildContext {
+                bound,
+                scenario,
+                target_component,
+                target_model,
+                firmware,
+                scenario_dir: &scenario_dir,
+            },
+            build,
+            artifacts,
+        )
+    });
+    if let Some(finding) = build_finding {
+        findings.push(finding);
+        return;
+    }
+
     let Some(machine) = firmware
         .machine
         .as_deref()
@@ -149,20 +184,6 @@ fn validate_qemu_firmware(
         return;
     }
 
-    let scenario_dir = output.join(format!("firmware_{}", safe_artifact_name(&scenario.name)));
-    if let Err(error) = fs::create_dir_all(&scenario_dir) {
-        findings.push(unavailable_finding(
-            scenario,
-            target_component,
-            target_model,
-            firmware,
-            format!(
-                "Failed to create firmware artifact directory {}: {error}",
-                scenario_dir.display()
-            ),
-        ));
-        return;
-    }
     let timeout = Duration::from_millis(
         qemu.and_then(|options| options.timeout_ms)
             .unwrap_or(DEFAULT_QEMU_TIMEOUT_MS),
@@ -281,6 +302,112 @@ fn selected_backend(firmware: &FirmwareScenario) -> SelectedFirmwareBackend {
             }
         }
     }
+}
+
+struct FirmwareBuildContext<'a> {
+    bound: &'a BoundBoard<'a>,
+    scenario: &'a Scenario,
+    target_component: &'a str,
+    target_model: &'a str,
+    firmware: &'a FirmwareScenario,
+    scenario_dir: &'a Path,
+}
+
+fn run_firmware_build(
+    context: FirmwareBuildContext<'_>,
+    build: &FirmwareBuildSpec,
+    artifacts: &mut Vec<String>,
+) -> Option<Finding> {
+    let FirmwareBuildContext {
+        bound,
+        scenario,
+        target_component,
+        target_model,
+        firmware,
+        scenario_dir,
+    } = context;
+
+    if build.command.is_empty() {
+        return Some(unavailable_finding(
+            scenario,
+            target_component,
+            target_model,
+            firmware,
+            "firmware.build.command must contain at least one argv entry.",
+        ));
+    }
+    let working_dir = resolve_project_path(bound, build.working_dir.as_deref().unwrap_or("."));
+    if !working_dir.is_dir() {
+        return Some(unavailable_finding(
+            scenario,
+            target_component,
+            target_model,
+            firmware,
+            format!(
+                "firmware.build.working_dir {} is not a directory.",
+                working_dir.display()
+            ),
+        ));
+    }
+    let executable = resolve_command_executable(&working_dir, &build.command[0]);
+    let timeout = Duration::from_millis(
+        build
+            .timeout_ms
+            .unwrap_or(DEFAULT_FIRMWARE_BUILD_TIMEOUT_MS),
+    );
+    let result = run_command_with_timeout(
+        &executable,
+        &build.command[1..],
+        &working_dir,
+        timeout,
+        format_build_command(&working_dir, &build.command),
+    );
+    let log = scenario_dir.join("firmware_build.log");
+    let log_result = write_process_log(&log, "firmware_build", &result);
+    if log_result.is_ok() {
+        push_artifact(artifacts, &log);
+    }
+    let run = match result {
+        Ok(run) => run,
+        Err(message) => {
+            return Some(build_failure_finding(
+                scenario,
+                target_component,
+                target_model,
+                firmware,
+                message,
+                log_result.err(),
+            ));
+        }
+    };
+    if !run.status.success() {
+        return Some(build_failure_finding(
+            scenario,
+            target_component,
+            target_model,
+            firmware,
+            format!(
+                "firmware.build command exited with status {}.",
+                exit_status_text(&run.status)
+            ),
+            log_result.err(),
+        ));
+    }
+    for output in &build.outputs {
+        let path = resolve_against(&working_dir, output);
+        if !path.is_file() {
+            return Some(build_failure_finding(
+                scenario,
+                target_component,
+                target_model,
+                firmware,
+                format!("firmware.build output {} was not produced.", path.display()),
+                None,
+            ));
+        }
+        push_artifact(artifacts, &path);
+    }
+    None
 }
 
 fn run_qemu(
@@ -425,7 +552,11 @@ fn parse_pin_state(value: &str) -> Result<PinLogicState, String> {
 }
 
 fn firmware_image_path(bound: &BoundBoard<'_>, image: &str) -> PathBuf {
-    let path = Path::new(image);
+    resolve_project_path(bound, image)
+}
+
+fn resolve_project_path(bound: &BoundBoard<'_>, path: &str) -> PathBuf {
+    let path = Path::new(path);
     if path.is_absolute() {
         path.to_path_buf()
     } else {
@@ -433,10 +564,90 @@ fn firmware_image_path(bound: &BoundBoard<'_>, image: &str) -> PathBuf {
     }
 }
 
+fn resolve_against(base: &Path, path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base.join(path)
+    }
+}
+
+fn resolve_command_executable(working_dir: &Path, executable: &str) -> PathBuf {
+    let path = Path::new(executable);
+    if path.is_absolute() || path.components().count() > 1 {
+        resolve_against(working_dir, executable)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn run_command_with_timeout(
+    executable: &Path,
+    args: &[String],
+    working_dir: &Path,
+    timeout: Duration,
+    command_line: String,
+) -> Result<QemuRun, String> {
+    let mut command = Command::new(executable);
+    command.current_dir(working_dir).args(args);
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = command.spawn().map_err(|error| {
+        format!(
+            "Failed to launch firmware build command {}: {error}",
+            executable.display()
+        )
+    })?;
+    let started = Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                let output = child
+                    .wait_with_output()
+                    .map_err(|error| format!("Failed to collect firmware build output: {error}"))?;
+                return Ok(QemuRun {
+                    command_line,
+                    status: output.status,
+                    stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+                    stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+                });
+            }
+            Ok(None) if started.elapsed() >= timeout => {
+                let _ = child.kill();
+                let output = child.wait_with_output().map_err(|error| {
+                    format!("Failed to collect timed-out firmware build output: {error}")
+                })?;
+                return Err(format!(
+                    "firmware.build command exceeded {} ms and was terminated. Stdout bytes: {}, stderr bytes: {}.",
+                    timeout.as_millis(),
+                    output.stdout.len(),
+                    output.stderr.len()
+                ));
+            }
+            Ok(None) => thread::sleep(Duration::from_millis(20)),
+            Err(error) if error.kind() == ErrorKind::Interrupted => {}
+            Err(error) => {
+                return Err(format!(
+                    "Failed while waiting for firmware build command: {error}"
+                ));
+            }
+        }
+    }
+}
+
 fn write_qemu_log(path: &Path, result: &Result<QemuRun, String>) -> Result<(), String> {
+    write_process_log(path, "qemu", result)
+}
+
+fn write_process_log(
+    path: &Path,
+    label: &str,
+    result: &Result<QemuRun, String>,
+) -> Result<(), String> {
     let mut log = String::new();
     match result {
         Ok(run) => {
+            log.push_str(&format!("kind: {label}\n"));
             log.push_str(&format!("command: {}\n", run.command_line));
             log.push_str(&format!(
                 "exit_status: {}\n\n",
@@ -453,7 +664,7 @@ fn write_qemu_log(path: &Path, result: &Result<QemuRun, String>) -> Result<(), S
             log.push('\n');
         }
     }
-    fs::write(path, log).map_err(|error| format!("Failed to write QEMU log: {error}"))
+    fs::write(path, log).map_err(|error| format!("Failed to write {label} log: {error}"))
 }
 
 fn format_qemu_command(
@@ -475,6 +686,10 @@ fn format_qemu_command(
         parts.extend(options.extra_args.clone());
     }
     parts.join(" ")
+}
+
+fn format_build_command(working_dir: &Path, command: &[String]) -> String {
+    format!("cd {} && {}", working_dir.display(), command.join(" "))
 }
 
 fn exit_status_text(status: &ExitStatus) -> String {
@@ -529,6 +744,33 @@ fn qemu_failure_finding(
     finding.suggested_fixes = vec![
         "Check the QEMU machine, firmware image format, and any explicit qemu.extra_args.".to_string(),
         "Ensure the functional firmware model emits CIRCUITCI_PIN observations for board-facing pins.".to_string(),
+    ];
+    finding
+}
+
+fn build_failure_finding(
+    scenario: &Scenario,
+    target_component: &str,
+    target_model: &str,
+    firmware: &FirmwareScenario,
+    message: impl Into<String>,
+    log_error: Option<String>,
+) -> Finding {
+    let mut finding = base_finding(
+        scenario,
+        target_component,
+        target_model,
+        firmware,
+        message.into(),
+    );
+    if let Some(log_error) = log_error {
+        finding
+            .measured
+            .insert("artifact_error".to_string(), json!(log_error));
+    }
+    finding.suggested_fixes = vec![
+        "Fix firmware.build.command, working_dir, or declared outputs so the functional firmware image is produced before validation.".to_string(),
+        "Use an explicit project build script, such as a peer STM32 CMake wrapper, instead of assuming the MCU compiler is globally on PATH.".to_string(),
     ];
     finding
 }

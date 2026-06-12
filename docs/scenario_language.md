@@ -309,6 +309,12 @@ scenarios:
       backend: qemu
       image: firmware/app.elf
       machine: stm32l4_functional
+      build:
+        command: ["../urine_monitor/tools/build_stm32l431_node.sh", "--board", "um-stm32l4-v1"]
+        working_dir: .
+        outputs:
+          - ../urine_monitor/firmware_stm32l431_node/build/stm32l431_node.elf
+        timeout_ms: 120000
       qemu:
         executable: qemu-system-arm
         timeout_ms: 5000
@@ -320,13 +326,20 @@ scenarios:
           state: high
 ```
 
+If `firmware.build` is present, CircuitCI runs it before checking
+`firmware.image`. `build.command` is an explicit argv array, not a shell string;
+`build.working_dir` defaults to the project directory; `build.outputs` are
+verified as files and recorded as artifacts; and `build.timeout_ms` bounds the
+build. This lets a scenario invoke repo-local MCU build scripts such as the
+peer `../urine_monitor` STM32 wrappers without assuming the compiler is
+globally on `PATH`.
+
 The QEMU backend runs `qemu-system-arm` by default with `-M <machine>`,
 `-kernel <image>`, `-nographic`, and `-semihosting`; `qemu.extra_args` are
 appended as explicit argv entries. `qemu.executable` can point to a specific
-QEMU binary, `qemu.timeout_ms` bounds execution, and
-`qemu.pin_trace_prefix` overrides the default `CIRCUITCI_PIN ` trace prefix.
-`backend: auto` selects QEMU only when a machine is declared and QEMU is
-available.
+QEMU binary, `qemu.timeout_ms` bounds execution, and `qemu.pin_trace_prefix`
+overrides the default `CIRCUITCI_PIN ` trace prefix. `backend: auto` selects
+QEMU only when a machine is declared and QEMU is available.
 
 A passing firmware-in-loop result must come from executing the functional model
 and observing declared pin behavior. The QEMU run must emit one line per

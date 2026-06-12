@@ -594,6 +594,96 @@ fn functional_mcu_qemu_backend_fails_on_pin_trace_mismatch() {
 }
 
 #[test]
+fn functional_mcu_qemu_backend_runs_declared_firmware_build() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("firmware_qemu_build.project.yaml");
+    let output = dir.path().join("out");
+    let qemu = write_fake_qemu(
+        dir.path(),
+        "CIRCUITCI_PIN U1.TX mode=output state=high\n",
+        0,
+    );
+    write_fake_build_script(
+        dir.path(),
+        "mkdir -p firmware\nprintf built > firmware/app.elf\n",
+    );
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_qemu_build_project(
+            &repo.join("libs/generic").display().to_string(),
+            &qemu.display().to_string(),
+            "firmware/app.elf",
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    let artifacts = report["artifacts"].as_array().unwrap();
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("firmware_build.log"))
+    );
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.as_str().unwrap().ends_with("firmware/app.elf"))
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn functional_mcu_firmware_build_requires_declared_outputs() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("firmware_qemu_missing_build_output.project.yaml");
+    let qemu = write_fake_qemu(
+        dir.path(),
+        "CIRCUITCI_PIN U1.TX mode=output state=high\n",
+        0,
+    );
+    write_fake_build_script(dir.path(), "mkdir -p firmware\n");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_qemu_build_project(
+            &repo.join("libs/generic").display().to_string(),
+            &qemu.display().to_string(),
+            "firmware/app.elf",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "FUNCTIONAL_MCU_FIRMWARE");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("firmware.build output")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn c51_control_line_release_uses_generic_reset_polarity() {
     let report = run_validation("examples/good_c51_control_line_app_release/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -1254,10 +1344,77 @@ scenarios:
     )
 }
 
+fn firmware_qemu_build_project(
+    library_path: &str,
+    qemu_executable: &str,
+    output_image: &str,
+) -> String {
+    format!(
+        r#"project:
+  name: firmware_qemu_build_contract
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        TX: uart_mcu_tx
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    uart_mcu_tx:
+      kind: digital_or_analog
+scenarios:
+  - name: firmware_qemu_build_pin_behavior
+    type: firmware_in_loop
+    target:
+      component: U1
+    checks:
+      - FUNCTIONAL_MCU_FIRMWARE
+    firmware:
+      backend: qemu
+      image: {output_image}
+      machine: stm32vldiscovery
+      build:
+        command: ["./build_firmware.sh"]
+        outputs:
+          - {output_image}
+        timeout_ms: 1000
+      qemu:
+        executable: {qemu_executable}
+        timeout_ms: 1000
+      expected_pin_states:
+        - component: U1
+          pin: TX
+          mode: output
+          state: high
+"#
+    )
+}
+
 fn write_dummy_firmware(dir: &std::path::Path) {
     let firmware_dir = dir.join("firmware");
     std::fs::create_dir_all(&firmware_dir).unwrap();
     std::fs::write(firmware_dir.join("app.elf"), b"dummy firmware bytes").unwrap();
+}
+
+fn write_fake_build_script(dir: &std::path::Path, body: &str) -> std::path::PathBuf {
+    let path = dir.join("build_firmware.sh");
+    std::fs::write(&path, format!("#!/bin/sh\nset -eu\n{body}")).unwrap();
+    let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&path, permissions).unwrap();
+    path
 }
 
 fn write_fake_qemu(dir: &std::path::Path, output: &str, exit_code: i32) -> std::path::PathBuf {

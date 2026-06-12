@@ -23,6 +23,13 @@ QEMU scenarios declare:
 - `firmware.backend: qemu`
 - `firmware.image`: firmware image path, relative to the project file unless
   absolute
+- optional `firmware.build.command`: explicit argv array to run before checking
+  `firmware.image`
+- optional `firmware.build.working_dir`: command working directory, relative to
+  the project file unless absolute
+- optional `firmware.build.outputs`: files that must exist after the build and
+  are recorded as report artifacts
+- optional `firmware.build.timeout_ms`, defaulting to 120000 ms
 - `firmware.machine`: QEMU machine name passed to `-M`
 - optional `firmware.qemu.executable`, defaulting to `qemu-system-arm`
 - optional `firmware.qemu.extra_args`, appended as argv entries
@@ -38,6 +45,21 @@ qemu-system-arm -M <machine> -kernel <image> -nographic -semihosting <extra_args
 
 `backend: auto` selects this QEMU path only when a machine is declared and the
 selected QEMU executable is available.
+
+If a build is declared, the validator writes `firmware_build.log` as an
+artifact. The build command is not interpreted through a shell; each argv entry
+must be explicit. This supports repo-local build wrappers such as:
+
+```yaml
+firmware:
+  build:
+    command:
+      - ../urine_monitor/tools/build_stm32l431_node.sh
+      - --board
+      - um-stm32l4-v1
+    outputs:
+      - ../urine_monitor/firmware_stm32l431_node/build/stm32l431_node.elf
+```
 
 ## Pin Observation Contract
 

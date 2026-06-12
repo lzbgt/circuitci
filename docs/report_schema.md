@@ -116,17 +116,22 @@ Stable rule detail keys:
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus
 matching `CIRCUITCI_PIN` observations for every declared expected board-facing
-pin state. Missing backend configuration, missing firmware images, QEMU launch
-or timeout failures, malformed traces, conflicting observations, and pin
+pin state. If `firmware.build` is declared, the build must complete and every
+declared output must exist before QEMU starts. Missing backend configuration,
+missing firmware images, build failures, missing build outputs, QEMU launch or
+timeout failures, malformed traces, conflicting observations, and pin
 mismatches fail closed under this rule. Stable measured keys include
 `target_component`, `target_model`, `backend`, `firmware_image`, optional
-`machine`, and `expected_pin_states`; pin mismatches also include
+`machine`, and `expected_pin_states`; build/QEMU log-write failures may include
+`artifact_error`; pin mismatches also include
 `pin_component`, `pin`, `observed_mode`, and `observed_state`. Stable limit
 keys include `functional_blackbox_boundary`,
 `transistor_level_mcu_required: false`, and, for mismatches, `expected_mode`
-and `expected_state`. Passing QEMU scenarios include a `qemu.log` artifact.
-This rule is for functional firmware execution and MCU pin behavior; it must
-not imply transistor-level MCU simulation.
+and `expected_state`. QEMU scenarios include a `qemu.log` artifact when the
+artifact directory can be created; scenarios with declared builds also include
+`firmware_build.log` and declared build outputs as artifacts. This rule is for
+functional firmware execution and MCU pin behavior; it must not imply
+transistor-level MCU simulation.
 
 `SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
 generated Board IR MOSFET/BJT/diode operating probes exceed datasheet absolute
