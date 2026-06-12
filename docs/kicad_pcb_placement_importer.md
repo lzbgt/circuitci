@@ -93,7 +93,9 @@ Imported outline evidence includes:
 
 - `Edge.Cuts` segment start/end points in millimeters, including sampled
   segments from curved KiCad outline graphics,
-- source layer, currently `Edge.Cuts`.
+- source layer, currently `Edge.Cuts`,
+- source primitive provenance (`gr_line`, `gr_circle`, or `gr_arc`), imported
+  primitive index, sample index, and sample count.
 
 When the enriched project is written to a different directory, relative
 `libraries` entries are rewritten to absolute paths so follow-up
@@ -106,10 +108,11 @@ constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts matched footprint drawing
 items and connected pad center, kind, shape, size, rotation, scalar drill, net,
 and layer evidence. It samples curved board-outline graphics into bounded
-segments; it does not retain exact outline curve primitives, solve exact
-rotated-body polygons, filled-copper island connectivity, pad-to-zone
-connectivity, thermal relief behavior, solder-mask expansion, shield bonding,
-return paths, impedance calculations, arbitrary DRC rule semantics, or
+segments and preserves source primitive/sample provenance for each segment; it
+does not retain exact outline curve geometry, solve exact rotated-body
+polygons, filled-copper island connectivity, pad-to-zone connectivity, thermal
+relief behavior, solder-mask expansion, shield bonding, return paths,
+impedance calculations, arbitrary DRC rule semantics, or
 pin-1/BOM/PNP alignment.
 
 Fixture coverage:

@@ -215,8 +215,10 @@ evidence. Stable measured keys include
 `connector_edge_reference`, optional `connector_side`, optional
 `footprint_graphic_layer`, optional `footprint_graphic_kind`,
 `board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
-`board_edge_end_y_mm`, and optional `board_edge_layer`. Stable limit keys include
-`max_connector_to_board_edge_distance_mm`.
+`board_edge_end_y_mm`, optional `board_edge_layer`, optional
+`board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
+optional `board_edge_sample_index`, and optional `board_edge_sample_count`.
+Stable limit keys include `max_connector_to_board_edge_distance_mm`.
 
 `USB_CONNECTOR_BODY_OVERHANG_VALID` reports are emitted by
 `interface_protection` scenarios that combine `usb_connector` metadata,
@@ -225,8 +227,10 @@ connector `fabrication` or `courtyard` footprint graphics. Stable measured keys
 include `connector_body_overhang_mm`, `connector_edge_reference`, optional
 `footprint_graphic_layer`, optional `footprint_graphic_kind`,
 `board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
-`board_edge_end_y_mm`, optional `board_edge_layer`, `edge_angle_deg`, and
-`outward_normal_deg`. Stable limit keys include
+`board_edge_end_y_mm`, optional `board_edge_layer`, optional
+`board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
+optional `board_edge_sample_index`, optional `board_edge_sample_count`,
+`edge_angle_deg`, and `outward_normal_deg`. Stable limit keys include
 `max_connector_body_overhang_mm`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios

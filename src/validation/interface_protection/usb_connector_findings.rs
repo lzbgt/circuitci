@@ -481,6 +481,7 @@ pub(super) fn usb_edge_proximity_finding(
             .measured
             .insert("board_edge_layer".to_string(), json!(layer));
     }
+    add_board_edge_provenance(&mut finding, edge.edge);
     finding.limit.insert(
         "max_connector_to_board_edge_distance_mm".to_string(),
         json!(max_distance_mm),
@@ -563,6 +564,7 @@ pub(super) fn usb_body_overhang_finding(
             .measured
             .insert("board_edge_layer".to_string(), json!(layer));
     }
+    add_board_edge_provenance(&mut finding, edge.edge);
     finding
         .measured
         .insert("edge_angle_deg".to_string(), json!(edge.edge_angle_deg));
@@ -588,5 +590,30 @@ fn net_kind_name(kind: &NetKind) -> &'static str {
         NetKind::Power => "power",
         NetKind::Ground => "ground",
         NetKind::DigitalOrAnalog => "digital_or_analog",
+    }
+}
+
+fn add_board_edge_provenance(finding: &mut Finding, edge: &crate::board_ir::LayoutSegment) {
+    if let Some(source_primitive) = &edge.source_primitive {
+        finding.measured.insert(
+            "board_edge_source_primitive".to_string(),
+            json!(source_primitive),
+        );
+    }
+    if let Some(source_primitive_index) = edge.source_primitive_index {
+        finding.measured.insert(
+            "board_edge_source_primitive_index".to_string(),
+            json!(source_primitive_index),
+        );
+    }
+    if let Some(sample_index) = edge.sample_index {
+        finding
+            .measured
+            .insert("board_edge_sample_index".to_string(), json!(sample_index));
+    }
+    if let Some(sample_count) = edge.sample_count {
+        finding
+            .measured
+            .insert("board_edge_sample_count".to_string(), json!(sample_count));
     }
 }

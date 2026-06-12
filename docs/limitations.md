@@ -63,7 +63,7 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   not prove enclosure entry direction, connector keepout, cable clearance, or
   mechanical insertion robustness. Suggestions may infer an expected rotation
   from imported `Edge.Cuts` outline segment evidence. KiCad outline arcs and
-  circles are sampled into segments, but exact curve primitives, slots,
+  circles are sampled into segments with source provenance, but exact curve geometry, slots,
   cutouts, and footprint-specific connector-entry conventions still require
   review.
 - `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks the nearest imported board-edge

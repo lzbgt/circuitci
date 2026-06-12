@@ -119,6 +119,20 @@ struct PcbOutlineSegment {
     start: PcbPoint,
     end: PcbPoint,
     layer: String,
+    source_primitive: PcbOutlinePrimitive,
+    source_primitive_index: usize,
+    sample_index: usize,
+    sample_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+enum PcbOutlinePrimitive {
+    #[serde(rename = "gr_line")]
+    Line,
+    #[serde(rename = "gr_circle")]
+    Circle,
+    #[serde(rename = "gr_arc")]
+    Arc,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -220,6 +234,10 @@ struct OutlineSegmentYaml {
     start: PcbPoint,
     end: PcbPoint,
     layer: String,
+    source_primitive: PcbOutlinePrimitive,
+    source_primitive_index: usize,
+    sample_index: usize,
+    sample_count: usize,
 }
 
 pub fn import_kicad_pcb_placements(
@@ -451,6 +469,7 @@ fn parse_routes(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbR
 
 fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
     let mut segments = Vec::new();
+    let mut source_primitive_index = 0;
     for line in list_children(root_list, "gr_line") {
         let layer = non_empty_child_string(line, "layer", path)?;
         if layer != "Edge.Cuts" {
@@ -465,7 +484,16 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
                 path.display()
             );
         }
-        segments.push(PcbOutlineSegment { start, end, layer });
+        segments.push(PcbOutlineSegment {
+            start,
+            end,
+            layer,
+            source_primitive: PcbOutlinePrimitive::Line,
+            source_primitive_index,
+            sample_index: 0,
+            sample_count: 1,
+        });
+        source_primitive_index += 1;
     }
     for circle in list_children(root_list, "gr_circle") {
         let layer = non_empty_child_string(circle, "layer", path)?;
@@ -481,7 +509,13 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
                 path.display()
             );
         }
-        segments.extend(sample_outline_circle(center, end, layer));
+        segments.extend(sample_outline_circle(
+            center,
+            end,
+            layer,
+            source_primitive_index,
+        ));
+        source_primitive_index += 1;
     }
     for arc in list_children(root_list, "gr_arc") {
         let layer = non_empty_child_string(arc, "layer", path)?;
@@ -491,18 +525,26 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
         let start = route_point(arc, "start", path)?;
         let mid = route_point(arc, "mid", path)?;
         let end = route_point(arc, "end", path)?;
-        let Some(sampled_segments) = sample_outline_arc(start, mid, end, layer) else {
+        let Some(sampled_segments) =
+            sample_outline_arc(start, mid, end, layer, source_primitive_index)
+        else {
             bail!(
                 "KiCad PCB Edge.Cuts gr_arc in {} is degenerate.",
                 path.display()
             );
         };
         segments.extend(sampled_segments);
+        source_primitive_index += 1;
     }
     Ok(PcbOutline { segments })
 }
 
-fn sample_outline_circle(center: PcbPoint, end: PcbPoint, layer: String) -> Vec<PcbOutlineSegment> {
+fn sample_outline_circle(
+    center: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    source_primitive_index: usize,
+) -> Vec<PcbOutlineSegment> {
     let radius_mm = point_distance_mm(center, end);
     let initial_angle = (end.y_mm - center.y_mm).atan2(end.x_mm - center.x_mm);
     (0..OUTLINE_CIRCLE_SAMPLE_SEGMENTS)
@@ -515,6 +557,10 @@ fn sample_outline_circle(center: PcbPoint, end: PcbPoint, layer: String) -> Vec<
                 start: point_on_circle(center, radius_mm, start_angle),
                 end: point_on_circle(center, radius_mm, end_angle),
                 layer: layer.clone(),
+                source_primitive: PcbOutlinePrimitive::Circle,
+                source_primitive_index,
+                sample_index: index,
+                sample_count: OUTLINE_CIRCLE_SAMPLE_SEGMENTS,
             }
         })
         .collect()
@@ -525,6 +571,7 @@ fn sample_outline_arc(
     mid: PcbPoint,
     end: PcbPoint,
     layer: String,
+    source_primitive_index: usize,
 ) -> Option<Vec<PcbOutlineSegment>> {
     let center = arc_center(start, mid, end)?;
     let radius_mm = point_distance_mm(center, start);
@@ -551,6 +598,10 @@ fn sample_outline_arc(
                     start: point_on_circle(center, radius_mm, start_angle + sweep * start_t),
                     end: point_on_circle(center, radius_mm, start_angle + sweep * end_t),
                     layer: layer.clone(),
+                    source_primitive: PcbOutlinePrimitive::Arc,
+                    source_primitive_index,
+                    sample_index: index,
+                    sample_count: segment_count,
                 }
             })
             .collect(),
@@ -1405,6 +1456,10 @@ fn outline_yaml_value(outline: &PcbOutline) -> Result<Value> {
                 start: segment.start,
                 end: segment.end,
                 layer: segment.layer.clone(),
+                source_primitive: segment.source_primitive,
+                source_primitive_index: segment.source_primitive_index,
+                sample_index: segment.sample_index,
+                sample_count: segment.sample_count,
             })
             .collect(),
     })

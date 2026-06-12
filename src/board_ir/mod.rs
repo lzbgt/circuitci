@@ -213,6 +213,14 @@ pub struct LayoutSegment {
     pub end: LayoutPoint,
     #[serde(default)]
     pub layer: Option<String>,
+    #[serde(default)]
+    pub source_primitive: Option<String>,
+    #[serde(default)]
+    pub source_primitive_index: Option<usize>,
+    #[serde(default)]
+    pub sample_index: Option<usize>,
+    #[serde(default)]
+    pub sample_count: Option<usize>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

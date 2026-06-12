@@ -146,12 +146,28 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .unwrap();
     assert_eq!(outline_segments.len(), 52);
     assert_eq!(outline_segments[0]["layer"], "Edge.Cuts");
+    assert_eq!(outline_segments[0]["source_primitive"], "gr_line");
+    assert_eq!(outline_segments[0]["source_primitive_index"], 0);
+    assert_eq!(outline_segments[0]["sample_index"], 0);
+    assert_eq!(outline_segments[0]["sample_count"], 1);
     assert_eq!(outline_segments[0]["start"]["x_mm"], -0.4);
     assert_eq!(outline_segments[0]["end"]["x_mm"], 2.0);
+    assert_eq!(outline_segments[4]["source_primitive"], "gr_circle");
+    assert_eq!(outline_segments[4]["source_primitive_index"], 4);
+    assert_eq!(outline_segments[4]["sample_index"], 0);
+    assert_eq!(outline_segments[4]["sample_count"], 32);
     assert_eq!(outline_segments[4]["start"]["x_mm"], 1.9);
     assert_eq!(outline_segments[4]["start"]["y_mm"], 1.2);
+    assert_eq!(outline_segments[36]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[36]["source_primitive_index"], 5);
+    assert_eq!(outline_segments[36]["sample_index"], 0);
+    assert_eq!(outline_segments[36]["sample_count"], 16);
     assert_eq!(outline_segments[36]["start"]["x_mm"], 1.6);
     assert_eq!(outline_segments[36]["start"]["y_mm"], 1.4);
+    assert_eq!(outline_segments[51]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[51]["source_primitive_index"], 5);
+    assert_eq!(outline_segments[51]["sample_index"], 15);
+    assert_eq!(outline_segments[51]["sample_count"], 16);
     assert!((outline_segments[51]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
     assert!((outline_segments[51]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
     let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
@@ -809,6 +825,10 @@ fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
             end_y_mm: 0.19509032201612825,
             outward_normal_deg: 5.625,
             body_overhang_mm: 0.04764876029325276,
+            source_primitive: "gr_circle",
+            source_primitive_index: 0,
+            sample_index: 0,
+            sample_count: 32,
         },
     );
     assert_curved_usb_board_edge_fixture(
@@ -823,6 +843,10 @@ fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
             end_y_mm: 0.5,
             outward_normal_deg: 84.375,
             body_overhang_mm: 0.06755245482669661,
+            source_primitive: "gr_arc",
+            source_primitive_index: 0,
+            sample_index: 7,
+            sample_count: 16,
         },
     );
 }
@@ -834,6 +858,10 @@ struct CurvedEdgeExpectation {
     end_y_mm: f64,
     outward_normal_deg: f64,
     body_overhang_mm: f64,
+    source_primitive: &'static str,
+    source_primitive_index: usize,
+    sample_index: usize,
+    sample_count: usize,
 }
 
 fn assert_curved_usb_board_edge_fixture(
@@ -939,6 +967,13 @@ fn assert_suggestion_uses_curved_edge(
     assert_close(edge["end"]["x_mm"].as_f64().unwrap(), expected.end_x_mm);
     assert_close(edge["end"]["y_mm"].as_f64().unwrap(), expected.end_y_mm);
     assert_eq!(edge["layer"], "Edge.Cuts");
+    assert_eq!(edge["source_primitive"], expected.source_primitive);
+    assert_eq!(
+        edge["source_primitive_index"],
+        expected.source_primitive_index
+    );
+    assert_eq!(edge["sample_index"], expected.sample_index);
+    assert_eq!(edge["sample_count"], expected.sample_count);
     assert_eq!(edge["distance_to_connector_mm"], 0.0);
     assert_eq!(edge["connector_edge_reference"], "footprint_polygon");
     assert_eq!(edge["footprint_graphic_layer"], "F.Fab");
