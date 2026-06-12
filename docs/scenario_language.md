@@ -118,6 +118,7 @@ scenarios:
       - BOOT_STRAP_DEFINED
     timing:
       power_valid_at_us: 1200
+      reset_release_delay_us: 500
       reset_release_at_us: 5000
       boot_sample_at_us: 5100
     straps:
@@ -131,12 +132,19 @@ scenarios:
 Timing semantics:
 
 - `power_valid_at_us`: first time the component's operating rail is valid.
+- `reset_release_delay_us`: optional reset-supervisor, power-good, or RC delay
+  after the operating rail is valid. Defaults to `0`.
 - `reset_release_at_us`: first time reset is deasserted.
 - `boot_sample_at_us`: time boot straps are sampled.
 
 `target.component` is required for `reset_boot`. `target.power_pin` and `target.reset_pin` are optional scenario assertions; if present, they must match the component model behavior and board pin map.
 
-`RESET_RELEASE_AFTER_POWER_VALID` fails when reset releases before power is valid. Missing target/timing data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
+`RESET_RELEASE_AFTER_POWER_VALID` fails when reset releases before power is
+valid plus any declared `reset_release_delay_us`. When `target.power_pin`
+resolves to a rail with `power_valid_at_us`, the rule uses that rail timing and
+fails closed if it conflicts with duplicated scenario `timing.power_valid_at_us`.
+Missing target/timing data for this declared check is a critical
+`VALIDATION_INPUT_MISSING` finding.
 
 `BOOT_STRAP_DEFINED` resolves required strap states from `component.behavior.boot.modes[required_boot_mode]`. It fails when any required strap is missing from scenario observations, observed as `floating` or `undefined`, or not equal to the model-required state. The scenario may not invent the required strap state.
 

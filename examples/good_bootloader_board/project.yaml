@@ -34,6 +34,7 @@ board:
       kind: power
       nominal_voltage: 3.3
       powered: true
+      power_valid_at_us: 1200
     usb_uart_3v3:
       kind: power
       nominal_voltage: 3.3
@@ -100,4 +101,3 @@ scenarios:
           component: U1
           pin: RX
         bytes: [127]
-

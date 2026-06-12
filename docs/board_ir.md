@@ -96,6 +96,8 @@ Power semantics:
 - `power_valid_at_us`: optional rail-valid time used by `POWER_TREE_VALID`
   when regulator model metadata declares `power_conversion.startup_delay_us`.
   In that case, both input and output rails must declare this timing field.
+  `RESET_RELEASE_AFTER_POWER_VALID` also prefers this target-rail timing over
+  duplicated scenario `timing.power_valid_at_us`.
 
 ## Consistency Rules
 

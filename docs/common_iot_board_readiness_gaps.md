@@ -49,7 +49,9 @@ Executable slices now covered by `POWER_TREE_VALID`:
 - explicit regulator `power_conversion` dropout margin,
 - explicit regulator maximum output-current budget,
 - explicit regulator startup-delay sequencing against `power_valid_at_us` rail
-  metadata.
+  metadata,
+- reset release checked against target rail `power_valid_at_us` plus optional
+  reset-supervisor or power-good delay metadata.
 
 The remaining gap is waveform-dependent power behavior: real ramp shape,
 load-dependent dropout under waveform load, inrush, soft-start,

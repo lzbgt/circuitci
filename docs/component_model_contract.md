@@ -233,7 +233,11 @@ Operation names are model-local. Generic validation keys off operation metadata 
 `RESET_RELEASE_AFTER_POWER_VALID`:
 
 - Severity: `critical`.
-- Fail iff `reset_release_at_us < power_valid_at_us`.
+- Prefer target rail `power_valid_at_us` over duplicated scenario timing when
+  the target power rail declares it.
+- Fail if duplicated scenario `power_valid_at_us` conflicts with target rail
+  timing.
+- Fail iff `reset_release_at_us < power_valid_at_us + reset_release_delay_us`.
 - Missing target or timing fields produce critical `VALIDATION_INPUT_MISSING` findings.
 
 `BOOT_STRAP_DEFINED`:

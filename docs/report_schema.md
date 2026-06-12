@@ -103,8 +103,13 @@ Reports must include `scenario`, `component` when applicable, measured timing va
 
 Stable rule detail keys:
 
-- `RESET_RELEASE_AFTER_POWER_VALID.measured`: `power_valid_at_us`, `reset_release_at_us`, `margin_us`.
-- `RESET_RELEASE_AFTER_POWER_VALID.limit`: `reset_release_not_before_power_valid: true`.
+- `RESET_RELEASE_AFTER_POWER_VALID.measured`: `power_valid_at_us`,
+  `target_rail_power_valid_at_us`, `scenario_power_valid_at_us`,
+  `reset_release_delay_us`, `reset_release_at_us`, `margin_us`.
+- `RESET_RELEASE_AFTER_POWER_VALID.limit`:
+  `reset_release_not_before_power_valid: true`,
+  `required_reset_release_at_us`,
+  `scenario_power_valid_matches_target_rail: true`.
 - `BOOT_STRAP_DEFINED.measured`: `required_boot_mode`, `observed_<pin>`.
 - `BOOT_STRAP_DEFINED.limit`: `required_<pin>`.
 - `UART_BOOTLOADER_SYNC.measured`: `interface`, `sync_event_found`, `event_at_us`.

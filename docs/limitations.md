@@ -33,6 +33,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   metadata. It does not infer a whole-board analog power tree or solve
   regulator ramp waveform shape, load-dependent dropout, inrush,
   charger/power-mux behavior, thermal behavior, or load-transient stability.
+- `RESET_RELEASE_AFTER_POWER_VALID` can consume target rail `power_valid_at_us`
+  and reset-supervisor delay metadata. It does not derive reset release from an
+  analog RC/supervisor waveform unless an explicit `analog_transient` scenario
+  is provided.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.
 - Quantitative waveform proof is available only through `analog_transient`
   scenarios with a SPICE-class backend and explicit assertions.

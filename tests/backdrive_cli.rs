@@ -224,6 +224,37 @@ fn reset_release_before_power_valid_fails() {
 }
 
 #[test]
+fn reset_power_timing_mismatch_fails() {
+    let report = run_validation("examples/bad_reset_power_timing_mismatch/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "RESET_RELEASE_AFTER_POWER_VALID");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["net"], "mcu_3v3");
+    assert_eq!(failure["measured"]["scenario_power_valid_at_us"], 1200.0);
+    assert_eq!(failure["measured"]["target_rail_power_valid_at_us"], 1800.0);
+    assert_eq!(
+        failure["limit"]["scenario_power_valid_matches_target_rail"],
+        true
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn reset_supervisor_delay_fails() {
+    let report = run_validation("examples/bad_reset_supervisor_delay/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "RESET_RELEASE_AFTER_POWER_VALID");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["measured"]["power_valid_at_us"], 1200.0);
+    assert_eq!(failure["measured"]["reset_release_delay_us"], 500.0);
+    assert_eq!(failure["measured"]["reset_release_at_us"], 1500.0);
+    assert_eq!(failure["limit"]["required_reset_release_at_us"], 1700.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn wrong_bootstrap_state_fails() {
     let report = run_validation("examples/bad_bootstrap_board/project.yaml");
     assert_eq!(report["result"], "fail");

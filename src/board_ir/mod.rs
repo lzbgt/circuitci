@@ -203,6 +203,8 @@ pub struct ScenarioTiming {
     pub reset_release_at_us: f64,
     #[serde(default, rename = "boot_sample_at_us")]
     pub boot_sample_at_us: Option<f64>,
+    #[serde(default, rename = "reset_release_delay_us")]
+    pub reset_release_delay_us: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -25,7 +25,34 @@ pub(super) fn validate_reset_release(
         return;
     };
 
-    let margin_us = timing.reset_release_at_us - timing.power_valid_at_us;
+    let Some(power_valid_at_us) = target_power_valid_at_us(bound, scenario, findings) else {
+        return;
+    };
+    let reset_release_delay_us = timing.reset_release_delay_us.unwrap_or(0.0);
+    if !reset_release_delay_us.is_finite() || reset_release_delay_us < 0.0 {
+        let mut finding = Finding::critical(
+            RESET_RELEASE_AFTER_POWER_VALID,
+            &scenario.name,
+            "reset_boot timing.reset_release_delay_us must be finite and non-negative.".to_string(),
+        );
+        finding.component = Some(target.component.clone());
+        finding.measured.insert(
+            "reset_release_delay_us".to_string(),
+            json!(reset_release_delay_us),
+        );
+        finding
+            .limit
+            .insert("reset_release_delay_non_negative".to_string(), json!(true));
+        finding.suggested_fixes = vec![
+            "Use a finite non-negative reset supervisor or power-good delay.".to_string(),
+            "Remove reset_release_delay_us when no reset supervisor delay is modeled.".to_string(),
+        ];
+        findings.push(finding);
+        return;
+    }
+
+    let required_release_at_us = power_valid_at_us + reset_release_delay_us;
+    let margin_us = timing.reset_release_at_us - required_release_at_us;
     if margin_us < 0.0 {
         let mut finding = Finding::critical(
             RESET_RELEASE_AFTER_POWER_VALID,
@@ -36,9 +63,12 @@ pub(super) fn validate_reset_release(
             ),
         );
         finding.component = Some(target.component.clone());
+        finding
+            .measured
+            .insert("power_valid_at_us".to_string(), json!(power_valid_at_us));
         finding.measured.insert(
-            "power_valid_at_us".to_string(),
-            json!(timing.power_valid_at_us),
+            "reset_release_delay_us".to_string(),
+            json!(reset_release_delay_us),
         );
         finding.measured.insert(
             "reset_release_at_us".to_string(),
@@ -51,6 +81,10 @@ pub(super) fn validate_reset_release(
             "reset_release_not_before_power_valid".to_string(),
             json!(true),
         );
+        finding.limit.insert(
+            "required_reset_release_at_us".to_string(),
+            json!(required_release_at_us),
+        );
         finding.suggested_fixes = vec![
             "Delay reset release until the MCU operating rail is valid.".to_string(),
             "Increase reset RC delay or use a supervisor IC.".to_string(),
@@ -58,6 +92,87 @@ pub(super) fn validate_reset_release(
         ];
         findings.push(finding);
     }
+}
+
+fn target_power_valid_at_us(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let target = scenario.target.as_ref()?;
+    let timing = scenario.timing.as_ref()?;
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        return Some(timing.power_valid_at_us);
+    };
+    let Some(power_pin) = &target.power_pin else {
+        return Some(timing.power_valid_at_us);
+    };
+    let Some(rail_name) = component
+        .power_domains
+        .get(power_pin)
+        .or_else(|| component.pins.get(power_pin))
+        .or(component.power_domain.as_ref())
+    else {
+        return Some(timing.power_valid_at_us);
+    };
+    let Some(rail) = bound.project.board.nets.get(rail_name) else {
+        return Some(timing.power_valid_at_us);
+    };
+    let Some(rail_power_valid_at_us) = rail.power_valid_at_us else {
+        return Some(timing.power_valid_at_us);
+    };
+    if !rail_power_valid_at_us.is_finite() || rail_power_valid_at_us < 0.0 {
+        let mut finding = Finding::critical(
+            RESET_RELEASE_AFTER_POWER_VALID,
+            &scenario.name,
+            format!("Target power rail {rail_name} has invalid power_valid_at_us."),
+        );
+        finding.component = Some(target.component.clone());
+        finding.net = Some(rail_name.clone());
+        finding.measured.insert(
+            "target_rail_power_valid_at_us".to_string(),
+            json!(rail_power_valid_at_us),
+        );
+        finding
+            .limit
+            .insert("power_valid_at_us_non_negative".to_string(), json!(true));
+        finding.suggested_fixes = vec![
+            "Use finite non-negative power_valid_at_us timing on the target power rail.".to_string(),
+            "Use analog_transient if rail validity must be measured from a waveform crossing threshold.".to_string(),
+        ];
+        findings.push(finding);
+        return None;
+    }
+    if (timing.power_valid_at_us - rail_power_valid_at_us).abs() > 1e-9 {
+        let mut finding = Finding::critical(
+            RESET_RELEASE_AFTER_POWER_VALID,
+            &scenario.name,
+            format!(
+                "Scenario power_valid_at_us does not match target power rail {rail_name} timing."
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        finding.net = Some(rail_name.clone());
+        finding.measured.insert(
+            "scenario_power_valid_at_us".to_string(),
+            json!(timing.power_valid_at_us),
+        );
+        finding.measured.insert(
+            "target_rail_power_valid_at_us".to_string(),
+            json!(rail_power_valid_at_us),
+        );
+        finding.limit.insert(
+            "scenario_power_valid_matches_target_rail".to_string(),
+            json!(true),
+        );
+        finding.suggested_fixes = vec![
+            "Remove duplicated timing drift by deriving reset timing from the target rail power_valid_at_us.".to_string(),
+            "Update the reset_boot timing to match the rail timing evidence if this scenario still declares both.".to_string(),
+        ];
+        findings.push(finding);
+        return None;
+    }
+    Some(rail_power_valid_at_us)
 }
 
 pub(super) fn validate_reset_target_assertions(

@@ -192,7 +192,8 @@
             "properties": {
               "power_valid_at_us": { "type": "number", "minimum": 0 },
               "reset_release_at_us": { "type": "number", "minimum": 0 },
-              "boot_sample_at_us": { "type": "number", "minimum": 0 }
+              "boot_sample_at_us": { "type": "number", "minimum": 0 },
+              "reset_release_delay_us": { "type": "number", "minimum": 0 }
             },
             "additionalProperties": false
           },
