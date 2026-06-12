@@ -1,0 +1,160 @@
+# CircuitCI
+
+Agent-native embedded board validation runtime.
+
+CircuitCI is a headless validation tool for embedded and IoT circuit designs. It
+imports board artifacts, binds component models, runs deterministic validation
+scenarios, and emits machine-readable reports that AI agents and engineers can
+use before PCB fabrication.
+
+It is not a schematic editor, PCB layout editor, or full EDA suite. The goal is
+CI-style feedback for board designs: catch power, reset, boot, interface,
+layout-evidence, and firmware-facing mistakes early enough that an agent or
+engineer can fix the design and rerun validation.
+
+## What It Does
+
+- Parses Board IR YAML projects and component model libraries.
+- Imports SPICE decks, KiCad XML netlists, native KiCad schematics, and KiCad PCB
+  placement/route evidence.
+- Suggests missing validation scenarios from board/model evidence.
+- Validates power trees, regulator constraints, reset supervisors, boot straps,
+  GPIO backdrive paths, I/O voltage compatibility, USB protection, USB route
+  geometry, clocks, serial bootloaders, control-line sequences, and selected
+  SPICE-backed analog checks.
+- Writes stable JSON/Markdown reports with measurements, limits, severity, and
+  suggested fixes.
+- Keeps component behavior in data-driven model packs instead of hardcoding one
+  MCU, USB-UART bridge, regulator, or board family into the engine.
+
+## Current Scope
+
+CircuitCI is currently an early Rust CLI focused on deterministic pre-fab board
+validation. It already includes fixtures and model packs for common IoT-board
+building blocks such as MCU boot/reset behavior, USB connectors, USB ESD
+protection, LDO regulators, load switches, power muxes, battery chargers,
+reset supervisors, USB-UART bridges, and level shifters.
+
+The runtime deliberately reports limitations for areas it does not prove, such
+as full USB PHY behavior, RF/antenna performance, complete PCB signal integrity,
+thermal sign-off, arbitrary KiCad DRC semantics, and vendor-silicon internals.
+See [docs/limitations.md](docs/limitations.md) and
+[docs/common_iot_board_readiness_gaps.md](docs/common_iot_board_readiness_gaps.md).
+
+## Install
+
+Prerequisites:
+
+- Rust toolchain with edition 2024 support.
+- Optional: `ngspice` or `libngspice` for SPICE-backed analog scenarios.
+
+Build:
+
+```bash
+cargo build
+```
+
+Run tests:
+
+```bash
+cargo test
+cargo clippy --all-targets -- -D warnings
+```
+
+## CLI
+
+Validate a Board IR project:
+
+```bash
+cargo run -- validate examples/good_power_tree_board/project.yaml \
+  --output out/good_power_tree
+```
+
+Write a scenario suggestion artifact:
+
+```bash
+cargo run -- suggest-scenarios examples/scenario_suggestions_usb_connector_protection/project.yaml \
+  --output out/scenario_suggestions.yaml
+```
+
+Import a KiCad schematic:
+
+```bash
+cargo run -- import-kicad-schematic path/to/root.kicad_sch \
+  --mapping path/to/circuitci.kicad-map.yaml \
+  --output out/imported.project.yaml
+```
+
+Enrich an imported project with KiCad PCB placement and route evidence:
+
+```bash
+cargo run -- import-kicad-pcb path/to/board.kicad_pcb \
+  --project out/imported.project.yaml \
+  --output out/imported_with_layout.project.yaml
+```
+
+Run an acceptance suite:
+
+```bash
+cargo run -- validate-suite suites/um_stm32l4_downloader_acceptance.yaml \
+  --output out/acceptance
+```
+
+## Project Model
+
+CircuitCI uses a normalized Board IR:
+
+```text
+project.yaml / KiCad / SPICE
+  -> Board Graph IR
+  -> component model binding
+  -> scenario execution
+  -> validation rules and optional SPICE backend
+  -> JSON + Markdown reports
+```
+
+Important contracts:
+
+- [docs/board_ir.md](docs/board_ir.md)
+- [docs/component_model_contract.md](docs/component_model_contract.md)
+- [docs/scenario_language.md](docs/scenario_language.md)
+- [docs/report_schema.md](docs/report_schema.md)
+- [docs/scenario_suggestions.md](docs/scenario_suggestions.md)
+
+## Repository Layout
+
+```text
+src/
+  board_ir/       Board IR parsing and normalized project types
+  cli/            Command-line entry points
+  importers/      KiCad, SPICE, and layout-evidence importers
+  library/        Component model loading and binding
+  reports/        JSON and Markdown report generation
+  validation/     Deterministic rule implementations
+
+libs/
+  generic/        Generic component models
+  vendor/         Datasheet-backed vendor model packs
+
+examples/         Passing/failing fixtures and importer demos
+schemas/          JSON schemas for Board IR and reports
+suites/           Acceptance-suite manifests
+tests/            CLI and integration regressions
+docs/             Engineering contracts and research notes
+```
+
+## Validation Philosophy
+
+CircuitCI is conservative:
+
+- A rule fails closed when required evidence is missing.
+- Reports distinguish proven failures from low-confidence or unmodeled areas.
+- Datasheet-backed component packs record their source artifacts and modeled
+  facts.
+- Suggestions never invent observations such as reset-release timestamps,
+  strap states, protection resistance, load-switch enable state, or board layout
+  limits.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
