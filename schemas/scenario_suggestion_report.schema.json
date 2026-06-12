@@ -42,7 +42,7 @@
               },
               "target": {
                 "type": "object",
-                "required": ["component", "power_pin", "reset_pin"],
+                "required": ["component"],
                 "properties": {
                   "component": { "type": "string", "minLength": 1 },
                   "power_pin": { "type": "string", "minLength": 1 },
@@ -60,6 +60,55 @@
                   "boot_sample_at_us": { "type": "number", "minimum": 0 }
                 },
                 "additionalProperties": false
+              },
+              "required_boot_mode": { "type": "string", "minLength": 1 },
+              "straps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["component", "pin"],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "pin": { "type": "string", "minLength": 1 },
+                    "net": { "type": "string", "minLength": 1 },
+                    "actual": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "bootloader": {
+                "type": "object",
+                "required": [
+                  "component",
+                  "interface",
+                  "sync_byte",
+                  "expected_response"
+                ],
+                "properties": {
+                  "component": { "type": "string", "minLength": 1 },
+                  "interface": { "type": "string", "minLength": 1 },
+                  "sync_byte": { "type": "integer", "minimum": 0, "maximum": 255 },
+                  "expected_response": { "type": "integer", "minimum": 0, "maximum": 255 }
+                },
+                "additionalProperties": false
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["action", "bytes"],
+                  "properties": {
+                    "at_us": { "type": "number", "minimum": 0 },
+                    "action": { "type": "string", "minLength": 1 },
+                    "from": { "$ref": "#/$defs/endpoint" },
+                    "to": { "$ref": "#/$defs/endpoint" },
+                    "bytes": {
+                      "type": "array",
+                      "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+                    }
+                  },
+                  "additionalProperties": false
+                }
               }
             },
             "additionalProperties": false
@@ -69,5 +118,16 @@
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": ["component", "pin"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
 }

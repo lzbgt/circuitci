@@ -89,11 +89,12 @@ recognized circuits:
 
 Generated scenarios must remain conservative: no assertion means no sign-off.
 
-First executable slice: `circuitci suggest-scenarios` now emits runnable
+Executable slices: `circuitci suggest-scenarios` now emits runnable
 `POWER_TREE_VALID` scenarios for projects with declared power nets and
-non-runnable reset templates when model/rail evidence is present but
-`reset_release_at_us` still needs real evidence. It does not invent timing,
-strap states, or analog assertions.
+non-runnable templates for reset release, boot straps, and UART bootloader sync
+when model/connectivity evidence is present but observations still need real
+evidence. It does not invent timing, strap states, protocol events, or analog
+assertions.
 
 ## 5. Layout-Dependent Physics
 

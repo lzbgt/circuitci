@@ -16,6 +16,19 @@ board:
         VDD: rail_3v3
         GND: gnd
         NRST: nrst
+        BOOT0: boot0
+        RX: uart_mcu_rx
+        TX: uart_mcu_tx
+    U2:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: rail_3v3
+      pins:
+        VCC: rail_3v3
+        GND: gnd
+        TXD: uart_mcu_rx
+        RXD: uart_mcu_tx
     UREG:
       model: generic.analog.ldo_regulator
       part_number: GENERIC_LDO
@@ -41,6 +54,12 @@ board:
     gnd:
       kind: ground
     nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+    uart_mcu_tx:
       kind: digital_or_analog
 
 scenarios: []

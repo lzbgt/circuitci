@@ -78,7 +78,7 @@ fn suggest_scenarios_derives_power_and_reset_templates() {
         .collect();
     assert!(errors.is_empty(), "suggestion schema errors: {errors:#?}");
     assert_eq!(suggestions["project"], "scenario_suggestions_power_reset");
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 2);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 5);
     let power_tree = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -105,6 +105,41 @@ fn suggest_scenarios_derives_power_and_reset_templates() {
             .unwrap()
             .contains("reset_release_at_us")
     );
+    let bootloader_strap = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_defined_u1_bootloader")
+        .expect("bootloader strap suggestion");
+    assert_eq!(bootloader_strap["runnable"], false);
+    assert_eq!(
+        bootloader_strap["scenario"]["required_boot_mode"],
+        "bootloader"
+    );
+    assert_eq!(
+        bootloader_strap["scenario"]["checks"][0],
+        "BOOT_STRAP_DEFINED"
+    );
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["pin"], "BOOT0");
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["net"], "boot0");
+    assert!(bootloader_strap["scenario"]["straps"][0]["actual"].is_null());
+    let uart = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "uart_bootloader_sync_u1_uart")
+        .expect("uart bootloader suggestion");
+    assert_eq!(uart["runnable"], false);
+    assert_eq!(uart["scenario"]["type"], "serial_programming");
+    assert_eq!(uart["scenario"]["bootloader"]["interface"], "uart");
+    assert_eq!(uart["scenario"]["bootloader"]["sync_byte"], 127);
+    assert_eq!(uart["scenario"]["bootloader"]["expected_response"], 121);
+    assert_eq!(uart["scenario"]["events"][0]["from"]["component"], "U2");
+    assert_eq!(uart["scenario"]["events"][0]["from"]["pin"], "TXD");
+    assert_eq!(uart["scenario"]["events"][0]["to"]["component"], "U1");
+    assert_eq!(uart["scenario"]["events"][0]["to"]["pin"], "RX");
+    assert_eq!(uart["scenario"]["events"][0]["bytes"][0], 127);
+    assert!(uart["scenario"]["events"][0]["at_us"].is_null());
 }
 
 #[test]
