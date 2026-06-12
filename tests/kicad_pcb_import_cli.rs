@@ -1120,6 +1120,72 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         entry_failure["limit"]["cable_entry_clearance_width_mm"],
         1.0
     );
+
+    let stripped_pcb = dir.path().join("board_without_entry_aperture.kicad_pcb");
+    let stripped_pcb_text = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap()
+    .lines()
+    .filter(|line| !line.contains("CircuitCI_EntryAperture"))
+    .collect::<Vec<_>>()
+    .join("\n");
+    std::fs::write(&stripped_pcb, stripped_pcb_text).unwrap();
+    let mapping_aperture_project = dir
+        .path()
+        .join("usb_connector_mapping_aperture_checks.yaml");
+    import_kicad_pcb(
+        stripped_pcb.to_str().unwrap(),
+        "examples/import_kicad_usb_connector_protection_suggestions/project_checks.yaml",
+        &mapping_aperture_project,
+    );
+    assert_yaml_file_valid(&mapping_aperture_project, &validator);
+
+    let mapping_aperture_report_dir = dir.path().join("mapping_aperture_checks.report");
+    let mapping_validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            mapping_aperture_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            mapping_aperture_report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(mapping_validate_status.success());
+    let mapping_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(mapping_aperture_report_dir.join("report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(mapping_report["result"], "fail");
+    let mapping_entry_failure = mapping_report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding with mapping aperture");
+    assert_eq!(
+        mapping_entry_failure["measured"]["entry_aperture_source"],
+        "kicad_mapping_aperture"
+    );
+    assert_eq!(
+        mapping_entry_failure["measured"]["entry_aperture_width_mm"],
+        1.2
+    );
+    assert_eq!(
+        mapping_entry_failure["measured"]["aperture_min_effective_clearance_width_mm"],
+        1.2
+    );
+    assert_eq!(
+        mapping_entry_failure["measured"]["effective_cable_entry_clearance_width_mm"],
+        1.2
+    );
+    assert_eq!(
+        mapping_entry_failure["limit"]["cable_entry_clearance_width_mm"],
+        1.0
+    );
+    assert_report_schema_valid(&mapping_report);
     assert_report_schema_valid(&report);
 }
 

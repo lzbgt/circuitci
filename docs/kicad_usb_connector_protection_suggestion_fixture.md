@@ -98,7 +98,12 @@ unmodified library footprints; the explicit PCB footprint properties take
 precedence when both sources are present.
 `project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
 wide corridor, proving the imported aperture evidence and `UESD` fabrication
-rectangle are reported as an entry-corridor obstruction.
+rectangle are reported as an entry-corridor obstruction. Regression coverage
+also strips the J1 `CircuitCI_EntryAperture*` footprint properties before PCB
+import and proves executable validation falls back to the
+`project_checks.yaml` `kicad_mapping` aperture metadata, reporting
+`entry_aperture_source: kicad_mapping_aperture` and the mapped `1.2 mm`
+aperture width.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under
