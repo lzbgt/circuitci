@@ -16,12 +16,17 @@ suggestions.
   collection.
 - `src/scenario_suggestions/interface_protection.rs` owns recognition for
   signal-conditioning channels and clamp-only interface-protection templates.
-- `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector,
-  protection-placement, route-geometry, VBUS-route, and return-path suggestion
-  template construction from schematic and PCB layout evidence.
+- `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector
+  protection coverage, protection-placement, route-geometry, VBUS-route, and
+  return-path suggestion template construction from schematic and PCB layout
+  evidence.
 - `src/scenario_suggestions/interface_protection/usb/edge_evidence.rs` owns USB
   connector footprint serialization, nearest-board-edge evidence, and
   nearest-component clearance evidence helpers.
+- `src/scenario_suggestions/interface_protection/usb/mechanical.rs` owns USB
+  connector orientation, edge-proximity, body-overhang, component-clearance,
+  and entry-clearance suggestion templates plus their duplicate-check
+  recognizers.
 - `src/scenario_suggestions/interface_protection/usb/route_evidence.rs` owns
   measured USB route, pad-contact, return-path, filled-zone, and ground-contact
   evidence helpers used by USB suggestion templates.
