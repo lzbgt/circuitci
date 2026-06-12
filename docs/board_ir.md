@@ -239,11 +239,11 @@ board:
 ```
 
 KiCad PCB import currently populates this from `gr_line`, `gr_rect`,
-`gr_circle`, and `gr_arc` items on `Edge.Cuts`. Rectangles, circles, and arcs
-are sampled into bounded line segments so downstream layout rules can use one
-simple segment geometry contract. Imported segments carry optional source
-provenance:
-`source_primitive` is `gr_line`, `gr_rect`, `gr_circle`, or `gr_arc`;
+`gr_poly`, `gr_circle`, and `gr_arc` items on `Edge.Cuts`. Rectangles,
+polygons, circles, and arcs are sampled into bounded line segments so
+downstream layout rules can use one simple segment geometry contract. Imported
+segments carry optional source provenance:
+`source_primitive` is `gr_line`, `gr_rect`, `gr_poly`, `gr_circle`, or `gr_arc`;
 `source_primitive_index` identifies the imported outline primitive; and
 `sample_index`/`sample_count` identify the segment within that primitive's
 sampled output. When imported Edge.Cuts segments form closed contours,

@@ -174,7 +174,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     let outline_segments = imported["board"]["layout"]["outline"]["segments"]
         .as_array()
         .unwrap();
-    assert_eq!(outline_segments.len(), 56);
+    assert_eq!(outline_segments.len(), 59);
     assert_eq!(outline_segments[0]["layer"], "Edge.Cuts");
     assert_eq!(outline_segments[0]["source_primitive"], "gr_line");
     assert_eq!(outline_segments[0]["source_primitive_index"], 0);
@@ -195,24 +195,37 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(outline_segments[7]["sample_count"], 4);
     assert_eq!(outline_segments[7]["end"]["x_mm"], 1.55);
     assert_eq!(outline_segments[7]["end"]["y_mm"], 1.05);
-    assert_eq!(outline_segments[8]["source_primitive"], "gr_circle");
+    assert_eq!(outline_segments[8]["source_primitive"], "gr_poly");
     assert_eq!(outline_segments[8]["source_primitive_index"], 5);
     assert_eq!(outline_segments[8]["sample_index"], 0);
-    assert_eq!(outline_segments[8]["sample_count"], 32);
-    assert_eq!(outline_segments[8]["start"]["x_mm"], 1.9);
-    assert_eq!(outline_segments[8]["start"]["y_mm"], 1.2);
-    assert_eq!(outline_segments[40]["source_primitive"], "gr_arc");
-    assert_eq!(outline_segments[40]["source_primitive_index"], 6);
-    assert_eq!(outline_segments[40]["sample_index"], 0);
-    assert_eq!(outline_segments[40]["sample_count"], 16);
-    assert_eq!(outline_segments[40]["start"]["x_mm"], 1.6);
-    assert_eq!(outline_segments[40]["start"]["y_mm"], 1.4);
-    assert_eq!(outline_segments[55]["source_primitive"], "gr_arc");
-    assert_eq!(outline_segments[55]["source_primitive_index"], 6);
-    assert_eq!(outline_segments[55]["sample_index"], 15);
-    assert_eq!(outline_segments[55]["sample_count"], 16);
-    assert!((outline_segments[55]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
-    assert!((outline_segments[55]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
+    assert_eq!(outline_segments[8]["sample_count"], 3);
+    assert_eq!(outline_segments[8]["boundary_role"], "cutout");
+    assert_eq!(outline_segments[8]["start"]["x_mm"], 1.1);
+    assert_eq!(outline_segments[8]["start"]["y_mm"], 1.05);
+    assert_eq!(outline_segments[10]["source_primitive"], "gr_poly");
+    assert_eq!(outline_segments[10]["source_primitive_index"], 5);
+    assert_eq!(outline_segments[10]["sample_index"], 2);
+    assert_eq!(outline_segments[10]["sample_count"], 3);
+    assert_eq!(outline_segments[10]["end"]["x_mm"], 1.1);
+    assert_eq!(outline_segments[10]["end"]["y_mm"], 1.05);
+    assert_eq!(outline_segments[11]["source_primitive"], "gr_circle");
+    assert_eq!(outline_segments[11]["source_primitive_index"], 6);
+    assert_eq!(outline_segments[11]["sample_index"], 0);
+    assert_eq!(outline_segments[11]["sample_count"], 32);
+    assert_eq!(outline_segments[11]["start"]["x_mm"], 1.9);
+    assert_eq!(outline_segments[11]["start"]["y_mm"], 1.2);
+    assert_eq!(outline_segments[43]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[43]["source_primitive_index"], 7);
+    assert_eq!(outline_segments[43]["sample_index"], 0);
+    assert_eq!(outline_segments[43]["sample_count"], 16);
+    assert_eq!(outline_segments[43]["start"]["x_mm"], 1.6);
+    assert_eq!(outline_segments[43]["start"]["y_mm"], 1.4);
+    assert_eq!(outline_segments[58]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[58]["source_primitive_index"], 7);
+    assert_eq!(outline_segments[58]["sample_index"], 15);
+    assert_eq!(outline_segments[58]["sample_count"], 16);
+    assert!((outline_segments[58]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
+    assert!((outline_segments[58]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
     let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
         .as_array()
         .unwrap();
@@ -1069,6 +1082,61 @@ fn import_kicad_pcb_rejects_degenerate_rectangular_board_outlines() {
 }
 
 #[test]
+fn import_kicad_pcb_rejects_malformed_polygon_board_outlines() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let polygon_outline = "(gr_poly (pts (xy 1.10 1.05) (xy 1.25 1.05) (xy 1.175 1.20)) (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))";
+    let malformed_cases = [
+        (
+            "missing_pts_poly_outline.kicad_pcb",
+            source_pcb.replace(
+                polygon_outline,
+                "(gr_poly (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))",
+            ),
+            "missing pts list",
+        ),
+        (
+            "too_few_points_poly_outline.kicad_pcb",
+            source_pcb.replace(
+                polygon_outline,
+                "(gr_poly (pts (xy 1.10 1.05) (xy 1.25 1.05)) (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))",
+            ),
+            "fewer than three points",
+        ),
+    ];
+
+    for (file_name, pcb_contents, expected_error) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "malformed KiCad PCB polygon outline fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains("Edge.Cuts gr_poly") && stderr.contains(expected_error),
+            "expected polygon outline error containing {expected_error:?} for {file_name}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
 fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -1751,6 +1819,25 @@ fn import_kicad_pcb_sampled_edge_segments_feed_usb_layout_checks() {
             outward_normal_deg: 0.0,
             body_overhang_mm: 0.06,
             source_primitive: "gr_rect",
+            source_primitive_index: 0,
+            sample_index: 1,
+            sample_count: 4,
+            body_overhang_limit_mm: Some(0.05),
+        },
+    );
+    assert_sampled_usb_board_edge_fixture(
+        dir.path(),
+        "poly",
+        "examples/import_kicad_usb_curved_board_edge_suggestions/board_poly.kicad_pcb",
+        4,
+        SampledEdgeExpectation {
+            start_x_mm: 0.5,
+            start_y_mm: -0.5,
+            end_x_mm: 0.5,
+            end_y_mm: 0.5,
+            outward_normal_deg: 0.0,
+            body_overhang_mm: 0.06,
+            source_primitive: "gr_poly",
             source_primitive_index: 0,
             sample_index: 1,
             sample_count: 4,

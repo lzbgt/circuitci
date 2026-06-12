@@ -1,5 +1,5 @@
-use super::{PcbPoint, non_empty_child_string, route_point};
-use crate::importers::kicad_sch::sexp::{Sexp, list_children};
+use super::{PcbPoint, coordinate_points, non_empty_child_string, route_point};
+use crate::importers::kicad_sch::sexp::{Sexp, child_list, list_children};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_yaml_ng::Value;
@@ -44,6 +44,8 @@ enum PcbOutlinePrimitive {
     Line,
     #[serde(rename = "gr_rect")]
     Rect,
+    #[serde(rename = "gr_poly")]
+    Poly,
     #[serde(rename = "gr_circle")]
     Circle,
     #[serde(rename = "gr_arc")]
@@ -131,6 +133,25 @@ pub(super) fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutlin
         ));
         source_primitive_index += 1;
     }
+    for polygon in list_children(root_list, "gr_poly") {
+        let layer = non_empty_child_string(polygon, "layer", path)?;
+        if layer != "Edge.Cuts" {
+            continue;
+        }
+        let pts = child_list(polygon, "pts").with_context(|| {
+            format!(
+                "KiCad PCB Edge.Cuts gr_poly in {} is missing pts list.",
+                path.display()
+            )
+        })?;
+        let points = coordinate_points(pts, "Edge.Cuts gr_poly", path)?;
+        segments.extend(sample_outline_polygon(
+            &points,
+            layer,
+            source_primitive_index,
+        ));
+        source_primitive_index += 1;
+    }
     for circle in list_children(root_list, "gr_circle") {
         let layer = non_empty_child_string(circle, "layer", path)?;
         if layer != "Edge.Cuts" {
@@ -208,6 +229,31 @@ fn sample_outline_rect(
             source_primitive_index,
             sample_index: index,
             sample_count: corners.len(),
+            contour_index: None,
+            boundary_role: PcbOutlineBoundaryRole::Unknown,
+        })
+        .collect()
+}
+
+fn sample_outline_polygon(
+    points: &[PcbPoint],
+    layer: String,
+    source_primitive_index: usize,
+) -> Vec<PcbOutlineSegment> {
+    points
+        .iter()
+        .copied()
+        .zip(points.iter().copied().cycle().skip(1))
+        .take(points.len())
+        .enumerate()
+        .map(|(index, (segment_start, segment_end))| PcbOutlineSegment {
+            start: segment_start,
+            end: segment_end,
+            layer: layer.clone(),
+            source_primitive: PcbOutlinePrimitive::Poly,
+            source_primitive_index,
+            sample_index: index,
+            sample_count: points.len(),
             contour_index: None,
             boundary_role: PcbOutlineBoundaryRole::Unknown,
         })

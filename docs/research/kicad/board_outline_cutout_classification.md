@@ -18,8 +18,8 @@ Relevant KiCad PCB editor documentation:
 
 Implementation note:
 
-- The KiCad PCB importer samples `gr_rect`, `gr_circle`, and `gr_arc` outline
-  graphics into bounded straight segments.
+- The KiCad PCB importer samples `gr_rect`, `gr_poly`, `gr_circle`, and
+  `gr_arc` outline graphics into bounded straight segments.
 - It groups connected sampled/native segments into closed contours.
 - A contour contained inside another larger closed contour is marked
   `boundary_role: cutout`; top-level closed contours are marked

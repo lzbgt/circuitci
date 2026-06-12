@@ -1,14 +1,15 @@
 # KiCad USB Sampled Board Edge Fixture
 
 `examples/import_kicad_usb_curved_board_edge_suggestions/` proves that sampled
-KiCad `Edge.Cuts` rectangles and curves feed USB mechanical/layout checks, not
-just raw import storage. The directory name is retained for continuity with the
-first curved-edge fixture, but the fixture now covers multiple sampled outline
-primitive types.
+KiCad `Edge.Cuts` rectangles, polygons, and curves feed USB mechanical/layout
+checks, not just raw import storage. The directory name is retained for
+continuity with the first curved-edge fixture, but the fixture now covers
+multiple sampled outline primitive types.
 
 The fixture has three PCB variants:
 
 - `board_rect.kicad_pcb` uses an `Edge.Cuts` `gr_rect`.
+- `board_poly.kicad_pcb` uses an `Edge.Cuts` `gr_poly`.
 - `board_circle.kicad_pcb` uses an `Edge.Cuts` `gr_circle`.
 - `board_arc.kicad_pcb` uses an `Edge.Cuts` `gr_arc`.
 
@@ -24,9 +25,10 @@ The regression flow is:
    segment as `nearest_board_edge`.
 4. Import each PCB into `project_checks.yaml` and run the generated executable
    checks to prove the same sampled segment evidence is usable by validators.
-   The rectangle variant intentionally tightens the body-overhang limit in a
-   temporary checks file so the validation report must expose
-   `board_edge_source_primitive: gr_rect`.
+   The rectangle and polygon variants intentionally tighten the body-overhang
+   limit in temporary checks files so validation reports must expose
+   `board_edge_source_primitive: gr_rect` and
+   `board_edge_source_primitive: gr_poly`.
 
 This fixture intentionally checks exact sampled segment coordinates. If the
 sampling policy changes, update the fixture expectations with the new bounded
