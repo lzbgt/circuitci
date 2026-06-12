@@ -283,6 +283,7 @@ scenarios:
     type: power_tree
     checks:
       - POWER_TREE_VALID
+      - IO_VOLTAGE_COMPATIBLE
 ```
 
 `POWER_TREE_VALID` checks:
@@ -309,12 +310,26 @@ scenarios:
    must declare `power_valid_at_us`, and the output rail may not become valid
    before `input_power_valid_at_us + startup_delay_us`.
 
+`IO_VOLTAGE_COMPATIBLE` can be declared on the same `power_tree` scenario. It
+checks same-net digital output/input pairs when both sides have enough
+component-model metadata:
+
+1. If an output declares `drive_high_voltage_V` and an input declares
+   `vih_min_V`, the output high level must meet the receiver VIH threshold.
+2. If an output declares `drive_high_voltage_V` and `source_impedance_ohm`, and
+   the input declares `injection_current_limit_A`, the rule estimates clamp
+   current against the receiver's powered rail:
+   `max(0, driver_high_voltage_V - receiver_rail_voltage_V - diode_drop_V) /
+   source_impedance_ohm`.
+3. `parameters.diode_drop_V` defaults to `0.3`.
+
 This rule is intended to catch common IoT mistakes such as a 3.3 V MCU tied to
 5 V, an unpowered rail marked as valid for logic checks, or an undersized
-regulator budget. It can also catch inconsistent declared startup sequencing
-when regulator metadata supplies a startup delay. Load-transient stability,
-inrush, load-dependent dropout, loop stability, thermal behavior, and real ramp
-waveform shape still require datasheet-backed dynamic models or
+regulator budget. The I/O compatibility companion check catches common
+logic-level mistakes such as a 1.8 V interrupt driving a 3.3 V input with a high
+VIH, or a 5 V output overdriving a lower-voltage receiver clamp. Load-transient
+stability, inrush, load-dependent dropout, loop stability, thermal behavior,
+and real ramp waveform shape still require datasheet-backed dynamic models or
 `analog_transient` scenarios.
 
 ## Firmware Update Scenario Shape

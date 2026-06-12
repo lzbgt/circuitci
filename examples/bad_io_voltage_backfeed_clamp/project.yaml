@@ -1,0 +1,48 @@
+project:
+  name: bad_io_voltage_backfeed_clamp
+  version: 0.1.0
+
+libraries:
+  - ./models
+
+board:
+  components:
+    UDRV:
+      model: fixture.five_volt_driver
+      part_number: FIVE_VOLT_DRIVER
+      power_domains:
+        VDD: rail_5v
+      pins:
+        VDD: rail_5v
+        GND: gnd
+        OUT: wake_line
+    UMCU:
+      model: fixture.three_volt_receiver
+      part_number: THREE_VOLT_RECEIVER
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        IN: wake_line
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    wake_line:
+      kind: digital_or_analog
+
+scenarios:
+  - name: io_voltage_screen
+    type: power_tree
+    checks:
+      - IO_VOLTAGE_COMPATIBLE
+    parameters:
+      diode_drop_V: 0.3

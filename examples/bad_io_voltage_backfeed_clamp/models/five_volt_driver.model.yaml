@@ -1,0 +1,26 @@
+component_id: fixture.five_volt_driver
+version: 0.1.0
+category: fixture
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.5
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  OUT:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 5.0
+      source_impedance_ohm: 100
+model_quality:
+  source: generic
+  confidence: high
+  intended_use:
+    - io_voltage_compatibility_test
+  not_valid_for:
+    - production_component_signoff

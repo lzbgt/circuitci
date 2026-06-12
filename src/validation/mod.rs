@@ -9,6 +9,7 @@ mod common;
 mod control_line;
 mod firmware_functional;
 mod interface_protection;
+mod io_voltage;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
@@ -29,6 +30,7 @@ pub(super) const RESIDENT_BOOTLOADER_UPDATE_SEQUENCE: &str = "RESIDENT_BOOTLOADE
 pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQUENCE";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
+pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -167,6 +169,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 POWER_TREE_VALID if scenario.scenario_type == "power_tree" => {
                     power_tree::validate_power_tree(bound, scenario, &mut findings)
                 }
+                IO_VOLTAGE_COMPATIBLE if scenario.scenario_type == "power_tree" => {
+                    io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)
+                }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
                     analog_spice::validate_spice_transient(
                         bound,
@@ -186,6 +191,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | CONTROL_LINE_RELEASE_SEQUENCE
                 | FUNCTIONAL_MCU_FIRMWARE
                 | POWER_TREE_VALID
+                | IO_VOLTAGE_COMPATIBLE
                 | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

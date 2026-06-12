@@ -169,6 +169,19 @@ scenarios, where generated or file-backed SPICE decks provide waveform evidence
 and generated semiconductor models can be checked against datasheet operating
 limits.
 
+`IO_VOLTAGE_COMPATIBLE` uses the same model fields without requiring explicit
+scenario `paths`. On a `power_tree` scenario, it scans same-net digital
+output/input pairs and:
+
+- fails when `drive_high_voltage_V < vih_min_V`,
+- estimates receiver clamp current as
+  `max(0, drive_high_voltage_V - receiver_rail_voltage_V - diode_drop_V) /
+  source_impedance_ohm`,
+- fails when that estimate exceeds `injection_current_limit_A`.
+
+The rule skips pairs that lack the relevant metadata; it is a static board-level
+screen, not a replacement for analog waveform proof.
+
 ## GPIO_BACKDRIVE Rule
 
 Normative first-slice behavior:

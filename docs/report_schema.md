@@ -97,6 +97,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
 - `POWER_TREE_VALID`
+- `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -144,6 +145,13 @@ failure. Stable limit keys include `operating_voltage_minimum_V`,
 `dropout_voltage_V`, `regulator_max_output_current_A`,
 `earliest_output_power_valid_at_us`, `required_rail_timing_field`, and
 `power_conversion_field`.
+
+`IO_VOLTAGE_COMPATIBLE` reports are emitted by `power_tree` scenarios that
+declare the check. They compare same-net digital output/input pairs when model
+metadata is present. Stable measured keys include `driver_high_voltage_V`,
+`receiver_rail_voltage_V`, `source_impedance_ohm`, `diode_drop_V`, and
+`injection_current_A`. Stable limit keys include `receiver_vih_min_V` and
+`injection_current_A`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus

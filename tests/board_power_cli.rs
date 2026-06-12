@@ -154,6 +154,45 @@ fn silabs_cp2102n_vdd_overvoltage_uses_datasheet_limit() {
 }
 
 #[test]
+fn io_voltage_vih_mismatch_fails() {
+    let report = run_validation("examples/bad_io_voltage_vih_mismatch/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("receiver_vih_min_V").is_some())
+        .expect("VIH mismatch finding");
+    assert_eq!(failure["id"], "IO_VOLTAGE_COMPATIBLE");
+    assert_eq!(failure["component"], "UMCU");
+    assert_eq!(failure["net"], "sensor_irq");
+    assert_eq!(failure["measured"]["driver_high_voltage_V"], 1.8);
+    assert_eq!(failure["limit"]["receiver_vih_min_V"], 2.4);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn io_voltage_backfeed_clamp_current_fails() {
+    let report = run_validation("examples/bad_io_voltage_backfeed_clamp/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["measured"].get("injection_current_A").is_some())
+        .expect("clamp-current finding");
+    assert_eq!(failure["id"], "IO_VOLTAGE_COMPATIBLE");
+    assert_eq!(failure["component"], "UMCU");
+    assert_eq!(failure["net"], "wake_line");
+    assert_eq!(failure["measured"]["driver_high_voltage_V"], 5.0);
+    assert_eq!(failure["measured"]["receiver_rail_voltage_V"], 3.3);
+    let injection_current_a = failure["measured"]["injection_current_A"].as_f64().unwrap();
+    assert!((injection_current_a - 0.014).abs() < 1e-12);
+    assert_eq!(failure["limit"]["injection_current_A"], 0.001);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_current_budget_fails() {
     let report = run_validation("examples/bad_power_tree_current_budget/project.yaml");
     assert_eq!(report["result"], "fail");

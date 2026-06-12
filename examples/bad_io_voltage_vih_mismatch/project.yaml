@@ -1,0 +1,46 @@
+project:
+  name: bad_io_voltage_vih_mismatch
+  version: 0.1.0
+
+libraries:
+  - ./models
+
+board:
+  components:
+    UDRV:
+      model: fixture.low_voltage_driver
+      part_number: LOW_VOLTAGE_DRIVER
+      power_domains:
+        VDD: rail_1v8
+      pins:
+        VDD: rail_1v8
+        GND: gnd
+        OUT: sensor_irq
+    UMCU:
+      model: fixture.high_threshold_receiver
+      part_number: HIGH_THRESHOLD_RECEIVER
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        IN: sensor_irq
+  nets:
+    rail_1v8:
+      kind: power
+      nominal_voltage: 1.8
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    sensor_irq:
+      kind: digital_or_analog
+
+scenarios:
+  - name: io_voltage_screen
+    type: power_tree
+    checks:
+      - IO_VOLTAGE_COMPATIBLE

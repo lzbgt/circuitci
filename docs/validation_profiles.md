@@ -45,6 +45,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
 - `POWER_TREE_VALID`
+- `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 `circuitci suggest-scenarios` can propose missing `power_tree`, reset timing,

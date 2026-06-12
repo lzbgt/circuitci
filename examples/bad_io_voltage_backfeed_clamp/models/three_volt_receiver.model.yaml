@@ -1,0 +1,27 @@
+component_id: fixture.three_volt_receiver
+version: 0.1.0
+category: fixture
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+  GND:
+    kind: electrical_ground
+    required: true
+  IN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.001
+model_quality:
+  source: generic
+  confidence: high
+  intended_use:
+    - io_voltage_compatibility_test
+  not_valid_for:
+    - production_component_signoff
