@@ -56,6 +56,9 @@ Because the PCB fixture also imports a same-layer GND copper-zone outline over
 the USB D+/D- route segment midpoints, the return-path suggestion reports
 `unreferenced_route_length_mm: 0.0` for both data lines and leaves
 `max_data_line_unreferenced_length_mm: null` for the board-specific
-return-path rule. This is outline evidence only; filled-zone connectivity,
-plane transitions, stitching vias, and impedance still require richer layout
-evidence.
+return-path rule. It also leaves
+`max_data_via_to_ground_stitch_distance_mm: null` so an agent can enable
+nearby ground-stitch checks when data vias cross layers. This is outline and
+via-proximity evidence only; filled-zone connectivity, controlled plane
+transitions, stitching-via inductance, and impedance still require richer
+layout evidence.

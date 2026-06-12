@@ -478,6 +478,7 @@ scenarios:
       component: J1
     parameters:
       max_data_line_unreferenced_length_mm: 0.0
+      max_data_via_to_ground_stitch_distance_mm: 0.5
 ```
 
 USB return-path algorithm:
@@ -491,9 +492,12 @@ USB return-path algorithm:
    outline test are counted as unreferenced.
 6. Sum unreferenced segment length and require each data net to stay within
    `max_data_line_unreferenced_length_mm`.
-7. Treat this as an early layout screen only. Filled-zone continuity,
-   adjacent-plane return paths, stitching vias, impedance, and USB eye margin
-   require more specific layout or signal-integrity evidence.
+7. If `max_data_via_to_ground_stitch_distance_mm` is declared, require each
+   USB data route via to have a ground-net via within that distance whose
+   layer list covers the data-via layer transition.
+8. Treat this as an early layout screen only. Filled-zone continuity,
+   adjacent-plane return paths, stitching-via inductance, impedance, and USB
+   eye margin require more specific layout or signal-integrity evidence.
 
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:

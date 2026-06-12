@@ -150,11 +150,17 @@ Route-geometry validation:
   `board.layout.routes` plus `board.layout.zones` evidence.
 - The scenario must declare
   `parameters.max_data_line_unreferenced_length_mm`.
+- The scenario may declare
+  `parameters.max_data_via_to_ground_stitch_distance_mm` to require nearby
+  ground-net stitching vias for USB data route vias.
 - The rule checks D+ and D- only. A routed segment is treated as statically
   referenced when its midpoint is inside a same-layer ground-zone outline.
+- When stitching-via distance is enabled, a data via passes only if a ground
+  via whose layer list covers the same transition is within the declared
+  distance.
 - This check is still first-order outline evidence. It does not prove zone fill
-  connectivity, adjacent-plane reference, stitching-via density, impedance, eye
-  margin, or EMC behavior.
+  connectivity, adjacent-plane reference, stitching-via inductance or density,
+  impedance, eye margin, or EMC behavior.
 
 - `USB_VBUS_ROUTE_VALID` targets the same connector component and uses
   `board.layout.routes` evidence for the connector VBUS net.

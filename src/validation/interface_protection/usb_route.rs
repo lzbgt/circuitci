@@ -1,4 +1,6 @@
-use crate::board_ir::{ComponentPlacement, CopperZone, NetKind, NetLayoutRule, NetRoute, Scenario};
+use crate::board_ir::{
+    ComponentPlacement, CopperZone, NetKind, NetLayoutRule, NetRoute, RouteVia, Scenario,
+};
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use crate::validation::USB_VBUS_ROUTE_VALID;
@@ -350,6 +352,13 @@ pub(super) fn validate_usb_return_path(
     else {
         return;
     };
+    let Some(max_data_via_to_ground_stitch_distance_mm) = optional_nonnegative_parameter(
+        scenario,
+        "max_data_via_to_ground_stitch_distance_mm",
+        findings,
+    ) else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -414,6 +423,7 @@ pub(super) fn validate_usb_return_path(
                 signal,
                 ground_zones: &ground_zones,
                 max_unreferenced_length_mm,
+                max_data_via_to_ground_stitch_distance_mm,
             },
             findings,
         );
@@ -449,6 +459,7 @@ struct UsbReturnPathSignalCheck<'a> {
     signal: UsbConnectorSignal,
     ground_zones: &'a [GroundZoneRef<'a>],
     max_unreferenced_length_mm: f64,
+    max_data_via_to_ground_stitch_distance_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -645,6 +656,116 @@ fn validate_usb_return_path_for_signal(
             },
         ));
     }
+    if let Some(max_distance_mm) = check.max_data_via_to_ground_stitch_distance_mm {
+        validate_usb_return_path_stitch_vias(
+            bound,
+            scenario,
+            &check,
+            net_name,
+            route,
+            max_distance_mm,
+            findings,
+        );
+    }
+}
+
+fn validate_usb_return_path_stitch_vias(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: &UsbReturnPathSignalCheck<'_>,
+    net_name: &str,
+    route: &NetRoute,
+    max_distance_mm: f64,
+    findings: &mut Vec<Finding>,
+) {
+    let ground_vias = ground_stitch_vias(bound);
+    for (via_index, via) in route.vias.iter().enumerate() {
+        let nearest = nearest_matching_ground_via(via, &ground_vias);
+        if nearest
+            .as_ref()
+            .is_none_or(|candidate| candidate.distance_mm > max_distance_mm)
+        {
+            findings.push(usb_return_path_stitch_via_finding(
+                scenario,
+                UsbReturnPathStitchViaEvidence {
+                    connector_id: check.connector_id,
+                    signal: check.signal,
+                    net: net_name,
+                    data_via_index: via_index,
+                    data_via: via,
+                    nearest,
+                    max_distance_mm,
+                },
+            ));
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GroundStitchViaRef<'a> {
+    net_name: &'a str,
+    via_index: usize,
+    via: &'a RouteVia,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GroundStitchViaCandidate<'a> {
+    ground_net: &'a str,
+    ground_via_index: usize,
+    distance_mm: f64,
+}
+
+fn ground_stitch_vias<'a>(bound: &'a BoundBoard<'_>) -> Vec<GroundStitchViaRef<'a>> {
+    let mut vias = Vec::new();
+    for (net_name, route) in &bound.project.board.layout.routes {
+        let Some(net) = bound.project.board.nets.get(net_name) else {
+            continue;
+        };
+        if net.kind != NetKind::Ground {
+            continue;
+        }
+        for (via_index, via) in route.vias.iter().enumerate() {
+            vias.push(GroundStitchViaRef {
+                net_name,
+                via_index,
+                via,
+            });
+        }
+    }
+    vias
+}
+
+fn nearest_matching_ground_via<'a>(
+    data_via: &RouteVia,
+    ground_vias: &'a [GroundStitchViaRef<'a>],
+) -> Option<GroundStitchViaCandidate<'a>> {
+    ground_vias
+        .iter()
+        .filter(|ground_via| via_layers_match(data_via, ground_via.via))
+        .map(|ground_via| GroundStitchViaCandidate {
+            ground_net: ground_via.net_name,
+            ground_via_index: ground_via.via_index,
+            distance_mm: via_distance_mm(data_via, ground_via.via),
+        })
+        .min_by(|left, right| left.distance_mm.total_cmp(&right.distance_mm))
+}
+
+fn via_layers_match(data_via: &RouteVia, ground_via: &RouteVia) -> bool {
+    if data_via.layers.is_empty() || ground_via.layers.is_empty() {
+        return true;
+    }
+    data_via.layers.iter().all(|layer| {
+        ground_via
+            .layers
+            .iter()
+            .any(|ground_layer| ground_layer == layer)
+    })
+}
+
+fn via_distance_mm(first: &RouteVia, second: &RouteVia) -> f64 {
+    let dx = first.at.x_mm - second.at.x_mm;
+    let dy = first.at.y_mm - second.at.y_mm;
+    dx.hypot(dy)
 }
 
 fn validate_protection_route_distance(

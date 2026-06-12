@@ -424,6 +424,37 @@ fn usb_return_path_reports_unreferenced_data_route_length() {
 }
 
 #[test]
+fn usb_return_path_reports_distant_stitching_via() {
+    let report = run_validation("examples/bad_usb_return_path_stitching_via/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_RETURN_PATH_VALID"
+                && failure["limit"]["max_data_via_to_ground_stitch_distance_mm"] == 0.2
+        })
+        .expect("USB return-path stitching via finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["data_via_index"], 0);
+    assert_eq!(failure["measured"]["data_via_x_mm"], 0.5);
+    assert_eq!(failure["measured"]["data_via_y_mm"], 0.0);
+    assert_eq!(failure["measured"]["nearest_ground_stitch_net"], "gnd");
+    assert_eq!(failure["measured"]["nearest_ground_stitch_via_index"], 0);
+    assert_eq!(
+        failure["measured"]["nearest_ground_stitch_distance_mm"],
+        1.5
+    );
+    assert_eq!(
+        failure["limit"]["required_ground_stitch_layer_policy"],
+        "same_via_layers"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_vbus_route_geometry_passes_for_short_power_entry_route() {
     let report = run_validation("examples/good_usb_vbus_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -211,9 +211,15 @@ ground-zone outline evidence from `board.layout.zones`. Stable measured keys
 include `connector_signal`, `unreferenced_route_length_mm`, and
 `unreferenced_segments`. Each unreferenced segment entry includes
 `segment_index`, `segment_length_mm`, `midpoint_x_mm`, `midpoint_y_mm`, and
-`layer`. Stable limit keys include
+`layer`. When `max_data_via_to_ground_stitch_distance_mm` is enabled, stable
+measured keys also include `data_via_index`, `data_via_x_mm`, `data_via_y_mm`,
+`data_via_layers`, and, when a candidate exists,
+`nearest_ground_stitch_net`, `nearest_ground_stitch_via_index`, and
+`nearest_ground_stitch_distance_mm`. Stable limit keys include
 `max_data_line_unreferenced_length_mm`, `reference_net_kind`, and
-`reference_zone_layer_policy`.
+`reference_zone_layer_policy`; stitching findings additionally include
+`max_data_via_to_ground_stitch_distance_mm` and
+`required_ground_stitch_layer_policy`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

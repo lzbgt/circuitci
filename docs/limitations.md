@@ -65,10 +65,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   capacity, fuse trip behavior, inrush current, voltage drop under load,
   temperature rise, or ESD pulse survival.
 - `USB_RETURN_PATH_VALID` checks whether USB D+/D- route segment midpoints are
-  inside same-layer ground-zone outlines. It does not prove filled-zone
-  continuity, adjacent-plane coupling, impedance, eye margin, stitching-via
-  quality, common-mode radiation, or return-current behavior under signal
-  transitions.
+  inside same-layer ground-zone outlines, and can optionally check that USB
+  data vias have nearby ground stitching vias spanning the same layer
+  transition. It does not prove filled-zone continuity, adjacent-plane
+  coupling, impedance, eye margin, stitching-via inductance, common-mode
+  radiation, or return-current behavior under signal transitions.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

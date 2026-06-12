@@ -1,6 +1,9 @@
+use crate::board_ir::RouteVia;
 use crate::board_ir::Scenario;
 use crate::reports::Finding;
 use crate::validation::{USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID};
+
+use super::GroundStitchViaCandidate;
 use serde::Serialize;
 use serde_json::json;
 
@@ -493,6 +496,95 @@ pub(super) fn usb_return_path_unreferenced_finding(
         "If the design intentionally references an adjacent plane or controlled stackup instead, model that return-path evidence with a more specific rule instead of using this same-layer outline check as sign-off.".to_string(),
     ];
     finding
+}
+
+pub(super) fn usb_return_path_stitch_via_finding(
+    scenario: &Scenario,
+    evidence: UsbReturnPathStitchViaEvidence<'_>,
+) -> Finding {
+    let nearest_distance = evidence.nearest.map(|candidate| candidate.distance_mm);
+    let message = if let Some(distance_mm) = nearest_distance {
+        format!(
+            "USB connector {} {} net {} data via {} is {:.3} mm from the nearest matching ground stitch via, above limit {:.3} mm.",
+            evidence.connector_id,
+            evidence.signal.label(),
+            evidence.net,
+            evidence.data_via_index,
+            distance_mm,
+            evidence.max_distance_mm
+        )
+    } else {
+        format!(
+            "USB connector {} {} net {} data via {} has no matching ground stitch via evidence.",
+            evidence.connector_id,
+            evidence.signal.label(),
+            evidence.net,
+            evidence.data_via_index
+        )
+    };
+    let mut finding = Finding::critical(USB_RETURN_PATH_VALID, &scenario.name, message);
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding.measured.insert(
+        "connector_signal".to_string(),
+        json!(evidence.signal.label()),
+    );
+    finding
+        .measured
+        .insert("data_via_index".to_string(), json!(evidence.data_via_index));
+    finding.measured.insert(
+        "data_via_x_mm".to_string(),
+        json!(evidence.data_via.at.x_mm),
+    );
+    finding.measured.insert(
+        "data_via_y_mm".to_string(),
+        json!(evidence.data_via.at.y_mm),
+    );
+    finding.measured.insert(
+        "data_via_layers".to_string(),
+        json!(evidence.data_via.layers),
+    );
+    if let Some(candidate) = evidence.nearest {
+        finding.measured.insert(
+            "nearest_ground_stitch_net".to_string(),
+            json!(candidate.ground_net),
+        );
+        finding.measured.insert(
+            "nearest_ground_stitch_via_index".to_string(),
+            json!(candidate.ground_via_index),
+        );
+        finding.measured.insert(
+            "nearest_ground_stitch_distance_mm".to_string(),
+            json!(candidate.distance_mm),
+        );
+    }
+    finding.limit.insert(
+        "max_data_via_to_ground_stitch_distance_mm".to_string(),
+        json!(evidence.max_distance_mm),
+    );
+    finding
+        .limit
+        .insert("reference_net_kind".to_string(), json!("ground"));
+    finding.limit.insert(
+        "required_ground_stitch_layer_policy".to_string(),
+        json!("same_via_layers"),
+    );
+    finding.suggested_fixes = vec![
+        "Add a nearby ground stitching via that spans the same USB data-via layer transition, then import the updated PCB.".to_string(),
+        "If the stackup uses a different controlled return-path transition, model that evidence with a more specific rule instead of using this stitching-via screen as sign-off.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbReturnPathStitchViaEvidence<'a> {
+    pub(super) connector_id: &'a str,
+    pub(super) signal: UsbConnectorSignal,
+    pub(super) net: &'a str,
+    pub(super) data_via_index: usize,
+    pub(super) data_via: &'a RouteVia,
+    pub(super) nearest: Option<GroundStitchViaCandidate<'a>>,
+    pub(super) max_distance_mm: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]

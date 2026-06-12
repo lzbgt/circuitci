@@ -118,7 +118,9 @@ The command is conservative:
   `board.layout.zones` are present. The template includes each data net's
   `unreferenced_route_length_mm` plus `unreferenced_segments[]` midpoint/layer
   evidence, but leaves `max_data_line_unreferenced_length_mm` as `null` until
-  an agent supplies the board-specific USB return-path rule.
+  an agent supplies the board-specific USB return-path rule. It also includes
+  `max_data_via_to_ground_stitch_distance_mm: null` so agents can enable
+  stitching-via checks when USB data layer changes need nearby ground vias.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

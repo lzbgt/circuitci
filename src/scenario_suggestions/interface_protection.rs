@@ -681,10 +681,16 @@ fn usb_return_path_suggestion(
             name: format!("{}_usb_return_path", sanitized_name(component_id)),
             scenario_type: "interface_protection".to_string(),
             checks: vec![USB_RETURN_PATH_VALID.to_string()],
-            parameters: Some(BTreeMap::from([(
-                "max_data_line_unreferenced_length_mm".to_string(),
-                serde_json::Value::Null,
-            )])),
+            parameters: Some(BTreeMap::from([
+                (
+                    "max_data_line_unreferenced_length_mm".to_string(),
+                    serde_json::Value::Null,
+                ),
+                (
+                    "max_data_via_to_ground_stitch_distance_mm".to_string(),
+                    serde_json::Value::Null,
+                ),
+            ])),
             target: Some(SuggestedTarget {
                 component: component_id.to_string(),
                 power_pin: None,
@@ -710,6 +716,7 @@ fn usb_return_path_suggestion(
             format!(
                 "Fill max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule after reviewing measured uncovered length {measured_unreferenced_length_mm:.3} mm."
             ),
+            "Fill max_data_via_to_ground_stitch_distance_mm when USB data layer changes require nearby ground stitching vias.".to_string(),
             "Treat this as a same-layer ground-zone outline screen only; adjacent planes, stitching vias, filled-zone continuity, impedance, and EMI need more specific evidence.".to_string(),
         ],
     })

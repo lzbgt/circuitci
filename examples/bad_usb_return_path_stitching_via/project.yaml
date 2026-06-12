@@ -1,5 +1,5 @@
 project:
-  name: good_usb_return_path
+  name: bad_usb_return_path_stitching_via
   version: 0.1.0
 
 libraries:
@@ -46,18 +46,9 @@ board:
             end: { x_mm: 1.0, y_mm: 0.3 }
             width_mm: 0.15
             layer: F.Cu
-        vias:
-          - at: { x_mm: 0.5, y_mm: 0.3 }
-            size_mm: 0.6
-            drill_mm: 0.3
-            layers: [F.Cu, B.Cu]
       gnd:
         vias:
-          - at: { x_mm: 0.55, y_mm: 0.0 }
-            size_mm: 0.6
-            drill_mm: 0.3
-            layers: [F.Cu, B.Cu]
-          - at: { x_mm: 0.55, y_mm: 0.3 }
+          - at: { x_mm: 2.0, y_mm: 0.0 }
             size_mm: 0.6
             drill_mm: 0.3
             layers: [F.Cu, B.Cu]
@@ -71,7 +62,7 @@ board:
             - { x_mm: -0.5, y_mm: 0.8 }
 
 scenarios:
-  - name: usb_return_path
+  - name: usb_return_path_stitching_bad
     type: interface_protection
     checks:
       - USB_RETURN_PATH_VALID
