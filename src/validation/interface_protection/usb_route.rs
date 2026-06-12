@@ -203,6 +203,13 @@ pub(super) fn validate_usb_vbus_route(
     else {
         return;
     };
+    let Some(require_vbus_route_pad_contact_evidence) = optional_bool_parameter(
+        scenario,
+        "require_vbus_route_pad_contact_evidence",
+        findings,
+    ) else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -345,11 +352,14 @@ pub(super) fn validate_usb_vbus_route(
         scenario,
         VbusRouteProtectionCheck {
             connector_id: &target.component,
+            component,
+            connector,
             connector_placement,
             net_name,
             route,
             max_protection_route_distance_mm,
             max_component_to_route_distance_mm,
+            require_route_pad_contact_evidence: require_vbus_route_pad_contact_evidence,
         },
         findings,
     );
@@ -371,11 +381,14 @@ struct UsbRouteSignalCheck<'a> {
 
 struct VbusRouteProtectionCheck<'a> {
     connector_id: &'a str,
+    component: &'a crate::board_ir::ComponentSpec,
+    connector: &'a UsbConnector,
     connector_placement: &'a ComponentPlacement,
     net_name: &'a str,
     route: &'a NetRoute,
     max_protection_route_distance_mm: f64,
     max_component_to_route_distance_mm: f64,
+    require_route_pad_contact_evidence: bool,
 }
 
 fn validate_usb_route_for_signal(
@@ -706,14 +719,19 @@ fn route_pad_for_pin<'a>(
     pin: &str,
     net_name: &str,
 ) -> Option<&'a LayoutPad> {
-    let pad = bound
-        .project
-        .board
-        .layout
-        .pads
-        .get(component_id)?
-        .get(pin)?;
-    (pad.net == net_name && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()).then_some(pad)
+    let pads = bound.project.board.layout.pads.get(component_id)?;
+    if let Some(pad) = pads.get(pin)
+        && pad.net == net_name
+        && pad.at.x_mm.is_finite()
+        && pad.at.y_mm.is_finite()
+    {
+        return Some(pad);
+    }
+    let mut matching_pads = pads
+        .values()
+        .filter(|pad| pad.net == net_name && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite());
+    let pad = matching_pads.next()?;
+    matching_pads.next().is_none().then_some(pad)
 }
 
 fn validate_vbus_protection_route_distance(
@@ -722,6 +740,11 @@ fn validate_vbus_protection_route_distance(
     check: VbusRouteProtectionCheck<'_>,
     findings: &mut Vec<Finding>,
 ) {
+    if check.require_route_pad_contact_evidence {
+        validate_vbus_protection_route_distance_from_pads(bound, scenario, &check, findings);
+        return;
+    }
+
     let protections = valid_protection_clamps_for_net(bound, check.connector_id, check.net_name);
     if protections.is_empty() {
         findings.push(usb_vbus_route_metadata_finding(
@@ -791,6 +814,155 @@ fn validate_vbus_protection_route_distance(
             protection_component,
             route_distance_mm,
             check.max_protection_route_distance_mm,
+        ));
+    }
+}
+
+fn validate_vbus_protection_route_distance_from_pads(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: &VbusRouteProtectionCheck<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let protections = valid_protection_clamps_for_net(bound, check.connector_id, check.net_name);
+    if protections.is_empty() {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {} VBUS net {} has no valid protection clamp for route-order validation.",
+                check.connector_id, check.net_name
+            ),
+            "required_vbus_protection_clamp",
+            check.net_name,
+        ));
+        return;
+    }
+
+    let connector_pin = &check.connector.vbus_pin;
+    if check.component.pins.get(connector_pin).map(String::as_str) != Some(check.net_name) {
+        findings.push(usb_vbus_route_pad_metadata_finding(
+            scenario,
+            UsbVbusRoutePadMetadataEvidence {
+                connector_id: check.connector_id,
+                net: check.net_name,
+                pad_component: check.connector_id,
+                pad_pin: connector_pin,
+                field: "connector_pin_net",
+            },
+            format!(
+                "USB connector {} VBUS pin {connector_pin} is not connected to net {}.",
+                check.connector_id, check.net_name
+            ),
+        ));
+        return;
+    }
+
+    let Some(connector_pad) =
+        route_pad_for_pin(bound, check.connector_id, connector_pin, check.net_name)
+    else {
+        findings.push(usb_vbus_route_pad_metadata_finding(
+            scenario,
+            UsbVbusRoutePadMetadataEvidence {
+                connector_id: check.connector_id,
+                net: check.net_name,
+                pad_component: check.connector_id,
+                pad_pin: connector_pin,
+                field: "missing_connector_vbus_route_pad",
+            },
+            format!(
+                "USB connector {} VBUS pin {connector_pin} has no matching board.layout.pads evidence on net {}.",
+                check.connector_id, check.net_name
+            ),
+        ));
+        return;
+    };
+    let connector_point = PlacementPoint::from(&connector_pad.at);
+    if point_to_route_distance_mm(check.route, connector_point, &connector_pad.layers)
+        .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
+    {
+        findings.push(usb_vbus_route_pad_metadata_finding(
+            scenario,
+            UsbVbusRoutePadMetadataEvidence {
+                connector_id: check.connector_id,
+                net: check.net_name,
+                pad_component: check.connector_id,
+                pad_pin: connector_pin,
+                field: "connector_vbus_pad_off_route",
+            },
+            format!(
+                "USB connector {} VBUS pad {connector_pin} is not on the imported route for net {} within {:.3} mm.",
+                check.connector_id,
+                check.net_name,
+                check.max_component_to_route_distance_mm
+            ),
+        ));
+        return;
+    }
+
+    let mut nearest = None;
+    let mut missing_pads = Vec::new();
+    let mut off_route_pads = Vec::new();
+    for protection in &protections {
+        let protection_pin = &protection.clamp.protected_pin;
+        let Some(protection_pad) = route_pad_for_pin(
+            bound,
+            protection.component_id,
+            protection_pin,
+            check.net_name,
+        ) else {
+            missing_pads.push(format!("{}.{}", protection.component_id, protection_pin));
+            continue;
+        };
+        let protection_point = PlacementPoint::from(&protection_pad.at);
+        let Some(route_distance) = route_distance_between_pad_points(
+            check.route,
+            connector_point,
+            &connector_pad.layers,
+            protection_point,
+            &protection_pad.layers,
+            check.max_component_to_route_distance_mm,
+        ) else {
+            off_route_pads.push(format!("{}.{}", protection.component_id, protection_pin));
+            continue;
+        };
+        if nearest
+            .as_ref()
+            .is_none_or(|(_, _, distance): &(&str, &str, f64)| route_distance < *distance)
+        {
+            nearest = Some((
+                protection.component_id,
+                protection_pin.as_str(),
+                route_distance,
+            ));
+        }
+    }
+    let Some((protection_component, protection_pin, route_distance_mm)) = nearest else {
+        findings.push(usb_vbus_route_no_protection_pad_path_finding(
+            scenario,
+            UsbVbusRoutePadPathEvidence {
+                connector_id: check.connector_id,
+                net: check.net_name,
+                connector_pin,
+                missing_pads: &missing_pads,
+                off_route_pads: &off_route_pads,
+                max_pad_to_route_distance_mm: check.max_component_to_route_distance_mm,
+            },
+        ));
+        return;
+    };
+    if route_distance_mm > check.max_protection_route_distance_mm {
+        findings.push(usb_vbus_route_protection_pad_distance_finding(
+            scenario,
+            check.connector_id,
+            check.net_name,
+            UsbVbusRoutePadDistanceEvidence {
+                connector_pin,
+                protection_component,
+                protection_pin,
+                route_distance_mm,
+                max_route_distance_mm: check.max_protection_route_distance_mm,
+            },
         ));
     }
 }
@@ -1138,6 +1310,99 @@ fn usb_vbus_route_no_protection_path_finding(
     finding
 }
 
+fn usb_vbus_route_pad_metadata_finding(
+    scenario: &Scenario,
+    evidence: UsbVbusRoutePadMetadataEvidence<'_>,
+    message: String,
+) -> Finding {
+    let mut finding = Finding::critical(USB_VBUS_ROUTE_VALID, &scenario.name, message);
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("pad_component".to_string(), json!(evidence.pad_component));
+    finding
+        .measured
+        .insert("pad_pin".to_string(), json!(evidence.pad_pin));
+    finding
+        .limit
+        .insert(evidence.field.to_string(), json!(evidence.pad_pin));
+    finding.limit.insert(
+        "vbus_route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Import PCB pad evidence with import-kicad-pcb before enabling require_vbus_route_pad_contact_evidence.".to_string(),
+        "Check that the USB connector and VBUS protection footprint pad names match the component model pins and that both pads share the routed VBUS net.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbVbusRoutePadMetadataEvidence<'a> {
+    connector_id: &'a str,
+    net: &'a str,
+    pad_component: &'a str,
+    pad_pin: &'a str,
+    field: &'a str,
+}
+
+fn usb_vbus_route_no_protection_pad_path_finding(
+    scenario: &Scenario,
+    evidence: UsbVbusRoutePadPathEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {} VBUS net {} has no protection pad with usable route-distance evidence.",
+            evidence.connector_id, evidence.net
+        ),
+    );
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("connector_pad".to_string(), json!(evidence.connector_pin));
+    finding.measured.insert(
+        "vbus_protection_pads_missing".to_string(),
+        json!(evidence.missing_pads),
+    );
+    finding.measured.insert(
+        "vbus_protection_pads_off_route".to_string(),
+        json!(evidence.off_route_pads),
+    );
+    finding.limit.insert(
+        "max_component_to_route_distance_mm".to_string(),
+        json!(evidence.max_pad_to_route_distance_mm),
+    );
+    finding.limit.insert(
+        "vbus_route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Route connector VBUS through the protection device pad before continuing downstream, then import updated PCB route and pad evidence.".to_string(),
+        "Check VBUS protection footprint pad names, net names, and copper layers when the protection pad exists but is not on the imported route.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbVbusRoutePadPathEvidence<'a> {
+    connector_id: &'a str,
+    net: &'a str,
+    connector_pin: &'a str,
+    missing_pads: &'a [String],
+    off_route_pads: &'a [String],
+    max_pad_to_route_distance_mm: f64,
+}
+
 fn usb_vbus_route_protection_distance_finding(
     scenario: &Scenario,
     connector_id: &str,
@@ -1176,6 +1441,66 @@ fn usb_vbus_route_protection_distance_finding(
         "Route connector VBUS through the protection/power-entry component before continuing to downstream loads.".to_string(),
     ];
     finding
+}
+
+fn usb_vbus_route_protection_pad_distance_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    evidence: UsbVbusRoutePadDistanceEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} reaches protection pad {}.{} after {:.3} mm of route, exceeding limit {:.3} mm.",
+            evidence.protection_component,
+            evidence.protection_pin,
+            evidence.route_distance_mm,
+            evidence.max_route_distance_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("connector_pad".to_string(), json!(evidence.connector_pin));
+    finding.measured.insert(
+        "protection_component".to_string(),
+        json!(evidence.protection_component),
+    );
+    finding
+        .measured
+        .insert("protection_pad".to_string(), json!(evidence.protection_pin));
+    finding.measured.insert(
+        "connector_to_vbus_protection_route_distance_mm".to_string(),
+        json!(evidence.route_distance_mm),
+    );
+    finding.limit.insert(
+        "max_connector_to_vbus_protection_route_distance_mm".to_string(),
+        json!(evidence.max_route_distance_mm),
+    );
+    finding.limit.insert(
+        "vbus_route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Move the VBUS protection pad closer to the USB connector VBUS pad along the routed VBUS path.".to_string(),
+        "Route connector VBUS through the protection/power-entry pad before continuing to downstream loads.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbVbusRoutePadDistanceEvidence<'a> {
+    connector_pin: &'a str,
+    protection_component: &'a str,
+    protection_pin: &'a str,
+    route_distance_mm: f64,
+    max_route_distance_mm: f64,
 }
 
 fn validate_usb_pair_gap(

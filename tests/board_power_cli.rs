@@ -631,9 +631,15 @@ fn usb_vbus_route_geometry_reports_length_vias_width_and_protection_order() {
         protection_distance["measured"]["protection_component"],
         "UVBUS"
     );
+    assert_eq!(protection_distance["measured"]["connector_pad"], "VBUS");
+    assert_eq!(protection_distance["measured"]["protection_pad"], "VBUS");
     assert_eq!(
         protection_distance["limit"]["max_connector_to_vbus_protection_route_distance_mm"],
         2.0
+    );
+    assert_eq!(
+        protection_distance["limit"]["vbus_route_pad_contact_policy"],
+        "same_net_pad_center_on_route"
     );
     assert_report_schema_valid(&report);
 }

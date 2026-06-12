@@ -203,11 +203,15 @@ include `connector_signal`, `route_length_mm`, `via_count`,
 `route_segment_width_mm`, `protection_component`,
 `connector_to_vbus_protection_route_distance_mm`,
 `protection_components_without_placement`, and
-`protection_components_off_route`. Stable limit keys include
+`protection_components_off_route`. When VBUS pad-contact evidence is required,
+route-order findings also report `connector_pad`, `protection_pad`,
+`pad_component`, `pad_pin`, `vbus_protection_pads_missing`, and
+`vbus_protection_pads_off_route` as applicable. Stable limit keys include
 `max_vbus_route_length_mm`, `max_vbus_via_count`,
 `min_vbus_route_width_mm`,
 `max_connector_to_vbus_protection_route_distance_mm`, and
-`max_component_to_route_distance_mm`.
+`max_component_to_route_distance_mm`. Pad-contact VBUS findings additionally
+include `vbus_route_pad_contact_policy`.
 
 `USB_RETURN_PATH_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, `board.layout.routes`, and same-layer

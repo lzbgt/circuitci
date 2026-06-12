@@ -21,7 +21,7 @@ use route_evidence::{
     ground_zones_have_filled_polygons, pad_to_route_distance_mm,
     return_path_filled_zone_clearance_segments, return_path_unreferenced_segments,
     route_distance_between_pads_mm, route_ground_zone_contacts, suggested_usb_route_pad,
-    usb_route_pad_contact_evidence_exists,
+    usb_route_pad_contact_evidence_exists, usb_vbus_route_pad_contact_evidence_exists,
 };
 
 pub(super) fn usb_connector_protection_suggestion(
@@ -417,7 +417,23 @@ pub(super) fn usb_vbus_route_suggestion(
         vbus_net,
         connector_placement,
     )?;
-    let vbus_route = suggested_usb_vbus_route(bound, vbus_net, Some(vbus_clamp.component.clone()))?;
+    let vbus_route = suggested_usb_vbus_route(
+        bound,
+        vbus_net,
+        Some(vbus_clamp.component.clone()),
+        Some((component_id, connector.vbus_pin.as_str())),
+        Some((
+            vbus_clamp.component.as_str(),
+            vbus_clamp.protected_pin.as_str(),
+        )),
+    )?;
+    let has_pad_contact_evidence = usb_vbus_route_pad_contact_evidence_exists(
+        bound,
+        component_id,
+        component,
+        connector,
+        &vbus_clamp,
+    );
     let route_limit = bound
         .project
         .board
@@ -444,6 +460,14 @@ pub(super) fn usb_vbus_route_suggestion(
         (
             "max_component_to_route_distance_mm".to_string(),
             serde_json::Value::Null,
+        ),
+        (
+            "require_vbus_route_pad_contact_evidence".to_string(),
+            if has_pad_contact_evidence {
+                serde_json::Value::Bool(true)
+            } else {
+                serde_json::Value::Null
+            },
         ),
     ]);
     Some(ScenarioSuggestion {
@@ -488,6 +512,11 @@ pub(super) fn usb_vbus_route_suggestion(
             ),
             "Fill max_vbus_via_count from the board's USB power-entry routing policy.".to_string(),
             "Review or fill min_vbus_route_width_mm from the board's VBUS current/temperature-rise routing rule.".to_string(),
+            if has_pad_contact_evidence {
+                "Review require_vbus_route_pad_contact_evidence=true against imported connector/protection pad evidence before treating the VBUS route template as sign-off.".to_string()
+            } else {
+                "Import PCB pad evidence or set require_vbus_route_pad_contact_evidence only after connector/protection pads are mapped to the routed VBUS net.".to_string()
+            },
             "Fill max_connector_to_vbus_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/power-entry layout guidance before treating the VBUS route template as sign-off.".to_string(),
         ],
     })
@@ -710,6 +739,8 @@ fn suggested_usb_vbus_route(
     bound: &BoundBoard<'_>,
     net_name: &str,
     protection_component: Option<String>,
+    connector_pad_ref: Option<(&str, &str)>,
+    protection_pad_ref: Option<(&str, &str)>,
 ) -> Option<SuggestedUsbRoute> {
     let route = bound.project.board.layout.routes.get(net_name)?;
     if route.segments.is_empty() {
@@ -723,6 +754,24 @@ fn suggested_usb_vbus_route(
         .net_rules
         .get(net_name)
         .and_then(|rule| rule.track_width_mm);
+    let connector_pad = connector_pad_ref.and_then(|(component_id, pin)| {
+        suggested_usb_route_pad(bound, component_id, pin, net_name)
+    });
+    let protection_pad = protection_pad_ref.and_then(|(component_id, pin)| {
+        suggested_usb_route_pad(bound, component_id, pin, net_name)
+    });
+    let connector_pad_to_route_distance_mm = connector_pad
+        .as_ref()
+        .and_then(|pad| pad_to_route_distance_mm(route, pad));
+    let protection_pad_to_route_distance_mm = protection_pad
+        .as_ref()
+        .and_then(|pad| pad_to_route_distance_mm(route, pad));
+    let connector_to_protection_pad_route_distance_mm =
+        connector_pad.as_ref().and_then(|connector_pad| {
+            protection_pad.as_ref().and_then(|protection_pad| {
+                route_distance_between_pads_mm(route, connector_pad, protection_pad)
+            })
+        });
     Some(SuggestedUsbRoute {
         signal: "VBUS".to_string(),
         net: net_name.to_string(),
@@ -734,11 +783,11 @@ fn suggested_usb_vbus_route(
         expected_vbus_route_width_mm,
         measured_vbus_route_width_min_mm: narrowest_route_width_mm(route),
         protection_component,
-        connector_pad: None,
-        protection_pad: None,
-        connector_pad_to_route_distance_mm: None,
-        protection_pad_to_route_distance_mm: None,
-        connector_to_protection_pad_route_distance_mm: None,
+        connector_pad,
+        protection_pad,
+        connector_pad_to_route_distance_mm,
+        protection_pad_to_route_distance_mm,
+        connector_to_protection_pad_route_distance_mm,
         unreferenced_route_length_mm: None,
         unreferenced_segments: None,
         filled_unreferenced_route_length_mm: None,

@@ -246,6 +246,23 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(route_pair["expected_data_pair_gap_mm"], 0.15);
     assert!((route_pair["measured_data_pair_gap_mm"].as_f64().unwrap() - 0.25).abs() < 1.0e-9);
     assert!((route_pair["data_pair_gap_delta_mm"].as_f64().unwrap() - 0.1).abs() < 1.0e-9);
+    let vbus_route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
+        .expect("USB VBUS route suggestion");
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
+        true
+    );
+    let vbus = &vbus_route["scenario"]["usb_routes"][0];
+    assert_eq!(vbus["connector_pad"]["pin"], "VBUS");
+    assert_eq!(vbus["connector_pad"]["net"], "net_usb_vbus");
+    assert_eq!(vbus["protection_pad"]["component"], "UVBUS");
+    assert_eq!(vbus["protection_pad"]["pin"], "IO");
+    assert_eq!(vbus["protection_pad"]["net"], "net_usb_vbus");
+    assert_eq!(vbus["connector_to_protection_pad_route_distance_mm"], 1.5);
     let return_path = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -491,6 +508,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         vbus_route["scenario"]["parameters"]["min_vbus_route_width_mm"],
         0.3
     );
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
+        true
+    );
     let vbus = &vbus_route["scenario"]["usb_routes"][0];
     assert_eq!(vbus["signal"], "VBUS");
     assert_eq!(vbus["net"], "usb_vbus");
@@ -499,6 +520,15 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(vbus["expected_vbus_route_width_mm"], 0.3);
     assert_eq!(vbus["measured_vbus_route_width_min_mm"], 0.3);
     assert_eq!(vbus["protection_component"], "UVBUS");
+    assert_eq!(vbus["connector_pad"]["component"], "J1");
+    assert_eq!(vbus["connector_pad"]["pin"], "VBUS");
+    assert_eq!(vbus["connector_pad"]["net"], "usb_vbus");
+    assert_eq!(vbus["protection_pad"]["component"], "UVBUS");
+    assert_eq!(vbus["protection_pad"]["pin"], "IO");
+    assert_eq!(vbus["protection_pad"]["net"], "usb_vbus");
+    assert_eq!(vbus["connector_pad_to_route_distance_mm"], 0.0);
+    assert_eq!(vbus["protection_pad_to_route_distance_mm"], 0.0);
+    assert_eq!(vbus["connector_to_protection_pad_route_distance_mm"], 1.5);
     let return_path = suggestions["suggestions"]
         .as_array()
         .unwrap()

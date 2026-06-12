@@ -122,6 +122,10 @@ The command is conservative:
   the template pre-fills `max_vbus_route_length_mm` and
   `min_vbus_route_width_mm`; via-count and connector-to-protection route
   distance limits remain `null` until an agent supplies board-specific policy.
+  When imported connector VBUS and protection pad evidence exists, the template
+  sets `require_vbus_route_pad_contact_evidence: true`; the VBUS
+  `scenario.usb_routes[]` entry then reports `connector_pad`, `protection_pad`,
+  pad-to-route distances, and `connector_to_protection_pad_route_distance_mm`.
 - It emits non-runnable `USB_RETURN_PATH_VALID` templates when USB D+/D-
   `board.layout.routes` evidence and same-layer ground-zone outlines under
   `board.layout.zones` are present. The template includes each data net's

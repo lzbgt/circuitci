@@ -42,6 +42,17 @@ board:
         x_mm: 6.0
         y_mm: 0.0
         side: top
+    pads:
+      J1:
+        VBUS:
+          net: usb_vbus
+          at: { x_mm: 0.0, y_mm: 0.0 }
+          layers: [F.Cu]
+      UVBUS:
+        VBUS:
+          net: usb_vbus
+          at: { x_mm: 6.0, y_mm: 0.0 }
+          layers: [F.Cu]
     routes:
       usb_vbus:
         segments:
@@ -78,3 +89,4 @@ scenarios:
       min_vbus_route_width_mm: 0.25
       max_connector_to_vbus_protection_route_distance_mm: 2.0
       max_component_to_route_distance_mm: 1.0
+      require_vbus_route_pad_contact_evidence: true

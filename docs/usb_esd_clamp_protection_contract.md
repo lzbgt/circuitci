@@ -198,12 +198,18 @@ Route-geometry validation:
   `parameters.max_component_to_route_distance_mm`.
 - When `parameters.min_vbus_route_width_mm` is present, every imported VBUS
   route segment must be at least that wide.
-- The rule projects connector/protection placements onto the VBUS route graph
-  and checks the routed distance from connector VBUS to the nearest valid VBUS
-  protection component.
+- By default, the rule projects connector/protection placements onto the VBUS
+  route graph and checks the routed distance from connector VBUS to the nearest
+  valid VBUS protection component. When
+  `parameters.require_vbus_route_pad_contact_evidence` is true, the same
+  route-order check uses imported same-net connector VBUS and protection pad
+  centers from `board.layout.pads` instead of component placement centers.
 - Scenario suggestions expose VBUS route evidence in `scenario.usb_routes[]`,
   including measured length, via count, optional imported expected VBUS route
   width, measured minimum VBUS route width, and matching protection component.
+  When imported pad evidence is available, suggestions also expose connector
+  and protection pad records plus measured connector-to-protection pad route
+  distance.
 - This check is still static layout evidence. It does not prove VBUS ampacity,
   fuse trip behavior, inrush current, voltage drop under load, temperature
   rise, or ESD pulse robustness.

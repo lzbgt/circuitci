@@ -615,6 +615,9 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             .is_null()
     );
     assert!(vbus_route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
+    assert!(
+        vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"].is_null()
+    );
     let vbus_routes = vbus_route["scenario"]["usb_routes"].as_array().unwrap();
     assert_eq!(vbus_routes.len(), 1);
     assert_eq!(vbus_routes[0]["signal"], "VBUS");

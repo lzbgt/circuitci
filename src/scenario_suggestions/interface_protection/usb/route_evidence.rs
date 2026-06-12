@@ -182,6 +182,26 @@ pub(super) fn usb_route_pad_contact_evidence_exists(
     )
 }
 
+pub(super) fn usb_vbus_route_pad_contact_evidence_exists(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    component: &ComponentSpec,
+    connector: &UsbConnector,
+    vbus_clamp: &SuggestedProtectionClamp,
+) -> bool {
+    route_pad_exists(
+        bound,
+        connector_id,
+        &connector.vbus_pin,
+        component.pins.get(&connector.vbus_pin).map(String::as_str),
+    ) && route_pad_exists(
+        bound,
+        &vbus_clamp.component,
+        &vbus_clamp.protected_pin,
+        Some(vbus_clamp.protected_net.as_str()),
+    )
+}
+
 fn route_pad_exists(
     bound: &BoundBoard<'_>,
     component_id: &str,
@@ -191,17 +211,7 @@ fn route_pad_exists(
     let Some(expected_net) = expected_net else {
         return false;
     };
-    let Some(pad) = bound
-        .project
-        .board
-        .layout
-        .pads
-        .get(component_id)
-        .and_then(|pads| pads.get(pin))
-    else {
-        return false;
-    };
-    pad.net == expected_net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()
+    route_pad_for_pin(bound, component_id, pin, expected_net).is_some()
 }
 
 pub(super) fn suggested_usb_route_pad(
@@ -210,24 +220,39 @@ pub(super) fn suggested_usb_route_pad(
     pin: &str,
     expected_net: &str,
 ) -> Option<SuggestedUsbRoutePad> {
-    let pad = bound
-        .project
-        .board
-        .layout
-        .pads
-        .get(component_id)?
-        .get(pin)?;
-    if pad.net != expected_net || !pad.at.x_mm.is_finite() || !pad.at.y_mm.is_finite() {
-        return None;
-    }
+    let (pad_name, pad) = route_pad_for_pin(bound, component_id, pin, expected_net)?;
     Some(SuggestedUsbRoutePad {
         component: component_id.to_string(),
-        pin: pin.to_string(),
+        pin: pad_name.to_string(),
         net: pad.net.clone(),
         x_mm: pad.at.x_mm,
         y_mm: pad.at.y_mm,
         layers: pad.layers.clone(),
     })
+}
+
+fn route_pad_for_pin<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &str,
+    pin: &str,
+    expected_net: &str,
+) -> Option<(&'a str, &'a LayoutPad)> {
+    let pads = bound.project.board.layout.pads.get(component_id)?;
+    if let Some((pad_name, pad)) = pads.get_key_value(pin)
+        && pad.net == expected_net
+        && pad.at.x_mm.is_finite()
+        && pad.at.y_mm.is_finite()
+    {
+        return Some((pad_name.as_str(), pad));
+    }
+    let mut matching_pads = pads.iter().filter(|(_, pad)| {
+        pad.net == expected_net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()
+    });
+    let (pad_name, pad) = matching_pads.next()?;
+    matching_pads
+        .next()
+        .is_none()
+        .then_some((pad_name.as_str(), pad))
 }
 
 pub(super) fn pad_to_route_distance_mm(
