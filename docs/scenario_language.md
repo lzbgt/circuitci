@@ -323,6 +323,13 @@ component-model metadata:
    source_impedance_ohm`.
 3. `parameters.diode_drop_V` defaults to `0.3`.
 
+When Board IR components include imported
+`source.board_pin_electrical_types`, the scan also applies that schematic
+evidence. A model output participates as a driver only if the imported KiCad
+pin type is output-capable, and a model input participates as a receiver only
+if the imported KiCad pin type is input-capable. Missing imported pin-type
+metadata keeps the model-only behavior.
+
 This rule is intended to catch common IoT mistakes such as a 3.3 V MCU tied to
 5 V, an unpowered rail marked as valid for logic checks, or an undersized
 regulator budget. The I/O compatibility companion check catches common

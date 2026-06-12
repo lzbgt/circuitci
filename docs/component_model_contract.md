@@ -180,7 +180,9 @@ output/input pairs and:
 - fails when that estimate exceeds `injection_current_limit_A`.
 
 The rule skips pairs that lack the relevant metadata; it is a static board-level
-screen, not a replacement for analog waveform proof.
+screen, not a replacement for analog waveform proof. When imported KiCad
+`source.board_pin_electrical_types` exists, the scan also requires the imported
+pin type to allow the candidate driver or receiver direction.
 
 ## GPIO_BACKDRIVE Rule
 

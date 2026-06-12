@@ -100,18 +100,48 @@ pub(super) fn validate_kicad_pin_direction(
     required: PinDirection,
     role: &str,
 ) -> Result<(), String> {
-    let Some(electrical_type) = bound
+    let Some(electrical_type) = kicad_pin_electrical_type(bound, endpoint) else {
+        return Ok(());
+    };
+    if kicad_pin_type_supports_direction(electrical_type, required) {
+        return Ok(());
+    }
+    let required_text = match required {
+        PinDirection::Input => "input-capable",
+        PinDirection::Output => "output-capable",
+    };
+    Err(format!(
+        "{role} {}.{} has KiCad electrical type {}, which is not {required_text}.",
+        endpoint.component, endpoint.pin, electrical_type
+    ))
+}
+
+pub(super) fn kicad_pin_direction_capable(
+    bound: &BoundBoard<'_>,
+    endpoint: &Endpoint,
+    required: PinDirection,
+) -> bool {
+    kicad_pin_electrical_type(bound, endpoint)
+        .is_none_or(|electrical_type| kicad_pin_type_supports_direction(electrical_type, required))
+}
+
+fn kicad_pin_electrical_type<'a>(
+    bound: &'a BoundBoard<'_>,
+    endpoint: &Endpoint,
+) -> Option<&'a str> {
+    bound
         .project
         .board
         .components
         .get(&endpoint.component)
         .and_then(|component| component.source.as_ref())
         .and_then(|source| source.board_pin_electrical_types.get(&endpoint.pin))
-    else {
-        return Ok(());
-    };
+        .map(String::as_str)
+}
+
+fn kicad_pin_type_supports_direction(electrical_type: &str, required: PinDirection) -> bool {
     let normalized = normalize_kicad_pin_electrical_type(electrical_type);
-    let capable = match required {
+    match required {
         PinDirection::Input => {
             matches!(normalized.as_str(), "input" | "bidirectional" | "tri_state")
         }
@@ -124,18 +154,7 @@ pub(super) fn validate_kicad_pin_direction(
                 | "open_collector"
                 | "open_emitter"
         ),
-    };
-    if capable {
-        return Ok(());
     }
-    let required_text = match required {
-        PinDirection::Input => "input-capable",
-        PinDirection::Output => "output-capable",
-    };
-    Err(format!(
-        "{role} {}.{} has KiCad electrical type {}, which is not {required_text}.",
-        endpoint.component, endpoint.pin, electrical_type
-    ))
 }
 
 fn normalize_kicad_pin_electrical_type(value: &str) -> String {

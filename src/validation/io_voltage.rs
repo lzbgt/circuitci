@@ -4,7 +4,7 @@ use crate::reports::{EndpointPair, Finding};
 use serde_json::json;
 
 use super::IO_VOLTAGE_COMPATIBLE;
-use super::common::component_power_voltage;
+use super::common::{PinDirection, component_power_voltage, kicad_pin_direction_capable};
 
 #[derive(Debug)]
 struct DigitalPin<'a> {
@@ -48,11 +48,14 @@ pub(super) fn validate_io_voltage_compatible(
         }
     }
 
-    for driver in pins.iter().filter(|pin| is_output_capable(pin.port)) {
-        for receiver in pins
-            .iter()
-            .filter(|pin| pin.net == driver.net && is_input_capable(pin.port))
-        {
+    for driver in pins.iter().filter(|pin| {
+        is_output_capable(pin.port) && kicad_direction_capable(bound, pin, PinDirection::Output)
+    }) {
+        for receiver in pins.iter().filter(|pin| {
+            pin.net == driver.net
+                && is_input_capable(pin.port)
+                && kicad_direction_capable(bound, pin, PinDirection::Input)
+        }) {
             if driver.component == receiver.component && driver.pin == receiver.pin {
                 continue;
             }
@@ -60,6 +63,18 @@ pub(super) fn validate_io_voltage_compatible(
             validate_input_clamp_current(driver, receiver, diode_drop_v, scenario, bound, findings);
         }
     }
+}
+
+fn kicad_direction_capable(
+    bound: &BoundBoard<'_>,
+    pin: &DigitalPin<'_>,
+    direction: PinDirection,
+) -> bool {
+    let endpoint = Endpoint {
+        component: pin.component.to_string(),
+        pin: pin.pin.to_string(),
+    };
+    kicad_pin_direction_capable(bound, &endpoint, direction)
 }
 
 fn validate_logic_high_margin(

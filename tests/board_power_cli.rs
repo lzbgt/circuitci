@@ -172,6 +172,14 @@ fn io_voltage_vih_mismatch_fails() {
 }
 
 #[test]
+fn io_voltage_respects_imported_kicad_pin_direction_metadata() {
+    let report = run_validation("examples/good_io_voltage_kicad_direction_metadata/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn io_voltage_backfeed_clamp_current_fails() {
     let report = run_validation("examples/bad_io_voltage_backfeed_clamp/project.yaml");
     assert_eq!(report["result"], "fail");

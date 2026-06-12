@@ -40,12 +40,17 @@ present:
   KiCad `output`, `bidirectional`, `tri_state`,
   `power_out`, `open_collector`, or `open_emitter`,
 - control-line targets, UART target RX pins, and backdrive victims must be
-  KiCad `input`, `bidirectional`, or `tri_state`.
+  KiCad `input`, `bidirectional`, or `tri_state`,
+- `IO_VOLTAGE_COMPATIBLE` scans only model output/input pairs whose imported
+  KiCad pin types also allow the scanned direction.
 
 The check is additive. Component models still have to declare output-capable
 source/driver/sender ports and input-capable target/victim ports. KiCad
 metadata cannot upgrade a bad component model; it can only fail closed when
 imported schematic direction evidence contradicts the required electrical
 direction. These contradictions are critical validation failures for
-control-line, UART/protocol, and backdrive checks because imported schematic
-metadata is treated as evidence about what the board actually connects.
+control-line, UART/protocol, and backdrive checks because those scenarios
+declare explicit endpoints. For scan-based I/O voltage compatibility, imported
+metadata constrains candidate driver/receiver roles so an input-only schematic
+pin is not treated as a possible output driver just because the generic model
+port is bidirectional or otherwise output-capable.
