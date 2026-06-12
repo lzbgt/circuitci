@@ -13,6 +13,8 @@ source-file rule.
 - Shared CLI helpers live in `tests/common/mod.rs`.
 - Behavioral CLI, schema-walk, and suite acceptance tests stay in
   `tests/backdrive_cli.rs`.
+- Power-tree, regulator, interface-protection, and datasheet-backed power
+  model tests live in `tests/board_power_cli.rs`.
 - Analog SPICE, embedded-ngspice, generated-netlist, operating-limit, and
   SPICE-deck importer tests live in `tests/analog_spice_cli.rs`.
 - Scenario suggestion CLI tests live in `tests/scenario_suggestions_cli.rs`.
