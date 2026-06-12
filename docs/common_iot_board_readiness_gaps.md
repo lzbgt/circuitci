@@ -96,16 +96,20 @@ recognized circuits:
 Generated scenarios must remain conservative: no assertion means no sign-off.
 
 Executable slices: `circuitci suggest-scenarios` now emits runnable
-`POWER_TREE_VALID` scenarios for projects with declared power nets and
-non-runnable templates for reset release, boot straps, UART bootloader sync, and
-first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
-present but observations still need real evidence. It also emits
-interface-protection review templates when component models declare explicit
-`signal_conditioning.channels`. It does not invent timing, strap states,
-protocol events, GPIO pin-state observations, protection-path resistance,
-datasheet isolation behavior, or analog assertions. Broader automatic
-recognition for chargers, oscillators, load switches, and device-specific
-protection behavior remains a component-pack and scenario-generation gap.
+`POWER_TREE_VALID` scenarios for projects with declared power nets and runnable
+`BOOT_STRAP_BIAS_VALID` scenarios when boot straps have explicit resistor bias
+evidence to power or ground, including mapped KiCad pull resistors with parsed
+schematic values. It also emits non-runnable templates for reset release,
+observed boot-strap states, UART bootloader sync, and first-slice GPIO
+backdrive hot-plug risks when model/connectivity evidence is present but
+observations still need real evidence. It also emits interface-protection
+review templates when component models declare explicit
+`signal_conditioning.channels`. It does not invent timing, observed strap
+states, protocol events, GPIO pin-state observations, protection-path
+resistance, datasheet isolation behavior, or analog assertions. Broader
+automatic recognition for chargers, oscillators, load switches, and
+device-specific protection behavior remains a component-pack and
+scenario-generation gap.
 
 ## 5. Layout-Dependent Physics
 
