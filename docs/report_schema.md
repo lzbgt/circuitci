@@ -266,6 +266,7 @@ keys include `obstructing_component`, `entry_obstruction_depth_mm`,
 `entry_aperture_center_lateral_projection_mm`, optional
 `entry_aperture_front_offset_mm`, optional
 `entry_aperture_lateral_offset_mm`, optional `entry_aperture_width_mm`,
+optional `aperture_min_effective_clearance_width_mm`,
 `effective_cable_entry_clearance_width_mm`,
 `obstruction_reference`, optional `obstruction_footprint_graphic_layer`, and
 optional `obstruction_footprint_graphic_kind`. Stable limit keys include

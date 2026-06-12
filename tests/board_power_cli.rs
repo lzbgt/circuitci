@@ -565,6 +565,10 @@ fn usb_connector_entry_clearance_uses_model_aperture_geometry() {
     assert_eq!(failure["measured"]["entry_aperture_lateral_offset_mm"], 1.0);
     assert_eq!(failure["measured"]["entry_aperture_width_mm"], 0.5);
     assert_eq!(
+        failure["measured"]["aperture_min_effective_clearance_width_mm"],
+        0.5
+    );
+    assert_eq!(
         failure["measured"]["effective_cable_entry_clearance_width_mm"],
         0.5
     );

@@ -976,6 +976,10 @@ fn entry_clearance_finding(evidence: EntryClearanceEvidence<'_>) -> Finding {
             "entry_aperture_width_mm".to_string(),
             json!(aperture_width_mm),
         );
+        finding.measured.insert(
+            "aperture_min_effective_clearance_width_mm".to_string(),
+            json!(aperture_width_mm),
+        );
     }
     finding.measured.insert(
         "effective_cable_entry_clearance_width_mm".to_string(),

@@ -1097,6 +1097,10 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     );
     assert_eq!(entry_failure["measured"]["entry_aperture_width_mm"], 1.0);
     assert_eq!(
+        entry_failure["measured"]["aperture_min_effective_clearance_width_mm"],
+        1.0
+    );
+    assert_eq!(
         entry_failure["measured"]["effective_cable_entry_clearance_width_mm"],
         1.0
     );
