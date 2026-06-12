@@ -201,6 +201,51 @@ fn io_voltage_backfeed_clamp_current_fails() {
 }
 
 #[test]
+fn boot_strap_bias_divider_passes() {
+    let report = run_validation("examples/good_bootstrap_bias_divider/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn boot_strap_bias_threshold_fails() {
+    let report = run_validation("examples/bad_bootstrap_bias_threshold/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "BOOT_STRAP_BIAS_VALID");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["net"], "boot0");
+    assert_eq!(failure["measured"]["required_boot_mode"], "bootloader");
+    assert_eq!(failure["measured"]["strap_voltage_V"], 1.65);
+    assert_eq!(failure["limit"]["required_BOOT0"], "high");
+    assert_eq!(failure["limit"]["vih_min_V"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn boot_strap_bias_current_limit_fails() {
+    let report = run_validation("examples/bad_bootstrap_bias_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("max_strap_bias_current_A").is_some())
+        .expect("strap current finding");
+    assert_eq!(failure["id"], "BOOT_STRAP_BIAS_VALID");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["net"], "boot0");
+    assert_eq!(failure["measured"]["strap_voltage_V"], 3.0);
+    let current_a = failure["measured"]["strap_bias_current_A"]
+        .as_f64()
+        .unwrap();
+    assert!((current_a - 0.0003).abs() < 1e-12);
+    assert_eq!(failure["limit"]["max_strap_bias_current_A"], 0.0001);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_current_budget_fails() {
     let report = run_validation("examples/bad_power_tree_current_budget/project.yaml");
     assert_eq!(report["result"], "fail");

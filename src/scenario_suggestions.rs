@@ -11,6 +11,7 @@ const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
+const BOOT_STRAP_BIAS_VALID: &str = "BOOT_STRAP_BIAS_VALID";
 const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 
 #[derive(Debug, Serialize)]
@@ -685,6 +686,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
 
 fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
     let existing = existing_boot_strap_checks(bound.project);
+    let existing_bias = existing_boot_strap_bias_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -694,23 +696,70 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
             continue;
         };
         for (mode_name, mode) in &boot.modes {
-            if existing.contains_key(&(component_id.clone(), mode_name.clone())) {
-                continue;
-            }
             let mut straps = Vec::new();
             let mut missing_pins = Vec::new();
+            let mut all_straps_have_bias = true;
             for requirement in &mode.straps {
                 match component.pins.get(&requirement.pin) {
-                    Some(net) => straps.push(SuggestedStrap {
-                        component: component_id.clone(),
-                        pin: requirement.pin.clone(),
-                        net: Some(net.clone()),
-                        actual: None,
-                    }),
+                    Some(net) => {
+                        if !strap_net_has_bias(bound.project, net) {
+                            all_straps_have_bias = false;
+                        }
+                        straps.push(SuggestedStrap {
+                            component: component_id.clone(),
+                            pin: requirement.pin.clone(),
+                            net: Some(net.clone()),
+                            actual: None,
+                        });
+                    }
                     None => missing_pins.push(requirement.pin.clone()),
                 }
             }
             if straps.is_empty() {
+                continue;
+            }
+            if missing_pins.is_empty()
+                && all_straps_have_bias
+                && !existing_bias.contains_key(&(component_id.clone(), mode_name.clone()))
+            {
+                suggestions.push(ScenarioSuggestion {
+                    id: format!(
+                        "boot_strap_bias_valid_{}_{}",
+                        sanitized_name(component_id),
+                        sanitized_name(mode_name)
+                    ),
+                    kind: "reset_boot".to_string(),
+                    confidence: "medium".to_string(),
+                    runnable: true,
+                    reason: format!(
+                        "Component {component_id} boot mode {mode_name} has explicit resistor bias evidence but no BOOT_STRAP_BIAS_VALID scenario covers it."
+                    ),
+                    scenario: SuggestedScenario {
+                        name: format!(
+                            "{}_boot_strap_bias_{}",
+                            sanitized_name(component_id),
+                            sanitized_name(mode_name)
+                        ),
+                        scenario_type: "reset_boot".to_string(),
+                        checks: vec![BOOT_STRAP_BIAS_VALID.to_string()],
+                        target: Some(SuggestedTarget {
+                            component: component_id.clone(),
+                            power_pin: None,
+                            reset_pin: None,
+                        }),
+                        timing: None,
+                        required_boot_mode: Some(mode_name.clone()),
+                        straps: Vec::new(),
+                        bootloader: None,
+                        events: Vec::new(),
+                        conditioning: None,
+                        pin_states: Vec::new(),
+                        paths: Vec::new(),
+                    },
+                    required_inputs: Vec::new(),
+                });
+            }
+            if existing.contains_key(&(component_id.clone(), mode_name.clone())) {
                 continue;
             }
             let mut required_inputs = vec![format!(
@@ -941,6 +990,53 @@ fn existing_boot_strap_checks(project: &BoardProject) -> BTreeMap<(String, Strin
             ))
         })
         .collect()
+}
+
+fn existing_boot_strap_bias_checks(project: &BoardProject) -> BTreeMap<(String, String), ()> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "reset_boot"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == BOOT_STRAP_BIAS_VALID)
+        })
+        .filter_map(|scenario| {
+            Some((
+                (
+                    scenario.target.as_ref()?.component.clone(),
+                    scenario.required_boot_mode.clone()?,
+                ),
+                (),
+            ))
+        })
+        .collect()
+}
+
+fn strap_net_has_bias(project: &BoardProject, strap_net: &str) -> bool {
+    project.board.components.values().any(|component| {
+        let Some(spice) = &component.spice else {
+            return false;
+        };
+        if spice.primitive != crate::board_ir::SpicePrimitive::Resistor
+            || !spice
+                .value_ohm
+                .is_some_and(|value| value.is_finite() && value > 0.0)
+            || !component.pins.values().any(|net| net == strap_net)
+        {
+            return false;
+        }
+        component.pins.values().any(|net| {
+            net != strap_net
+                && project
+                    .board
+                    .nets
+                    .get(net)
+                    .is_some_and(|spec| matches!(spec.kind, NetKind::Power | NetKind::Ground))
+        })
+    })
 }
 
 fn existing_uart_checks(project: &BoardProject) -> BTreeMap<String, ()> {

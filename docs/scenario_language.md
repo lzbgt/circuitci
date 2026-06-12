@@ -148,7 +148,42 @@ fails closed if it conflicts with duplicated scenario `timing.power_valid_at_us`
 Missing target/timing data for this declared check is a critical
 `VALIDATION_INPUT_MISSING` finding.
 
-`BOOT_STRAP_DEFINED` resolves required strap states from `component.behavior.boot.modes[required_boot_mode]`. It fails when any required strap is missing from scenario observations, observed as `floating` or `undefined`, or not equal to the model-required state. The scenario may not invent the required strap state.
+`BOOT_STRAP_DEFINED` resolves required strap states from
+`component.behavior.boot.modes[required_boot_mode]`. It fails when any required
+strap is missing from scenario observations, observed as `floating` or
+`undefined`, or not equal to the model-required state. The scenario may not
+invent the required strap state.
+
+`BOOT_STRAP_BIAS_VALID` is the static resistor-network companion for
+schematic-derived strap checks. It resolves each required boot strap pin to its
+board net, finds explicit resistor primitives connected from that net to
+declared power or ground nets, and computes the DC strap voltage:
+
+```text
+strap_voltage = sum(source_voltage / resistor_ohm) / sum(1 / resistor_ohm)
+strap_bias_current = sum(max(0, source_voltage - strap_voltage) / resistor_ohm)
+```
+
+The rule supports pull-up-only, pull-down-only, and divider networks. Power
+source nets must declare `powered` and `nominal_voltage`; unpowered rails
+contribute `0 V`. The target strap model pin must declare `vih_min_V` for a
+required `high` state or `vil_max_V` for a required `low` state. A strap with
+no resistor bias to power or ground fails as floating. A divider voltage inside
+the undefined region fails. If the scenario declares
+`parameters.max_strap_bias_current_A`, the computed divider current must not
+exceed that limit.
+
+```yaml
+scenarios:
+  - name: bootloader_boot0_bias
+    type: reset_boot
+    target: { component: U1, power_pin: VDD }
+    checks:
+      - BOOT_STRAP_BIAS_VALID
+    required_boot_mode: bootloader
+    parameters:
+      max_strap_bias_current_A: 0.0001
+```
 
 ## Serial Programming Scenario Shape
 

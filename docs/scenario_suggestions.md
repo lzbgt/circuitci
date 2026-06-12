@@ -39,13 +39,15 @@ The command is conservative:
   unpowered-isolation evidence.
 - It emits boot-strap templates when model boot modes declare required straps
   and the strap pins are connected.
+- It emits runnable `BOOT_STRAP_BIAS_VALID` templates when required strap pins
+  have explicit resistor bias evidence to declared power or ground nets.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
-  delays, GPIO pin-state observations, protection-path resistance, or SPICE
-  assertions.
+  delays, GPIO pin-state observations, protection-path resistance, strap
+  current budgets, or SPICE assertions.
 
 Example output shape:
 

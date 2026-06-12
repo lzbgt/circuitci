@@ -232,3 +232,37 @@ fn suggest_scenarios_derives_interface_protection_template() {
             .contains("output-capable sender")
     );
 }
+
+#[test]
+fn suggest_scenarios_derives_boot_strap_bias_template() {
+    let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
+    assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");
+    let bias = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_bias_valid_u1_application")
+        .expect("boot strap bias suggestion");
+    assert_eq!(bias["kind"], "reset_boot");
+    assert_eq!(bias["runnable"], true);
+    assert_eq!(bias["scenario"]["type"], "reset_boot");
+    assert_eq!(bias["scenario"]["checks"][0], "BOOT_STRAP_BIAS_VALID");
+    assert_eq!(bias["scenario"]["target"]["component"], "U1");
+    assert_eq!(bias["scenario"]["required_boot_mode"], "application");
+    assert!(bias.get("required_inputs").is_none());
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|suggestion| suggestion["id"] != "boot_strap_bias_valid_u1_bootloader")
+    );
+    let observed = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_defined_u1_bootloader")
+        .expect("observed boot strap suggestion");
+    assert_eq!(observed["runnable"], false);
+    assert_eq!(observed["scenario"]["checks"][0], "BOOT_STRAP_DEFINED");
+}

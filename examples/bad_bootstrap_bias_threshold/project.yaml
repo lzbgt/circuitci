@@ -1,0 +1,55 @@
+project:
+  name: bad_bootstrap_bias_threshold
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        BOOT0: boot0
+    RUP:
+      model: generic.analog.resistor
+      part_number: 100K
+      pins:
+        A: rail_3v3
+        B: boot0
+      spice:
+        primitive: resistor
+        value_ohm: 100000
+    RDN:
+      model: generic.analog.resistor
+      part_number: 100K
+      pins:
+        A: boot0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    boot0:
+      kind: digital_or_analog
+
+scenarios:
+  - name: bootloader_boot0_bias
+    type: reset_boot
+    target:
+      component: U1
+      power_pin: VDD
+    checks:
+      - BOOT_STRAP_BIAS_VALID
+    required_boot_mode: bootloader

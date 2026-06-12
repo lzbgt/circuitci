@@ -311,6 +311,19 @@ Operation names are model-local. Generic validation keys off operation metadata 
 - Fail iff a required strap observation is missing, `floating`, `undefined`, or does not equal the model-required state.
 - Required and actual values are compared as lowercase symbolic states.
 
+`BOOT_STRAP_BIAS_VALID`:
+
+- Severity: `critical`.
+- Resolve required straps from `behavior.boot.modes[scenario.required_boot_mode]`.
+- Resolve each strap pin to a board net and compute its DC voltage from explicit
+  `spice.primitive: resistor` components connected to declared power or ground
+  nets.
+- Fail iff the network is floating, a required high strap is below `vih_min_V`,
+  a required low strap is above `vil_max_V`, or the optional
+  `parameters.max_strap_bias_current_A` limit is exceeded.
+- Missing strap pin thresholds, resistor values, or power-net metadata produce
+  critical `VALIDATION_INPUT_MISSING` findings.
+
 `UART_BOOTLOADER_SYNC`:
 
 - Severity: `critical`.

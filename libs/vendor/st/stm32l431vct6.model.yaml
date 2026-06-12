@@ -61,6 +61,7 @@ behavior:
 rules:
   - RESET_RELEASE_AFTER_POWER_VALID
   - BOOT_STRAP_DEFINED
+  - BOOT_STRAP_BIAS_VALID
   - UART_BOOTLOADER_SYNC
 model_quality:
   source: estimated

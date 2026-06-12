@@ -13,6 +13,7 @@ mod io_voltage;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
+mod strap_bias;
 mod target_contract;
 mod uart_bootloader;
 
@@ -25,6 +26,7 @@ pub(super) const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 pub(super) const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 pub(super) const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 pub(super) const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
+pub(super) const BOOT_STRAP_BIAS_VALID: &str = "BOOT_STRAP_BIAS_VALID";
 pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 pub(super) const RESIDENT_BOOTLOADER_UPDATE_SEQUENCE: &str = "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE";
 pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQUENCE";
@@ -120,6 +122,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 BOOT_STRAP_DEFINED if scenario.scenario_type == "reset_boot" => {
                     target_contract::validate_boot_straps(bound, scenario, &mut findings)
                 }
+                BOOT_STRAP_BIAS_VALID if scenario.scenario_type == "reset_boot" => {
+                    strap_bias::validate_boot_strap_bias(bound, scenario, &mut findings)
+                }
                 UART_BOOTLOADER_SYNC if scenario.scenario_type == "serial_programming" => {
                     uart_bootloader::validate_uart_bootloader_sync(bound, scenario, &mut findings)
                 }
@@ -186,6 +191,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | INTERFACE_PROTECTION_REVIEW
                 | RESET_RELEASE_AFTER_POWER_VALID
                 | BOOT_STRAP_DEFINED
+                | BOOT_STRAP_BIAS_VALID
                 | UART_BOOTLOADER_SYNC
                 | RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
                 | CONTROL_LINE_RELEASE_SEQUENCE

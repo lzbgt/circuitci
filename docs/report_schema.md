@@ -91,6 +91,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 
 - `RESET_RELEASE_AFTER_POWER_VALID`
 - `BOOT_STRAP_DEFINED`
+- `BOOT_STRAP_BIAS_VALID`
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
@@ -114,6 +115,11 @@ Stable rule detail keys:
   `scenario_power_valid_matches_target_rail: true`.
 - `BOOT_STRAP_DEFINED.measured`: `required_boot_mode`, `observed_<pin>`.
 - `BOOT_STRAP_DEFINED.limit`: `required_<pin>`.
+- `BOOT_STRAP_BIAS_VALID.measured`: `required_boot_mode`,
+  `strap_voltage_V`, optional `strap_bias_current_A`, and optional
+  `strap_bias_sources`.
+- `BOOT_STRAP_BIAS_VALID.limit`: `required_<pin>`, `vih_min_V`,
+  `vil_max_V`, and optional `max_strap_bias_current_A`.
 - `UART_BOOTLOADER_SYNC.measured`: `interface`, `sync_event_found`, `event_at_us`.
 - `UART_BOOTLOADER_SYNC.limit`: `sync_byte`, `expected_response`, `rx_pin`, `required_boot_mode`.
 
