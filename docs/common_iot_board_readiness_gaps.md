@@ -158,8 +158,10 @@ when `max_data_via_to_ground_stitch_distance_mm` is declared, and can use saved
 screen route-midpoint margin to filled-copper polygon edges with
 `min_data_line_filled_zone_edge_clearance_mm`. It can now require imported
 same-net pad/via contact evidence with `require_ground_zone_contact_evidence`.
-It still does not prove filled-zone island continuity, adjacent-plane return
-paths, stitching-via inductance, or USB eye margin.
+When filled-zone coverage is required, the contact must be in the same saved
+filled polygon as the route midpoint. It still does not prove unmodeled
+filled-zone island continuity, adjacent-plane return paths, stitching-via
+inductance, or USB eye margin.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
 non-runnable placement, route-geometry, VBUS-route, and return-path templates

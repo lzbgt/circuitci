@@ -138,7 +138,9 @@ The command is conservative:
   same-layer ground zone is tied to the ground net. Each route can include
   `ground_zone_contacts[]` and, when saved filled polygons exist,
   `filled_ground_zone_contacts[]`; these list imported same-net pad or via
-  contacts found inside the relevant same-layer ground reference geometry.
+  contacts found inside the relevant same-layer ground reference geometry. In
+  filled-zone evidence, contacts are only listed when they share a saved
+  `filled_polygon` island with at least one covered route segment midpoint.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

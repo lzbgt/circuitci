@@ -18,9 +18,9 @@ mod geometry;
 use findings::*;
 use geometry::{
     PlacementPoint, point_clearance_to_filled_zone_edge, point_inside_filled_zone,
-    point_inside_zone_outline, route_distance_between_placements, route_length_mm,
-    segment_length_mm, segment_midpoint, validate_route_shape, validate_zone_outline,
-    worst_pair_gap_delta, worst_route_width_delta,
+    point_inside_zone_outline, points_inside_same_filled_zone_polygon,
+    route_distance_between_placements, route_length_mm, segment_length_mm, segment_midpoint,
+    validate_route_shape, validate_zone_outline, worst_pair_gap_delta, worst_route_width_delta,
 };
 
 pub(super) fn validate_usb_route_geometry(
@@ -741,29 +741,47 @@ fn ground_zone_references_point(
     if !require_ground_zone_contact_evidence {
         return true;
     }
-    ground_zone_has_contact_evidence(bound, ground_zone, require_filled_zone_coverage)
+    ground_zone_has_contact_evidence(bound, midpoint, ground_zone, require_filled_zone_coverage)
 }
 
 fn ground_zone_has_contact_evidence(
     bound: &BoundBoard<'_>,
+    covered_point: PlacementPoint,
     ground_zone: &GroundZoneRef<'_>,
     require_filled_zone_coverage: bool,
 ) -> bool {
     ground_pads(bound, ground_zone.net_name).any(|pad| {
+        let contact_point = PlacementPoint::from(&pad.at);
         pad_layers_include(&pad.layers, &ground_zone.zone.layer)
-            && point_inside_ground_reference(
-                PlacementPoint::from(&pad.at),
+            && contact_proves_ground_reference(
+                covered_point,
+                contact_point,
                 ground_zone.zone,
                 require_filled_zone_coverage,
             )
     }) || ground_route_vias(bound, ground_zone.net_name).any(|via| {
+        let contact_point = PlacementPoint::from(&via.at);
         via_layers_include(&via.layers, &ground_zone.zone.layer)
-            && point_inside_ground_reference(
-                PlacementPoint::from(&via.at),
+            && contact_proves_ground_reference(
+                covered_point,
+                contact_point,
                 ground_zone.zone,
                 require_filled_zone_coverage,
             )
     })
+}
+
+fn contact_proves_ground_reference(
+    covered_point: PlacementPoint,
+    contact_point: PlacementPoint,
+    zone: &CopperZone,
+    require_filled_zone_coverage: bool,
+) -> bool {
+    if require_filled_zone_coverage {
+        points_inside_same_filled_zone_polygon(covered_point, contact_point, zone)
+    } else {
+        point_inside_zone_outline(contact_point, zone)
+    }
 }
 
 fn ground_pads<'a>(

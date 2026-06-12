@@ -72,6 +72,8 @@ imported same-net pad/via evidence must prove that the ground zone is connected
 before it counts as return-path coverage. The route evidence includes
 `ground_zone_contacts[]` and `filled_ground_zone_contacts[]`; in this fixture
 those lists include imported ground pads such as `J1.GND` inside the same-layer
-GND copper. This is geometry, pad-contact, and via-proximity evidence only;
-filled-zone island connectivity, controlled plane transitions, stitching-via
-inductance, and impedance still require richer layout evidence.
+GND copper. Filled-zone contact evidence is listed only when the imported
+contact shares the same saved `filled_polygon` island as the covered route
+midpoint. This is geometry, pad-contact, and via-proximity evidence only;
+unmodeled filled-zone island connectivity, controlled plane transitions,
+stitching-via inductance, and impedance still require richer layout evidence.

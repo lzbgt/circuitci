@@ -170,7 +170,9 @@ Route-geometry validation:
   referenced when its midpoint is inside a same-layer ground-zone outline.
   In filled-zone mode, that midpoint must be inside a same-layer filled
   polygon. In contact-evidence mode, that polygon or outline must also contain
-  same-net pad or via evidence on the same layer.
+  same-net pad or via evidence on the same layer. When filled-zone mode and
+  contact-evidence mode are both enabled, the contact must be in the same saved
+  `filled_polygon` island as the route midpoint.
 - When stitching-via distance is enabled, a data via passes only if a ground
   via whose layer list covers the same transition is within the declared
   distance.

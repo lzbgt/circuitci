@@ -485,6 +485,31 @@ fn usb_return_path_reports_floating_filled_zone_when_contact_required() {
 }
 
 #[test]
+fn usb_return_path_reports_split_filled_zone_contact_when_same_island_required() {
+    let report =
+        run_validation("examples/bad_usb_return_path_split_filled_zone_contact/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| failure["id"] == "USB_RETURN_PATH_VALID")
+        .expect("USB return-path split filled-zone contact finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["unreferenced_route_length_mm"], 1.0);
+    assert_eq!(
+        failure["limit"]["reference_zone_geometry"],
+        "filled_polygon"
+    );
+    assert_eq!(
+        failure["limit"]["reference_zone_contact_policy"],
+        "same_net_pad_or_via"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_return_path_reports_low_filled_zone_edge_clearance() {
     let report =
         run_validation("examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml");

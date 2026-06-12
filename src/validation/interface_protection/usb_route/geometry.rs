@@ -108,6 +108,16 @@ pub(super) fn point_inside_filled_zone(point: PlacementPoint, zone: &CopperZone)
         .any(|polygon| point_inside_polygon(point, polygon))
 }
 
+pub(super) fn points_inside_same_filled_zone_polygon(
+    first: PlacementPoint,
+    second: PlacementPoint,
+    zone: &CopperZone,
+) -> bool {
+    zone.filled_polygons.iter().any(|polygon| {
+        point_inside_polygon(first, polygon) && point_inside_polygon(second, polygon)
+    })
+}
+
 pub(super) fn point_clearance_to_filled_zone_edge(
     point: PlacementPoint,
     zone: &CopperZone,

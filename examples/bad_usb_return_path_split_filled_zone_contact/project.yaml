@@ -1,0 +1,78 @@
+project:
+  name: bad_usb_return_path_split_filled_zone_contact
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    J1:
+      model: generic.connector.usb2
+      pins:
+        VBUS: usb_vbus
+        "D+": usb_dp
+        "D-": usb_dm
+        GND: gnd
+  nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+  layout:
+    pads:
+      J1:
+        GND:
+          at: { x_mm: 0.0, y_mm: 1.2 }
+          net: gnd
+          layers: [F.Cu, F.Paste, F.Mask]
+    routes:
+      usb_dp:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.0 }
+            end: { x_mm: 1.0, y_mm: 0.0 }
+            width_mm: 0.15
+            layer: F.Cu
+      usb_dm:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.3 }
+            end: { x_mm: 1.0, y_mm: 0.3 }
+            width_mm: 0.15
+            layer: F.Cu
+    zones:
+      gnd:
+        - layer: F.Cu
+          polygon:
+            - { x_mm: -0.5, y_mm: -0.5 }
+            - { x_mm: 1.5, y_mm: -0.5 }
+            - { x_mm: 1.5, y_mm: 1.5 }
+            - { x_mm: -0.5, y_mm: 1.5 }
+          filled_polygons:
+            - - { x_mm: -0.4, y_mm: -0.4 }
+              - { x_mm: 1.4, y_mm: -0.4 }
+              - { x_mm: 1.4, y_mm: 0.6 }
+              - { x_mm: -0.4, y_mm: 0.6 }
+            - - { x_mm: -0.4, y_mm: 1.0 }
+              - { x_mm: 1.4, y_mm: 1.0 }
+              - { x_mm: 1.4, y_mm: 1.4 }
+              - { x_mm: -0.4, y_mm: 1.4 }
+
+scenarios:
+  - name: usb_return_path_split_filled_zone_contact_bad
+    type: interface_protection
+    checks:
+      - USB_RETURN_PATH_VALID
+    target:
+      component: J1
+    parameters:
+      max_data_line_unreferenced_length_mm: 0.0
+      require_filled_zone_coverage: true
+      require_ground_zone_contact_evidence: true

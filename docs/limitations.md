@@ -72,10 +72,12 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   filled-copper polygon edges when
   `min_data_line_filled_zone_edge_clearance_mm` is declared. When
   `require_ground_zone_contact_evidence` is true, the same-layer ground zone
-  must also contain imported same-net pad or via contact evidence. This still
-  does not prove filled-zone island connectivity, adjacent-plane coupling,
-  impedance, eye margin, stitching-via inductance, common-mode radiation, or
-  return-current behavior under signal transitions.
+  must also contain imported same-net pad or via contact evidence; in
+  filled-zone mode, that contact must be in the same saved filled polygon as
+  the route midpoint. This still does not prove unmodeled filled-zone island
+  connectivity, adjacent-plane coupling, impedance, eye margin, stitching-via
+  inductance, common-mode radiation, or return-current behavior under signal
+  transitions.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

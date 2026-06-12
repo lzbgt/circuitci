@@ -505,7 +505,9 @@ USB return-path algorithm:
 9. If `require_ground_zone_contact_evidence` is `true`, a ground zone only
    counts when imported pad or route-via evidence shows same-net contact on the
    same layer. Imported pads come from `board.layout.pads`; stitching vias come
-   from same-net `board.layout.routes` via evidence.
+   from same-net `board.layout.routes` via evidence. When filled-zone coverage
+   is required, the contact point must be inside the same saved
+   `filled_polygon` as the route segment midpoint.
 10. Treat this as an early layout screen only. Filled-polygon containment plus
    same-net pad/via contact evidence is stronger than outline containment but
    still does not prove zone island

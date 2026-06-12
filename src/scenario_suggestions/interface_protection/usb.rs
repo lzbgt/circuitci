@@ -944,7 +944,8 @@ fn route_ground_zone_contacts(
             zone.zone.layer == segment.layer
                 && point_inside_ground_reference(midpoint_x_mm, midpoint_y_mm, zone, geometry)
         }) {
-            for contact in ground_zone_contacts(bound, zone, geometry) {
+            for contact in ground_zone_contacts(bound, zone, geometry, midpoint_x_mm, midpoint_y_mm)
+            {
                 contacts.entry(contact_key(&contact)).or_insert(contact);
             }
         }
@@ -956,6 +957,8 @@ fn ground_zone_contacts(
     bound: &BoundBoard<'_>,
     zone: &GroundZoneEvidence<'_>,
     geometry: GroundReferenceGeometry,
+    covered_x_mm: f64,
+    covered_y_mm: f64,
 ) -> Vec<SuggestedUsbGroundZoneContact> {
     let mut contacts = Vec::new();
     for (component_id, component_pads) in &bound.project.board.layout.pads {
@@ -964,7 +967,14 @@ fn ground_zone_contacts(
                 || !pad_layers_include(&pad.layers, zone.zone.layer.as_str())
                 || !pad.at.x_mm.is_finite()
                 || !pad.at.y_mm.is_finite()
-                || !point_inside_ground_reference(pad.at.x_mm, pad.at.y_mm, zone, geometry)
+                || !contact_proves_ground_reference(
+                    covered_x_mm,
+                    covered_y_mm,
+                    pad.at.x_mm,
+                    pad.at.y_mm,
+                    zone,
+                    geometry,
+                )
             {
                 continue;
             }
@@ -976,7 +986,14 @@ fn ground_zone_contacts(
             if !via_layers_include(&via.layers, zone.zone.layer.as_str())
                 || !via.at.x_mm.is_finite()
                 || !via.at.y_mm.is_finite()
-                || !point_inside_ground_reference(via.at.x_mm, via.at.y_mm, zone, geometry)
+                || !contact_proves_ground_reference(
+                    covered_x_mm,
+                    covered_y_mm,
+                    via.at.x_mm,
+                    via.at.y_mm,
+                    zone,
+                    geometry,
+                )
             {
                 continue;
             }
@@ -984,6 +1001,28 @@ fn ground_zone_contacts(
         }
     }
     contacts
+}
+
+fn contact_proves_ground_reference(
+    covered_x_mm: f64,
+    covered_y_mm: f64,
+    contact_x_mm: f64,
+    contact_y_mm: f64,
+    zone: &GroundZoneEvidence<'_>,
+    geometry: GroundReferenceGeometry,
+) -> bool {
+    match geometry {
+        GroundReferenceGeometry::Outline => {
+            point_inside_zone_outline(contact_x_mm, contact_y_mm, zone.zone)
+        }
+        GroundReferenceGeometry::FilledPolygon => point_inside_same_filled_polygon(
+            covered_x_mm,
+            covered_y_mm,
+            contact_x_mm,
+            contact_y_mm,
+            zone.zone,
+        ),
+    }
 }
 
 fn pad_contact(
@@ -1061,6 +1100,22 @@ fn point_inside_any_filled_polygon(point_x_mm: f64, point_y_mm: f64, zone: &Copp
         .iter()
         .filter(|polygon| polygon_is_usable(polygon))
         .any(|polygon| point_inside_polygon(point_x_mm, point_y_mm, polygon))
+}
+
+fn point_inside_same_filled_polygon(
+    first_x_mm: f64,
+    first_y_mm: f64,
+    second_x_mm: f64,
+    second_y_mm: f64,
+    zone: &CopperZone,
+) -> bool {
+    zone.filled_polygons
+        .iter()
+        .filter(|polygon| polygon_is_usable(polygon))
+        .any(|polygon| {
+            point_inside_polygon(first_x_mm, first_y_mm, polygon)
+                && point_inside_polygon(second_x_mm, second_y_mm, polygon)
+        })
 }
 
 fn point_clearance_to_any_filled_polygon_edge(
