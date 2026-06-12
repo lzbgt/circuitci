@@ -1,0 +1,30 @@
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+components:
+  UREG:
+    model: vendor.diodes.ap2112k_3v3
+    part_number: AP2112K-3.3TRG1
+    pin_map:
+      "1": VIN
+      "2": GND
+      "3": EN
+      "5": VOUT
+  U1:
+    model: generic.mcu.basic
+    pin_map:
+      "1": VDD
+      "2": GND
+nets:
+  USB_5V:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+    power_valid_at_us: 0
+  RAIL_3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    power_valid_at_us: 1500
+  GND:
+    kind: ground

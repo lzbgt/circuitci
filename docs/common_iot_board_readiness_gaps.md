@@ -122,8 +122,9 @@ without RC evidence, observed boot-strap states, UART bootloader sync, and
 first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
 present but observations still need real evidence. It also emits
 interface-protection review templates when component models declare explicit
-`signal_conditioning.channels`, and includes reset-supervisor monitored rail,
-reset output, and threshold evidence in power-tree suggestions. It marks
+`signal_conditioning.channels`, and includes regulator input/output rail,
+dropout/current/startup evidence plus reset-supervisor monitored rail, reset
+output, and threshold evidence in power-tree suggestions. It marks
 power-tree templates non-runnable when load-switch enable, charger
 programmed-current, or power-mux selected-source evidence is missing. It does
 not invent timing, observed strap

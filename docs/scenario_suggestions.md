@@ -24,6 +24,10 @@ The command is conservative:
 - If a powered output rail is fed by a model with `power_mux` and the selected
   input component parameter is missing, the power-tree suggestion is marked
   `runnable: false` and records the exact parameter plus allowed source names.
+- If a model declares `power_conversion`, the power-tree suggestion includes
+  `scenario.regulators[]` with the regulator component, input/output pins,
+  input/output nets, and declared dropout/current/startup limits. This gives
+  agents the exact regulator evidence that `POWER_TREE_VALID` will execute.
 - If a model declares `reset_supervisor`, the power-tree suggestion includes
   `scenario.reset_supervisors[]` with the supervisor component, monitored
   pin/net, reset output pin/net, and threshold range. This points agents at the
@@ -70,6 +74,9 @@ The command is conservative:
 - Imported KiCad schematics can also provide reset-supervisor evidence when a
   supervisor symbol is mapped to a model with `reset_supervisor` metadata; see
   `examples/import_kicad_tlv803_reset_supervisor_suggestions/`.
+- Imported KiCad schematics can provide regulator evidence when a regulator
+  symbol is mapped to a model with `power_conversion` metadata; see
+  `examples/import_kicad_ap2112_regulator_suggestions/`.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
@@ -96,6 +103,14 @@ suggestions:
       type: power_tree
       checks:
         - POWER_TREE_VALID
+      regulators:
+        - component: UREG
+          input_pin: VIN
+          input_net: usb_5v
+          output_pin: VOUT
+          output_net: rail_3v3
+          dropout_voltage_V: 0.4
+          max_output_current_A: 0.6
       reset_supervisors:
         - component: USUP
           monitored_pin: VDD

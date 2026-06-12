@@ -60,6 +60,8 @@ pub struct SuggestedScenario {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reset_supervisors: Vec<SuggestedResetSupervisor>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub regulators: Vec<SuggestedRegulator>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pin_states: Vec<SuggestedPinState>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub paths: Vec<SuggestedBackdrivePath>,
@@ -170,6 +172,24 @@ pub struct SuggestedResetSupervisor {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SuggestedRegulator {
+    pub component: String,
+    pub input_pin: String,
+    pub input_net: String,
+    pub output_pin: String,
+    pub output_net: String,
+    #[serde(rename = "dropout_voltage_V", skip_serializing_if = "Option::is_none")]
+    pub dropout_voltage_v: Option<f64>,
+    #[serde(
+        rename = "max_output_current_A",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_output_current_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub startup_delay_us: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SuggestedPinState {
     pub component: String,
     pub pin: String,
@@ -238,6 +258,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
     required_inputs.extend(battery_charger_power_tree_inputs(bound));
     required_inputs.extend(power_mux_power_tree_inputs(bound));
     let reset_supervisors = reset_supervisor_power_tree_evidence(bound);
+    let regulators = regulator_power_tree_evidence(bound);
     let runnable = required_inputs.is_empty();
     ScenarioSuggestion {
         id: "power_tree_valid".to_string(),
@@ -262,6 +283,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
             conditioning: None,
             clocks: Vec::new(),
             reset_supervisors,
+            regulators,
             pin_states,
             paths: Vec::new(),
         },
@@ -387,6 +409,31 @@ fn reset_supervisor_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<Suggested
         .collect()
 }
 
+fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulator> {
+    bound
+        .project
+        .board
+        .components
+        .iter()
+        .filter_map(|(component_id, component)| {
+            let model = bound.library.get(&component.model)?;
+            let conversion = model.power_conversion.as_ref()?;
+            let input_net = resolve_power_pin_net(component, &conversion.input_pin)?;
+            let output_net = resolve_power_pin_net(component, &conversion.output_pin)?;
+            Some(SuggestedRegulator {
+                component: component_id.clone(),
+                input_pin: conversion.input_pin.clone(),
+                input_net: input_net.to_string(),
+                output_pin: conversion.output_pin.clone(),
+                output_net: output_net.to_string(),
+                dropout_voltage_v: conversion.dropout_voltage_v,
+                max_output_current_a: conversion.max_output_current_a,
+                startup_delay_us: conversion.startup_delay_us,
+            })
+        })
+        .collect()
+}
+
 fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
     let already_declared = bound.project.scenarios.iter().any(|scenario| {
         scenario.scenario_type == "power_tree"
@@ -421,6 +468,7 @@ fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
             conditioning: None,
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
             pin_states: Vec::new(),
             paths,
         },
@@ -613,6 +661,7 @@ fn backdrive_suggestion(
             conditioning: None,
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
             pin_states: vec![
                 SuggestedPinState {
                     component: driver_component.to_string(),
@@ -696,6 +745,7 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
                     conditioning: Some(conditioning),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
+                    regulators: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -846,6 +896,7 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                 conditioning: None,
                 clocks,
                 reset_supervisors: Vec::new(),
+                regulators: Vec::new(),
                 pin_states: Vec::new(),
                 paths: Vec::new(),
             },
@@ -1011,6 +1062,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 conditioning: None,
                 clocks: Vec::new(),
                 reset_supervisors: Vec::new(),
+                regulators: Vec::new(),
                 pin_states: Vec::new(),
                 paths: Vec::new(),
             },
@@ -1206,6 +1258,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                         conditioning: None,
                         clocks: Vec::new(),
                         reset_supervisors: Vec::new(),
+                        regulators: Vec::new(),
                         pin_states: Vec::new(),
                         paths: Vec::new(),
                     },
@@ -1262,6 +1315,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     conditioning: None,
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
+                    regulators: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -1348,6 +1402,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     conditioning: None,
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
+                    regulators: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
