@@ -236,7 +236,8 @@ Missing required model/scenario data for this declared check is a critical `VALI
 ## Interface Protection Scenario Shape
 
 `interface_protection` scenarios review declared signal-conditioning channels
-such as level shifters, protection parts, series resistors, or bus switches:
+such as level shifters, series resistors, or bus switches. They can also review
+clamp-only protection devices such as USB ESD arrays.
 
 ```yaml
 scenarios:
@@ -250,7 +251,7 @@ scenarios:
       channel: ch1
 ```
 
-`INTERFACE_PROTECTION_REVIEW` algorithm:
+Channel review algorithm:
 
 1. Resolve `target.component`.
 2. Resolve `parameters.channel` from the target model's
@@ -267,6 +268,36 @@ scenarios:
    `unpowered_isolation: true`, or the scenario must observe the channel's
    declared `enable_pin` in its `disabled_state`; otherwise the check fails
    critically.
+
+Clamp review uses `parameters.clamp` instead of `parameters.channel`:
+
+```yaml
+scenarios:
+  - name: usb_dp_esd_review
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: dp
+      max_line_capacitance_F: 2.0e-12
+```
+
+Clamp review algorithm:
+
+1. Resolve `target.component`.
+2. Resolve `parameters.clamp` from the target model's
+   `signal_conditioning.protection_clamps`.
+3. Require the clamp protected pin and reference pin to be connected.
+4. Require the reference pin's net kind to match the model reference
+   (`ground` or `power`).
+5. If the model declares `working_voltage_max_V` and the protected net declares
+   finite `nominal_voltage`, require the net voltage to be no higher than the
+   standoff limit.
+6. If the model declares `line_capacitance_F` and the scenario declares
+   `max_line_capacitance_F`, require the clamp capacitance to fit the interface
+   budget.
 
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
@@ -305,8 +336,8 @@ scenarios:
 ```
 
 This is a static datasheet-contract check. It does not prove propagation delay,
-edge rate, leakage, clamp current, ESD pulse behavior, or analog waveform
-margin. Those still need datasheet-backed component models and
+edge rate, leakage, dynamic clamp current, ESD pulse behavior, USB eye margin,
+or analog waveform margin. Those still need datasheet-backed component models and
 `analog_transient` scenarios where relevant.
 
 ## Clock Source Scenario Shape

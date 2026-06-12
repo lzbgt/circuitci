@@ -296,6 +296,13 @@ signal_conditioning:
       unpowered_isolation: false
       enable_pin: OE
       disabled_state: low
+  protection_clamps:
+    - name: dp
+      protected_pin: DP
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.0e-12
 ```
 
 - `kind` is one of `level_shifter`, `protection`, `series_resistor`, or
@@ -312,6 +319,12 @@ signal_conditioning:
   supported relation is `less_than_or_equal`, which requires the powered rail on
   `lower_supply_pin` to have nominal voltage no greater than the powered rail on
   `upper_supply_pin`.
+- `protection_clamps` records clamp-only protection paths such as USB ESD
+  arrays. `protected_pin` names the signal being protected. `reference_pin`
+  must connect to the declared `reference` kind, currently `ground` or `power`.
+  `working_voltage_max_V` is the maximum normal protected-net voltage the clamp
+  may see. `line_capacitance_F` records the modeled capacitance added to that
+  interface line.
 
 `circuitci suggest-scenarios` uses this metadata to emit non-runnable
 `interface_protection` review templates. It does not treat the metadata alone as
@@ -320,7 +333,9 @@ conditions, OE/reset state, and any unpowered-side behavior before sign-off.
 `INTERFACE_PROTECTION_REVIEW` accepts a powered-to-unpowered channel only when
 the model declares `unpowered_isolation: true`, or when the scenario observes
 the declared `enable_pin` in its `disabled_state`. It also checks declared
-`supply_constraints` whenever both constrained rails are powered.
+`supply_constraints` whenever both constrained rails are powered. For
+`protection_clamps`, `INTERFACE_PROTECTION_REVIEW` checks the reference-net
+kind, optional reverse-standoff limit, and optional line-capacitance budget.
 
 The first back-drive approximation computes injection current as:
 

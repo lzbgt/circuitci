@@ -1,0 +1,36 @@
+project:
+  name: bad_usb_esd_line_capacitance
+  version: 0.1.0
+
+libraries:
+  - ./models
+
+board:
+  components:
+    UESD:
+      model: fixture.protection.high_cap_usb_esd
+      part_number: HIGH_CAP_USB_ESD
+      pins:
+        DP: usb_dp
+        DM: usb_dm
+        GND: gnd
+  nets:
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: usb_dp_esd_high_capacitance
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: dp
+      max_line_capacitance_F: 2.0e-12

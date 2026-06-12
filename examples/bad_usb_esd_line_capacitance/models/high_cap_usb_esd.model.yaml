@@ -1,0 +1,34 @@
+component_id: fixture.protection.high_cap_usb_esd
+version: 0.1.0
+category: protection
+ports:
+  DP:
+    kind: passive
+    required: true
+  DM:
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: dp
+      protected_pin: DP
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.0e-11
+    - name: dm
+      protected_pin: DM
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.0e-11
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - usb_esd_static_screening
+  not_valid_for:
+    - production_component_selection

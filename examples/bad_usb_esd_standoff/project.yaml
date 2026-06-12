@@ -1,0 +1,36 @@
+project:
+  name: bad_usb_esd_standoff
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    UESD:
+      model: generic.protection.usb_esd_basic
+      part_number: GENERIC_USB_ESD
+      pins:
+        DP: usb_dp
+        DM: usb_dm
+        GND: gnd
+  nets:
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 6.0
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: usb_dp_esd_bad_standoff
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: dp
+      max_line_capacitance_F: 2.0e-12

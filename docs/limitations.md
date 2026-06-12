@@ -41,10 +41,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   is provided.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.
 - `INTERFACE_PROTECTION_REVIEW` checks declared signal-conditioning channel
-  metadata, unpowered-isolation claims, observed disabled-state evidence, and
-  declared static supply-order constraints. It does not prove analog leakage,
-  clamp current, ESD performance, propagation delay, edge rate, or signal
-  integrity.
+  metadata, unpowered-isolation claims, observed disabled-state evidence,
+  declared static supply-order constraints, and clamp-only protection metadata
+  such as reference net kind, standoff voltage, and line capacitance. It does
+  not prove analog leakage, dynamic clamp current, ESD pulse performance,
+  propagation delay, edge rate, USB eye margin, or signal integrity.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

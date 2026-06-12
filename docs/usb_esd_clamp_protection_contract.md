@@ -1,0 +1,51 @@
+# USB ESD Clamp Protection Contract
+
+`INTERFACE_PROTECTION_REVIEW` supports clamp-only protection devices through
+`signal_conditioning.protection_clamps`. This is intended for USB ESD arrays and
+similar parts that do not translate between two powered domains.
+
+Example model metadata:
+
+```yaml
+signal_conditioning:
+  protection_clamps:
+    - name: dp
+      protected_pin: DP
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.0e-12
+```
+
+Example scenario:
+
+```yaml
+scenarios:
+  - name: usb_dp_esd_review
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: dp
+      max_line_capacitance_F: 2.0e-12
+```
+
+The rule checks:
+
+- the protected pin and reference pin are connected,
+- the reference pin connects to the declared reference net kind,
+- protected-net `nominal_voltage` does not exceed `working_voltage_max_V`,
+- declared `line_capacitance_F` fits scenario `max_line_capacitance_F`.
+
+This is static board-validation evidence. It does not prove ESD pulse behavior,
+dynamic clamp current, USB eye margin, trace impedance, return path quality, or
+connector-layout correctness.
+
+Current fixtures:
+
+- `examples/good_usb_esd_protection`
+- `examples/bad_usb_esd_reference`
+- `examples/bad_usb_esd_standoff`
+- `examples/bad_usb_esd_line_capacitance`

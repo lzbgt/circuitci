@@ -1,6 +1,7 @@
 use crate::board_ir::{NetKind, PinLogicState, Scenario};
 use crate::library::{
-    BoundBoard, SignalConditioningChannel, SignalSupplyConstraint, SignalSupplyRelation,
+    BoundBoard, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
+    SignalSupplyConstraint, SignalSupplyRelation,
 };
 use crate::reports::Finding;
 use serde_json::json;
@@ -21,6 +22,15 @@ pub(super) fn validate_interface_protection(
         );
         return;
     };
+    if let Some(clamp_name) = scenario
+        .parameters
+        .get("clamp")
+        .and_then(serde_yaml_ng::Value::as_str)
+    {
+        validate_protection_clamp(bound, scenario, &target.component, clamp_name, findings);
+        return;
+    }
+
     let Some(channel_name) = scenario
         .parameters
         .get("channel")
@@ -29,7 +39,7 @@ pub(super) fn validate_interface_protection(
         validation_input_missing(
             findings,
             scenario,
-            "interface_protection parameters.channel is required.",
+            "interface_protection parameters.channel or parameters.clamp is required.",
         );
         return;
     };
@@ -131,6 +141,209 @@ pub(super) fn validate_interface_protection(
             ));
         }
     }
+}
+
+fn validate_protection_clamp(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    clamp_name: &str,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(component) = bound.project.board.components.get(component_id) else {
+        findings.push(metadata_finding(
+            scenario,
+            component_id,
+            format!("Interface protection target component {component_id} is not declared."),
+            "component",
+            component_id,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(metadata_finding(
+            scenario,
+            component_id,
+            format!(
+                "Interface protection target component {component_id} model {} is not loaded.",
+                component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(clamp) = model
+        .signal_conditioning
+        .protection_clamps
+        .iter()
+        .find(|clamp| clamp.name == clamp_name)
+    else {
+        findings.push(metadata_finding(
+            scenario,
+            component_id,
+            format!(
+                "Component {component_id} model {} has no signal_conditioning protection_clamp {clamp_name}.",
+                component.model
+            ),
+            "clamp",
+            clamp_name,
+        ));
+        return;
+    };
+
+    let Some(protected_net_name) = component.pins.get(&clamp.protected_pin) else {
+        findings.push(protection_clamp_metadata_finding(
+            scenario,
+            component_id,
+            clamp,
+            format!(
+                "Protection clamp {} protected pin {} is not connected.",
+                clamp.name, clamp.protected_pin
+            ),
+            "missing_protected_pin",
+            &clamp.protected_pin,
+        ));
+        return;
+    };
+    let Some(protected_net) = bound.project.board.nets.get(protected_net_name) else {
+        findings.push(protection_clamp_metadata_finding(
+            scenario,
+            component_id,
+            clamp,
+            format!(
+                "Protection clamp {} protected net {} is not declared.",
+                clamp.name, protected_net_name
+            ),
+            "missing_protected_net",
+            protected_net_name,
+        ));
+        return;
+    };
+    let Some(reference_net_name) = component.pins.get(&clamp.reference_pin) else {
+        findings.push(protection_clamp_metadata_finding(
+            scenario,
+            component_id,
+            clamp,
+            format!(
+                "Protection clamp {} reference pin {} is not connected.",
+                clamp.name, clamp.reference_pin
+            ),
+            "missing_reference_pin",
+            &clamp.reference_pin,
+        ));
+        return;
+    };
+    let Some(reference_net) = bound.project.board.nets.get(reference_net_name) else {
+        findings.push(protection_clamp_metadata_finding(
+            scenario,
+            component_id,
+            clamp,
+            format!(
+                "Protection clamp {} reference net {} is not declared.",
+                clamp.name, reference_net_name
+            ),
+            "missing_reference_net",
+            reference_net_name,
+        ));
+        return;
+    };
+    let expected_kind = match clamp.reference {
+        ProtectionReference::Ground => NetKind::Ground,
+        ProtectionReference::Power => NetKind::Power,
+    };
+    if reference_net.kind != expected_kind {
+        findings.push(protection_reference_finding(
+            scenario,
+            component_id,
+            clamp,
+            reference_net_name,
+            &reference_net.kind,
+        ));
+    }
+
+    if let Some(working_voltage_max_v) = clamp.working_voltage_max_v {
+        if !working_voltage_max_v.is_finite() || working_voltage_max_v <= 0.0 {
+            findings.push(protection_clamp_metadata_finding(
+                scenario,
+                component_id,
+                clamp,
+                format!(
+                    "Protection clamp {} working_voltage_max_V must be finite and positive.",
+                    clamp.name
+                ),
+                "working_voltage_max_V",
+                &clamp.name,
+            ));
+        } else if let Some(nominal_voltage_v) = protected_net.nominal_voltage
+            && nominal_voltage_v.is_finite()
+            && nominal_voltage_v > working_voltage_max_v
+        {
+            findings.push(protection_working_voltage_finding(
+                scenario,
+                component_id,
+                clamp,
+                protected_net_name,
+                nominal_voltage_v,
+                working_voltage_max_v,
+            ));
+        }
+    }
+
+    if let Some(line_capacitance_f) = clamp.line_capacitance_f {
+        if !line_capacitance_f.is_finite() || line_capacitance_f < 0.0 {
+            findings.push(protection_clamp_metadata_finding(
+                scenario,
+                component_id,
+                clamp,
+                format!(
+                    "Protection clamp {} line_capacitance_F must be finite and non-negative.",
+                    clamp.name
+                ),
+                "line_capacitance_F",
+                &clamp.name,
+            ));
+            return;
+        }
+        if let Some(max_line_capacitance_f) =
+            scenario_numeric_parameter(scenario, "max_line_capacitance_F", findings)
+            && line_capacitance_f > max_line_capacitance_f
+        {
+            findings.push(protection_capacitance_finding(
+                scenario,
+                component_id,
+                clamp,
+                protected_net_name,
+                line_capacitance_f,
+                max_line_capacitance_f,
+            ));
+        }
+    }
+}
+
+fn scenario_numeric_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let value = scenario.parameters.get(name)?;
+    let Some(number) = value.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be numeric when declared."),
+        );
+        return None;
+    };
+    if !number.is_finite() || number < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be finite and non-negative."),
+        );
+        return None;
+    }
+    Some(number)
 }
 
 fn channel_disabled_by_observation(
@@ -566,6 +779,147 @@ fn supply_constraint_violation_finding(
             constraint.lower_supply_pin, constraint.upper_supply_pin
         ),
         "If this condition is only transient, add a timing or analog scenario that proves the part remains disabled until the supply-order rule is satisfied.".to_string(),
+    ];
+    finding
+}
+
+fn protection_clamp_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    clamp: &ProtectionClamp,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(INTERFACE_PROTECTION_REVIEW, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding
+        .limit
+        .insert("protection_clamp".to_string(), json!(clamp.name));
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Declare the protection clamp pins and reference net before using this review check.".to_string(),
+        "Do not treat a clamp-only protection part as validated until its datasheet standoff voltage and capacitance are modeled.".to_string(),
+    ];
+    finding
+}
+
+fn protection_reference_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    clamp: &ProtectionClamp,
+    reference_net: &str,
+    actual_kind: &NetKind,
+) -> Finding {
+    let expected = match clamp.reference {
+        ProtectionReference::Ground => "ground",
+        ProtectionReference::Power => "power",
+    };
+    let actual = match actual_kind {
+        NetKind::Power => "power",
+        NetKind::Ground => "ground",
+        NetKind::DigitalOrAnalog => "digital_or_analog",
+    };
+    let mut finding = Finding::critical(
+        INTERFACE_PROTECTION_REVIEW,
+        &scenario.name,
+        format!(
+            "Protection clamp {} on component {} reference pin {} is connected to {actual} net {}, expected {expected}.",
+            clamp.name, component_id, clamp.reference_pin, reference_net
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.net.replace(reference_net.to_string());
+    finding
+        .measured
+        .insert("reference_net_kind".to_string(), json!(actual));
+    finding
+        .limit
+        .insert("protection_clamp".to_string(), json!(clamp.name));
+    finding
+        .limit
+        .insert("reference_pin".to_string(), json!(clamp.reference_pin));
+    finding
+        .limit
+        .insert("required_reference".to_string(), json!(expected));
+    finding.suggested_fixes = vec![
+        format!(
+            "Connect {}.{} to a declared {expected} net according to the protection device datasheet.",
+            component_id, clamp.reference_pin
+        ),
+        "Use a different clamp model if this part references another rail instead of ground."
+            .to_string(),
+    ];
+    finding
+}
+
+fn protection_working_voltage_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    clamp: &ProtectionClamp,
+    protected_net: &str,
+    nominal_voltage_v: f64,
+    working_voltage_max_v: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        INTERFACE_PROTECTION_REVIEW,
+        &scenario.name,
+        format!(
+            "Protection clamp {} on component {} sees protected net {} at {:.6} V, above standoff limit {:.6} V.",
+            clamp.name, component_id, protected_net, nominal_voltage_v, working_voltage_max_v
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.net = Some(protected_net.to_string());
+    finding.measured.insert(
+        "protected_net_nominal_voltage_V".to_string(),
+        json!(nominal_voltage_v),
+    );
+    finding
+        .limit
+        .insert("protection_clamp".to_string(), json!(clamp.name));
+    finding.limit.insert(
+        "working_voltage_max_V".to_string(),
+        json!(working_voltage_max_v),
+    );
+    finding.suggested_fixes = vec![
+        "Select an ESD/protection device with reverse standoff voltage above the protected signal's normal voltage.".to_string(),
+        "Correct the protected net nominal_voltage if this scenario represents a lower-voltage operating state.".to_string(),
+    ];
+    finding
+}
+
+fn protection_capacitance_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    clamp: &ProtectionClamp,
+    protected_net: &str,
+    line_capacitance_f: f64,
+    max_line_capacitance_f: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        INTERFACE_PROTECTION_REVIEW,
+        &scenario.name,
+        format!(
+            "Protection clamp {} on component {} has {:.3e} F line capacitance on {}, above interface limit {:.3e} F.",
+            clamp.name, component_id, line_capacitance_f, protected_net, max_line_capacitance_f
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.net = Some(protected_net.to_string());
+    finding
+        .measured
+        .insert("line_capacitance_F".to_string(), json!(line_capacitance_f));
+    finding
+        .limit
+        .insert("protection_clamp".to_string(), json!(clamp.name));
+    finding.limit.insert(
+        "max_line_capacitance_F".to_string(),
+        json!(max_line_capacitance_f),
+    );
+    finding.suggested_fixes = vec![
+        "Select a lower-capacitance ESD/protection device for this interface.".to_string(),
+        "Raise max_line_capacitance_F only when the interface budget and signal-integrity analysis allow the added capacitance.".to_string(),
     ];
     finding
 }

@@ -133,6 +133,8 @@ pub struct SignalConditioning {
     #[serde(default)]
     pub channels: Vec<SignalConditioningChannel>,
     #[serde(default)]
+    pub protection_clamps: Vec<ProtectionClamp>,
+    #[serde(default)]
     pub supply_constraints: Vec<SignalSupplyConstraint>,
 }
 
@@ -162,6 +164,25 @@ pub struct SignalSupplyConstraint {
     pub relation: SignalSupplyRelation,
     pub lower_supply_pin: String,
     pub upper_supply_pin: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProtectionClamp {
+    pub name: String,
+    pub protected_pin: String,
+    pub reference_pin: String,
+    pub reference: ProtectionReference,
+    #[serde(default, rename = "working_voltage_max_V")]
+    pub working_voltage_max_v: Option<f64>,
+    #[serde(default, rename = "line_capacitance_F")]
+    pub line_capacitance_f: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProtectionReference {
+    Ground,
+    Power,
 }
 
 #[derive(Debug, Clone, Deserialize)]

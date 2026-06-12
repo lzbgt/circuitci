@@ -132,13 +132,17 @@ dropout/current/startup/capacitance requirements plus measured support-capacitor
 evidence, reset-supervisor monitored rail, reset output, and threshold evidence
 in power-tree suggestions. It marks
 power-tree templates non-runnable when load-switch enable, charger
-programmed-current, or power-mux selected-source evidence is missing. It does
-not invent timing, observed strap
+programmed-current, or power-mux selected-source evidence is missing.
+`INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
+USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
+and line-capacitance budgets when component metadata and scenario limits are
+declared. It does not invent timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
 assertions. Broader automatic recognition for device-specific protection
-behavior remains a component-pack and scenario-generation gap.
+behavior, datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal
+integrity remain component-pack and physics gaps.
 
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load

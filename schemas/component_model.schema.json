@@ -150,6 +150,22 @@
             "additionalProperties": false
           }
         },
+        "protection_clamps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "protected_pin", "reference_pin", "reference"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "protected_pin": { "type": "string", "minLength": 1 },
+              "reference_pin": { "type": "string", "minLength": 1 },
+              "reference": { "enum": ["ground", "power"] },
+              "working_voltage_max_V": { "type": "number", "exclusiveMinimum": 0 },
+              "line_capacitance_F": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        },
         "supply_constraints": {
           "type": "array",
           "items": {

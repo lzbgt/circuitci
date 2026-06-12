@@ -95,6 +95,72 @@ fn ti_txs0108e_supply_order_requires_vcca_not_above_vccb() {
 }
 
 #[test]
+fn usb_esd_clamp_protection_passes_static_review() {
+    let report = run_validation("examples/good_usb_esd_protection/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_esd_clamp_requires_declared_reference_net_kind() {
+    let report = run_validation("examples/bad_usb_esd_reference/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["required_reference"] == "ground")
+        .expect("ESD reference finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_shield");
+    assert_eq!(
+        failure["measured"]["reference_net_kind"],
+        "digital_or_analog"
+    );
+    assert_eq!(failure["limit"]["protection_clamp"], "dp");
+    assert_eq!(failure["limit"]["reference_pin"], "GND");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_esd_clamp_requires_standoff_above_protected_net_voltage() {
+    let report = run_validation("examples/bad_usb_esd_standoff/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["working_voltage_max_V"] == 5.5)
+        .expect("ESD standoff finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["protected_net_nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["protection_clamp"], "dp");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_esd_clamp_capacitance_must_fit_interface_budget() {
+    let report = run_validation("examples/bad_usb_esd_line_capacitance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["max_line_capacitance_F"] == 2.0e-12)
+        .expect("ESD capacitance finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["line_capacitance_F"], 1.0e-11);
+    assert_eq!(failure["limit"]["protection_clamp"], "dp");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -136,10 +136,15 @@ Interface-protection findings may include supply constraint detail:
 - `INTERFACE_PROTECTION_REVIEW.measured`: `lower_supply_pin`,
   `lower_supply_net`, `lower_nominal_voltage_V`, `upper_supply_pin`,
   `upper_supply_net`, `upper_nominal_voltage_V`, plus side pin/supply/powered
-  fields for unpowered-isolation failures.
+  fields for unpowered-isolation failures. Clamp-only findings may include
+  `reference_net_kind`, `protected_net_nominal_voltage_V`, or
+  `line_capacitance_F`.
 - `INTERFACE_PROTECTION_REVIEW.limit`: `supply_constraint`, `relation`,
   `lower_supply_pin`, `upper_supply_pin`, `required_unpowered_isolation`,
-  `enable_pin`, and `required_disabled_state` when applicable.
+  `enable_pin`, and `required_disabled_state` when applicable. Clamp-only
+  findings may include `protection_clamp`, `reference_pin`,
+  `required_reference`, `working_voltage_max_V`, or
+  `max_line_capacitance_F`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
