@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
+const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
@@ -157,6 +158,9 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     if should_suggest_power_tree(bound.project) {
         suggestions.push(power_tree_suggestion(bound.project));
     }
+    if should_suggest_io_voltage(bound) {
+        suggestions.push(io_voltage_suggestion(bound.project));
+    }
     suggestions.extend(gpio_backdrive_suggestions(bound));
     suggestions.extend(interface_protection_suggestions(bound));
     suggestions.extend(reset_release_suggestions(bound));
@@ -196,6 +200,78 @@ fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
             name: format!("{}_power_tree", sanitized_name(&project.project.name)),
             scenario_type: "power_tree".to_string(),
             checks: vec![POWER_TREE_VALID.to_string()],
+            target: None,
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: Vec::new(),
+    }
+}
+
+fn should_suggest_io_voltage(bound: &BoundBoard<'_>) -> bool {
+    let already_declared = bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "power_tree"
+            && scenario
+                .checks
+                .iter()
+                .any(|check| check == IO_VOLTAGE_COMPATIBLE)
+    });
+    !already_declared && has_io_voltage_pair(bound)
+}
+
+fn has_io_voltage_pair(bound: &BoundBoard<'_>) -> bool {
+    let mut outputs_by_net: BTreeMap<String, usize> = BTreeMap::new();
+    let mut inputs_by_net: BTreeMap<String, usize> = BTreeMap::new();
+    for component in bound.project.board.components.values() {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        for (pin_name, net_name) in &component.pins {
+            let Some(port) = model.ports.get(pin_name) else {
+                continue;
+            };
+            if matches!(
+                port.kind,
+                PortKind::DigitalElectricalOutput | PortKind::DigitalElectricalIo
+            ) && kicad_pin_type_output_capable(component, pin_name)
+                && (port.electrical.drive_high_voltage_v.is_some()
+                    || port.electrical.source_impedance_ohm.is_some())
+            {
+                *outputs_by_net.entry(net_name.clone()).or_default() += 1;
+            }
+            if matches!(
+                port.kind,
+                PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+            ) && kicad_pin_type_input_capable(component, pin_name)
+                && (port.electrical.vih_min_v.is_some()
+                    || port.electrical.injection_current_limit_a.is_some())
+            {
+                *inputs_by_net.entry(net_name.clone()).or_default() += 1;
+            }
+        }
+    }
+    outputs_by_net.into_iter().any(|(net, output_count)| {
+        output_count > 0 && inputs_by_net.get(&net).is_some_and(|count| *count > 0)
+    })
+}
+
+fn io_voltage_suggestion(project: &BoardProject) -> ScenarioSuggestion {
+    ScenarioSuggestion {
+        id: "io_voltage_compatible".to_string(),
+        kind: "power_tree".to_string(),
+        confidence: "medium".to_string(),
+        runnable: true,
+        reason: "Project has same-net digital output/input pairs with modeled I/O voltage metadata but no IO_VOLTAGE_COMPATIBLE check.".to_string(),
+        scenario: SuggestedScenario {
+            name: format!("{}_io_voltage", sanitized_name(&project.project.name)),
+            scenario_type: "power_tree".to_string(),
+            checks: vec![IO_VOLTAGE_COMPATIBLE.to_string()],
             target: None,
             timing: None,
             required_boot_mode: None,

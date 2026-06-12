@@ -38,7 +38,7 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_power_reset/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_power_reset");
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 5);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 6);
     let power_tree = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -48,6 +48,16 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
     assert_eq!(power_tree["runnable"], true);
     assert_eq!(power_tree["scenario"]["type"], "power_tree");
     assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let io_voltage = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "io_voltage_compatible")
+        .expect("I/O voltage suggestion");
+    assert_eq!(io_voltage["kind"], "power_tree");
+    assert_eq!(io_voltage["runnable"], true);
+    assert_eq!(io_voltage["scenario"]["type"], "power_tree");
+    assert_eq!(io_voltage["scenario"]["checks"][0], "IO_VOLTAGE_COMPATIBLE");
     let reset = suggestions["suggestions"]
         .as_array()
         .unwrap()

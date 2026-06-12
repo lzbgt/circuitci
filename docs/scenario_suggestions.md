@@ -14,6 +14,9 @@ The command is conservative:
 
 - It emits runnable `power_tree` suggestions when a project declares power nets
   but has no `POWER_TREE_VALID` scenario.
+- It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
+  output/input pairs have modeled I/O voltage metadata and no existing
+  `power_tree` scenario declares that check.
 - It emits reset templates when a component model declares reset behavior, the
   reset pin is connected, and the target power rail declares `power_valid_at_us`.
 - Reset suggestions are marked `runnable: false` until real
@@ -57,6 +60,16 @@ suggestions:
       type: power_tree
       checks:
         - POWER_TREE_VALID
+  - id: io_voltage_compatible
+    kind: power_tree
+    confidence: medium
+    runnable: true
+    reason: Project has same-net digital output/input pairs with modeled I/O voltage metadata but no IO_VOLTAGE_COMPATIBLE check.
+    scenario:
+      name: scenario_suggestions_power_reset_io_voltage
+      type: power_tree
+      checks:
+        - IO_VOLTAGE_COMPATIBLE
   - id: reset_release_after_power_valid_u1
     kind: reset_boot
     confidence: medium
