@@ -112,9 +112,11 @@ The command is conservative:
   `connector_pad_to_route_distance_mm`,
   `protection_pad_to_route_distance_mm`, and
   `connector_to_protection_pad_route_distance_mm` when the imported pad evidence
-  can be matched to the routed net on compatible copper layers. Pad records
-  include center coordinates, layers, and optional imported KiCad
-  kind/shape/size/rotation/drill evidence.
+  can be matched to the routed net on compatible copper layers. When supported
+  pad geometry is present, pad-to-route distance is reported as `0.0` when the
+  routed copper touches the pad copper; otherwise it falls back to pad-center
+  projection distance. Pad records include center coordinates, layers, and
+  optional imported KiCad kind/shape/size/rotation/drill evidence.
 - It emits non-runnable `USB_VBUS_ROUTE_VALID` templates when the USB connector,
   VBUS protection component, placements, and `board.layout.routes` evidence are
   present. The template includes `scenario.usb_routes[]` with VBUS net, route

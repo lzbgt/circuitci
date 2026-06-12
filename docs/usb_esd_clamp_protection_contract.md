@@ -150,9 +150,11 @@ Route-geometry validation:
   When same-net connector/protection pad centers are available, each
   `scenario.usb_routes[]` entry also reports the pad records and measured
   connector-to-protection pad route distance used by
-  `require_route_pad_contact_evidence`. Pad records may include imported KiCad
-  kind, shape, size, rotation, and drill evidence in addition to center/layer
-  data.
+  `require_route_pad_contact_evidence`. When supported pad geometry exists,
+  pad-to-route distance is reported as `0.0` for route copper touching pad
+  copper; incomplete or unsupported pad geometry falls back to center
+  projection. Pad records may include imported KiCad kind, shape, size,
+  rotation, and drill evidence in addition to center/layer data.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

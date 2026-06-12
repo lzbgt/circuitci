@@ -291,6 +291,41 @@ struct PadProjection {
 }
 
 fn nearest_pad_projection(route: &NetRoute, pad: &SuggestedUsbRoutePad) -> Option<PadProjection> {
+    if pad_has_supported_extent(pad) {
+        return route
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| pad_layers_include(&pad.layers, segment.layer.as_str()))
+            .filter(|(_, segment)| segment_touches_pad(segment, pad))
+            .filter_map(|(segment_index, segment)| {
+                project_point_to_segment(
+                    pad.x_mm,
+                    pad.y_mm,
+                    segment.start.x_mm,
+                    segment.start.y_mm,
+                    segment.end.x_mm,
+                    segment.end.y_mm,
+                )
+                .map(|projection| {
+                    let center_distance_mm =
+                        (pad.x_mm - projection.x_mm).hypot(pad.y_mm - projection.y_mm);
+                    (
+                        center_distance_mm,
+                        PadProjection {
+                            segment_index,
+                            t: projection.t,
+                            x_mm: projection.x_mm,
+                            y_mm: projection.y_mm,
+                            distance_to_pad_mm: 0.0,
+                        },
+                    )
+                })
+            })
+            .min_by(|left, right| left.0.total_cmp(&right.0))
+            .map(|(_, projection)| projection);
+    }
+
     route
         .segments
         .iter()
@@ -314,6 +349,277 @@ fn nearest_pad_projection(route: &NetRoute, pad: &SuggestedUsbRoutePad) -> Optio
             })
         })
         .min_by(|left, right| left.distance_to_pad_mm.total_cmp(&right.distance_to_pad_mm))
+}
+
+fn pad_has_supported_extent(pad: &SuggestedUsbRoutePad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    if size.x_mm <= 0.0 || size.y_mm <= 0.0 || !size.x_mm.is_finite() || !size.y_mm.is_finite() {
+        return false;
+    }
+    pad.shape.as_deref().is_some_and(|shape| {
+        matches!(
+            shape.trim().to_ascii_lowercase().as_str(),
+            "rect" | "circle" | "oval"
+        )
+    })
+}
+
+fn segment_touches_pad(segment: &RouteSegment, pad: &SuggestedUsbRoutePad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    let Some(shape) = pad.shape.as_deref().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let route_half_width_mm = segment.width_mm / 2.0;
+    let start = point_to_pad_local(segment.start.x_mm, segment.start.y_mm, pad);
+    let end = point_to_pad_local(segment.end.x_mm, segment.end.y_mm, pad);
+    match shape.trim() {
+        "rect" => segment_intersects_axis_aligned_rect(
+            start,
+            end,
+            size.x_mm / 2.0 + route_half_width_mm,
+            size.y_mm / 2.0 + route_half_width_mm,
+        ),
+        "circle" => {
+            let radius_mm = size.x_mm.min(size.y_mm) / 2.0 + route_half_width_mm;
+            point_to_segment_distance_mm(0.0, 0.0, start.0, start.1, end.0, end.1)
+                .is_some_and(|distance_mm| distance_mm <= radius_mm)
+        }
+        "oval" => segment_touches_oval_pad(start, end, size.x_mm, size.y_mm, route_half_width_mm),
+        _ => false,
+    }
+}
+
+fn point_to_pad_local(x_mm: f64, y_mm: f64, pad: &SuggestedUsbRoutePad) -> (f64, f64) {
+    let dx = x_mm - pad.x_mm;
+    let dy = y_mm - pad.y_mm;
+    let radians = -pad.rotation_deg.unwrap_or(0.0).to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    (dx * cos - dy * sin, dx * sin + dy * cos)
+}
+
+fn segment_touches_oval_pad(
+    start: (f64, f64),
+    end: (f64, f64),
+    size_x_mm: f64,
+    size_y_mm: f64,
+    route_half_width_mm: f64,
+) -> bool {
+    if (size_x_mm - size_y_mm).abs() <= f64::EPSILON {
+        let radius_mm = size_x_mm.min(size_y_mm) / 2.0 + route_half_width_mm;
+        return point_to_segment_distance_mm(0.0, 0.0, start.0, start.1, end.0, end.1)
+            .is_some_and(|distance_mm| distance_mm <= radius_mm);
+    }
+    if size_x_mm > size_y_mm {
+        let radius_mm = size_y_mm / 2.0 + route_half_width_mm;
+        let half_straight_mm = (size_x_mm - size_y_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            (-half_straight_mm, 0.0),
+            (half_straight_mm, 0.0),
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm)
+    } else {
+        let radius_mm = size_x_mm / 2.0 + route_half_width_mm;
+        let half_straight_mm = (size_y_mm - size_x_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            (0.0, -half_straight_mm),
+            (0.0, half_straight_mm),
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm)
+    }
+}
+
+fn segment_intersects_axis_aligned_rect(
+    start: (f64, f64),
+    end: (f64, f64),
+    half_width_mm: f64,
+    half_height_mm: f64,
+) -> bool {
+    if half_width_mm <= 0.0 || half_height_mm <= 0.0 {
+        return false;
+    }
+    if point_inside_axis_aligned_rect(start, half_width_mm, half_height_mm)
+        || point_inside_axis_aligned_rect(end, half_width_mm, half_height_mm)
+    {
+        return true;
+    }
+    let dx = end.0 - start.0;
+    let dy = end.1 - start.1;
+    let mut t_min = 0.0;
+    let mut t_max = 1.0;
+    clip_segment_to_slab(-dx, start.0 + half_width_mm, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(dx, half_width_mm - start.0, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(-dy, start.1 + half_height_mm, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(dy, half_height_mm - start.1, &mut t_min, &mut t_max)
+}
+
+fn point_inside_axis_aligned_rect(
+    point: (f64, f64),
+    half_width_mm: f64,
+    half_height_mm: f64,
+) -> bool {
+    point.0.abs() <= half_width_mm + f64::EPSILON && point.1.abs() <= half_height_mm + f64::EPSILON
+}
+
+fn clip_segment_to_slab(p: f64, q: f64, t_min: &mut f64, t_max: &mut f64) -> bool {
+    if p.abs() <= f64::EPSILON {
+        return q >= -f64::EPSILON;
+    }
+    let r = q / p;
+    if p < 0.0 {
+        if r > *t_max {
+            return false;
+        }
+        if r > *t_min {
+            *t_min = r;
+        }
+    } else {
+        if r < *t_min {
+            return false;
+        }
+        if r < *t_max {
+            *t_max = r;
+        }
+    }
+    true
+}
+
+fn segment_to_segment_distance_mm(
+    first_start: (f64, f64),
+    first_end: (f64, f64),
+    second_start: (f64, f64),
+    second_end: (f64, f64),
+) -> Option<f64> {
+    if segments_intersect(first_start, first_end, second_start, second_end) {
+        return Some(0.0);
+    }
+    Some(
+        [
+            point_to_segment_distance_mm(
+                first_start.0,
+                first_start.1,
+                second_start.0,
+                second_start.1,
+                second_end.0,
+                second_end.1,
+            )?,
+            point_to_segment_distance_mm(
+                first_end.0,
+                first_end.1,
+                second_start.0,
+                second_start.1,
+                second_end.0,
+                second_end.1,
+            )?,
+            point_to_segment_distance_mm(
+                second_start.0,
+                second_start.1,
+                first_start.0,
+                first_start.1,
+                first_end.0,
+                first_end.1,
+            )?,
+            point_to_segment_distance_mm(
+                second_end.0,
+                second_end.1,
+                first_start.0,
+                first_start.1,
+                first_end.0,
+                first_end.1,
+            )?,
+        ]
+        .into_iter()
+        .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn segments_intersect(
+    first_start: (f64, f64),
+    first_end: (f64, f64),
+    second_start: (f64, f64),
+    second_end: (f64, f64),
+) -> bool {
+    let first_min_x = first_start.0.min(first_end.0);
+    let first_max_x = first_start.0.max(first_end.0);
+    let first_min_y = first_start.1.min(first_end.1);
+    let first_max_y = first_start.1.max(first_end.1);
+    let second_min_x = second_start.0.min(second_end.0);
+    let second_max_x = second_start.0.max(second_end.0);
+    let second_min_y = second_start.1.min(second_end.1);
+    let second_max_y = second_start.1.max(second_end.1);
+    if first_max_x + f64::EPSILON < second_min_x
+        || second_max_x + f64::EPSILON < first_min_x
+        || first_max_y + f64::EPSILON < second_min_y
+        || second_max_y + f64::EPSILON < first_min_y
+    {
+        return false;
+    }
+    let first_second_start = orientation(first_start, first_end, second_start);
+    let first_second_end = orientation(first_start, first_end, second_end);
+    let second_first_start = orientation(second_start, second_end, first_start);
+    let second_first_end = orientation(second_start, second_end, first_end);
+    if first_second_start.abs() <= f64::EPSILON
+        && point_on_segment(
+            second_start.0,
+            second_start.1,
+            first_start.0,
+            first_start.1,
+            first_end.0,
+            first_end.1,
+        )
+    {
+        return true;
+    }
+    if first_second_end.abs() <= f64::EPSILON
+        && point_on_segment(
+            second_end.0,
+            second_end.1,
+            first_start.0,
+            first_start.1,
+            first_end.0,
+            first_end.1,
+        )
+    {
+        return true;
+    }
+    if second_first_start.abs() <= f64::EPSILON
+        && point_on_segment(
+            first_start.0,
+            first_start.1,
+            second_start.0,
+            second_start.1,
+            second_end.0,
+            second_end.1,
+        )
+    {
+        return true;
+    }
+    if second_first_end.abs() <= f64::EPSILON
+        && point_on_segment(
+            first_end.0,
+            first_end.1,
+            second_start.0,
+            second_start.1,
+            second_end.0,
+            second_end.1,
+        )
+    {
+        return true;
+    }
+    (first_second_start > 0.0) != (first_second_end > 0.0)
+        && (second_first_start > 0.0) != (second_first_end > 0.0)
+}
+
+fn orientation(a: (f64, f64), b: (f64, f64), c: (f64, f64)) -> f64 {
+    (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
 }
 
 #[derive(Debug, Clone, Copy)]
