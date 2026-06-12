@@ -70,6 +70,7 @@ Executable scenario types:
 - `control_line_sequence`
 - `firmware_in_loop`
 - `interface_protection`
+- `clock`
 - `power_tree`
 - `analog_transient`
 
@@ -91,12 +92,15 @@ Canonical executable check IDs:
 - `GPIO_BACKDRIVE`
 - `RESET_RELEASE_AFTER_POWER_VALID`
 - `BOOT_STRAP_DEFINED`
+- `BOOT_STRAP_BIAS_VALID`
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
+- `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
+- `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
@@ -304,6 +308,41 @@ This is a static datasheet-contract check. It does not prove propagation delay,
 edge rate, leakage, clamp current, ESD pulse behavior, or analog waveform
 margin. Those still need datasheet-backed component models and
 `analog_transient` scenarios where relevant.
+
+## Clock Source Scenario Shape
+
+`clock` scenarios validate external crystal support networks declared by
+component models. This is a static schematic check, not oscillator startup
+simulation.
+
+```yaml
+scenarios:
+  - name: hse_crystal_support
+    type: clock
+    target:
+      component: U1
+    checks:
+      - CLOCK_SOURCE_VALID
+```
+
+`CLOCK_SOURCE_VALID` checks:
+
+1. The target component model declares `clock_sources[]` with distinct
+   oscillator input/output pins.
+2. Those pins are connected to distinct nets.
+3. A component whose model declares `crystal` is connected between the two
+   oscillator nets.
+4. Each oscillator net has a positive-valued Board IR capacitor to ground.
+5. Effective load capacitance is computed as
+   `C1*C2/(C1+C2) + stray_capacitance_F`.
+6. The effective load capacitance must fall within the crystal model's
+   `load_capacitance_F ± load_capacitance_tolerance_F`. If no explicit
+   tolerance is declared, the rule uses ±20% as a conservative screen.
+
+The rule catches common schematic errors such as missing load capacitors or
+support capacitors sized for the wrong crystal CL. It does not prove negative
+resistance, startup time, ESR margin, drive level, temperature stability, ppm
+accuracy, or layout parasitics.
 
 ## Power Tree Scenario Shape
 

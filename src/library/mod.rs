@@ -30,6 +30,10 @@ pub struct ComponentModel {
     #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
+    pub clock_sources: Vec<ClockSource>,
+    #[serde(default)]
+    pub crystal: Option<Crystal>,
+    #[serde(default)]
     pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
 }
@@ -130,6 +134,25 @@ pub struct SignalSupplyConstraint {
     pub relation: SignalSupplyRelation,
     pub lower_supply_pin: String,
     pub upper_supply_pin: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClockSource {
+    pub name: String,
+    pub input_pin: String,
+    pub output_pin: String,
+    #[serde(default, rename = "stray_capacitance_F")]
+    pub stray_capacitance_f: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Crystal {
+    #[serde(rename = "frequency_Hz")]
+    pub frequency_hz: f64,
+    #[serde(rename = "load_capacitance_F")]
+    pub load_capacitance_f: f64,
+    #[serde(default, rename = "load_capacitance_tolerance_F")]
+    pub load_capacitance_tolerance_f: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -39,6 +39,12 @@ ports:
       vih_min_V: 2.0
       vil_max_V: 0.8
       injection_current_limit_A: 0.0001
+  OSC_IN:
+    kind: passive
+    required: false
+  OSC_OUT:
+    kind: passive
+    required: false
 behavior:
   reset:
     pin: NRST
@@ -68,6 +74,12 @@ rules:
   - BOOT_STRAP_DEFINED
   - BOOT_STRAP_BIAS_VALID
   - UART_BOOTLOADER_SYNC
+  - CLOCK_SOURCE_VALID
+clock_sources:
+  - name: hse
+    input_pin: OSC_IN
+    output_pin: OSC_OUT
+    stray_capacitance_F: 2.0e-12
 model_quality:
   source: generic
   confidence: low

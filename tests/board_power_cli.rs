@@ -397,6 +397,35 @@ fn ti_tps2115a_output_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn good_clock_source_crystal_passes_load_capacitance_check() {
+    let report = run_validation("examples/good_clock_source_crystal/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn clock_source_load_capacitance_fails_outside_crystal_range() {
+    let report = run_validation("examples/bad_clock_source_load_capacitance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "CLOCK_SOURCE_VALID")
+        .expect("expected clock source finding");
+    assert_eq!(failure["component"], "U1");
+    assert_eq!(failure["measured"]["crystal_component"], "Y1");
+    assert_eq!(failure["measured"]["input_load_capacitance_F"], 8.0e-12);
+    assert_eq!(failure["measured"]["output_load_capacitance_F"], 8.0e-12);
+    assert_eq!(failure["measured"]["stray_capacitance_F"], 2.0e-12);
+    assert_eq!(failure["measured"]["effective_load_capacitance_F"], 6.0e-12);
+    assert_eq!(failure["limit"]["crystal_load_capacitance_min_F"], 10.0e-12);
+    assert_eq!(failure["limit"]["crystal_load_capacitance_max_F"], 15.0e-12);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

@@ -43,6 +43,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   declared static supply-order constraints. It does not prove analog leakage,
   clamp current, ESD performance, propagation delay, edge rate, or signal
   integrity.
+- `CLOCK_SOURCE_VALID` checks declared external crystal support-network
+  connectivity and load capacitance. It does not prove oscillator startup,
+  negative resistance, ESR margin, drive level, ppm accuracy, temperature
+  drift, or layout parasitics.
 - Quantitative waveform proof is available only through `analog_transient`
   scenarios with a SPICE-class backend and explicit assertions.
 - Imported SPICE decks can produce solver and waveform evidence, but an

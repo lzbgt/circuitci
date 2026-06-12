@@ -5,6 +5,7 @@ mod analog_soa;
 mod analog_spice;
 mod analog_util;
 mod backdrive;
+mod clock_source;
 mod common;
 mod control_line;
 mod firmware_functional;
@@ -30,6 +31,7 @@ pub(super) const BOOT_STRAP_BIAS_VALID: &str = "BOOT_STRAP_BIAS_VALID";
 pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 pub(super) const RESIDENT_BOOTLOADER_UPDATE_SEQUENCE: &str = "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE";
 pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQUENCE";
+pub(super) const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
@@ -44,6 +46,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "interface_protection",
     "power_tree",
     "control_line_sequence",
+    "clock",
     "analog_transient",
 ];
 
@@ -162,6 +165,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     }
                     control_line::validate_control_line_release(bound, scenario, &mut findings)
                 }
+                CLOCK_SOURCE_VALID if scenario.scenario_type == "clock" => {
+                    clock_source::validate_clock_sources(bound, scenario, &mut findings)
+                }
                 FUNCTIONAL_MCU_FIRMWARE if scenario.scenario_type == "firmware_in_loop" => {
                     firmware_functional::validate_functional_mcu_firmware(
                         bound,
@@ -195,6 +201,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | UART_BOOTLOADER_SYNC
                 | RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
                 | CONTROL_LINE_RELEASE_SEQUENCE
+                | CLOCK_SOURCE_VALID
                 | FUNCTIONAL_MCU_FIRMWARE
                 | POWER_TREE_VALID
                 | IO_VOLTAGE_COMPATIBLE

@@ -97,6 +97,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
+- `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
@@ -122,6 +123,13 @@ Stable rule detail keys:
   `vil_max_V`, and optional `max_strap_bias_current_A`.
 - `UART_BOOTLOADER_SYNC.measured`: `interface`, `sync_event_found`, `event_at_us`.
 - `UART_BOOTLOADER_SYNC.limit`: `sync_byte`, `expected_response`, `rx_pin`, `required_boot_mode`.
+- `CLOCK_SOURCE_VALID.measured`: `clock_source`, `clock_input_net`,
+  `clock_output_net`, `crystal_component`, `frequency_Hz`,
+  `input_load_capacitance_F`, `output_load_capacitance_F`,
+  `stray_capacitance_F`, `effective_load_capacitance_F`.
+- `CLOCK_SOURCE_VALID.limit`: `required_crystal_between_clock_nets`,
+  `required_load_capacitors_to_ground`, `crystal_load_capacitance_min_F`,
+  `crystal_load_capacitance_max_F`, `clock_source_field`.
 
 Interface-protection findings may include supply constraint detail:
 

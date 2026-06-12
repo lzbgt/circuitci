@@ -1,0 +1,23 @@
+component_id: generic.analog.crystal_8mhz_12p5pf
+version: 0.1.0
+category: crystal
+ports:
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+crystal:
+  frequency_Hz: 8000000
+  load_capacitance_F: 12.5e-12
+  load_capacitance_tolerance_F: 2.5e-12
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - static_clock_support_network_screening
+  not_valid_for:
+    - oscillator_startup_signoff
+    - crystal_esr_drive_level_or_gain_margin
+    - ppm_accuracy_or_temperature_signoff

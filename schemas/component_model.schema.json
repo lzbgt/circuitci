@@ -144,6 +144,30 @@
       },
       "additionalProperties": false
     },
+    "clock_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "input_pin", "output_pin"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "input_pin": { "type": "string", "minLength": 1 },
+          "output_pin": { "type": "string", "minLength": 1 },
+          "stray_capacitance_F": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "crystal": {
+      "type": "object",
+      "required": ["frequency_Hz", "load_capacitance_F"],
+      "properties": {
+        "frequency_Hz": { "type": "number", "exclusiveMinimum": 0 },
+        "load_capacitance_F": { "type": "number", "exclusiveMinimum": 0 },
+        "load_capacitance_tolerance_F": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "model_faces": { "type": "object" },
     "datasheet": {
       "type": "object",

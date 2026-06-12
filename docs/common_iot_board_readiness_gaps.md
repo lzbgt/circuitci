@@ -126,6 +126,12 @@ power-mux selected-source evidence, or analog assertions. Broader automatic
 recognition for oscillators and device-specific protection behavior remains a
 component-pack and scenario-generation gap.
 
+Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
+external crystal support networks: crystal between oscillator pins, load
+capacitors from both oscillator pins to ground, and effective load capacitance
+against the crystal model target. It does not prove oscillator startup, ESR,
+drive level, ppm accuracy, or layout parasitics.
+
 ## 5. Layout-Dependent Physics
 
 The current tool validates schematic/netlist behavior, not PCB layout physics.

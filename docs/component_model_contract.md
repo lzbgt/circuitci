@@ -78,6 +78,31 @@ Power ports should declare when known:
 - `operating_voltage_max_V`
 - `max_supply_current_A`
 
+MCU, radio, and clock-consumer models can declare external crystal pins:
+
+```yaml
+clock_sources:
+  - name: hse
+    input_pin: OSC_IN
+    output_pin: OSC_OUT
+    stray_capacitance_F: 2.0e-12
+```
+
+Crystal and resonator models can declare the static load target:
+
+```yaml
+crystal:
+  frequency_Hz: 8000000
+  load_capacitance_F: 12.5e-12
+  load_capacitance_tolerance_F: 2.5e-12
+```
+
+`CLOCK_SOURCE_VALID` checks that a crystal model is connected between the two
+clock-source pins and that each pin has a Board IR capacitor to ground. It
+computes effective load capacitance as `C1*C2/(C1+C2) + stray_capacitance_F`
+and compares that to the crystal load target. This is a static support-network
+screen, not oscillator startup or gain-margin sign-off.
+
 Regulator and power-converter models may also declare static conversion
 metadata:
 
