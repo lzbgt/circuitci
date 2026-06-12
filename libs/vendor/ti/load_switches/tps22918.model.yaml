@@ -1,0 +1,116 @@
+component_id: vendor.ti.tps22918
+version: 0.1.0
+category: load_switch
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 5.5
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  ON:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.0
+      vil_max_V: 0.5
+  CT:
+    kind: passive
+    required: false
+  QOD:
+    kind: passive
+    required: false
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: ON
+  enabled_state: high
+  max_output_current_A: 2.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS22918
+  package: SOT-23-6 DBV
+  polarity: single_channel_active_high_load_switch
+  pinout:
+    VIN: VIN
+    VOUT: VOUT
+    GND: GND
+    ON: ON
+    CT: CT
+    QOD: QOD
+  absolute_maximum_ratings:
+    VIN:
+      conditions: Input voltage with respect to GND.
+      value: 6
+      unit: V
+    VOUT:
+      conditions: Output voltage with respect to GND.
+      value: 6
+      unit: V
+    ON:
+      conditions: ON voltage with respect to GND.
+      value: 6
+      unit: V
+    continuous_switch_current:
+      conditions: Ambient temperature 70 C.
+      value: 2
+      unit: A
+    pulsed_switch_current:
+      conditions: Pulse less than 300 us, 2 percent duty cycle.
+      value: 2.5
+      unit: A
+  electrical_characteristics:
+    input_voltage_operating:
+      conditions: Recommended operating input voltage range.
+      min: 1
+      max: 5.5
+      unit: V
+    on_input_high:
+      conditions: High-level ON input, VIN = 1 V to 5.5 V.
+      min: 1
+      max: 5.5
+      unit: V
+    on_input_low:
+      conditions: Low-level ON input, VIN = 1 V to 5.5 V.
+      min: 0
+      max: 0.5
+      unit: V
+    switch_current_continuous:
+      conditions: Maximum continuous switch current.
+      max: 2
+      unit: A
+  device_parameters:
+    qod_behavior:
+      conditions: QOD can be connected through an external resistor to VOUT, tied directly to VOUT, or left floating to disable quick output discharge.
+      unit: note
+      simulation_relevance: Static power-tree validation does not model discharge waveform; use analog_transient for turn-off timing.
+    ct_behavior:
+      conditions: CT controls switch slew rate and can be left floating.
+      unit: note
+      simulation_relevance: Static power-tree validation does not model inrush or rise-time shaping.
+  documents:
+    - title: TPS22918 5.5-V, 2-A, 52-mOhm On-Resistance Load Switch
+      path: docs/research/datasheets/ti/tps22918.pdf
+      source_url: https://www.ti.com/lit/gpn/TPS22918
+      sha256: 802fae6fbe69eded2c6e389178f6fcc1b33cc672464a99935148d9bf77b3f97a
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - load_switch_static_screening
+    - preliminary_power_domain_screening
+  not_valid_for:
+    - inrush_or_soft_start_signoff
+    - load_switch_transient_or_reverse_current_signoff
+    - thermal_signoff

@@ -170,6 +170,55 @@ fn load_switch_output_current_limit_fails() {
 }
 
 #[test]
+fn ti_tps22918_load_switch_power_tree_passes_with_on_evidence() {
+    let report = run_validation("examples/good_ti_tps22918_load_switch/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tps22918_powered_output_requires_on_evidence() {
+    let report = run_validation("examples/bad_ti_tps22918_missing_on/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_enabled_state").is_some())
+        .expect("expected TPS22918 ON evidence finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USW");
+    assert_eq!(failure["net"], "sensor_3v3");
+    assert_eq!(failure["measured"]["control_state"], "missing");
+    assert_eq!(failure["limit"]["control_pin"], "ON");
+    assert_eq!(failure["limit"]["required_enabled_state"], "high");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tps22918_output_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_ti_tps22918_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("load_switch_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected TPS22918 output current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USW");
+    assert_eq!(failure["net"], "sensor_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 2.1);
+    assert_eq!(failure["limit"]["load_switch_max_output_current_A"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

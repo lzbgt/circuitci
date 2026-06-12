@@ -1,0 +1,60 @@
+project:
+  name: bad_ti_tps22918_output_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    USW:
+      model: vendor.ti.tps22918
+      part_number: TPS22918DBVR
+      power_domains:
+        VIN: usb_5v
+        VOUT: sensor_3v3
+      pins:
+        VIN: usb_5v
+        VOUT: sensor_3v3
+        ON: sensor_power_en
+        GND: gnd
+    ULOAD:
+      model: fixture.high_current_load
+      part_number: HIGH_CURRENT_LOAD
+      power_domains:
+        VDD: sensor_3v3
+      pins:
+        VDD: sensor_3v3
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    sensor_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    sensor_power_en:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps22918_sensor_rail_overloaded
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+    pin_states:
+      - component: USW
+        pin: ON
+        mode: input
+        state: high

@@ -26,7 +26,8 @@ sign-off.
 
 Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C and Silicon Labs CP2102N board-level
-USB-UART metadata plus TI TXS0108E interface-protection metadata. The gap
+USB-UART metadata, TI TXS0108E interface-protection metadata, and TI TPS22918
+load-switch metadata. The gap
 remains broad library depth across other USB-UART bridges, debug probes,
 radios, sensors, regulators, and protection devices.
 
@@ -112,8 +113,8 @@ present but observations still need real evidence. It also emits
 interface-protection review templates when component models declare explicit
 `signal_conditioning.channels`. It does not invent timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
-resistance, datasheet isolation behavior, or analog assertions. Broader
-automatic recognition for chargers, oscillators, load switches, and
+resistance, datasheet isolation behavior, load-switch enable evidence, or
+analog assertions. Broader automatic recognition for chargers, oscillators, and
 device-specific protection behavior remains a component-pack and
 scenario-generation gap.
 
