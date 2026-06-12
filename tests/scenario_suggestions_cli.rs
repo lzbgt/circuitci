@@ -659,6 +659,44 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
 }
 
 #[test]
+fn suggest_scenarios_uses_usb_connector_entry_direction_offset() {
+    let suggestions = run_suggest_scenarios(
+        "examples/bad_usb_connector_entry_clearance_model_offset/project_suggestions.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_usb_connector_entry_offset"
+    );
+    let entry = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
+        .expect("USB connector entry-clearance suggestion");
+    assert_eq!(
+        entry["scenario"]["checks"][0],
+        "USB_CONNECTOR_ENTRY_CLEARANCE_VALID"
+    );
+    assert_eq!(entry["scenario"]["parameters"]["entry_direction_deg"], 0.0);
+    let entry_evidence = &entry["scenario"]["usb_connectors"][0]["entry_clearance"];
+    assert_eq!(entry_evidence["entry_direction_deg"], 0.0);
+    assert_eq!(
+        entry_evidence["entry_direction_source"],
+        "component_model_offset"
+    );
+    assert_eq!(entry_evidence["entry_direction_offset_deg"], 90.0);
+    assert_eq!(entry_evidence["nearest_obstruction"]["component"], "R1");
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_depth_mm"],
+        0.75
+    );
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_reference"],
+        "footprint_rectangle"
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_boot_strap_bias_template() {
     let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
     assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");
