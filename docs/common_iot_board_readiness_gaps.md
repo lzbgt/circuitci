@@ -60,6 +60,7 @@ Executable slices now covered by `POWER_TREE_VALID`:
 - static `supply_current_limit_A` budget against declared
   `max_supply_current_A` loads,
 - explicit regulator `power_conversion` dropout margin,
+- explicit regulator minimum output-load requirement,
 - explicit regulator maximum output-current budget,
 - explicit regulator startup-delay sequencing against `power_valid_at_us` rail
   metadata,

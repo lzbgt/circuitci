@@ -21,6 +21,7 @@ After import, `circuitci suggest-scenarios` emits a runnable
 - input pin/net `VIN` / `net_usb_5v`,
 - output pin/net `VOUT` / `net_rail_3v3`,
 - AMS1117 dropout limit `1.3 V`,
+- AMS1117 minimum load requirement `10 mA`,
 - AMS1117 output current screening limit `0.8 A`,
 - AMS1117 output capacitance requirement of `22 uF`,
 - measured support-capacitor evidence: `COUT = 22 uF` on `net_rail_3v3`.

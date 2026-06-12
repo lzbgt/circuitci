@@ -20,6 +20,7 @@ power_conversion:
   input_pin: VIN
   output_pin: VOUT
   dropout_voltage_V: 1.3
+  min_output_current_A: 0.01
   max_output_current_A: 0.8
   output_capacitance_min_F: 0.000022
 datasheet:

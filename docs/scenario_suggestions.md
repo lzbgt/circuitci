@@ -114,6 +114,7 @@ suggestions:
           output_pin: VOUT
           output_net: rail_3v3
           dropout_voltage_V: 0.4
+          min_output_current_A: 0.01
           max_output_current_A: 0.6
           input_capacitance_min_F: 0.000001
           output_capacitance_min_F: 0.000001

@@ -670,6 +670,7 @@ fn import_kicad_schematic_suggests_ams1117_regulator_evidence() {
     assert_eq!(regulator["output_pin"], "VOUT");
     assert_eq!(regulator["output_net"], "net_rail_3v3");
     assert_eq!(regulator["dropout_voltage_V"], 1.3);
+    assert_eq!(regulator["min_output_current_A"], 0.01);
     assert_eq!(regulator["max_output_current_A"], 0.8);
     assert_eq!(regulator["output_capacitance_min_F"], 0.000022);
     assert_eq!(regulator["output_support_capacitance_F"], 0.000022);

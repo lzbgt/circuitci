@@ -1,5 +1,5 @@
 project:
-  name: bad_ams1117_3v3_output_capacitance
+  name: bad_ams1117_3v3_minimum_load
   version: 0.1.0
 
 libraries:
@@ -19,9 +19,9 @@ board:
         VIN: usb_5v
         VOUT: rail_3v3
         GND: gnd
-    U1:
-      model: fixture.ams1117_always_on_load
-      part_number: ALWAYS_ON_LOAD
+    ULOAD:
+      model: fixture.ams1117_light_load
+      part_number: LIGHT_LOAD
       power_domains:
         VDD: rail_3v3
       pins:
@@ -29,13 +29,13 @@ board:
         GND: gnd
     COUT:
       model: generic.analog.capacitor
-      part_number: 10uF
+      part_number: 22uF
       pins:
         A: rail_3v3
         B: gnd
       spice:
         primitive: capacitor
-        value_f: 0.000010
+        value_f: 0.000022
   nets:
     usb_5v:
       kind: power
@@ -49,7 +49,7 @@ board:
       kind: ground
 
 scenarios:
-  - name: ams1117_output_capacitance
+  - name: ams1117_minimum_load
     type: power_tree
     checks:
       - POWER_TREE_VALID

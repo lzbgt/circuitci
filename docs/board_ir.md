@@ -93,7 +93,9 @@ Power semantics:
 - missing `powered`: rail state is unknown and rules that require actual voltage must emit an informational or warning finding instead of guessing.
 - `supply_current_limit_A`: optional worst-case current budget used by
   `POWER_TREE_VALID` when component model power ports declare
-  `max_supply_current_A`.
+  `max_supply_current_A`. Component model power ports may also declare
+  `min_supply_current_A` when a regulator minimum-load check needs always-on
+  load evidence.
 - `power_valid_at_us`: optional rail-valid time used by `POWER_TREE_VALID`
   when regulator model metadata declares `power_conversion.startup_delay_us`.
   In that case, both input and output rails must declare this timing field.

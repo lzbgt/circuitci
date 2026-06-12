@@ -46,6 +46,8 @@ pub struct PowerConversion {
     pub output_pin: String,
     #[serde(default, rename = "dropout_voltage_V")]
     pub dropout_voltage_v: Option<f64>,
+    #[serde(default, rename = "min_output_current_A")]
+    pub min_output_current_a: Option<f64>,
     #[serde(default, rename = "max_output_current_A")]
     pub max_output_current_a: Option<f64>,
     #[serde(default)]
@@ -317,6 +319,8 @@ pub struct Electrical {
     pub operating_voltage_max_v: Option<f64>,
     #[serde(default, rename = "max_supply_current_A")]
     pub max_supply_current_a: Option<f64>,
+    #[serde(default, rename = "min_supply_current_A")]
+    pub min_supply_current_a: Option<f64>,
     #[serde(default, rename = "vih_min_V")]
     pub vih_min_v: Option<f64>,
     #[serde(default, rename = "vil_max_V")]

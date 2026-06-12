@@ -155,7 +155,8 @@ Stable measured keys include
 `nominal_voltage_V`, `powered`, `declared_load_current_A`,
 `declared_output_load_current_A`, `input_voltage_V`, `output_voltage_V`,
 `dropout_margin_V`, `input_power_valid_at_us`, `output_power_valid_at_us`,
-`startup_delay_us`, `support_capacitance_F`, `support_capacitors`,
+`startup_delay_us`, `declared_minimum_output_load_current_A`,
+`support_capacitance_F`, `support_capacitors`,
 `input_powered`, `output_powered`, `control_state`,
 `reset_supervisor_threshold_min_V`, `monitored_load_component`,
 `monitored_load_pin`, `programmed_charge_current_A`,
@@ -164,7 +165,8 @@ Stable measured keys include
 `missing_load_current_metadata` depending on the
 failure. Stable limit keys include `operating_voltage_minimum_V`,
 `operating_voltage_maximum_V`, `powered`, `supply_current_limit_A`,
-`dropout_voltage_V`, `regulator_max_output_current_A`,
+`dropout_voltage_V`, `regulator_min_output_current_A`,
+`regulator_max_output_current_A`,
 `earliest_output_power_valid_at_us`, `required_rail_timing_field`, and
 `regulator_input_capacitance_min_F`, `regulator_output_capacitance_min_F`,
 `power_conversion_pin`, `power_conversion_field`, `control_pin`,

@@ -50,6 +50,7 @@ pub(super) fn validate_power_tree(
                     .push(PowerLoad {
                         component: component_id.clone(),
                         pin: pin_name.clone(),
+                        min_current_a: port.electrical.min_supply_current_a,
                         max_current_a: port.electrical.max_supply_current_a,
                     });
             }
@@ -443,6 +444,44 @@ fn validate_power_conversion(
         }
     }
 
+    if let Some(min_output_current_a) = conversion.min_output_current_a {
+        let loads = loads_by_net
+            .get(output_net_name)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let total_a = loads
+            .iter()
+            .filter_map(|load| load.min_current_a)
+            .filter(|current| current.is_finite() && *current >= 0.0)
+            .sum::<f64>();
+        if total_a < min_output_current_a {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Regulator {component_id} proven minimum output load {:.6} A is below required minimum load {:.6} A.",
+                    total_a, min_output_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding.measured.insert(
+                "declared_minimum_output_load_current_A".to_string(),
+                json!(total_a),
+            );
+            finding.limit.insert(
+                "regulator_min_output_current_A".to_string(),
+                json!(min_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Add a bleeder or always-on load so the regulator meets its datasheet minimum load requirement.".to_string(),
+                "Add min_supply_current_A metadata for always-on loads when the schematic already provides enough minimum load.".to_string(),
+                "Select a regulator that remains in regulation at the board's actual no-load condition.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+
     if let Some(max_output_current_a) = conversion.max_output_current_a {
         let loads = loads_by_net
             .get(output_net_name)
@@ -762,6 +801,18 @@ fn validate_power_conversion_metadata(
             component_id,
             "dropout_voltage_V",
             "power_conversion dropout_voltage_V must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(min_output_current_a) = conversion.min_output_current_a
+        && (!min_output_current_a.is_finite() || min_output_current_a < 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "min_output_current_A",
+            "power_conversion min_output_current_A must be finite and non-negative.",
             scenario,
             findings,
         );
@@ -1606,6 +1657,7 @@ fn pin_logic_state_name(state: &PinLogicState) -> &'static str {
 pub(super) struct PowerLoad {
     component: String,
     pin: String,
+    min_current_a: Option<f64>,
     max_current_a: Option<f64>,
 }
 

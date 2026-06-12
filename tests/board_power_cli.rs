@@ -782,6 +782,31 @@ fn ams1117_3v3_dropout_uses_datasheet_limit() {
 }
 
 #[test]
+fn ams1117_3v3_minimum_load_uses_datasheet_requirement() {
+    let report = run_validation("examples/bad_ams1117_3v3_minimum_load/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_min_output_current_A")
+                .is_some()
+        })
+        .expect("expected AMS1117 minimum-load finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(
+        failure["measured"]["declared_minimum_output_load_current_A"],
+        0.002
+    );
+    assert_eq!(failure["limit"]["regulator_min_output_current_A"], 0.01);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ams1117_3v3_output_current_uses_datasheet_regulation_limit() {
     let report = run_validation("examples/bad_ams1117_3v3_output_current/project.yaml");
     assert_eq!(report["result"], "fail");

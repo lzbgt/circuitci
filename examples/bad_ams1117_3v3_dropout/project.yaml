@@ -5,6 +5,7 @@ project:
 libraries:
   - ../../libs/generic
   - ../../libs/vendor
+  - models
 
 board:
   components:
@@ -19,8 +20,8 @@ board:
         VOUT: rail_3v3
         GND: gnd
     U1:
-      model: generic.mcu.basic
-      part_number: GENERIC_MCU
+      model: fixture.ams1117_always_on_load
+      part_number: ALWAYS_ON_LOAD
       power_domains:
         VDD: rail_3v3
       pins:

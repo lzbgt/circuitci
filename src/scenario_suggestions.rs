@@ -245,6 +245,7 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                 output_pin: conversion.output_pin.clone(),
                 output_net: output_net.to_string(),
                 dropout_voltage_v: conversion.dropout_voltage_v,
+                min_output_current_a: conversion.min_output_current_a,
                 max_output_current_a: conversion.max_output_current_a,
                 startup_delay_us: conversion.startup_delay_us,
                 input_capacitance_min_f: conversion.input_capacitance_min_f,

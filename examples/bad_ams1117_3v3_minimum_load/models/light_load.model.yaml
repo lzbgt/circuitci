@@ -1,4 +1,4 @@
-component_id: fixture.ams1117_high_current_load
+component_id: fixture.ams1117_light_load
 version: 0.1.0
 category: load
 ports:
@@ -8,8 +8,8 @@ ports:
     electrical:
       operating_voltage_min_V: 3.0
       operating_voltage_max_V: 3.6
-      min_supply_current_A: 0.02
-      max_supply_current_A: 0.85
+      min_supply_current_A: 0.002
+      max_supply_current_A: 0.01
   GND:
     kind: electrical_ground
     required: true

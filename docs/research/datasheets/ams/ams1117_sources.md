@@ -30,14 +30,13 @@ Retrieved on 2026-06-12.
 - The stability section states that `22 uF` solid tantalum on the output
   ensures stability for all operating conditions.
 - The data sheet defines `10 mA` minimum load current for guaranteed
-  regulation, but CircuitCI does not yet have minimum-load evidence in Board IR,
-  so this is recorded as datasheet metadata only.
+  regulation. The model uses this as `min_output_current_A`.
 
 ## Modeling Notes
 
 The model is a static board-level regulator screen. `POWER_TREE_VALID` can use
 it to catch wrong rail voltage, insufficient nominal dropout margin, excessive
-declared output load current, and missing/undersized explicit output support
-capacitance. It does not sign off minimum-load regulation, thermal derating,
-output capacitor ESR/material choice, load-transient behavior, startup waveform,
-or short-circuit behavior.
+declared output load current, insufficient proven minimum load current, and
+missing/undersized explicit output support capacitance. It does not sign off
+thermal derating, output capacitor ESR/material choice, load-transient behavior,
+startup waveform, or short-circuit behavior.

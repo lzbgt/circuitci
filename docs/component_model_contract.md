@@ -76,6 +76,7 @@ Power ports should declare when known:
 
 - `operating_voltage_min_V`
 - `operating_voltage_max_V`
+- `min_supply_current_A`
 - `max_supply_current_A`
 
 MCU, radio, and clock-consumer models can declare external crystal pins:
@@ -111,6 +112,7 @@ power_conversion:
   input_pin: VIN
   output_pin: VOUT
   dropout_voltage_V: 0.3
+  min_output_current_A: 0.01
   max_output_current_A: 0.1
   startup_delay_us: 1000
   input_capacitance_min_F: 0.000001
@@ -121,6 +123,8 @@ power_conversion:
   rails. They must be distinct `electrical_power` ports.
 - `dropout_voltage_V` is a static nominal-voltage margin check:
   `V(input) - V(output)` must be at least this value.
+- `min_output_current_A` checks the sum of declared `min_supply_current_A`
+  always-on loads on the output rail.
 - `max_output_current_A` checks the sum of declared `max_supply_current_A`
   loads on the output rail.
 - `startup_delay_us` checks declared rail timing:

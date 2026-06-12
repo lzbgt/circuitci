@@ -165,6 +165,11 @@ pub struct SuggestedRegulator {
     #[serde(rename = "dropout_voltage_V", skip_serializing_if = "Option::is_none")]
     pub dropout_voltage_v: Option<f64>,
     #[serde(
+        rename = "min_output_current_A",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub min_output_current_a: Option<f64>,
+    #[serde(
         rename = "max_output_current_A",
         skip_serializing_if = "Option::is_none"
     )]
