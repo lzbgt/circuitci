@@ -75,6 +75,7 @@ scenarios:
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
+| layout routes | optional net map | Routed segment and via geometry used by layout-aware checks. |
 | scenarios | list | Scenario definitions select validation checks. |
 
 ## Net Kinds
@@ -128,6 +129,35 @@ board:
 `USB_PROTECTION_PLACEMENT_VALID` uses this evidence to check that USB ESD
 protection components are close to the connector. Missing or non-finite
 placement coordinates fail closed for rules that declare a placement limit.
+
+## Layout Route Evidence
+
+Board IR can carry routed copper evidence under `board.layout.routes`. Each key
+is an existing Board IR net. Coordinates are in millimeters in the same board
+coordinate system as placements.
+
+```yaml
+board:
+  layout:
+    routes:
+      usb_dp:
+        segments:
+          - start: { x_mm: 0.0, y_mm: 0.0 }
+            end: { x_mm: 1.0, y_mm: 0.0 }
+            width_mm: 0.15
+            layer: F.Cu
+        vias:
+          - at: { x_mm: 0.5, y_mm: 0.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
+```
+
+KiCad PCB import populates this from `segment` and `via` entries when the PCB
+net maps unambiguously to an existing Board IR net. Route evidence is not a
+replacement for signal-integrity or ESD-pulse validation; it is structured
+input for geometry-aware rules such as trace length, via count, and protection
+ordering.
 
 ## Consistency Rules
 

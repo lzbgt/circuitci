@@ -60,6 +60,23 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         1.5
     );
     assert!(imported["board"]["layout"]["placements"]["H1"].is_null());
+    let dp_route = &imported["board"]["layout"]["routes"]["net_usb_dp"];
+    assert_eq!(dp_route["segments"][0]["start"]["x_mm"], 0.0);
+    assert_eq!(dp_route["segments"][0]["end"]["x_mm"], 1.0);
+    assert_eq!(dp_route["segments"][0]["width_mm"], 0.15);
+    assert_eq!(dp_route["segments"][0]["layer"], "F.Cu");
+    assert_eq!(dp_route["vias"][0]["at"]["x_mm"], 0.5);
+    assert_eq!(dp_route["vias"][0]["size_mm"], 0.6);
+    assert_eq!(dp_route["vias"][0]["drill_mm"], 0.3);
+    assert_eq!(dp_route["vias"][0]["layers"][1], "B.Cu");
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_usb_dm"]["segments"][0]["end"]["y_mm"],
+        0.4
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_usb_vbus"]["segments"][0]["end"]["x_mm"],
+        1.5
+    );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -133,6 +150,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         libraries
             .iter()
             .all(|library| { std::path::Path::new(library.as_str().unwrap()).is_absolute() })
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["usb_dp"]["segments"][0]["end"]["x_mm"],
+        1.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["usb_vbus"]["segments"][0]["width_mm"],
+        0.3
     );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))

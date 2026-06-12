@@ -27,7 +27,8 @@ return-path quality, or ESD pulse performance.
 The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 
 1. `import-kicad-schematic` for connector and ESD connectivity.
-2. `import-kicad-pcb` for `board.layout.placements`.
+2. `import-kicad-pcb` for `board.layout.placements` and routed USB net
+   geometry under `board.layout.routes`.
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:

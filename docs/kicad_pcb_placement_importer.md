@@ -1,7 +1,7 @@
-# KiCad PCB Placement Importer
+# KiCad PCB Layout Evidence Importer
 
 `circuitci import-kicad-pcb` enriches an existing Board IR project with
-component placement evidence from a KiCad `.kicad_pcb` file:
+component placement and routed-net evidence from a KiCad `.kicad_pcb` file:
 
 ```bash
 circuitci import-kicad-pcb board.kicad_pcb \
@@ -22,13 +22,32 @@ Only footprint references that match existing `board.components` are written to
 `board.layout.placements`. Extra mechanical footprints are ignored. Duplicate
 footprint references, missing references, invalid coordinates, files without
 footprints, and PCB files with no matching Board IR components fail closed.
+
+The importer also reads KiCad `net`, `segment`, and `via` entries. Routed
+geometry is written under `board.layout.routes` only when the PCB net can be
+matched to an existing Board IR net. The importer does not create new schematic
+nets from PCB data. Net matching tries exact names, lowercase names, common
+ground aliases, native KiCad import names such as `net_usb_dp`, and a
+deterministic sanitized-name match. Ambiguous net matches fail closed.
+
+Imported route evidence currently includes:
+
+- copper segment `start`/`end` points in millimeters,
+- segment `width_mm`,
+- segment `layer`,
+- via `at` point,
+- via `size_mm`,
+- via `drill_mm`,
+- via layer stack when present.
+
 When the enriched project is written to a different directory, relative
 `libraries` entries are rewritten to absolute paths so follow-up
 `validate`/`suggest-scenarios` commands still resolve the same model packs.
 
-This is placement evidence only. The importer does not extract routed traces,
-vias, differential-pair geometry, shield bonding, copper pours, clearances,
-footprint pad geometry, or pin-1/BOM/PNP alignment.
+This is bounded layout evidence, not a full PCB layout solver. The importer
+does not extract differential-pair constraints, shield bonding, copper pours,
+clearances, footprint pad geometry, return paths, net classes, impedance rules,
+or pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
@@ -36,6 +55,6 @@ Fixture coverage:
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, and proves `suggest-scenarios` emits a
+PCB placements and routed USB net geometry, and proves `suggest-scenarios` emits a
 `USB_PROTECTION_PLACEMENT_VALID` template with connector-to-protection distance
 evidence.

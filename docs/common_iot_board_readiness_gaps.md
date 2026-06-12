@@ -166,13 +166,14 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 
 ## 5. Layout-Dependent Physics
 
-The current tool validates schematic/netlist behavior and a small amount of
-explicit placement evidence. KiCad `.kicad_pcb` import can now populate
-component center placements for matching Board IR components, but the tool does
-not yet import or solve full PCB layout physics. Missing layout checks include:
+The current tool validates schematic/netlist behavior and a bounded amount of
+explicit layout evidence. KiCad `.kicad_pcb` import can now populate component
+center placements and routed segment/via geometry for matching Board IR nets,
+but the tool does not yet import or solve full PCB layout physics. Missing
+layout checks include:
 
 - USB differential pair constraints, connector orientation, routed trace order,
-  via count, and return-path discontinuities,
+  via-count limits, trace-length limits, and return-path discontinuities,
 - RF antenna matching, keepout, and 2.4 GHz layout,
 - impedance, return path, and high-speed signal integrity,
 - thermal copper and power dissipation from layout,

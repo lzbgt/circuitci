@@ -254,7 +254,7 @@ fn run_import_kicad_schematic(
 }
 
 fn run_import_kicad_pcb(pcb: PathBuf, project: PathBuf, output: PathBuf) -> Result<()> {
-    let imported_count = crate::importers::kicad_pcb::import_kicad_pcb_placements(
+    let summary = crate::importers::kicad_pcb::import_kicad_pcb_placements(
         &crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
             input: pcb.clone(),
             project: project.clone(),
@@ -262,7 +262,10 @@ fn run_import_kicad_pcb(pcb: PathBuf, project: PathBuf, output: PathBuf) -> Resu
         },
     )?;
     println!(
-        "CircuitCI imported {imported_count} KiCad PCB placements {} + {} -> {}",
+        "CircuitCI imported {} KiCad PCB placements, {} route segments, and {} vias {} + {} -> {}",
+        summary.placements,
+        summary.route_segments,
+        summary.route_vias,
         pcb.display(),
         project.display(),
         output.display()

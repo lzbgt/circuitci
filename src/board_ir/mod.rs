@@ -37,6 +37,8 @@ pub struct Board {
 pub struct BoardLayout {
     #[serde(default)]
     pub placements: BTreeMap<String, ComponentPlacement>,
+    #[serde(default)]
+    pub routes: BTreeMap<String, NetRoute>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,6 +54,37 @@ pub struct ComponentPlacement {
 pub enum PlacementSide {
     Top,
     Bottom,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct NetRoute {
+    #[serde(default)]
+    pub segments: Vec<RouteSegment>,
+    #[serde(default)]
+    pub vias: Vec<RouteVia>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RouteSegment {
+    pub start: LayoutPoint,
+    pub end: LayoutPoint,
+    pub width_mm: f64,
+    pub layer: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RouteVia {
+    pub at: LayoutPoint,
+    pub size_mm: f64,
+    pub drill_mm: f64,
+    #[serde(default)]
+    pub layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutPoint {
+    pub x_mm: f64,
+    pub y_mm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

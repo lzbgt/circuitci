@@ -1,5 +1,5 @@
 use super::kicad_sch::sexp::{
-    as_list, child_list, list_children, numeric_at, parse_sexp_document, string_at, tag,
+    Sexp, as_list, child_list, list_children, numeric_at, parse_sexp_document, string_at, tag,
 };
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
@@ -37,8 +37,70 @@ struct PlacementYaml {
     side: Option<PcbPlacementSide>,
 }
 
-pub fn import_kicad_pcb_placements(options: &KicadPcbPlacementImportOptions) -> Result<usize> {
-    let placements = parse_kicad_pcb_placements(&options.input)?;
+#[derive(Debug, Clone, Default)]
+pub struct KicadPcbImportSummary {
+    pub placements: usize,
+    pub route_segments: usize,
+    pub route_vias: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+struct PcbRoute {
+    segments: Vec<PcbRouteSegment>,
+    vias: Vec<PcbRouteVia>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbRouteSegment {
+    start: PcbPoint,
+    end: PcbPoint,
+    width_mm: f64,
+    layer: String,
+}
+
+#[derive(Debug, Clone)]
+struct PcbRouteVia {
+    at: PcbPoint,
+    size_mm: f64,
+    drill_mm: f64,
+    layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+struct PcbPoint {
+    x_mm: f64,
+    y_mm: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct RouteYaml<'a> {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    segments: Vec<RouteSegmentYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    vias: Vec<RouteViaYaml<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+struct RouteSegmentYaml {
+    start: PcbPoint,
+    end: PcbPoint,
+    width_mm: f64,
+    layer: String,
+}
+
+#[derive(Debug, Serialize)]
+struct RouteViaYaml<'a> {
+    at: PcbPoint,
+    size_mm: f64,
+    drill_mm: f64,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    layers: Vec<&'a str>,
+}
+
+pub fn import_kicad_pcb_placements(
+    options: &KicadPcbPlacementImportOptions,
+) -> Result<KicadPcbImportSummary> {
+    let parsed_pcb = parse_kicad_pcb(&options.input)?;
     let text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project {}",
@@ -51,8 +113,8 @@ pub fn import_kicad_pcb_placements(options: &KicadPcbPlacementImportOptions) -> 
             options.project.display()
         )
     })?;
-    let imported_count = merge_placements_into_project(&mut project_yaml, &placements)?;
-    if imported_count == 0 {
+    let summary = merge_pcb_into_project(&mut project_yaml, &parsed_pcb)?;
+    if summary.placements == 0 {
         bail!(
             "KiCad PCB {} has no footprint references matching Board IR project components in {}.",
             options.input.display(),
@@ -78,10 +140,16 @@ pub fn import_kicad_pcb_placements(options: &KicadPcbPlacementImportOptions) -> 
     );
     fs::write(&options.output, yaml)
         .with_context(|| format!("Failed to write {}", options.output.display()))?;
-    Ok(imported_count)
+    Ok(summary)
 }
 
-fn parse_kicad_pcb_placements(path: &PathBuf) -> Result<BTreeMap<String, PcbPlacement>> {
+#[derive(Debug, Clone)]
+struct ParsedPcb {
+    placements: BTreeMap<String, PcbPlacement>,
+    routes: BTreeMap<String, PcbRoute>,
+}
+
+fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("Failed to read KiCad PCB {}", path.display()))?;
     let root = parse_sexp_document(&text)?;
@@ -89,6 +157,12 @@ fn parse_kicad_pcb_placements(path: &PathBuf) -> Result<BTreeMap<String, PcbPlac
     if tag(root_list) != Some("kicad_pcb") {
         bail!("KiCad PCB {} root token is not kicad_pcb.", path.display());
     }
+    let placements = parse_placements(root_list, path)?;
+    let routes = parse_routes(root_list, path)?;
+    Ok(ParsedPcb { placements, routes })
+}
+
+fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbPlacement>> {
     let mut placements = BTreeMap::new();
     for footprint in list_children(root_list, "footprint") {
         let reference = footprint_reference(footprint)
@@ -109,6 +183,166 @@ fn parse_kicad_pcb_placements(path: &PathBuf) -> Result<BTreeMap<String, PcbPlac
         bail!("KiCad PCB {} contains no footprints.", path.display());
     }
     Ok(placements)
+}
+
+fn parse_routes(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbRoute>> {
+    let net_names = parse_net_names(root_list)?;
+    let mut routes = BTreeMap::<String, PcbRoute>::new();
+    for segment in list_children(root_list, "segment") {
+        let net_name = route_net_name(segment, &net_names, "segment", path)?;
+        let start = route_point(segment, "start", path)?;
+        let end = route_point(segment, "end", path)?;
+        let width_mm = positive_child_number(segment, "width", path)?;
+        let layer = non_empty_child_string(segment, "layer", path)?;
+        routes
+            .entry(net_name)
+            .or_default()
+            .segments
+            .push(PcbRouteSegment {
+                start,
+                end,
+                width_mm,
+                layer,
+            });
+    }
+    for via in list_children(root_list, "via") {
+        let net_name = route_net_name(via, &net_names, "via", path)?;
+        let at = route_point(via, "at", path)?;
+        let size_mm = positive_child_number(via, "size", path)?;
+        let drill_mm = positive_child_number(via, "drill", path)?;
+        let layers = child_list(via, "layers")
+            .map(|layers| {
+                layers
+                    .iter()
+                    .skip(1)
+                    .filter_map(|item| match item {
+                        Sexp::Atom(value) | Sexp::Str(value) if !value.trim().is_empty() => {
+                            Some(value.trim().to_string())
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        routes.entry(net_name).or_default().vias.push(PcbRouteVia {
+            at,
+            size_mm,
+            drill_mm,
+            layers,
+        });
+    }
+    Ok(routes)
+}
+
+fn parse_net_names(root_list: &[Sexp]) -> Result<BTreeMap<String, String>> {
+    let mut net_names = BTreeMap::new();
+    for net in list_children(root_list, "net") {
+        let net_id = string_at(net, 1).context("KiCad PCB net entry is missing net id.")?;
+        let net_name = string_at(net, 2).context("KiCad PCB net entry is missing net name.")?;
+        if net_name.trim().is_empty() {
+            bail!("KiCad PCB net {net_id} has empty net name.");
+        }
+        net_names.insert(net_id.to_string(), net_name.trim().to_string());
+    }
+    Ok(net_names)
+}
+
+fn route_net_name(
+    item: &[Sexp],
+    net_names: &BTreeMap<String, String>,
+    item_kind: &str,
+    path: &Path,
+) -> Result<String> {
+    let net = child_list(item, "net").with_context(|| {
+        format!(
+            "KiCad PCB {} in {} is missing net id.",
+            item_kind,
+            path.display()
+        )
+    })?;
+    let net_id = string_at(net, 1).with_context(|| {
+        format!(
+            "KiCad PCB {} in {} has invalid net id.",
+            item_kind,
+            path.display()
+        )
+    })?;
+    net_names.get(net_id).cloned().with_context(|| {
+        format!(
+            "KiCad PCB {} in {} references unknown net id {}.",
+            item_kind,
+            path.display(),
+            net_id
+        )
+    })
+}
+
+fn route_point(item: &[Sexp], field: &str, path: &Path) -> Result<PcbPoint> {
+    let point = child_list(item, field).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} is missing ({field} x y).",
+            path.display()
+        )
+    })?;
+    let x_mm = numeric_at(point, 1).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} has invalid {field} x coordinate.",
+            path.display()
+        )
+    })?;
+    let y_mm = numeric_at(point, 2).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} has invalid {field} y coordinate.",
+            path.display()
+        )
+    })?;
+    Ok(PcbPoint { x_mm, y_mm })
+}
+
+fn positive_child_number(item: &[Sexp], field: &str, path: &Path) -> Result<f64> {
+    let child = child_list(item, field).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} is missing ({field} value).",
+            path.display()
+        )
+    })?;
+    let value = numeric_at(child, 1).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} has invalid {field}.",
+            path.display()
+        )
+    })?;
+    if value <= 0.0 {
+        bail!(
+            "KiCad PCB route item in {} has non-positive {field} {}.",
+            path.display(),
+            value
+        );
+    }
+    Ok(value)
+}
+
+fn non_empty_child_string(item: &[Sexp], field: &str, path: &Path) -> Result<String> {
+    let child = child_list(item, field).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} is missing ({field} value).",
+            path.display()
+        )
+    })?;
+    let value = string_at(child, 1).with_context(|| {
+        format!(
+            "KiCad PCB route item in {} has invalid {field}.",
+            path.display()
+        )
+    })?;
+    let value = value.trim();
+    if value.is_empty() {
+        bail!(
+            "KiCad PCB route item in {} has empty {field}.",
+            path.display()
+        );
+    }
+    Ok(value.to_string())
 }
 
 fn footprint_reference(footprint: &[super::kicad_sch::sexp::Sexp]) -> Option<String> {
@@ -142,10 +376,10 @@ fn footprint_side(footprint: &[super::kicad_sch::sexp::Sexp]) -> Option<PcbPlace
     }
 }
 
-fn merge_placements_into_project(
+fn merge_pcb_into_project(
     project_yaml: &mut Value,
-    placements: &BTreeMap<String, PcbPlacement>,
-) -> Result<usize> {
+    parsed_pcb: &ParsedPcb,
+) -> Result<KicadPcbImportSummary> {
     let board = mapping_field_mut(project_yaml, "board")?;
     let component_refs = mapping_field(board, "components")?
         .keys()
@@ -155,10 +389,18 @@ fn merge_placements_into_project(
     if component_refs.is_empty() {
         bail!("Board IR project has no board.components entries.");
     }
+    let board_nets = mapping_field(board, "nets")?
+        .keys()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect::<BTreeSet<_>>();
+    if board_nets.is_empty() {
+        bail!("Board IR project has no board.nets entries.");
+    }
     let layout = ensure_mapping_field_mut(board, "layout")?;
     let placement_yaml = ensure_mapping_field_mut(layout, "placements")?;
-    let mut imported_count = 0;
-    for (reference, placement) in placements {
+    let mut summary = KicadPcbImportSummary::default();
+    for (reference, placement) in &parsed_pcb.placements {
         if !component_refs.contains(reference) {
             continue;
         }
@@ -170,9 +412,121 @@ fn merge_placements_into_project(
                 side: placement.side,
             })?,
         );
-        imported_count += 1;
+        summary.placements += 1;
     }
-    Ok(imported_count)
+    let route_yaml = ensure_mapping_field_mut(layout, "routes")?;
+    for (pcb_net_name, route) in &parsed_pcb.routes {
+        let Some(board_net_name) = map_pcb_net_to_board_net(pcb_net_name, &board_nets)? else {
+            continue;
+        };
+        let route_value = route_yaml_value(route)?;
+        route_yaml.insert(Value::String(board_net_name), route_value);
+        summary.route_segments += route.segments.len();
+        summary.route_vias += route.vias.len();
+    }
+    Ok(summary)
+}
+
+fn route_yaml_value(route: &PcbRoute) -> Result<Value> {
+    serde_yaml_ng::to_value(RouteYaml {
+        segments: route
+            .segments
+            .iter()
+            .map(|segment| RouteSegmentYaml {
+                start: segment.start,
+                end: segment.end,
+                width_mm: segment.width_mm,
+                layer: segment.layer.clone(),
+            })
+            .collect(),
+        vias: route
+            .vias
+            .iter()
+            .map(|via| RouteViaYaml {
+                at: via.at,
+                size_mm: via.size_mm,
+                drill_mm: via.drill_mm,
+                layers: via.layers.iter().map(String::as_str).collect(),
+            })
+            .collect(),
+    })
+    .context("Failed to serialize KiCad PCB route geometry into Board IR YAML.")
+}
+
+fn map_pcb_net_to_board_net(
+    pcb_net_name: &str,
+    board_nets: &BTreeSet<String>,
+) -> Result<Option<String>> {
+    if board_nets.contains(pcb_net_name) {
+        return Ok(Some(pcb_net_name.to_string()));
+    }
+    let lowercase = pcb_net_name.to_ascii_lowercase();
+    if board_nets.contains(&lowercase) {
+        return Ok(Some(lowercase));
+    }
+    if is_ground_net_name(pcb_net_name) {
+        for candidate in ["gnd", "net_gnd"] {
+            if board_nets.contains(candidate) {
+                return Ok(Some(candidate.to_string()));
+            }
+        }
+    }
+    let sanitized = sanitize_identifier(pcb_net_name);
+    let prefixed = format!("net_{sanitized}");
+    if board_nets.contains(&prefixed) {
+        return Ok(Some(prefixed));
+    }
+    if board_nets.contains(&sanitized) {
+        return Ok(Some(sanitized));
+    }
+    let matches = board_nets
+        .iter()
+        .filter(|candidate| board_net_matches_pcb_net(candidate, &sanitized))
+        .cloned()
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [] => Ok(None),
+        [single] => Ok(Some(single.clone())),
+        ambiguous => bail!(
+            "KiCad PCB net {} maps ambiguously to Board IR nets: {}.",
+            pcb_net_name,
+            ambiguous.join(", ")
+        ),
+    }
+}
+
+fn board_net_matches_pcb_net(board_net_name: &str, sanitized_pcb_name: &str) -> bool {
+    sanitize_identifier(board_net_name) == sanitized_pcb_name
+        || board_net_name
+            .strip_prefix("net_")
+            .is_some_and(|suffix| sanitize_identifier(suffix) == sanitized_pcb_name)
+}
+
+fn is_ground_net_name(name: &str) -> bool {
+    matches!(
+        sanitize_identifier(name).as_str(),
+        "gnd" | "ground" | "vss" | "0"
+    )
+}
+
+fn sanitize_identifier(input: &str) -> String {
+    let mut output = String::new();
+    let mut last_was_underscore = false;
+    for character in input.chars() {
+        if character.is_ascii_alphanumeric() {
+            output.push(character.to_ascii_lowercase());
+            last_was_underscore = false;
+        } else if !last_was_underscore {
+            output.push('_');
+            last_was_underscore = true;
+        }
+    }
+    let output = output.trim_matches('_').to_string();
+    if output.is_empty() {
+        "net".to_string()
+    } else {
+        output
+    }
 }
 
 fn absolutize_relative_libraries(project_yaml: &mut Value, project_dir: &Path) -> Result<()> {

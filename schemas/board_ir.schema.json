@@ -130,6 +130,46 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "routes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["start", "end", "width_mm", "layer"],
+                      "properties": {
+                        "start": { "$ref": "#/$defs/layout_point" },
+                        "end": { "$ref": "#/$defs/layout_point" },
+                        "width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                        "layer": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "vias": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["at", "size_mm", "drill_mm"],
+                      "properties": {
+                        "at": { "$ref": "#/$defs/layout_point" },
+                        "size_mm": { "type": "number", "exclusiveMinimum": 0 },
+                        "drill_mm": { "type": "number", "exclusiveMinimum": 0 },
+                        "layers": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false
@@ -543,6 +583,15 @@
       "properties": {
         "component": { "type": "string", "minLength": 1 },
         "pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "layout_point": {
+      "type": "object",
+      "required": ["x_mm", "y_mm"],
+      "properties": {
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" }
       },
       "additionalProperties": false
     }
