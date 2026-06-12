@@ -99,6 +99,9 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `INTERFACE_PROTECTION_REVIEW`
 - `USB_CONNECTOR_PROTECTION_VALID`
 - `USB_PROTECTION_PLACEMENT_VALID`
+- `USB_CONNECTOR_ORIENTATION_VALID`
+- `USB_CONNECTOR_EDGE_PROXIMITY_VALID`
+- `USB_CONNECTOR_BODY_OVERHANG_VALID`
 - `USB_ROUTE_GEOMETRY_VALID`
 - `USB_VBUS_ROUTE_VALID`
 - `USB_RETURN_PATH_VALID`
@@ -214,6 +217,17 @@ evidence. Stable measured keys include
 `board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
 `board_edge_end_y_mm`, and optional `board_edge_layer`. Stable limit keys include
 `max_connector_to_board_edge_distance_mm`.
+
+`USB_CONNECTOR_BODY_OVERHANG_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata,
+`board.layout.placements`, straight `board.layout.outline.segments`, and
+connector `fabrication` or `courtyard` footprint graphics. Stable measured keys
+include `connector_body_overhang_mm`, `connector_edge_reference`, optional
+`footprint_graphic_layer`, optional `footprint_graphic_kind`,
+`board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
+`board_edge_end_y_mm`, optional `board_edge_layer`, `edge_angle_deg`, and
+`outward_normal_deg`. Stable limit keys include
+`max_connector_body_overhang_mm`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,

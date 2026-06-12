@@ -4,13 +4,14 @@ use serde_json::json;
 
 use super::placement_side_name;
 use super::usb_connector::{
-    ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbConnectorSignal,
-    UsbPlacementDistanceEvidence,
+    ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbBodyOverhangEvidence,
+    UsbConnectorSignal, UsbPlacementDistanceEvidence,
 };
 use crate::board_ir::ComponentPlacement;
 use crate::validation::{
-    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
-    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID,
+    USB_CONNECTOR_BODY_OVERHANG_VALID, USB_CONNECTOR_EDGE_PROXIMITY_VALID,
+    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID,
 };
 
 pub(super) fn usb_connector_metadata_finding(
@@ -489,6 +490,95 @@ pub(super) fn usb_edge_proximity_finding(
             "Move USB connector {connector_id} closer to the intended board edge or update the board-edge outline evidence."
         ),
         "If this connector is intentionally set back for an enclosure, cable, or panel strategy, increase max_connector_to_board_edge_distance_mm from that mechanical rule and rerun validation.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_body_overhang_metadata_finding(
+    scenario: &crate::board_ir::Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_CONNECTOR_BODY_OVERHANG_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import PCB board outline and connector fabrication/courtyard footprint evidence with import-kicad-pcb before declaring USB_CONNECTOR_BODY_OVERHANG_VALID.".to_string(),
+        "Use mechanical footprint body evidence plus connector/enclosure limits to set max_connector_body_overhang_mm.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_body_overhang_finding(
+    scenario: &crate::board_ir::Scenario,
+    connector_id: &str,
+    edge: &UsbBodyOverhangEvidence<'_>,
+    max_overhang_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_BODY_OVERHANG_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} body overhang {:.3} mm past the nearest board edge exceeds limit {:.3} mm.",
+            edge.body_overhang_mm, max_overhang_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.measured.insert(
+        "connector_body_overhang_mm".to_string(),
+        json!(edge.body_overhang_mm),
+    );
+    finding.measured.insert(
+        "connector_edge_reference".to_string(),
+        json!(edge.connector_reference.label()),
+    );
+    if let Some(layer) = edge.connector_reference.footprint_layer() {
+        finding
+            .measured
+            .insert("footprint_graphic_layer".to_string(), json!(layer));
+    }
+    if let Some(kind) = edge.connector_reference.footprint_kind() {
+        finding
+            .measured
+            .insert("footprint_graphic_kind".to_string(), json!(kind));
+    }
+    finding.measured.insert(
+        "board_edge_start_x_mm".to_string(),
+        json!(edge.edge.start.x_mm),
+    );
+    finding.measured.insert(
+        "board_edge_start_y_mm".to_string(),
+        json!(edge.edge.start.y_mm),
+    );
+    finding
+        .measured
+        .insert("board_edge_end_x_mm".to_string(), json!(edge.edge.end.x_mm));
+    finding
+        .measured
+        .insert("board_edge_end_y_mm".to_string(), json!(edge.edge.end.y_mm));
+    if let Some(layer) = &edge.edge.layer {
+        finding
+            .measured
+            .insert("board_edge_layer".to_string(), json!(layer));
+    }
+    finding
+        .measured
+        .insert("edge_angle_deg".to_string(), json!(edge.edge_angle_deg));
+    finding.measured.insert(
+        "outward_normal_deg".to_string(),
+        json!(edge.outward_normal_deg),
+    );
+    finding.limit.insert(
+        "max_connector_body_overhang_mm".to_string(),
+        json!(max_overhang_mm),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Move USB connector {connector_id} body inside the allowed board-edge/enclosure overhang or choose a footprint whose mechanical body matches the intended panel cutout."
+        ),
+        "If this connector intentionally protrudes beyond the PCB edge, set max_connector_body_overhang_mm from the connector, enclosure, and assembly drawing and rerun validation.".to_string(),
     ];
     finding
 }

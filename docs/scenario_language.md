@@ -437,6 +437,40 @@ Connector-to-board-edge algorithm:
 6. Require the nearest distance to be no greater than
    `parameters.max_connector_to_board_edge_distance_mm`.
 
+USB connector body overhang uses `USB_CONNECTOR_BODY_OVERHANG_VALID` when
+the Board IR includes straight board-edge outline evidence and imported
+connector `fabrication` or `courtyard` footprint graphics.
+
+```yaml
+scenarios:
+  - name: usb_connector_body_overhang
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_BODY_OVERHANG_VALID
+    target:
+      component: J1
+    parameters:
+      max_connector_body_overhang_mm: 0.2
+```
+
+Connector-body overhang algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Require finite connector placement evidence and at least one usable straight
+   segment under `board.layout.outline.segments`.
+3. Require imported connector footprint `fabrication` or `courtyard`
+   `fp_line`, `fp_rect`, or `fp_poly` evidence.
+4. Find the nearest supported body/courtyard graphic to the board edge.
+5. Infer the edge outward normal from the board outline centroid.
+6. Measure the maximum supported footprint point protrusion past that edge
+   along the outward normal.
+7. Require the measured `connector_body_overhang_mm` to be no greater than
+   `parameters.max_connector_body_overhang_mm`.
+
+This is a static 2D board/footprint drawing guard. It does not sign off 3D
+connector shell volume, panel cutouts, arcs, enclosure interference, or cable
+insertion clearance.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the

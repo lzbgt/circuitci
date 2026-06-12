@@ -87,6 +87,7 @@ pub(super) fn nearest_board_edge_evidence(
         connector_edge_reference: edge.1.reference.label().to_string(),
         footprint_graphic_layer: edge.1.reference.footprint_layer().map(str::to_string),
         footprint_graphic_kind: edge.1.reference.footprint_kind().map(str::to_string),
+        connector_body_overhang_mm: edge.1.body_overhang_mm,
         edge_angle_deg,
         outward_normal_deg,
         connector_rotation_error_deg: angular_error_deg(rotation_deg, outward_normal_deg),
@@ -96,6 +97,7 @@ pub(super) fn nearest_board_edge_evidence(
 struct BoardEdgeConnectorDistance<'a> {
     distance_mm: f64,
     reference: BoardEdgeConnectorReference<'a>,
+    body_overhang_mm: Option<f64>,
 }
 
 #[derive(Clone, Copy)]
@@ -144,7 +146,13 @@ fn connector_to_board_edge_distance<'a>(
     let mut best = BoardEdgeConnectorDistance {
         distance_mm: placement_to_segment_distance_mm(placement, edge),
         reference: BoardEdgeConnectorReference::PlacementCenter,
+        body_overhang_mm: None,
     };
+    let centroid = outline_centroid(&bound.project.board.layout.outline.segments);
+    let outward_normal_deg = centroid.as_ref().map(|centroid| {
+        let edge_angle_deg = segment_angle_deg(edge);
+        outward_normal_deg(edge, centroid, edge_angle_deg)
+    });
     let Some(footprint) = bound.project.board.layout.footprints.get(component_id) else {
         return best;
     };
@@ -162,6 +170,9 @@ fn connector_to_board_edge_distance<'a>(
                     layer: &segment.layer,
                     kind: &segment.kind,
                 },
+                body_overhang_mm: outward_normal_deg.map(|normal| {
+                    body_overhang_from_points([&segment.start, &segment.end], edge, normal)
+                }),
             };
         }
     }
@@ -173,12 +184,17 @@ fn connector_to_board_edge_distance<'a>(
             continue;
         };
         if distance_mm < best.distance_mm {
+            let body_overhang_mm = outward_normal_deg.and_then(|normal| {
+                rectangle_corners(rectangle)
+                    .map(|corners| body_overhang_from_points(corners.iter(), edge, normal))
+            });
             best = BoardEdgeConnectorDistance {
                 distance_mm,
                 reference: BoardEdgeConnectorReference::FootprintRectangle {
                     layer: &rectangle.layer,
                     kind: &rectangle.kind,
                 },
+                body_overhang_mm,
             };
         }
     }
@@ -196,6 +212,8 @@ fn connector_to_board_edge_distance<'a>(
                     layer: &polygon.layer,
                     kind: &polygon.kind,
                 },
+                body_overhang_mm: outward_normal_deg
+                    .map(|normal| body_overhang_from_points(polygon.points.iter(), edge, normal)),
             };
         }
     }
@@ -267,34 +285,7 @@ fn footprint_rectangle_to_edge_distance_mm(
     rectangle: &LayoutFootprintRectangle,
     edge: &LayoutSegment,
 ) -> Option<f64> {
-    if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
-        return None;
-    }
-    let min_x = rectangle.start.x_mm.min(rectangle.end.x_mm);
-    let max_x = rectangle.start.x_mm.max(rectangle.end.x_mm);
-    let min_y = rectangle.start.y_mm.min(rectangle.end.y_mm);
-    let max_y = rectangle.start.y_mm.max(rectangle.end.y_mm);
-    if (max_x - min_x).abs() <= f64::EPSILON || (max_y - min_y).abs() <= f64::EPSILON {
-        return None;
-    }
-    let corners = [
-        LayoutPoint {
-            x_mm: min_x,
-            y_mm: min_y,
-        },
-        LayoutPoint {
-            x_mm: max_x,
-            y_mm: min_y,
-        },
-        LayoutPoint {
-            x_mm: max_x,
-            y_mm: max_y,
-        },
-        LayoutPoint {
-            x_mm: min_x,
-            y_mm: max_y,
-        },
-    ];
+    let corners = rectangle_corners(rectangle)?;
     Some(
         (0..corners.len())
             .map(|index| {
@@ -308,6 +299,37 @@ fn footprint_rectangle_to_edge_distance_mm(
             })
             .fold(f64::INFINITY, f64::min),
     )
+}
+
+fn rectangle_corners(rectangle: &LayoutFootprintRectangle) -> Option<[LayoutPoint; 4]> {
+    if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
+        return None;
+    }
+    let min_x = rectangle.start.x_mm.min(rectangle.end.x_mm);
+    let max_x = rectangle.start.x_mm.max(rectangle.end.x_mm);
+    let min_y = rectangle.start.y_mm.min(rectangle.end.y_mm);
+    let max_y = rectangle.start.y_mm.max(rectangle.end.y_mm);
+    if (max_x - min_x).abs() <= f64::EPSILON || (max_y - min_y).abs() <= f64::EPSILON {
+        return None;
+    }
+    Some([
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: max_y,
+        },
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: max_y,
+        },
+    ])
 }
 
 fn footprint_polygon_to_edge_distance_mm(
@@ -414,6 +436,30 @@ fn point_on_segment(point: &LayoutPoint, start: &LayoutPoint, end: &LayoutPoint)
 
 fn point_distance_mm(start: &LayoutPoint, end: &LayoutPoint) -> f64 {
     (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm)
+}
+
+fn body_overhang_from_points<'a>(
+    points: impl IntoIterator<Item = &'a LayoutPoint>,
+    edge: &LayoutSegment,
+    outward_normal_deg: f64,
+) -> f64 {
+    points
+        .into_iter()
+        .map(|point| point_body_overhang_mm(point, edge, outward_normal_deg))
+        .fold(0.0, f64::max)
+}
+
+fn point_body_overhang_mm(
+    point: &LayoutPoint,
+    edge: &LayoutSegment,
+    outward_normal_deg: f64,
+) -> f64 {
+    let radians = outward_normal_deg.to_radians();
+    let normal_x = radians.cos();
+    let normal_y = radians.sin();
+    let dx = point.x_mm - edge.start.x_mm;
+    let dy = point.y_mm - edge.start.y_mm;
+    (dx * normal_x + dy * normal_y).max(0.0)
 }
 
 fn point_is_finite(point: &LayoutPoint) -> bool {

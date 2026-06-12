@@ -36,7 +36,8 @@ The same fixture directory also includes `board.kicad_pcb`. A regression chains:
    filled-polygon evidence under `board.layout.zones`.
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
    `USB_CONNECTOR_ORIENTATION_VALID`,
-   `USB_CONNECTOR_EDGE_PROXIMITY_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
+   `USB_CONNECTOR_EDGE_PROXIMITY_VALID`,
+   `USB_CONNECTOR_BODY_OVERHANG_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
    `USB_VBUS_ROUTE_VALID`, and `USB_RETURN_PATH_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:
@@ -52,9 +53,10 @@ Because the PCB fixture also imports straight `Edge.Cuts` board-outline
 segments, the orientation and edge-proximity suggestions include nearest-edge
 evidence. The fixture's imported `F.Fab` polygon crosses the nearest straight
 board edge, so `nearest_board_edge.distance_to_connector_mm` is `0.0` with
-`connector_edge_reference: footprint_polygon`. Placement-center distance is
-still available as the fallback behavior when no supported footprint drawing
-evidence exists.
+`connector_edge_reference: footprint_polygon`. The body-overhang suggestion
+uses the same polygon evidence and reports `connector_body_overhang_mm: 0.4`.
+Placement-center distance is still available as the fallback behavior when no
+supported footprint drawing evidence exists.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

@@ -291,6 +291,34 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["polygons"][0]["kind"],
         "fabrication"
     );
+    let body_overhang = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_body_overhang_j1")
+        .expect("USB connector body overhang suggestion");
+    assert_eq!(
+        body_overhang["scenario"]["checks"][0],
+        "USB_CONNECTOR_BODY_OVERHANG_VALID"
+    );
+    assert!(body_overhang["scenario"]["parameters"]["max_connector_body_overhang_mm"].is_null());
+    assert_eq!(
+        body_overhang["scenario"]["usb_connectors"][0]["nearest_board_edge"]["connector_edge_reference"],
+        "footprint_polygon"
+    );
+    assert_eq!(
+        body_overhang["scenario"]["usb_connectors"][0]["nearest_board_edge"]["footprint_graphic_layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        body_overhang["scenario"]["usb_connectors"][0]["nearest_board_edge"]["footprint_graphic_kind"],
+        "fabrication"
+    );
+    let overhang = body_overhang["scenario"]["usb_connectors"][0]["nearest_board_edge"]
+        ["connector_body_overhang_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((overhang - 0.4).abs() < 1e-12);
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -535,7 +563,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 11);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 12);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -563,6 +591,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_connector_edge_proximity_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_connector_body_overhang_j1")
     );
     assert!(
         suggestions["suggestions"]

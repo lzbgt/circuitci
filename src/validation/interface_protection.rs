@@ -53,6 +53,14 @@ pub(super) fn validate_usb_connector_edge_proximity(
     usb_connector::validate_usb_connector_edge_proximity(bound, scenario, findings);
 }
 
+pub(super) fn validate_usb_connector_body_overhang(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    usb_connector::validate_usb_connector_body_overhang(bound, scenario, findings);
+}
+
 pub(super) fn validate_interface_protection(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,

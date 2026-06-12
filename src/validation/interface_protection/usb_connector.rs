@@ -209,6 +209,94 @@ pub(super) fn validate_usb_connector_edge_proximity(
     }
 }
 
+pub(super) fn validate_usb_connector_body_overhang(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(max_overhang_mm) =
+        required_scenario_numeric_parameter(scenario, "max_connector_body_overhang_mm", findings)
+    else {
+        return;
+    };
+    if max_overhang_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection parameters.max_connector_body_overhang_mm must be zero or greater.",
+        );
+        return;
+    }
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_CONNECTOR_BODY_OVERHANG_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_body_overhang_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector body-overhang target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_body_overhang_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector body-overhang target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    if model.usb_connector.is_none() {
+        findings.push(usb_body_overhang_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            "missing",
+        ));
+        return;
+    }
+    if valid_component_placement(bound, scenario, &target.component, findings).is_none() {
+        return;
+    }
+    let Some(edge) = nearest_body_overhang_edge(bound, &target.component) else {
+        findings.push(usb_body_overhang_metadata_finding(
+            scenario,
+            &target.component,
+            "USB connector body overhang requires usable board.layout.outline.segments and imported fabrication/courtyard footprint graphics.".to_string(),
+            "body_overhang_evidence",
+            "missing",
+        ));
+        return;
+    };
+    if edge.body_overhang_mm > max_overhang_mm {
+        findings.push(usb_body_overhang_finding(
+            scenario,
+            &target.component,
+            &edge,
+            max_overhang_mm,
+        ));
+    }
+}
+
 pub(super) fn validate_usb_connector_protection(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -599,6 +687,14 @@ pub(super) struct UsbBoardEdgeDistanceEvidence<'a> {
     pub(super) connector_reference: UsbBoardEdgeConnectorReference<'a>,
 }
 
+pub(super) struct UsbBodyOverhangEvidence<'a> {
+    pub(super) body_overhang_mm: f64,
+    pub(super) edge: &'a LayoutSegment,
+    pub(super) connector_reference: UsbBoardEdgeConnectorReference<'a>,
+    pub(super) edge_angle_deg: f64,
+    pub(super) outward_normal_deg: f64,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum UsbBoardEdgeConnectorReference<'a> {
     PlacementCenter,
@@ -864,6 +960,47 @@ fn nearest_board_edge<'a>(
         .min_by(|left, right| left.distance_mm.total_cmp(&right.distance_mm))
 }
 
+fn nearest_body_overhang_edge<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
+) -> Option<UsbBodyOverhangEvidence<'a>> {
+    let centroid = outline_centroid(&bound.project.board.layout.outline.segments)?;
+    bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| outline_segment_is_usable(segment))
+        .filter_map(|edge| {
+            let distance_mm = connector_body_to_edge_distance(bound, component_id, edge)?;
+            let evidence = body_overhang_for_edge(bound, component_id, edge, &centroid)?;
+            Some((distance_mm, evidence))
+        })
+        .min_by(|left, right| left.0.total_cmp(&right.0))
+        .map(|(_, evidence)| evidence)
+}
+
+fn body_overhang_for_edge<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
+    edge: &'a LayoutSegment,
+    centroid: &LayoutPoint,
+) -> Option<UsbBodyOverhangEvidence<'a>> {
+    let edge_angle_deg = segment_angle_deg(edge);
+    let outward_normal_deg = outward_normal_deg(edge, centroid, edge_angle_deg);
+    connector_body_overhang(bound, component_id, edge, outward_normal_deg).map(
+        |(body_overhang_mm, connector_reference)| UsbBodyOverhangEvidence {
+            body_overhang_mm,
+            edge,
+            connector_reference,
+            edge_angle_deg,
+            outward_normal_deg,
+        },
+    )
+}
+
 fn connector_to_edge_distance<'a>(
     bound: &'a BoundBoard<'_>,
     component_id: &'a str,
@@ -927,6 +1064,117 @@ fn connector_to_edge_distance<'a>(
     (best_distance, best_reference)
 }
 
+fn connector_body_to_edge_distance(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    let footprint = bound.project.board.layout.footprints.get(component_id)?;
+    footprint
+        .segments
+        .iter()
+        .filter(|segment| mechanical_footprint_kind(&segment.kind))
+        .filter_map(|segment| footprint_segment_to_edge_distance_mm(segment, edge))
+        .chain(
+            footprint
+                .rectangles
+                .iter()
+                .filter(|rectangle| mechanical_footprint_kind(&rectangle.kind))
+                .filter_map(|rectangle| footprint_rectangle_to_edge_distance_mm(rectangle, edge)),
+        )
+        .chain(
+            footprint
+                .polygons
+                .iter()
+                .filter(|polygon| mechanical_footprint_kind(&polygon.kind))
+                .filter_map(|polygon| footprint_polygon_to_edge_distance_mm(polygon, edge)),
+        )
+        .min_by(|left, right| left.total_cmp(right))
+}
+
+fn connector_body_overhang<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
+    edge: &LayoutSegment,
+    outward_normal_deg: f64,
+) -> Option<(f64, UsbBoardEdgeConnectorReference<'a>)> {
+    let footprint = bound.project.board.layout.footprints.get(component_id)?;
+    let mut best: Option<(f64, UsbBoardEdgeConnectorReference<'a>)> = None;
+
+    for segment in &footprint.segments {
+        if !mechanical_footprint_kind(&segment.kind)
+            || !point_is_finite(&segment.start)
+            || !point_is_finite(&segment.end)
+            || segment_length_mm(&segment.start, &segment.end) <= f64::EPSILON
+        {
+            continue;
+        }
+        let overhang_mm =
+            body_overhang_from_points([&segment.start, &segment.end], edge, outward_normal_deg);
+        update_body_overhang_candidate(
+            &mut best,
+            overhang_mm,
+            UsbBoardEdgeConnectorReference::FootprintSegment {
+                layer: &segment.layer,
+                kind: &segment.kind,
+            },
+        );
+    }
+
+    for rectangle in &footprint.rectangles {
+        if !mechanical_footprint_kind(&rectangle.kind) {
+            continue;
+        }
+        let Some(corners) = rectangle_corners(rectangle) else {
+            continue;
+        };
+        let overhang_mm = body_overhang_from_points(corners.iter(), edge, outward_normal_deg);
+        update_body_overhang_candidate(
+            &mut best,
+            overhang_mm,
+            UsbBoardEdgeConnectorReference::FootprintRectangle {
+                layer: &rectangle.layer,
+                kind: &rectangle.kind,
+            },
+        );
+    }
+
+    for polygon in &footprint.polygons {
+        if !mechanical_footprint_kind(&polygon.kind)
+            || polygon.points.len() < 3
+            || polygon.points.iter().any(|point| !point_is_finite(point))
+        {
+            continue;
+        }
+        let overhang_mm =
+            body_overhang_from_points(polygon.points.iter(), edge, outward_normal_deg);
+        update_body_overhang_candidate(
+            &mut best,
+            overhang_mm,
+            UsbBoardEdgeConnectorReference::FootprintPolygon {
+                layer: &polygon.layer,
+                kind: &polygon.kind,
+            },
+        );
+    }
+
+    best
+}
+
+fn update_body_overhang_candidate<'a>(
+    best: &mut Option<(f64, UsbBoardEdgeConnectorReference<'a>)>,
+    overhang_mm: f64,
+    reference: UsbBoardEdgeConnectorReference<'a>,
+) {
+    if !overhang_mm.is_finite() {
+        return;
+    }
+    match best {
+        Some((best_overhang_mm, _)) if overhang_mm <= *best_overhang_mm => {}
+        _ => *best = Some((overhang_mm, reference)),
+    }
+}
+
 fn mechanical_footprint_kind(kind: &str) -> bool {
     matches!(kind, "fabrication" | "courtyard")
 }
@@ -978,34 +1226,7 @@ fn footprint_rectangle_to_edge_distance_mm(
     rectangle: &LayoutFootprintRectangle,
     edge: &LayoutSegment,
 ) -> Option<f64> {
-    if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
-        return None;
-    }
-    let min_x = rectangle.start.x_mm.min(rectangle.end.x_mm);
-    let max_x = rectangle.start.x_mm.max(rectangle.end.x_mm);
-    let min_y = rectangle.start.y_mm.min(rectangle.end.y_mm);
-    let max_y = rectangle.start.y_mm.max(rectangle.end.y_mm);
-    if (max_x - min_x).abs() <= f64::EPSILON || (max_y - min_y).abs() <= f64::EPSILON {
-        return None;
-    }
-    let corners = [
-        LayoutPoint {
-            x_mm: min_x,
-            y_mm: min_y,
-        },
-        LayoutPoint {
-            x_mm: max_x,
-            y_mm: min_y,
-        },
-        LayoutPoint {
-            x_mm: max_x,
-            y_mm: max_y,
-        },
-        LayoutPoint {
-            x_mm: min_x,
-            y_mm: max_y,
-        },
-    ];
+    let corners = rectangle_corners(rectangle)?;
     Some(
         (0..corners.len())
             .map(|index| {
@@ -1019,6 +1240,37 @@ fn footprint_rectangle_to_edge_distance_mm(
             })
             .fold(f64::INFINITY, f64::min),
     )
+}
+
+fn rectangle_corners(rectangle: &LayoutFootprintRectangle) -> Option<[LayoutPoint; 4]> {
+    if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
+        return None;
+    }
+    let min_x = rectangle.start.x_mm.min(rectangle.end.x_mm);
+    let max_x = rectangle.start.x_mm.max(rectangle.end.x_mm);
+    let min_y = rectangle.start.y_mm.min(rectangle.end.y_mm);
+    let max_y = rectangle.start.y_mm.max(rectangle.end.y_mm);
+    if (max_x - min_x).abs() <= f64::EPSILON || (max_y - min_y).abs() <= f64::EPSILON {
+        return None;
+    }
+    Some([
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: max_y,
+        },
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: max_y,
+        },
+    ])
 }
 
 fn footprint_polygon_to_edge_distance_mm(
@@ -1045,6 +1297,30 @@ fn footprint_polygon_to_edge_distance_mm(
 
 fn segment_length_mm(start: &LayoutPoint, end: &LayoutPoint) -> f64 {
     (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm)
+}
+
+fn body_overhang_from_points<'a>(
+    points: impl IntoIterator<Item = &'a LayoutPoint>,
+    edge: &LayoutSegment,
+    outward_normal_deg: f64,
+) -> f64 {
+    points
+        .into_iter()
+        .map(|point| point_body_overhang_mm(point, edge, outward_normal_deg))
+        .fold(0.0, f64::max)
+}
+
+fn point_body_overhang_mm(
+    point: &LayoutPoint,
+    edge: &LayoutSegment,
+    outward_normal_deg: f64,
+) -> f64 {
+    let radians = outward_normal_deg.to_radians();
+    let normal_x = radians.cos();
+    let normal_y = radians.sin();
+    let dx = point.x_mm - edge.start.x_mm;
+    let dy = point.y_mm - edge.start.y_mm;
+    (dx * normal_x + dy * normal_y).max(0.0)
 }
 
 fn segment_to_segment_distance_mm(
@@ -1138,6 +1414,53 @@ fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by:
     let nearest_x = ax + t * dx;
     let nearest_y = ay + t * dy;
     (px - nearest_x).hypot(py - nearest_y)
+}
+
+fn outline_centroid(segments: &[LayoutSegment]) -> Option<LayoutPoint> {
+    let mut count = 0.0;
+    let mut x_sum = 0.0;
+    let mut y_sum = 0.0;
+    for segment in segments {
+        if !outline_segment_is_usable(segment) {
+            continue;
+        }
+        x_sum += segment.start.x_mm + segment.end.x_mm;
+        y_sum += segment.start.y_mm + segment.end.y_mm;
+        count += 2.0;
+    }
+    (count > 0.0).then_some(LayoutPoint {
+        x_mm: x_sum / count,
+        y_mm: y_sum / count,
+    })
+}
+
+fn segment_angle_deg(segment: &LayoutSegment) -> f64 {
+    normalize_rotation_deg(
+        (segment.end.y_mm - segment.start.y_mm)
+            .atan2(segment.end.x_mm - segment.start.x_mm)
+            .to_degrees(),
+    )
+}
+
+fn outward_normal_deg(segment: &LayoutSegment, centroid: &LayoutPoint, edge_angle_deg: f64) -> f64 {
+    let midpoint_x = (segment.start.x_mm + segment.end.x_mm) / 2.0;
+    let midpoint_y = (segment.start.y_mm + segment.end.y_mm) / 2.0;
+    let away_x = midpoint_x - centroid.x_mm;
+    let away_y = midpoint_y - centroid.y_mm;
+    let left_normal_deg = normalize_rotation_deg(edge_angle_deg + 90.0);
+    let right_normal_deg = normalize_rotation_deg(edge_angle_deg - 90.0);
+    let left_dot = angle_dot(left_normal_deg, away_x, away_y);
+    let right_dot = angle_dot(right_normal_deg, away_x, away_y);
+    if left_dot >= right_dot {
+        left_normal_deg
+    } else {
+        right_normal_deg
+    }
+}
+
+fn angle_dot(angle_deg: f64, x: f64, y: f64) -> f64 {
+    let radians = angle_deg.to_radians();
+    radians.cos() * x + radians.sin() * y
 }
 
 fn normalize_rotation_deg(rotation_deg: f64) -> f64 {

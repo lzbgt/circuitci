@@ -152,6 +152,10 @@ rotation from nearest-edge outward-normal evidence when available.
 connector-to-board-edge distance guard from the same straight outline evidence.
 It uses imported `fabrication`/`courtyard` footprint drawing extents when
 available and falls back to component placement-center distance otherwise.
+`USB_CONNECTOR_BODY_OVERHANG_VALID` adds an explicit 2D body/courtyard
+protrusion guard from the same board-outline and footprint drawing evidence, so
+connector overhang can be checked against a connector/enclosure mechanical
+limit instead of being conflated with connector-to-edge proximity.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

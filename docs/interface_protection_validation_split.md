@@ -11,8 +11,9 @@ toward the repository line-count guard:
 - `src/validation/interface_protection/usb_connector.rs` owns
   `USB_CONNECTOR_PROTECTION_VALID`, `USB_PROTECTION_PLACEMENT_VALID`,
   `USB_CONNECTOR_ORIENTATION_VALID`, and
-  `USB_CONNECTOR_EDGE_PROXIMITY_VALID` orchestration plus shared USB connector
-  placement/protection helpers.
+  `USB_CONNECTOR_EDGE_PROXIMITY_VALID`, and
+  `USB_CONNECTOR_BODY_OVERHANG_VALID` orchestration plus shared USB connector
+  placement/protection/layout helpers.
 - `src/validation/interface_protection/usb_route.rs` owns
   `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
   `USB_RETURN_PATH_VALID` orchestration.

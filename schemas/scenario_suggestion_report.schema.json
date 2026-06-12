@@ -520,6 +520,7 @@
         },
         "footprint_graphic_layer": { "type": "string", "minLength": 1 },
         "footprint_graphic_kind": { "type": "string", "minLength": 1 },
+        "connector_body_overhang_mm": { "type": "number", "minimum": 0 },
         "edge_angle_deg": { "type": "number" },
         "outward_normal_deg": { "type": "number" },
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }

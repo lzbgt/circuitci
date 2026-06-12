@@ -145,6 +145,18 @@ Connector edge-proximity validation:
 - It does not prove connector body overhang, keepout, insertion clearance,
   panel alignment, or outline features not captured as straight segments.
 
+Connector body-overhang validation:
+
+- `USB_CONNECTOR_BODY_OVERHANG_VALID` targets the same connector component and
+  uses straight `board.layout.outline.segments` plus supported connector
+  `fabrication`/`courtyard` footprint drawing evidence.
+- The scenario must declare `parameters.max_connector_body_overhang_mm` from
+  the connector, enclosure, panel-entry, or assembly mechanical rule.
+- The rule infers the nearest edge outward normal and measures supported 2D
+  footprint drawing protrusion past that edge.
+- It does not prove 3D shell volume, panel cutouts, board slots, arcs,
+  enclosure interference, or cable insertion clearance.
+
 Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses

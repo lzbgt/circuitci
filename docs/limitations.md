@@ -73,6 +73,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   rectangular extent from its transformed endpoints, not a full mechanical body
   model; imported `fp_poly` evidence is a 2D drawing outline, not a 3D connector
   envelope.
+- `USB_CONNECTOR_BODY_OVERHANG_VALID` measures supported 2D connector
+  `fabrication`/`courtyard` footprint drawing protrusion past the nearest
+  straight board-edge segment. It does not model 3D connector shell volume,
+  panel cutouts, board slots, arcs, enclosure interference, cable insertion
+  clearance, or assembly tolerances.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

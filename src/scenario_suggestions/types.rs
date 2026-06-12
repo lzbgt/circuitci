@@ -234,6 +234,8 @@ pub struct SuggestedBoardEdge {
     pub footprint_graphic_layer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub footprint_graphic_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_body_overhang_mm: Option<f64>,
     pub edge_angle_deg: f64,
     pub outward_normal_deg: f64,
     pub connector_rotation_error_deg: f64,

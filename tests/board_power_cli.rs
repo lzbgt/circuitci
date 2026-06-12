@@ -368,6 +368,42 @@ fn usb_connector_edge_proximity_reports_footprint_reference() {
 }
 
 #[test]
+fn usb_connector_body_overhang_passes_when_within_limit() {
+    let report = run_validation("examples/good_usb_connector_body_overhang/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_body_overhang_reports_excess_body_past_edge() {
+    let report = run_validation("examples/bad_usb_connector_body_overhang/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_BODY_OVERHANG_VALID")
+        .expect("USB connector body overhang finding");
+    assert_eq!(failure["component"], "J1");
+    let overhang = failure["measured"]["connector_body_overhang_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((overhang - 0.05).abs() < 1e-12);
+    assert_eq!(
+        failure["measured"]["connector_edge_reference"],
+        "footprint_polygon"
+    );
+    assert_eq!(failure["measured"]["footprint_graphic_layer"], "F.CrtYd");
+    assert_eq!(failure["measured"]["footprint_graphic_kind"], "courtyard");
+    assert_eq!(failure["measured"]["board_edge_layer"], "Edge.Cuts");
+    assert_eq!(failure["measured"]["edge_angle_deg"], 90.0);
+    assert_eq!(failure["measured"]["outward_normal_deg"], 180.0);
+    assert_eq!(failure["limit"]["max_connector_body_overhang_mm"], 0.02);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");
