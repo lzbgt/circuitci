@@ -48,9 +48,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   propagation delay, edge rate, USB eye margin, or signal integrity.
 - `USB_CONNECTOR_PROTECTION_VALID` checks that declared USB connector D+/D- and,
   when requested, VBUS nets have connected clamp-only protection with compatible
-  reference wiring and optional standoff-voltage evidence. It does not prove ESD
-  pulse robustness, connector placement, shield bonding, differential routing,
-  return-path quality, USB eye margin, or layout-level protection effectiveness.
+  reference wiring and optional standoff-voltage evidence. When requested, it
+  can also require the connector shield pin to connect to a declared ground net.
+  It does not prove ESD pulse robustness, connector placement, RC/ferrite/chassis
+  shield-bonding strategy, differential routing, return-path quality, USB eye
+  margin, or layout-level protection effectiveness.
 - `USB_PROTECTION_PLACEMENT_VALID` checks explicit component placement
   coordinates and center-to-center connector-to-protection distance for USB
   clamp coverage. It does not prove trace order, trace length, via count,

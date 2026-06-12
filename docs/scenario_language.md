@@ -302,7 +302,9 @@ Clamp review algorithm:
 USB connector coverage uses `USB_CONNECTOR_PROTECTION_VALID` against a connector
 model that declares `usb_connector` pin metadata. The rule verifies that D+ and
 D- have connected clamp-only protection on the same nets. It also verifies VBUS
-when `parameters.require_vbus_protection` is true.
+when `parameters.require_vbus_protection` is true, and verifies the optional
+shield pin is connected to a declared ground net when
+`parameters.require_shield_ground` is true.
 
 ```yaml
 scenarios:
@@ -314,6 +316,7 @@ scenarios:
       component: J1
     parameters:
       require_vbus_protection: true
+      require_shield_ground: true
       data_working_voltage_min_V: 3.6
       vbus_working_voltage_min_V: 5.5
 ```
@@ -329,6 +332,10 @@ Connector protection algorithm:
    net and whose reference pin is connected to the declared reference kind.
 5. If `data_working_voltage_min_V` or `vbus_working_voltage_min_V` is declared,
    require the found clamp standoff voltage to meet that minimum.
+6. If `require_shield_ground` is true, require `usb_connector.shield_pin` to be
+   connected to a declared `ground` net. This is a static schematic check only;
+   RC, ferrite, chassis-only, or spark-gap shield strategies need explicit
+   future modeling instead of this simplified parameter.
 
 USB protection placement uses `USB_PROTECTION_PLACEMENT_VALID` to add explicit
 layout-distance evidence to the same connector/clamp model contract. The rule

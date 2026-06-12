@@ -119,6 +119,42 @@ pub(super) fn usb_connector_standoff_finding(
     finding
 }
 
+pub(super) fn usb_connector_shield_ground_finding(
+    scenario: &crate::board_ir::Scenario,
+    connector_id: &str,
+    shield_pin: &str,
+    shield_net: &str,
+    actual_kind: &NetKind,
+) -> Finding {
+    let actual = net_kind_name(actual_kind);
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_PROTECTION_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} shield pin {shield_pin} is connected to {actual} net {shield_net}, expected ground because require_shield_ground is true."
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(shield_net.to_string());
+    finding
+        .measured
+        .insert("shield_pin".to_string(), json!(shield_pin));
+    finding
+        .measured
+        .insert("shield_net".to_string(), json!(shield_net));
+    finding
+        .measured
+        .insert("shield_net_kind".to_string(), json!(actual));
+    finding
+        .limit
+        .insert("required_shield_net_kind".to_string(), json!("ground"));
+    finding.suggested_fixes = vec![
+        "Connect the USB shield pin to a declared ground/chassis strategy net when require_shield_ground is used.".to_string(),
+        "If the design intentionally uses an RC, ferrite, spark gap, or chassis-only shield strategy, model that strategy explicitly before using this simplified ground check.".to_string(),
+    ];
+    finding
+}
+
 pub(super) fn usb_placement_metadata_finding(
     scenario: &crate::board_ir::Scenario,
     component_id: &str,

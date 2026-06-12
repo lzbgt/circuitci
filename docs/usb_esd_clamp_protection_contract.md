@@ -100,6 +100,10 @@ Placement-distance validation:
   `parameters.max_connector_to_protection_distance_mm`.
 - The rule checks D+ and D- protection placement, and also checks VBUS when
   `parameters.require_vbus_protection: true`.
+- Connector protection can also require the optional USB shield pin to resolve
+  to a declared ground net with `parameters.require_shield_ground: true`. This
+  is only a static net-kind guard; it does not validate RC, ferrite,
+  chassis-only, spark-gap, or EMC shield-bonding strategy.
 - Each required protected net must have clamp-only protection on the same net
   with a valid reference net kind, and at least one matching protection
   component must have finite placement coordinates.

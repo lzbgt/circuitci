@@ -238,6 +238,16 @@ pub(super) fn validate_usb_connector_protection(
             findings,
         );
     }
+    if scenario_bool_parameter(scenario, "require_shield_ground").unwrap_or(false) {
+        validate_usb_connector_shield_ground(
+            bound,
+            scenario,
+            &target.component,
+            component,
+            connector,
+            findings,
+        );
+    }
 }
 
 pub(super) fn validate_usb_protection_placement(
@@ -446,6 +456,59 @@ fn validate_usb_connector_pin(
         pin,
         net_name,
     ));
+}
+
+fn validate_usb_connector_shield_ground(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    connector_id: &str,
+    component: &crate::board_ir::ComponentSpec,
+    connector: &UsbConnector,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(shield_pin) = connector.shield_pin.as_deref() else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} has no shield_pin metadata, but require_shield_ground is true."
+            ),
+            "shield_pin",
+            connector_id,
+        ));
+        return;
+    };
+    let Some(shield_net_name) = component.pins.get(shield_pin) else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} shield pin {shield_pin} is not connected, but require_shield_ground is true."
+            ),
+            "missing_shield_pin",
+            shield_pin,
+        ));
+        return;
+    };
+    let Some(shield_net) = bound.project.board.nets.get(shield_net_name) else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            connector_id,
+            format!("USB connector {connector_id} shield net {shield_net_name} is not declared."),
+            "missing_shield_net",
+            shield_net_name,
+        ));
+        return;
+    };
+    if shield_net.kind != NetKind::Ground {
+        findings.push(usb_connector_shield_ground_finding(
+            scenario,
+            connector_id,
+            shield_pin,
+            shield_net_name,
+            &shield_net.kind,
+        ));
+    }
 }
 
 struct ResolvedUsbProtection<'a> {

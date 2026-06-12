@@ -209,6 +209,32 @@ fn usb_connector_protection_requires_vbus_clamp_when_requested() {
 }
 
 #[test]
+fn usb_connector_protection_accepts_grounded_shield_when_requested() {
+    let report = run_validation("examples/good_usb_connector_shield_ground/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_protection_requires_grounded_shield_when_requested() {
+    let report = run_validation("examples/bad_usb_connector_shield_not_ground/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["required_shield_net_kind"] == "ground")
+        .expect("shield grounding finding");
+    assert_eq!(failure["id"], "USB_CONNECTOR_PROTECTION_VALID");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_shield");
+    assert_eq!(failure["measured"]["shield_pin"], "SHIELD");
+    assert_eq!(failure["measured"]["shield_net_kind"], "digital_or_analog");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_connector_protection_placement_passes_when_clamps_are_close() {
     let report = run_validation("examples/good_usb_connector_protection_placement/project.yaml");
     assert_eq!(report["result"], "pass");

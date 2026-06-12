@@ -153,10 +153,11 @@ Interface-protection findings may include supply constraint detail:
 scenarios that target a component model with `usb_connector` metadata. Stable
 measured keys include `connector_component`, `connector_model`, `connector_pin`,
 `protected_net`, `protection_component`, `protection_clamp`, `reference_pin`,
-`reference_net`, `reference_net_kind`, and `working_voltage_max_V` when a clamp
-is found. Stable limit keys include `required_protection`, `required_reference`,
-`required_data_working_voltage_min_V`, and
-`required_vbus_working_voltage_min_V`.
+`reference_net`, `reference_net_kind`, `working_voltage_max_V`,
+`shield_pin`, `shield_net`, and `shield_net_kind` when applicable. Stable limit
+keys include `required_protection`, `required_reference`,
+`required_data_working_voltage_min_V`,
+`required_vbus_working_voltage_min_V`, and `required_shield_net_kind`.
 
 `USB_PROTECTION_PLACEMENT_VALID` reports are emitted by
 `interface_protection` scenarios that combine `usb_connector` metadata,
