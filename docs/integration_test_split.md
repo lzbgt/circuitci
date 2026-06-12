@@ -18,7 +18,10 @@ source-file rule.
 - Analog SPICE, embedded-ngspice, generated-netlist, operating-limit, and
   SPICE-deck importer tests live in `tests/analog_spice_cli.rs`.
 - Scenario suggestion CLI tests live in `tests/scenario_suggestions_cli.rs`.
-- Native KiCad schematic workflow tests live in `tests/kicad_import_cli.rs`.
+- Native KiCad schematic mapped workflow tests live in
+  `tests/kicad_import_cli.rs`.
+- Native KiCad hierarchy workflow tests live in
+  `tests/kicad_hierarchy_import_cli.rs`.
 - Native KiCad schematic geometry, bus, label, no-connect, and junction
   parser-rule tests live in
   `tests/kicad_schematic_rules_cli.rs`.
