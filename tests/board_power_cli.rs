@@ -453,6 +453,37 @@ fn usb_return_path_reports_filled_zone_gap_when_required() {
 }
 
 #[test]
+fn usb_return_path_reports_low_filled_zone_edge_clearance() {
+    let report =
+        run_validation("examples/bad_usb_return_path_filled_zone_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_RETURN_PATH_VALID"
+                && failure["limit"]["min_data_line_filled_zone_edge_clearance_mm"] == 0.1
+        })
+        .expect("USB return-path filled-zone edge-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["segment_index"], 0);
+    assert_eq!(failure["measured"]["midpoint_x_mm"], 0.5);
+    assert_eq!(failure["measured"]["midpoint_y_mm"], 0.0);
+    assert_eq!(failure["measured"]["layer"], "F.Cu");
+    let clearance = failure["measured"]["filled_zone_edge_clearance_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((clearance - 0.02).abs() < 1.0e-12);
+    assert_eq!(
+        failure["limit"]["reference_zone_geometry"],
+        "filled_polygon"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_return_path_reports_distant_stitching_via() {
     let report = run_validation("examples/bad_usb_return_path_stitching_via/project.yaml");
     assert_eq!(report["result"], "fail");

@@ -226,6 +226,10 @@ pub struct SuggestedUsbRoute {
     pub filled_unreferenced_route_length_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filled_unreferenced_segments: Option<Vec<SuggestedUsbUnreferencedSegment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_zone_edge_clearance_min_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_zone_edge_clearance_segments: Option<Vec<SuggestedUsbFilledZoneClearanceSegment>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -235,6 +239,17 @@ pub struct SuggestedUsbUnreferencedSegment {
     pub midpoint_x_mm: f64,
     pub midpoint_y_mm: f64,
     pub layer: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedUsbFilledZoneClearanceSegment {
+    pub segment_index: usize,
+    pub segment_length_mm: f64,
+    pub midpoint_x_mm: f64,
+    pub midpoint_y_mm: f64,
+    pub layer: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_zone_edge_clearance_mm: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

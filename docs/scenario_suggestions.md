@@ -120,13 +120,19 @@ The command is conservative:
   evidence from zone outlines. When saved filled-zone evidence exists, it also
   includes `filled_unreferenced_route_length_mm` and
   `filled_unreferenced_segments[]` so agents can compare intended outline
-  coverage against actual filled-polygon coverage. It leaves
+  coverage against actual filled-polygon coverage. It also reports
+  `filled_zone_edge_clearance_min_mm` and
+  `filled_zone_edge_clearance_segments[]` when filled polygons are present, so
+  agents can see the nearest filled-copper edge margin before choosing a
+  minimum-clearance policy. It leaves
   `max_data_line_unreferenced_length_mm` as `null` until an agent supplies the
   board-specific USB return-path rule. It also includes
   `max_data_via_to_ground_stitch_distance_mm: null` so agents can enable
   stitching-via checks when USB data layer changes need nearby ground vias, and
   `require_filled_zone_coverage: null` so agents can choose whether saved
-  filled-zone geometry must be used instead of intended zone outlines.
+  filled-zone geometry must be used instead of intended zone outlines. The
+  `min_data_line_filled_zone_edge_clearance_mm` parameter remains `null` until
+  an agent supplies the board-specific filled-copper edge-margin rule.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

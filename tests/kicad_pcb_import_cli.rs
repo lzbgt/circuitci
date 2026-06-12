@@ -214,6 +214,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert!(return_path["scenario"]["parameters"]["require_filled_zone_coverage"].is_null());
     assert!(
+        return_path["scenario"]["parameters"]["min_data_line_filled_zone_edge_clearance_mm"]
+            .is_null()
+    );
+    assert!(
         return_path["scenario"]["usb_routes"]
             .as_array()
             .unwrap()
@@ -231,6 +235,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                         .unwrap()
                         .is_empty()
                     && usb_route["filled_unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                    && usb_route["filled_zone_edge_clearance_min_mm"]
+                        .as_f64()
+                        .unwrap()
+                        > 0.0
+                    && !usb_route["filled_zone_edge_clearance_segments"]
                         .as_array()
                         .unwrap()
                         .is_empty()
@@ -424,6 +436,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     );
     assert!(return_path["scenario"]["parameters"]["require_filled_zone_coverage"].is_null());
     assert!(
+        return_path["scenario"]["parameters"]["min_data_line_filled_zone_edge_clearance_mm"]
+            .is_null()
+    );
+    assert!(
         return_path["scenario"]["usb_routes"]
             .as_array()
             .unwrap()
@@ -436,6 +452,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
                         .unwrap()
                         .is_empty()
                     && usb_route["filled_unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                    && usb_route["filled_zone_edge_clearance_min_mm"]
+                        .as_f64()
+                        .unwrap()
+                        > 0.0
+                    && !usb_route["filled_zone_edge_clearance_segments"]
                         .as_array()
                         .unwrap()
                         .is_empty()

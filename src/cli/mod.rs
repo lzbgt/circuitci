@@ -289,12 +289,19 @@ fn run_validate(
     );
     let report = validate_and_write_project_report(&project_path, &profile, &output, command)?;
     if let Some(json_path) = json {
+        let source_json = output.join("report.json");
         std::fs::create_dir_all(
             json_path
                 .parent()
                 .unwrap_or_else(|| std::path::Path::new(".")),
         )?;
-        std::fs::copy(output.join("report.json"), json_path)?;
+        let same_path = match (source_json.canonicalize(), json_path.canonicalize()) {
+            (Ok(source), Ok(destination)) => source == destination,
+            _ => source_json == json_path,
+        };
+        if !same_path {
+            std::fs::copy(source_json, json_path)?;
+        }
     }
     println!(
         "CircuitCI {}: {} (critical={}, warning={}, info={})",

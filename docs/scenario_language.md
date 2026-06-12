@@ -480,6 +480,7 @@ scenarios:
       max_data_line_unreferenced_length_mm: 0.0
       max_data_via_to_ground_stitch_distance_mm: 0.5
       require_filled_zone_coverage: true
+      min_data_line_filled_zone_edge_clearance_mm: 0.25
 ```
 
 USB return-path algorithm:
@@ -497,7 +498,10 @@ USB return-path algorithm:
 7. If `max_data_via_to_ground_stitch_distance_mm` is declared, require each
    USB data route via to have a ground-net via within that distance whose
    layer list covers the data-via layer transition.
-8. Treat this as an early layout screen only. Filled-polygon containment is
+8. If `min_data_line_filled_zone_edge_clearance_mm` is declared, require each
+   D+/D- segment midpoint to be inside same-layer filled ground copper and at
+   least that far from the nearest filled-polygon edge.
+9. Treat this as an early layout screen only. Filled-polygon containment is
    stronger than outline containment but still does not prove zone island
    connectivity, adjacent-plane return paths, stitching-via inductance,
    impedance, or USB eye margin.

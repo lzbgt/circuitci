@@ -589,6 +589,80 @@ pub(super) fn usb_return_path_stitch_via_finding(
     finding
 }
 
+pub(super) fn usb_return_path_filled_zone_clearance_finding(
+    scenario: &Scenario,
+    evidence: UsbReturnPathClearanceEvidence<'_>,
+) -> Finding {
+    let message = if let Some(clearance_mm) = evidence.clearance_mm {
+        format!(
+            "USB connector {} {} net {} segment {} has {:.3} mm filled ground-zone edge clearance, below required {:.3} mm.",
+            evidence.connector_id,
+            evidence.signal.label(),
+            evidence.net,
+            evidence.segment_index,
+            clearance_mm,
+            evidence.min_clearance_mm
+        )
+    } else {
+        format!(
+            "USB connector {} {} net {} segment {} has no same-layer filled ground-zone coverage for edge-clearance validation.",
+            evidence.connector_id,
+            evidence.signal.label(),
+            evidence.net,
+            evidence.segment_index
+        )
+    };
+    let mut finding = Finding::critical(USB_RETURN_PATH_VALID, &scenario.name, message);
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding.measured.insert(
+        "connector_signal".to_string(),
+        json!(evidence.signal.label()),
+    );
+    finding
+        .measured
+        .insert("segment_index".to_string(), json!(evidence.segment_index));
+    finding.measured.insert(
+        "segment_length_mm".to_string(),
+        json!(evidence.segment_length_mm),
+    );
+    finding
+        .measured
+        .insert("midpoint_x_mm".to_string(), json!(evidence.midpoint_x_mm));
+    finding
+        .measured
+        .insert("midpoint_y_mm".to_string(), json!(evidence.midpoint_y_mm));
+    finding
+        .measured
+        .insert("layer".to_string(), json!(evidence.layer));
+    if let Some(clearance_mm) = evidence.clearance_mm {
+        finding.measured.insert(
+            "filled_zone_edge_clearance_mm".to_string(),
+            json!(clearance_mm),
+        );
+    }
+    finding.limit.insert(
+        "min_data_line_filled_zone_edge_clearance_mm".to_string(),
+        json!(evidence.min_clearance_mm),
+    );
+    finding.limit.insert(
+        "reference_zone_geometry".to_string(),
+        json!("filled_polygon"),
+    );
+    finding
+        .limit
+        .insert("reference_net_kind".to_string(), json!("ground"));
+    finding.limit.insert(
+        "reference_zone_layer_policy".to_string(),
+        json!("same_layer"),
+    );
+    finding.suggested_fixes = vec![
+        "Move the USB data route farther inside the same-layer filled ground copper or extend the filled ground copper, then import the updated PCB.".to_string(),
+        "If the route intentionally references an adjacent plane or another controlled return path, model that stackup evidence with a more specific rule instead of using this filled-zone edge-clearance screen as sign-off.".to_string(),
+    ];
+    finding
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) struct UsbReturnPathStitchViaEvidence<'a> {
     pub(super) connector_id: &'a str,
@@ -598,6 +672,20 @@ pub(super) struct UsbReturnPathStitchViaEvidence<'a> {
     pub(super) data_via: &'a RouteVia,
     pub(super) nearest: Option<GroundStitchViaCandidate<'a>>,
     pub(super) max_distance_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbReturnPathClearanceEvidence<'a> {
+    pub(super) connector_id: &'a str,
+    pub(super) signal: UsbConnectorSignal,
+    pub(super) net: &'a str,
+    pub(super) segment_index: usize,
+    pub(super) segment_length_mm: f64,
+    pub(super) midpoint_x_mm: f64,
+    pub(super) midpoint_y_mm: f64,
+    pub(super) layer: &'a str,
+    pub(super) clearance_mm: Option<f64>,
+    pub(super) min_clearance_mm: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]

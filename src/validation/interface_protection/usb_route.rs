@@ -17,9 +17,10 @@ mod geometry;
 
 use findings::*;
 use geometry::{
-    PlacementPoint, point_inside_filled_zone, point_inside_zone_outline,
-    route_distance_between_placements, route_length_mm, segment_length_mm, segment_midpoint,
-    validate_route_shape, validate_zone_outline, worst_pair_gap_delta, worst_route_width_delta,
+    PlacementPoint, point_clearance_to_filled_zone_edge, point_inside_filled_zone,
+    point_inside_zone_outline, route_distance_between_placements, route_length_mm,
+    segment_length_mm, segment_midpoint, validate_route_shape, validate_zone_outline,
+    worst_pair_gap_delta, worst_route_width_delta,
 };
 
 pub(super) fn validate_usb_route_geometry(
@@ -364,6 +365,13 @@ pub(super) fn validate_usb_return_path(
     else {
         return;
     };
+    let Some(min_data_line_filled_zone_edge_clearance_mm) = optional_nonnegative_parameter(
+        scenario,
+        "min_data_line_filled_zone_edge_clearance_mm",
+        findings,
+    ) else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -430,6 +438,7 @@ pub(super) fn validate_usb_return_path(
                 max_unreferenced_length_mm,
                 max_data_via_to_ground_stitch_distance_mm,
                 require_filled_zone_coverage,
+                min_data_line_filled_zone_edge_clearance_mm,
             },
             findings,
         );
@@ -467,6 +476,7 @@ struct UsbReturnPathSignalCheck<'a> {
     max_unreferenced_length_mm: f64,
     max_data_via_to_ground_stitch_distance_mm: Option<f64>,
     require_filled_zone_coverage: bool,
+    min_data_line_filled_zone_edge_clearance_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -679,6 +689,16 @@ fn validate_usb_return_path_for_signal(
             findings,
         );
     }
+    if let Some(min_clearance_mm) = check.min_data_line_filled_zone_edge_clearance_mm {
+        validate_usb_return_path_filled_zone_clearance(
+            scenario,
+            &check,
+            net_name,
+            route,
+            min_clearance_mm,
+            findings,
+        );
+    }
 }
 
 fn point_inside_ground_reference(
@@ -722,6 +742,45 @@ fn validate_usb_return_path_stitch_vias(
                 },
             ));
         }
+    }
+}
+
+fn validate_usb_return_path_filled_zone_clearance(
+    scenario: &Scenario,
+    check: &UsbReturnPathSignalCheck<'_>,
+    net_name: &str,
+    route: &NetRoute,
+    min_clearance_mm: f64,
+    findings: &mut Vec<Finding>,
+) {
+    for (segment_index, segment) in route.segments.iter().enumerate() {
+        let midpoint = segment_midpoint(segment);
+        let clearance_mm = check
+            .ground_zones
+            .iter()
+            .filter(|ground_zone| ground_zone.zone.layer == segment.layer)
+            .filter_map(|ground_zone| {
+                point_clearance_to_filled_zone_edge(midpoint, ground_zone.zone)
+            })
+            .max_by(|left, right| left.total_cmp(right));
+        if clearance_mm.is_some_and(|clearance_mm| clearance_mm >= min_clearance_mm) {
+            continue;
+        }
+        findings.push(usb_return_path_filled_zone_clearance_finding(
+            scenario,
+            UsbReturnPathClearanceEvidence {
+                connector_id: check.connector_id,
+                signal: check.signal,
+                net: net_name,
+                segment_index,
+                segment_length_mm: segment_length_mm(segment),
+                midpoint_x_mm: midpoint.x_mm,
+                midpoint_y_mm: midpoint.y_mm,
+                layer: &segment.layer,
+                clearance_mm,
+                min_clearance_mm,
+            },
+        ));
     }
 }
 

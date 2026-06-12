@@ -1,10 +1,10 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
     SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
-    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
-    SuggestedUsbUnreferencedSegment, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
-    USB_VBUS_ROUTE_VALID, sanitized_name,
+    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbFilledZoneClearanceSegment,
+    SuggestedUsbRoute, SuggestedUsbRoutePair, SuggestedUsbUnreferencedSegment,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
+    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID, sanitized_name,
 };
 use crate::board_ir::{
     BoardProject, ComponentPlacement, ComponentSpec, CopperZone, LayoutPoint, NetKind,
@@ -694,6 +694,10 @@ fn usb_return_path_suggestion(
                     "require_filled_zone_coverage".to_string(),
                     serde_json::Value::Null,
                 ),
+                (
+                    "min_data_line_filled_zone_edge_clearance_mm".to_string(),
+                    serde_json::Value::Null,
+                ),
             ])),
             target: Some(SuggestedTarget {
                 component: component_id.to_string(),
@@ -722,6 +726,7 @@ fn usb_return_path_suggestion(
             ),
             "Fill max_data_via_to_ground_stitch_distance_mm when USB data layer changes require nearby ground stitching vias.".to_string(),
             "Set require_filled_zone_coverage to true when imported filled_polygons should be used instead of intended zone outlines for return-path coverage.".to_string(),
+            "Fill min_data_line_filled_zone_edge_clearance_mm when USB data routes need minimum margin from filled ground-copper edges.".to_string(),
             "Treat this as a same-layer ground-zone outline screen only; adjacent planes, stitching vias, filled-zone continuity, impedance, and EMI need more specific evidence.".to_string(),
         ],
     })
@@ -812,6 +817,8 @@ fn suggested_usb_route(
         unreferenced_segments: None,
         filled_unreferenced_route_length_mm: None,
         filled_unreferenced_segments: None,
+        filled_zone_edge_clearance_min_mm: None,
+        filled_zone_edge_clearance_segments: None,
     })
 }
 
@@ -847,6 +854,8 @@ fn suggested_usb_vbus_route(
         unreferenced_segments: None,
         filled_unreferenced_route_length_mm: None,
         filled_unreferenced_segments: None,
+        filled_zone_edge_clearance_min_mm: None,
+        filled_zone_edge_clearance_segments: None,
     })
 }
 
@@ -873,6 +882,17 @@ fn suggested_usb_route_with_return_path(
         } else {
             (None, None)
         };
+    let (filled_zone_edge_clearance_min_mm, filled_zone_edge_clearance_segments) =
+        if ground_zones_have_filled_polygons(ground_zones) {
+            let segments = return_path_filled_zone_clearance_segments(route, ground_zones);
+            let min_clearance = segments
+                .iter()
+                .filter_map(|segment| segment.filled_zone_edge_clearance_mm)
+                .min_by(|left, right| left.total_cmp(right));
+            (min_clearance, Some(segments))
+        } else {
+            (None, None)
+        };
     Some(SuggestedUsbRoute {
         signal: signal.to_string(),
         net: net_name.to_string(),
@@ -888,6 +908,8 @@ fn suggested_usb_route_with_return_path(
         unreferenced_segments: Some(unreferenced_segments),
         filled_unreferenced_route_length_mm,
         filled_unreferenced_segments,
+        filled_zone_edge_clearance_min_mm,
+        filled_zone_edge_clearance_segments,
     })
 }
 
@@ -976,6 +998,36 @@ fn return_path_unreferenced_segments(
     (unreferenced_length_mm, unreferenced_segments)
 }
 
+fn return_path_filled_zone_clearance_segments(
+    route: &NetRoute,
+    ground_zones: &[&CopperZone],
+) -> Vec<SuggestedUsbFilledZoneClearanceSegment> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .map(|(segment_index, segment)| {
+            let midpoint_x_mm = (segment.start.x_mm + segment.end.x_mm) / 2.0;
+            let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
+            let filled_zone_edge_clearance_mm = ground_zones
+                .iter()
+                .filter(|zone| zone.layer == segment.layer)
+                .filter_map(|zone| {
+                    point_clearance_to_any_filled_polygon_edge(midpoint_x_mm, midpoint_y_mm, zone)
+                })
+                .max_by(|left, right| left.total_cmp(right));
+            SuggestedUsbFilledZoneClearanceSegment {
+                segment_index,
+                segment_length_mm: segment_length_mm(segment),
+                midpoint_x_mm,
+                midpoint_y_mm,
+                layer: segment.layer.clone(),
+                filled_zone_edge_clearance_mm,
+            }
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy)]
 enum GroundReferenceGeometry {
     Outline,
@@ -1033,6 +1085,20 @@ fn point_inside_any_filled_polygon(point_x_mm: f64, point_y_mm: f64, zone: &Copp
         .any(|polygon| point_inside_polygon(point_x_mm, point_y_mm, polygon))
 }
 
+fn point_clearance_to_any_filled_polygon_edge(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    zone: &CopperZone,
+) -> Option<f64> {
+    zone.filled_polygons
+        .iter()
+        .filter(|polygon| {
+            polygon_is_usable(polygon) && point_inside_polygon(point_x_mm, point_y_mm, polygon)
+        })
+        .filter_map(|polygon| point_clearance_to_polygon_edge(point_x_mm, point_y_mm, polygon))
+        .max_by(|left, right| left.total_cmp(right))
+}
+
 fn polygon_is_usable(polygon: &[LayoutPoint]) -> bool {
     polygon.len() >= 3
         && polygon
@@ -1069,6 +1135,51 @@ fn point_inside_polygon(point_x_mm: f64, point_y_mm: f64, polygon: &[LayoutPoint
         previous = current;
     }
     inside
+}
+
+fn point_clearance_to_polygon_edge(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    polygon: &[LayoutPoint],
+) -> Option<f64> {
+    if polygon.len() < 3 {
+        return None;
+    }
+    let mut previous = polygon.last().expect("polygon has points");
+    let mut clearance_mm = f64::INFINITY;
+    for current in polygon {
+        clearance_mm = clearance_mm.min(point_to_segment_distance_mm(
+            point_x_mm,
+            point_y_mm,
+            previous.x_mm,
+            previous.y_mm,
+            current.x_mm,
+            current.y_mm,
+        )?);
+        previous = current;
+    }
+    clearance_mm.is_finite().then_some(clearance_mm)
+}
+
+fn point_to_segment_distance_mm(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    start_x_mm: f64,
+    start_y_mm: f64,
+    end_x_mm: f64,
+    end_y_mm: f64,
+) -> Option<f64> {
+    let dx = end_x_mm - start_x_mm;
+    let dy = end_y_mm - start_y_mm;
+    let length_squared = dx.mul_add(dx, dy * dy);
+    if length_squared <= f64::EPSILON {
+        return None;
+    }
+    let raw_t = ((point_x_mm - start_x_mm) * dx + (point_y_mm - start_y_mm) * dy) / length_squared;
+    let t = raw_t.clamp(0.0, 1.0);
+    let projected_x_mm = start_x_mm + t * dx;
+    let projected_y_mm = start_y_mm + t * dy;
+    Some((point_x_mm - projected_x_mm).hypot(point_y_mm - projected_y_mm))
 }
 
 fn point_on_segment(

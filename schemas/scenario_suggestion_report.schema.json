@@ -261,6 +261,29 @@
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "filled_zone_edge_clearance_min_mm": { "type": "number", "minimum": 0 },
+                    "filled_zone_edge_clearance_segments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "segment_index",
+                          "segment_length_mm",
+                          "midpoint_x_mm",
+                          "midpoint_y_mm",
+                          "layer"
+                        ],
+                        "properties": {
+                          "segment_index": { "type": "integer", "minimum": 0 },
+                          "segment_length_mm": { "type": "number", "minimum": 0 },
+                          "midpoint_x_mm": { "type": "number" },
+                          "midpoint_y_mm": { "type": "number" },
+                          "layer": { "type": "string", "minLength": 1 },
+                          "filled_zone_edge_clearance_mm": { "type": "number", "minimum": 0 }
+                        },
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "additionalProperties": false

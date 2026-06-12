@@ -215,12 +215,17 @@ include `connector_signal`, `unreferenced_route_length_mm`, and
 measured keys also include `data_via_index`, `data_via_x_mm`, `data_via_y_mm`,
 `data_via_layers`, and, when a candidate exists,
 `nearest_ground_stitch_net`, `nearest_ground_stitch_via_index`, and
-`nearest_ground_stitch_distance_mm`. Stable limit keys include
+`nearest_ground_stitch_distance_mm`. When
+`min_data_line_filled_zone_edge_clearance_mm` is enabled, stable measured keys
+also include `segment_index`, `segment_length_mm`, `midpoint_x_mm`,
+`midpoint_y_mm`, `layer`, and, when same-layer filled copper contains the
+midpoint, `filled_zone_edge_clearance_mm`. Stable limit keys include
 `max_data_line_unreferenced_length_mm`, `reference_net_kind`,
 `reference_zone_geometry`, and `reference_zone_layer_policy`; stitching
 findings additionally include
 `max_data_via_to_ground_stitch_distance_mm` and
-`required_ground_stitch_layer_policy`.
+`required_ground_stitch_layer_policy`; filled-zone clearance findings
+additionally include `min_data_line_filled_zone_edge_clearance_mm`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

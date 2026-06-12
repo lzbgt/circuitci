@@ -108,6 +108,17 @@ pub(super) fn point_inside_filled_zone(point: PlacementPoint, zone: &CopperZone)
         .any(|polygon| point_inside_polygon(point, polygon))
 }
 
+pub(super) fn point_clearance_to_filled_zone_edge(
+    point: PlacementPoint,
+    zone: &CopperZone,
+) -> Option<f64> {
+    zone.filled_polygons
+        .iter()
+        .filter(|polygon| point_inside_polygon(point, polygon))
+        .filter_map(|polygon| point_clearance_to_polygon_edge(point, polygon))
+        .max_by(|left, right| left.total_cmp(right))
+}
+
 fn validate_polygon_points(
     polygon: &[LayoutPoint],
     short_message: &str,
@@ -148,6 +159,29 @@ fn point_inside_polygon(point: PlacementPoint, polygon: &[LayoutPoint]) -> bool 
         previous = current;
     }
     inside
+}
+
+fn point_clearance_to_polygon_edge(point: PlacementPoint, polygon: &[LayoutPoint]) -> Option<f64> {
+    if polygon.len() < 3 {
+        return None;
+    }
+    let mut previous = PlacementPoint::from(polygon.last().expect("polygon has points"));
+    let mut clearance_mm = f64::INFINITY;
+    for current_point in polygon {
+        let current = PlacementPoint::from(current_point);
+        clearance_mm = clearance_mm.min(point_to_segment_distance_mm(point, previous, current)?);
+        previous = current;
+    }
+    clearance_mm.is_finite().then_some(clearance_mm)
+}
+
+fn point_to_segment_distance_mm(
+    point: PlacementPoint,
+    start: PlacementPoint,
+    end: PlacementPoint,
+) -> Option<f64> {
+    let (_, projected) = project_point_to_segment(point, start, end)?;
+    Some(point_distance_mm(point, projected))
 }
 
 pub(super) fn route_distance_between_placements(

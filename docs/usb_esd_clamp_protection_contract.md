@@ -156,6 +156,10 @@ Route-geometry validation:
 - The scenario may declare `parameters.require_filled_zone_coverage: true` to
   use saved `filled_polygons` instead of intended zone outlines for data-route
   midpoint coverage.
+- The scenario may declare
+  `parameters.min_data_line_filled_zone_edge_clearance_mm` to require each
+  D+/D- route segment midpoint to sit at least that far from the nearest
+  same-layer filled ground-copper polygon edge.
 - The rule checks D+ and D- only. A routed segment is treated as statically
   referenced when its midpoint is inside a same-layer ground-zone outline.
   In filled-zone mode, that midpoint must be inside a same-layer filled

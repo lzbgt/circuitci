@@ -61,7 +61,11 @@ rule. It also leaves
 `max_data_via_to_ground_stitch_distance_mm: null` so an agent can enable
 nearby ground-stitch checks when data vias cross layers, and
 `require_filled_zone_coverage: null` so an agent can choose saved
-`filled_polygons` over the intended zone outline. This is geometry and
+`filled_polygons` over the intended zone outline. When filled polygons are
+present, each data route also reports `filled_zone_edge_clearance_min_mm` and
+`filled_zone_edge_clearance_segments[]`, while
+`min_data_line_filled_zone_edge_clearance_mm: null` remains for the
+board-specific filled-copper edge-margin policy. This is geometry and
 via-proximity evidence only; filled-zone island connectivity, controlled plane
 transitions, stitching-via inductance, and impedance still require richer
 layout evidence.
