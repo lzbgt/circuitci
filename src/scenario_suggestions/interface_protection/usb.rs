@@ -1,17 +1,17 @@
 use super::super::{
     ScenarioSuggestion, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
-    SuggestedUsbConnector, SuggestedUsbFilledZoneClearanceSegment, SuggestedUsbRoute,
-    SuggestedUsbRoutePair, SuggestedUsbUnreferencedSegment, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
-    USB_VBUS_ROUTE_VALID,
+    SuggestedUsbConnector, SuggestedUsbFilledZoneClearanceSegment, SuggestedUsbGroundZoneContact,
+    SuggestedUsbRoute, SuggestedUsbRoutePair, SuggestedUsbUnreferencedSegment,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
+    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
 };
 use super::{
     component_placement, placement_distance_mm, sanitized_name, suggested_placement,
     suggested_protection_clamp,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, CopperZone, LayoutPoint, NetKind,
-    NetLayoutRule, NetRoute, RouteSegment,
+    BoardProject, ComponentPlacement, ComponentSpec, CopperZone, LayoutPad, LayoutPoint, NetKind,
+    NetLayoutRule, NetRoute, RouteSegment, RouteVia,
 };
 use crate::library::{BoundBoard, ComponentModel, ProtectionReference, UsbConnector};
 use std::collections::{BTreeMap, BTreeSet};
@@ -643,6 +643,8 @@ fn suggested_usb_route(
         filled_unreferenced_segments: None,
         filled_zone_edge_clearance_min_mm: None,
         filled_zone_edge_clearance_segments: None,
+        ground_zone_contacts: None,
+        filled_ground_zone_contacts: None,
     })
 }
 
@@ -680,6 +682,8 @@ fn suggested_usb_vbus_route(
         filled_unreferenced_segments: None,
         filled_zone_edge_clearance_min_mm: None,
         filled_zone_edge_clearance_segments: None,
+        ground_zone_contacts: None,
+        filled_ground_zone_contacts: None,
     })
 }
 
@@ -687,7 +691,7 @@ fn suggested_usb_route_with_return_path(
     bound: &BoundBoard<'_>,
     signal: &str,
     net_name: &str,
-    ground_zones: &[&CopperZone],
+    ground_zones: &[GroundZoneEvidence<'_>],
 ) -> Option<SuggestedUsbRoute> {
     let route = bound.project.board.layout.routes.get(net_name)?;
     if route.segments.is_empty() {
@@ -717,6 +721,18 @@ fn suggested_usb_route_with_return_path(
         } else {
             (None, None)
         };
+    let ground_zone_contacts =
+        route_ground_zone_contacts(bound, route, ground_zones, GroundReferenceGeometry::Outline);
+    let filled_ground_zone_contacts = if ground_zones_have_filled_polygons(ground_zones) {
+        Some(route_ground_zone_contacts(
+            bound,
+            route,
+            ground_zones,
+            GroundReferenceGeometry::FilledPolygon,
+        ))
+    } else {
+        None
+    };
     Some(SuggestedUsbRoute {
         signal: signal.to_string(),
         net: net_name.to_string(),
@@ -734,6 +750,8 @@ fn suggested_usb_route_with_return_path(
         filled_unreferenced_segments,
         filled_zone_edge_clearance_min_mm,
         filled_zone_edge_clearance_segments,
+        ground_zone_contacts: Some(ground_zone_contacts),
+        filled_ground_zone_contacts,
     })
 }
 
@@ -794,7 +812,7 @@ fn segment_length_mm(segment: &RouteSegment) -> f64 {
 
 fn return_path_unreferenced_segments(
     route: &NetRoute,
-    ground_zones: &[&CopperZone],
+    ground_zones: &[GroundZoneEvidence<'_>],
     geometry: GroundReferenceGeometry,
 ) -> (f64, Vec<SuggestedUsbUnreferencedSegment>) {
     let mut unreferenced_length_mm = 0.0;
@@ -803,7 +821,7 @@ fn return_path_unreferenced_segments(
         let midpoint_x_mm = (segment.start.x_mm + segment.end.x_mm) / 2.0;
         let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
         let referenced = ground_zones.iter().any(|zone| {
-            zone.layer == segment.layer
+            zone.zone.layer == segment.layer
                 && point_inside_ground_reference(midpoint_x_mm, midpoint_y_mm, zone, geometry)
         });
         if referenced {
@@ -824,7 +842,7 @@ fn return_path_unreferenced_segments(
 
 fn return_path_filled_zone_clearance_segments(
     route: &NetRoute,
-    ground_zones: &[&CopperZone],
+    ground_zones: &[GroundZoneEvidence<'_>],
 ) -> Vec<SuggestedUsbFilledZoneClearanceSegment> {
     route
         .segments
@@ -835,9 +853,13 @@ fn return_path_filled_zone_clearance_segments(
             let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
             let filled_zone_edge_clearance_mm = ground_zones
                 .iter()
-                .filter(|zone| zone.layer == segment.layer)
+                .filter(|zone| zone.zone.layer == segment.layer)
                 .filter_map(|zone| {
-                    point_clearance_to_any_filled_polygon_edge(midpoint_x_mm, midpoint_y_mm, zone)
+                    point_clearance_to_any_filled_polygon_edge(
+                        midpoint_x_mm,
+                        midpoint_y_mm,
+                        zone.zone,
+                    )
                 })
                 .max_by(|left, right| left.total_cmp(right));
             SuggestedUsbFilledZoneClearanceSegment {
@@ -861,26 +883,35 @@ enum GroundReferenceGeometry {
 fn point_inside_ground_reference(
     point_x_mm: f64,
     point_y_mm: f64,
-    zone: &CopperZone,
+    zone: &GroundZoneEvidence<'_>,
     geometry: GroundReferenceGeometry,
 ) -> bool {
     match geometry {
-        GroundReferenceGeometry::Outline => point_inside_zone_outline(point_x_mm, point_y_mm, zone),
+        GroundReferenceGeometry::Outline => {
+            point_inside_zone_outline(point_x_mm, point_y_mm, zone.zone)
+        }
         GroundReferenceGeometry::FilledPolygon => {
-            point_inside_any_filled_polygon(point_x_mm, point_y_mm, zone)
+            point_inside_any_filled_polygon(point_x_mm, point_y_mm, zone.zone)
         }
     }
 }
 
-fn ground_zones_have_filled_polygons(ground_zones: &[&CopperZone]) -> bool {
+fn ground_zones_have_filled_polygons(ground_zones: &[GroundZoneEvidence<'_>]) -> bool {
     ground_zones.iter().any(|zone| {
-        zone.filled_polygons
+        zone.zone
+            .filled_polygons
             .iter()
             .any(|polygon| polygon_is_usable(polygon))
     })
 }
 
-fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a CopperZone> {
+#[derive(Debug, Clone, Copy)]
+struct GroundZoneEvidence<'a> {
+    net_name: &'a str,
+    zone: &'a CopperZone,
+}
+
+fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<GroundZoneEvidence<'a>> {
     let mut zones = Vec::new();
     for (net_name, zone_list) in &bound.project.board.layout.zones {
         let Some(net) = bound.project.board.nets.get(net_name) else {
@@ -889,9 +920,132 @@ fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a CopperZone> {
         if net.kind != NetKind::Ground {
             continue;
         }
-        zones.extend(zone_list.iter().filter(|zone| zone_outline_is_usable(zone)));
+        zones.extend(
+            zone_list
+                .iter()
+                .filter(|zone| zone_outline_is_usable(zone))
+                .map(|zone| GroundZoneEvidence { net_name, zone }),
+        );
     }
     zones
+}
+
+fn route_ground_zone_contacts(
+    bound: &BoundBoard<'_>,
+    route: &NetRoute,
+    ground_zones: &[GroundZoneEvidence<'_>],
+    geometry: GroundReferenceGeometry,
+) -> Vec<SuggestedUsbGroundZoneContact> {
+    let mut contacts = BTreeMap::<String, SuggestedUsbGroundZoneContact>::new();
+    for segment in &route.segments {
+        let midpoint_x_mm = (segment.start.x_mm + segment.end.x_mm) / 2.0;
+        let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
+        for zone in ground_zones.iter().filter(|zone| {
+            zone.zone.layer == segment.layer
+                && point_inside_ground_reference(midpoint_x_mm, midpoint_y_mm, zone, geometry)
+        }) {
+            for contact in ground_zone_contacts(bound, zone, geometry) {
+                contacts.entry(contact_key(&contact)).or_insert(contact);
+            }
+        }
+    }
+    contacts.into_values().collect()
+}
+
+fn ground_zone_contacts(
+    bound: &BoundBoard<'_>,
+    zone: &GroundZoneEvidence<'_>,
+    geometry: GroundReferenceGeometry,
+) -> Vec<SuggestedUsbGroundZoneContact> {
+    let mut contacts = Vec::new();
+    for (component_id, component_pads) in &bound.project.board.layout.pads {
+        for (pad_name, pad) in component_pads {
+            if pad.net != zone.net_name
+                || !pad_layers_include(&pad.layers, zone.zone.layer.as_str())
+                || !pad.at.x_mm.is_finite()
+                || !pad.at.y_mm.is_finite()
+                || !point_inside_ground_reference(pad.at.x_mm, pad.at.y_mm, zone, geometry)
+            {
+                continue;
+            }
+            contacts.push(pad_contact(zone, component_id, pad_name, pad));
+        }
+    }
+    if let Some(route) = bound.project.board.layout.routes.get(zone.net_name) {
+        for (via_index, via) in route.vias.iter().enumerate() {
+            if !via_layers_include(&via.layers, zone.zone.layer.as_str())
+                || !via.at.x_mm.is_finite()
+                || !via.at.y_mm.is_finite()
+                || !point_inside_ground_reference(via.at.x_mm, via.at.y_mm, zone, geometry)
+            {
+                continue;
+            }
+            contacts.push(via_contact(zone, via_index, via));
+        }
+    }
+    contacts
+}
+
+fn pad_contact(
+    zone: &GroundZoneEvidence<'_>,
+    component_id: &str,
+    pad_name: &str,
+    pad: &LayoutPad,
+) -> SuggestedUsbGroundZoneContact {
+    SuggestedUsbGroundZoneContact {
+        net: zone.net_name.to_string(),
+        layer: zone.zone.layer.clone(),
+        contact_kind: "pad".to_string(),
+        component: Some(component_id.to_string()),
+        pad: Some(pad_name.to_string()),
+        via_index: None,
+        x_mm: pad.at.x_mm,
+        y_mm: pad.at.y_mm,
+    }
+}
+
+fn via_contact(
+    zone: &GroundZoneEvidence<'_>,
+    via_index: usize,
+    via: &RouteVia,
+) -> SuggestedUsbGroundZoneContact {
+    SuggestedUsbGroundZoneContact {
+        net: zone.net_name.to_string(),
+        layer: zone.zone.layer.clone(),
+        contact_kind: "via".to_string(),
+        component: None,
+        pad: None,
+        via_index: Some(via_index),
+        x_mm: via.at.x_mm,
+        y_mm: via.at.y_mm,
+    }
+}
+
+fn contact_key(contact: &SuggestedUsbGroundZoneContact) -> String {
+    format!(
+        "{}:{}:{}:{}:{}:{}",
+        contact.net,
+        contact.layer,
+        contact.contact_kind,
+        contact.component.as_deref().unwrap_or(""),
+        contact.pad.as_deref().unwrap_or(""),
+        contact
+            .via_index
+            .map(|index| index.to_string())
+            .unwrap_or_default()
+    )
+}
+
+fn pad_layers_include(layers: &[String], zone_layer: &str) -> bool {
+    layers.iter().any(|layer| layer_matches(layer, zone_layer))
+}
+
+fn via_layers_include(layers: &[String], zone_layer: &str) -> bool {
+    layers.iter().any(|layer| layer_matches(layer, zone_layer))
+}
+
+fn layer_matches(candidate: &str, zone_layer: &str) -> bool {
+    candidate == zone_layer || (candidate == "*.Cu" && zone_layer.ends_with(".Cu"))
 }
 
 fn zone_outline_is_usable(zone: &CopperZone) -> bool {

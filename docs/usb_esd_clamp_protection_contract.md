@@ -163,6 +163,9 @@ Route-geometry validation:
 - The scenario may declare `parameters.require_ground_zone_contact_evidence:
   true` to require the same-layer ground zone to contain imported same-net pad
   or route-via contact evidence before it counts as a return-path reference.
+- Scenario suggestions expose candidate same-net pad/via contacts in
+  `scenario.usb_routes[].ground_zone_contacts[]` and, when filled polygons are
+  present, `filled_ground_zone_contacts[]`.
 - The rule checks D+ and D- only. A routed segment is treated as statically
   referenced when its midpoint is inside a same-layer ground-zone outline.
   In filled-zone mode, that midpoint must be inside a same-layer filled

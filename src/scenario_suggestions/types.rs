@@ -230,6 +230,10 @@ pub struct SuggestedUsbRoute {
     pub filled_zone_edge_clearance_min_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filled_zone_edge_clearance_segments: Option<Vec<SuggestedUsbFilledZoneClearanceSegment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ground_zone_contacts: Option<Vec<SuggestedUsbGroundZoneContact>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_ground_zone_contacts: Option<Vec<SuggestedUsbGroundZoneContact>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -250,6 +254,21 @@ pub struct SuggestedUsbFilledZoneClearanceSegment {
     pub layer: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filled_zone_edge_clearance_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedUsbGroundZoneContact {
+    pub net: String,
+    pub layer: String,
+    pub contact_kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pad: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub via_index: Option<usize>,
+    pub x_mm: f64,
+    pub y_mm: f64,
 }
 
 #[derive(Debug, Serialize)]

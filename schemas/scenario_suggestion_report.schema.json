@@ -284,6 +284,14 @@
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "ground_zone_contacts": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/usb_ground_zone_contact" }
+                    },
+                    "filled_ground_zone_contacts": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/usb_ground_zone_contact" }
                     }
                   },
                   "additionalProperties": false
@@ -470,6 +478,21 @@
         "x_mm": { "type": "number" },
         "y_mm": { "type": "number" },
         "side": { "enum": ["top", "bottom"] }
+      },
+      "additionalProperties": false
+    },
+    "usb_ground_zone_contact": {
+      "type": "object",
+      "required": ["net", "layer", "contact_kind", "x_mm", "y_mm"],
+      "properties": {
+        "net": { "type": "string", "minLength": 1 },
+        "layer": { "type": "string", "minLength": 1 },
+        "contact_kind": { "enum": ["pad", "via"] },
+        "component": { "type": "string", "minLength": 1 },
+        "pad": { "type": "string", "minLength": 1 },
+        "via_index": { "type": "integer", "minimum": 0 },
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" }
       },
       "additionalProperties": false
     }

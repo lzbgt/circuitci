@@ -271,6 +271,26 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                         .as_array()
                         .unwrap()
                         .is_empty()
+                    && usb_route["ground_zone_contacts"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|contact| {
+                            contact["contact_kind"] == "pad"
+                                && contact["component"] == "J1"
+                                && contact["pad"] == "GND"
+                                && contact["net"] == "gnd"
+                        })
+                    && usb_route["filled_ground_zone_contacts"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|contact| {
+                            contact["contact_kind"] == "pad"
+                                && contact["component"] == "J1"
+                                && contact["pad"] == "GND"
+                                && contact["net"] == "gnd"
+                        })
             })
     );
 }
@@ -499,6 +519,26 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
                         .as_array()
                         .unwrap()
                         .is_empty()
+                    && usb_route["ground_zone_contacts"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|contact| {
+                            contact["contact_kind"] == "pad"
+                                && contact["component"] == "J1"
+                                && contact["pad"] == "GND"
+                                && contact["net"] == "gnd"
+                        })
+                    && usb_route["filled_ground_zone_contacts"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|contact| {
+                            contact["contact_kind"] == "pad"
+                                && contact["component"] == "J1"
+                                && contact["pad"] == "GND"
+                                && contact["net"] == "gnd"
+                        })
             })
     );
 }

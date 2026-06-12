@@ -69,7 +69,9 @@ present, each data route also reports `filled_zone_edge_clearance_min_mm` and
 board-specific filled-copper edge-margin policy. The template also leaves
 `require_ground_zone_contact_evidence: null` so an agent can decide whether the
 imported same-net pad/via evidence must prove that the ground zone is connected
-before it counts as return-path coverage. This is geometry, pad-contact, and
-via-proximity evidence only; filled-zone island connectivity, controlled plane
-transitions, stitching-via inductance, and impedance still require richer
-layout evidence.
+before it counts as return-path coverage. The route evidence includes
+`ground_zone_contacts[]` and `filled_ground_zone_contacts[]`; in this fixture
+those lists include imported ground pads such as `J1.GND` inside the same-layer
+GND copper. This is geometry, pad-contact, and via-proximity evidence only;
+filled-zone island connectivity, controlled plane transitions, stitching-via
+inductance, and impedance still require richer layout evidence.
