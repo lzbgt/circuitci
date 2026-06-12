@@ -49,3 +49,11 @@ Current fixtures:
 - `examples/bad_usb_esd_reference`
 - `examples/bad_usb_esd_standoff`
 - `examples/bad_usb_esd_line_capacitance`
+
+Datasheet-backed model pack:
+
+- `libs/vendor/ti/protection/tpd2eusb30.model.yaml`
+- `docs/ti_tpd2eusb30_model.md`
+- `examples/good_ti_tpd2eusb30_usb_esd`
+- `examples/bad_ti_tpd2eusb30_usb_esd_standoff`
+- `examples/bad_ti_tpd2eusb30_usb_esd_capacitance`

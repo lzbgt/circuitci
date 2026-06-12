@@ -161,6 +161,50 @@ fn usb_esd_clamp_capacitance_must_fit_interface_budget() {
 }
 
 #[test]
+fn ti_tpd2eusb30_usb_esd_passes_static_review() {
+    let report = run_validation("examples/good_ti_tpd2eusb30_usb_esd/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tpd2eusb30_usb_esd_requires_standoff_above_line_voltage() {
+    let report = run_validation("examples/bad_ti_tpd2eusb30_usb_esd_standoff/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["working_voltage_max_V"] == 5.5)
+        .expect("TPD2EUSB30 standoff finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["protected_net_nominal_voltage_V"], 6.0);
+    assert_eq!(failure["limit"]["protection_clamp"], "d1_plus");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tpd2eusb30_usb_esd_line_capacitance_must_fit_budget() {
+    let report = run_validation("examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["max_line_capacitance_F"] == 5.0e-13)
+        .expect("TPD2EUSB30 capacitance finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["line_capacitance_F"], 7.0e-13);
+    assert_eq!(failure["limit"]["protection_clamp"], "d1_plus");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -32,7 +32,9 @@ covers a first datasheet-backed power-mux source-selection and reverse-blocking
 pack, TI TLV803EA29 covers a first datasheet-backed reset supervisor
 threshold/delay pack, and Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
 Advanced Monolithic Systems AMS1117-3.3 now covers a common 1117-style 3.3 V
-LDO with its larger dropout and output-capacitance requirements. The gap
+LDO with its larger dropout and output-capacitance requirements. TI TPD2EUSB30
+now covers a first datasheet-backed clamp-only USB ESD array for static
+standoff-voltage and capacitance screening. The gap
 remains broad library depth across other USB-UART bridges, debug probes,
 radios, sensors, regulators, power muxes, reset supervisors, and protection
 devices.
@@ -141,8 +143,8 @@ states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
 assertions. Broader automatic recognition for device-specific protection
-behavior, datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal
-integrity remain component-pack and physics gaps.
+behavior, additional datasheet-backed USB ESD arrays, ESD pulse behavior, and
+USB signal integrity remain component-pack and physics gaps.
 
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load

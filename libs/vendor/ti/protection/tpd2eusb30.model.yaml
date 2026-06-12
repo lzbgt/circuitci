@@ -1,0 +1,72 @@
+component_id: vendor.ti.tpd2eusb30
+version: 0.1.0
+category: protection
+ports:
+  "D1+":
+    kind: passive
+    required: true
+  "D1-":
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: d1_plus
+      protected_pin: "D1+"
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 7.0e-13
+    - name: d1_minus
+      protected_pin: "D1-"
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 7.0e-13
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPD2EUSB30
+  package: DRT 3-pin SOT
+  polarity: passive_two_channel_usb_esd_protection
+  pinout:
+    "D1+": "D1+"
+    "D1-": "D1-"
+    GND: GND
+  electrical_characteristics:
+    reverse_standoff_voltage:
+      conditions: D+ and D- pins, TPD2EUSB30.
+      max: 5.5
+      unit: V
+    io_to_ground_capacitance:
+      conditions: DRT D+ and D- pins, VIO = 2.5 V, f = 100 kHz.
+      typ: 0.7
+      unit: pF
+    io_to_io_capacitance:
+      conditions: D+ and D- pins, VIO = 2.5 V, f = 100 kHz.
+      typ: 0.05
+      unit: pF
+  device_parameters:
+    power_supply:
+      conditions: Passive ESD protection device; no supply rail is required.
+      unit: note
+      simulation_relevance: Static validation checks signal standoff and capacitance only.
+  documents:
+    - title: TPDxEUSB30 2-, 4-Channel ESD Protection for Super-Speed USB Interface
+      path: docs/research/datasheets/ti/tpd2eusb30.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf
+      sha256: a2c0dd845043a5bbfe610f673879c29e38649544385dea51dbe0a4c49df39136
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - usb_esd_static_screening
+    - interface_protection_review
+    - preliminary_usb_board_validation
+  not_valid_for:
+    - esd_pulse_clamp_waveform
+    - usb_signal_integrity_signoff
+    - layout_return_path_signoff
+    - surge_or_iec61000_4_2_signoff

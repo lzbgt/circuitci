@@ -1,0 +1,36 @@
+project:
+  name: bad_ti_tpd2eusb30_usb_esd_capacitance
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/protection
+
+board:
+  components:
+    UESD:
+      model: vendor.ti.tpd2eusb30
+      part_number: TPD2EUSB30
+      pins:
+        "D1+": usb_dp
+        "D1-": usb_dm
+        GND: gnd
+  nets:
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tpd2eusb30_dp_capacitance_budget
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: d1_plus
+      max_line_capacitance_F: 5.0e-13
