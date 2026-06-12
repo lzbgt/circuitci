@@ -1,0 +1,83 @@
+component_id: vendor.ti.tlv803ea29
+version: 0.1.0
+category: reset_supervisor
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.7
+      operating_voltage_max_V: 6.0
+      max_supply_current_A: 0.000001
+  GND:
+    kind: electrical_ground
+    required: true
+  RESET:
+    kind: digital_electrical_output
+    required: true
+reset_supervisor:
+  monitored_pin: VDD
+  reset_output_pin: RESET
+  active: low
+  threshold_min_V: 2.8714
+  threshold_max_V: 2.9886
+  reset_release_delay_us: 270000
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TLV803EA29
+  package: SOT-23 DBZ / SC70 DCK / X2SON DPW
+  polarity: active_low_open_drain_reset_supervisor
+  pinout:
+    VDD: VDD
+    GND: GND
+    RESET: RESET
+  electrical_characteristics:
+    VDD:
+      conditions: Recommended operating range.
+      min: 1.7
+      max: 6.0
+      unit: V
+    supply_current:
+      conditions: Maximum at VDD = 3.3 V, VDD > VIT+.
+      max: 1.0
+      unit: uA
+    falling_threshold:
+      conditions: A29 threshold option, nominal 2.93 V, accuracy +/-2% over -40 C to 125 C.
+      min: 2.8714
+      typ: 2.93
+      max: 2.9886
+      unit: V
+    hysteresis:
+      conditions: Percent of VIT-.
+      min: 0.9
+      typ: 1.2
+      max: 1.5
+      unit: percent
+    reset_delay:
+      conditions: Delay option A release time or reset timeout period.
+      min: 130
+      typ: 200
+      max: 270
+      unit: ms
+    reset_output_topology:
+      conditions: TLV803E variant has active-low open-drain output and requires an external pull-up resistor.
+      unit: note
+  documents:
+    - title: TLV803E, TLV809E, TLV810E Low Power 250-nA IQ and Small Size Supply Voltage Supervisors
+      path: docs/research/datasheets/ti/tlv803e-tlv809e-tlv810e.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tlv803e.pdf
+      sha256: bce5287af45910a79177d546d5b2ca58cfec8aa3a1cd83dbfdd98308285d0fe7
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - reset_supervisor_threshold_screening
+    - reset_release_timing_screening
+  not_valid_for:
+    - open_drain_pullup_timing
+    - reset_output_waveform_shape
+    - vdd_glitch_immunity_signoff
+    - propagation_delay_signoff
+    - transient_noise_immunity_signoff

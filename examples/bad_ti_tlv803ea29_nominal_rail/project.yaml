@@ -1,0 +1,44 @@
+project:
+  name: bad_ti_tlv803ea29_nominal_rail
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_2v9
+      pins:
+        VDD: rail_2v9
+        GND: gnd
+        NRST: nrst
+    USUP:
+      model: vendor.ti.tlv803ea29
+      part_number: TLV803EA29DBZR
+      power_domains:
+        VDD: rail_2v9
+      pins:
+        VDD: rail_2v9
+        GND: gnd
+        RESET: nrst
+  nets:
+    rail_2v9:
+      kind: power
+      nominal_voltage: 2.9
+      powered: true
+      power_valid_at_us: 1000
+    nrst:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tlv803ea29_threshold_above_nominal_rail
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
