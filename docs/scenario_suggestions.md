@@ -88,9 +88,10 @@ The command is conservative:
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes
   `scenario.usb_routes[]` with data-line net, route length, via count, and the
-  matching protection component, but leaves all board-specific USB route limits
-  as `null`, including differential-pair length-mismatch and via-count-delta
-  limits.
+  matching protection component. It also includes `scenario.usb_route_pairs[]`
+  with computed D+/D- route lengths, length mismatch, via counts, and via-count
+  delta. Board-specific USB route limits remain `null`, including
+  differential-pair length-mismatch and via-count-delta limits.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

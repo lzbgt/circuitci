@@ -217,6 +217,33 @@
                   "additionalProperties": false
                 }
               },
+              "usb_route_pairs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "dp_net",
+                    "dm_net",
+                    "dp_route_length_mm",
+                    "dm_route_length_mm",
+                    "data_pair_length_mismatch_mm",
+                    "dp_via_count",
+                    "dm_via_count",
+                    "data_pair_via_count_delta"
+                  ],
+                  "properties": {
+                    "dp_net": { "type": "string", "minLength": 1 },
+                    "dm_net": { "type": "string", "minLength": 1 },
+                    "dp_route_length_mm": { "type": "number", "minimum": 0 },
+                    "dm_route_length_mm": { "type": "number", "minimum": 0 },
+                    "data_pair_length_mismatch_mm": { "type": "number", "minimum": 0 },
+                    "dp_via_count": { "type": "integer", "minimum": 0 },
+                    "dm_via_count": { "type": "integer", "minimum": 0 },
+                    "data_pair_via_count_delta": { "type": "integer", "minimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "clocks": {
                 "type": "array",
                 "items": {

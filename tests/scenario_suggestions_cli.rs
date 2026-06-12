@@ -549,6 +549,16 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             && usb_route["via_count"] == 1
             && usb_route["protection_component"] == "UESD"
     }));
+    let route_pairs = route["scenario"]["usb_route_pairs"].as_array().unwrap();
+    assert_eq!(route_pairs.len(), 1);
+    assert_eq!(route_pairs[0]["dp_net"], "usb_dp");
+    assert_eq!(route_pairs[0]["dm_net"], "usb_dm");
+    assert_eq!(route_pairs[0]["dp_route_length_mm"], 1.0);
+    assert_eq!(route_pairs[0]["dm_route_length_mm"], 1.0);
+    assert_eq!(route_pairs[0]["data_pair_length_mismatch_mm"], 0.0);
+    assert_eq!(route_pairs[0]["dp_via_count"], 0);
+    assert_eq!(route_pairs[0]["dm_via_count"], 1);
+    assert_eq!(route_pairs[0]["data_pair_via_count_delta"], 1);
     assert!(
         route["required_inputs"][0]
             .as_str()

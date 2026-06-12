@@ -1,8 +1,9 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
     SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
-    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID, USB_ROUTE_GEOMETRY_VALID, sanitized_name,
+    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_ROUTE_GEOMETRY_VALID,
+    sanitized_name,
 };
 use crate::board_ir::{
     BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetRoute, PlacementSide,
@@ -74,6 +75,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     protection_clamps: Vec::new(),
                     usb_connectors: Vec::new(),
                     usb_routes: Vec::new(),
+                    usb_route_pairs: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -139,6 +141,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     protection_clamps: vec![protection_clamp],
                     usb_connectors: Vec::new(),
                     usb_routes: Vec::new(),
+                    usb_route_pairs: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -287,6 +290,7 @@ fn usb_connector_protection_suggestion(
             protection_clamps,
             usb_connectors: vec![suggested_connector],
             usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -371,6 +375,7 @@ fn usb_protection_placement_suggestion(
             protection_clamps,
             usb_connectors: vec![suggested_connector],
             usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -417,6 +422,7 @@ fn usb_route_geometry_suggestion(
         &suggested_connector.dm_net,
         Some(dm_clamp.component.clone()),
     )?;
+    let route_pair = suggested_usb_route_pair(&dp_route, &dm_route)?;
     let parameters = BTreeMap::from([
         (
             "max_data_line_route_length_mm".to_string(),
@@ -470,6 +476,7 @@ fn usb_route_geometry_suggestion(
             protection_clamps: vec![dp_clamp, dm_clamp],
             usb_connectors: vec![suggested_connector],
             usb_routes: vec![dp_route, dm_route],
+            usb_route_pairs: vec![route_pair],
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -501,6 +508,25 @@ fn suggested_usb_route(
         route_length_mm: route_length_mm(route),
         via_count: route.vias.len(),
         protection_component,
+    })
+}
+
+fn suggested_usb_route_pair(
+    dp_route: &SuggestedUsbRoute,
+    dm_route: &SuggestedUsbRoute,
+) -> Option<SuggestedUsbRoutePair> {
+    if dp_route.signal != "D+" || dm_route.signal != "D-" {
+        return None;
+    }
+    Some(SuggestedUsbRoutePair {
+        dp_net: dp_route.net.clone(),
+        dm_net: dm_route.net.clone(),
+        dp_route_length_mm: dp_route.route_length_mm,
+        dm_route_length_mm: dm_route.route_length_mm,
+        data_pair_length_mismatch_mm: (dp_route.route_length_mm - dm_route.route_length_mm).abs(),
+        dp_via_count: dp_route.via_count,
+        dm_via_count: dm_route.via_count,
+        data_pair_via_count_delta: dp_route.via_count.abs_diff(dm_route.via_count),
     })
 }
 

@@ -125,6 +125,9 @@ Route-geometry validation:
   geometry.
 - The rule also checks D+/D- length mismatch and via-count symmetry using the
   imported route evidence.
+- Scenario suggestions expose the same pair evidence in
+  `scenario.usb_route_pairs[]` so agents can inspect the measured mismatch and
+  via-count delta before choosing board-specific limits.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

@@ -50,6 +50,8 @@ pub struct SuggestedScenario {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub usb_routes: Vec<SuggestedUsbRoute>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub usb_route_pairs: Vec<SuggestedUsbRoutePair>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub clocks: Vec<SuggestedClockSource>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reset_supervisors: Vec<SuggestedResetSupervisor>,
@@ -191,6 +193,18 @@ pub struct SuggestedUsbRoute {
     pub via_count: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedUsbRoutePair {
+    pub dp_net: String,
+    pub dm_net: String,
+    pub dp_route_length_mm: f64,
+    pub dm_route_length_mm: f64,
+    pub data_pair_length_mismatch_mm: f64,
+    pub dp_via_count: usize,
+    pub dm_via_count: usize,
+    pub data_pair_via_count_delta: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
