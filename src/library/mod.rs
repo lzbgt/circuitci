@@ -44,6 +44,8 @@ pub struct PowerConversion {
 pub struct SignalConditioning {
     #[serde(default)]
     pub channels: Vec<SignalConditioningChannel>,
+    #[serde(default)]
+    pub supply_constraints: Vec<SignalSupplyConstraint>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -64,6 +66,20 @@ pub struct SignalConditioningChannel {
     pub enable_pin: Option<String>,
     #[serde(default)]
     pub disabled_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SignalSupplyConstraint {
+    pub name: String,
+    pub relation: SignalSupplyRelation,
+    pub lower_supply_pin: String,
+    pub upper_supply_pin: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SignalSupplyRelation {
+    LessThanOrEqual,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

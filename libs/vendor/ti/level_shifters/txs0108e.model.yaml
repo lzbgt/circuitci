@@ -69,6 +69,11 @@ ports:
     kind: digital_electrical_io
     required: false
 signal_conditioning:
+  supply_constraints:
+    - name: vcca_lte_vccb
+      relation: less_than_or_equal
+      lower_supply_pin: VCCA
+      upper_supply_pin: VCCB
   channels:
     - name: ch1
       kind: level_shifter

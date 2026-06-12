@@ -114,6 +114,11 @@ board-facing channels:
 
 ```yaml
 signal_conditioning:
+  supply_constraints:
+    - name: vcca_lte_vccb
+      relation: less_than_or_equal
+      lower_supply_pin: VCCA
+      upper_supply_pin: VCCB
   channels:
     - name: ch1
       kind: level_shifter
@@ -137,6 +142,10 @@ signal_conditioning:
   one side's supply is absent.
 - `enable_pin` and `disabled_state` optionally record the channel-control pin
   and the logic state that disables the channel.
+- `supply_constraints` records datasheet supply-order rules. The first
+  supported relation is `less_than_or_equal`, which requires the powered rail on
+  `lower_supply_pin` to have nominal voltage no greater than the powered rail on
+  `upper_supply_pin`.
 
 `circuitci suggest-scenarios` uses this metadata to emit non-runnable
 `interface_protection` review templates. It does not treat the metadata alone as
@@ -144,7 +153,8 @@ proof that a level shifter prevents backdrive; agents must confirm datasheet
 conditions, OE/reset state, and any unpowered-side behavior before sign-off.
 `INTERFACE_PROTECTION_REVIEW` accepts a powered-to-unpowered channel only when
 the model declares `unpowered_isolation: true`, or when the scenario observes
-the declared `enable_pin` in its `disabled_state`.
+the declared `enable_pin` in its `disabled_state`. It also checks declared
+`supply_constraints` whenever both constrained rails are powered.
 
 The first back-drive approximation computes injection current as:
 

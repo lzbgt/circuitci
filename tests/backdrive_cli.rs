@@ -116,6 +116,26 @@ fn ti_txs0108e_oe_low_requires_connected_enable_pin() {
 }
 
 #[test]
+fn ti_txs0108e_supply_order_requires_vcca_not_above_vccb() {
+    let report = run_validation("examples/bad_ti_txs0108e_supply_order/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["supply_constraint"] == "vcca_lte_vccb")
+        .expect("supply-order finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "U3");
+    assert_eq!(failure["measured"]["lower_supply_pin"], "VCCA");
+    assert_eq!(failure["measured"]["upper_supply_pin"], "VCCB");
+    assert_eq!(failure["measured"]["lower_nominal_voltage_V"], 5.0);
+    assert_eq!(failure["measured"]["upper_nominal_voltage_V"], 3.3);
+    assert_eq!(failure["limit"]["relation"], "less_than_or_equal");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");

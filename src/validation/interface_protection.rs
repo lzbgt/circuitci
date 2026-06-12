@@ -1,5 +1,7 @@
 use crate::board_ir::{NetKind, PinLogicState, Scenario};
-use crate::library::{BoundBoard, SignalConditioningChannel};
+use crate::library::{
+    BoundBoard, SignalConditioningChannel, SignalSupplyConstraint, SignalSupplyRelation,
+};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -96,6 +98,7 @@ pub(super) fn validate_interface_protection(
     ) else {
         return;
     };
+    validate_supply_constraints(bound, scenario, &target.component, findings);
     if side_a.powered == side_b.powered {
         return;
     }
@@ -290,6 +293,175 @@ fn resolve_side(
     })
 }
 
+fn validate_supply_constraints(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(component) = bound.project.board.components.get(component_id) else {
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        return;
+    };
+    for constraint in &model.signal_conditioning.supply_constraints {
+        let Some(lower) = resolve_constraint_supply(
+            bound,
+            scenario,
+            component_id,
+            constraint,
+            &constraint.lower_supply_pin,
+            "lower_supply_pin",
+            findings,
+        ) else {
+            continue;
+        };
+        let Some(upper) = resolve_constraint_supply(
+            bound,
+            scenario,
+            component_id,
+            constraint,
+            &constraint.upper_supply_pin,
+            "upper_supply_pin",
+            findings,
+        ) else {
+            continue;
+        };
+        if !lower.powered || !upper.powered {
+            continue;
+        }
+        let Some(lower_voltage_v) = lower.nominal_voltage_v else {
+            findings.push(supply_constraint_metadata_finding(
+                scenario,
+                component_id,
+                constraint,
+                format!(
+                    "Signal-conditioning supply constraint {} cannot be checked because rail {} has no nominal_voltage.",
+                    constraint.name, lower.net
+                ),
+                "missing_nominal_voltage_pin",
+                &constraint.lower_supply_pin,
+            ));
+            continue;
+        };
+        let Some(upper_voltage_v) = upper.nominal_voltage_v else {
+            findings.push(supply_constraint_metadata_finding(
+                scenario,
+                component_id,
+                constraint,
+                format!(
+                    "Signal-conditioning supply constraint {} cannot be checked because rail {} has no nominal_voltage.",
+                    constraint.name, upper.net
+                ),
+                "missing_nominal_voltage_pin",
+                &constraint.upper_supply_pin,
+            ));
+            continue;
+        };
+        match constraint.relation {
+            SignalSupplyRelation::LessThanOrEqual => {
+                if lower_voltage_v > upper_voltage_v {
+                    findings.push(supply_constraint_violation_finding(
+                        scenario,
+                        component_id,
+                        constraint,
+                        &lower,
+                        &upper,
+                        lower_voltage_v,
+                        upper_voltage_v,
+                    ));
+                }
+            }
+        }
+    }
+}
+
+fn resolve_constraint_supply(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    constraint: &SignalSupplyConstraint,
+    supply_pin: &str,
+    field: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<ResolvedSupply> {
+    let component = bound.project.board.components.get(component_id)?;
+    let Some(supply_net_name) = component
+        .power_domains
+        .get(supply_pin)
+        .or_else(|| component.pins.get(supply_pin))
+    else {
+        findings.push(supply_constraint_metadata_finding(
+            scenario,
+            component_id,
+            constraint,
+            format!(
+                "Signal-conditioning supply constraint {} pin {} does not resolve to a net.",
+                constraint.name, supply_pin
+            ),
+            field,
+            supply_pin,
+        ));
+        return None;
+    };
+    let Some(supply_net) = bound.project.board.nets.get(supply_net_name) else {
+        findings.push(supply_constraint_metadata_finding(
+            scenario,
+            component_id,
+            constraint,
+            format!(
+                "Signal-conditioning supply constraint {} net {} is not declared.",
+                constraint.name, supply_net_name
+            ),
+            "missing_supply_net",
+            supply_net_name,
+        ));
+        return None;
+    };
+    if supply_net.kind != NetKind::Power {
+        findings.push(supply_constraint_metadata_finding(
+            scenario,
+            component_id,
+            constraint,
+            format!(
+                "Signal-conditioning supply constraint {} net {} is not a power net.",
+                constraint.name, supply_net_name
+            ),
+            "invalid_supply_net",
+            supply_net_name,
+        ));
+        return None;
+    }
+    let Some(powered) = supply_net.powered else {
+        findings.push(supply_constraint_metadata_finding(
+            scenario,
+            component_id,
+            constraint,
+            format!(
+                "Signal-conditioning supply constraint {} rail {} is missing powered state.",
+                constraint.name, supply_net_name
+            ),
+            "missing_supply_powered",
+            supply_net_name,
+        ));
+        return None;
+    };
+    Some(ResolvedSupply {
+        pin: supply_pin.to_string(),
+        net: supply_net_name.clone(),
+        powered,
+        nominal_voltage_v: supply_net.nominal_voltage,
+    })
+}
+
+struct ResolvedSupply {
+    pin: String,
+    net: String,
+    powered: bool,
+    nominal_voltage_v: Option<f64>,
+}
+
 fn metadata_finding(
     scenario: &Scenario,
     component_id: &str,
@@ -303,6 +475,97 @@ fn metadata_finding(
     finding.suggested_fixes = vec![
         "Declare the signal-conditioning channel, pins, supply pins, and rail powered states before using this review check.".to_string(),
         "Do not treat an interface protection part as validated until its datasheet conditions are modeled.".to_string(),
+    ];
+    finding
+}
+
+fn supply_constraint_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    constraint: &SignalSupplyConstraint,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(INTERFACE_PROTECTION_REVIEW, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding
+        .limit
+        .insert("supply_constraint".to_string(), json!(constraint.name));
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Connect every constrained supply pin to a declared power rail before using this interface protection check.".to_string(),
+        "Declare nominal_voltage and powered state for constrained rails so datasheet supply-order rules can be checked.".to_string(),
+    ];
+    finding
+}
+
+fn supply_constraint_violation_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    constraint: &SignalSupplyConstraint,
+    lower: &ResolvedSupply,
+    upper: &ResolvedSupply,
+    lower_voltage_v: f64,
+    upper_voltage_v: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        INTERFACE_PROTECTION_REVIEW,
+        &scenario.name,
+        format!(
+            "Signal-conditioning supply constraint {} on component {} requires {} <= {}, but {:.6} V > {:.6} V.",
+            constraint.name,
+            component_id,
+            constraint.lower_supply_pin,
+            constraint.upper_supply_pin,
+            lower_voltage_v,
+            upper_voltage_v
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding
+        .measured
+        .insert("lower_supply_pin".to_string(), json!(lower.pin));
+    finding
+        .measured
+        .insert("lower_supply_net".to_string(), json!(lower.net));
+    finding.measured.insert(
+        "lower_nominal_voltage_V".to_string(),
+        json!(lower_voltage_v),
+    );
+    finding
+        .measured
+        .insert("upper_supply_pin".to_string(), json!(upper.pin));
+    finding
+        .measured
+        .insert("upper_supply_net".to_string(), json!(upper.net));
+    finding.measured.insert(
+        "upper_nominal_voltage_V".to_string(),
+        json!(upper_voltage_v),
+    );
+    finding
+        .limit
+        .insert("supply_constraint".to_string(), json!(constraint.name));
+    finding.limit.insert(
+        "relation".to_string(),
+        json!(match constraint.relation {
+            SignalSupplyRelation::LessThanOrEqual => "less_than_or_equal",
+        }),
+    );
+    finding.limit.insert(
+        "lower_supply_pin".to_string(),
+        json!(constraint.lower_supply_pin),
+    );
+    finding.limit.insert(
+        "upper_supply_pin".to_string(),
+        json!(constraint.upper_supply_pin),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Reassign the rails or choose a compatible level shifter so {} is not above {} during operation.",
+            constraint.lower_supply_pin, constraint.upper_supply_pin
+        ),
+        "If this condition is only transient, add a timing or analog scenario that proves the part remains disabled until the supply-order rule is satisfied.".to_string(),
     ];
     finding
 }

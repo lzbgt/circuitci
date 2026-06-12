@@ -15,7 +15,8 @@ needed for static validation:
 
 - A-port supply range: `1.4 V` to `3.6 V`.
 - B-port supply range: `1.65 V` to `5.5 V`.
-- Operating constraint: `VCCA <= VCCB`.
+- Operating constraint: `VCCA <= VCCB`, encoded as model supply constraint
+  `vcca_lte_vccb`.
 - Eight bidirectional level-shifter channels: `A1/B1` through `A8/B8`.
 - The model records `unpowered_isolation: false` for each channel because this
   pack does not treat TXS0108E as an unconditional powered-to-unpowered
@@ -35,6 +36,10 @@ or OE-low evidence. This is intentionally conservative. A passing board should
 model the rail states, OE/reset behavior, and any timing scenario needed to prove
 that the device is high impedance before relying on the level shifter for
 protection.
+
+The same check enforces `vcca_lte_vccb` whenever both VCCA and VCCB rails are
+powered. For example, a board that connects VCCA to a `5.0 V` rail and VCCB to a
+`3.3 V` rail fails with measured `lower_nominal_voltage_V > upper_nominal_voltage_V`.
 
 The model is not a SPICE model and is not valid for high-speed signal-integrity
 or analog edge-rate sign-off.

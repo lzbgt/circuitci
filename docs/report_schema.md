@@ -116,6 +116,16 @@ Stable rule detail keys:
 - `UART_BOOTLOADER_SYNC.measured`: `interface`, `sync_event_found`, `event_at_us`.
 - `UART_BOOTLOADER_SYNC.limit`: `sync_byte`, `expected_response`, `rx_pin`, `required_boot_mode`.
 
+Interface-protection findings may include supply constraint detail:
+
+- `INTERFACE_PROTECTION_REVIEW.measured`: `lower_supply_pin`,
+  `lower_supply_net`, `lower_nominal_voltage_V`, `upper_supply_pin`,
+  `upper_supply_net`, `upper_nominal_voltage_V`, plus side pin/supply/powered
+  fields for unpowered-isolation failures.
+- `INTERFACE_PROTECTION_REVIEW.limit`: `supply_constraint`, `relation`,
+  `lower_supply_pin`, `upper_supply_pin`, `required_unpowered_isolation`,
+  `enable_pin`, and `required_disabled_state` when applicable.
+
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.

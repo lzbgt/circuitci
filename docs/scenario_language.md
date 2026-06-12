@@ -219,8 +219,12 @@ scenarios:
 3. Require both side pins to be connected.
 4. Require each side supply pin to resolve to a declared power net with a
    `powered` state.
-5. If both side supplies have the same powered state, the static review passes.
-6. If one side is powered and the other is unpowered, the channel must declare
+5. Check model `signal_conditioning.supply_constraints` whenever both
+   constrained rails are powered. For `less_than_or_equal`, the lower rail's
+   nominal voltage must not exceed the upper rail's nominal voltage.
+6. If both side supplies have the same powered state, the static isolation
+   review passes.
+7. If one side is powered and the other is unpowered, the channel must declare
    `unpowered_isolation: true`, or the scenario must observe the channel's
    declared `enable_pin` in its `disabled_state`; otherwise the check fails
    critically.
@@ -230,6 +234,11 @@ component model and prove it in the scenario:
 
 ```yaml
 signal_conditioning:
+  supply_constraints:
+    - name: vcca_lte_vccb
+      relation: less_than_or_equal
+      lower_supply_pin: VCCA
+      upper_supply_pin: VCCB
   channels:
     - name: ch1
       kind: level_shifter

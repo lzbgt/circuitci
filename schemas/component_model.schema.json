@@ -77,6 +77,20 @@
             },
             "additionalProperties": false
           }
+        },
+        "supply_constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "relation", "lower_supply_pin", "upper_supply_pin"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "relation": { "enum": ["less_than_or_equal"] },
+              "lower_supply_pin": { "type": "string", "minLength": 1 },
+              "upper_supply_pin": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
