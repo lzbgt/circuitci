@@ -370,6 +370,9 @@ scenarios:
 18. If the mux output rail is powered, the selected input rail must be powered.
 19. If the mux output rail is powered and an inactive input rail is unpowered,
     that inactive input must declare `reverse_blocking: true`.
+20. If `power_mux.max_output_current_A` is declared, every load on the mux
+    output rail must declare `max_supply_current_A`, and the summed load must
+    not exceed the mux output-current limit.
 
 `IO_VOLTAGE_COMPATIBLE` can be declared on the same `power_tree` scenario. It
 checks same-net digital output/input pairs when both sides have enough

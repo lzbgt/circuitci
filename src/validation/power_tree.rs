@@ -76,7 +76,15 @@ pub(super) fn validate_power_tree(
             findings,
         );
         validate_battery_charger(component_id, component, model, bound, scenario, findings);
-        validate_power_mux(component_id, component, model, bound, scenario, findings);
+        validate_power_mux(
+            component_id,
+            component,
+            model,
+            &loads_by_net,
+            bound,
+            scenario,
+            findings,
+        );
     }
 
     for (net_name, loads) in &loads_by_net {
@@ -147,6 +155,7 @@ fn validate_power_mux(
     component_id: &str,
     component: &ComponentSpec,
     model: &ComponentModel,
+    loads_by_net: &BTreeMap<String, Vec<PowerLoad>>,
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
@@ -327,6 +336,70 @@ fn validate_power_mux(
             "Correct the component model if the mux has another valid source path.".to_string(),
         ];
         findings.push(finding);
+    }
+
+    if let Some(max_output_current_a) = mux.max_output_current_a {
+        let loads = loads_by_net
+            .get(output_net_name)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let mut total_a = 0.0;
+        let mut missing_loads = Vec::new();
+        for load in loads {
+            match load.max_current_a {
+                Some(current) if current.is_finite() && current >= 0.0 => total_a += current,
+                _ => missing_loads.push(format!("{}.{}", load.component, load.pin)),
+            }
+        }
+        if !missing_loads.is_empty() {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Power mux {component_id} output current limit requires load metadata for {}.",
+                    missing_loads.join(", ")
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding.measured.insert(
+                "missing_load_current_metadata".to_string(),
+                json!(missing_loads),
+            );
+            finding.limit.insert(
+                "power_mux_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Add max_supply_current_A to loads fed by the mux output rail.".to_string(),
+                "Split the scenario if mux-fed loads are not all enabled simultaneously."
+                    .to_string(),
+            ];
+            findings.push(finding);
+        } else if total_a > max_output_current_a {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Power mux {component_id} worst-case output load {:.6} A exceeds mux limit {:.6} A.",
+                    total_a, max_output_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding
+                .measured
+                .insert("declared_output_load_current_A".to_string(), json!(total_a));
+            finding.limit.insert(
+                "power_mux_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Select a power mux with sufficient current and thermal margin.".to_string(),
+                "Reduce or sequence loads on the mux output rail, or split high-current loads across separate power paths.".to_string(),
+            ];
+            findings.push(finding);
+        }
     }
 }
 
@@ -1077,6 +1150,18 @@ fn validate_power_mux_metadata(
             component_id,
             "inputs",
             "power_mux inputs must not be empty.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(max_output_current_a) = mux.max_output_current_a
+        && (!max_output_current_a.is_finite() || max_output_current_a < 0.0)
+    {
+        power_mux_metadata_finding(
+            component_id,
+            "max_output_current_A",
+            "power_mux max_output_current_A must be finite and non-negative.",
             scenario,
             findings,
         );

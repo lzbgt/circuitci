@@ -82,6 +82,8 @@ pub struct PowerMux {
     pub output_pin: String,
     #[serde(default)]
     pub selected_input_parameter: Option<String>,
+    #[serde(default, rename = "max_output_current_A")]
+    pub max_output_current_a: Option<f64>,
     #[serde(default)]
     pub inputs: Vec<PowerMuxInput>,
 }

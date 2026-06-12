@@ -174,6 +174,7 @@ Power mux and ideal-diode models can declare static source-selection metadata:
 power_mux:
   output_pin: SYS
   selected_input_parameter: selected_input
+  max_output_current_A: 1.0
   inputs:
     - name: usb
       input_pin: USB_IN
@@ -190,6 +191,8 @@ power_mux:
 - `inputs[].name` values are the allowed source-selection strings.
 - `reverse_blocking: true` means the model claims that a powered output rail
   will not backfeed that input when the input is inactive and unpowered.
+- `max_output_current_A` checks the sum of declared `max_supply_current_A`
+  loads on the mux output rail.
 
 Example component instance:
 

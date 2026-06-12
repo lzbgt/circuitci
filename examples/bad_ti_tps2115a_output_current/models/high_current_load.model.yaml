@@ -1,0 +1,21 @@
+component_id: fixture.tps2115a_high_current_load
+version: 0.1.0
+category: load
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 1.2
+  GND:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_mux_current_limit_fixture
+  not_valid_for:
+    - real_component_signoff

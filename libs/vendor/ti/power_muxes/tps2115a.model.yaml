@@ -1,0 +1,100 @@
+component_id: vendor.ti.tps2115a
+version: 0.1.0
+category: power_mux
+ports:
+  IN1:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.8
+      operating_voltage_max_V: 5.5
+  IN2:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.8
+      operating_voltage_max_V: 5.5
+  OUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: true
+  D0:
+    kind: digital_electrical_input
+    required: true
+  D1:
+    kind: digital_electrical_input
+    required: true
+  VSNS:
+    kind: passive
+    required: false
+  ILIM:
+    kind: passive
+    required: true
+power_mux:
+  output_pin: OUT
+  selected_input_parameter: selected_input
+  max_output_current_A: 1.0
+  inputs:
+    - name: in1
+      input_pin: IN1
+      reverse_blocking: true
+    - name: in2
+      input_pin: IN2
+      reverse_blocking: true
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS2115A
+  package: TSSOP-8 PW / VSON-8 DRB
+  polarity: two_input_one_output_autoswitching_power_mux
+  pinout:
+    IN1: IN1
+    IN2: IN2
+    OUT: OUT
+    GND: GND
+    EN: EN
+    D0: D0
+    D1: D1
+    VSNS: VSNS
+    ILIM: ILIM
+  electrical_characteristics:
+    input_voltage_operating:
+      conditions: Input supplies operating range.
+      min: 2.8
+      max: 5.5
+      unit: V
+    output_current:
+      conditions: Family-level output current capability used for static board screening.
+      max: 1
+      unit: A
+    current_limit_programming:
+      conditions: Current limit is programmable by ILIM resistor; this static model uses the conservative family output-current capability, not a resistor-derived limit.
+      unit: note
+    reverse_conduction_blocking:
+      conditions: Device includes reverse-conduction and cross-conduction blocking.
+      unit: note
+  documents:
+    - title: TPS2114A/TPS2115A Autoswitching Power MUX
+      path: docs/research/datasheets/ti/tps2115a.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps2115a.pdf
+      sha256: 479e2901a83785b0ee1ebf925423c47fffcea0975a46e35172cc160f02d3a231
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - power_mux_static_screening
+    - usb_battery_source_selection_screening
+  not_valid_for:
+    - switchover_transient_signoff
+    - reverse_current_magnitude_signoff
+    - ilim_resistor_current_limit_signoff
+    - thermal_signoff

@@ -1,0 +1,75 @@
+project:
+  name: bad_ti_tps2115a_output_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    UMUX:
+      model: vendor.ti.tps2115a
+      part_number: TPS2115APWR
+      parameters:
+        selected_input: in1
+      power_domains:
+        IN1: usb_5v
+        IN2: battery
+        OUT: sys_3v3
+      pins:
+        IN1: usb_5v
+        IN2: battery
+        OUT: sys_3v3
+        GND: gnd
+        EN: mux_en
+        D0: mux_d0
+        D1: mux_d1
+        VSNS: mux_vsns
+        ILIM: ilim_program
+    ULOAD:
+      model: fixture.tps2115a_high_current_load
+      part_number: HIGH_CURRENT_LOAD
+      power_domains:
+        VDD: sys_3v3
+      pins:
+        VDD: sys_3v3
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 3.7
+      powered: false
+    sys_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    mux_en:
+      kind: digital_or_analog
+    mux_d0:
+      kind: digital_or_analog
+    mux_d1:
+      kind: digital_or_analog
+    mux_vsns:
+      kind: digital_or_analog
+    ilim_program:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps2115a_sys_rail_overloaded
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

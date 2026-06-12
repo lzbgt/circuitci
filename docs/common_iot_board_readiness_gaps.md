@@ -27,9 +27,10 @@ sign-off.
 Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C and Silicon Labs CP2102N board-level
 USB-UART metadata, TI TXS0108E interface-protection metadata, and TI TPS22918
-load-switch metadata plus Microchip MCP73831 charger metadata. The gap
-remains broad library depth across other USB-UART bridges, debug probes,
-radios, sensors, regulators, and protection devices.
+load-switch metadata plus Microchip MCP73831 charger metadata. TI TPS2115A now
+covers a first datasheet-backed power-mux source-selection and reverse-blocking
+pack. The gap remains broad library depth across other USB-UART bridges, debug
+probes, radios, sensors, regulators, power muxes, and protection devices.
 
 ## 2. Power-Tree Validation
 

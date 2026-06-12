@@ -161,7 +161,7 @@ failure. Stable limit keys include `operating_voltage_minimum_V`,
 `battery_charger_max_charge_current_A`, `input_supply_current_limit_A`,
 `battery_charger_regulation_voltage_V`, `battery_charger_field`,
 `selected_input_powered`, `required_reverse_blocking`, `allowed_inputs`, and
-`power_mux_field`.
+`power_mux_max_output_current_A`, `power_mux_field`.
 
 `IO_VOLTAGE_COMPATIBLE` reports are emitted by `power_tree` scenarios that
 declare the check. They compare same-net digital output/input pairs when model

@@ -367,6 +367,36 @@ fn power_mux_inactive_unpowered_input_requires_reverse_blocking() {
 }
 
 #[test]
+fn ti_tps2115a_power_mux_passes_with_selected_source_and_reverse_blocking() {
+    let report = run_validation("examples/good_ti_tps2115a_power_mux/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_tps2115a_output_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_ti_tps2115a_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("power_mux_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected power mux output current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UMUX");
+    assert_eq!(failure["net"], "sys_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 1.2);
+    assert_eq!(failure["limit"]["power_mux_max_output_current_A"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

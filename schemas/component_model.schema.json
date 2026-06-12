@@ -86,6 +86,7 @@
       "properties": {
         "output_pin": { "type": "string", "minLength": 1 },
         "selected_input_parameter": { "type": "string", "minLength": 1 },
+        "max_output_current_A": { "type": "number", "minimum": 0 },
         "inputs": {
           "type": "array",
           "minItems": 1,
