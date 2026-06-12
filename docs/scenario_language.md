@@ -424,9 +424,10 @@ USB route geometry algorithm:
    `require_route_pad_contact_evidence` is true, use imported
    `board.layout.pads` for the connector signal pin and matching protection
    pad instead; each pad must be on the same net and on a route layer within
-   `max_component_to_route_distance_mm`. Imported pad records can carry
-   kind/shape/size/drill evidence, but this route-order check currently uses
-   pad centers for projection.
+   `max_component_to_route_distance_mm`. When imported pad shape and size are
+   available for supported KiCad shapes (`rect`, `circle`, `oval`), the route
+   must touch the pad copper extent; otherwise the check falls back to pad
+   center projection.
 11. Compute graph distance along the routed segments and require the nearest
    valid protection component or protection pad to be within
    `max_connector_to_protection_route_distance_mm`.
@@ -467,9 +468,10 @@ USB VBUS route algorithm:
    `require_vbus_route_pad_contact_evidence` is true, use imported
    `board.layout.pads` for the connector VBUS pin and matching protection pad
    instead; each pad must be on the same net and on a route layer within
-   `max_component_to_route_distance_mm`. Imported pad records can carry
-   kind/shape/size/drill evidence, but this route-order check currently uses
-   pad centers for projection.
+   `max_component_to_route_distance_mm`. When imported pad shape and size are
+   available for supported KiCad shapes (`rect`, `circle`, `oval`), the route
+   must touch the pad copper extent; otherwise the check falls back to pad
+   center projection.
 7. Compute graph distance along the routed VBUS segments and require the nearest
    valid VBUS protection component or protection pad to be within
    `max_connector_to_vbus_protection_route_distance_mm`.

@@ -97,6 +97,8 @@ pub struct LayoutPad {
     #[serde(default)]
     pub size: Option<LayoutPadSize>,
     #[serde(default)]
+    pub rotation_deg: Option<f64>,
+    #[serde(default)]
     pub drill_mm: Option<f64>,
 }
 

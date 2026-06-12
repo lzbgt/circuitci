@@ -235,6 +235,7 @@ pub(super) fn suggested_usb_route_pad(
             x_mm: size.x_mm,
             y_mm: size.y_mm,
         }),
+        rotation_deg: pad.rotation_deg,
         drill_mm: pad.drill_mm,
     })
 }

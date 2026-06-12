@@ -138,8 +138,10 @@ Route-geometry validation:
   protection route-order checks use imported same-net connector/protection pad
   centers from `board.layout.pads`, and each pad center must project onto a
   matching route layer within `parameters.max_component_to_route_distance_mm`.
-  Without that parameter, the rule keeps the older component-placement
-  projection behavior for hand-authored route evidence.
+  When supported imported pad shape/size evidence exists, the route must touch
+  the pad copper extent instead of only projecting near the pad center. Without
+  that parameter, the rule keeps the older component-placement projection
+  behavior for hand-authored route evidence.
 - Scenario suggestions expose route and pair evidence in `scenario.usb_routes[]`
   and `scenario.usb_route_pairs[]` so agents can inspect measured length,
   via-count, imported expected data-line width, measured line width, line-width
@@ -149,7 +151,8 @@ Route-geometry validation:
   `scenario.usb_routes[]` entry also reports the pad records and measured
   connector-to-protection pad route distance used by
   `require_route_pad_contact_evidence`. Pad records may include imported KiCad
-  kind, shape, size, and drill evidence in addition to center/layer data.
+  kind, shape, size, rotation, and drill evidence in addition to center/layer
+  data.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.
@@ -204,14 +207,16 @@ Route-geometry validation:
   valid VBUS protection component. When
   `parameters.require_vbus_route_pad_contact_evidence` is true, the same
   route-order check uses imported same-net connector VBUS and protection pad
-  centers from `board.layout.pads` instead of component placement centers.
+  evidence from `board.layout.pads` instead of component placement centers.
+  When supported imported pad shape/size evidence exists, the route must touch
+  the pad copper extent instead of only projecting near the pad center.
 - Scenario suggestions expose VBUS route evidence in `scenario.usb_routes[]`,
   including measured length, via count, optional imported expected VBUS route
   width, measured minimum VBUS route width, and matching protection component.
   When imported pad evidence is available, suggestions also expose connector
   and protection pad records plus measured connector-to-protection pad route
-  distance. Pad records may include imported KiCad kind, shape, size, and drill
-  evidence in addition to center/layer data.
+  distance. Pad records may include imported KiCad kind, shape, size, rotation,
+  and drill evidence in addition to center/layer data.
 - This check is still static layout evidence. It does not prove VBUS ampacity,
   fuse trip behavior, inrush current, voltage drop under load, temperature
   rise, or ESD pulse robustness.

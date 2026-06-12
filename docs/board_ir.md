@@ -137,8 +137,8 @@ Board IR can carry imported pad evidence under `board.layout.pads`. The first
 key is an existing Board IR component reference, and the second key is the PCB
 pad name. Coordinates are pad centers in millimeters in the same coordinate
 system as placements and routes. Imported KiCad pad evidence can also carry the
-pad kind, shape, size, scalar drill diameter, and layer list when those fields
-exist in the PCB file.
+pad kind, shape, size, rotation, scalar drill diameter, and layer list when
+those fields exist in the PCB file.
 
 ```yaml
 board:

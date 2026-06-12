@@ -35,6 +35,7 @@ evidence includes:
 - pad center in millimeters after footprint translation/rotation,
 - KiCad pad kind and shape when present,
 - pad size in millimeters,
+- pad rotation in degrees when non-zero,
 - scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
@@ -72,7 +73,7 @@ extracts component center placements, routed `segment`/`via` geometry, net-class
 route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts connected pad center,
-kind, shape, size, scalar drill, net, and layer evidence. It does not solve
+kind, shape, size, rotation, scalar drill, net, and layer evidence. It does not solve
 filled-copper island connectivity, pad-to-zone connectivity, thermal relief
 behavior, solder-mask expansion, shield bonding, return paths, impedance
 calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP alignment.

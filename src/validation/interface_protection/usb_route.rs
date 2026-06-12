@@ -15,7 +15,7 @@ mod vbus_findings;
 
 use findings::*;
 use geometry::{
-    PlacementPoint, point_to_route_distance_mm, route_distance_between_pad_points,
+    PlacementPoint, pad_to_route_distance_mm, route_distance_between_pads,
     route_distance_between_placements, route_length_mm, validate_route_shape, worst_pair_gap_delta,
     worst_route_width_delta,
 };
@@ -623,9 +623,12 @@ fn validate_protection_route_distance_from_pads(
         ));
         return;
     };
-    let connector_point = PlacementPoint::from(&connector_pad.at);
-    if point_to_route_distance_mm(route, connector_point, &connector_pad.layers)
-        .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
+    if pad_to_route_distance_mm(
+        route,
+        connector_pad,
+        check.max_component_to_route_distance_mm,
+    )
+    .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
     {
         findings.push(usb_route_pad_metadata_finding(
             scenario,
@@ -658,13 +661,10 @@ fn validate_protection_route_distance_from_pads(
             missing_pads.push(format!("{}.{}", protection.component_id, protection_pin));
             continue;
         };
-        let protection_point = PlacementPoint::from(&protection_pad.at);
-        let Some(route_distance) = route_distance_between_pad_points(
+        let Some(route_distance) = route_distance_between_pads(
             route,
-            connector_point,
-            &connector_pad.layers,
-            protection_point,
-            &protection_pad.layers,
+            connector_pad,
+            protection_pad,
             check.max_component_to_route_distance_mm,
         ) else {
             off_route_pads.push(format!("{}.{}", protection.component_id, protection_pin));
@@ -877,9 +877,12 @@ fn validate_vbus_protection_route_distance_from_pads(
         ));
         return;
     };
-    let connector_point = PlacementPoint::from(&connector_pad.at);
-    if point_to_route_distance_mm(check.route, connector_point, &connector_pad.layers)
-        .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
+    if pad_to_route_distance_mm(
+        check.route,
+        connector_pad,
+        check.max_component_to_route_distance_mm,
+    )
+    .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
     {
         findings.push(usb_vbus_route_pad_metadata_finding(
             scenario,
@@ -914,13 +917,10 @@ fn validate_vbus_protection_route_distance_from_pads(
             missing_pads.push(format!("{}.{}", protection.component_id, protection_pin));
             continue;
         };
-        let protection_point = PlacementPoint::from(&protection_pad.at);
-        let Some(route_distance) = route_distance_between_pad_points(
+        let Some(route_distance) = route_distance_between_pads(
             check.route,
-            connector_point,
-            &connector_pad.layers,
-            protection_point,
-            &protection_pad.layers,
+            connector_pad,
+            protection_pad,
             check.max_component_to_route_distance_mm,
         ) else {
             off_route_pads.push(format!("{}.{}", protection.component_id, protection_pin));

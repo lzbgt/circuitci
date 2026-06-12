@@ -1,4 +1,6 @@
-use crate::board_ir::{ComponentPlacement, CopperZone, LayoutPoint, NetRoute, RouteSegment};
+use crate::board_ir::{
+    ComponentPlacement, CopperZone, LayoutPad, LayoutPoint, NetRoute, RouteSegment,
+};
 
 const EPSILON_MM: f64 = 1.0e-9;
 
@@ -210,30 +212,23 @@ pub(super) fn route_distance_between_placements(
     shortest_route_distance_mm(route, &from_projection, &to_projection)
 }
 
-pub(super) fn route_distance_between_pad_points(
+pub(super) fn route_distance_between_pads(
     route: &NetRoute,
-    from: PlacementPoint,
-    from_layers: &[String],
-    to: PlacementPoint,
-    to_layers: &[String],
+    from_pad: &LayoutPad,
+    to_pad: &LayoutPad,
     max_point_to_route_distance_mm: f64,
 ) -> Option<f64> {
-    let from_projection = nearest_projection_on_layers(route, from, from_layers)?;
-    let to_projection = nearest_projection_on_layers(route, to, to_layers)?;
-    if from_projection.distance_to_point_mm > max_point_to_route_distance_mm
-        || to_projection.distance_to_point_mm > max_point_to_route_distance_mm
-    {
-        return None;
-    }
+    let from_projection = nearest_pad_projection(route, from_pad, max_point_to_route_distance_mm)?;
+    let to_projection = nearest_pad_projection(route, to_pad, max_point_to_route_distance_mm)?;
     shortest_route_distance_mm(route, &from_projection, &to_projection)
 }
 
-pub(super) fn point_to_route_distance_mm(
+pub(super) fn pad_to_route_distance_mm(
     route: &NetRoute,
-    point: PlacementPoint,
-    pad_layers: &[String],
+    pad: &LayoutPad,
+    max_point_to_route_distance_mm: f64,
 ) -> Option<f64> {
-    nearest_projection_on_layers(route, point, pad_layers)
+    nearest_pad_projection(route, pad, max_point_to_route_distance_mm)
         .map(|projection| projection.distance_to_point_mm)
 }
 
@@ -350,11 +345,288 @@ fn nearest_projection_on_layers(
         })
 }
 
+fn nearest_pad_projection(
+    route: &NetRoute,
+    pad: &LayoutPad,
+    max_point_to_route_distance_mm: f64,
+) -> Option<Projection> {
+    let center = PlacementPoint::from(&pad.at);
+    if pad_has_supported_extent(pad) {
+        return route
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(_, segment)| pad_layers_match_route_layer(&pad.layers, &segment.layer))
+            .filter(|(_, segment)| segment_touches_pad(segment, pad))
+            .filter_map(|(segment_index, segment)| {
+                let start = PlacementPoint::from(&segment.start);
+                let end = PlacementPoint::from(&segment.end);
+                project_point_to_segment(center, start, end).map(|(t, projected)| {
+                    (
+                        point_distance_mm(center, projected),
+                        Projection {
+                            segment_index,
+                            t,
+                            point: projected,
+                            distance_to_point_mm: 0.0,
+                        },
+                    )
+                })
+            })
+            .min_by(|left, right| left.0.total_cmp(&right.0))
+            .map(|(_, projection)| projection);
+    }
+
+    let projection = nearest_projection_on_layers(route, center, &pad.layers)?;
+    (projection.distance_to_point_mm <= max_point_to_route_distance_mm).then_some(projection)
+}
+
 fn pad_layers_match_route_layer(pad_layers: &[String], route_layer: &str) -> bool {
     pad_layers.is_empty()
         || pad_layers
             .iter()
             .any(|layer| layer == route_layer || (layer == "*.Cu" && route_layer.ends_with(".Cu")))
+}
+
+fn pad_has_supported_extent(pad: &LayoutPad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    if size.x_mm <= 0.0 || size.y_mm <= 0.0 || !size.x_mm.is_finite() || !size.y_mm.is_finite() {
+        return false;
+    }
+    pad.shape
+        .as_deref()
+        .is_some_and(|shape| matches!(shape.trim(), "rect" | "circle" | "oval"))
+}
+
+fn segment_touches_pad(segment: &RouteSegment, pad: &LayoutPad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    let Some(shape) = pad.shape.as_deref().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let route_half_width_mm = segment.width_mm / 2.0;
+    let start = point_to_pad_local(PlacementPoint::from(&segment.start), pad);
+    let end = point_to_pad_local(PlacementPoint::from(&segment.end), pad);
+    match shape.as_str() {
+        "rect" => segment_intersects_axis_aligned_rect(
+            start,
+            end,
+            size.x_mm / 2.0 + route_half_width_mm,
+            size.y_mm / 2.0 + route_half_width_mm,
+        ),
+        "circle" => {
+            let radius_mm = size.x_mm.min(size.y_mm) / 2.0 + route_half_width_mm;
+            point_to_segment_distance_mm(
+                PlacementPoint {
+                    x_mm: 0.0,
+                    y_mm: 0.0,
+                },
+                start,
+                end,
+            )
+            .is_some_and(|distance_mm| distance_mm <= radius_mm)
+        }
+        "oval" => segment_touches_oval_pad(start, end, size.x_mm, size.y_mm, route_half_width_mm),
+        _ => false,
+    }
+}
+
+fn point_to_pad_local(point: PlacementPoint, pad: &LayoutPad) -> PlacementPoint {
+    let center = PlacementPoint::from(&pad.at);
+    let dx = point.x_mm - center.x_mm;
+    let dy = point.y_mm - center.y_mm;
+    let radians = -pad.rotation_deg.unwrap_or(0.0).to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    PlacementPoint {
+        x_mm: dx * cos - dy * sin,
+        y_mm: dx * sin + dy * cos,
+    }
+}
+
+fn segment_touches_oval_pad(
+    start: PlacementPoint,
+    end: PlacementPoint,
+    size_x_mm: f64,
+    size_y_mm: f64,
+    route_half_width_mm: f64,
+) -> bool {
+    if (size_x_mm - size_y_mm).abs() <= EPSILON_MM {
+        let radius_mm = size_x_mm.min(size_y_mm) / 2.0 + route_half_width_mm;
+        return point_to_segment_distance_mm(
+            PlacementPoint {
+                x_mm: 0.0,
+                y_mm: 0.0,
+            },
+            start,
+            end,
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm);
+    }
+    if size_x_mm > size_y_mm {
+        let radius_mm = size_y_mm / 2.0 + route_half_width_mm;
+        let half_straight_mm = (size_x_mm - size_y_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            PlacementPoint {
+                x_mm: -half_straight_mm,
+                y_mm: 0.0,
+            },
+            PlacementPoint {
+                x_mm: half_straight_mm,
+                y_mm: 0.0,
+            },
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm)
+    } else {
+        let radius_mm = size_x_mm / 2.0 + route_half_width_mm;
+        let half_straight_mm = (size_y_mm - size_x_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            PlacementPoint {
+                x_mm: 0.0,
+                y_mm: -half_straight_mm,
+            },
+            PlacementPoint {
+                x_mm: 0.0,
+                y_mm: half_straight_mm,
+            },
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm)
+    }
+}
+
+fn segment_intersects_axis_aligned_rect(
+    start: PlacementPoint,
+    end: PlacementPoint,
+    half_width_mm: f64,
+    half_height_mm: f64,
+) -> bool {
+    if half_width_mm <= 0.0 || half_height_mm <= 0.0 {
+        return false;
+    }
+    if point_inside_axis_aligned_rect(start, half_width_mm, half_height_mm)
+        || point_inside_axis_aligned_rect(end, half_width_mm, half_height_mm)
+    {
+        return true;
+    }
+    let dx = end.x_mm - start.x_mm;
+    let dy = end.y_mm - start.y_mm;
+    let mut t_min = 0.0;
+    let mut t_max = 1.0;
+    clip_segment_to_slab(-dx, start.x_mm + half_width_mm, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(dx, half_width_mm - start.x_mm, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(-dy, start.y_mm + half_height_mm, &mut t_min, &mut t_max)
+        && clip_segment_to_slab(dy, half_height_mm - start.y_mm, &mut t_min, &mut t_max)
+}
+
+fn point_inside_axis_aligned_rect(
+    point: PlacementPoint,
+    half_width_mm: f64,
+    half_height_mm: f64,
+) -> bool {
+    point.x_mm.abs() <= half_width_mm + EPSILON_MM
+        && point.y_mm.abs() <= half_height_mm + EPSILON_MM
+}
+
+fn clip_segment_to_slab(p: f64, q: f64, t_min: &mut f64, t_max: &mut f64) -> bool {
+    if p.abs() <= EPSILON_MM {
+        return q >= -EPSILON_MM;
+    }
+    let r = q / p;
+    if p < 0.0 {
+        if r > *t_max {
+            return false;
+        }
+        if r > *t_min {
+            *t_min = r;
+        }
+    } else {
+        if r < *t_min {
+            return false;
+        }
+        if r < *t_max {
+            *t_max = r;
+        }
+    }
+    true
+}
+
+fn segment_to_segment_distance_mm(
+    first_start: PlacementPoint,
+    first_end: PlacementPoint,
+    second_start: PlacementPoint,
+    second_end: PlacementPoint,
+) -> Option<f64> {
+    if segments_intersect(first_start, first_end, second_start, second_end) {
+        return Some(0.0);
+    }
+    Some(
+        [
+            point_to_segment_distance_mm(first_start, second_start, second_end)?,
+            point_to_segment_distance_mm(first_end, second_start, second_end)?,
+            point_to_segment_distance_mm(second_start, first_start, first_end)?,
+            point_to_segment_distance_mm(second_end, first_start, first_end)?,
+        ]
+        .into_iter()
+        .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn segments_intersect(
+    first_start: PlacementPoint,
+    first_end: PlacementPoint,
+    second_start: PlacementPoint,
+    second_end: PlacementPoint,
+) -> bool {
+    let first_min_x = first_start.x_mm.min(first_end.x_mm);
+    let first_max_x = first_start.x_mm.max(first_end.x_mm);
+    let first_min_y = first_start.y_mm.min(first_end.y_mm);
+    let first_max_y = first_start.y_mm.max(first_end.y_mm);
+    let second_min_x = second_start.x_mm.min(second_end.x_mm);
+    let second_max_x = second_start.x_mm.max(second_end.x_mm);
+    let second_min_y = second_start.y_mm.min(second_end.y_mm);
+    let second_max_y = second_start.y_mm.max(second_end.y_mm);
+    if first_max_x + EPSILON_MM < second_min_x
+        || second_max_x + EPSILON_MM < first_min_x
+        || first_max_y + EPSILON_MM < second_min_y
+        || second_max_y + EPSILON_MM < first_min_y
+    {
+        return false;
+    }
+    let first_second_start = orientation(first_start, first_end, second_start);
+    let first_second_end = orientation(first_start, first_end, second_end);
+    let second_first_start = orientation(second_start, second_end, first_start);
+    let second_first_end = orientation(second_start, second_end, first_end);
+    if first_second_start.abs() <= EPSILON_MM
+        && point_on_segment(second_start, first_start, first_end)
+    {
+        return true;
+    }
+    if first_second_end.abs() <= EPSILON_MM && point_on_segment(second_end, first_start, first_end)
+    {
+        return true;
+    }
+    if second_first_start.abs() <= EPSILON_MM
+        && point_on_segment(first_start, second_start, second_end)
+    {
+        return true;
+    }
+    if second_first_end.abs() <= EPSILON_MM && point_on_segment(first_end, second_start, second_end)
+    {
+        return true;
+    }
+    (first_second_start > 0.0) != (first_second_end > 0.0)
+        && (second_first_start > 0.0) != (second_first_end > 0.0)
+}
+
+fn orientation(a: PlacementPoint, b: PlacementPoint, c: PlacementPoint) -> f64 {
+    (b.x_mm - a.x_mm) * (c.y_mm - a.y_mm) - (b.y_mm - a.y_mm) * (c.x_mm - a.x_mm)
 }
 
 fn project_point_to_segment(

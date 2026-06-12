@@ -46,22 +46,30 @@ board:
     pads:
       J1:
         "D+":
-          at: { x_mm: 0.0, y_mm: 0.0 }
+          at: { x_mm: 0.0, y_mm: 0.2 }
           net: usb_dp
           layers: [F.Cu]
+          shape: rect
+          size: { x_mm: 0.3, y_mm: 0.3 }
         "D-":
-          at: { x_mm: 0.0, y_mm: 0.3 }
+          at: { x_mm: 0.0, y_mm: 0.1 }
           net: usb_dm
           layers: [F.Cu]
+          shape: rect
+          size: { x_mm: 0.3, y_mm: 0.3 }
       UESD:
         DP:
-          at: { x_mm: 1.0, y_mm: 0.0 }
+          at: { x_mm: 1.0, y_mm: 0.2 }
           net: usb_dp
           layers: [F.Cu]
+          shape: rect
+          size: { x_mm: 0.3, y_mm: 0.3 }
         DM:
-          at: { x_mm: 1.0, y_mm: 0.3 }
+          at: { x_mm: 1.0, y_mm: 0.1 }
           net: usb_dm
           layers: [F.Cu]
+          shape: rect
+          size: { x_mm: 0.3, y_mm: 0.3 }
     routes:
       usb_dp:
         segments:
@@ -99,7 +107,7 @@ scenarios:
       max_data_line_route_length_mm: 5.0
       max_data_line_via_count: 0
       max_connector_to_protection_route_distance_mm: 2.0
-      max_component_to_route_distance_mm: 0.5
+      max_component_to_route_distance_mm: 0.01
       max_data_pair_length_mismatch_mm: 0.5
       max_data_pair_via_count_delta: 0
       max_data_line_width_delta_mm: 0.01

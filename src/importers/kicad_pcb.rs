@@ -68,6 +68,7 @@ struct PcbPad {
     kind: Option<String>,
     shape: Option<String>,
     size: PcbPadSize,
+    rotation_deg: Option<f64>,
     drill_mm: Option<f64>,
 }
 
@@ -135,6 +136,8 @@ struct PadYaml<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     shape: Option<&'a str>,
     size: PcbPadSize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rotation_deg: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     drill_mm: Option<f64>,
 }
@@ -300,6 +303,7 @@ fn parse_pads(
             let size = pad_size(pad).with_context(|| {
                 format!("KiCad PCB footprint {reference} pad {pad_name} has invalid pad size.")
             })?;
+            let rotation_deg = pad_rotation_deg(footprint_at, local_at);
             let drill_mm = pad_drill_mm(pad).with_context(|| {
                 format!("KiCad PCB footprint {reference} pad {pad_name} has invalid drill size.")
             })?;
@@ -316,6 +320,7 @@ fn parse_pads(
                     kind,
                     shape,
                     size,
+                    rotation_deg,
                     drill_mm,
                 },
             );
@@ -987,6 +992,11 @@ fn pad_size(pad: &[Sexp]) -> Result<PcbPadSize> {
     Ok(PcbPadSize { x_mm, y_mm })
 }
 
+fn pad_rotation_deg(footprint_at: FootprintAt, local_at: &[Sexp]) -> Option<f64> {
+    let rotation_deg = footprint_at.rotation_deg + numeric_at(local_at, 3).unwrap_or(0.0);
+    (rotation_deg.abs() > 1.0e-9).then_some(rotation_deg)
+}
+
 fn pad_drill_mm(pad: &[Sexp]) -> Result<Option<f64>> {
     let Some(drill) = child_list(pad, "drill") else {
         return Ok(None);
@@ -1203,6 +1213,7 @@ fn pad_yaml_value(pad: &PcbPad, board_net_name: &str) -> Result<Value> {
         kind: pad.kind.as_deref(),
         shape: pad.shape.as_deref(),
         size: pad.size,
+        rotation_deg: pad.rotation_deg,
         drill_mm: pad.drill_mm,
     })
     .context("Failed to serialize KiCad PCB pad evidence into Board IR YAML.")

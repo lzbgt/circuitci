@@ -510,6 +510,7 @@
           },
           "additionalProperties": false
         },
+        "rotation_deg": { "type": "number" },
         "drill_mm": {
           "type": "number",
           "exclusiveMinimum": 0

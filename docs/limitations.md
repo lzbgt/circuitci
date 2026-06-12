@@ -94,7 +94,7 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - KiCad XML, native `.kicad_sch`, and `.kicad_pcb` layout-evidence import are
   conservative. Unsupported or ambiguous constructs fail closed instead of being
   guessed. PCB import currently extracts component center placements,
-  connected pad center/kind/shape/size/net/layer evidence, segment/via route geometry,
+  connected pad center/kind/shape/size/rotation/net/layer evidence, segment/via route geometry,
   copper-zone outlines/fill polygons, and a bounded subset of
   net-class/custom-rule route constraints for mapped nets, not arbitrary DRC
   rule semantics, filled-copper connectivity, thermal relief behavior, solder

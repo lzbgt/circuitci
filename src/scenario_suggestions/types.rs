@@ -261,6 +261,8 @@ pub struct SuggestedUsbRoutePad {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<SuggestedUsbRoutePadSize>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub drill_mm: Option<f64>,
 }
 
