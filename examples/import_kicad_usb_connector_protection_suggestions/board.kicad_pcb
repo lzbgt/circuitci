@@ -43,4 +43,12 @@
   (segment (start 0 0.4) (end 1 0.4) (width 0.15) (layer "F.Cu") (net 2))
   (segment (start 0 -0.5) (end 1.5 -0.5) (width 0.30) (layer "F.Cu") (net 3))
   (via (at 0.5 0.0) (size 0.60) (drill 0.30) (layers "F.Cu" "B.Cu") (net 1))
+
+  (zone (net 4) (net_name "GND") (layer "F.Cu")
+    (polygon
+      (pts
+        (xy -1 -1)
+        (xy 2 -1)
+        (xy 2 1)
+        (xy -1 1))))
 )

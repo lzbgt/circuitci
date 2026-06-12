@@ -29,7 +29,8 @@ The current runtime accepts hand-authored Board IR YAML, SPICE decks through
 `import-spice`, KiCad generic XML netlists through `import-kicad-netlist`, and
 native `.kicad_sch` schematics through `import-kicad-schematic`. It can also
 enrich an imported Board IR project with KiCad `.kicad_pcb` layout evidence,
-including component placements and routed segment/via geometry, through
+including component placements, routed segment/via geometry, and copper-zone
+outlines, through
 `import-kicad-pcb`. Importers are adapters into the same Board IR shape;
 validation and reporting do not branch on the original EDA source after import.
 EasyEDA, Altium, and JITX remain future adapter layers.

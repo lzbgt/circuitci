@@ -159,6 +159,30 @@ replacement for signal-integrity or ESD-pulse validation; it is structured
 input for geometry-aware rules such as trace length, via count, and protection
 ordering.
 
+## Layout Zone Evidence
+
+Board IR can carry imported copper-zone outline evidence under
+`board.layout.zones`. Each key is an existing Board IR net. Each zone records a
+KiCad copper layer and the polygon points in millimeters.
+
+```yaml
+board:
+  layout:
+    zones:
+      gnd:
+        - layer: F.Cu
+          polygon:
+            - { x_mm: -1.0, y_mm: -1.0 }
+            - { x_mm: 2.0, y_mm: -1.0 }
+            - { x_mm: 2.0, y_mm: 1.0 }
+            - { x_mm: -1.0, y_mm: 1.0 }
+```
+
+KiCad PCB import fills this from `zone` entries when the PCB zone net maps
+unambiguously to an existing Board IR net. This is outline evidence only. It
+does not prove filled-copper islands, pad-to-zone connectivity, thermal relief
+behavior, clearances, or return-path continuity.
+
 ## Layout Constraint Evidence
 
 Board IR can carry imported routing constraints under

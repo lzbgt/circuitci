@@ -77,6 +77,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         imported["board"]["layout"]["routes"]["net_usb_vbus"]["segments"][0]["end"]["x_mm"],
         1.5
     );
+    let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
+        .as_array()
+        .unwrap();
+    assert_eq!(ground_zones.len(), 1);
+    assert_eq!(ground_zones[0]["layer"], "F.Cu");
+    assert_eq!(ground_zones[0]["polygon"].as_array().unwrap().len(), 4);
+    assert_eq!(ground_zones[0]["polygon"][0]["x_mm"], -1.0);
+    assert_eq!(ground_zones[0]["polygon"][2]["y_mm"], 1.0);
     let dp_rule = &imported["board"]["layout"]["constraints"]["net_rules"]["net_usb_dp"];
     assert_eq!(dp_rule["net_class"], "USB_HS");
     assert_eq!(dp_rule["track_width_mm"], 0.15);
@@ -219,6 +227,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(
         imported["board"]["layout"]["routes"]["usb_vbus"]["segments"][0]["width_mm"],
         0.3
+    );
+    assert_eq!(
+        imported["board"]["layout"]["zones"]["gnd"][0]["polygon"][2]["x_mm"],
+        2.0
     );
     assert_eq!(
         imported["board"]["layout"]["constraints"]["net_rules"]["usb_dp"]["length_max_mm"],

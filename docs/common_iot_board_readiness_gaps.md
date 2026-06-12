@@ -148,6 +148,9 @@ nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. `USB_VBUS_ROUTE_VALID` adds the matching
 static VBUS power-entry route guard for route length, via count, optional
 minimum segment width, and connector-to-VBUS-protection route distance.
+KiCad PCB import now also carries mapped copper-zone outlines into
+`board.layout.zones`, but no executable rule treats zone outlines as proof of
+USB return-path continuity yet.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
 non-runnable placement templates when the connector and required protection
@@ -173,12 +176,12 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 
 The current tool validates schematic/netlist behavior and a bounded amount of
 explicit layout evidence. KiCad `.kicad_pcb` import can now populate component
-center placements and routed segment/via geometry for matching Board IR nets,
-but the tool does not yet import or solve full PCB layout physics. Missing
-layout checks include:
+center placements, routed segment/via geometry, route constraints, and
+copper-zone outlines for matching Board IR nets, but the tool does not yet solve
+full PCB layout physics. Missing layout checks include:
 
-- USB differential pair constraints, connector orientation, routed trace order,
-  via-count limits, trace-length limits, and return-path discontinuities,
+- USB connector orientation, routed trace order, return-path discontinuities,
+  and filled-zone continuity,
 - RF antenna matching, keepout, and 2.4 GHz layout,
 - impedance, return path, and high-speed signal integrity,
 - thermal copper and power dissipation from layout,

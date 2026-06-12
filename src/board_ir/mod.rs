@@ -40,6 +40,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,
     #[serde(default)]
+    pub zones: BTreeMap<String, Vec<CopperZone>>,
+    #[serde(default)]
     pub constraints: LayoutConstraints,
 }
 
@@ -103,6 +105,12 @@ pub struct RouteVia {
     pub drill_mm: f64,
     #[serde(default)]
     pub layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CopperZone {
+    pub layer: String,
+    pub polygon: Vec<LayoutPoint>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
