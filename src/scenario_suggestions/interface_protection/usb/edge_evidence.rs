@@ -200,6 +200,7 @@ pub(super) fn nearest_component_clearance_evidence(
 pub(super) fn entry_clearance_evidence(
     bound: &BoundBoard<'_>,
     connector_id: &str,
+    connector: &UsbConnector,
     entry_direction_deg: f64,
     entry_direction_source: &str,
     entry_direction_offset_deg: Option<f64>,
@@ -217,7 +218,12 @@ pub(super) fn entry_clearance_evidence(
         .flat_map(clearance_primitive_points)
         .map(|point| direction_projection(&point, entry_direction_deg))
         .max_by(|left, right| left.total_cmp(right))?;
-    let center_lateral_projection_mm = placement_lateral_projection(placement, entry_direction_deg);
+    let aperture = entry_aperture_evidence(
+        placement,
+        connector,
+        entry_direction_deg,
+        connector_front_projection_mm,
+    )?;
     let mut nearest: Option<EntryObstructionCandidate<'_>> = None;
     for component_id in bound.project.board.components.keys() {
         if component_id == connector_id {
@@ -227,8 +233,8 @@ pub(super) fn entry_clearance_evidence(
             let Some((depth_mm, lateral_offset_mm, reference)) = entry_obstruction_candidate(
                 &primitive,
                 entry_direction_deg,
-                connector_front_projection_mm,
-                center_lateral_projection_mm,
+                aperture.front_projection_mm,
+                aperture.center_lateral_projection_mm,
             ) else {
                 continue;
             };
@@ -251,7 +257,14 @@ pub(super) fn entry_clearance_evidence(
         entry_direction_deg,
         entry_direction_source: entry_direction_source.to_string(),
         entry_direction_offset_deg,
+        entry_aperture_source: aperture.source.to_string(),
         connector_front_projection_mm,
+        entry_aperture_front_projection_mm: aperture.front_projection_mm,
+        entry_aperture_center_lateral_projection_mm: aperture.center_lateral_projection_mm,
+        entry_aperture_front_offset_mm: aperture.front_offset_mm,
+        entry_aperture_lateral_offset_mm: aperture.lateral_offset_mm,
+        entry_aperture_width_mm: aperture.aperture_width_mm,
+        model_min_cable_entry_clearance_width_mm: aperture.aperture_width_mm,
         nearest_obstruction: nearest.map(|candidate| SuggestedUsbEntryObstruction {
             component: candidate.component_id.to_string(),
             obstruction_depth_mm: candidate.depth_mm,
@@ -267,6 +280,53 @@ pub(super) fn entry_clearance_evidence(
                 .map(str::to_string),
         }),
     })
+}
+
+struct EntryApertureEvidence {
+    source: &'static str,
+    front_projection_mm: f64,
+    center_lateral_projection_mm: f64,
+    front_offset_mm: Option<f64>,
+    lateral_offset_mm: Option<f64>,
+    aperture_width_mm: Option<f64>,
+}
+
+fn entry_aperture_evidence(
+    placement: &ComponentPlacement,
+    connector: &UsbConnector,
+    entry_direction_deg: f64,
+    connector_front_projection_mm: f64,
+) -> Option<EntryApertureEvidence> {
+    let front_offset_mm = finite_optional(connector.entry_aperture_front_offset_mm)?;
+    let lateral_offset_mm = finite_optional(connector.entry_aperture_lateral_offset_mm)?;
+    let aperture_width_mm = finite_optional(connector.entry_aperture_width_mm)?;
+    if aperture_width_mm.is_some_and(|width_mm| width_mm <= 0.0) {
+        return None;
+    }
+    let has_model_aperture =
+        front_offset_mm.is_some() || lateral_offset_mm.is_some() || aperture_width_mm.is_some();
+    let center_lateral_projection_mm = placement_lateral_projection(placement, entry_direction_deg)
+        + lateral_offset_mm.unwrap_or(0.0);
+    Some(EntryApertureEvidence {
+        source: if has_model_aperture {
+            "component_model_aperture"
+        } else {
+            "footprint_front"
+        },
+        front_projection_mm: connector_front_projection_mm + front_offset_mm.unwrap_or(0.0),
+        center_lateral_projection_mm,
+        front_offset_mm,
+        lateral_offset_mm,
+        aperture_width_mm,
+    })
+}
+
+fn finite_optional(value: Option<f64>) -> Option<Option<f64>> {
+    match value {
+        Some(value) if value.is_finite() => Some(Some(value)),
+        Some(_) => None,
+        None => Some(None),
+    }
 }
 
 struct BoardEdgeConnectorDistance<'a> {

@@ -1,0 +1,62 @@
+project:
+  name: scenario_suggestions_usb_connector_entry_aperture
+  version: 0.1.0
+
+libraries:
+  - models
+  - ../../libs/generic
+
+board:
+  components:
+    J1:
+      model: example.connector.usb2_entry_aperture
+      pins:
+        VBUS: usb_vbus
+        "D+": usb_dp
+        "D-": usb_dm
+        GND: gnd
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: usb_dp
+        B: gnd
+  nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+  layout:
+    placements:
+      J1:
+        x_mm: 0.0
+        y_mm: 0.0
+        rotation_deg: 0.0
+        side: top
+      R1:
+        x_mm: 1.0
+        y_mm: 1.2
+        side: top
+    footprints:
+      J1:
+        polygons:
+          - points:
+              - { x_mm: -0.5, y_mm: -0.5 }
+              - { x_mm: 0.5, y_mm: -0.5 }
+              - { x_mm: 0.5, y_mm: 0.5 }
+              - { x_mm: -0.5, y_mm: 0.5 }
+            layer: F.Fab
+            kind: fabrication
+      R1:
+        rectangles:
+          - start: { x_mm: 0.9, y_mm: 1.15 }
+            end: { x_mm: 1.1, y_mm: 1.35 }
+            layer: F.CrtYd
+            kind: courtyard

@@ -340,6 +340,9 @@ usb_connector:
   gnd_pin: GND
   shield_pin: SHIELD
   entry_direction_offset_deg: 0.0
+  entry_aperture_front_offset_mm: 0.0
+  entry_aperture_lateral_offset_mm: 0.0
+  entry_aperture_width_mm: 6.0
 ```
 
 `USB_CONNECTOR_PROTECTION_VALID` uses this metadata to locate the connector's
@@ -357,6 +360,19 @@ points in the cable insertion direction.
 See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.md)
 for a validation fixture that proves a nonzero offset changes the checked entry
 direction.
+
+`entry_aperture_front_offset_mm`, `entry_aperture_lateral_offset_mm`, and
+`entry_aperture_width_mm` are optional 2D cable-entry aperture metadata. The
+front offset shifts the checked corridor start forward from the imported
+footprint body front in the cable-entry direction. The lateral offset shifts
+the corridor centerline along the axis perpendicular to cable entry. The
+aperture width is used as a model-derived minimum checked corridor width when
+it is larger than the scenario's `cable_entry_clearance_width_mm`. Omit these
+fields when the connector placement center and footprint front are the best
+available 2D entry approximation.
+See [usb_connector_entry_aperture_fixture.md](usb_connector_entry_aperture_fixture.md)
+for a validation fixture that proves aperture metadata changes the checked
+entry corridor.
 
 `circuitci suggest-scenarios` uses `signal_conditioning` metadata to emit
 non-runnable `interface_protection` review templates. It does not treat the

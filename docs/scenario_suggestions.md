@@ -147,11 +147,13 @@ The command is conservative:
   component-model `usb_connector.entry_direction_offset_deg`, includes the
   connector placement and footprint evidence, and includes
   `scenario.usb_connectors[].entry_clearance` with connector-front projection
-  plus `entry_direction_source`, optional `entry_direction_offset_deg`, and the
-  nearest forward obstruction candidate when imported component footprint or
-  placement evidence is available. Obstruction evidence reports depth in the
-  entry direction, lateral offset from the connector centerline, and whether
-  the obstruction came from footprint or placement-center evidence.
+  plus `entry_direction_source`, optional `entry_direction_offset_deg`, aperture
+  source/front/center evidence, optional component-model aperture offsets and
+  width, optional `model_min_cable_entry_clearance_width_mm`, and the nearest
+  forward obstruction candidate when imported component footprint or placement
+  evidence is available. Obstruction evidence reports depth in the entry
+  direction, lateral offset from the aperture centerline, and whether the
+  obstruction came from footprint or placement-center evidence.
   The template leaves
   `min_cable_entry_clearance_depth_mm` and
   `cable_entry_clearance_width_mm` as `null` until an agent fills those values

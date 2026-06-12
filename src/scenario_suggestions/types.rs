@@ -304,7 +304,18 @@ pub struct SuggestedUsbEntryClearance {
     pub entry_direction_source: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entry_direction_offset_deg: Option<f64>,
+    pub entry_aperture_source: String,
     pub connector_front_projection_mm: f64,
+    pub entry_aperture_front_projection_mm: f64,
+    pub entry_aperture_center_lateral_projection_mm: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_aperture_front_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_aperture_lateral_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_aperture_width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_min_cable_entry_clearance_width_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_obstruction: Option<SuggestedUsbEntryObstruction>,
 }

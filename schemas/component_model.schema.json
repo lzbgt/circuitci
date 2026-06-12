@@ -137,7 +137,10 @@
         "dm_pin": { "type": "string", "minLength": 1 },
         "gnd_pin": { "type": "string", "minLength": 1 },
         "shield_pin": { "type": "string", "minLength": 1 },
-        "entry_direction_offset_deg": { "type": "number" }
+        "entry_direction_offset_deg": { "type": "number" },
+        "entry_aperture_front_offset_mm": { "type": "number" },
+        "entry_aperture_lateral_offset_mm": { "type": "number" },
+        "entry_aperture_width_mm": { "type": "number", "exclusiveMinimum": 0 }
       },
       "additionalProperties": false
     },

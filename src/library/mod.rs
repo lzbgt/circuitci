@@ -141,6 +141,12 @@ pub struct UsbConnector {
     pub shield_pin: Option<String>,
     #[serde(default)]
     pub entry_direction_offset_deg: Option<f64>,
+    #[serde(default)]
+    pub entry_aperture_front_offset_mm: Option<f64>,
+    #[serde(default)]
+    pub entry_aperture_lateral_offset_mm: Option<f64>,
+    #[serde(default)]
+    pub entry_aperture_width_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

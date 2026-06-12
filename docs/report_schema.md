@@ -261,6 +261,12 @@ graphics, and nearby component placement or footprint evidence. Stable measured
 keys include `obstructing_component`, `entry_obstruction_depth_mm`,
 `entry_obstruction_lateral_offset_mm`, `entry_direction_deg`,
 `entry_direction_source`, optional `entry_direction_offset_deg`,
+`entry_aperture_source`, `connector_front_projection_mm`,
+`entry_aperture_front_projection_mm`,
+`entry_aperture_center_lateral_projection_mm`, optional
+`entry_aperture_front_offset_mm`, optional
+`entry_aperture_lateral_offset_mm`, optional `entry_aperture_width_mm`,
+`effective_cable_entry_clearance_width_mm`,
 `obstruction_reference`, optional `obstruction_footprint_graphic_layer`, and
 optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.

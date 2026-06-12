@@ -1070,6 +1070,7 @@ pub(super) fn suggested_usb_connector(
             entry_clearance_evidence(
                 bound,
                 component_id,
+                connector,
                 entry_direction.deg,
                 entry_direction.source,
                 entry_direction.offset_deg,

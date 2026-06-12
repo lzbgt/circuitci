@@ -183,7 +183,11 @@ Connector entry-clearance validation:
   enclosure, or assembly drawings.
 - The rule projects a 2D rectangular cable-entry corridor forward from the
   connector body and fails when any other component footprint or placement
-  evidence intersects that corridor.
+  evidence intersects that corridor. Optional
+  `usb_connector.entry_aperture_front_offset_mm`,
+  `usb_connector.entry_aperture_lateral_offset_mm`, and
+  `usb_connector.entry_aperture_width_mm` can shift the corridor front, shift
+  its lateral centerline, and provide a model-derived minimum checked width.
 - It does not prove 3D shell volume, plug geometry, cable bend radius,
   panel/enclosure interference, or assembly stack-up clearance.
 

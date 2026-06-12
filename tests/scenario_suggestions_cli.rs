@@ -712,6 +712,50 @@ fn suggest_scenarios_uses_usb_connector_entry_direction_offset() {
 }
 
 #[test]
+fn suggest_scenarios_reports_usb_connector_entry_aperture() {
+    let suggestions = run_suggest_scenarios(
+        "examples/bad_usb_connector_entry_clearance_aperture/project_suggestions.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_usb_connector_entry_aperture"
+    );
+    let entry = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
+        .expect("USB connector entry-clearance suggestion");
+    let entry_evidence = &entry["scenario"]["usb_connectors"][0]["entry_clearance"];
+    assert_eq!(
+        entry_evidence["entry_aperture_source"],
+        "component_model_aperture"
+    );
+    assert_eq!(entry_evidence["connector_front_projection_mm"], 0.5);
+    assert_eq!(entry_evidence["entry_aperture_front_projection_mm"], 0.75);
+    assert_eq!(
+        entry_evidence["entry_aperture_center_lateral_projection_mm"],
+        1.0
+    );
+    assert_eq!(entry_evidence["entry_aperture_front_offset_mm"], 0.25);
+    assert_eq!(entry_evidence["entry_aperture_lateral_offset_mm"], 1.0);
+    assert_eq!(entry_evidence["entry_aperture_width_mm"], 0.5);
+    assert_eq!(
+        entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        0.5
+    );
+    assert_eq!(entry_evidence["nearest_obstruction"]["component"], "R1");
+    assert!(
+        (entry_evidence["nearest_obstruction"]["obstruction_depth_mm"]
+            .as_f64()
+            .unwrap()
+            - 0.15)
+            .abs()
+            < 1.0e-12
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_boot_strap_bias_template() {
     let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
     assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");

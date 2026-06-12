@@ -537,6 +537,42 @@ fn usb_connector_entry_clearance_uses_model_entry_direction_offset() {
 }
 
 #[test]
+fn usb_connector_entry_clearance_uses_model_aperture_geometry() {
+    let report = run_validation("examples/bad_usb_connector_entry_clearance_aperture/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["obstructing_component"], "R1");
+    assert_eq!(
+        failure["measured"]["entry_aperture_source"],
+        "component_model_aperture"
+    );
+    assert_eq!(failure["measured"]["connector_front_projection_mm"], 0.5);
+    assert_eq!(
+        failure["measured"]["entry_aperture_front_projection_mm"],
+        0.75
+    );
+    assert_eq!(
+        failure["measured"]["entry_aperture_center_lateral_projection_mm"],
+        1.0
+    );
+    assert_eq!(failure["measured"]["entry_aperture_front_offset_mm"], 0.25);
+    assert_eq!(failure["measured"]["entry_aperture_lateral_offset_mm"], 1.0);
+    assert_eq!(failure["measured"]["entry_aperture_width_mm"], 0.5);
+    assert_eq!(
+        failure["measured"]["effective_cable_entry_clearance_width_mm"],
+        0.5
+    );
+    assert_eq!(failure["limit"]["cable_entry_clearance_width_mm"], 0.2);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

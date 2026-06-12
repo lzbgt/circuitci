@@ -158,7 +158,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
         );
         return;
     }
-    let Some(connector_front) =
+    let Some(connector_front_projection_mm) =
         connector_front_projection(bound, &target.component, entry_direction_deg)
     else {
         findings.push(entry_metadata_finding(
@@ -170,12 +170,24 @@ pub(super) fn validate_usb_connector_entry_clearance(
         ));
         return;
     };
+    let Some(entry_aperture) = entry_aperture_evidence(EntryApertureInput {
+        scenario,
+        connector_id: &target.component,
+        placement,
+        connector,
+        entry_direction_deg,
+        connector_front_projection_mm,
+        requested_width_mm: width_mm,
+        findings,
+    }) else {
+        return;
+    };
     let corridor = EntryCorridor::new(
         entry_direction_deg,
-        connector_front,
-        placement_lateral_projection(placement, entry_direction_deg),
+        entry_aperture.front_projection_mm,
+        entry_aperture.center_lateral_projection_mm,
         depth_mm,
-        width_mm,
+        entry_aperture.effective_width_mm,
     );
     if let Some(obstruction) = nearest_entry_obstruction(bound, &target.component, &corridor) {
         findings.push(entry_clearance_finding(EntryClearanceEvidence {
@@ -183,6 +195,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
             connector_id: &target.component,
             obstruction,
             entry_direction,
+            entry_aperture,
             depth_mm,
             width_mm,
         }));
@@ -221,8 +234,32 @@ struct EntryClearanceEvidence<'a> {
     connector_id: &'a str,
     obstruction: EntryObstruction<'a>,
     entry_direction: EntryDirectionEvidence,
+    entry_aperture: EntryApertureEvidence,
     depth_mm: f64,
     width_mm: f64,
+}
+
+#[derive(Clone, Copy)]
+struct EntryApertureEvidence {
+    source: &'static str,
+    connector_front_projection_mm: f64,
+    front_projection_mm: f64,
+    center_lateral_projection_mm: f64,
+    front_offset_mm: Option<f64>,
+    lateral_offset_mm: Option<f64>,
+    aperture_width_mm: Option<f64>,
+    effective_width_mm: f64,
+}
+
+struct EntryApertureInput<'a, 'b> {
+    scenario: &'a Scenario,
+    connector_id: &'a str,
+    placement: &'a ComponentPlacement,
+    connector: &'a UsbConnector,
+    entry_direction_deg: f64,
+    connector_front_projection_mm: f64,
+    requested_width_mm: f64,
+    findings: &'b mut Vec<Finding>,
 }
 
 #[derive(Clone)]
@@ -444,6 +481,98 @@ fn connector_front_projection(
         .into_iter()
         .map(|point| direction_projection(&point, entry_direction_deg))
         .max_by(|left, right| left.total_cmp(right))
+}
+
+fn entry_aperture_evidence(input: EntryApertureInput<'_, '_>) -> Option<EntryApertureEvidence> {
+    let front_offset_mm = match finite_optional_model_value(
+        input.scenario,
+        input.connector_id,
+        "usb_connector.entry_aperture_front_offset_mm",
+        input.connector.entry_aperture_front_offset_mm,
+        input.findings,
+    ) {
+        Some(value) => Some(value),
+        None if input.connector.entry_aperture_front_offset_mm.is_some() => return None,
+        None => None,
+    };
+    let lateral_offset_mm = match finite_optional_model_value(
+        input.scenario,
+        input.connector_id,
+        "usb_connector.entry_aperture_lateral_offset_mm",
+        input.connector.entry_aperture_lateral_offset_mm,
+        input.findings,
+    ) {
+        Some(value) => Some(value),
+        None if input.connector.entry_aperture_lateral_offset_mm.is_some() => return None,
+        None => None,
+    };
+    let aperture_width_mm = match finite_optional_model_value(
+        input.scenario,
+        input.connector_id,
+        "usb_connector.entry_aperture_width_mm",
+        input.connector.entry_aperture_width_mm,
+        input.findings,
+    ) {
+        Some(width) if width > 0.0 => Some(width),
+        Some(_) => {
+            input.findings.push(entry_metadata_finding(
+                input.scenario,
+                input.connector_id,
+                format!(
+                    "USB connector {} usb_connector.entry_aperture_width_mm must be greater than zero when declared.",
+                    input.connector_id
+                ),
+                "usb_connector.entry_aperture_width_mm",
+                "invalid",
+            ));
+            return None;
+        }
+        None if input.connector.entry_aperture_width_mm.is_some() => return None,
+        None => None,
+    };
+    let placement_lateral_projection_mm =
+        placement_lateral_projection(input.placement, input.entry_direction_deg);
+    let has_model_aperture =
+        front_offset_mm.is_some() || lateral_offset_mm.is_some() || aperture_width_mm.is_some();
+    Some(EntryApertureEvidence {
+        source: if has_model_aperture {
+            "component_model_aperture"
+        } else {
+            "footprint_front"
+        },
+        connector_front_projection_mm: input.connector_front_projection_mm,
+        front_projection_mm: input.connector_front_projection_mm + front_offset_mm.unwrap_or(0.0),
+        center_lateral_projection_mm: placement_lateral_projection_mm
+            + lateral_offset_mm.unwrap_or(0.0),
+        front_offset_mm,
+        lateral_offset_mm,
+        aperture_width_mm,
+        effective_width_mm: aperture_width_mm
+            .map_or(input.requested_width_mm, |aperture_width_mm| {
+                input.requested_width_mm.max(aperture_width_mm)
+            }),
+    })
+}
+
+fn finite_optional_model_value(
+    scenario: &Scenario,
+    connector_id: &str,
+    field: &str,
+    value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let value = value?;
+    if value.is_finite() {
+        return Some(value);
+    }
+    findings.push(entry_metadata_finding(
+        scenario,
+        connector_id,
+        format!("USB connector {connector_id} {field} must be finite when declared."),
+        field,
+        "invalid",
+    ));
+    None
 }
 
 fn placement_lateral_projection(placement: &ComponentPlacement, entry_direction_deg: f64) -> f64 {
@@ -748,6 +877,44 @@ fn entry_clearance_finding(evidence: EntryClearanceEvidence<'_>) -> Finding {
             .measured
             .insert("entry_direction_offset_deg".to_string(), json!(offset_deg));
     }
+    finding.measured.insert(
+        "entry_aperture_source".to_string(),
+        json!(evidence.entry_aperture.source),
+    );
+    finding.measured.insert(
+        "connector_front_projection_mm".to_string(),
+        json!(evidence.entry_aperture.connector_front_projection_mm),
+    );
+    finding.measured.insert(
+        "entry_aperture_front_projection_mm".to_string(),
+        json!(evidence.entry_aperture.front_projection_mm),
+    );
+    finding.measured.insert(
+        "entry_aperture_center_lateral_projection_mm".to_string(),
+        json!(evidence.entry_aperture.center_lateral_projection_mm),
+    );
+    if let Some(front_offset_mm) = evidence.entry_aperture.front_offset_mm {
+        finding.measured.insert(
+            "entry_aperture_front_offset_mm".to_string(),
+            json!(front_offset_mm),
+        );
+    }
+    if let Some(lateral_offset_mm) = evidence.entry_aperture.lateral_offset_mm {
+        finding.measured.insert(
+            "entry_aperture_lateral_offset_mm".to_string(),
+            json!(lateral_offset_mm),
+        );
+    }
+    if let Some(aperture_width_mm) = evidence.entry_aperture.aperture_width_mm {
+        finding.measured.insert(
+            "entry_aperture_width_mm".to_string(),
+            json!(aperture_width_mm),
+        );
+    }
+    finding.measured.insert(
+        "effective_cable_entry_clearance_width_mm".to_string(),
+        json!(evidence.entry_aperture.effective_width_mm),
+    );
     finding.measured.insert(
         "obstruction_reference".to_string(),
         json!(evidence.obstruction.reference.label()),

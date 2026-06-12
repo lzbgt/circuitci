@@ -575,7 +575,10 @@
       "required": [
         "entry_direction_deg",
         "entry_direction_source",
-        "connector_front_projection_mm"
+        "entry_aperture_source",
+        "connector_front_projection_mm",
+        "entry_aperture_front_projection_mm",
+        "entry_aperture_center_lateral_projection_mm"
       ],
       "properties": {
         "entry_direction_deg": { "type": "number" },
@@ -583,7 +586,16 @@
           "enum": ["placement_rotation", "component_model_offset"]
         },
         "entry_direction_offset_deg": { "type": "number" },
+        "entry_aperture_source": {
+          "enum": ["footprint_front", "component_model_aperture"]
+        },
         "connector_front_projection_mm": { "type": "number" },
+        "entry_aperture_front_projection_mm": { "type": "number" },
+        "entry_aperture_center_lateral_projection_mm": { "type": "number" },
+        "entry_aperture_front_offset_mm": { "type": "number" },
+        "entry_aperture_lateral_offset_mm": { "type": "number" },
+        "entry_aperture_width_mm": { "type": "number" },
+        "model_min_cable_entry_clearance_width_mm": { "type": "number" },
         "nearest_obstruction": { "$ref": "#/$defs/entry_obstruction" }
       },
       "additionalProperties": false
