@@ -462,6 +462,39 @@ USB VBUS route algorithm:
 8. Use a separate power-path/current-capacity or thermal review for VBUS copper
    ampacity, fuse behavior, inrush, or temperature-rise sign-off.
 
+USB return-path validation uses `USB_RETURN_PATH_VALID` when the Board IR
+includes USB D+/D- `board.layout.routes` evidence and same-layer ground-zone
+outline evidence under `board.layout.zones`. This rule is a static layout guard:
+it treats a data route segment as referenced when the segment midpoint is inside
+a ground-net zone outline on the same copper layer.
+
+```yaml
+scenarios:
+  - name: usb_return_path
+    type: interface_protection
+    checks:
+      - USB_RETURN_PATH_VALID
+    target:
+      component: J1
+    parameters:
+      max_data_line_unreferenced_length_mm: 0.0
+```
+
+USB return-path algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Resolve D+ and D- nets from connector pin connectivity.
+3. Require `board.layout.routes` entries for both data nets.
+4. Find `board.layout.zones` entries whose net is declared `kind: ground`.
+5. For each D+/D- route segment, require the segment midpoint to fall inside a
+   same-layer ground-zone polygon. Segments that do not meet this static
+   outline test are counted as unreferenced.
+6. Sum unreferenced segment length and require each data net to stay within
+   `max_data_line_unreferenced_length_mm`.
+7. Treat this as an early layout screen only. Filled-zone continuity,
+   adjacent-plane return paths, stitching vias, impedance, and USB eye margin
+   require more specific layout or signal-integrity evidence.
+
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
 

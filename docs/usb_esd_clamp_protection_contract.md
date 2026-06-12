@@ -146,6 +146,16 @@ Route-geometry validation:
   impedance, skew, return-path continuity, shield bonding, or ESD pulse
   robustness.
 
+- `USB_RETURN_PATH_VALID` targets the same connector component and uses
+  `board.layout.routes` plus `board.layout.zones` evidence.
+- The scenario must declare
+  `parameters.max_data_line_unreferenced_length_mm`.
+- The rule checks D+ and D- only. A routed segment is treated as statically
+  referenced when its midpoint is inside a same-layer ground-zone outline.
+- This check is still first-order outline evidence. It does not prove zone fill
+  connectivity, adjacent-plane reference, stitching-via density, impedance, eye
+  margin, or EMC behavior.
+
 - `USB_VBUS_ROUTE_VALID` targets the same connector component and uses
   `board.layout.routes` evidence for the connector VBUS net.
 - The scenario must declare `parameters.max_vbus_route_length_mm`,

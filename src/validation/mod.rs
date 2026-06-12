@@ -39,6 +39,7 @@ pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTIO
 pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
 pub(super) const USB_ROUTE_GEOMETRY_VALID: &str = "USB_ROUTE_GEOMETRY_VALID";
 pub(super) const USB_VBUS_ROUTE_VALID: &str = "USB_VBUS_ROUTE_VALID";
+pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -151,6 +152,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 USB_VBUS_ROUTE_VALID if scenario.scenario_type == "interface_protection" => {
                     interface_protection::validate_usb_vbus_route(bound, scenario, &mut findings)
                 }
+                USB_RETURN_PATH_VALID if scenario.scenario_type == "interface_protection" => {
+                    interface_protection::validate_usb_return_path(bound, scenario, &mut findings)
+                }
                 RESET_RELEASE_AFTER_POWER_VALID if scenario.scenario_type == "reset_boot" => {
                     target_contract::validate_reset_release(bound, scenario, &mut findings)
                 }
@@ -241,6 +245,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | USB_PROTECTION_PLACEMENT_VALID
                 | USB_ROUTE_GEOMETRY_VALID
                 | USB_VBUS_ROUTE_VALID
+                | USB_RETURN_PATH_VALID
                 | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

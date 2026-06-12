@@ -9,7 +9,8 @@ toward the repository line-count guard:
 - `src/validation/interface_protection/usb_connector_findings.rs` owns report
   construction for USB connector coverage and USB protection placement findings.
 - `src/validation/interface_protection/usb_route.rs` owns
-  `USB_ROUTE_GEOMETRY_VALID` orchestration.
+  `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
+  `USB_RETURN_PATH_VALID` orchestration.
 - `src/validation/interface_protection/usb_route/geometry.rs` owns USB route
   geometry math.
 - `src/validation/interface_protection/usb_route/findings.rs` owns USB route

@@ -383,6 +383,47 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
 }
 
 #[test]
+fn usb_return_path_passes_when_data_routes_have_ground_zone_coverage() {
+    let report = run_validation("examples/good_usb_return_path/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_return_path_reports_unreferenced_data_route_length() {
+    let report = run_validation("examples/bad_usb_return_path/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| failure["id"] == "USB_RETURN_PATH_VALID")
+        .expect("USB return-path finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["unreferenced_route_length_mm"], 1.0);
+    assert_eq!(
+        failure["limit"]["max_data_line_unreferenced_length_mm"],
+        0.0
+    );
+    assert_eq!(failure["limit"]["reference_net_kind"], "ground");
+    assert_eq!(
+        failure["limit"]["reference_zone_layer_policy"],
+        "same_layer"
+    );
+    let segments = failure["measured"]["unreferenced_segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(segments.len(), 1);
+    assert_eq!(segments[0]["segment_index"], 0);
+    assert_eq!(segments[0]["midpoint_x_mm"], 0.5);
+    assert_eq!(segments[0]["midpoint_y_mm"], 0.0);
+    assert_eq!(segments[0]["layer"], "F.Cu");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_vbus_route_geometry_passes_for_short_power_entry_route() {
     let report = run_validation("examples/good_usb_vbus_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

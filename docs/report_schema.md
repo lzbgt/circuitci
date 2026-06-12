@@ -101,6 +101,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_PROTECTION_PLACEMENT_VALID`
 - `USB_ROUTE_GEOMETRY_VALID`
 - `USB_VBUS_ROUTE_VALID`
+- `USB_RETURN_PATH_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -203,6 +204,16 @@ include `connector_signal`, `route_length_mm`, `via_count`,
 `min_vbus_route_width_mm`,
 `max_connector_to_vbus_protection_route_distance_mm`, and
 `max_component_to_route_distance_mm`.
+
+`USB_RETURN_PATH_VALID` reports are emitted by `interface_protection` scenarios
+that combine `usb_connector` metadata, `board.layout.routes`, and same-layer
+ground-zone outline evidence from `board.layout.zones`. Stable measured keys
+include `connector_signal`, `unreferenced_route_length_mm`, and
+`unreferenced_segments`. Each unreferenced segment entry includes
+`segment_index`, `segment_length_mm`, `midpoint_x_mm`, `midpoint_y_mm`, and
+`layer`. Stable limit keys include
+`max_data_line_unreferenced_length_mm`, `reference_net_kind`, and
+`reference_zone_layer_policy`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

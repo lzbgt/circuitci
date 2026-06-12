@@ -1,6 +1,7 @@
 use crate::board_ir::Scenario;
 use crate::reports::Finding;
-use crate::validation::USB_ROUTE_GEOMETRY_VALID;
+use crate::validation::{USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID};
+use serde::Serialize;
 use serde_json::json;
 
 use super::UsbConnectorSignal;
@@ -427,4 +428,85 @@ pub(super) struct UsbPairViaEvidence<'a> {
     pub(super) dm_via_count: usize,
     pub(super) via_count_delta: usize,
     pub(super) max_via_count_delta: usize,
+}
+
+pub(super) fn usb_return_path_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_RETURN_PATH_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import KiCad PCB copper zone evidence with import-kicad-pcb before declaring USB_RETURN_PATH_VALID.".to_string(),
+        "Declare max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_return_path_unreferenced_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    net: &str,
+    evidence: UsbReturnPathEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_RETURN_PATH_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} has {:.3} mm of routed data-line length without same-layer ground-zone outline coverage, above limit {:.3} mm.",
+            signal.label(),
+            evidence.unreferenced_length_mm,
+            evidence.max_unreferenced_length_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding.measured.insert(
+        "unreferenced_route_length_mm".to_string(),
+        json!(evidence.unreferenced_length_mm),
+    );
+    finding.measured.insert(
+        "unreferenced_segments".to_string(),
+        json!(evidence.unreferenced_segments),
+    );
+    finding.limit.insert(
+        "max_data_line_unreferenced_length_mm".to_string(),
+        json!(evidence.max_unreferenced_length_mm),
+    );
+    finding
+        .limit
+        .insert("reference_net_kind".to_string(), json!("ground"));
+    finding.limit.insert(
+        "reference_zone_layer_policy".to_string(),
+        json!("same_layer"),
+    );
+    finding.suggested_fixes = vec![
+        "Add or extend same-layer ground-zone reference coverage under the affected USB data-route segment, then import the updated PCB.".to_string(),
+        "If the design intentionally references an adjacent plane or controlled stackup instead, model that return-path evidence with a more specific rule instead of using this same-layer outline check as sign-off.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(super) struct UsbReturnPathSegmentEvidence {
+    pub(super) segment_index: usize,
+    pub(super) segment_length_mm: f64,
+    pub(super) midpoint_x_mm: f64,
+    pub(super) midpoint_y_mm: f64,
+    pub(super) layer: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbReturnPathEvidence<'a> {
+    pub(super) unreferenced_length_mm: f64,
+    pub(super) max_unreferenced_length_mm: f64,
+    pub(super) unreferenced_segments: &'a [UsbReturnPathSegmentEvidence],
 }

@@ -1,4 +1,4 @@
-use crate::board_ir::{ComponentPlacement, LayoutPoint, NetRoute, RouteSegment};
+use crate::board_ir::{ComponentPlacement, CopperZone, LayoutPoint, NetRoute, RouteSegment};
 
 const EPSILON_MM: f64 = 1.0e-9;
 
@@ -62,16 +62,63 @@ pub(super) fn validate_route_shape(route: &NetRoute) -> Result<(), String> {
 }
 
 pub(super) fn route_length_mm(route: &NetRoute) -> f64 {
-    route
-        .segments
+    route.segments.iter().map(segment_length_mm).sum()
+}
+
+pub(super) fn segment_length_mm(segment: &RouteSegment) -> f64 {
+    point_distance_mm(
+        PlacementPoint::from(&segment.start),
+        PlacementPoint::from(&segment.end),
+    )
+}
+
+pub(super) fn segment_midpoint(segment: &RouteSegment) -> PlacementPoint {
+    PlacementPoint {
+        x_mm: (segment.start.x_mm + segment.end.x_mm) / 2.0,
+        y_mm: (segment.start.y_mm + segment.end.y_mm) / 2.0,
+    }
+}
+
+pub(super) fn validate_zone_outline(zone: &CopperZone) -> Result<(), String> {
+    if zone.layer.trim().is_empty() {
+        return Err("USB return-path zone layer must be non-empty.".to_string());
+    }
+    if zone.polygon.len() < 3 {
+        return Err("USB return-path zone polygon must include at least three points.".to_string());
+    }
+    if zone
+        .polygon
         .iter()
-        .map(|segment| {
-            point_distance_mm(
-                PlacementPoint::from(&segment.start),
-                PlacementPoint::from(&segment.end),
-            )
-        })
-        .sum()
+        .any(|point| !point.x_mm.is_finite() || !point.y_mm.is_finite())
+    {
+        return Err("USB return-path zone polygon points must be finite.".to_string());
+    }
+    Ok(())
+}
+
+pub(super) fn point_inside_zone_outline(point: PlacementPoint, zone: &CopperZone) -> bool {
+    if zone.polygon.len() < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut previous = PlacementPoint::from(zone.polygon.last().expect("polygon has points"));
+    for current_point in &zone.polygon {
+        let current = PlacementPoint::from(current_point);
+        if point_on_segment(point, previous, current) {
+            return true;
+        }
+        let y_crosses = (current.y_mm > point.y_mm) != (previous.y_mm > point.y_mm);
+        if y_crosses {
+            let x_intersection = (previous.x_mm - current.x_mm) * (point.y_mm - current.y_mm)
+                / (previous.y_mm - current.y_mm)
+                + current.x_mm;
+            if point.x_mm < x_intersection {
+                inside = !inside;
+            }
+        }
+        previous = current;
+    }
+    inside
 }
 
 pub(super) fn route_distance_between_placements(
@@ -197,6 +244,21 @@ fn project_point_to_segment(
             y_mm: start.y_mm + t * dy,
         },
     ))
+}
+
+fn point_on_segment(point: PlacementPoint, start: PlacementPoint, end: PlacementPoint) -> bool {
+    let cross = (point.y_mm - start.y_mm) * (end.x_mm - start.x_mm)
+        - (point.x_mm - start.x_mm) * (end.y_mm - start.y_mm);
+    if cross.abs() > EPSILON_MM {
+        return false;
+    }
+    let dot = (point.x_mm - start.x_mm) * (end.x_mm - start.x_mm)
+        + (point.y_mm - start.y_mm) * (end.y_mm - start.y_mm);
+    if dot < -EPSILON_MM {
+        return false;
+    }
+    let length_squared = (end.x_mm - start.x_mm).powi(2) + (end.y_mm - start.y_mm).powi(2);
+    dot <= length_squared + EPSILON_MM
 }
 
 fn shortest_route_distance_mm(

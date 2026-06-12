@@ -1,4 +1,4 @@
-use crate::board_ir::{ComponentPlacement, NetLayoutRule, NetRoute, Scenario};
+use crate::board_ir::{ComponentPlacement, CopperZone, NetKind, NetLayoutRule, NetRoute, Scenario};
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use crate::validation::USB_VBUS_ROUTE_VALID;
@@ -15,7 +15,8 @@ mod geometry;
 
 use findings::*;
 use geometry::{
-    PlacementPoint, route_distance_between_placements, route_length_mm, validate_route_shape,
+    PlacementPoint, point_inside_zone_outline, route_distance_between_placements, route_length_mm,
+    segment_length_mm, segment_midpoint, validate_route_shape, validate_zone_outline,
     worst_pair_gap_delta, worst_route_width_delta,
 };
 
@@ -339,6 +340,86 @@ pub(super) fn validate_usb_vbus_route(
     );
 }
 
+pub(super) fn validate_usb_return_path(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(max_unreferenced_length_mm) =
+        required_nonnegative_parameter(scenario, "max_data_line_unreferenced_length_mm", findings)
+    else {
+        return;
+    };
+
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_RETURN_PATH_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB return-path target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB return-path target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector) = &model.usb_connector else {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(ground_zones) = ground_reference_zones(bound, scenario, &target.component, findings)
+    else {
+        return;
+    };
+
+    for signal in [UsbConnectorSignal::Dp, UsbConnectorSignal::Dm] {
+        validate_usb_return_path_for_signal(
+            bound,
+            scenario,
+            UsbReturnPathSignalCheck {
+                connector_id: &target.component,
+                component,
+                connector,
+                signal,
+                ground_zones: &ground_zones,
+                max_unreferenced_length_mm,
+            },
+            findings,
+        );
+    }
+}
+
 struct UsbRouteSignalCheck<'a> {
     connector_id: &'a str,
     component: &'a crate::board_ir::ComponentSpec,
@@ -359,6 +440,20 @@ struct VbusRouteProtectionCheck<'a> {
     route: &'a NetRoute,
     max_protection_route_distance_mm: f64,
     max_component_to_route_distance_mm: f64,
+}
+
+struct UsbReturnPathSignalCheck<'a> {
+    connector_id: &'a str,
+    component: &'a crate::board_ir::ComponentSpec,
+    connector: &'a UsbConnector,
+    signal: UsbConnectorSignal,
+    ground_zones: &'a [GroundZoneRef<'a>],
+    max_unreferenced_length_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GroundZoneRef<'a> {
+    zone: &'a CopperZone,
 }
 
 fn validate_usb_route_for_signal(
@@ -457,6 +552,101 @@ fn validate_usb_route_for_signal(
     validate_protection_route_distance(bound, scenario, &check, net_name, route, findings);
 }
 
+fn validate_usb_return_path_for_signal(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: UsbReturnPathSignalCheck<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let pin = check.signal.pin(check.connector);
+    let Some(net_name) = check.component.pins.get(pin) else {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {} {} pin {pin} is not connected, so return-path coverage cannot be checked.",
+                check.connector_id,
+                check.signal.label()
+            ),
+            "missing_pin",
+            pin,
+        ));
+        return;
+    };
+    if !bound.project.board.nets.contains_key(net_name) {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {} {} net {net_name} is not declared, so return-path coverage cannot be checked.",
+                check.connector_id,
+                check.signal.label()
+            ),
+            "missing_net",
+            net_name,
+        ));
+        return;
+    }
+    let Some(route) = bound.project.board.layout.routes.get(net_name) else {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {} {} net {net_name} has no board.layout.routes entry.",
+                check.connector_id,
+                check.signal.label()
+            ),
+            "missing_route",
+            net_name,
+        ));
+        return;
+    };
+    if let Err(message) = validate_route_shape(route) {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            check.connector_id,
+            message,
+            "route_geometry",
+            net_name,
+        ));
+        return;
+    }
+    let mut unreferenced_segments = Vec::new();
+    let mut unreferenced_length_mm = 0.0;
+    for (segment_index, segment) in route.segments.iter().enumerate() {
+        let midpoint = segment_midpoint(segment);
+        let referenced = check.ground_zones.iter().any(|ground_zone| {
+            ground_zone.zone.layer == segment.layer
+                && point_inside_zone_outline(midpoint, ground_zone.zone)
+        });
+        if referenced {
+            continue;
+        }
+        let segment_length_mm = segment_length_mm(segment);
+        unreferenced_length_mm += segment_length_mm;
+        unreferenced_segments.push(UsbReturnPathSegmentEvidence {
+            segment_index,
+            segment_length_mm,
+            midpoint_x_mm: midpoint.x_mm,
+            midpoint_y_mm: midpoint.y_mm,
+            layer: segment.layer.clone(),
+        });
+    }
+    if unreferenced_length_mm > check.max_unreferenced_length_mm {
+        findings.push(usb_return_path_unreferenced_finding(
+            scenario,
+            check.connector_id,
+            check.signal,
+            net_name,
+            UsbReturnPathEvidence {
+                unreferenced_length_mm,
+                max_unreferenced_length_mm: check.max_unreferenced_length_mm,
+                unreferenced_segments: &unreferenced_segments,
+            },
+        ));
+    }
+}
+
 fn validate_protection_route_distance(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -539,6 +729,47 @@ fn validate_protection_route_distance(
             check.max_protection_route_distance_mm,
         ));
     }
+}
+
+fn ground_reference_zones<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    connector_id: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<Vec<GroundZoneRef<'a>>> {
+    let mut zones = Vec::new();
+    for (net_name, zone_list) in &bound.project.board.layout.zones {
+        let Some(net) = bound.project.board.nets.get(net_name) else {
+            continue;
+        };
+        if net.kind != NetKind::Ground {
+            continue;
+        }
+        for zone in zone_list {
+            if let Err(message) = validate_zone_outline(zone) {
+                findings.push(usb_return_path_metadata_finding(
+                    scenario,
+                    connector_id,
+                    message,
+                    "ground_zone",
+                    net_name,
+                ));
+                return None;
+            }
+            zones.push(GroundZoneRef { zone });
+        }
+    }
+    if zones.is_empty() {
+        findings.push(usb_return_path_metadata_finding(
+            scenario,
+            connector_id,
+            "USB return-path validation requires at least one board.layout.zones entry whose net kind is ground.".to_string(),
+            "missing_ground_zone",
+            "ground",
+        ));
+        return None;
+    }
+    Some(zones)
 }
 
 fn validate_vbus_protection_route_distance(
