@@ -115,6 +115,7 @@ pin-1/BOM/PNP alignment.
 Fixture coverage:
 
 - `examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb`
+- `examples/import_kicad_usb_curved_board_edge_suggestions/`
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
@@ -123,3 +124,8 @@ straight/curved board-outline evidence, routed USB net geometry, copper-zone
 outline/fill evidence, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
+
+`examples/import_kicad_usb_curved_board_edge_suggestions/` isolates curved
+board-edge behavior. It proves USB connector orientation, edge-proximity, and
+body-overhang suggestions and validators can use sampled `gr_circle` and
+`gr_arc` `Edge.Cuts` segments as the nearest board edge.

@@ -2,6 +2,7 @@ mod common;
 
 use common::assert_yaml_file_valid;
 use serde_json::Value;
+use std::path::Path;
 use std::process::Command;
 
 #[test]
@@ -789,5 +790,172 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
                                 && contact["y_mm"] == 1.02
                         })
             })
+    );
+}
+
+#[test]
+fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    assert_curved_usb_board_edge_fixture(
+        dir.path(),
+        "circle",
+        "examples/import_kicad_usb_curved_board_edge_suggestions/board_circle.kicad_pcb",
+        32,
+        CurvedEdgeExpectation {
+            start_x_mm: 1.0,
+            start_y_mm: 0.0,
+            end_x_mm: 0.9807852804032304,
+            end_y_mm: 0.19509032201612825,
+            outward_normal_deg: 5.625,
+            body_overhang_mm: 0.04764876029325276,
+        },
+    );
+    assert_curved_usb_board_edge_fixture(
+        dir.path(),
+        "arc",
+        "examples/import_kicad_usb_curved_board_edge_suggestions/board_arc.kicad_pcb",
+        16,
+        CurvedEdgeExpectation {
+            start_x_mm: 0.09754516100806417,
+            start_y_mm: 0.4903926402016152,
+            end_x_mm: 0.0,
+            end_y_mm: 0.5,
+            outward_normal_deg: 84.375,
+            body_overhang_mm: 0.06755245482669661,
+        },
+    );
+}
+
+struct CurvedEdgeExpectation {
+    start_x_mm: f64,
+    start_y_mm: f64,
+    end_x_mm: f64,
+    end_y_mm: f64,
+    outward_normal_deg: f64,
+    body_overhang_mm: f64,
+}
+
+fn assert_curved_usb_board_edge_fixture(
+    dir: &Path,
+    name: &str,
+    board_path: &str,
+    expected_outline_segments: usize,
+    expected: CurvedEdgeExpectation,
+) {
+    let enriched_project = dir.join(format!("{name}.project.yaml"));
+    import_kicad_pcb(
+        board_path,
+        "examples/import_kicad_usb_curved_board_edge_suggestions/project.yaml",
+        &enriched_project,
+    );
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&enriched_project, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["layout"]["outline"]["segments"]
+            .as_array()
+            .unwrap()
+            .len(),
+        expected_outline_segments
+    );
+
+    let suggestions_path = dir.join(format!("{name}.suggestions.yaml"));
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            enriched_project.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_orientation_j1", &expected);
+    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_edge_proximity_j1", &expected);
+    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_body_overhang_j1", &expected);
+
+    let check_project = dir.join(format!("{name}.checks.project.yaml"));
+    import_kicad_pcb(
+        board_path,
+        "examples/import_kicad_usb_curved_board_edge_suggestions/project_checks.yaml",
+        &check_project,
+    );
+    let report_dir = dir.join(format!("{name}.report"));
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            check_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+}
+
+fn import_kicad_pcb(board_path: &str, project_path: &str, output_path: &Path) {
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-pcb",
+            board_path,
+            "--project",
+            project_path,
+            "--output",
+            output_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
+fn assert_suggestion_uses_curved_edge(
+    suggestions: &Value,
+    suggestion_id: &str,
+    expected: &CurvedEdgeExpectation,
+) {
+    let suggestion = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == suggestion_id)
+        .unwrap_or_else(|| panic!("missing suggestion {suggestion_id}"));
+    let edge = &suggestion["scenario"]["usb_connectors"][0]["nearest_board_edge"];
+    assert_close(edge["start"]["x_mm"].as_f64().unwrap(), expected.start_x_mm);
+    assert_close(edge["start"]["y_mm"].as_f64().unwrap(), expected.start_y_mm);
+    assert_close(edge["end"]["x_mm"].as_f64().unwrap(), expected.end_x_mm);
+    assert_close(edge["end"]["y_mm"].as_f64().unwrap(), expected.end_y_mm);
+    assert_eq!(edge["layer"], "Edge.Cuts");
+    assert_eq!(edge["distance_to_connector_mm"], 0.0);
+    assert_eq!(edge["connector_edge_reference"], "footprint_polygon");
+    assert_eq!(edge["footprint_graphic_layer"], "F.Fab");
+    assert_eq!(edge["footprint_graphic_kind"], "fabrication");
+    assert_close(
+        edge["outward_normal_deg"].as_f64().unwrap(),
+        expected.outward_normal_deg,
+    );
+    assert_close(
+        edge["connector_body_overhang_mm"].as_f64().unwrap(),
+        expected.body_overhang_mm,
+    );
+}
+
+fn assert_close(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() < 1.0e-12,
+        "expected {actual} to be close to {expected}"
     );
 }
