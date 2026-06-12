@@ -1,10 +1,8 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
-use crate::library::{
-    BoundBoard, ComponentModel, PortKind, PowerSwitchState, ProtectionClamp, ProtectionReference,
-    SignalConditioningChannel, SignalConditioningKind,
-};
+use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use std::collections::BTreeMap;
 
+mod interface_protection;
 mod types;
 
 pub use types::*;
@@ -36,7 +34,9 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
         suggestions.push(suggestion);
     }
     suggestions.extend(gpio_backdrive_suggestions(bound));
-    suggestions.extend(interface_protection_suggestions(bound));
+    suggestions.extend(interface_protection::interface_protection_suggestions(
+        bound,
+    ));
     suggestions.extend(clock_source_suggestions(bound));
     suggestions.extend(reset_release_suggestions(bound));
     suggestions.extend(boot_strap_suggestions(bound));
@@ -570,241 +570,6 @@ fn backdrive_suggestion(
             "Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.".to_string(),
         ],
     }
-}
-
-fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
-    let existing = existing_interface_protection_checks(bound.project);
-    let mut suggestions = Vec::new();
-    for (component_id, component) in &bound.project.board.components {
-        let Some(model) = bound.library.get(&component.model) else {
-            continue;
-        };
-        for channel in &model.signal_conditioning.channels {
-            if existing.contains_key(&(
-                component_id.clone(),
-                "channel".to_string(),
-                channel.name.clone(),
-            )) {
-                continue;
-            }
-            let Some(conditioning) = suggested_conditioning(bound, component_id, model, channel)
-            else {
-                continue;
-            };
-            suggestions.push(ScenarioSuggestion {
-                id: format!(
-                    "interface_protection_{}_{}",
-                    sanitized_name(component_id),
-                    sanitized_name(&channel.name)
-                ),
-                kind: "interface_protection".to_string(),
-                confidence: "medium".to_string(),
-                runnable: false,
-                reason: format!(
-                    "Component {component_id} model declares signal-conditioning channel {}, but no interface protection review scenario covers it.",
-                    channel.name
-                ),
-                scenario: SuggestedScenario {
-                    name: format!(
-                        "{}_{}_interface_protection",
-                        sanitized_name(component_id),
-                        sanitized_name(&channel.name)
-                    ),
-                    scenario_type: "interface_protection".to_string(),
-                    checks: vec![INTERFACE_PROTECTION_REVIEW.to_string()],
-                    parameters: Some(BTreeMap::from([(
-                        "channel".to_string(),
-                        serde_json::Value::String(channel.name.clone()),
-                    )])),
-                    target: Some(SuggestedTarget {
-                        component: component_id.clone(),
-                        power_pin: None,
-                        reset_pin: None,
-                    }),
-                    timing: None,
-                    required_boot_mode: None,
-                    straps: Vec::new(),
-                    bootloader: None,
-                    events: Vec::new(),
-                    conditioning: Some(conditioning),
-                    protection_clamps: Vec::new(),
-                    clocks: Vec::new(),
-                    reset_supervisors: Vec::new(),
-                    regulators: Vec::new(),
-                    pin_states: Vec::new(),
-                    paths: Vec::new(),
-                },
-                required_inputs: vec![
-                    "Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.".to_string(),
-                    "Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.".to_string(),
-                    "Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.".to_string(),
-                ],
-            });
-        }
-        for clamp in &model.signal_conditioning.protection_clamps {
-            if existing.contains_key(&(
-                component_id.clone(),
-                "clamp".to_string(),
-                clamp.name.clone(),
-            )) {
-                continue;
-            }
-            let Some(protection_clamp) =
-                suggested_protection_clamp(bound, component_id, component, model, clamp)
-            else {
-                continue;
-            };
-            suggestions.push(ScenarioSuggestion {
-                id: format!(
-                    "interface_protection_{}_{}",
-                    sanitized_name(component_id),
-                    sanitized_name(&clamp.name)
-                ),
-                kind: "interface_protection".to_string(),
-                confidence: "medium".to_string(),
-                runnable: true,
-                reason: format!(
-                    "Component {component_id} model declares protection clamp {}, but no interface protection review scenario covers it.",
-                    clamp.name
-                ),
-                scenario: SuggestedScenario {
-                    name: format!(
-                        "{}_{}_interface_protection",
-                        sanitized_name(component_id),
-                        sanitized_name(&clamp.name)
-                    ),
-                    scenario_type: "interface_protection".to_string(),
-                    checks: vec![INTERFACE_PROTECTION_REVIEW.to_string()],
-                    parameters: Some(BTreeMap::from([(
-                        "clamp".to_string(),
-                        serde_json::Value::String(clamp.name.clone()),
-                    )])),
-                    target: Some(SuggestedTarget {
-                        component: component_id.clone(),
-                        power_pin: None,
-                        reset_pin: None,
-                    }),
-                    timing: None,
-                    required_boot_mode: None,
-                    straps: Vec::new(),
-                    bootloader: None,
-                    events: Vec::new(),
-                    conditioning: None,
-                    protection_clamps: vec![protection_clamp],
-                    clocks: Vec::new(),
-                    reset_supervisors: Vec::new(),
-                    regulators: Vec::new(),
-                    pin_states: Vec::new(),
-                    paths: Vec::new(),
-                },
-                required_inputs: vec![
-                    "Fill parameters.max_line_capacitance_F from the real interface capacitance budget when capacitance screening is required; do not use the clamp's own capacitance as the budget unless that is the actual design limit.".to_string(),
-                    "Use layout, signal-integrity, and ESD-pulse validation for USB eye margin, return path, and IEC stress sign-off.".to_string(),
-                ],
-            });
-        }
-    }
-    suggestions
-}
-
-fn suggested_conditioning(
-    bound: &BoundBoard<'_>,
-    component_id: &str,
-    model: &ComponentModel,
-    channel: &SignalConditioningChannel,
-) -> Option<SuggestedConditioning> {
-    let side_a = suggested_conditioning_side(
-        bound,
-        component_id,
-        &channel.side_a_pin,
-        channel.side_a_supply_pin.as_deref(),
-    )?;
-    let side_b = suggested_conditioning_side(
-        bound,
-        component_id,
-        &channel.side_b_pin,
-        channel.side_b_supply_pin.as_deref(),
-    )?;
-    if !model.ports.contains_key(&channel.side_a_pin)
-        || !model.ports.contains_key(&channel.side_b_pin)
-    {
-        return None;
-    }
-    Some(SuggestedConditioning {
-        component: component_id.to_string(),
-        channel: channel.name.clone(),
-        kind: signal_conditioning_kind_name(&channel.kind).to_string(),
-        side_a,
-        side_b,
-        direction: channel.direction.clone(),
-        unpowered_isolation: channel.unpowered_isolation,
-    })
-}
-
-fn suggested_protection_clamp(
-    bound: &BoundBoard<'_>,
-    component_id: &str,
-    component: &ComponentSpec,
-    model: &ComponentModel,
-    clamp: &ProtectionClamp,
-) -> Option<SuggestedProtectionClamp> {
-    if !model.ports.contains_key(&clamp.protected_pin)
-        || !model.ports.contains_key(&clamp.reference_pin)
-    {
-        return None;
-    }
-    let protected_net = component.pins.get(&clamp.protected_pin)?.clone();
-    let reference_net = component.pins.get(&clamp.reference_pin)?.clone();
-    bound.project.board.nets.get(&protected_net)?;
-    bound.project.board.nets.get(&reference_net)?;
-    let reference = match clamp.reference {
-        ProtectionReference::Ground => "ground",
-        ProtectionReference::Power => "power",
-    };
-    Some(SuggestedProtectionClamp {
-        component: component_id.to_string(),
-        clamp: clamp.name.clone(),
-        protected_pin: clamp.protected_pin.clone(),
-        protected_net,
-        reference_pin: clamp.reference_pin.clone(),
-        reference_net,
-        reference: reference.to_string(),
-        working_voltage_max_v: clamp.working_voltage_max_v,
-        line_capacitance_f: clamp.line_capacitance_f,
-    })
-}
-
-fn signal_conditioning_kind_name(kind: &SignalConditioningKind) -> &'static str {
-    match kind {
-        SignalConditioningKind::LevelShifter => "level_shifter",
-        SignalConditioningKind::Protection => "protection",
-        SignalConditioningKind::SeriesResistor => "series_resistor",
-        SignalConditioningKind::BusSwitch => "bus_switch",
-    }
-}
-
-fn suggested_conditioning_side(
-    bound: &BoundBoard<'_>,
-    component_id: &str,
-    pin: &str,
-    supply_pin: Option<&str>,
-) -> Option<SuggestedConditioningSide> {
-    let component = bound.project.board.components.get(component_id)?;
-    let net = component.pins.get(pin)?.clone();
-    let supply_net = supply_pin
-        .and_then(|pin_name| {
-            component
-                .power_domains
-                .get(pin_name)
-                .or_else(|| component.pins.get(pin_name))
-        })
-        .cloned();
-    Some(SuggestedConditioningSide {
-        pin: pin.to_string(),
-        net,
-        supply_pin: supply_pin.map(str::to_string),
-        supply_net,
-    })
 }
 
 fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
@@ -1425,51 +1190,6 @@ fn existing_backdrive_paths(
                     (),
                 )
             })
-        })
-        .collect()
-}
-
-fn existing_interface_protection_checks(
-    project: &BoardProject,
-) -> BTreeMap<(String, String, String), ()> {
-    project
-        .scenarios
-        .iter()
-        .filter(|scenario| {
-            scenario.scenario_type == "interface_protection"
-                && scenario
-                    .checks
-                    .iter()
-                    .any(|check| check == INTERFACE_PROTECTION_REVIEW)
-        })
-        .filter_map(|scenario| {
-            let target = scenario.target.as_ref()?;
-            if let Some(channel) = scenario
-                .parameters
-                .get("channel")
-                .and_then(serde_yaml_ng::Value::as_str)
-            {
-                return Some((
-                    (
-                        target.component.clone(),
-                        "channel".to_string(),
-                        channel.to_string(),
-                    ),
-                    (),
-                ));
-            }
-            let clamp = scenario
-                .parameters
-                .get("clamp")
-                .and_then(serde_yaml_ng::Value::as_str)?;
-            Some((
-                (
-                    target.component.clone(),
-                    "clamp".to_string(),
-                    clamp.to_string(),
-                ),
-                (),
-            ))
         })
         .collect()
 }
