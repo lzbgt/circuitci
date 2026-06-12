@@ -67,7 +67,9 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks connector-center distance to the
   nearest imported straight board-edge segment. It does not prove connector
   body overhang, panel alignment, shell clearance, cable insertion clearance,
-  arcs, slots, or cutout geometry.
+  arcs, slots, or cutout geometry. KiCad PCB import can now expose matched
+  footprint `fp_line`/`fp_rect` drawing evidence for review, but those drawings
+  are not yet a full mechanical body or enclosure model.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

@@ -184,7 +184,33 @@ pub struct SuggestedUsbConnector {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub placement: Option<SuggestedPlacement>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub footprint: Option<SuggestedFootprint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_board_edge: Option<SuggestedBoardEdge>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprint {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub segments: Vec<SuggestedFootprintSegment>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rectangles: Vec<SuggestedFootprintRectangle>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintSegment {
+    pub start: SuggestedPoint,
+    pub end: SuggestedPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintRectangle {
+    pub start: SuggestedPoint,
+    pub end: SuggestedPoint,
+    pub layer: String,
+    pub kind: String,
 }
 
 #[derive(Debug, Serialize)]

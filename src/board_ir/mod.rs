@@ -38,6 +38,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub placements: BTreeMap<String, ComponentPlacement>,
     #[serde(default)]
+    pub footprints: BTreeMap<String, LayoutFootprint>,
+    #[serde(default)]
     pub outline: BoardOutline,
     #[serde(default)]
     pub pads: BTreeMap<String, BTreeMap<String, LayoutPad>>,
@@ -47,6 +49,30 @@ pub struct BoardLayout {
     pub zones: BTreeMap<String, Vec<CopperZone>>,
     #[serde(default)]
     pub constraints: LayoutConstraints,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutFootprint {
+    #[serde(default)]
+    pub segments: Vec<LayoutFootprintSegment>,
+    #[serde(default)]
+    pub rectangles: Vec<LayoutFootprintRectangle>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintSegment {
+    pub start: LayoutPoint,
+    pub end: LayoutPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintRectangle {
+    pub start: LayoutPoint,
+    pub end: LayoutPoint,
+    pub layer: String,
+    pub kind: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

@@ -23,6 +23,28 @@ struct PcbPlacement {
     rotation_deg: Option<f64>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct PcbFootprint {
+    segments: Vec<PcbFootprintSegment>,
+    rectangles: Vec<PcbFootprintRectangle>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintSegment {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintRectangle {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct FootprintAt {
     x_mm: f64,
@@ -47,9 +69,34 @@ struct PlacementYaml {
     rotation_deg: Option<f64>,
 }
 
+#[derive(Debug, Serialize)]
+struct FootprintYaml {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    segments: Vec<FootprintSegmentYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    rectangles: Vec<FootprintRectangleYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintSegmentYaml {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintRectangleYaml {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct KicadPcbImportSummary {
     pub placements: usize,
+    pub footprint_graphics: usize,
     pub pads: usize,
     pub outline_segments: usize,
     pub route_segments: usize,
@@ -261,6 +308,7 @@ pub fn import_kicad_pcb_placements(
 #[derive(Debug, Clone)]
 struct ParsedPcb {
     placements: BTreeMap<String, PcbPlacement>,
+    footprints: BTreeMap<String, PcbFootprint>,
     pads: BTreeMap<String, BTreeMap<String, PcbPad>>,
     outline: PcbOutline,
     routes: BTreeMap<String, PcbRoute>,
@@ -277,6 +325,7 @@ fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
         bail!("KiCad PCB {} root token is not kicad_pcb.", path.display());
     }
     let placements = parse_placements(root_list, path)?;
+    let footprints = parse_footprints(root_list, path)?;
     let pads = parse_pads(root_list, path)?;
     let outline = parse_outline(root_list, path)?;
     let routes = parse_routes(root_list, path)?;
@@ -284,6 +333,7 @@ fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
     let net_rules = parse_net_rules(root_list, path)?;
     Ok(ParsedPcb {
         placements,
+        footprints,
         pads,
         outline,
         routes,
@@ -385,6 +435,56 @@ fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, 
         bail!("KiCad PCB {} contains no footprints.", path.display());
     }
     Ok(placements)
+}
+
+fn parse_footprints(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbFootprint>> {
+    let mut footprints = BTreeMap::new();
+    for footprint in list_children(root_list, "footprint") {
+        let reference = footprint_reference(footprint)
+            .with_context(|| "KiCad PCB footprint is missing Reference property or fp_text.")?;
+        let footprint_at = footprint_at(footprint, &reference)?;
+        let mut evidence = PcbFootprint::default();
+        for line in list_children(footprint, "fp_line") {
+            let start = transformed_child_point(line, "start", footprint_at, path)?;
+            let end = transformed_child_point(line, "end", footprint_at, path)?;
+            if (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm) <= f64::EPSILON {
+                bail!(
+                    "KiCad PCB footprint {reference} fp_line in {} has zero length.",
+                    path.display()
+                );
+            }
+            let layer = non_empty_child_string(line, "layer", path)?;
+            evidence.segments.push(PcbFootprintSegment {
+                start,
+                end,
+                kind: footprint_graphic_kind(&layer).to_string(),
+                layer,
+            });
+        }
+        for rect in list_children(footprint, "fp_rect") {
+            let start = transformed_child_point(rect, "start", footprint_at, path)?;
+            let end = transformed_child_point(rect, "end", footprint_at, path)?;
+            if (end.x_mm - start.x_mm).abs() <= f64::EPSILON
+                || (end.y_mm - start.y_mm).abs() <= f64::EPSILON
+            {
+                bail!(
+                    "KiCad PCB footprint {reference} fp_rect in {} has zero area.",
+                    path.display()
+                );
+            }
+            let layer = non_empty_child_string(rect, "layer", path)?;
+            evidence.rectangles.push(PcbFootprintRectangle {
+                start,
+                end,
+                kind: footprint_graphic_kind(&layer).to_string(),
+                layer,
+            });
+        }
+        if !evidence.segments.is_empty() || !evidence.rectangles.is_empty() {
+            footprints.insert(reference, evidence);
+        }
+    }
+    Ok(footprints)
 }
 
 fn parse_routes(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbRoute>> {
@@ -992,6 +1092,45 @@ fn transform_footprint_point(
     }
 }
 
+fn transformed_child_point(
+    item: &[Sexp],
+    field: &str,
+    footprint_at: FootprintAt,
+    path: &Path,
+) -> Result<PcbPoint> {
+    let point = child_list(item, field).with_context(|| {
+        format!(
+            "KiCad PCB footprint graphic item in {} is missing ({field} x y).",
+            path.display()
+        )
+    })?;
+    let x_mm = numeric_at(point, 1).with_context(|| {
+        format!(
+            "KiCad PCB footprint graphic item in {} has invalid {field} x coordinate.",
+            path.display()
+        )
+    })?;
+    let y_mm = numeric_at(point, 2).with_context(|| {
+        format!(
+            "KiCad PCB footprint graphic item in {} has invalid {field} y coordinate.",
+            path.display()
+        )
+    })?;
+    Ok(transform_footprint_point(footprint_at, x_mm, y_mm))
+}
+
+fn footprint_graphic_kind(layer: &str) -> &'static str {
+    if layer.ends_with(".Fab") {
+        "fabrication"
+    } else if layer.ends_with(".CrtYd") {
+        "courtyard"
+    } else if layer.ends_with(".SilkS") {
+        "silkscreen"
+    } else {
+        "other"
+    }
+}
+
 fn pad_net_name(
     pad: &[Sexp],
     net_names: &BTreeMap<String, String>,
@@ -1180,6 +1319,15 @@ fn merge_pcb_into_project(
         );
         summary.placements += 1;
     }
+    let footprint_yaml = ensure_mapping_field_mut(layout, "footprints")?;
+    for (reference, footprint) in &parsed_pcb.footprints {
+        if !component_refs.contains(reference) {
+            continue;
+        }
+        let footprint_value = footprint_yaml_value(footprint)?;
+        footprint_yaml.insert(Value::String(reference.clone()), footprint_value);
+        summary.footprint_graphics += footprint.segments.len() + footprint.rectangles.len();
+    }
     let pad_yaml = ensure_mapping_field_mut(layout, "pads")?;
     for (reference, pads) in &parsed_pcb.pads {
         if !component_refs.contains(reference) {
@@ -1254,6 +1402,32 @@ fn outline_yaml_value(outline: &PcbOutline) -> Result<Value> {
             .collect(),
     })
     .context("Failed to serialize KiCad PCB board outline evidence into Board IR YAML.")
+}
+
+fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
+    serde_yaml_ng::to_value(FootprintYaml {
+        segments: footprint
+            .segments
+            .iter()
+            .map(|segment| FootprintSegmentYaml {
+                start: segment.start,
+                end: segment.end,
+                layer: segment.layer.clone(),
+                kind: segment.kind.clone(),
+            })
+            .collect(),
+        rectangles: footprint
+            .rectangles
+            .iter()
+            .map(|rectangle| FootprintRectangleYaml {
+                start: rectangle.start,
+                end: rectangle.end,
+                layer: rectangle.layer.clone(),
+                kind: rectangle.kind.clone(),
+            })
+            .collect(),
+    })
+    .context("Failed to serialize KiCad PCB footprint drawing evidence into Board IR YAML.")
 }
 
 fn route_yaml_value(route: &PcbRoute) -> Result<Value> {

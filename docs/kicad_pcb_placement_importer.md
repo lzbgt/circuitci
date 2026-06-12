@@ -1,8 +1,8 @@
 # KiCad PCB Layout Evidence Importer
 
 `circuitci import-kicad-pcb` enriches an existing Board IR project with
-component placement, pad, routed-net, zone, and routing-rule evidence from a
-KiCad `.kicad_pcb` file:
+component placement, footprint drawing, pad, routed-net, zone, and routing-rule
+evidence from a KiCad `.kicad_pcb` file:
 
 ```bash
 circuitci import-kicad-pcb board.kicad_pcb \
@@ -26,6 +26,20 @@ footprints, and PCB files with no matching Board IR components fail closed.
 Placement evidence includes component center coordinates, side when it can be
 derived from the footprint layer, and footprint `rotation_deg` from the KiCad
 `(at x y rotation)` tuple.
+
+The importer also reads footprint `fp_line` and `fp_rect` drawing items and
+writes transformed drawing evidence under `board.layout.footprints` for matching
+Board IR components. Imported footprint drawing evidence includes:
+
+- component reference,
+- transformed start/end coordinates in millimeters,
+- source layer,
+- a bounded semantic kind derived from the layer: `fabrication`, `courtyard`,
+  `silkscreen`, or `other`.
+
+This is drawing evidence, not a full mechanical body solver. Rectangles are
+stored as their transformed opposite corners; rotated rectangles should be
+treated as evidence for follow-up rules, not as exact polygonal body sign-off.
 
 The importer also reads connected footprint `pad` entries and writes pad
 evidence under `board.layout.pads` when the footprint reference and pad net both
@@ -82,12 +96,13 @@ This is bounded layout evidence, not a full PCB layout solver. The importer
 extracts component center placements, routed `segment`/`via` geometry, net-class
 route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
-outlines plus saved filled polygons. It also extracts connected pad center,
-kind, shape, size, rotation, scalar drill, net, and layer evidence. It does not solve
-arcs or non-line board edges, filled-copper island connectivity, pad-to-zone
+outlines plus saved filled polygons. It also extracts matched footprint drawing
+items and connected pad center, kind, shape, size, rotation, scalar drill, net,
+and layer evidence. It does not solve arcs or non-line board edges, exact
+rotated-body polygons, filled-copper island connectivity, pad-to-zone
 connectivity, thermal relief behavior, solder-mask expansion, shield bonding,
-return paths, impedance calculations, arbitrary DRC rule semantics, or
-pin-1/BOM/PNP alignment.
+return paths, impedance calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP
+alignment.
 
 Fixture coverage:
 
@@ -95,7 +110,7 @@ Fixture coverage:
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, connected pad geometry, routed USB net geometry, copper-zone
-outline/fill evidence, and routing-rule evidence, then proves
+PCB placements, footprint drawing evidence, connected pad geometry, routed USB
+net geometry, copper-zone outline/fill evidence, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.

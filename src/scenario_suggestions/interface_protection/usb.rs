@@ -1,7 +1,8 @@
 use super::super::{
-    ScenarioSuggestion, SuggestedBoardEdge, SuggestedPoint, SuggestedProtectionClamp,
-    SuggestedScenario, SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute,
-    SuggestedUsbRoutePair, USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
+    ScenarioSuggestion, SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintRectangle,
+    SuggestedFootprintSegment, SuggestedPoint, SuggestedProtectionClamp, SuggestedScenario,
+    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
+    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
     USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
     USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
 };
@@ -10,8 +11,8 @@ use super::{
     suggested_protection_clamp,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, LayoutPoint, LayoutSegment, NetKind,
-    NetLayoutRule, NetRoute, RouteSegment,
+    BoardProject, ComponentPlacement, ComponentSpec, LayoutFootprint, LayoutPoint, LayoutSegment,
+    NetKind, NetLayoutRule, NetRoute, RouteSegment,
 };
 use crate::library::{BoundBoard, ComponentModel, ProtectionReference, UsbConnector};
 use std::collections::{BTreeMap, BTreeSet};
@@ -1179,7 +1180,40 @@ fn suggested_usb_connector(
         shield_pin: connector.shield_pin.clone(),
         shield_net,
         placement: suggested_placement(bound, component_id),
+        footprint: suggested_footprint(bound, component_id),
         nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
+    })
+}
+
+fn suggested_footprint(bound: &BoundBoard<'_>, component_id: &str) -> Option<SuggestedFootprint> {
+    let footprint = bound.project.board.layout.footprints.get(component_id)?;
+    suggested_footprint_from_layout(footprint)
+}
+
+fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<SuggestedFootprint> {
+    let segments = footprint
+        .segments
+        .iter()
+        .map(|segment| SuggestedFootprintSegment {
+            start: suggested_point(&segment.start),
+            end: suggested_point(&segment.end),
+            layer: segment.layer.clone(),
+            kind: segment.kind.clone(),
+        })
+        .collect::<Vec<_>>();
+    let rectangles = footprint
+        .rectangles
+        .iter()
+        .map(|rectangle| SuggestedFootprintRectangle {
+            start: suggested_point(&rectangle.start),
+            end: suggested_point(&rectangle.end),
+            layer: rectangle.layer.clone(),
+            kind: rectangle.kind.clone(),
+        })
+        .collect::<Vec<_>>();
+    (!segments.is_empty() || !rectangles.is_empty()).then_some(SuggestedFootprint {
+        segments,
+        rectangles,
     })
 }
 

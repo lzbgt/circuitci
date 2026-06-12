@@ -75,6 +75,7 @@ scenarios:
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
+| layout footprints | optional component map | Imported footprint drawing evidence for body/courtyard-aware layout checks. |
 | layout outline | optional board-edge segment list | Imported board outline segments used as mechanical/layout orientation evidence. |
 | layout pads | optional component/pad map | Imported pad geometry, net, and layer evidence used by layout-connectivity checks. |
 | layout routes | optional net map | Routed segment and via geometry used by layout-aware checks. |
@@ -136,6 +137,37 @@ protection components are close to the connector.
 footprint orientation against an explicit mechanical/layout rule. Missing or
 non-finite placement coordinates fail closed for rules that declare a placement
 limit, and missing rotation evidence fails closed for orientation rules.
+
+## Layout Footprint Drawing Evidence
+
+Board IR can carry imported footprint drawing evidence under
+`board.layout.footprints`. The first key is an existing Board IR component
+reference. Coordinates are in millimeters after footprint translation and
+rotation into the same layout coordinate system as placements, pads, routes,
+zones, and board outline segments.
+
+```yaml
+board:
+  layout:
+    footprints:
+      J1:
+        rectangles:
+          - start: { x_mm: -0.7, y_mm: -0.8 }
+            end: { x_mm: 0.3, y_mm: 1.2 }
+            layer: F.Fab
+            kind: fabrication
+        segments:
+          - start: { x_mm: -0.8, y_mm: -0.9 }
+            end: { x_mm: 0.4, y_mm: -0.9 }
+            layer: F.CrtYd
+            kind: courtyard
+```
+
+KiCad PCB import currently populates this from footprint `fp_line` and
+`fp_rect` drawing items. The `kind` field is derived from the drawing layer and
+is intentionally conservative: `fabrication`, `courtyard`, `silkscreen`, or
+`other`. This is drawing evidence for follow-up layout rules; it is not a full
+3D body, exact rotated polygon, enclosure, or keepout model.
 
 ## Layout Outline Evidence
 

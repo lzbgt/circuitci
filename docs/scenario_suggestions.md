@@ -103,7 +103,10 @@ The command is conservative:
   USB connector has finite placement evidence and
   `board.layout.outline.segments` contains usable straight board-edge evidence.
   The template includes `nearest_board_edge.distance_to_connector_mm` in
-  `scenario.usb_connectors[]` and leaves
+  `scenario.usb_connectors[]`. When imported footprint drawing evidence exists,
+  `scenario.usb_connectors[].footprint` also reports transformed
+  `fp_line`/`fp_rect` body, courtyard, or silkscreen evidence for mechanical
+  review. The template leaves
   `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
   connector/enclosure mechanical rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB

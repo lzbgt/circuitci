@@ -64,6 +64,16 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         1.5
     );
     assert!(imported["board"]["layout"]["placements"]["H1"].is_null());
+    let connector_footprint = &imported["board"]["layout"]["footprints"]["J1"];
+    assert_eq!(connector_footprint["rectangles"][0]["kind"], "fabrication");
+    assert_eq!(connector_footprint["rectangles"][0]["layer"], "F.Fab");
+    assert_eq!(connector_footprint["rectangles"][0]["start"]["x_mm"], -0.7);
+    assert_eq!(connector_footprint["rectangles"][0]["end"]["y_mm"], 1.2);
+    assert_eq!(connector_footprint["segments"][0]["kind"], "courtyard");
+    assert_eq!(connector_footprint["segments"][0]["layer"], "F.CrtYd");
+    assert_eq!(connector_footprint["segments"][0]["start"]["x_mm"], -0.8);
+    assert_eq!(connector_footprint["segments"][0]["end"]["x_mm"], 0.4);
+    assert!(imported["board"]["layout"]["footprints"]["H1"].is_null());
     let connector_dp_pad = &imported["board"]["layout"]["pads"]["J1"]["D+"];
     assert_eq!(connector_dp_pad["at"]["x_mm"], 0.0);
     assert_eq!(connector_dp_pad["at"]["y_mm"], 0.2);
@@ -247,6 +257,18 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["nearest_board_edge"]["distance_to_connector_mm"],
         0.4
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["rectangles"][0]["kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["rectangles"][0]["layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["segments"][0]["kind"],
+        "courtyard"
     );
     let route = suggestions["suggestions"]
         .as_array()
