@@ -43,6 +43,12 @@ This is static board-validation evidence. It does not prove ESD pulse behavior,
 dynamic clamp current, USB eye margin, trace impedance, return path quality, or
 connector-layout correctness.
 
+`circuitci suggest-scenarios` emits clamp review templates automatically for
+connected models with `signal_conditioning.protection_clamps`. The suggestions
+include `parameters.clamp` and `scenario.protection_clamps[]` evidence, but
+agents still need to fill `parameters.max_line_capacitance_F` from the actual
+interface budget when capacitance screening is part of the sign-off.
+
 Current fixtures:
 
 - `examples/good_usb_esd_protection`

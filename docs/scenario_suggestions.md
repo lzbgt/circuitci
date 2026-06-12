@@ -59,9 +59,15 @@ The command is conservative:
 - It emits interface-protection templates for component models that declare
   `signal_conditioning.channels`, such as level shifters, protection devices,
   series resistors, or bus switches.
-- Interface-protection templates are marked `runnable: false`; they are review
-  prompts for datasheet direction, voltage-domain, enable/OE, and
-  unpowered-isolation evidence.
+- Channel-style interface-protection templates are marked `runnable: false`;
+  they are review prompts for datasheet direction, voltage-domain, enable/OE,
+  and unpowered-isolation evidence.
+- It emits clamp-only interface-protection templates for component models that
+  declare `signal_conditioning.protection_clamps`, such as USB ESD arrays. The
+  template includes `parameters.clamp` plus `scenario.protection_clamps[]`
+  evidence with protected/reference pins and nets, standoff voltage, and line
+  capacitance. Agents should fill `parameters.max_line_capacitance_F` from the
+  real interface budget when capacitance screening is required.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The
@@ -275,6 +281,33 @@ suggestions:
       - Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.
       - Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.
       - Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.
+  - id: interface_protection_uesd_d1_plus
+    kind: interface_protection
+    confidence: medium
+    runnable: true
+    reason: Component UESD model declares protection clamp d1_plus, but no interface protection review scenario covers it.
+    scenario:
+      name: uesd_d1_plus_interface_protection
+      type: interface_protection
+      checks:
+        - INTERFACE_PROTECTION_REVIEW
+      parameters:
+        clamp: d1_plus
+      target:
+        component: UESD
+      protection_clamps:
+        - component: UESD
+          clamp: d1_plus
+          protected_pin: D1+
+          protected_net: usb_dp
+          reference_pin: GND
+          reference_net: gnd
+          reference: ground
+          working_voltage_max_V: 5.5
+          line_capacitance_F: 7.0e-13
+    required_inputs:
+      - Fill parameters.max_line_capacitance_F from the real interface capacitance budget when capacitance screening is required; do not use the clamp's own capacitance as the budget unless that is the actual design limit.
+      - Use layout, signal-integrity, and ESD-pulse validation for USB eye margin, return path, and IEC stress sign-off.
   - id: clock_source_valid_u1
     kind: clock
     confidence: medium

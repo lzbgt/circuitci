@@ -40,6 +40,17 @@
                 "minItems": 1,
                 "items": { "type": "string", "minLength": 1 }
               },
+              "parameters": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "boolean" },
+                    { "type": "null" }
+                  ]
+                }
+              },
               "target": {
                 "type": "object",
                 "required": ["component"],
@@ -123,6 +134,33 @@
                   "unpowered_isolation": { "type": "boolean" }
                 },
                 "additionalProperties": false
+              },
+              "protection_clamps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "component",
+                    "clamp",
+                    "protected_pin",
+                    "protected_net",
+                    "reference_pin",
+                    "reference_net",
+                    "reference"
+                  ],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "clamp": { "type": "string", "minLength": 1 },
+                    "protected_pin": { "type": "string", "minLength": 1 },
+                    "protected_net": { "type": "string", "minLength": 1 },
+                    "reference_pin": { "type": "string", "minLength": 1 },
+                    "reference_net": { "type": "string", "minLength": 1 },
+                    "reference": { "enum": ["ground", "power"] },
+                    "working_voltage_max_V": { "type": "number", "exclusiveMinimum": 0 },
+                    "line_capacitance_F": { "type": "number", "minimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
               },
               "clocks": {
                 "type": "array",

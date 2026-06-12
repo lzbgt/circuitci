@@ -1,0 +1,27 @@
+project:
+  name: scenario_suggestions_usb_esd
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/protection
+
+board:
+  components:
+    UESD:
+      model: vendor.ti.tpd2eusb30
+      part_number: TPD2EUSB30
+      pins:
+        "D1+": usb_dp
+        "D1-": usb_dm
+        GND: gnd
+  nets:
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios: []

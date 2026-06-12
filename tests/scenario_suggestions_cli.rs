@@ -305,6 +305,51 @@ fn suggest_scenarios_derives_interface_protection_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_usb_esd_clamp_templates() {
+    let suggestions = run_suggest_scenarios("examples/scenario_suggestions_usb_esd/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_usb_esd");
+    let dp = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_d1_plus")
+        .expect("D+ clamp suggestion");
+    assert_eq!(dp["kind"], "interface_protection");
+    assert_eq!(dp["runnable"], true);
+    assert_eq!(dp["scenario"]["type"], "interface_protection");
+    assert_eq!(dp["scenario"]["checks"][0], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(dp["scenario"]["target"]["component"], "UESD");
+    assert_eq!(dp["scenario"]["parameters"]["clamp"], "d1_plus");
+    let clamp = &dp["scenario"]["protection_clamps"][0];
+    assert_eq!(clamp["component"], "UESD");
+    assert_eq!(clamp["clamp"], "d1_plus");
+    assert_eq!(clamp["protected_pin"], "D1+");
+    assert_eq!(clamp["protected_net"], "usb_dp");
+    assert_eq!(clamp["reference_pin"], "GND");
+    assert_eq!(clamp["reference_net"], "gnd");
+    assert_eq!(clamp["reference"], "ground");
+    assert_eq!(clamp["working_voltage_max_V"], 5.5);
+    assert_eq!(clamp["line_capacitance_F"], 7.0e-13);
+    assert!(
+        dp["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("max_line_capacitance_F")
+    );
+    let dm = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_d1_minus")
+        .expect("D- clamp suggestion");
+    assert_eq!(dm["scenario"]["parameters"]["clamp"], "d1_minus");
+    assert_eq!(
+        dm["scenario"]["protection_clamps"][0]["protected_net"],
+        "usb_dm"
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_boot_strap_bias_template() {
     let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
     assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");

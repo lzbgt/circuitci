@@ -30,6 +30,13 @@ These facts are encoded as two `signal_conditioning.protection_clamps`:
 - normal protected-net voltage does not exceed the `5.5 V` standoff limit,
 - the `0.7 pF` line capacitance fits the scenario interface budget.
 
+`circuitci suggest-scenarios` emits one `interface_protection` template per
+modeled clamp when a board connects this part and does not already declare a
+matching clamp review scenario. The suggestion includes `parameters.clamp` and
+`scenario.protection_clamps[]` evidence so agents can see the exact USB line,
+reference net, standoff limit, and capacitance before deciding the interface
+budget.
+
 This model is not a SPICE clamp model. It is not valid for ESD pulse waveform
 proof, USB eye margin, differential impedance, return-path quality, or final
 layout sign-off.

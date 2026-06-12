@@ -1,4 +1,6 @@
 use serde::Serialize;
+use serde_json::Value;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize)]
 pub struct ScenarioSuggestionReport {
@@ -26,6 +28,8 @@ pub struct SuggestedScenario {
     pub scenario_type: String,
     pub checks: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<BTreeMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub target: Option<SuggestedTarget>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timing: Option<SuggestedTiming>,
@@ -39,6 +43,8 @@ pub struct SuggestedScenario {
     pub events: Vec<SuggestedEvent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conditioning: Option<SuggestedConditioning>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub protection_clamps: Vec<SuggestedProtectionClamp>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub clocks: Vec<SuggestedClockSource>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -128,6 +134,24 @@ pub struct SuggestedConditioningSide {
     pub supply_pin: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supply_net: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedProtectionClamp {
+    pub component: String,
+    pub clamp: String,
+    pub protected_pin: String,
+    pub protected_net: String,
+    pub reference_pin: String,
+    pub reference_net: String,
+    pub reference: String,
+    #[serde(
+        rename = "working_voltage_max_V",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub working_voltage_max_v: Option<f64>,
+    #[serde(rename = "line_capacitance_F", skip_serializing_if = "Option::is_none")]
+    pub line_capacitance_f: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

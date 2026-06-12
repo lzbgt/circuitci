@@ -1,7 +1,7 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::library::{
-    BoundBoard, ComponentModel, PortKind, PowerSwitchState, SignalConditioningChannel,
-    SignalConditioningKind,
+    BoundBoard, ComponentModel, PortKind, PowerSwitchState, ProtectionClamp, ProtectionReference,
+    SignalConditioningChannel, SignalConditioningKind,
 };
 use std::collections::BTreeMap;
 
@@ -86,6 +86,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
             name: format!("{}_power_tree", sanitized_name(&bound.project.project.name)),
             scenario_type: "power_tree".to_string(),
             checks: vec![POWER_TREE_VALID.to_string()],
+            parameters: None,
             target: None,
             timing: None,
             required_boot_mode: None,
@@ -93,6 +94,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            protection_clamps: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors,
             regulators,
@@ -329,6 +331,7 @@ fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
             name: format!("{}_io_voltage", sanitized_name(&bound.project.project.name)),
             scenario_type: "power_tree".to_string(),
             checks: vec![IO_VOLTAGE_COMPATIBLE.to_string()],
+            parameters: None,
             target: None,
             timing: None,
             required_boot_mode: None,
@@ -336,6 +339,7 @@ fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            protection_clamps: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -522,6 +526,7 @@ fn backdrive_suggestion(
             ),
             scenario_type: "gpio_backdrive".to_string(),
             checks: vec![GPIO_BACKDRIVE.to_string()],
+            parameters: None,
             target: None,
             timing: None,
             required_boot_mode: None,
@@ -529,6 +534,7 @@ fn backdrive_suggestion(
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            protection_clamps: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -574,7 +580,11 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
             continue;
         };
         for channel in &model.signal_conditioning.channels {
-            if existing.contains_key(&(component_id.clone(), channel.name.clone())) {
+            if existing.contains_key(&(
+                component_id.clone(),
+                "channel".to_string(),
+                channel.name.clone(),
+            )) {
                 continue;
             }
             let Some(conditioning) = suggested_conditioning(bound, component_id, model, channel)
@@ -602,6 +612,10 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
                     ),
                     scenario_type: "interface_protection".to_string(),
                     checks: vec![INTERFACE_PROTECTION_REVIEW.to_string()],
+                    parameters: Some(BTreeMap::from([(
+                        "channel".to_string(),
+                        serde_json::Value::String(channel.name.clone()),
+                    )])),
                     target: Some(SuggestedTarget {
                         component: component_id.clone(),
                         power_pin: None,
@@ -613,6 +627,7 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
                     bootloader: None,
                     events: Vec::new(),
                     conditioning: Some(conditioning),
+                    protection_clamps: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -623,6 +638,68 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
                     "Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.".to_string(),
                     "Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.".to_string(),
                     "Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.".to_string(),
+                ],
+            });
+        }
+        for clamp in &model.signal_conditioning.protection_clamps {
+            if existing.contains_key(&(
+                component_id.clone(),
+                "clamp".to_string(),
+                clamp.name.clone(),
+            )) {
+                continue;
+            }
+            let Some(protection_clamp) =
+                suggested_protection_clamp(bound, component_id, component, model, clamp)
+            else {
+                continue;
+            };
+            suggestions.push(ScenarioSuggestion {
+                id: format!(
+                    "interface_protection_{}_{}",
+                    sanitized_name(component_id),
+                    sanitized_name(&clamp.name)
+                ),
+                kind: "interface_protection".to_string(),
+                confidence: "medium".to_string(),
+                runnable: true,
+                reason: format!(
+                    "Component {component_id} model declares protection clamp {}, but no interface protection review scenario covers it.",
+                    clamp.name
+                ),
+                scenario: SuggestedScenario {
+                    name: format!(
+                        "{}_{}_interface_protection",
+                        sanitized_name(component_id),
+                        sanitized_name(&clamp.name)
+                    ),
+                    scenario_type: "interface_protection".to_string(),
+                    checks: vec![INTERFACE_PROTECTION_REVIEW.to_string()],
+                    parameters: Some(BTreeMap::from([(
+                        "clamp".to_string(),
+                        serde_json::Value::String(clamp.name.clone()),
+                    )])),
+                    target: Some(SuggestedTarget {
+                        component: component_id.clone(),
+                        power_pin: None,
+                        reset_pin: None,
+                    }),
+                    timing: None,
+                    required_boot_mode: None,
+                    straps: Vec::new(),
+                    bootloader: None,
+                    events: Vec::new(),
+                    conditioning: None,
+                    protection_clamps: vec![protection_clamp],
+                    clocks: Vec::new(),
+                    reset_supervisors: Vec::new(),
+                    regulators: Vec::new(),
+                    pin_states: Vec::new(),
+                    paths: Vec::new(),
+                },
+                required_inputs: vec![
+                    "Fill parameters.max_line_capacitance_F from the real interface capacitance budget when capacitance screening is required; do not use the clamp's own capacitance as the budget unless that is the actual design limit.".to_string(),
+                    "Use layout, signal-integrity, and ESD-pulse validation for USB eye margin, return path, and IEC stress sign-off.".to_string(),
                 ],
             });
         }
@@ -661,6 +738,39 @@ fn suggested_conditioning(
         side_b,
         direction: channel.direction.clone(),
         unpowered_isolation: channel.unpowered_isolation,
+    })
+}
+
+fn suggested_protection_clamp(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    clamp: &ProtectionClamp,
+) -> Option<SuggestedProtectionClamp> {
+    if !model.ports.contains_key(&clamp.protected_pin)
+        || !model.ports.contains_key(&clamp.reference_pin)
+    {
+        return None;
+    }
+    let protected_net = component.pins.get(&clamp.protected_pin)?.clone();
+    let reference_net = component.pins.get(&clamp.reference_pin)?.clone();
+    bound.project.board.nets.get(&protected_net)?;
+    bound.project.board.nets.get(&reference_net)?;
+    let reference = match clamp.reference {
+        ProtectionReference::Ground => "ground",
+        ProtectionReference::Power => "power",
+    };
+    Some(SuggestedProtectionClamp {
+        component: component_id.to_string(),
+        clamp: clamp.name.clone(),
+        protected_pin: clamp.protected_pin.clone(),
+        protected_net,
+        reference_pin: clamp.reference_pin.clone(),
+        reference_net,
+        reference: reference.to_string(),
+        working_voltage_max_v: clamp.working_voltage_max_v,
+        line_capacitance_f: clamp.line_capacitance_f,
     })
 }
 
@@ -753,6 +863,7 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                 name: format!("{}_clock_source", sanitized_name(component_id)),
                 scenario_type: "clock".to_string(),
                 checks: vec![CLOCK_SOURCE_VALID.to_string()],
+                parameters: None,
                 target: Some(SuggestedTarget {
                     component: component_id.clone(),
                     power_pin: None,
@@ -764,6 +875,7 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                 bootloader: None,
                 events: Vec::new(),
                 conditioning: None,
+                protection_clamps: Vec::new(),
                 clocks,
                 reset_supervisors: Vec::new(),
                 regulators: Vec::new(),
@@ -914,6 +1026,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 name: format!("{}_reset_release_after_power", sanitized_name(component_id)),
                 scenario_type: "reset_boot".to_string(),
                 checks: vec![RESET_RELEASE_AFTER_POWER_VALID.to_string()],
+                parameters: None,
                 target: Some(SuggestedTarget {
                     component: component_id.clone(),
                     power_pin: Some(power_pin),
@@ -930,6 +1043,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 bootloader: None,
                 events: Vec::new(),
                 conditioning: None,
+                protection_clamps: Vec::new(),
                 clocks: Vec::new(),
                 reset_supervisors: Vec::new(),
                 regulators: Vec::new(),
@@ -1115,6 +1229,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                         ),
                         scenario_type: "reset_boot".to_string(),
                         checks: vec![BOOT_STRAP_BIAS_VALID.to_string()],
+                        parameters: None,
                         target: Some(SuggestedTarget {
                             component: component_id.clone(),
                             power_pin: None,
@@ -1126,6 +1241,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                         bootloader: None,
                         events: Vec::new(),
                         conditioning: None,
+                        protection_clamps: Vec::new(),
                         clocks: Vec::new(),
                         reset_supervisors: Vec::new(),
                         regulators: Vec::new(),
@@ -1172,6 +1288,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     ),
                     scenario_type: "reset_boot".to_string(),
                     checks: vec![BOOT_STRAP_DEFINED.to_string()],
+                    parameters: None,
                     target: Some(SuggestedTarget {
                         component: component_id.clone(),
                         power_pin: None,
@@ -1183,6 +1300,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     bootloader: None,
                     events: Vec::new(),
                     conditioning: None,
+                    protection_clamps: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -1245,6 +1363,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     ),
                     scenario_type: "serial_programming".to_string(),
                     checks: vec![UART_BOOTLOADER_SYNC.to_string()],
+                    parameters: None,
                     target: Some(SuggestedTarget {
                         component: component_id.clone(),
                         power_pin: None,
@@ -1270,6 +1389,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                         bytes: vec![interface.sync_byte],
                     }],
                     conditioning: None,
+                    protection_clamps: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -1309,7 +1429,9 @@ fn existing_backdrive_paths(
         .collect()
 }
 
-fn existing_interface_protection_checks(project: &BoardProject) -> BTreeMap<(String, String), ()> {
+fn existing_interface_protection_checks(
+    project: &BoardProject,
+) -> BTreeMap<(String, String, String), ()> {
     project
         .scenarios
         .iter()
@@ -1322,11 +1444,32 @@ fn existing_interface_protection_checks(project: &BoardProject) -> BTreeMap<(Str
         })
         .filter_map(|scenario| {
             let target = scenario.target.as_ref()?;
-            let channel = scenario
+            if let Some(channel) = scenario
                 .parameters
                 .get("channel")
+                .and_then(serde_yaml_ng::Value::as_str)
+            {
+                return Some((
+                    (
+                        target.component.clone(),
+                        "channel".to_string(),
+                        channel.to_string(),
+                    ),
+                    (),
+                ));
+            }
+            let clamp = scenario
+                .parameters
+                .get("clamp")
                 .and_then(serde_yaml_ng::Value::as_str)?;
-            Some(((target.component.clone(), channel.to_string()), ()))
+            Some((
+                (
+                    target.component.clone(),
+                    "clamp".to_string(),
+                    clamp.to_string(),
+                ),
+                (),
+            ))
         })
         .collect()
 }
