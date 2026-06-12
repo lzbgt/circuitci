@@ -47,6 +47,8 @@ Add:
   - USB: `UD+`, `UD-`
   - UART: `TXD`, `RXD`
   - modem outputs: `DTR_N`, `RTS_N`
+  - board-level electrical metadata is documented in
+    [wch_ch340c_model.md](wch_ch340c_model.md)
 
 The STM32 model quality is `estimated` until the bootloader metadata is cross-checked against a local ST bootloader application note. The pin mapping itself is sourced from the peer repository's design and firmware files.
 

@@ -5,9 +5,16 @@ ports:
   VCC:
     kind: electrical_power
     required: true
+    electrical:
+      operating_voltage_min_V: 3.1
+      operating_voltage_max_V: 5.3
+      max_supply_current_A: 0.02
   GND:
     kind: electrical_ground
     required: true
+  V3:
+    kind: passive
+    required: false
   UD+:
     kind: passive
     required: false
@@ -18,35 +25,134 @@ ports:
     kind: digital_electrical_output
     required: false
     electrical:
-      drive_high_voltage_V: 3.3
-      source_impedance_ohm: 50
+      drive_high_voltage_V: 2.7
+      source_impedance_ohm: 300
   RXD:
     kind: digital_electrical_input
     required: false
     electrical:
-      vih_min_V: 2.0
+      vih_min_V: 1.9
       vil_max_V: 0.8
       injection_current_limit_A: 0.0001
   DTR_N:
     kind: digital_electrical_output
     required: false
     electrical:
-      drive_high_voltage_V: 3.3
-      source_impedance_ohm: 50
+      drive_high_voltage_V: 2.7
+      source_impedance_ohm: 300
   RTS_N:
     kind: digital_electrical_output
     required: false
     electrical:
-      drive_high_voltage_V: 3.3
-      source_impedance_ohm: 50
+      drive_high_voltage_V: 2.7
+      source_impedance_ohm: 300
+datasheet:
+  manufacturer: WCH
+  part_number: CH340C
+  package: SOP-16
+  polarity: usb_uart_bridge
+  pinout:
+    VCC: VCC
+    GND: GND
+    V3: V3
+    UD+: UD+
+    UD-: UD-
+    TXD: TXD
+    RXD: RXD
+    DTR_N: DTR#
+    RTS_N: RTS#
+  absolute_maximum_ratings:
+    VCC:
+      value: 6.0
+      unit: V
+    VIO:
+      conditions: Voltage on input or output pins
+      value: 0.5
+      unit: V_above_VCC
+  electrical_characteristics:
+    VCC_5V_mode:
+      conditions: V3 only connected to external capacitor
+      min: 4.0
+      typ: 5.0
+      max: 5.3
+      unit: V
+    VCC_3V3_mode_ch340c:
+      conditions: V3 connected to VCC, CH340C/N/K/E/X/B
+      min: 3.1
+      typ: 3.3
+      max: 3.6
+      unit: V
+    ICC_5V_mode:
+      conditions: CH340G/C/N/K/E/X/T/R at VCC=5V
+      typ: 7
+      max: 20
+      unit: mA
+    ICC_3V3_mode:
+      conditions: CH340G/C/N/K/E/X/T/R at VCC=V3=3.3V
+      typ: 4
+      max: 12
+      unit: mA
+    VIH_3V3_mode:
+      conditions: VCC=V3=3.3V
+      min: 1.9
+      unit: V
+    VIL_3V3_mode:
+      conditions: VCC=V3=3.3V
+      min: 0
+      max: 0.8
+      unit: V
+    VOH_3V3_mode:
+      conditions: 2mA sourced current, VCC=V3=3.3V
+      min: 2.7
+      unit: V
+    VOL_3V3_mode:
+      conditions: 4mA sunk current, VCC=V3=3.3V
+      max: 0.5
+      unit: V
+  device_parameters:
+    integrated_clock:
+      conditions: CH340C/N/K/E/X/B have integrated clock generator and require no external crystal.
+      unit: note
+      simulation_relevance: Schematic review should not require XI/XO crystal circuitry for CH340C.
+    uart_idle:
+      conditions: RXD keeps high when UART reception is idle; TXD of CH340C keeps high when UART transmission is idle.
+      unit: note
+      simulation_relevance: Helps agents reason about default UART line behavior without modeling the USB core.
+    modem_outputs:
+      conditions: DTR# and RTS# are MODEM output signals, active low.
+      unit: note
+      simulation_relevance: Supports reset/BOOT control-line validation without transistor-level USB-UART internals.
+    separate_supply_backfeed_guidance:
+      conditions: WCH reference text recommends shared CH340/MCU power to avoid I/O current through the UART connection, or a separate-supply circuit that avoids bidirectional current poured backwards.
+      unit: note
+      simulation_relevance: Use GPIO_BACKDRIVE or analog_transient scenarios when CH340 and target MCU can be powered separately.
+  documents:
+    - title: CH340DS1 official WCH English metadata
+      path: docs/research/datasheets/wch/ch340ds1_wch_ic_metadata.json
+      source_url: https://www.wch-ic.com/api/official/website/common/relationFiles?fileName=CH340DS1_PDF.html
+      sha256: 3b7f23637da55b9edcddbc64fac01600b0bb549b8723f57f1b14987fbeca686f
+      retrieved: "2026-06-12"
+    - title: CH340DS1 official WCH Chinese metadata
+      path: docs/research/datasheets/wch/ch340ds1_wch_cn_metadata.json
+      source_url: https://www.wch.cn/api/official/website/common/relationFiles?fileName=CH340DS1_PDF.html
+      sha256: c531512e2889562b0b4d429d7efd427c6108f31339812b59297d2502ecb952d9
+      retrieved: "2026-06-12"
+    - title: CH340DS1 PDF mirror for local text extraction
+      path: docs/research/datasheets/wch/ch340ds1_sparkfun_mirror.pdf
+      source_url: https://cdn.sparkfun.com/assets/5/0/a/8/5/CH340DS1.PDF
+      sha256: f4b76c52222358bec25f328517d9801036e606d57648e62e2ac59e3027a6c050
+      retrieved: "2026-06-12"
 rules:
   - UART_BOOTLOADER_SYNC
 model_quality:
-  source: estimated
-  confidence: low
+  source: datasheet
+  confidence: medium
   intended_use:
     - board_connectivity
     - uart_bootloader_sync
+    - power_tree_screening
+    - preliminary_gpio_backdrive_screening
   not_valid_for:
     - full_usb_phy
     - transistor_level_control_line_behavior
+    - final_io_injection_current_signoff

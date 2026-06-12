@@ -24,6 +24,12 @@ Without those packs, reports correctly emit `LOW_CONFIDENCE_MODEL` limitations.
 A passing rule on generic metadata is useful evidence, but not full board
 sign-off.
 
+Initial datasheet-backed packs now exist for selected parts used by the UM
+acceptance path, including WCH CH340C board-level USB-UART metadata and TI
+TXS0108E interface-protection metadata. The gap remains broad library depth
+across other USB-UART bridges, debug probes, radios, sensors, regulators, and
+protection devices.
+
 ## 2. Power-Tree Validation
 
 Common boards need explicit power checks beyond declared powered/unpowered

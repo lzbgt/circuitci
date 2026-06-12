@@ -1,0 +1,36 @@
+project:
+  name: bad_wch_ch340c_power_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/wch
+
+board:
+  components:
+    U5:
+      model: vendor.wch.ch340c
+      part_number: CH340C
+      power_domains:
+        VCC: rail_6v
+      pins:
+        VCC: rail_6v
+        GND: gnd
+        TXD: uart_tx
+        RXD: uart_rx
+  nets:
+    rail_6v:
+      kind: power
+      nominal_voltage: 6.0
+      powered: true
+    gnd:
+      kind: ground
+    uart_tx:
+      kind: digital_or_analog
+    uart_rx:
+      kind: digital_or_analog
+
+scenarios:
+  - name: ch340c_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
