@@ -2,9 +2,10 @@ use crate::board_ir::{ComponentPlacement, LayoutPad, NetLayoutRule, NetRoute, Sc
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 
-use super::{
-    UsbConnectorSignal, placement_is_finite, required_scenario_numeric_parameter,
-    valid_component_placement, valid_protection_clamps_for_net,
+use super::required_scenario_numeric_parameter;
+use super::usb_connector::{
+    UsbConnectorSignal, placement_is_finite, valid_component_placement,
+    valid_protection_clamps_for_net,
 };
 use crate::validation::common::validation_input_missing;
 

@@ -3,7 +3,7 @@ use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use crate::validation::common::validation_input_missing;
 
-use super::super::UsbConnectorSignal;
+use super::super::usb_connector::UsbConnectorSignal;
 use super::findings::{
     UsbReturnPathClearanceEvidence, UsbReturnPathEvidence, UsbReturnPathSegmentEvidence,
     UsbReturnPathStitchViaEvidence, usb_return_path_filled_zone_clearance_finding,

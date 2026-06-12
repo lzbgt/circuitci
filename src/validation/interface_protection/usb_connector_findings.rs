@@ -2,9 +2,10 @@ use crate::board_ir::NetKind;
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::{
+use super::placement_side_name;
+use super::usb_connector::{
     ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbConnectorSignal,
-    UsbPlacementDistanceEvidence, placement_side_name,
+    UsbPlacementDistanceEvidence,
 };
 use crate::board_ir::ComponentPlacement;
 use crate::validation::{
