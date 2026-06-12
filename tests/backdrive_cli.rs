@@ -245,6 +245,59 @@ fn um_stm32l4_control_line_rom_entry_passes() {
 }
 
 #[test]
+fn control_line_rejects_kicad_input_source_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("bad_kicad_source_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        control_line_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: input",
+            "NRST: input",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "CONTROL_LINE_RELEASE_SEQUENCE");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("source U5.TXD has KiCad electrical type input, which is not output-capable")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn control_line_rejects_kicad_output_target_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("bad_kicad_target_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        control_line_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: output",
+            "NRST: output",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "CONTROL_LINE_RELEASE_SEQUENCE");
+    assert!(
+        report["failures"][0]["message"].as_str().unwrap().contains(
+            "target U1.NRST has KiCad electrical type output, which is not input-capable"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn c51_control_line_release_uses_generic_reset_polarity() {
     let report = run_validation("examples/good_c51_control_line_app_release/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -1354,4 +1407,85 @@ fn suite_rejects_unknown_manifest_fields() {
         .unwrap();
     assert!(!status.success());
     assert!(!out_dir.path().join("report.json").exists());
+}
+
+fn control_line_direction_project(
+    library_path: &str,
+    source_direction: &str,
+    target_direction: &str,
+) -> String {
+    format!(
+        r#"project:
+  name: bad_kicad_direction_metadata
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: vdd_3v3
+      pins:
+        VDD: vdd_3v3
+        GND: gnd
+        NRST: nrst
+        BOOT0: boot0
+      source:
+        board_pin_electrical_types:
+          {target_direction}
+    U5:
+      model: generic.usb_uart.basic
+      power_domains:
+        VCC: vdd_3v3
+      pins:
+        VCC: vdd_3v3
+        GND: gnd
+        TXD: nrst
+      source:
+        board_pin_electrical_types:
+          {source_direction}
+  nets:
+    vdd_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+scenarios:
+  - name: imported_direction_metadata
+    type: control_line_sequence
+    target:
+      component: U1
+      power_pin: VDD
+      reset_pin: NRST
+    checks:
+      - CONTROL_LINE_RELEASE_SEQUENCE
+    required_boot_mode: application
+    timing:
+      power_valid_at_us: 100
+      reset_release_at_us: 200
+      boot_sample_at_us: 300
+    control_effects:
+      - name: reset
+        source:
+          component: U5
+          pin: TXD
+        target:
+          component: U1
+          pin: NRST
+        asserted_state: low
+        released_state: high
+        release_delay_us: 0
+    events:
+      - at_us: 0
+        action: control_line
+        line: reset
+        asserted: false
+"#
+    )
 }

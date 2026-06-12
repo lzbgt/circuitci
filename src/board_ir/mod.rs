@@ -44,6 +44,14 @@ pub struct ComponentSpec {
     pub pins: BTreeMap<String, String>,
     #[serde(default)]
     pub spice: Option<ComponentSpiceSpec>,
+    #[serde(default)]
+    pub source: Option<ComponentSourceSpec>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ComponentSourceSpec {
+    #[serde(default)]
+    pub board_pin_electrical_types: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

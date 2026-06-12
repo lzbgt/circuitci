@@ -40,6 +40,16 @@
                 "type": "object",
                 "additionalProperties": { "type": "string", "minLength": 1 }
               },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "board_pin_electrical_types": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "additionalProperties": true
+              },
               "spice": {
                 "type": "object",
                 "required": ["primitive"],

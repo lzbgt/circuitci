@@ -29,6 +29,18 @@ Native `.kicad_sch` imports populate the raw map from `lib_symbols` pin
 geometry and the Board IR map after KiCad mapping resolves pin aliases.
 KiCad XML imports populate both maps from `node pintype="..."` attributes.
 
-Conflicting electrical types for the same raw KiCad pin fail closed. The
-metadata is evidence only; it does not replace datasheet-backed component
-models or SPICE validation.
+Conflicting electrical types for the same raw KiCad pin fail closed.
+
+## Validation Use
+
+`CONTROL_LINE_RELEASE_SEQUENCE` consumes `source.board_pin_electrical_types`
+when it is present:
+
+- control sources must be KiCad `output`, `bidirectional`, `tri_state`,
+  `power_out`, `open_collector`, or `open_emitter`,
+- control targets must be KiCad `input`, `bidirectional`, or `tri_state`.
+
+The check is additive. Component models still have to declare output-capable
+source ports and input-capable target ports. KiCad metadata cannot upgrade a
+bad component model; it can only fail closed when imported schematic direction
+evidence contradicts the required control-line direction.

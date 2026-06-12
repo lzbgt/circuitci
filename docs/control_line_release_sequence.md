@@ -106,14 +106,18 @@ Every `control_effect` must have at least one explicit `control_line` event befo
 
 1. Resolve `target.component`.
 2. Resolve required straps from `component.behavior.boot.modes[required_boot_mode]`.
-3. Verify each `control_effect.source` resolves to an output-capable pin.
-4. Verify each `control_effect.target` resolves to the target component and an input-capable pin.
-5. Use `reset_release_at_us` to evaluate reset release and `boot_sample_at_us` to evaluate boot straps.
-6. For each effect and sample time, find the last `control_line` event at or before that sample time. Missing events are critical validation-input errors.
-7. If the last event is asserted, derive `asserted_state`.
-8. If the last event is released and `sample_time - event.at_us >= release_delay_us`, derive `released_state`; otherwise derive `asserted_state` because release has not settled.
-9. Require reset to be released at `reset_release_at_us` and still released at `boot_sample_at_us`.
-10. Compare derived strap states at `boot_sample_at_us` with required boot-mode straps.
+3. Verify each `control_effect.source` resolves to an output-capable model pin.
+4. If imported KiCad pin electrical metadata is present, verify the source pin
+   is KiCad-output-capable.
+5. Verify each `control_effect.target` resolves to the target component and an input-capable model pin.
+6. If imported KiCad pin electrical metadata is present, verify the target pin
+   is KiCad-input-capable.
+7. Use `reset_release_at_us` to evaluate reset release and `boot_sample_at_us` to evaluate boot straps.
+8. For each effect and sample time, find the last `control_line` event at or before that sample time. Missing events are critical validation-input errors.
+9. If the last event is asserted, derive `asserted_state`.
+10. If the last event is released and `sample_time - event.at_us >= release_delay_us`, derive `released_state`; otherwise derive `asserted_state` because release has not settled.
+11. Require reset to be released at `reset_release_at_us` and still released at `boot_sample_at_us`.
+12. Compare derived strap states at `boot_sample_at_us` with required boot-mode straps.
 
 ## Initial Fixtures
 
