@@ -928,6 +928,10 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
     );
     assert_eq!(imported["board"]["components"]["J1"]["pins"]["GND"], "gnd");
     assert_eq!(
+        imported["board"]["components"]["J1"]["pins"]["SHIELD"],
+        "gnd"
+    );
+    assert_eq!(
         imported["board"]["components"]["UESD"]["model"],
         "vendor.ti.tpd2eusb30"
     );
@@ -980,6 +984,10 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         true
     );
     assert_eq!(
+        connector["scenario"]["parameters"]["require_shield_ground"],
+        true
+    );
+    assert_eq!(
         connector["scenario"]["parameters"]["data_working_voltage_min_V"],
         3.3
     );
@@ -993,6 +1001,8 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
     assert_eq!(usb["dp_net"], "net_usb_dp");
     assert_eq!(usb["dm_net"], "net_usb_dm");
     assert_eq!(usb["gnd_net"], "gnd");
+    assert_eq!(usb["shield_pin"], "SHIELD");
+    assert_eq!(usb["shield_net"], "gnd");
     let clamps = connector["scenario"]["protection_clamps"]
         .as_array()
         .unwrap();

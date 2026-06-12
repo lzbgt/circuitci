@@ -16,13 +16,15 @@ After import, `suggest-scenarios` emits a runnable
 - `J1.D+ -> net_usb_dp`
 - `J1.D- -> net_usb_dm`
 - `J1.VBUS -> net_usb_vbus`
+- `J1.SHIELD -> gnd`
 - `UESD.d1_plus` protects `net_usb_dp`
 - `UESD.d1_minus` protects `net_usb_dm`
 - `UVBUS.vbus` protects `net_usb_vbus`
+- `require_shield_ground: true`
 
 The suggestion remains schematic-level evidence. It does not prove connector
-placement, ESD part placement, USB differential impedance, shield strategy,
-return-path quality, or ESD pulse performance.
+placement, ESD part placement, USB differential impedance, RC/ferrite/chassis
+shield strategy, return-path quality, or ESD pulse performance.
 
 The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 

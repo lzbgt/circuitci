@@ -7,7 +7,8 @@
       (pin power_in line (at 10 -10 180) (length 2.54) (name "VBUS") (number "1"))
       (pin passive line (at 10 -5 180) (length 2.54) (name "D+") (number "2"))
       (pin passive line (at 10 5 180) (length 2.54) (name "D-") (number "3"))
-      (pin power_in line (at 10 10 180) (length 2.54) (name "GND") (number "4")))
+      (pin power_in line (at 10 10 180) (length 2.54) (name "GND") (number "4"))
+      (pin passive line (at 10 15 180) (length 2.54) (name "SHIELD") (number "5")))
     (symbol "Protection:TPD2EUSB30"
       (pin passive line (at -10 -5 0) (length 2.54) (name "D1+") (number "1"))
       (pin passive line (at -10 5 0) (length 2.54) (name "D1-") (number "2"))
@@ -19,7 +20,7 @@
   (symbol (lib_id "Connector:USB2") (at 10 20 0)
     (property "Reference" "J1")
     (property "Value" "USB2_CONNECTOR")
-    (pin "1") (pin "2") (pin "3") (pin "4"))
+    (pin "1") (pin "2") (pin "3") (pin "4") (pin "5"))
 
   (symbol (lib_id "Protection:TPD2EUSB30") (at 50 20 0)
     (property "Reference" "UESD")
@@ -42,6 +43,9 @@
 
   (wire (pts (xy 20 30) (xy 30 30)))
   (label "GND" (at 30 30 0))
+
+  (wire (pts (xy 20 35) (xy 30 35)))
+  (label "GND" (at 30 35 0))
 
   (wire (pts (xy 40 15) (xy 30 15)))
 

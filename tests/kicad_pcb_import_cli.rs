@@ -101,6 +101,20 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let connector = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_protection_j1")
+        .expect("USB connector protection suggestion");
+    assert_eq!(
+        connector["scenario"]["parameters"]["require_shield_ground"],
+        true
+    );
+    assert_eq!(
+        connector["scenario"]["usb_connectors"][0]["shield_net"],
+        "gnd"
+    );
     let placement = suggestions["suggestions"]
         .as_array()
         .unwrap()
