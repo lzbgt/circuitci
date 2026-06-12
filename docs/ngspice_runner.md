@@ -60,6 +60,12 @@ Exactly one threshold field is allowed on each assertion. Sample assertions use
 `aggregation: min|max` with `start_us` and `end_us`, and must not also declare
 `at_us`.
 
+Assertions may optionally declare `suggested_fixes`. When that assertion fails,
+the strings are copied into the emitted `SPICE_TRANSIENT_ANALYSIS` finding. If
+the list is omitted, CircuitCI emits a generic analog-threshold recommendation.
+Board-specific hardware repair advice therefore stays in scenario data instead
+of validator code.
+
 CircuitCI does a conservative expression/quantity check before invoking the
 solver: voltage probes must export `V(...)`, current probes must export `I(...)`
 or a simple sign/magnitude wrapper around `I(...)`, and power probes must

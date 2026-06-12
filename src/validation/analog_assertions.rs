@@ -115,9 +115,15 @@ pub(super) fn evaluate_waveform_assertions(
                 format!("{relation}{}", threshold.limit_key),
                 json!(threshold.value),
             );
-            finding
-                .suggested_fixes
-                .push("Adjust the circuit or device model so the simulated waveform meets the declared physical threshold.".to_string());
+            if assertion.suggested_fixes.is_empty() {
+                finding
+                    .suggested_fixes
+                    .push("Adjust the circuit or device model so the simulated waveform meets the declared physical threshold.".to_string());
+            } else {
+                finding
+                    .suggested_fixes
+                    .extend(assertion.suggested_fixes.iter().cloned());
+            }
             findings.push(finding);
         }
     }
@@ -410,6 +416,7 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: None,
             threshold_w: None,
+            suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
 
@@ -424,6 +431,7 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: Some(0.001),
             threshold_w: None,
+            suggested_fixes: Vec::new(),
         };
         assert_eq!(threshold_count(&assertion), 2);
     }

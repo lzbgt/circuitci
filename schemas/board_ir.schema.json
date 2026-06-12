@@ -426,7 +426,11 @@
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
-                    "threshold_w": { "type": "number" }
+                    "threshold_w": { "type": "number" },
+                    "suggested_fixes": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    }
                   },
                   "allOf": [
                     {

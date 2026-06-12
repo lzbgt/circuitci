@@ -396,6 +396,8 @@ scenarios:
           at_us: 5100
           relation: below
           threshold_v: 0.99
+          suggested_fixes:
+            - Rework the BOOT0 driver so the measured waveform meets the declared threshold.
 ```
 
 This scenario type is the physical analog path. If no SPICE-class backend is

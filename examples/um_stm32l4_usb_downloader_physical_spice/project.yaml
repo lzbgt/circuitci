@@ -277,17 +277,29 @@ scenarios:
         - name: q2_base_drive_current
           expression: abs(I(VRTS))
           quantity: current
+        - name: q3_base_drive_current
+          expression: abs(I(VDTR))
+          quantity: current
+        - name: q3_collector_current
+          expression: abs(I(VCCI_Q3))
+          quantity: current
       assertions:
         - name: boot0_low_before_app_sample
           probe: boot0
           at_us: 5100
           relation: below
           threshold_v: 0.99
+          suggested_fixes:
+            - Add a Q3 base-emitter bleed/discharge resistor so BOOT0 releases deterministically before the MCU samples boot mode.
+            - Avoid relying only on host modem-line choreography for app boot; prefer ROM GO or a reset/boot circuit with non-saturating switching behavior.
         - name: nrst_released_before_app_sample
           probe: nrst
           at_us: 5100
           relation: above
           threshold_v: 2.31
+          suggested_fixes:
+            - Add a Q2 base-emitter bleed/discharge resistor or otherwise reduce stored base charge so NRST can release before the app-boot sample point.
+            - Rework the reset driver as an open-drain or non-saturating stage sized from STM32 NRST VIH and leakage requirements.
         - name: nrst_released_through_observation_window
           probe: nrst
           aggregation: min
@@ -295,18 +307,43 @@ scenarios:
           end_us: 8000
           relation: above
           threshold_v: 2.31
+          suggested_fixes:
+            - Add a Q2 base-emitter bleed/discharge resistor or otherwise reduce stored base charge so NRST remains released throughout the observation window.
+            - Rework the reset driver as an open-drain or non-saturating stage sized from STM32 NRST VIH and leakage requirements.
         - name: q2_collector_released_before_app_sample
           probe: q2_collector
           at_us: 5100
           relation: above
           threshold_v: 2.31
+          suggested_fixes:
+            - Reduce Q2 saturation by increasing base resistance, adding base-emitter discharge, or replacing the saturated BJT reset pull-down with an open-drain reset driver.
         - name: q2_base_not_forward_biased_after_release
           probe: q2_base
           at_us: 5100
           relation: below
           threshold_v: 0.3
+          suggested_fixes:
+            - Add a Q2 base-emitter bleed/discharge path and verify RTS_N idle/release polarity so Q2 base drive is removed before the MCU samples NRST.
         - name: q2_base_drive_current_removed_after_release
           probe: q2_base_drive_current
           at_us: 5100
           relation: below
           threshold_a: 0.0003
+          suggested_fixes:
+            - Increase Q2 base resistance or add a Q2 base-emitter discharge path so RTS_N no longer sources saturation-level base current after release.
+        - name: q3_base_drive_current_limited_during_boot0_assert
+          probe: q3_base_drive_current
+          at_us: 1000
+          relation: below
+          threshold_a: 0.0003
+          suggested_fixes:
+            - Increase Q3 base resistance and add a Q3 base-emitter bleed/discharge resistor to avoid deep PNP saturation during BOOT0 assertion.
+            - Replace the saturated Q3 BOOT0 driver with a non-saturating transistor/MOSFET stage or a direct open-drain-compatible strap driver.
+        - name: q3_collector_current_limited_during_boot0_assert
+          probe: q3_collector_current
+          at_us: 1000
+          relation: below
+          threshold_a: 0.001
+          suggested_fixes:
+            - Re-size the BOOT0 pull-down and Q3 drive network so the BOOT0 high assertion meets VIH without forcing Q3 into deep saturation.
+            - Prefer a non-saturating BOOT0 driver topology when automated host-controlled reset/boot cycling must be reliable.

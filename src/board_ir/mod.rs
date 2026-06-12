@@ -406,6 +406,8 @@ pub struct AnalogAssertion {
     pub threshold_a: Option<f64>,
     #[serde(default)]
     pub threshold_w: Option<f64>,
+    #[serde(default)]
+    pub suggested_fixes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
