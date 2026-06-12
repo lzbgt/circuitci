@@ -504,6 +504,7 @@
         "start",
         "end",
         "distance_to_connector_mm",
+        "connector_edge_reference",
         "edge_angle_deg",
         "outward_normal_deg",
         "connector_rotation_error_deg"
@@ -513,6 +514,12 @@
         "end": { "$ref": "#/$defs/layout_point" },
         "layer": { "type": "string", "minLength": 1 },
         "distance_to_connector_mm": { "type": "number", "minimum": 0 },
+        "connector_edge_reference": {
+          "type": "string",
+          "enum": ["placement_center", "footprint_segment", "footprint_rectangle"]
+        },
+        "footprint_graphic_layer": { "type": "string", "minLength": 1 },
+        "footprint_graphic_kind": { "type": "string", "minLength": 1 },
         "edge_angle_deg": { "type": "number" },
         "outward_normal_deg": { "type": "number" },
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }

@@ -237,7 +237,13 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(nearest_edge["layer"], "Edge.Cuts");
     assert_eq!(nearest_edge["start"]["x_mm"], -0.4);
     assert_eq!(nearest_edge["end"]["y_mm"], -1.0);
-    assert!((nearest_edge["distance_to_connector_mm"].as_f64().unwrap() - 0.4).abs() < 1.0e-9);
+    assert_eq!(nearest_edge["distance_to_connector_mm"], 0.0);
+    assert_eq!(
+        nearest_edge["connector_edge_reference"],
+        "footprint_segment"
+    );
+    assert_eq!(nearest_edge["footprint_graphic_layer"], "F.CrtYd");
+    assert_eq!(nearest_edge["footprint_graphic_kind"], "courtyard");
     assert_eq!(nearest_edge["outward_normal_deg"], 180.0);
     assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
     let edge_proximity = suggestions["suggestions"]
@@ -256,7 +262,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["nearest_board_edge"]["distance_to_connector_mm"],
-        0.4
+        0.0
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["nearest_board_edge"]["connector_edge_reference"],
+        "footprint_segment"
     );
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["rectangles"][0]["kind"],

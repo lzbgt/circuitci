@@ -102,8 +102,12 @@ The command is conservative:
 - It emits non-runnable `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
   USB connector has finite placement evidence and
   `board.layout.outline.segments` contains usable straight board-edge evidence.
-  The template includes `nearest_board_edge.distance_to_connector_mm` in
-  `scenario.usb_connectors[]`. When imported footprint drawing evidence exists,
+  The template includes `nearest_board_edge.distance_to_connector_mm` and
+  `nearest_board_edge.connector_edge_reference` in
+  `scenario.usb_connectors[]`. That distance uses supported
+  `fabrication`/`courtyard` footprint `fp_line`/`fp_rect` evidence when
+  available and falls back to placement-center distance otherwise. When
+  imported footprint drawing evidence exists,
   `scenario.usb_connectors[].footprint` also reports transformed
   `fp_line`/`fp_rect` body, courtyard, or silkscreen evidence for mechanical
   review. The template leaves
