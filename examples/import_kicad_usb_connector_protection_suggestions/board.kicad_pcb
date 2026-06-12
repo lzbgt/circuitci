@@ -20,6 +20,11 @@
     (constraint length (max 25mm))
     (constraint skew (max 0.5mm) within_diff_pairs))
 
+  (gr_line (start -0.4 -1.0) (end 2.0 -1.0) (stroke (width 0.05) (type solid)) (layer "Edge.Cuts"))
+  (gr_line (start 2.0 -1.0) (end 2.0 1.4) (stroke (width 0.05) (type solid)) (layer "Edge.Cuts"))
+  (gr_line (start 2.0 1.4) (end -0.4 1.4) (stroke (width 0.05) (type solid)) (layer "Edge.Cuts"))
+  (gr_line (start -0.4 1.4) (end -0.4 -1.0) (stroke (width 0.05) (type solid)) (layer "Edge.Cuts"))
+
   (footprint "Connector:USB2" (layer "F.Cu")
     (at 0 0 0)
     (property "Reference" "J1" (at 0 0 0) (layer "F.SilkS"))

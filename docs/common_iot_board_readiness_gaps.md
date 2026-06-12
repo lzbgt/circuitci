@@ -145,7 +145,9 @@ coverage for declared USB D+/D- and optional VBUS protection.
 connector-to-protection center distance from `board.layout.placements`.
 `USB_CONNECTOR_ORIENTATION_VALID` adds a static footprint-orientation guard
 from imported connector placement `rotation_deg` evidence and explicit
-mechanical/layout rotation limits.
+mechanical/layout rotation limits. KiCad PCB import now preserves straight
+`Edge.Cuts` outline segments so scenario suggestions can prefill the expected
+rotation from nearest-edge outward-normal evidence when available.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

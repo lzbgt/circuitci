@@ -60,8 +60,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   impedance, ESD pulse survival, or USB signal integrity.
 - `USB_CONNECTOR_ORIENTATION_VALID` checks imported connector placement
   `rotation_deg` against an explicit expected rotation and tolerance. It does
-  not infer the real board edge, enclosure entry direction, connector keepout,
-  cable clearance, or mechanical insertion robustness.
+  not prove enclosure entry direction, connector keepout, cable clearance, or
+  mechanical insertion robustness. Suggestions may infer an expected rotation
+  from imported straight `Edge.Cuts` segments, but arcs, slots, cutouts, and
+  footprint-specific connector-entry conventions still require review.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and
@@ -102,8 +104,9 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - KiCad XML, native `.kicad_sch`, and `.kicad_pcb` layout-evidence import are
   conservative. Unsupported or ambiguous constructs fail closed instead of being
   guessed. PCB import currently extracts component center placements,
-  connected pad center/kind/shape/size/rotation/net/layer evidence, segment/via route geometry,
-  copper-zone outlines/fill polygons, and a bounded subset of
+  connected pad center/kind/shape/size/rotation/net/layer evidence, straight
+  Edge.Cuts outline segments, segment/via route geometry, copper-zone
+  outlines/fill polygons, and a bounded subset of
   net-class/custom-rule route constraints for mapped nets, not arbitrary DRC
   rule semantics, filled-copper connectivity, thermal relief behavior, solder
   mask expansion, return paths, or signal-integrity constraints.

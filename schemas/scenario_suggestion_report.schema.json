@@ -192,7 +192,8 @@
                     "gnd_net": { "type": "string", "minLength": 1 },
                     "shield_pin": { "type": "string", "minLength": 1 },
                     "shield_net": { "type": "string", "minLength": 1 },
-                    "placement": { "$ref": "#/$defs/placement" }
+                    "placement": { "$ref": "#/$defs/placement" },
+                    "nearest_board_edge": { "$ref": "#/$defs/board_edge" }
                   },
                   "additionalProperties": false
                 }
@@ -484,6 +485,36 @@
         "y_mm": { "type": "number" },
         "side": { "enum": ["top", "bottom"] },
         "rotation_deg": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "layout_point": {
+      "type": "object",
+      "required": ["x_mm", "y_mm"],
+      "properties": {
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "board_edge": {
+      "type": "object",
+      "required": [
+        "start",
+        "end",
+        "distance_to_connector_mm",
+        "edge_angle_deg",
+        "outward_normal_deg",
+        "connector_rotation_error_deg"
+      ],
+      "properties": {
+        "start": { "$ref": "#/$defs/layout_point" },
+        "end": { "$ref": "#/$defs/layout_point" },
+        "layer": { "type": "string", "minLength": 1 },
+        "distance_to_connector_mm": { "type": "number", "minimum": 0 },
+        "edge_angle_deg": { "type": "number" },
+        "outward_normal_deg": { "type": "number" },
+        "connector_rotation_error_deg": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false
     },

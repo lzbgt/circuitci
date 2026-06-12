@@ -29,13 +29,14 @@ shield strategy, return-path quality, or ESD pulse performance.
 The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 
 1. `import-kicad-schematic` for connector and ESD connectivity.
-2. `import-kicad-pcb` for `board.layout.placements`, connected pad geometry
+2. `import-kicad-pcb` for `board.layout.placements`, straight Edge.Cuts
+   outline evidence under `board.layout.outline`, connected pad geometry
    evidence under `board.layout.pads`, routed USB net geometry under
    `board.layout.routes`, plus ground copper-zone outline and saved
    filled-polygon evidence under `board.layout.zones`.
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
-   `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
-   `USB_RETURN_PATH_VALID`.
+   `USB_CONNECTOR_ORIENTATION_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
+   `USB_VBUS_ROUTE_VALID`, and `USB_RETURN_PATH_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:
 

@@ -548,10 +548,14 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         0.0
     );
     assert!(
-        orientation["required_inputs"][0]
-            .as_str()
+        orientation["required_inputs"]
+            .as_array()
             .unwrap()
-            .contains("expected_connector_rotation_deg")
+            .iter()
+            .any(|input| input
+                .as_str()
+                .unwrap()
+                .contains("expected_connector_rotation_deg"))
     );
     let route = suggestions["suggestions"]
         .as_array()

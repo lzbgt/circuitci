@@ -121,10 +121,14 @@ Connector-orientation validation:
 - The scenario must declare `parameters.expected_connector_rotation_deg` and
   `parameters.max_connector_rotation_error_deg` from the board-edge or enclosure
   mechanical rule.
+- Scenario suggestions can use imported straight `Edge.Cuts` outline segments
+  to report nearest-board-edge evidence and prefill the expected rotation from
+  the inferred outward normal, but this is still only a starting point for the
+  footprint-specific mechanical convention.
 - The rule compares rotations modulo `360 deg`, using the smallest angular
-  error. It is a static footprint-orientation screen; it does not infer board
-  edge geometry, enclosure clearance, cable insertion clearance, or connector
-  keepouts.
+  error. It is a static footprint-orientation screen; it does not prove
+  enclosure clearance, cable insertion clearance, connector keepouts, or
+  mechanical robustness.
 
 Route-geometry validation:
 

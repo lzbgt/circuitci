@@ -401,6 +401,12 @@ Connector-orientation algorithm:
 5. Require the error to be no greater than
    `parameters.max_connector_rotation_error_deg`.
 
+`suggest-scenarios` can prefill `expected_connector_rotation_deg` from imported
+straight `board.layout.outline.segments` evidence by finding the nearest board
+edge and using its outward normal. That suggestion is still non-runnable until a
+layout-specific tolerance is supplied, and the inferred direction must be
+checked against the footprint's connector-entry rotation convention.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the

@@ -51,6 +51,7 @@ struct PlacementYaml {
 pub struct KicadPcbImportSummary {
     pub placements: usize,
     pub pads: usize,
+    pub outline_segments: usize,
     pub route_segments: usize,
     pub route_vias: usize,
     pub zones: usize,
@@ -96,6 +97,18 @@ struct PcbZone {
     layer: String,
     polygon: Vec<PcbPoint>,
     filled_polygons: Vec<Vec<PcbPoint>>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbOutline {
+    segments: Vec<PcbOutlineSegment>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbOutlineSegment {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -186,6 +199,19 @@ struct ZoneYaml {
     filled_polygons: Vec<Vec<PcbPoint>>,
 }
 
+#[derive(Debug, Serialize)]
+struct OutlineYaml {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    segments: Vec<OutlineSegmentYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutlineSegmentYaml {
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+}
+
 pub fn import_kicad_pcb_placements(
     options: &KicadPcbPlacementImportOptions,
 ) -> Result<KicadPcbImportSummary> {
@@ -236,6 +262,7 @@ pub fn import_kicad_pcb_placements(
 struct ParsedPcb {
     placements: BTreeMap<String, PcbPlacement>,
     pads: BTreeMap<String, BTreeMap<String, PcbPad>>,
+    outline: PcbOutline,
     routes: BTreeMap<String, PcbRoute>,
     zones: BTreeMap<String, Vec<PcbZone>>,
     net_rules: BTreeMap<String, PcbNetRule>,
@@ -251,12 +278,14 @@ fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
     }
     let placements = parse_placements(root_list, path)?;
     let pads = parse_pads(root_list, path)?;
+    let outline = parse_outline(root_list, path)?;
     let routes = parse_routes(root_list, path)?;
     let zones = parse_zones(root_list, path)?;
     let net_rules = parse_net_rules(root_list, path)?;
     Ok(ParsedPcb {
         placements,
         pads,
+        outline,
         routes,
         zones,
         net_rules,
@@ -405,6 +434,27 @@ fn parse_routes(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbR
         });
     }
     Ok(routes)
+}
+
+fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
+    let mut segments = Vec::new();
+    for line in list_children(root_list, "gr_line") {
+        let layer = non_empty_child_string(line, "layer", path)?;
+        if layer != "Edge.Cuts" {
+            continue;
+        }
+        let start = route_point(line, "start", path)?;
+        let end = route_point(line, "end", path)?;
+        let length_mm = (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm);
+        if length_mm <= f64::EPSILON {
+            bail!(
+                "KiCad PCB Edge.Cuts gr_line in {} has zero length.",
+                path.display()
+            );
+        }
+        segments.push(PcbOutlineSegment { start, end, layer });
+    }
+    Ok(PcbOutline { segments })
 }
 
 fn parse_zones(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, Vec<PcbZone>>> {
@@ -1154,6 +1204,13 @@ fn merge_pcb_into_project(
             Value::Mapping(component_pad_yaml),
         );
     }
+    if !parsed_pcb.outline.segments.is_empty() {
+        layout.insert(
+            Value::String("outline".to_string()),
+            outline_yaml_value(&parsed_pcb.outline)?,
+        );
+        summary.outline_segments = parsed_pcb.outline.segments.len();
+    }
     let route_yaml = ensure_mapping_field_mut(layout, "routes")?;
     for (pcb_net_name, route) in &parsed_pcb.routes {
         let Some(board_net_name) = map_pcb_net_to_board_net(pcb_net_name, &board_nets)? else {
@@ -1182,6 +1239,21 @@ fn merge_pcb_into_project(
         summary.routing_constraints += 1;
     }
     Ok(summary)
+}
+
+fn outline_yaml_value(outline: &PcbOutline) -> Result<Value> {
+    serde_yaml_ng::to_value(OutlineYaml {
+        segments: outline
+            .segments
+            .iter()
+            .map(|segment| OutlineSegmentYaml {
+                start: segment.start,
+                end: segment.end,
+                layer: segment.layer.clone(),
+            })
+            .collect(),
+    })
+    .context("Failed to serialize KiCad PCB board outline evidence into Board IR YAML.")
 }
 
 fn route_yaml_value(route: &PcbRoute) -> Result<Value> {

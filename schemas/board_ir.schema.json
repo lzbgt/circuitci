@@ -132,6 +132,25 @@
                 "additionalProperties": false
               }
             },
+            "outline": {
+              "type": "object",
+              "properties": {
+                "segments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["start", "end", "layer"],
+                    "properties": {
+                      "start": { "$ref": "#/$defs/layout_point" },
+                      "end": { "$ref": "#/$defs/layout_point" },
+                      "layer": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
             "pads": {
               "type": "object",
               "additionalProperties": {

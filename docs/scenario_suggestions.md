@@ -90,10 +90,15 @@ The command is conservative:
   limits from component coordinates.
 - It emits non-runnable `USB_CONNECTOR_ORIENTATION_VALID` templates when the USB
   connector placement includes imported `rotation_deg` evidence. The template
-  includes the measured placement rotation in `scenario.usb_connectors[]` and
-  leaves `expected_connector_rotation_deg` and
-  `max_connector_rotation_error_deg` as `null` until an agent fills them from a
-  board-edge or enclosure-entry mechanical rule.
+  includes the measured placement rotation in `scenario.usb_connectors[]`.
+  When `board.layout.outline.segments` contains imported straight board-edge
+  evidence, the template also reports `nearest_board_edge` evidence and
+  pre-fills `expected_connector_rotation_deg` from the nearest edge's inferred
+  outward normal. `max_connector_rotation_error_deg` remains `null` until an
+  agent supplies a board-specific tolerance, and the inferred expected rotation
+  should be reviewed against the connector footprint convention before making
+  the scenario runnable. Without outline evidence, both orientation parameters
+  remain manual.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

@@ -75,6 +75,7 @@ scenarios:
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
+| layout outline | optional board-edge segment list | Imported board outline segments used as mechanical/layout orientation evidence. |
 | layout pads | optional component/pad map | Imported pad geometry, net, and layer evidence used by layout-connectivity checks. |
 | layout routes | optional net map | Routed segment and via geometry used by layout-aware checks. |
 | scenarios | list | Scenario definitions select validation checks. |
@@ -135,6 +136,27 @@ protection components are close to the connector.
 footprint orientation against an explicit mechanical/layout rule. Missing or
 non-finite placement coordinates fail closed for rules that declare a placement
 limit, and missing rotation evidence fails closed for orientation rules.
+
+## Layout Outline Evidence
+
+Board IR can carry imported board-outline segment evidence under
+`board.layout.outline.segments`. Coordinates are in millimeters in the same
+layout coordinate system as placements, pads, routes, and zones.
+
+```yaml
+board:
+  layout:
+    outline:
+      segments:
+        - start: { x_mm: -0.4, y_mm: -1.0 }
+          end: { x_mm: 2.0, y_mm: -1.0 }
+          layer: Edge.Cuts
+```
+
+KiCad PCB import currently populates this from straight `gr_line` items on
+`Edge.Cuts`. This evidence supports nearest-edge USB orientation suggestions;
+it is not a complete mechanical outline solver and does not yet model arcs,
+slots, cutouts, panel tabs, or connector body intrusion.
 
 ## Layout Pad Evidence
 

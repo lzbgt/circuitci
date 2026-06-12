@@ -42,14 +42,15 @@ evidence includes:
 - scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
-The importer also reads KiCad `net`, `segment`, `via`, and `zone` entries.
-Routed geometry is written under `board.layout.routes`; copper-zone outlines
-and saved `filled_polygon` geometry are written under `board.layout.zones` only
-when the PCB net can be matched to an existing Board IR net. The importer does
-not create new schematic nets from PCB data. Net matching tries exact names,
-lowercase names, common ground aliases, native KiCad import names such as
-`net_usb_dp`, and a deterministic sanitized-name match. Ambiguous net matches
-fail closed.
+The importer also reads KiCad `gr_line`, `net`, `segment`, `via`, and `zone`
+entries. Straight board-edge `gr_line` items on `Edge.Cuts` are written under
+`board.layout.outline.segments`. Routed geometry is written under
+`board.layout.routes`; copper-zone outlines and saved `filled_polygon` geometry
+are written under `board.layout.zones` only when the PCB net can be matched to
+an existing Board IR net. The importer does not create new schematic nets from
+PCB data. Net matching tries exact names, lowercase names, common ground
+aliases, native KiCad import names such as `net_usb_dp`, and a deterministic
+sanitized-name match. Ambiguous net matches fail closed.
 
 Imported route evidence currently includes:
 
@@ -66,6 +67,12 @@ Imported zone evidence includes:
 - zone net,
 - copper layer,
 - polygon outline points in millimeters.
+- saved filled-polygon points in millimeters when present.
+
+Imported outline evidence includes:
+
+- straight `Edge.Cuts` segment start/end points in millimeters,
+- source layer, currently `Edge.Cuts`.
 
 When the enriched project is written to a different directory, relative
 `libraries` entries are rewritten to absolute paths so follow-up
@@ -77,9 +84,10 @@ route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts connected pad center,
 kind, shape, size, rotation, scalar drill, net, and layer evidence. It does not solve
-filled-copper island connectivity, pad-to-zone connectivity, thermal relief
-behavior, solder-mask expansion, shield bonding, return paths, impedance
-calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP alignment.
+arcs or non-line board edges, filled-copper island connectivity, pad-to-zone
+connectivity, thermal relief behavior, solder-mask expansion, shield bonding,
+return paths, impedance calculations, arbitrary DRC rule semantics, or
+pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 

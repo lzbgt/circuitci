@@ -1,7 +1,7 @@
 use super::super::{
-    ScenarioSuggestion, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
-    SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
-    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
+    ScenarioSuggestion, SuggestedBoardEdge, SuggestedPoint, SuggestedProtectionClamp,
+    SuggestedScenario, SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute,
+    SuggestedUsbRoutePair, USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
     USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
     USB_VBUS_ROUTE_VALID,
 };
@@ -10,7 +10,8 @@ use super::{
     suggested_protection_clamp,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetLayoutRule, NetRoute, RouteSegment,
+    BoardProject, ComponentPlacement, ComponentSpec, LayoutPoint, LayoutSegment, NetKind,
+    NetLayoutRule, NetRoute, RouteSegment,
 };
 use crate::library::{BoundBoard, ComponentModel, ProtectionReference, UsbConnector};
 use std::collections::{BTreeMap, BTreeSet};
@@ -255,16 +256,33 @@ pub(super) fn usb_connector_orientation_suggestion(
     let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
     let placement = component_placement(bound, component_id)?;
     placement.rotation_deg?;
-    let parameters = BTreeMap::from([
-        (
-            "expected_connector_rotation_deg".to_string(),
-            serde_json::Value::Null,
-        ),
-        (
-            "max_connector_rotation_error_deg".to_string(),
-            serde_json::Value::Null,
-        ),
-    ]);
+    let expected_rotation = suggested_connector
+        .nearest_board_edge
+        .as_ref()
+        .map(|edge| edge.outward_normal_deg);
+    let mut parameters = BTreeMap::from([(
+        "max_connector_rotation_error_deg".to_string(),
+        serde_json::Value::Null,
+    )]);
+    parameters.insert(
+        "expected_connector_rotation_deg".to_string(),
+        expected_rotation
+            .map(serde_json::Value::from)
+            .unwrap_or(serde_json::Value::Null),
+    );
+    let mut required_inputs = vec![
+        "Fill max_connector_rotation_error_deg from the allowed footprint-orientation tolerance."
+            .to_string(),
+    ];
+    if expected_rotation.is_some() {
+        required_inputs.push(
+            "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
+        );
+    } else {
+        required_inputs.push(
+            "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
+        );
+    }
     Some(ScenarioSuggestion {
         id: format!("usb_connector_orientation_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
@@ -299,10 +317,7 @@ pub(super) fn usb_connector_orientation_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
-            "Fill max_connector_rotation_error_deg from the allowed footprint-orientation tolerance.".to_string(),
-        ],
+        required_inputs,
     })
 }
 
@@ -1110,7 +1125,137 @@ fn suggested_usb_connector(
         shield_pin: connector.shield_pin.clone(),
         shield_net,
         placement: suggested_placement(bound, component_id),
+        nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
     })
+}
+
+fn nearest_board_edge_evidence(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+) -> Option<SuggestedBoardEdge> {
+    let placement = component_placement(bound, component_id)?;
+    let rotation_deg = placement.rotation_deg?;
+    let centroid = outline_centroid(&bound.project.board.layout.outline.segments)?;
+    let edge = bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| outline_segment_length_mm(segment) > f64::EPSILON)
+        .map(|segment| {
+            (
+                segment,
+                placement_to_segment_distance_mm(placement, segment),
+            )
+        })
+        .min_by(|left, right| left.1.total_cmp(&right.1))?;
+    let edge_angle_deg = segment_angle_deg(edge.0);
+    let outward_normal_deg = outward_normal_deg(edge.0, &centroid, edge_angle_deg);
+    Some(SuggestedBoardEdge {
+        start: suggested_point(&edge.0.start),
+        end: suggested_point(&edge.0.end),
+        layer: edge.0.layer.clone(),
+        distance_to_connector_mm: edge.1,
+        edge_angle_deg,
+        outward_normal_deg,
+        connector_rotation_error_deg: angular_error_deg(rotation_deg, outward_normal_deg),
+    })
+}
+
+fn suggested_point(point: &LayoutPoint) -> SuggestedPoint {
+    SuggestedPoint {
+        x_mm: point.x_mm,
+        y_mm: point.y_mm,
+    }
+}
+
+fn outline_centroid(segments: &[LayoutSegment]) -> Option<LayoutPoint> {
+    let mut count = 0.0;
+    let mut x_sum = 0.0;
+    let mut y_sum = 0.0;
+    for segment in segments {
+        if outline_segment_length_mm(segment) <= f64::EPSILON {
+            continue;
+        }
+        x_sum += segment.start.x_mm + segment.end.x_mm;
+        y_sum += segment.start.y_mm + segment.end.y_mm;
+        count += 2.0;
+    }
+    (count > 0.0).then_some(LayoutPoint {
+        x_mm: x_sum / count,
+        y_mm: y_sum / count,
+    })
+}
+
+fn placement_to_segment_distance_mm(
+    placement: &ComponentPlacement,
+    segment: &LayoutSegment,
+) -> f64 {
+    point_to_segment_distance_mm(
+        placement.x_mm,
+        placement.y_mm,
+        segment.start.x_mm,
+        segment.start.y_mm,
+        segment.end.x_mm,
+        segment.end.y_mm,
+    )
+}
+
+fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+    let dx = bx - ax;
+    let dy = by - ay;
+    let length_sq = dx * dx + dy * dy;
+    if length_sq <= f64::EPSILON {
+        return (px - ax).hypot(py - ay);
+    }
+    let t = (((px - ax) * dx + (py - ay) * dy) / length_sq).clamp(0.0, 1.0);
+    let nearest_x = ax + t * dx;
+    let nearest_y = ay + t * dy;
+    (px - nearest_x).hypot(py - nearest_y)
+}
+
+fn outline_segment_length_mm(segment: &LayoutSegment) -> f64 {
+    (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+}
+
+fn segment_angle_deg(segment: &LayoutSegment) -> f64 {
+    normalize_rotation_deg(
+        (segment.end.y_mm - segment.start.y_mm)
+            .atan2(segment.end.x_mm - segment.start.x_mm)
+            .to_degrees(),
+    )
+}
+
+fn outward_normal_deg(segment: &LayoutSegment, centroid: &LayoutPoint, edge_angle_deg: f64) -> f64 {
+    let midpoint_x = (segment.start.x_mm + segment.end.x_mm) / 2.0;
+    let midpoint_y = (segment.start.y_mm + segment.end.y_mm) / 2.0;
+    let away_x = midpoint_x - centroid.x_mm;
+    let away_y = midpoint_y - centroid.y_mm;
+    let left_normal_deg = normalize_rotation_deg(edge_angle_deg + 90.0);
+    let right_normal_deg = normalize_rotation_deg(edge_angle_deg - 90.0);
+    let left_dot = angle_dot(left_normal_deg, away_x, away_y);
+    let right_dot = angle_dot(right_normal_deg, away_x, away_y);
+    if left_dot >= right_dot {
+        left_normal_deg
+    } else {
+        right_normal_deg
+    }
+}
+
+fn angle_dot(angle_deg: f64, x: f64, y: f64) -> f64 {
+    let radians = angle_deg.to_radians();
+    radians.cos() * x + radians.sin() * y
+}
+
+fn normalize_rotation_deg(rotation_deg: f64) -> f64 {
+    rotation_deg.rem_euclid(360.0)
+}
+
+fn angular_error_deg(actual_deg: f64, expected_deg: f64) -> f64 {
+    let delta = (normalize_rotation_deg(actual_deg) - normalize_rotation_deg(expected_deg)).abs();
+    delta.min(360.0 - delta)
 }
 
 fn connected_declared_net<'a>(

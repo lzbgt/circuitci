@@ -115,6 +115,13 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         imported["board"]["layout"]["routes"]["net_usb_vbus"]["segments"][0]["end"]["x_mm"],
         1.5
     );
+    let outline_segments = imported["board"]["layout"]["outline"]["segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(outline_segments.len(), 4);
+    assert_eq!(outline_segments[0]["layer"], "Edge.Cuts");
+    assert_eq!(outline_segments[0]["start"]["x_mm"], -0.4);
+    assert_eq!(outline_segments[0]["end"]["x_mm"], 2.0);
     let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
         .as_array()
         .unwrap();
@@ -207,12 +214,22 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         orientation["scenario"]["checks"][0],
         "USB_CONNECTOR_ORIENTATION_VALID"
     );
-    assert!(orientation["scenario"]["parameters"]["expected_connector_rotation_deg"].is_null());
+    assert_eq!(
+        orientation["scenario"]["parameters"]["expected_connector_rotation_deg"],
+        180.0
+    );
     assert!(orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"].is_null());
     assert_eq!(
         orientation["scenario"]["usb_connectors"][0]["placement"]["rotation_deg"],
         0.0
     );
+    let nearest_edge = &orientation["scenario"]["usb_connectors"][0]["nearest_board_edge"];
+    assert_eq!(nearest_edge["layer"], "Edge.Cuts");
+    assert_eq!(nearest_edge["start"]["x_mm"], -0.4);
+    assert_eq!(nearest_edge["end"]["y_mm"], -1.0);
+    assert!((nearest_edge["distance_to_connector_mm"].as_f64().unwrap() - 0.4).abs() < 1.0e-9);
+    assert_eq!(nearest_edge["outward_normal_deg"], 180.0);
+    assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()

@@ -183,6 +183,26 @@ pub struct SuggestedUsbConnector {
     pub shield_net: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub placement: Option<SuggestedPlacement>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nearest_board_edge: Option<SuggestedBoardEdge>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedBoardEdge {
+    pub start: SuggestedPoint,
+    pub end: SuggestedPoint,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
+    pub distance_to_connector_mm: f64,
+    pub edge_angle_deg: f64,
+    pub outward_normal_deg: f64,
+    pub connector_rotation_error_deg: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedPoint {
+    pub x_mm: f64,
+    pub y_mm: f64,
 }
 
 #[derive(Debug, Serialize)]
