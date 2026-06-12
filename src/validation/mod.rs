@@ -8,6 +8,7 @@ mod backdrive;
 mod common;
 mod control_line;
 mod firmware_functional;
+mod interface_protection;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
@@ -20,6 +21,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 pub(super) const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
+pub(super) const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 pub(super) const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 pub(super) const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
@@ -35,6 +37,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "serial_programming",
     "firmware_update",
     "firmware_in_loop",
+    "interface_protection",
     "power_tree",
     "control_line_sequence",
     "analog_transient",
@@ -102,6 +105,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     }
                     backdrive::validate_backdrive(bound, scenario, &mut findings)
                 }
+                INTERFACE_PROTECTION_REVIEW if scenario.scenario_type == "interface_protection" => {
+                    interface_protection::validate_interface_protection(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 RESET_RELEASE_AFTER_POWER_VALID if scenario.scenario_type == "reset_boot" => {
                     target_contract::validate_reset_release(bound, scenario, &mut findings)
                 }
@@ -168,6 +178,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     )
                 }
                 GPIO_BACKDRIVE
+                | INTERFACE_PROTECTION_REVIEW
                 | RESET_RELEASE_AFTER_POWER_VALID
                 | BOOT_STRAP_DEFINED
                 | UART_BOOTLOADER_SYNC

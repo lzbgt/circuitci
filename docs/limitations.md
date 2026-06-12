@@ -38,6 +38,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   analog RC/supervisor waveform unless an explicit `analog_transient` scenario
   is provided.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.
+- `INTERFACE_PROTECTION_REVIEW` checks declared signal-conditioning channel
+  metadata and unpowered-isolation claims. It does not prove analog leakage,
+  clamp current, ESD performance, propagation delay, edge rate, or signal
+  integrity.
 - Quantitative waveform proof is available only through `analog_transient`
   scenarios with a SPICE-class backend and explicit assertions.
 - Imported SPICE decks can produce solver and waveform evidence, but an

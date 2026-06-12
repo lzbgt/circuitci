@@ -1,0 +1,47 @@
+project:
+  name: good_interface_protection_powered
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U3:
+      model: generic.level_shifter.basic
+      part_number: GENERIC_LEVEL_SHIFTER
+      power_domains:
+        VCCA: rail_a
+        VCCB: rail_b
+      pins:
+        VCCA: rail_a
+        VCCB: rail_b
+        GND: gnd
+        A1: side_a_sig
+        B1: side_b_sig
+        OE: rail_b
+  nets:
+    rail_a:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    rail_b:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    side_a_sig:
+      kind: digital_or_analog
+    side_b_sig:
+      kind: digital_or_analog
+
+scenarios:
+  - name: level_shifter_channel_review
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: U3
+    parameters:
+      channel: ch1

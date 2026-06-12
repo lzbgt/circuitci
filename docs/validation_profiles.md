@@ -14,6 +14,7 @@ scenarios:
   - reset_boot
   - serial_programming
   - gpio_backdrive
+  - interface_protection
   - i2c_bus
   - spi_bus
   - uart
@@ -42,12 +43,14 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
+- `INTERFACE_PROTECTION_REVIEW`
 - `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 `circuitci suggest-scenarios` can propose missing `power_tree`, reset timing,
-boot-strap, and UART bootloader scenario templates before profile validation.
-Suggestions are not automatically treated as passing validation evidence.
+boot-strap, UART bootloader, GPIO backdrive, and interface-protection scenario
+templates before profile validation. Suggestions are not automatically treated
+as passing validation evidence.
 
 ## Rule Completion Standard
 

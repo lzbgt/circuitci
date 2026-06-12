@@ -69,6 +69,7 @@ Executable scenario types:
 - `firmware_update`
 - `control_line_sequence`
 - `firmware_in_loop`
+- `interface_protection`
 - `power_tree`
 - `analog_transient`
 
@@ -94,6 +95,7 @@ Canonical executable check IDs:
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
+- `INTERFACE_PROTECTION_REVIEW`
 - `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -191,6 +193,40 @@ scenarios:
 9. ACK is abstract in this slice: matching the sync event, sender connectivity, and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
 
 Missing required model/scenario data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
+
+## Interface Protection Scenario Shape
+
+`interface_protection` scenarios review declared signal-conditioning channels
+such as level shifters, protection parts, series resistors, or bus switches:
+
+```yaml
+scenarios:
+  - name: level_shifter_channel_review
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: U3
+    parameters:
+      channel: ch1
+```
+
+`INTERFACE_PROTECTION_REVIEW` algorithm:
+
+1. Resolve `target.component`.
+2. Resolve `parameters.channel` from the target model's
+   `signal_conditioning.channels`.
+3. Require both side pins to be connected.
+4. Require each side supply pin to resolve to a declared power net with a
+   `powered` state.
+5. If both side supplies have the same powered state, the static review passes.
+6. If one side is powered and the other is unpowered, the channel must declare
+   `unpowered_isolation: true`; otherwise the check fails critically.
+
+This is a static datasheet-contract check. It does not prove propagation delay,
+edge rate, leakage, clamp current, ESD pulse behavior, or analog waveform
+margin. Those still need datasheet-backed component models and
+`analog_transient` scenarios where relevant.
 
 ## Power Tree Scenario Shape
 

@@ -44,6 +44,27 @@ fn fixed_backdrive_board_passes() {
 }
 
 #[test]
+fn good_interface_protection_powered_passes() {
+    let report = run_validation("examples/good_interface_protection_powered/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn interface_protection_unisolated_power_domains_fail() {
+    let report = run_validation("examples/bad_interface_protection_unisolated/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "U3");
+    assert_eq!(failure["measured"]["side_a_powered"], false);
+    assert_eq!(failure["measured"]["side_b_powered"], true);
+    assert_eq!(failure["limit"]["required_unpowered_isolation"], true);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");
