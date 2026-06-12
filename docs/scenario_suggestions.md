@@ -88,10 +88,13 @@ The command is conservative:
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes
   `scenario.usb_routes[]` with data-line net, route length, via count, and the
-  matching protection component. It also includes `scenario.usb_route_pairs[]`
-  with computed D+/D- route lengths, length mismatch, via counts, and via-count
-  delta. If KiCad PCB import found applicable custom DRC `length` or `skew`
-  constraints, the template pre-fills `max_data_line_route_length_mm` and
+  matching protection component. When imported net rules include route width,
+  each route also reports `expected_data_line_width_mm`. It also includes
+  `scenario.usb_route_pairs[]` with computed D+/D- route lengths, length
+  mismatch, via counts, via-count delta, and imported
+  `expected_data_pair_gap_mm` when available. If KiCad PCB import found
+  applicable custom DRC `length` or `skew` constraints, the template pre-fills
+  `max_data_line_route_length_mm` and
   `max_data_pair_length_mismatch_mm`; via-count, width tolerance, gap
   tolerance, and ESD placement limits remain `null` until an agent supplies
   board-specific policy.

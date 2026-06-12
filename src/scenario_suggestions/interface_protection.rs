@@ -423,7 +423,7 @@ fn usb_route_geometry_suggestion(
         &suggested_connector.dm_net,
         Some(dm_clamp.component.clone()),
     )?;
-    let route_pair = suggested_usb_route_pair(&dp_route, &dm_route)?;
+    let route_pair = suggested_usb_route_pair(bound, &dp_route, &dm_route)?;
     let route_limits = suggested_usb_route_limits(bound, &dp_route.net, &dm_route.net);
     let parameters = BTreeMap::from([
         (
@@ -545,6 +545,10 @@ fn min_rule_value(
     }
 }
 
+fn expected_usb_data_width_mm(rule: &NetLayoutRule) -> Option<f64> {
+    rule.diff_pair_width_mm.or(rule.track_width_mm)
+}
+
 fn optional_number_value(value: Option<f64>) -> serde_json::Value {
     value.map_or(serde_json::Value::Null, serde_json::Value::from)
 }
@@ -574,11 +578,20 @@ fn suggested_usb_route(
         net: net_name.to_string(),
         route_length_mm: route_length_mm(route),
         via_count: route.vias.len(),
+        expected_data_line_width_mm: bound
+            .project
+            .board
+            .layout
+            .constraints
+            .net_rules
+            .get(net_name)
+            .and_then(expected_usb_data_width_mm),
         protection_component,
     })
 }
 
 fn suggested_usb_route_pair(
+    bound: &BoundBoard<'_>,
     dp_route: &SuggestedUsbRoute,
     dm_route: &SuggestedUsbRoute,
 ) -> Option<SuggestedUsbRoutePair> {
@@ -594,6 +607,23 @@ fn suggested_usb_route_pair(
         dp_via_count: dp_route.via_count,
         dm_via_count: dm_route.via_count,
         data_pair_via_count_delta: dp_route.via_count.abs_diff(dm_route.via_count),
+        expected_data_pair_gap_mm: min_rule_value(
+            bound
+                .project
+                .board
+                .layout
+                .constraints
+                .net_rules
+                .get(&dp_route.net),
+            bound
+                .project
+                .board
+                .layout
+                .constraints
+                .net_rules
+                .get(&dm_route.net),
+            |rule| rule.diff_pair_gap_mm,
+        ),
     })
 }
 

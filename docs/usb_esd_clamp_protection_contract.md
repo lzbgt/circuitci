@@ -130,9 +130,11 @@ Route-geometry validation:
 - When `parameters.max_data_pair_gap_delta_mm` is present, it checks the
   edge-to-edge gap of overlapping parallel D+/D- segments against imported
   `diff_pair_gap_mm`.
-- Scenario suggestions expose the same pair evidence in
-  `scenario.usb_route_pairs[]` so agents can inspect the measured mismatch and
-  via-count delta before choosing board-specific limits.
+- Scenario suggestions expose route and pair evidence in `scenario.usb_routes[]`
+  and `scenario.usb_route_pairs[]` so agents can inspect measured length,
+  via-count, imported expected data-line width, measured pair mismatch,
+  via-count delta, and imported expected pair gap before choosing
+  board-specific limits.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

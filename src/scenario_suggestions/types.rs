@@ -191,6 +191,11 @@ pub struct SuggestedUsbRoute {
     pub net: String,
     pub route_length_mm: f64,
     pub via_count: usize,
+    #[serde(
+        rename = "expected_data_line_width_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub expected_data_line_width_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
 }
@@ -205,6 +210,11 @@ pub struct SuggestedUsbRoutePair {
     pub dp_via_count: usize,
     pub dm_via_count: usize,
     pub data_pair_via_count_delta: usize,
+    #[serde(
+        rename = "expected_data_pair_gap_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub expected_data_pair_gap_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
