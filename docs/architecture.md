@@ -132,6 +132,10 @@ The mixed-domain kernel uses replaceable adapters:
 
 The CLI and JSON report schema must remain stable as solver fidelity increases.
 
+The gap between this architecture and broad "verify any common IoT board"
+coverage is tracked in
+[common_iot_board_readiness_gaps.md](common_iot_board_readiness_gaps.md).
+
 ## Design Constraints
 
 - A validation rule must never silently change pass criteria to make examples pass.

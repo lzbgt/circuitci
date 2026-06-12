@@ -13,7 +13,8 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - full USB PHY simulation
 - full SMPS compensation design
 - automatic datasheet-to-perfect-model generation
-- firmware-in-loop functional MCU backend execution
+- broad firmware-in-loop MCU/peripheral machine coverage beyond the explicit
+  QEMU pin-observation path
 
 ## Current Technical Limits
 
@@ -48,3 +49,6 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   critical analog findings rather than producing fake passes.
 
 Reports must include these limitations so automated agents and human users know when a pass does not imply full physical coverage.
+
+For the broader gap list between the current tool and "verify any common IoT
+board" readiness, see [common_iot_board_readiness_gaps.md](common_iot_board_readiness_gaps.md).
