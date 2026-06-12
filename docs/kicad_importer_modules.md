@@ -13,10 +13,13 @@ inside the smallest module that owns the behavior:
   builder.
 - `src/importers/kicad_pcb.rs` owns the `import-kicad-pcb` orchestration,
   project enrichment, shared footprint placement/pad coordinate transforms,
-  routed geometry, zones, board outline evidence, and KiCad routing-rule import.
+  routed geometry, zones, and KiCad routing-rule import.
 - `src/importers/kicad_pcb/footprints.rs` owns matched footprint drawing
   evidence import and serialization for `fp_line`, `fp_rect`, `fp_poly`,
   `fp_circle`, and `fp_arc` items.
+- `src/importers/kicad_pcb/outline.rs` owns Edge.Cuts board-outline import,
+  bounded curve sampling, closed-contour cutout classification, and outline
+  evidence serialization.
 
 The split is intentionally conservative. It does not change mapping semantics,
 generated Board IR shape, or validation behavior; it only keeps the importer
