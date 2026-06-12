@@ -678,6 +678,107 @@ fn import_kicad_schematic_suggests_ams1117_regulator_evidence() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_tpd2eusb30_usb_esd_clamps() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("tpd2eusb30_usb_esd.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_tpd2eusb30_usb_esd_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_tpd2eusb30_usb_esd_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_tpd2eusb30_usb_esd_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["UESD"]["model"],
+        "vendor.ti.tpd2eusb30"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESD"]["pins"]["D1+"],
+        "net_usb_dp"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESD"]["pins"]["D1-"],
+        "net_usb_dm"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESD"]["pins"]["GND"],
+        "gnd"
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_usb_dp"]["nominal_voltage"],
+        3.3
+    );
+    assert_eq!(imported["board"]["nets"]["gnd"]["kind"], "ground");
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+
+    let dp = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_d1_plus")
+        .expect("D+ clamp suggestion");
+    assert_eq!(dp["runnable"], true);
+    assert_eq!(dp["scenario"]["checks"][0], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(dp["scenario"]["target"]["component"], "UESD");
+    assert_eq!(dp["scenario"]["parameters"]["clamp"], "d1_plus");
+    let dp_clamp = &dp["scenario"]["protection_clamps"][0];
+    assert_eq!(dp_clamp["protected_pin"], "D1+");
+    assert_eq!(dp_clamp["protected_net"], "net_usb_dp");
+    assert_eq!(dp_clamp["reference_pin"], "GND");
+    assert_eq!(dp_clamp["reference_net"], "gnd");
+    assert_eq!(dp_clamp["reference"], "ground");
+    assert_eq!(dp_clamp["working_voltage_max_V"], 5.5);
+    assert_eq!(dp_clamp["line_capacitance_F"], 7.0e-13);
+
+    let dm = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_d1_minus")
+        .expect("D- clamp suggestion");
+    assert_eq!(dm["scenario"]["parameters"]["clamp"], "d1_minus");
+    assert_eq!(
+        dm["scenario"]["protection_clamps"][0]["protected_net"],
+        "net_usb_dm"
+    );
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

@@ -6,7 +6,8 @@ tests:
 - basic schematic import,
 - explicit mapping into generated SPICE,
 - MOSFET/SOA mapped schematic import,
-- generated scenario suggestions from mapped schematic passives.
+- generated scenario suggestions from mapped schematic passives and mapped
+  datasheet-backed component metadata.
 
 `tests/kicad_hierarchy_import_cli.rs` contains hierarchy workflow coverage:
 

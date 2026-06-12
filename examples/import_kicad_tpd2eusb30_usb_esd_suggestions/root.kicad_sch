@@ -1,0 +1,24 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "fa000000-0000-0000-0000-000000000001")
+  (lib_symbols
+    (symbol "Protection:TPD2EUSB30"
+      (pin passive line (at -10 -5 0) (length 2.54) (name "D1+") (number "1"))
+      (pin passive line (at -10 5 0) (length 2.54) (name "D1-") (number "2"))
+      (pin power_in line (at 0 10 270) (length 2.54) (name "GND") (number "3"))))
+
+  (symbol (lib_id "Protection:TPD2EUSB30") (at 40 20 0)
+    (property "Reference" "UESD")
+    (property "Value" "TPD2EUSB30")
+    (pin "1") (pin "2") (pin "3"))
+
+  (wire (pts (xy 30 15) (xy 20 15)))
+  (label "USB_DP" (at 20 15 0))
+
+  (wire (pts (xy 30 25) (xy 20 25)))
+  (label "USB_DM" (at 20 25 0))
+
+  (wire (pts (xy 40 30) (xy 40 40)))
+  (label "GND" (at 40 40 0))
+)

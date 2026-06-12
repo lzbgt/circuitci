@@ -87,6 +87,10 @@ The command is conservative:
   symbol is mapped to a model with `power_conversion` metadata; see
   `examples/import_kicad_ap2112_regulator_suggestions/` and
   `examples/import_kicad_ams1117_regulator_suggestions/`.
+- Imported KiCad schematics can provide clamp-only USB ESD evidence when a
+  protection symbol is mapped to a model with
+  `signal_conditioning.protection_clamps`; see
+  `examples/import_kicad_tpd2eusb30_usb_esd_suggestions/`.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
