@@ -67,6 +67,7 @@ Current fixtures:
 - `examples/bad_usb_connector_missing_data_protection`
 - `examples/bad_usb_connector_missing_vbus_protection`
 - `examples/scenario_suggestions_usb_connector_protection`
+- `examples/import_kicad_usb_connector_protection_suggestions`
 
 Connector-level validation:
 
@@ -95,3 +96,4 @@ Datasheet-backed model pack:
 - `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference`
 - `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance`
 - `examples/import_kicad_prtr5v0u2x_usb_esd_suggestions`
+- `docs/kicad_usb_connector_protection_suggestion_fixture.md`

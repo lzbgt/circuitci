@@ -1,0 +1,38 @@
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor/ti/protection
+components:
+  J1:
+    model: generic.connector.usb2
+    part_number: USB2_CONNECTOR
+    pin_map:
+      "1": VBUS
+      "2": "D+"
+      "3": "D-"
+      "4": GND
+  UESD:
+    model: vendor.ti.tpd2eusb30
+    part_number: TPD2EUSB30
+    pin_map:
+      "1": "D1+"
+      "2": "D1-"
+      "3": GND
+  UVBUS:
+    model: generic.protection.vbus_esd_basic
+    part_number: VBUS_ESD
+    pin_map:
+      "1": VBUS
+      "2": GND
+nets:
+  USB_VBUS:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+  USB_DP:
+    kind: digital_or_analog
+    nominal_voltage: 3.3
+  USB_DM:
+    kind: digital_or_analog
+    nominal_voltage: 3.3
+  GND:
+    kind: ground

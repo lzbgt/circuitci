@@ -885,6 +885,136 @@ fn import_kicad_schematic_suggests_prtr5v0u2x_usb_esd_clamps() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_usb_connector_protection() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("usb_connector_protection.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_usb_connector_protection_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_usb_connector_protection_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_usb_connector_protection_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["J1"]["model"],
+        "generic.connector.usb2"
+    );
+    assert_eq!(
+        imported["board"]["components"]["J1"]["pins"]["VBUS"],
+        "net_usb_vbus"
+    );
+    assert_eq!(
+        imported["board"]["components"]["J1"]["pins"]["D+"],
+        "net_usb_dp"
+    );
+    assert_eq!(
+        imported["board"]["components"]["J1"]["pins"]["D-"],
+        "net_usb_dm"
+    );
+    assert_eq!(imported["board"]["components"]["J1"]["pins"]["GND"], "gnd");
+    assert_eq!(
+        imported["board"]["components"]["UESD"]["model"],
+        "vendor.ti.tpd2eusb30"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UVBUS"]["model"],
+        "generic.protection.vbus_esd_basic"
+    );
+    assert_eq!(imported["board"]["nets"]["net_usb_vbus"]["kind"], "power");
+    assert_eq!(
+        imported["board"]["nets"]["net_usb_vbus"]["nominal_voltage"],
+        5.0
+    );
+    assert_eq!(imported["board"]["nets"]["net_usb_vbus"]["powered"], true);
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+
+    let connector = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_protection_j1")
+        .expect("USB connector protection suggestion");
+    assert_eq!(connector["runnable"], true);
+    assert_eq!(
+        connector["scenario"]["checks"][0],
+        "USB_CONNECTOR_PROTECTION_VALID"
+    );
+    assert_eq!(connector["scenario"]["target"]["component"], "J1");
+    assert_eq!(
+        connector["scenario"]["parameters"]["require_vbus_protection"],
+        true
+    );
+    assert_eq!(
+        connector["scenario"]["parameters"]["data_working_voltage_min_V"],
+        3.3
+    );
+    assert_eq!(
+        connector["scenario"]["parameters"]["vbus_working_voltage_min_V"],
+        5.0
+    );
+    let usb = &connector["scenario"]["usb_connectors"][0];
+    assert_eq!(usb["component"], "J1");
+    assert_eq!(usb["vbus_net"], "net_usb_vbus");
+    assert_eq!(usb["dp_net"], "net_usb_dp");
+    assert_eq!(usb["dm_net"], "net_usb_dm");
+    assert_eq!(usb["gnd_net"], "gnd");
+    let clamps = connector["scenario"]["protection_clamps"]
+        .as_array()
+        .unwrap();
+    assert_eq!(clamps.len(), 3);
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["clamp"] == "d1_plus"
+            && clamp["protected_net"] == "net_usb_dp"
+    }));
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["clamp"] == "d1_minus"
+            && clamp["protected_net"] == "net_usb_dm"
+    }));
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UVBUS"
+            && clamp["clamp"] == "vbus"
+            && clamp["protected_net"] == "net_usb_vbus"
+    }));
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
