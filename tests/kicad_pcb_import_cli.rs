@@ -91,7 +91,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_footprint["arcs"][0]["mid"]["y_mm"], 1.0);
     assert_eq!(
         connector_footprint["entry_direction"]["source"],
-        "kicad_mapping"
+        "kicad_footprint_property"
     );
     assert_eq!(connector_footprint["entry_direction"]["offset_deg"], 0.0);
     assert_eq!(
@@ -311,7 +311,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(nearest_edge["connector_entry_direction_offset_deg"], 0.0);
     assert_eq!(
         nearest_edge["connector_entry_direction_offset_source"],
-        "kicad_mapping"
+        "footprint_property"
     );
     assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
     let edge_proximity = suggestions["suggestions"]
@@ -452,12 +452,12 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(entry_evidence["entry_direction_deg"], 0.0);
     assert_eq!(
         entry_evidence["entry_direction_source"],
-        "kicad_mapping_offset"
+        "footprint_property_offset"
     );
     assert_eq!(entry_evidence["entry_direction_offset_deg"], 0.0);
     assert_eq!(
         entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_direction"]["source"],
-        "kicad_mapping"
+        "kicad_footprint_property"
     );
     assert_eq!(
         entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_direction"]["offset_deg"],
@@ -683,7 +683,9 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     )
     .unwrap()
     .lines()
-    .filter(|line| !line.contains("CircuitCI_EntryAperture"))
+    .filter(|line| {
+        !line.contains("CircuitCI_EntryAperture") && !line.contains("CircuitCI_EntryDirection")
+    })
     .collect::<Vec<_>>()
     .join("\n");
     std::fs::write(&board_without_aperture, board_text).unwrap();
@@ -796,6 +798,62 @@ fn import_kicad_pcb_rejects_invalid_entry_aperture_properties() {
 }
 
 #[test]
+fn import_kicad_pcb_rejects_invalid_entry_direction_properties() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let direction_property =
+        "(property \"CircuitCI_EntryDirectionOffsetDeg\" \"0.0\" (at 0 1.0 0) (layer \"F.Fab\"))";
+    let malformed_cases = [
+        (
+            "duplicate_entry_direction.kicad_pcb",
+            source_pcb.replace(
+                direction_property,
+                &format!("{direction_property}\n    {direction_property}"),
+            ),
+            "duplicate entry-direction property",
+        ),
+        (
+            "nonfinite_entry_direction.kicad_pcb",
+            source_pcb.replace(
+                direction_property,
+                "(property \"CircuitCI_EntryDirectionOffsetDeg\" \"inf\" (at 0 1.0 0) (layer \"F.Fab\"))",
+            ),
+            "must be finite",
+        ),
+    ];
+
+    for (file_name, pcb_contents, expected_error) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "malformed KiCad PCB entry-direction fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains(expected_error),
+            "expected error containing {expected_error:?}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
 fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -881,7 +939,7 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     assert_eq!(entry_failure["measured"]["entry_direction_deg"], 0.0);
     assert_eq!(
         entry_failure["measured"]["entry_direction_source"],
-        "kicad_mapping_offset"
+        "footprint_property_offset"
     );
     assert_eq!(entry_failure["measured"]["entry_direction_offset_deg"], 0.0);
     assert_eq!(

@@ -271,7 +271,8 @@ keys include `obstructing_component`, `entry_obstruction_depth_mm`,
 optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.
 `entry_direction_source` is `scenario_parameter`, `placement_rotation`,
-`component_model_offset`, or `kicad_mapping_offset`.
+`component_model_offset`, `kicad_mapping_offset`, or
+`footprint_property_offset`.
 `entry_aperture_source` is `footprint_front`, `component_model_aperture`,
 `kicad_mapping_aperture`, or `footprint_property_aperture`.
 

@@ -49,10 +49,10 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
         required_inputs.push(offset.map_or_else(
             || "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
             |offset_deg| {
-                let source = if offset_source == Some("kicad_mapping") {
-                    "KiCad mapping entry-direction offset"
-                } else {
-                    "component-model usb_connector.entry_direction_offset_deg"
+                let source = match offset_source {
+                    Some("footprint_property") => "KiCad footprint entry-direction property",
+                    Some("kicad_mapping") => "KiCad mapping entry-direction offset",
+                    _ => "component-model usb_connector.entry_direction_offset_deg",
                 };
                 format!(
                     "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus {source} {:.3} before making this scenario runnable.",
@@ -385,10 +385,10 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
             entry_direction.offset_deg.map_or_else(
                 || "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
                 |offset_deg| {
-                    let source = if entry_direction.source == "kicad_mapping_offset" {
-                        "the KiCad mapping"
-                    } else {
-                        "the component model"
+                    let source = match entry_direction.source {
+                        "footprint_property_offset" => "the KiCad footprint property",
+                        "kicad_mapping_offset" => "the KiCad mapping",
+                        _ => "the component model",
                     };
                     format!(
                         "Review entry_direction_deg; it is computed from imported connector placement rotation plus entry-direction offset {:.3} from {}.",

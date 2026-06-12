@@ -543,7 +543,7 @@
         "expected_connector_rotation_deg": { "type": "number" },
         "connector_entry_direction_offset_deg": { "type": "number" },
         "connector_entry_direction_offset_source": {
-          "enum": ["component_model", "kicad_mapping"]
+          "enum": ["component_model", "kicad_mapping", "footprint_property"]
         },
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }
       },
@@ -589,7 +589,8 @@
           "enum": [
             "placement_rotation",
             "component_model_offset",
-            "kicad_mapping_offset"
+            "kicad_mapping_offset",
+            "footprint_property_offset"
           ]
         },
         "entry_direction_offset_deg": { "type": "number" },

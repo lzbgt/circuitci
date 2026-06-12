@@ -233,7 +233,7 @@ fn model_entry_direction(
         .then_some(EntryDirectionEvidence {
             deg: entry_direction_deg,
             source: if layout_offset_deg.is_some() {
-                "kicad_mapping_offset"
+                entry_direction_source(layout_direction)
             } else if offset_deg.is_some() {
                 "component_model_offset"
             } else {
@@ -241,6 +241,16 @@ fn model_entry_direction(
             },
             offset_deg,
         })
+}
+
+fn entry_direction_source(layout_direction: Option<&LayoutEntryDirection>) -> &'static str {
+    if layout_direction.and_then(|entry_direction| entry_direction.source.as_deref())
+        == Some("kicad_footprint_property")
+    {
+        "footprint_property_offset"
+    } else {
+        "kicad_mapping_offset"
+    }
 }
 
 #[derive(Clone, Copy)]

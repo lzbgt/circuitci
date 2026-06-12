@@ -177,10 +177,11 @@ Connector entry-clearance validation:
   and uses imported connector placement rotation or explicit
   `parameters.entry_direction_deg` plus supported connector
   `fabrication`/`courtyard` footprint drawing evidence. When the scenario does
-  not declare `entry_direction_deg`, KiCad mapping
-  `layout.entry_direction_offset_deg` takes precedence over the connector model
-  `usb_connector.entry_direction_offset_deg` for footprint-specific insertion
-  direction conventions.
+  not declare `entry_direction_deg`, KiCad footprint property
+  `CircuitCI_EntryDirectionOffsetDeg` takes precedence over KiCad mapping
+  `layout.entry_direction_offset_deg`, which takes precedence over the connector
+  model `usb_connector.entry_direction_offset_deg` for footprint-specific
+  insertion direction conventions.
 - The scenario must declare
   `parameters.min_cable_entry_clearance_depth_mm` and
   `parameters.cable_entry_clearance_width_mm` from connector plug, cable, panel,

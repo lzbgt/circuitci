@@ -1105,7 +1105,7 @@ pub(super) fn usb_entry_direction(
     deg.is_finite().then_some(UsbEntryDirection {
         deg,
         source: if layout_offset_deg.is_some() {
-            "kicad_mapping_offset"
+            usb_entry_direction_source(bound, component_id)
         } else if offset_deg.is_some() {
             "component_model_offset"
         } else {
@@ -1113,6 +1113,23 @@ pub(super) fn usb_entry_direction(
         },
         offset_deg,
     })
+}
+
+fn usb_entry_direction_source(bound: &BoundBoard<'_>, component_id: &str) -> &'static str {
+    if bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(component_id)
+        .and_then(|footprint| footprint.entry_direction.as_ref())
+        .and_then(|entry_direction| entry_direction.source.as_deref())
+        == Some("kicad_footprint_property")
+    {
+        "footprint_property_offset"
+    } else {
+        "kicad_mapping_offset"
+    }
 }
 
 fn normalize_rotation_deg(rotation_deg: f64) -> f64 {

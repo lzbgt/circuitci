@@ -91,7 +91,8 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   assembly stack-up clearance.
 - `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` checks a static 2D cable-entry corridor
   projected forward from the connector footprint body using imported placement
-  rotation plus optional KiCad mapping or component-model
+  rotation plus optional KiCad footprint-property, KiCad mapping, or
+  component-model
   `entry_direction_offset_deg`, or explicit scenario `entry_direction_deg`.
   Optional imported footprint-property, KiCad mapping, or component-model
   aperture offsets and width can move and widen that 2D corridor, but they

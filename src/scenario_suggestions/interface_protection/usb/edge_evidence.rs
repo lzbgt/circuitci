@@ -171,7 +171,23 @@ fn connector_entry_direction_offset(
         .and_then(|footprint| footprint.entry_direction.as_ref())
         .and_then(|entry_direction| entry_direction.offset_deg);
     if let Some(offset_deg) = layout_offset_deg {
-        return (Some(offset_deg), Some("kicad_mapping".to_string()));
+        let source = bound
+            .project
+            .board
+            .layout
+            .footprints
+            .get(component_id)
+            .and_then(|footprint| footprint.entry_direction.as_ref())
+            .and_then(|entry_direction| entry_direction.source.as_deref())
+            .map(|source| {
+                if source == "kicad_footprint_property" {
+                    "footprint_property"
+                } else {
+                    "kicad_mapping"
+                }
+            })
+            .unwrap_or("kicad_mapping");
+        return (Some(offset_deg), Some(source.to_string()));
     }
     (
         connector.entry_direction_offset_deg,

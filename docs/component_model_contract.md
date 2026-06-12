@@ -357,9 +357,12 @@ checks. When declared, `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` and
 placement `rotation_deg + entry_direction_offset_deg`, normalized into
 `[0, 360)`. KiCad schematic mapping metadata can override this model default
 per footprint/library convention through `layout.entry_direction_offset_deg`;
-that path is reported as `kicad_mapping_offset`. Omit the model value only when
-the footprint's zero-degree convention already points in the cable insertion
-direction or when every supported KiCad footprint mapping supplies the offset.
+that path is reported as `kicad_mapping_offset`. Explicit KiCad PCB footprint
+property `CircuitCI_EntryDirectionOffsetDeg` can override both model and
+mapping defaults and is reported as `footprint_property_offset`. Omit the model
+value only when the footprint's zero-degree convention already points in the
+cable insertion direction or when every supported KiCad footprint or mapping
+supplies the offset.
 See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.md)
 for a validation fixture that proves a nonzero offset changes the checked entry
 direction.

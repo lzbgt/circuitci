@@ -113,6 +113,9 @@ package drawing or local footprint convention. Direction offsets are degrees;
 aperture values are millimeters; all values must be finite, and aperture width
 must be greater than zero.
 
+Mapping-provided entry-direction metadata is lower precedence than explicit
+KiCad PCB footprint property `CircuitCI_EntryDirectionOffsetDeg`, but higher
+precedence than component-model `usb_connector.entry_direction_offset_deg`.
 Mapping-provided entry aperture metadata is lower precedence than explicit
 KiCad PCB footprint properties named `CircuitCI_EntryAperture*`, but higher
 precedence than component-model aperture defaults.
