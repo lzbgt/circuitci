@@ -32,7 +32,9 @@ The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 2. `import-kicad-pcb` for `board.layout.placements` and routed USB net
    geometry under `board.layout.routes`, plus ground copper-zone outline
    evidence under `board.layout.zones`.
-3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`.
+3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
+   `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
+   `USB_RETURN_PATH_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:
 
@@ -49,3 +51,11 @@ for USB data length/skew. Import preserves that evidence under
 
 - `max_data_line_route_length_mm: 25.0`
 - `max_data_pair_length_mismatch_mm: 0.5`
+
+Because the PCB fixture also imports a same-layer GND copper-zone outline over
+the USB D+/D- route segment midpoints, the return-path suggestion reports
+`unreferenced_route_length_mm: 0.0` for both data lines and leaves
+`max_data_line_unreferenced_length_mm: null` for the board-specific
+return-path rule. This is outline evidence only; filled-zone connectivity,
+plane transitions, stitching vias, and impedance still require richer layout
+evidence.

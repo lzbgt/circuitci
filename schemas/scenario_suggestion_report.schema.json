@@ -217,7 +217,29 @@
                     "data_line_width_delta_mm": { "type": "number", "minimum": 0 },
                     "expected_vbus_route_width_mm": { "type": "number", "exclusiveMinimum": 0 },
                     "measured_vbus_route_width_min_mm": { "type": "number", "exclusiveMinimum": 0 },
-                    "protection_component": { "type": "string", "minLength": 1 }
+                    "protection_component": { "type": "string", "minLength": 1 },
+                    "unreferenced_route_length_mm": { "type": "number", "minimum": 0 },
+                    "unreferenced_segments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "segment_index",
+                          "segment_length_mm",
+                          "midpoint_x_mm",
+                          "midpoint_y_mm",
+                          "layer"
+                        ],
+                        "properties": {
+                          "segment_index": { "type": "integer", "minimum": 0 },
+                          "segment_length_mm": { "type": "number", "minimum": 0 },
+                          "midpoint_x_mm": { "type": "number" },
+                          "midpoint_y_mm": { "type": "number" },
+                          "layer": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
                   },
                   "additionalProperties": false
                 }

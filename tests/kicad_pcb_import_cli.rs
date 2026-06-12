@@ -190,6 +190,32 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(route_pair["expected_data_pair_gap_mm"], 0.15);
     assert!((route_pair["measured_data_pair_gap_mm"].as_f64().unwrap() - 0.25).abs() < 1.0e-9);
     assert!((route_pair["data_pair_gap_delta_mm"].as_f64().unwrap() - 0.1).abs() < 1.0e-9);
+    let return_path = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_return_path_j1")
+        .expect("USB return-path suggestion");
+    assert_eq!(
+        return_path["scenario"]["checks"][0],
+        "USB_RETURN_PATH_VALID"
+    );
+    assert!(
+        return_path["scenario"]["parameters"]["max_data_line_unreferenced_length_mm"].is_null()
+    );
+    assert!(
+        return_path["scenario"]["usb_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|usb_route| {
+                (usb_route["unreferenced_route_length_mm"].as_f64().unwrap() - 0.0).abs() < 1.0e-9
+                    && usb_route["unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+            })
+    );
 }
 
 #[test]
@@ -253,7 +279,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 8);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 9);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -274,6 +300,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_return_path_j1")
     );
     let route = suggestions["suggestions"]
         .as_array()
@@ -348,4 +381,30 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(vbus["expected_vbus_route_width_mm"], 0.3);
     assert_eq!(vbus["measured_vbus_route_width_min_mm"], 0.3);
     assert_eq!(vbus["protection_component"], "UVBUS");
+    let return_path = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_return_path_j1")
+        .unwrap();
+    assert_eq!(
+        return_path["scenario"]["checks"][0],
+        "USB_RETURN_PATH_VALID"
+    );
+    assert!(
+        return_path["scenario"]["parameters"]["max_data_line_unreferenced_length_mm"].is_null()
+    );
+    assert!(
+        return_path["scenario"]["usb_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|usb_route| {
+                usb_route["unreferenced_route_length_mm"] == 0.0
+                    && usb_route["unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+            })
+    );
 }

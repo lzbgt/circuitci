@@ -156,9 +156,10 @@ It still does not prove filled-zone continuity, adjacent-plane return paths, or
 USB eye margin.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
-non-runnable placement templates when the connector and required protection
-components already have placement coordinates. These checks do not invent
-placement limits, timing, observed strap
+non-runnable placement, route-geometry, VBUS-route, and return-path templates
+when the connector, required protection components, imported routes, and
+ground-zone outlines provide enough evidence. These checks do not invent
+placement or unreferenced-return-path limits, timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog

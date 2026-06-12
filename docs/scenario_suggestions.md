@@ -113,6 +113,12 @@ The command is conservative:
   the template pre-fills `max_vbus_route_length_mm` and
   `min_vbus_route_width_mm`; via-count and connector-to-protection route
   distance limits remain `null` until an agent supplies board-specific policy.
+- It emits non-runnable `USB_RETURN_PATH_VALID` templates when USB D+/D-
+  `board.layout.routes` evidence and same-layer ground-zone outlines under
+  `board.layout.zones` are present. The template includes each data net's
+  `unreferenced_route_length_mm` plus `unreferenced_segments[]` midpoint/layer
+  evidence, but leaves `max_data_line_unreferenced_length_mm` as `null` until
+  an agent supplies the board-specific USB return-path rule.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

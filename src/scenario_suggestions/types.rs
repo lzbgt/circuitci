@@ -218,6 +218,19 @@ pub struct SuggestedUsbRoute {
     pub measured_vbus_route_width_min_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unreferenced_route_length_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unreferenced_segments: Option<Vec<SuggestedUsbUnreferencedSegment>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedUsbUnreferencedSegment {
+    pub segment_index: usize,
+    pub segment_length_mm: f64,
+    pub midpoint_x_mm: f64,
+    pub midpoint_y_mm: f64,
+    pub layer: String,
 }
 
 #[derive(Debug, Serialize)]

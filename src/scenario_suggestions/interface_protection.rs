@@ -2,11 +2,12 @@ use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
     SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
     SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
-    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_ROUTE_GEOMETRY_VALID,
+    SuggestedUsbUnreferencedSegment, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
     USB_VBUS_ROUTE_VALID, sanitized_name,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetLayoutRule, NetRoute,
+    BoardProject, ComponentPlacement, ComponentSpec, CopperZone, NetKind, NetLayoutRule, NetRoute,
     PlacementSide, RouteSegment,
 };
 use crate::library::{
@@ -21,6 +22,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
     let existing_usb_placements = existing_usb_protection_placement_checks(bound.project);
     let existing_usb_routes = existing_usb_route_geometry_checks(bound.project);
     let existing_usb_vbus_routes = existing_usb_vbus_route_checks(bound.project);
+    let existing_usb_return_paths = existing_usb_return_path_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -181,6 +183,13 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
             && !existing_usb_vbus_routes.contains(component_id)
             && let Some(suggestion) =
                 usb_vbus_route_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
+        if model.usb_connector.is_some()
+            && !existing_usb_return_paths.contains(component_id)
+            && let Some(suggestion) =
+                usb_return_path_suggestion(bound, component_id, component, model)
         {
             suggestions.push(suggestion);
         }
@@ -632,6 +641,80 @@ fn usb_vbus_route_suggestion(
     })
 }
 
+fn usb_return_path_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let ground_zones = ground_zone_outlines(bound);
+    if ground_zones.is_empty() {
+        return None;
+    }
+    let dp_route = suggested_usb_route_with_return_path(
+        bound,
+        "D+",
+        &suggested_connector.dp_net,
+        &ground_zones,
+    )?;
+    let dm_route = suggested_usb_route_with_return_path(
+        bound,
+        "D-",
+        &suggested_connector.dm_net,
+        &ground_zones,
+    )?;
+    let measured_unreferenced_length_mm = dp_route
+        .unreferenced_route_length_mm
+        .unwrap_or(0.0)
+        .max(dm_route.unreferenced_route_length_mm.unwrap_or(0.0));
+    Some(ScenarioSuggestion {
+        id: format!("usb_return_path_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has imported D+/D- route geometry and same-layer ground-zone outline evidence; add static return-path coverage checks."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_return_path", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_RETURN_PATH_VALID.to_string()],
+            parameters: Some(BTreeMap::from([(
+                "max_data_line_unreferenced_length_mm".to_string(),
+                serde_json::Value::Null,
+            )])),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: Vec::new(),
+            usb_connectors: vec![suggested_connector],
+            usb_routes: vec![dp_route, dm_route],
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            format!(
+                "Fill max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule after reviewing measured uncovered length {measured_unreferenced_length_mm:.3} mm."
+            ),
+            "Treat this as a same-layer ground-zone outline screen only; adjacent planes, stitching vias, filled-zone continuity, impedance, and EMI need more specific evidence.".to_string(),
+        ],
+    })
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct SuggestedUsbRouteLimits {
     max_data_line_route_length_mm: Option<f64>,
@@ -713,6 +796,8 @@ fn suggested_usb_route(
         expected_vbus_route_width_mm: None,
         measured_vbus_route_width_min_mm: None,
         protection_component,
+        unreferenced_route_length_mm: None,
+        unreferenced_segments: None,
     })
 }
 
@@ -744,6 +829,36 @@ fn suggested_usb_vbus_route(
         expected_vbus_route_width_mm,
         measured_vbus_route_width_min_mm: narrowest_route_width_mm(route),
         protection_component,
+        unreferenced_route_length_mm: None,
+        unreferenced_segments: None,
+    })
+}
+
+fn suggested_usb_route_with_return_path(
+    bound: &BoundBoard<'_>,
+    signal: &str,
+    net_name: &str,
+    ground_zones: &[&CopperZone],
+) -> Option<SuggestedUsbRoute> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.segments.is_empty() {
+        return None;
+    }
+    let (unreferenced_route_length_mm, unreferenced_segments) =
+        return_path_unreferenced_segments(route, ground_zones);
+    Some(SuggestedUsbRoute {
+        signal: signal.to_string(),
+        net: net_name.to_string(),
+        route_length_mm: route_length_mm(route),
+        via_count: route.vias.len(),
+        expected_data_line_width_mm: None,
+        measured_data_line_width_mm: None,
+        data_line_width_delta_mm: None,
+        expected_vbus_route_width_mm: None,
+        measured_vbus_route_width_min_mm: None,
+        protection_component: None,
+        unreferenced_route_length_mm: Some(unreferenced_route_length_mm),
+        unreferenced_segments: Some(unreferenced_segments),
     })
 }
 
@@ -793,15 +908,119 @@ fn suggested_usb_route_pair(
 }
 
 fn route_length_mm(route: &NetRoute) -> f64 {
-    route
-        .segments
-        .iter()
-        .map(|segment| {
-            let dx = segment.end.x_mm - segment.start.x_mm;
-            let dy = segment.end.y_mm - segment.start.y_mm;
-            dx.hypot(dy)
-        })
-        .sum()
+    route.segments.iter().map(segment_length_mm).sum()
+}
+
+fn segment_length_mm(segment: &RouteSegment) -> f64 {
+    let dx = segment.end.x_mm - segment.start.x_mm;
+    let dy = segment.end.y_mm - segment.start.y_mm;
+    dx.hypot(dy)
+}
+
+fn return_path_unreferenced_segments(
+    route: &NetRoute,
+    ground_zones: &[&CopperZone],
+) -> (f64, Vec<SuggestedUsbUnreferencedSegment>) {
+    let mut unreferenced_length_mm = 0.0;
+    let mut unreferenced_segments = Vec::new();
+    for (segment_index, segment) in route.segments.iter().enumerate() {
+        let midpoint_x_mm = (segment.start.x_mm + segment.end.x_mm) / 2.0;
+        let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
+        let referenced = ground_zones.iter().any(|zone| {
+            zone.layer == segment.layer
+                && point_inside_zone_outline(midpoint_x_mm, midpoint_y_mm, zone)
+        });
+        if referenced {
+            continue;
+        }
+        let segment_length_mm = segment_length_mm(segment);
+        unreferenced_length_mm += segment_length_mm;
+        unreferenced_segments.push(SuggestedUsbUnreferencedSegment {
+            segment_index,
+            segment_length_mm,
+            midpoint_x_mm,
+            midpoint_y_mm,
+            layer: segment.layer.clone(),
+        });
+    }
+    (unreferenced_length_mm, unreferenced_segments)
+}
+
+fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a CopperZone> {
+    let mut zones = Vec::new();
+    for (net_name, zone_list) in &bound.project.board.layout.zones {
+        let Some(net) = bound.project.board.nets.get(net_name) else {
+            continue;
+        };
+        if net.kind != NetKind::Ground {
+            continue;
+        }
+        zones.extend(zone_list.iter().filter(|zone| zone_outline_is_usable(zone)));
+    }
+    zones
+}
+
+fn zone_outline_is_usable(zone: &CopperZone) -> bool {
+    !zone.layer.trim().is_empty()
+        && zone.polygon.len() >= 3
+        && zone
+            .polygon
+            .iter()
+            .all(|point| point.x_mm.is_finite() && point.y_mm.is_finite())
+}
+
+fn point_inside_zone_outline(point_x_mm: f64, point_y_mm: f64, zone: &CopperZone) -> bool {
+    if zone.polygon.len() < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut previous = zone.polygon.last().expect("polygon has points");
+    for current in &zone.polygon {
+        if point_on_segment(
+            point_x_mm,
+            point_y_mm,
+            previous.x_mm,
+            previous.y_mm,
+            current.x_mm,
+            current.y_mm,
+        ) {
+            return true;
+        }
+        let y_crosses = (current.y_mm > point_y_mm) != (previous.y_mm > point_y_mm);
+        if y_crosses {
+            let x_intersection = (previous.x_mm - current.x_mm) * (point_y_mm - current.y_mm)
+                / (previous.y_mm - current.y_mm)
+                + current.x_mm;
+            if point_x_mm < x_intersection {
+                inside = !inside;
+            }
+        }
+        previous = current;
+    }
+    inside
+}
+
+fn point_on_segment(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    start_x_mm: f64,
+    start_y_mm: f64,
+    end_x_mm: f64,
+    end_y_mm: f64,
+) -> bool {
+    const EPSILON_MM: f64 = 1.0e-9;
+    let cross = (point_y_mm - start_y_mm) * (end_x_mm - start_x_mm)
+        - (point_x_mm - start_x_mm) * (end_y_mm - start_y_mm);
+    if cross.abs() > EPSILON_MM {
+        return false;
+    }
+    let dot = (point_x_mm - start_x_mm) * (end_x_mm - start_x_mm)
+        + (point_y_mm - start_y_mm) * (end_y_mm - start_y_mm);
+    if dot < -EPSILON_MM {
+        return false;
+    }
+    let length_squared = (end_x_mm - start_x_mm).powi(2) + (end_y_mm - start_y_mm).powi(2);
+    dot <= length_squared + EPSILON_MM
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1292,6 +1511,26 @@ fn existing_usb_vbus_route_checks(project: &BoardProject) -> BTreeSet<String> {
                     .checks
                     .iter()
                     .any(|check| check == USB_VBUS_ROUTE_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+fn existing_usb_return_path_checks(project: &BoardProject) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == USB_RETURN_PATH_VALID)
         })
         .filter_map(|scenario| {
             scenario
