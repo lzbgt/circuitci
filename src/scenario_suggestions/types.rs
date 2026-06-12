@@ -1,0 +1,216 @@
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct ScenarioSuggestionReport {
+    pub schema_version: String,
+    pub project: String,
+    pub suggestions: Vec<ScenarioSuggestion>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScenarioSuggestion {
+    pub id: String,
+    pub kind: String,
+    pub confidence: String,
+    pub runnable: bool,
+    pub reason: String,
+    pub scenario: SuggestedScenario,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub required_inputs: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedScenario {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub scenario_type: String,
+    pub checks: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<SuggestedTarget>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timing: Option<SuggestedTiming>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required_boot_mode: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub straps: Vec<SuggestedStrap>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bootloader: Option<SuggestedBootloader>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<SuggestedEvent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conditioning: Option<SuggestedConditioning>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub clocks: Vec<SuggestedClockSource>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub reset_supervisors: Vec<SuggestedResetSupervisor>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub regulators: Vec<SuggestedRegulator>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pin_states: Vec<SuggestedPinState>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub paths: Vec<SuggestedBackdrivePath>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedTarget {
+    pub component: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub power_pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reset_pin: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedTiming {
+    pub power_valid_at_us: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reset_release_delay_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reset_release_at_us: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boot_sample_at_us: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedStrap {
+    pub component: String,
+    pub pin: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actual: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedBootloader {
+    pub component: String,
+    pub interface: String,
+    pub sync_byte: u8,
+    pub expected_response: u8,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedEvent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub at_us: Option<f64>,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<SuggestedEndpoint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<SuggestedEndpoint>,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedEndpoint {
+    pub component: String,
+    pub pin: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedConditioning {
+    pub component: String,
+    pub channel: String,
+    pub kind: String,
+    pub side_a: SuggestedConditioningSide,
+    pub side_b: SuggestedConditioningSide,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unpowered_isolation: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedConditioningSide {
+    pub pin: String,
+    pub net: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supply_pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supply_net: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedClockSource {
+    pub component: String,
+    pub name: String,
+    pub input_pin: String,
+    pub input_net: String,
+    pub output_pin: String,
+    pub output_net: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crystal_component: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedResetSupervisor {
+    pub component: String,
+    pub monitored_pin: String,
+    pub monitored_net: String,
+    pub reset_output_pin: String,
+    pub reset_net: String,
+    #[serde(rename = "threshold_min_V")]
+    pub threshold_min_v: f64,
+    #[serde(rename = "threshold_max_V")]
+    pub threshold_max_v: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedRegulator {
+    pub component: String,
+    pub input_pin: String,
+    pub input_net: String,
+    pub output_pin: String,
+    pub output_net: String,
+    #[serde(rename = "dropout_voltage_V", skip_serializing_if = "Option::is_none")]
+    pub dropout_voltage_v: Option<f64>,
+    #[serde(
+        rename = "max_output_current_A",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_output_current_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub startup_delay_us: Option<f64>,
+    #[serde(
+        rename = "input_capacitance_min_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub input_capacitance_min_f: Option<f64>,
+    #[serde(
+        rename = "output_capacitance_min_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub output_capacitance_min_f: Option<f64>,
+    #[serde(
+        rename = "input_support_capacitance_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub input_support_capacitance_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_support_capacitors: Option<Vec<String>>,
+    #[serde(
+        rename = "output_support_capacitance_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub output_support_capacitance_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_support_capacitors: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedPinState {
+    pub component: String,
+    pub pin: String,
+    pub mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedBackdrivePath {
+    pub driver: SuggestedEndpoint,
+    pub victim: SuggestedEndpoint,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub net: Option<String>,
+    pub series_resistance_ohm: f64,
+}
