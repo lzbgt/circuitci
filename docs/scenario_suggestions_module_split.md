@@ -19,6 +19,8 @@ suggestions.
 - `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector,
   protection-placement, route-geometry, VBUS-route, and return-path suggestion
   template construction from schematic and PCB layout evidence.
+- `src/scenario_suggestions/interface_protection/usb/edge_evidence.rs` owns USB
+  connector footprint serialization and nearest-board-edge evidence helpers.
 - `src/scenario_suggestions/interface_protection/usb/route_evidence.rs` owns
   measured USB route, pad-contact, return-path, filled-zone, and ground-contact
   evidence helpers used by USB suggestion templates.
