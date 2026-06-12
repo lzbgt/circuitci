@@ -160,10 +160,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                     && usb_route["route_length_mm"] == 1.0
                     && usb_route["via_count"] == 1
                     && usb_route["expected_data_line_width_mm"] == 0.15
+                    && usb_route["measured_data_line_width_mm"] == 0.15
+                    && usb_route["data_line_width_delta_mm"] == 0.0
             })
     );
     let route_pair = &route["scenario"]["usb_route_pairs"].as_array().unwrap()[0];
     assert_eq!(route_pair["expected_data_pair_gap_mm"], 0.15);
+    assert!((route_pair["measured_data_pair_gap_mm"].as_f64().unwrap() - 0.25).abs() < 1.0e-9);
+    assert!((route_pair["data_pair_gap_delta_mm"].as_f64().unwrap() - 0.1).abs() < 1.0e-9);
 }
 
 #[test]
@@ -261,8 +265,30 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .iter()
             .all(|usb_route| usb_route["expected_data_line_width_mm"] == 0.15)
     );
+    assert!(
+        route["scenario"]["usb_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|usb_route| {
+                usb_route["measured_data_line_width_mm"] == 0.15
+                    && usb_route["data_line_width_delta_mm"] == 0.0
+            })
+    );
     assert_eq!(
         route["scenario"]["usb_route_pairs"][0]["expected_data_pair_gap_mm"],
         0.15
+    );
+    assert_eq!(
+        route["scenario"]["usb_route_pairs"][0]["measured_data_pair_gap_mm"],
+        0.25
+    );
+    assert!(
+        (route["scenario"]["usb_route_pairs"][0]["data_pair_gap_delta_mm"]
+            .as_f64()
+            .unwrap()
+            - 0.1)
+            .abs()
+            < 1.0e-9
     );
 }

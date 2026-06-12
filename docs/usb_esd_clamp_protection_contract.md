@@ -132,9 +132,9 @@ Route-geometry validation:
   `diff_pair_gap_mm`.
 - Scenario suggestions expose route and pair evidence in `scenario.usb_routes[]`
   and `scenario.usb_route_pairs[]` so agents can inspect measured length,
-  via-count, imported expected data-line width, measured pair mismatch,
-  via-count delta, and imported expected pair gap before choosing
-  board-specific limits.
+  via-count, imported expected data-line width, measured line width, line-width
+  delta, measured pair mismatch, via-count delta, imported expected pair gap,
+  measured pair gap, and pair-gap delta before choosing board-specific limits.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

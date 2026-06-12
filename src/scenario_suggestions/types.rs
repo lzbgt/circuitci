@@ -196,6 +196,16 @@ pub struct SuggestedUsbRoute {
         skip_serializing_if = "Option::is_none"
     )]
     pub expected_data_line_width_mm: Option<f64>,
+    #[serde(
+        rename = "measured_data_line_width_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub measured_data_line_width_mm: Option<f64>,
+    #[serde(
+        rename = "data_line_width_delta_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub data_line_width_delta_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
 }
@@ -215,6 +225,16 @@ pub struct SuggestedUsbRoutePair {
         skip_serializing_if = "Option::is_none"
     )]
     pub expected_data_pair_gap_mm: Option<f64>,
+    #[serde(
+        rename = "measured_data_pair_gap_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub measured_data_pair_gap_mm: Option<f64>,
+    #[serde(
+        rename = "data_pair_gap_delta_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub data_pair_gap_delta_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

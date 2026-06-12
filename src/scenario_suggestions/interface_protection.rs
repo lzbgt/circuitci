@@ -7,7 +7,7 @@ use super::{
 };
 use crate::board_ir::{
     BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetLayoutRule, NetRoute,
-    PlacementSide,
+    PlacementSide, RouteSegment,
 };
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
@@ -573,19 +573,24 @@ fn suggested_usb_route(
     if route.segments.is_empty() {
         return None;
     }
+    let expected_data_line_width_mm = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .net_rules
+        .get(net_name)
+        .and_then(expected_usb_data_width_mm);
+    let width_evidence = expected_data_line_width_mm
+        .and_then(|expected_width_mm| route_width_delta(route, expected_width_mm));
     Some(SuggestedUsbRoute {
         signal: signal.to_string(),
         net: net_name.to_string(),
         route_length_mm: route_length_mm(route),
         via_count: route.vias.len(),
-        expected_data_line_width_mm: bound
-            .project
-            .board
-            .layout
-            .constraints
-            .net_rules
-            .get(net_name)
-            .and_then(expected_usb_data_width_mm),
+        expected_data_line_width_mm,
+        measured_data_line_width_mm: width_evidence.map(|evidence| evidence.measured_width_mm),
+        data_line_width_delta_mm: width_evidence.map(|evidence| evidence.width_delta_mm),
         protection_component,
     })
 }
@@ -598,6 +603,28 @@ fn suggested_usb_route_pair(
     if dp_route.signal != "D+" || dm_route.signal != "D-" {
         return None;
     }
+    let expected_data_pair_gap_mm = min_rule_value(
+        bound
+            .project
+            .board
+            .layout
+            .constraints
+            .net_rules
+            .get(&dp_route.net),
+        bound
+            .project
+            .board
+            .layout
+            .constraints
+            .net_rules
+            .get(&dm_route.net),
+        |rule| rule.diff_pair_gap_mm,
+    );
+    let gap_evidence = expected_data_pair_gap_mm.and_then(|expected_gap_mm| {
+        let dp_route_geometry = bound.project.board.layout.routes.get(&dp_route.net)?;
+        let dm_route_geometry = bound.project.board.layout.routes.get(&dm_route.net)?;
+        pair_gap_delta(dp_route_geometry, dm_route_geometry, expected_gap_mm)
+    });
     Some(SuggestedUsbRoutePair {
         dp_net: dp_route.net.clone(),
         dm_net: dm_route.net.clone(),
@@ -607,23 +634,9 @@ fn suggested_usb_route_pair(
         dp_via_count: dp_route.via_count,
         dm_via_count: dm_route.via_count,
         data_pair_via_count_delta: dp_route.via_count.abs_diff(dm_route.via_count),
-        expected_data_pair_gap_mm: min_rule_value(
-            bound
-                .project
-                .board
-                .layout
-                .constraints
-                .net_rules
-                .get(&dp_route.net),
-            bound
-                .project
-                .board
-                .layout
-                .constraints
-                .net_rules
-                .get(&dm_route.net),
-            |rule| rule.diff_pair_gap_mm,
-        ),
+        expected_data_pair_gap_mm,
+        measured_data_pair_gap_mm: gap_evidence.map(|evidence| evidence.measured_gap_mm),
+        data_pair_gap_delta_mm: gap_evidence.map(|evidence| evidence.gap_delta_mm),
     })
 }
 
@@ -637,6 +650,89 @@ fn route_length_mm(route: &NetRoute) -> f64 {
             dx.hypot(dy)
         })
         .sum()
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RouteWidthDelta {
+    measured_width_mm: f64,
+    width_delta_mm: f64,
+}
+
+fn route_width_delta(route: &NetRoute, expected_width_mm: f64) -> Option<RouteWidthDelta> {
+    route
+        .segments
+        .iter()
+        .map(|segment| RouteWidthDelta {
+            measured_width_mm: segment.width_mm,
+            width_delta_mm: (segment.width_mm - expected_width_mm).abs(),
+        })
+        .max_by(|left, right| left.width_delta_mm.total_cmp(&right.width_delta_mm))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PairGapDelta {
+    measured_gap_mm: f64,
+    gap_delta_mm: f64,
+}
+
+fn pair_gap_delta(
+    dp_route: &NetRoute,
+    dm_route: &NetRoute,
+    expected_gap_mm: f64,
+) -> Option<PairGapDelta> {
+    let mut worst = None;
+    for dp_segment in &dp_route.segments {
+        for dm_segment in &dm_route.segments {
+            let Some(measured_gap_mm) = parallel_overlap_gap_mm(dp_segment, dm_segment) else {
+                continue;
+            };
+            let gap_delta_mm = (measured_gap_mm - expected_gap_mm).abs();
+            let evidence = PairGapDelta {
+                measured_gap_mm,
+                gap_delta_mm,
+            };
+            if worst
+                .as_ref()
+                .is_none_or(|current: &PairGapDelta| gap_delta_mm > current.gap_delta_mm)
+            {
+                worst = Some(evidence);
+            }
+        }
+    }
+    worst
+}
+
+fn parallel_overlap_gap_mm(dp_segment: &RouteSegment, dm_segment: &RouteSegment) -> Option<f64> {
+    let dp_dx = dp_segment.end.x_mm - dp_segment.start.x_mm;
+    let dp_dy = dp_segment.end.y_mm - dp_segment.start.y_mm;
+    let dm_dx = dm_segment.end.x_mm - dm_segment.start.x_mm;
+    let dm_dy = dm_segment.end.y_mm - dm_segment.start.y_mm;
+    let dp_len = dp_dx.hypot(dp_dy);
+    let dm_len = dm_dx.hypot(dm_dy);
+    if dp_len <= f64::EPSILON || dm_len <= f64::EPSILON {
+        return None;
+    }
+    let dp_unit_x = dp_dx / dp_len;
+    let dp_unit_y = dp_dy / dp_len;
+    let dm_unit_x = dm_dx / dm_len;
+    let dm_unit_y = dm_dy / dm_len;
+    let cross = (dp_unit_x * dm_unit_y - dp_unit_y * dm_unit_x).abs();
+    if cross > 1.0e-6 {
+        return None;
+    }
+    let projection_a = (dm_segment.start.x_mm - dp_segment.start.x_mm) * dp_unit_x
+        + (dm_segment.start.y_mm - dp_segment.start.y_mm) * dp_unit_y;
+    let projection_b = (dm_segment.end.x_mm - dp_segment.start.x_mm) * dp_unit_x
+        + (dm_segment.end.y_mm - dp_segment.start.y_mm) * dp_unit_y;
+    let overlap_start = projection_a.min(projection_b).max(0.0);
+    let overlap_end = projection_a.max(projection_b).min(dp_len);
+    if overlap_end - overlap_start <= f64::EPSILON {
+        return None;
+    }
+    let centerline_distance_mm = ((dm_segment.start.x_mm - dp_segment.start.x_mm) * dp_unit_y
+        - (dm_segment.start.y_mm - dp_segment.start.y_mm) * dp_unit_x)
+        .abs();
+    Some(centerline_distance_mm - (dp_segment.width_mm + dm_segment.width_mm) / 2.0)
 }
 
 fn suggested_usb_connector(

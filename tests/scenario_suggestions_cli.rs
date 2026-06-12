@@ -543,6 +543,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             && usb_route["route_length_mm"] == 1.0
             && usb_route["via_count"] == 0
             && usb_route["expected_data_line_width_mm"].is_null()
+            && usb_route["measured_data_line_width_mm"].is_null()
+            && usb_route["data_line_width_delta_mm"].is_null()
             && usb_route["protection_component"] == "UESD"
     }));
     assert!(routes.iter().any(|usb_route| {
@@ -551,6 +553,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             && usb_route["route_length_mm"] == 1.0
             && usb_route["via_count"] == 1
             && usb_route["expected_data_line_width_mm"].is_null()
+            && usb_route["measured_data_line_width_mm"].is_null()
+            && usb_route["data_line_width_delta_mm"].is_null()
             && usb_route["protection_component"] == "UESD"
     }));
     let route_pairs = route["scenario"]["usb_route_pairs"].as_array().unwrap();
@@ -564,6 +568,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
     assert_eq!(route_pairs[0]["dm_via_count"], 1);
     assert_eq!(route_pairs[0]["data_pair_via_count_delta"], 1);
     assert!(route_pairs[0]["expected_data_pair_gap_mm"].is_null());
+    assert!(route_pairs[0]["measured_data_pair_gap_mm"].is_null());
+    assert!(route_pairs[0]["data_pair_gap_delta_mm"].is_null());
     assert!(
         route["required_inputs"][0]
             .as_str()

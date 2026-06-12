@@ -213,6 +213,8 @@
                     "route_length_mm": { "type": "number", "minimum": 0 },
                     "via_count": { "type": "integer", "minimum": 0 },
                     "expected_data_line_width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "measured_data_line_width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "data_line_width_delta_mm": { "type": "number", "minimum": 0 },
                     "protection_component": { "type": "string", "minLength": 1 }
                   },
                   "additionalProperties": false
@@ -241,7 +243,9 @@
                     "dp_via_count": { "type": "integer", "minimum": 0 },
                     "dm_via_count": { "type": "integer", "minimum": 0 },
                     "data_pair_via_count_delta": { "type": "integer", "minimum": 0 },
-                    "expected_data_pair_gap_mm": { "type": "number", "exclusiveMinimum": 0 }
+                    "expected_data_pair_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "measured_data_pair_gap_mm": { "type": "number" },
+                    "data_pair_gap_delta_mm": { "type": "number", "minimum": 0 }
                   },
                   "additionalProperties": false
                 }
