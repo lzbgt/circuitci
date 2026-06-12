@@ -52,6 +52,62 @@ fn good_power_tree_board_passes() {
 }
 
 #[test]
+fn suggest_scenarios_derives_power_and_reset_templates() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            "examples/scenario_suggestions_power_reset/project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(output).unwrap()).unwrap();
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(&suggestions)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(errors.is_empty(), "suggestion schema errors: {errors:#?}");
+    assert_eq!(suggestions["project"], "scenario_suggestions_power_reset");
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 2);
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["kind"] == "power_tree")
+        .expect("power_tree suggestion");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["type"], "power_tree");
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["kind"] == "reset_boot")
+        .expect("reset suggestion");
+    assert_eq!(reset["runnable"], false);
+    assert_eq!(reset["scenario"]["target"]["component"], "U1");
+    assert_eq!(reset["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(reset["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(reset["scenario"]["timing"]["power_valid_at_us"], 1500.0);
+    assert!(
+        reset["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("reset_release_at_us")
+    );
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

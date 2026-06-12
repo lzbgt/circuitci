@@ -1,0 +1,46 @@
+project:
+  name: scenario_suggestions_power_reset
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        NRST: nrst
+    UREG:
+      model: generic.analog.ldo_regulator
+      part_number: GENERIC_LDO
+      power_domains:
+        VIN: usb_5v
+        VOUT: rail_3v3
+      pins:
+        VIN: usb_5v
+        VOUT: rail_3v3
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      power_valid_at_us: 0
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.08
+      power_valid_at_us: 1500
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+
+scenarios: []

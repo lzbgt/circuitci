@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitci.local/schemas/scenario_suggestion_report.schema.json",
+  "title": "CircuitCI Scenario Suggestion Report",
+  "type": "object",
+  "required": ["schema_version", "project", "suggestions"],
+  "properties": {
+    "schema_version": { "type": "string", "minLength": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "confidence",
+          "runnable",
+          "reason",
+          "scenario"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "confidence": { "enum": ["low", "medium", "high"] },
+          "runnable": { "type": "boolean" },
+          "reason": { "type": "string", "minLength": 1 },
+          "required_inputs": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "scenario": {
+            "type": "object",
+            "required": ["name", "type", "checks"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": { "type": "string", "minLength": 1 },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "target": {
+                "type": "object",
+                "required": ["component", "power_pin", "reset_pin"],
+                "properties": {
+                  "component": { "type": "string", "minLength": 1 },
+                  "power_pin": { "type": "string", "minLength": 1 },
+                  "reset_pin": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              },
+              "timing": {
+                "type": "object",
+                "required": ["power_valid_at_us"],
+                "properties": {
+                  "power_valid_at_us": { "type": "number", "minimum": 0 },
+                  "reset_release_delay_us": { "type": "number", "minimum": 0 },
+                  "reset_release_at_us": { "type": "number", "minimum": 0 },
+                  "boot_sample_at_us": { "type": "number", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

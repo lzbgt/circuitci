@@ -45,6 +45,10 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 
+`circuitci suggest-scenarios` can propose missing `power_tree` and reset timing
+scenario templates before profile validation. Suggestions are not automatically
+treated as passing validation evidence.
+
 ## Rule Completion Standard
 
 A validation rule is complete only when it has:
