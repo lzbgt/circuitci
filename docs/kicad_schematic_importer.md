@@ -44,13 +44,12 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - bus aliases whose members are explicit scalar labels or simple decimal
   ranges,
 - explicit junctions for mid-span wire crossings,
-- local and global labels as net names,
+- local, global, and root hierarchical labels as root sheet net names,
 - optional KiCad power symbols treated as one-pin labeled symbols.
 - explicit schematic `no_connect` markers for intentionally open symbol pins.
 
 Unsupported constructs fail closed:
 
-- root-level hierarchical labels,
 - hierarchy cycles,
 - ambiguous bus expansion from labels placed only on bus graphics,
 - malformed, non-finite, or non-cardinal symbol rotations,

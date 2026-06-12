@@ -11,7 +11,7 @@
 and fail-closed coverage:
 
 - rotations and transformed pins,
-- unsupported root hierarchical labels and inferred bus constructs,
+- root hierarchical labels and inferred bus construct guards,
 - label and power-symbol conflicts,
 - no-connect evidence,
 - wire junction semantics.

@@ -8,6 +8,8 @@ Native `.kicad_sch` import supports a strict recursive hierarchy slice:
 - each parent sheet `pin` name must have an identically named child
   `hierarchical_label`,
 - each child `hierarchical_label` must have a matching parent sheet pin,
+- root-sheet `hierarchical_label`s are accepted as ordinary root net labels;
+  only child hierarchical labels define sheet interfaces,
 - hierarchy cycles are rejected,
 - duplicate component references across root and child sheets, or across child
   sheet instances, are made instance-scoped with the sanitized sheet name,

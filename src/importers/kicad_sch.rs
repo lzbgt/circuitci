@@ -6,8 +6,7 @@ mod sexp;
 mod symbols;
 use anyhow::{Context, Result, bail};
 use sexp::{
-    Sexp, as_list, child_list, list_children, maybe_list, numeric_at, parse_sexp_document,
-    string_at, tag,
+    Sexp, as_list, child_list, list_children, numeric_at, parse_sexp_document, string_at, tag,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -132,7 +131,6 @@ fn parse_schematic_file(path: &Path, mode: SchematicMode) -> Result<ParsedSchema
             path.display()
         );
     }
-    reject_unsupported_constructs(root_list, mode)?;
     let sheets = parse_sheets(root_list, path)?;
     let lib_pins = parse_lib_symbol_pins(root_list)?;
     let (symbols, power_labels) = parse_symbol_instances(root_list, &lib_pins)?;
@@ -394,21 +392,6 @@ fn merge_hierarchical_netlists(
         components: root.components,
         nets,
     })
-}
-
-fn reject_unsupported_constructs(root: &[Sexp], mode: SchematicMode) -> Result<()> {
-    for item in root.iter().skip(1) {
-        let Some(list) = maybe_list(item) else {
-            continue;
-        };
-        match tag(list) {
-            Some("hierarchical_label") if mode == SchematicMode::Root => {
-                bail!("Native KiCad schematic import does not support hierarchical labels yet.")
-            }
-            _ => {}
-        }
-    }
-    Ok(())
 }
 
 fn parse_sheets(root: &[Sexp], schematic_path: &Path) -> Result<Vec<SheetInstance>> {
@@ -949,9 +932,6 @@ fn parse_labels(
         insert_label(&mut labels, point, name)?;
     }
     for label_tag in ["label", "global_label", "hierarchical_label"] {
-        if label_tag == "hierarchical_label" && mode != SchematicMode::Child {
-            continue;
-        }
         for label in list_children(root, label_tag) {
             let name = string_at(label, 1)
                 .filter(|value| !value.trim().is_empty())
@@ -961,7 +941,10 @@ fn parse_labels(
                 .with_context(|| {
                     format!("KiCad {label_tag} {name} is missing valid coordinates.")
                 })?;
-            if label_tag == "hierarchical_label" && !hierarchical_labels.insert(name.to_string()) {
+            if label_tag == "hierarchical_label"
+                && mode == SchematicMode::Child
+                && !hierarchical_labels.insert(name.to_string())
+            {
                 bail!("KiCad child schematic has duplicate hierarchical label {name}.");
             }
             insert_label(&mut labels, at, name.to_string())?;

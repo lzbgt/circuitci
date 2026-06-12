@@ -864,6 +864,93 @@ fn import_kicad_schematic_rejects_global_label_without_coordinates() {
 }
 
 #[test]
+fn import_kicad_schematic_accepts_root_hierarchical_label_as_net_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("root_hierarchical_label.kicad_sch");
+    let output = dir.path().join("root_hierarchical_label.project.yaml");
+    std::fs::write(
+        &schematic_path,
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))
+      (pin passive line (at 0 10 180) (length 2.54) (number "2"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1") (pin "2"))
+  (hierarchical_label "ROOT_IN" (at 0 0 0))
+  (no_connect (at 0 10)))
+"#,
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_root_in"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_hierarchical_label_without_name() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (hierarchical_label (at 0 0 0)))
+"#,
+        "hierarchical_label is missing a label name",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_hierarchical_label_without_coordinates() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (hierarchical_label "ROOT_IN"))
+"#,
+        "hierarchical_label ROOT_IN is missing valid coordinates",
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_floating_root_hierarchical_label() {
+    assert_bad_kicad_schematic_contains(
+        r#"
+(kicad_sch
+  (lib_symbols
+    (symbol "Device:R"
+      (pin passive line (at 0 0 0) (length 2.54) (number "1"))))
+  (symbol (lib_id "Device:R") (at 0 0 0)
+    (property "Reference" "R1") (property "Value" "10k") (pin "1"))
+  (label "NET_A" (at 0 0 0))
+  (hierarchical_label "FLOATING" (at 20 20 0)))
+"#,
+        "label FLOATING is not attached to a wire or pin",
+    );
+}
+
+#[test]
 fn import_kicad_schematic_rejects_duplicate_label_at_same_coordinate() {
     assert_bad_kicad_schematic_contains(
         r#"
