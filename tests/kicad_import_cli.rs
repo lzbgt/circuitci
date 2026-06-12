@@ -371,6 +371,61 @@ fn import_kicad_schematic_applies_rotated_symbol_pin_coordinates() {
 }
 
 #[test]
+fn import_kicad_schematic_non_cardinal_rotation_runs_generated_spice() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir
+        .path()
+        .join("non_cardinal_rotated_kicad_schematic.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_non_cardinal_rotation_spice/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_non_cardinal_rotation_spice/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "non_cardinal_rotated_kicad_schematic",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_reset_rc"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["pins"]["A"],
+        "net_reset_rc"
+    );
+    assert_eq!(
+        imported["scenarios"][0]["analog"]["generated"]["components"],
+        serde_json::json!(["V1", "R1", "C1"])
+    );
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert!(!report["waveforms"].as_array().unwrap().is_empty());
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| limitation["id"] == "SCHEMATIC_IMPORT_ONLY")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_schematic_flattens_one_child_sheet() {
     let dir = tempfile::tempdir().unwrap();
     let root_path = dir.path().join("root.kicad_sch");

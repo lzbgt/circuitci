@@ -33,3 +33,10 @@ Malformed and non-finite angle fields fail closed. Labels, wires, and
 The importer does not infer connectivity from visual text orientation. Label
 text rotation remains presentation metadata; only the label coordinate affects
 net construction.
+
+## Physical Fixture
+
+`examples/import_kicad_non_cardinal_rotation_spice/` rotates `R1` by 45 degrees,
+wires the rounded transformed pin coordinates into an RC path, then validates
+the imported Board IR with generated SPICE. The fixture proves arbitrary-angle
+symbol rotation reaches waveform-producing physical validation.
