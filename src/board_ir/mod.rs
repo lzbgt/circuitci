@@ -38,6 +38,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub placements: BTreeMap<String, ComponentPlacement>,
     #[serde(default)]
+    pub pads: BTreeMap<String, BTreeMap<String, LayoutPad>>,
+    #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,
     #[serde(default)]
     pub zones: BTreeMap<String, Vec<CopperZone>>,
@@ -80,6 +82,14 @@ pub struct ComponentPlacement {
 pub enum PlacementSide {
     Top,
     Bottom,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutPad {
+    pub at: LayoutPoint,
+    pub net: String,
+    #[serde(default)]
+    pub layers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

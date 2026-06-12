@@ -60,6 +60,28 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         1.5
     );
     assert!(imported["board"]["layout"]["placements"]["H1"].is_null());
+    let connector_dp_pad = &imported["board"]["layout"]["pads"]["J1"]["D+"];
+    assert_eq!(connector_dp_pad["at"]["x_mm"], 0.0);
+    assert_eq!(connector_dp_pad["at"]["y_mm"], 0.0);
+    assert_eq!(connector_dp_pad["net"], "net_usb_dp");
+    assert_eq!(connector_dp_pad["layers"][0], "F.Cu");
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["J1"]["SHIELD"]["net"],
+        "gnd"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["UESD"]["D1-"]["at"]["x_mm"],
+        1.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["UESD"]["D1-"]["at"]["y_mm"],
+        0.4
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["UVBUS"]["IO"]["net"],
+        "net_usb_vbus"
+    );
+    assert!(imported["board"]["layout"]["pads"]["H1"].is_null());
     let dp_route = &imported["board"]["layout"]["routes"]["net_usb_dp"];
     assert_eq!(dp_route["segments"][0]["start"]["x_mm"], 0.0);
     assert_eq!(dp_route["segments"][0]["end"]["x_mm"], 1.0);
@@ -285,6 +307,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(
         imported["board"]["layout"]["routes"]["usb_vbus"]["segments"][0]["width_mm"],
         0.3
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["J1"]["D+"]["net"],
+        "usb_dp"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["UVBUS"]["IO"]["net"],
+        "usb_vbus"
     );
     assert_eq!(
         imported["board"]["layout"]["zones"]["gnd"][0]["polygon"][2]["x_mm"],

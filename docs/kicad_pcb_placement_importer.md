@@ -1,7 +1,8 @@
 # KiCad PCB Layout Evidence Importer
 
 `circuitci import-kicad-pcb` enriches an existing Board IR project with
-component placement and routed-net evidence from a KiCad `.kicad_pcb` file:
+component placement, pad, routed-net, zone, and routing-rule evidence from a
+KiCad `.kicad_pcb` file:
 
 ```bash
 circuitci import-kicad-pcb board.kicad_pcb \
@@ -22,6 +23,17 @@ Only footprint references that match existing `board.components` are written to
 `board.layout.placements`. Extra mechanical footprints are ignored. Duplicate
 footprint references, missing references, invalid coordinates, files without
 footprints, and PCB files with no matching Board IR components fail closed.
+
+The importer also reads connected footprint `pad` entries and writes pad-center
+evidence under `board.layout.pads` when the footprint reference and pad net both
+map to existing Board IR objects. Unconnected pads are skipped. Imported pad
+evidence includes:
+
+- component reference,
+- pad name,
+- Board IR net,
+- pad center in millimeters after footprint translation/rotation,
+- pad layer list when present.
 
 The importer also reads KiCad `net`, `segment`, `via`, and `zone` entries.
 Routed geometry is written under `board.layout.routes`; copper-zone outlines
@@ -56,10 +68,11 @@ This is bounded layout evidence, not a full PCB layout solver. The importer
 extracts component center placements, routed `segment`/`via` geometry, net-class
 route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
-outlines plus saved filled polygons. It does not solve filled-copper island
-connectivity, pad-to-zone connectivity, thermal relief behavior, shield
-bonding, footprint pad geometry, return paths, impedance calculations,
-arbitrary DRC rule semantics, or pin-1/BOM/PNP alignment.
+outlines plus saved filled polygons. It also extracts connected pad center,
+net, and layer evidence, but not full pad shape geometry. It does not solve
+filled-copper island connectivity, pad-to-zone connectivity, thermal relief
+behavior, shield bonding, return paths, impedance calculations, arbitrary DRC
+rule semantics, or pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
@@ -67,6 +80,7 @@ Fixture coverage:
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, routed USB net geometry, and copper-zone outline evidence, and
-proves `suggest-scenarios` emits a `USB_PROTECTION_PLACEMENT_VALID` template
-with connector-to-protection distance evidence.
+PCB placements, connected pad centers, routed USB net geometry, copper-zone
+outline/fill evidence, and routing-rule evidence, then proves
+`suggest-scenarios` emits USB placement, route, and return-path templates with
+measured layout evidence.

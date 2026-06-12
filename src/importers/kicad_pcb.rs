@@ -22,6 +22,13 @@ struct PcbPlacement {
     side: Option<PcbPlacementSide>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct FootprintAt {
+    x_mm: f64,
+    y_mm: f64,
+    rotation_deg: f64,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum PcbPlacementSide {
@@ -40,6 +47,7 @@ struct PlacementYaml {
 #[derive(Debug, Clone, Default)]
 pub struct KicadPcbImportSummary {
     pub placements: usize,
+    pub pads: usize,
     pub route_segments: usize,
     pub route_vias: usize,
     pub zones: usize,
@@ -50,6 +58,13 @@ pub struct KicadPcbImportSummary {
 struct PcbRoute {
     segments: Vec<PcbRouteSegment>,
     vias: Vec<PcbRouteVia>,
+}
+
+#[derive(Debug, Clone)]
+struct PcbPad {
+    at: PcbPoint,
+    net_name: String,
+    layers: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +112,14 @@ struct RouteYaml<'a> {
     segments: Vec<RouteSegmentYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     vias: Vec<RouteViaYaml<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+struct PadYaml<'a> {
+    at: PcbPoint,
+    net: &'a str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    layers: Vec<&'a str>,
 }
 
 #[derive(Debug, Serialize)]
@@ -189,6 +212,7 @@ pub fn import_kicad_pcb_placements(
 #[derive(Debug, Clone)]
 struct ParsedPcb {
     placements: BTreeMap<String, PcbPlacement>,
+    pads: BTreeMap<String, BTreeMap<String, PcbPad>>,
     routes: BTreeMap<String, PcbRoute>,
     zones: BTreeMap<String, Vec<PcbZone>>,
     net_rules: BTreeMap<String, PcbNetRule>,
@@ -203,15 +227,66 @@ fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
         bail!("KiCad PCB {} root token is not kicad_pcb.", path.display());
     }
     let placements = parse_placements(root_list, path)?;
+    let pads = parse_pads(root_list, path)?;
     let routes = parse_routes(root_list, path)?;
     let zones = parse_zones(root_list, path)?;
     let net_rules = parse_net_rules(root_list, path)?;
     Ok(ParsedPcb {
         placements,
+        pads,
         routes,
         zones,
         net_rules,
     })
+}
+
+fn parse_pads(
+    root_list: &[Sexp],
+    path: &Path,
+) -> Result<BTreeMap<String, BTreeMap<String, PcbPad>>> {
+    let net_names = parse_net_names(root_list)?;
+    let mut pads = BTreeMap::<String, BTreeMap<String, PcbPad>>::new();
+    for footprint in list_children(root_list, "footprint") {
+        let reference = footprint_reference(footprint)
+            .with_context(|| "KiCad PCB footprint is missing Reference property or fp_text.")?;
+        let footprint_at = footprint_at(footprint, &reference)?;
+        for pad in list_children(footprint, "pad") {
+            let pad_name = string_at(pad, 1)
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .with_context(|| {
+                    format!("KiCad PCB footprint {reference} has a pad with missing pad name.")
+                })?
+                .to_string();
+            let Some(net_name) = pad_net_name(pad, &net_names, path)? else {
+                continue;
+            };
+            let local_at = child_list(pad, "at").with_context(|| {
+                format!("KiCad PCB footprint {reference} pad {pad_name} is missing (at x y).")
+            })?;
+            let local_x_mm = numeric_at(local_at, 1).with_context(|| {
+                format!("KiCad PCB footprint {reference} pad {pad_name} has invalid x coordinate.")
+            })?;
+            let local_y_mm = numeric_at(local_at, 2).with_context(|| {
+                format!("KiCad PCB footprint {reference} pad {pad_name} has invalid y coordinate.")
+            })?;
+            let at = transform_footprint_point(footprint_at, local_x_mm, local_y_mm);
+            let layers = pad_layers(pad);
+            let component_pads = pads.entry(reference.clone()).or_default();
+            if component_pads.contains_key(&pad_name) {
+                bail!("KiCad PCB footprint {reference} contains duplicate pad {pad_name}.");
+            }
+            component_pads.insert(
+                pad_name,
+                PcbPad {
+                    at,
+                    net_name,
+                    layers,
+                },
+            );
+        }
+    }
+    Ok(pads)
 }
 
 fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbPlacement>> {
@@ -222,14 +297,16 @@ fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, 
         if placements.contains_key(&reference) {
             bail!("KiCad PCB contains duplicate footprint reference {reference}.");
         }
-        let at = child_list(footprint, "at")
-            .with_context(|| format!("KiCad PCB footprint {reference} is missing (at x y)."))?;
-        let x_mm = numeric_at(at, 1)
-            .with_context(|| format!("KiCad PCB footprint {reference} has invalid x placement."))?;
-        let y_mm = numeric_at(at, 2)
-            .with_context(|| format!("KiCad PCB footprint {reference} has invalid y placement."))?;
+        let at = footprint_at(footprint, &reference)?;
         let side = footprint_side(footprint);
-        placements.insert(reference, PcbPlacement { x_mm, y_mm, side });
+        placements.insert(
+            reference,
+            PcbPlacement {
+                x_mm: at.x_mm,
+                y_mm: at.y_mm,
+                side,
+            },
+        );
     }
     if placements.is_empty() {
         bail!("KiCad PCB {} contains no footprints.", path.display());
@@ -792,6 +869,79 @@ fn route_point(item: &[Sexp], field: &str, path: &Path) -> Result<PcbPoint> {
     Ok(PcbPoint { x_mm, y_mm })
 }
 
+fn footprint_at(footprint: &[Sexp], reference: &str) -> Result<FootprintAt> {
+    let at = child_list(footprint, "at")
+        .with_context(|| format!("KiCad PCB footprint {reference} is missing (at x y)."))?;
+    let x_mm = numeric_at(at, 1)
+        .with_context(|| format!("KiCad PCB footprint {reference} has invalid x placement."))?;
+    let y_mm = numeric_at(at, 2)
+        .with_context(|| format!("KiCad PCB footprint {reference} has invalid y placement."))?;
+    let rotation_deg = numeric_at(at, 3).unwrap_or(0.0);
+    Ok(FootprintAt {
+        x_mm,
+        y_mm,
+        rotation_deg,
+    })
+}
+
+fn transform_footprint_point(
+    footprint_at: FootprintAt,
+    local_x_mm: f64,
+    local_y_mm: f64,
+) -> PcbPoint {
+    let radians = footprint_at.rotation_deg.to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    PcbPoint {
+        x_mm: footprint_at.x_mm + local_x_mm * cos - local_y_mm * sin,
+        y_mm: footprint_at.y_mm + local_x_mm * sin + local_y_mm * cos,
+    }
+}
+
+fn pad_net_name(
+    pad: &[Sexp],
+    net_names: &BTreeMap<String, String>,
+    path: &Path,
+) -> Result<Option<String>> {
+    let Some(net) = child_list(pad, "net") else {
+        return Ok(None);
+    };
+    if let Some(name) = string_at(net, 2)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+    {
+        return Ok(Some(name.to_string()));
+    }
+    let net_id = string_at(net, 1)
+        .with_context(|| format!("KiCad PCB pad in {} has invalid net id.", path.display()))?;
+    if net_id == "0" {
+        return Ok(None);
+    }
+    net_names.get(net_id).cloned().map(Some).with_context(|| {
+        format!(
+            "KiCad PCB pad in {} references unknown net id {net_id}.",
+            path.display()
+        )
+    })
+}
+
+fn pad_layers(pad: &[Sexp]) -> Vec<String> {
+    child_list(pad, "layers")
+        .map(|layers| {
+            layers
+                .iter()
+                .skip(1)
+                .filter_map(|item| match item {
+                    Sexp::Atom(value) | Sexp::Str(value) if !value.trim().is_empty() => {
+                        Some(value.trim().to_string())
+                    }
+                    _ => None,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn positive_child_number(item: &[Sexp], field: &str, path: &Path) -> Result<f64> {
     let child = child_list(item, field).with_context(|| {
         format!(
@@ -907,6 +1057,30 @@ fn merge_pcb_into_project(
         );
         summary.placements += 1;
     }
+    let pad_yaml = ensure_mapping_field_mut(layout, "pads")?;
+    for (reference, pads) in &parsed_pcb.pads {
+        if !component_refs.contains(reference) {
+            continue;
+        }
+        let mut component_pad_yaml = Mapping::new();
+        for (pad_name, pad) in pads {
+            let Some(board_net_name) = map_pcb_net_to_board_net(&pad.net_name, &board_nets)? else {
+                continue;
+            };
+            component_pad_yaml.insert(
+                Value::String(pad_name.clone()),
+                pad_yaml_value(pad, &board_net_name)?,
+            );
+        }
+        if component_pad_yaml.is_empty() {
+            continue;
+        }
+        summary.pads += component_pad_yaml.len();
+        pad_yaml.insert(
+            Value::String(reference.clone()),
+            Value::Mapping(component_pad_yaml),
+        );
+    }
     let route_yaml = ensure_mapping_field_mut(layout, "routes")?;
     for (pcb_net_name, route) in &parsed_pcb.routes {
         let Some(board_net_name) = map_pcb_net_to_board_net(pcb_net_name, &board_nets)? else {
@@ -961,6 +1135,15 @@ fn route_yaml_value(route: &PcbRoute) -> Result<Value> {
             .collect(),
     })
     .context("Failed to serialize KiCad PCB route geometry into Board IR YAML.")
+}
+
+fn pad_yaml_value(pad: &PcbPad, board_net_name: &str) -> Result<Value> {
+    serde_yaml_ng::to_value(PadYaml {
+        at: pad.at,
+        net: board_net_name,
+        layers: pad.layers.iter().map(String::as_str).collect(),
+    })
+    .context("Failed to serialize KiCad PCB pad evidence into Board IR YAML.")
 }
 
 fn net_rule_yaml_value(rule: &PcbNetRule) -> Result<Value> {

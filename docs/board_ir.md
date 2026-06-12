@@ -75,6 +75,7 @@ scenarios:
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
+| layout pads | optional component/pad map | Imported pad center, net, and layer evidence used by layout-connectivity checks. |
 | layout routes | optional net map | Routed segment and via geometry used by layout-aware checks. |
 | scenarios | list | Scenario definitions select validation checks. |
 
@@ -129,6 +130,34 @@ board:
 `USB_PROTECTION_PLACEMENT_VALID` uses this evidence to check that USB ESD
 protection components are close to the connector. Missing or non-finite
 placement coordinates fail closed for rules that declare a placement limit.
+
+## Layout Pad Evidence
+
+Board IR can carry imported pad evidence under `board.layout.pads`. The first
+key is an existing Board IR component reference, and the second key is the PCB
+pad name. Coordinates are pad centers in millimeters in the same coordinate
+system as placements and routes.
+
+```yaml
+board:
+  layout:
+    pads:
+      J1:
+        D+:
+          at: { x_mm: 0.0, y_mm: 0.0 }
+          net: usb_dp
+          layers: [F.Cu, F.Paste, F.Mask]
+      UESD:
+        D1+:
+          at: { x_mm: 1.0, y_mm: 0.0 }
+          net: usb_dp
+          layers: [F.Cu, F.Paste, F.Mask]
+```
+
+KiCad PCB import fills this from connected footprint `pad` entries when both
+the footprint reference and pad net map to existing Board IR objects. Unconnected
+pads are skipped. This is pad-center/net/layer evidence only: it does not model
+pad shape, solder mask, thermal relief, or copper-island connectivity.
 
 ## Layout Route Evidence
 
@@ -189,7 +218,8 @@ unambiguously to an existing Board IR net. `polygon` is the zone outline.
 `filled_polygons` comes from KiCad `filled_polygon` entries and is absent when
 the board file has not saved filled-zone geometry. This is still static
 geometry evidence: it does not prove pad-to-zone connectivity, thermal relief
-behavior, clearances, or return-path continuity by itself.
+behavior, clearances, or return-path continuity by itself, even when imported
+pad centers are present.
 
 ## Layout Constraint Evidence
 

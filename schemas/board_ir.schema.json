@@ -131,6 +131,25 @@
                 "additionalProperties": false
               }
             },
+            "pads": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["at", "net"],
+                  "properties": {
+                    "at": { "$ref": "#/$defs/layout_point" },
+                    "net": { "type": "string", "minLength": 1 },
+                    "layers": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
             "routes": {
               "type": "object",
               "additionalProperties": {
