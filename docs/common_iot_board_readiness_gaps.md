@@ -160,6 +160,9 @@ limit instead of being conflated with connector-to-edge proximity.
 from supported connector footprint graphics and other component footprint or
 placement evidence, so nearby component intrusion can be screened separately
 from edge proximity and overhang.
+`USB_CONNECTOR_ENTRY_CLEARANCE_VALID` adds the first static cable-entry
+corridor guard by projecting a 2D clearance corridor forward from the connector
+body using imported placement rotation or explicit entry-direction evidence.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

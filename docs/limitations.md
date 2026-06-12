@@ -89,6 +89,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   when no usable footprint graphics are present. It is a static keepout screen;
   it does not prove 3D connector shell, cable insertion, panel, enclosure, or
   assembly stack-up clearance.
+- `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` checks a static 2D cable-entry corridor
+  projected forward from the connector footprint body using imported placement
+  rotation or explicit `entry_direction_deg`. It does not model plug geometry,
+  connector shell volume, cable bend radius, panel cutouts, enclosure
+  interference, or assembly stack-up.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

@@ -137,6 +137,14 @@ The command is conservative:
   footprint or placement-center evidence. It leaves
   `min_connector_to_component_clearance_mm` as `null` until an agent fills the
   connector keepout, cable insertion, enclosure, or assembly clearance rule.
+- It emits non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` templates when
+  the USB connector has imported placement rotation and supported
+  `fabrication`/`courtyard` footprint evidence. The template copies
+  `entry_direction_deg` from the imported placement rotation, includes the
+  connector placement and footprint evidence, and leaves
+  `min_cable_entry_clearance_depth_mm` and
+  `cable_entry_clearance_width_mm` as `null` until an agent fills those values
+  from connector, plug, panel, enclosure, or assembly mechanical drawings.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

@@ -472,6 +472,40 @@ fn usb_connector_component_clearance_reports_nearby_component() {
 }
 
 #[test]
+fn usb_connector_entry_clearance_passes_when_corridor_is_clear() {
+    let report = run_validation("examples/good_usb_connector_entry_clearance/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_entry_clearance_reports_obstruction() {
+    let report = run_validation("examples/bad_usb_connector_entry_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["obstructing_component"], "R1");
+    assert_eq!(failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        failure["measured"]["obstruction_reference"],
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        failure["measured"]["obstruction_footprint_graphic_kind"],
+        "courtyard"
+    );
+    assert_eq!(failure["limit"]["min_cable_entry_clearance_depth_mm"], 2.0);
+    assert_eq!(failure["limit"]["cable_entry_clearance_width_mm"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

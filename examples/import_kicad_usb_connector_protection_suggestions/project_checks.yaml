@@ -53,3 +53,12 @@ scenarios:
       component: J1
     parameters:
       min_connector_to_component_clearance_mm: 0.7
+  - name: usb_connector_entry_clearance_from_imported_pcb
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+    target:
+      component: J1
+    parameters:
+      min_cable_entry_clearance_depth_mm: 0.8
+      cable_entry_clearance_width_mm: 1.0

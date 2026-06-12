@@ -509,6 +509,44 @@ This is a static 2D component keepout screen. It does not prove 3D connector
 shell clearance, cable insertion clearance, panel/enclosure clearance, or
 assembly stack-up tolerances.
 
+USB connector cable-entry clearance uses
+`USB_CONNECTOR_ENTRY_CLEARANCE_VALID` when the Board IR includes USB connector
+metadata, imported connector placement rotation, and supported
+`fabrication`/`courtyard` footprint graphics.
+
+```yaml
+scenarios:
+  - name: usb_connector_entry_clearance
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_ENTRY_CLEARANCE_VALID
+    target:
+      component: J1
+    parameters:
+      min_cable_entry_clearance_depth_mm: 8.0
+      cable_entry_clearance_width_mm: 6.0
+```
+
+Connector entry-clearance algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Use `parameters.entry_direction_deg` when declared; otherwise use imported
+   connector `rotation_deg` as the cable insertion direction.
+3. Find the connector body's front projection from supported
+   `fabrication`/`courtyard` `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or
+   `fp_arc` footprint evidence.
+4. Build a 2D rectangular corridor extending
+   `parameters.min_cable_entry_clearance_depth_mm` forward from that body front
+   with `parameters.cable_entry_clearance_width_mm` width centered on the
+   connector placement.
+5. Convert nearby component footprint graphics into 2D line segments, falling
+   back to finite placement centers when footprint graphics are unavailable.
+6. Fail when any other component evidence intersects the cable-entry corridor.
+
+This is a static 2D entry corridor screen. It does not prove connector shell
+volume, plug shape, cable bend radius, panel cutout, enclosure interference, or
+assembly stack-up tolerances.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the

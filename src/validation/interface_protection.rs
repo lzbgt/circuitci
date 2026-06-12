@@ -8,6 +8,7 @@ use serde_json::json;
 
 mod usb_connector;
 mod usb_connector_clearance;
+mod usb_connector_entry;
 mod usb_connector_findings;
 mod usb_route;
 
@@ -68,6 +69,14 @@ pub(super) fn validate_usb_connector_component_clearance(
     findings: &mut Vec<Finding>,
 ) {
     usb_connector_clearance::validate_usb_connector_component_clearance(bound, scenario, findings);
+}
+
+pub(super) fn validate_usb_connector_entry_clearance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    usb_connector_entry::validate_usb_connector_entry_clearance(bound, scenario, findings);
 }
 
 pub(super) fn validate_interface_protection(

@@ -2,9 +2,10 @@ use super::super::{
     ScenarioSuggestion, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
     SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
     USB_CONNECTOR_BODY_OVERHANG_VALID, USB_CONNECTOR_COMPONENT_CLEARANCE_VALID,
-    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
-    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
-    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
+    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ENTRY_CLEARANCE_VALID,
+    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
+    USB_VBUS_ROUTE_VALID,
 };
 use super::{
     component_placement, placement_distance_mm, sanitized_name, suggested_placement,
@@ -501,6 +502,79 @@ pub(super) fn usb_connector_component_clearance_suggestion(
                 nearest_clearance_component
             ),
             "Review imported fabrication/courtyard evidence; this is a 2D component-clearance screen and does not prove 3D shell, cable, panel, or enclosure fit.".to_string(),
+        ],
+    })
+}
+
+pub(super) fn usb_connector_entry_clearance_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    suggested_connector.footprint.as_ref()?;
+    let placement = component_placement(bound, component_id)?;
+    let entry_direction_deg = placement.rotation_deg?;
+    let parameters = BTreeMap::from([
+        (
+            "entry_direction_deg".to_string(),
+            serde_json::Value::from(entry_direction_deg),
+        ),
+        (
+            "min_cable_entry_clearance_depth_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "cable_entry_clearance_width_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+    ]);
+    Some(ScenarioSuggestion {
+        id: format!(
+            "usb_connector_entry_clearance_{}",
+            sanitized_name(component_id)
+        ),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has imported placement rotation and mechanical footprint evidence; add a cable-entry clearance corridor scenario."
+        ),
+        scenario: SuggestedScenario {
+            name: format!(
+                "{}_usb_connector_entry_clearance",
+                sanitized_name(component_id)
+            ),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_CONNECTOR_ENTRY_CLEARANCE_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: Vec::new(),
+            usb_connectors: vec![suggested_connector],
+            usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string(),
+            "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
+            "Use 3D mechanical review for connector shell volume, plug body, cable bend radius, panel cutouts, and enclosure interference.".to_string(),
         ],
     })
 }
@@ -1545,6 +1619,28 @@ pub(super) fn existing_usb_connector_component_clearance_checks(
                 .checks
                 .iter()
                 .any(|check| check == USB_CONNECTOR_COMPONENT_CLEARANCE_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+pub(super) fn existing_usb_connector_entry_clearance_checks(
+    project: &BoardProject,
+) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| scenario.scenario_type == "interface_protection")
+        .filter(|scenario| {
+            scenario
+                .checks
+                .iter()
+                .any(|check| check == USB_CONNECTOR_ENTRY_CLEARANCE_VALID)
         })
         .filter_map(|scenario| {
             scenario

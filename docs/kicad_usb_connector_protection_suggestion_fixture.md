@@ -37,7 +37,9 @@ The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
    `USB_CONNECTOR_ORIENTATION_VALID`,
    `USB_CONNECTOR_EDGE_PROXIMITY_VALID`,
-   `USB_CONNECTOR_BODY_OVERHANG_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
+   `USB_CONNECTOR_BODY_OVERHANG_VALID`,
+   `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID`,
+   `USB_CONNECTOR_ENTRY_CLEARANCE_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
    `USB_VBUS_ROUTE_VALID`, and `USB_RETURN_PATH_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:
@@ -68,6 +70,14 @@ fabrication polygon and the imported `UESD` fabrication rectangle. The executabl
 check reports the measured footprint-to-footprint clearance as `0.5 mm` and
 fails against the fixture's
 `0.7 mm` minimum connector-to-component clearance limit.
+
+The same imported connector rotation and footprint evidence also emits a
+non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It copies
+`entry_direction_deg: 0.0` from the KiCad placement rotation and leaves cable
+entry corridor depth/width as explicit mechanical policy inputs.
+`project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
+wide corridor, proving the imported `UESD` fabrication rectangle is reported as
+an entry-corridor obstruction.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

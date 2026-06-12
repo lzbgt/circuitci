@@ -254,6 +254,16 @@ uses the same stable key names except `component` identifies the nearby
 component and `clearance_mm` carries the measured connector-to-component
 distance.
 
+`USB_CONNECTOR_ENTRY_CLEARANCE_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata,
+connector placement rotation, connector `fabrication` or `courtyard` footprint
+graphics, and nearby component placement or footprint evidence. Stable measured
+keys include `obstructing_component`, `entry_obstruction_depth_mm`,
+`entry_obstruction_lateral_offset_mm`, `entry_direction_deg`,
+`obstruction_reference`, optional `obstruction_footprint_graphic_layer`, and
+optional `obstruction_footprint_graphic_kind`. Stable limit keys include
+`min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

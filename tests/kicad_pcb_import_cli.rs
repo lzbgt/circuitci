@@ -424,6 +424,24 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         nearest_clearance["component_footprint_graphic_kind"],
         "fabrication"
     );
+    let entry_clearance = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
+        .expect("USB connector entry-clearance suggestion");
+    assert_eq!(
+        entry_clearance["scenario"]["checks"][0],
+        "USB_CONNECTOR_ENTRY_CLEARANCE_VALID"
+    );
+    assert_eq!(
+        entry_clearance["scenario"]["parameters"]["entry_direction_deg"],
+        0.0
+    );
+    assert!(
+        entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"].is_null()
+    );
+    assert!(entry_clearance["scenario"]["parameters"]["cable_entry_clearance_width_mm"].is_null());
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -629,7 +647,7 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
             .unwrap();
     assert_eq!(report["result"], "fail");
-    assert_eq!(report["summary"]["critical"], 1);
+    assert_eq!(report["summary"]["critical"], 2);
     let failure = report["failures"]
         .as_array()
         .unwrap()
@@ -669,6 +687,31 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     assert_eq!(
         failure["limit"]["min_connector_to_component_clearance_mm"],
         0.7
+    );
+    let entry_failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding");
+    assert_eq!(entry_failure["component"], "J1");
+    assert_eq!(entry_failure["measured"]["obstructing_component"], "UESD");
+    assert_eq!(entry_failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        entry_failure["measured"]["obstruction_reference"],
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        entry_failure["measured"]["obstruction_footprint_graphic_kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        entry_failure["limit"]["min_cable_entry_clearance_depth_mm"],
+        0.8
+    );
+    assert_eq!(
+        entry_failure["limit"]["cable_entry_clearance_width_mm"],
+        1.0
     );
     assert_report_schema_valid(&report);
 }
@@ -746,7 +789,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 13);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 14);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -788,6 +831,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_connector_component_clearance_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
     );
     assert!(
         suggestions["suggestions"]

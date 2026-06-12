@@ -171,6 +171,22 @@ Connector component-clearance validation:
 - It does not prove 3D shell volume, cable sweep, panel/enclosure interference,
   or assembly stack-up clearance.
 
+Connector entry-clearance validation:
+
+- `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` targets the same connector component
+  and uses imported connector placement rotation or explicit
+  `parameters.entry_direction_deg` plus supported connector
+  `fabrication`/`courtyard` footprint drawing evidence.
+- The scenario must declare
+  `parameters.min_cable_entry_clearance_depth_mm` and
+  `parameters.cable_entry_clearance_width_mm` from connector plug, cable, panel,
+  enclosure, or assembly drawings.
+- The rule projects a 2D rectangular cable-entry corridor forward from the
+  connector body and fails when any other component footprint or placement
+  evidence intersects that corridor.
+- It does not prove 3D shell volume, plug geometry, cable bend radius,
+  panel/enclosure interference, or assembly stack-up clearance.
+
 Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses

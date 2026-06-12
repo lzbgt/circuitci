@@ -12,6 +12,9 @@ toward the repository line-count guard:
 - `src/validation/interface_protection/usb_connector_clearance.rs` owns
   `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` orchestration and its local
   connector-to-component footprint/placement clearance geometry.
+- `src/validation/interface_protection/usb_connector_entry.rs` owns
+  `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` orchestration and its local 2D
+  cable-entry corridor geometry.
 - `src/validation/interface_protection/usb_connector.rs` owns
   `USB_CONNECTOR_PROTECTION_VALID`, `USB_PROTECTION_PLACEMENT_VALID`,
   `USB_CONNECTOR_ORIENTATION_VALID`, and
