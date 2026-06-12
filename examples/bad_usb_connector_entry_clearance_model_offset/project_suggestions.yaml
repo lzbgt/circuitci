@@ -44,6 +44,11 @@ board:
         x_mm: 1.5
         y_mm: 0.0
         side: top
+    outline:
+      segments:
+        - start: { x_mm: 0.5, y_mm: 1.0 }
+          end: { x_mm: 0.5, y_mm: -1.0 }
+          layer: Edge.Cuts
     footprints:
       J1:
         polygons:

@@ -94,8 +94,11 @@ The command is conservative:
   When `board.layout.outline.segments` contains imported board-edge segment
   evidence, the template also reports `nearest_board_edge` evidence and
   pre-fills `expected_connector_rotation_deg` from the nearest edge's inferred
-  outward normal. `max_connector_rotation_error_deg` remains `null` until an
-  agent supplies a board-specific tolerance, and the inferred expected rotation
+  outward normal minus optional component-model
+  `usb_connector.entry_direction_offset_deg`. `nearest_board_edge` keeps both
+  raw `outward_normal_deg` and offset-aware `expected_connector_rotation_deg`
+  evidence. `max_connector_rotation_error_deg` remains `null` until an agent
+  supplies a board-specific tolerance, and the inferred expected rotation
   should be reviewed against the connector footprint convention before making
   the scenario runnable. Without outline evidence, both orientation parameters
   remain manual.

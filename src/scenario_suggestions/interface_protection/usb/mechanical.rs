@@ -22,7 +22,7 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
     let expected_rotation = suggested_connector
         .nearest_board_edge
         .as_ref()
-        .map(|edge| edge.outward_normal_deg);
+        .and_then(|edge| edge.expected_connector_rotation_deg);
     let mut parameters = BTreeMap::from([(
         "max_connector_rotation_error_deg".to_string(),
         serde_json::Value::Null,
@@ -38,9 +38,16 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
             .to_string(),
     ];
     if expected_rotation.is_some() {
-        required_inputs.push(
-            "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
-        );
+        if let Some(offset_deg) = connector.entry_direction_offset_deg {
+            required_inputs.push(format!(
+                "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus usb_connector.entry_direction_offset_deg {:.3} before making this scenario runnable.",
+                offset_deg
+            ));
+        } else {
+            required_inputs.push(
+                "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
+            );
+        }
     } else {
         required_inputs.push(
             "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),

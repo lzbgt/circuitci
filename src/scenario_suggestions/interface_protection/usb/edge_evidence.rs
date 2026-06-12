@@ -11,6 +11,7 @@ use crate::board_ir::{
     LayoutSegment,
 };
 use crate::library::BoundBoard;
+use crate::library::UsbConnector;
 
 pub(super) fn suggested_footprint(
     bound: &BoundBoard<'_>,
@@ -88,6 +89,7 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
 pub(super) fn nearest_board_edge_evidence(
     bound: &BoundBoard<'_>,
     component_id: &str,
+    connector: &UsbConnector,
 ) -> Option<SuggestedBoardEdge> {
     let placement = component_placement(bound, component_id)?;
     let rotation_deg = placement.rotation_deg?;
@@ -108,6 +110,9 @@ pub(super) fn nearest_board_edge_evidence(
         .min_by(|left, right| left.1.distance_mm.total_cmp(&right.1.distance_mm))?;
     let edge_angle_deg = segment_angle_deg(edge.0);
     let outward_normal_deg = outward_normal_deg(edge.0, &centroid, edge_angle_deg);
+    let entry_direction_offset_deg = connector.entry_direction_offset_deg;
+    let expected_connector_rotation_deg =
+        normalize_rotation_deg(outward_normal_deg - entry_direction_offset_deg.unwrap_or(0.0));
     Some(SuggestedBoardEdge {
         start: suggested_point(&edge.0.start),
         end: suggested_point(&edge.0.end),
@@ -125,7 +130,12 @@ pub(super) fn nearest_board_edge_evidence(
         connector_body_overhang_mm: edge.1.body_overhang_mm,
         edge_angle_deg,
         outward_normal_deg,
-        connector_rotation_error_deg: angular_error_deg(rotation_deg, outward_normal_deg),
+        expected_connector_rotation_deg: Some(expected_connector_rotation_deg),
+        connector_entry_direction_offset_deg: entry_direction_offset_deg,
+        connector_rotation_error_deg: angular_error_deg(
+            rotation_deg,
+            expected_connector_rotation_deg,
+        ),
     })
 }
 

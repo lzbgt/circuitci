@@ -21,3 +21,9 @@ would look toward `270.0` degrees and miss the obstruction.
 emit a `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template with
 `entry_direction_deg: 0.0`, `entry_direction_source: component_model_offset`,
 and `entry_direction_offset_deg: 90.0`.
+
+The suggestion fixture also includes a simple board edge whose outward normal
+is `0.0` degrees. `suggest-scenarios` must infer
+`expected_connector_rotation_deg: 270.0` for
+`USB_CONNECTOR_ORIENTATION_VALID`, because the connector footprint rotation
+should equal cable-entry direction minus the model's `90.0` degree offset.

@@ -540,6 +540,8 @@
         "connector_body_overhang_mm": { "type": "number", "minimum": 0 },
         "edge_angle_deg": { "type": "number" },
         "outward_normal_deg": { "type": "number" },
+        "expected_connector_rotation_deg": { "type": "number" },
+        "connector_entry_direction_offset_deg": { "type": "number" },
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false

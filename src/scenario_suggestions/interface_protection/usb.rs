@@ -1064,7 +1064,7 @@ pub(super) fn suggested_usb_connector(
         shield_net,
         placement: suggested_placement(bound, component_id),
         footprint: suggested_footprint(bound, component_id),
-        nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
+        nearest_board_edge: nearest_board_edge_evidence(bound, component_id, connector),
         nearest_component_clearance: nearest_component_clearance_evidence(bound, component_id),
         entry_clearance: entry_direction.and_then(|entry_direction| {
             entry_clearance_evidence(

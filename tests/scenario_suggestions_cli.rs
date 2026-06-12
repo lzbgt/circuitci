@@ -694,6 +694,21 @@ fn suggest_scenarios_uses_usb_connector_entry_direction_offset() {
         entry_evidence["nearest_obstruction"]["obstruction_reference"],
         "footprint_rectangle"
     );
+    let orientation = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_orientation_j1")
+        .expect("USB connector orientation suggestion");
+    assert_eq!(
+        orientation["scenario"]["parameters"]["expected_connector_rotation_deg"],
+        270.0
+    );
+    let nearest_edge = &orientation["scenario"]["usb_connectors"][0]["nearest_board_edge"];
+    assert_eq!(nearest_edge["outward_normal_deg"], 0.0);
+    assert_eq!(nearest_edge["expected_connector_rotation_deg"], 270.0);
+    assert_eq!(nearest_edge["connector_entry_direction_offset_deg"], 90.0);
+    assert_eq!(nearest_edge["connector_rotation_error_deg"], 0.0);
 }
 
 #[test]
