@@ -148,9 +148,11 @@ The command is conservative:
   footprint-property, KiCad mapping, or component-model entry-direction offset
   evidence, includes the connector placement and footprint evidence, and includes
   `scenario.usb_connectors[].entry_clearance` with connector-front projection
-  plus `entry_direction_source`, optional `entry_direction_offset_deg`, aperture
-  source/front/center evidence, optional imported mapping,
-  component-model, or footprint-property aperture offsets and width, optional
+  plus `entry_direction_source`, optional `entry_direction_offset_deg`, optional
+  `entry_clearance_depth_source`,
+  `suggested_min_cable_entry_clearance_depth_mm`, aperture source/front/center
+  evidence, optional imported mapping, component-model, or footprint-property
+  aperture offsets and width, optional
   `model_min_cable_entry_clearance_width_mm`, and the nearest
   forward obstruction candidate when imported component footprint or placement
   evidence is available. Obstruction evidence reports depth in the entry

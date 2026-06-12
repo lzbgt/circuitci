@@ -741,6 +741,18 @@ fn suggest_scenarios_reports_usb_connector_entry_aperture() {
     assert_eq!(entry_evidence["entry_aperture_lateral_offset_mm"], 1.0);
     assert_eq!(entry_evidence["entry_aperture_width_mm"], 0.5);
     assert_eq!(
+        entry_evidence["entry_clearance_depth_source"],
+        "component_model_depth"
+    );
+    assert_eq!(
+        entry_evidence["suggested_min_cable_entry_clearance_depth_mm"],
+        1.5
+    );
+    assert_eq!(
+        entry["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"],
+        1.5
+    );
+    assert_eq!(
         entry_evidence["model_min_cable_entry_clearance_width_mm"],
         0.5
     );

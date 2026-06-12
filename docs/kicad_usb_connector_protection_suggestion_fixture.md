@@ -75,15 +75,20 @@ The same imported connector rotation and footprint evidence also emits a
 non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It computes
 `entry_direction_deg: 0.0` from the KiCad placement rotation plus the J1
 footprint's `CircuitCI_EntryDirectionOffsetDeg: 0.0` property, then leaves
-cable entry corridor depth/width as explicit mechanical policy inputs. Its
+cable entry corridor width as an explicit mechanical policy input. The template
+prefills `min_cable_entry_clearance_depth_mm: 2.5` from the J1 footprint's
+`CircuitCI_EntryClearanceDepthMM` property. Its
 `scenario.usb_connectors[].entry_clearance` evidence reports the imported
 J1 footprint's `CircuitCI_EntryDirectionOffsetDeg` property as
 `entry_direction_source: footprint_property_offset` and its
+`CircuitCI_EntryClearanceDepthMM` property as
+`entry_clearance_depth_source: footprint_property_depth`, plus its
 `CircuitCI_EntryAperture*` properties as
 `entry_aperture_source: footprint_property_aperture` and reports the nearest
 forward obstruction candidate from imported footprint evidence, which is the
 `UESD` fabrication rectangle in this fixture. The schematic mapping also
 declares `components.J1.layout.entry_direction_offset_deg` and
+`components.J1.layout.entry_clearance_depth_mm` and
 `components.J1.layout.entry_aperture` as `kicad_mapping` fallbacks for
 unmodified library footprints; the explicit PCB footprint properties take
 precedence when both sources are present.

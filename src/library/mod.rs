@@ -142,6 +142,8 @@ pub struct UsbConnector {
     #[serde(default)]
     pub entry_direction_offset_deg: Option<f64>,
     #[serde(default)]
+    pub entry_clearance_depth_mm: Option<f64>,
+    #[serde(default)]
     pub entry_aperture_front_offset_mm: Option<f64>,
     #[serde(default)]
     pub entry_aperture_lateral_offset_mm: Option<f64>,

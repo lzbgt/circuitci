@@ -94,6 +94,9 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   rotation plus optional KiCad footprint-property, KiCad mapping, or
   component-model
   `entry_direction_offset_deg`, or explicit scenario `entry_direction_deg`.
+  Optional KiCad footprint-property, KiCad mapping, or component-model
+  entry-clearance depth can prefill suggestion parameters,
+  but that depth is still only 2D corridor evidence.
   Optional imported footprint-property, KiCad mapping, or component-model
   aperture offsets and width can move and widen that 2D corridor, but they
   still do not model plug geometry, connector shell volume,

@@ -42,20 +42,27 @@ drawing evidence includes:
 
 For USB connector entry-clearance checks, the importer also reads optional
 footprint properties named `CircuitCI_EntryDirectionOffsetDeg`,
+`CircuitCI_EntryClearanceDepthMM`,
 `CircuitCI_EntryApertureFrontOffsetMM`,
 `CircuitCI_EntryApertureLateralOffsetMM`, and
 `CircuitCI_EntryApertureWidthMM`. Direction offset is a finite degree value.
-Aperture values must be finite millimeter numbers, and width must be greater
-than zero. Duplicate or malformed entry-direction or aperture properties fail
-closed. Imported direction values are written to
+Clearance depth and aperture values must be finite millimeter numbers, and
+depth/width must be greater than zero. Duplicate or malformed entry-direction,
+entry-clearance, or aperture properties fail closed. Imported direction values
+are written to
 `board.layout.footprints.<ref>.entry_direction` with source
+`kicad_footprint_property`; imported clearance depth is written to
+`board.layout.footprints.<ref>.entry_clearance` with source
 `kicad_footprint_property`; imported aperture values are written to
 `board.layout.footprints.<ref>.entry_aperture` with source
 `kicad_footprint_property`. If the incoming Board IR already has
 `board.layout.footprints.<ref>.entry_direction` from schematic mapping metadata,
 PCB import preserves that direction-offset metadata only when the physical
 footprint does not declare `CircuitCI_EntryDirectionOffsetDeg`. If the incoming
-Board IR already has
+Board IR already has `board.layout.footprints.<ref>.entry_clearance` from
+schematic mapping metadata, PCB import preserves that clearance-depth metadata
+only when the physical footprint does not declare
+`CircuitCI_EntryClearanceDepthMM`. If the incoming Board IR already has
 `board.layout.footprints.<ref>.entry_aperture` from schematic mapping metadata
 and the KiCad footprint does not declare explicit `CircuitCI_EntryAperture*`
 properties, PCB import preserves the existing aperture metadata. Explicit KiCad

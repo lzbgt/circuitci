@@ -594,6 +594,17 @@
           ]
         },
         "entry_direction_offset_deg": { "type": "number" },
+        "entry_clearance_depth_source": {
+          "enum": [
+            "component_model_depth",
+            "kicad_mapping_depth",
+            "footprint_property_depth"
+          ]
+        },
+        "suggested_min_cable_entry_clearance_depth_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
         "entry_aperture_source": {
           "enum": [
             "footprint_front",
@@ -669,6 +680,14 @@
           "type": "object",
           "properties": {
             "offset_deg": { "type": "number" },
+            "source": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "entry_clearance": {
+          "type": "object",
+          "properties": {
+            "depth_mm": { "type": "number", "exclusiveMinimum": 0 },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false

@@ -13,7 +13,8 @@ mod outline;
 
 use footprints::{
     PcbFootprint, footprint_graphic_count, footprint_has_entry_aperture,
-    footprint_has_entry_direction, footprint_yaml_value, parse_footprints,
+    footprint_has_entry_clearance, footprint_has_entry_direction, footprint_yaml_value,
+    parse_footprints,
 };
 use outline::{PcbOutline, outline_yaml_value, parse_outline};
 
@@ -1160,6 +1161,9 @@ fn merge_pcb_into_project(
         if !footprint_has_entry_direction(footprint) {
             preserve_existing_entry_direction(footprint_yaml, reference, &mut footprint_value)?;
         }
+        if !footprint_has_entry_clearance(footprint) {
+            preserve_existing_entry_clearance(footprint_yaml, reference, &mut footprint_value)?;
+        }
         if !footprint_has_entry_aperture(footprint) {
             preserve_existing_entry_aperture(footprint_yaml, reference, &mut footprint_value)?;
         }
@@ -1246,6 +1250,19 @@ fn preserve_existing_entry_aperture(
     footprint_value: &mut Value,
 ) -> Result<()> {
     preserve_existing_footprint_field(footprint_yaml, reference, footprint_value, "entry_aperture")
+}
+
+fn preserve_existing_entry_clearance(
+    footprint_yaml: &Mapping,
+    reference: &str,
+    footprint_value: &mut Value,
+) -> Result<()> {
+    preserve_existing_footprint_field(
+        footprint_yaml,
+        reference,
+        footprint_value,
+        "entry_clearance",
+    )
 }
 
 fn preserve_existing_footprint_field(

@@ -66,6 +66,8 @@ pub struct LayoutFootprint {
     #[serde(default)]
     pub entry_direction: Option<LayoutEntryDirection>,
     #[serde(default)]
+    pub entry_clearance: Option<LayoutEntryClearance>,
+    #[serde(default)]
     pub entry_aperture: Option<LayoutEntryAperture>,
 }
 
@@ -73,6 +75,14 @@ pub struct LayoutFootprint {
 pub struct LayoutEntryDirection {
     #[serde(default)]
     pub offset_deg: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutEntryClearance {
+    #[serde(default)]
+    pub depth_mm: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

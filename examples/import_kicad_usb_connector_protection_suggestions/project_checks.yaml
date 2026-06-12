@@ -49,6 +49,9 @@ board:
         entry_direction:
           offset_deg: 0.0
           source: kicad_mapping
+        entry_clearance:
+          depth_mm: 2.0
+          source: kicad_mapping
 
 scenarios:
   - name: usb_connector_component_clearance_from_imported_pcb

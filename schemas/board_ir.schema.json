@@ -219,6 +219,14 @@
                     },
                     "additionalProperties": false
                   },
+                  "entry_clearance": {
+                    "type": "object",
+                    "properties": {
+                      "depth_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "source": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  },
                   "entry_aperture": {
                     "type": "object",
                     "properties": {

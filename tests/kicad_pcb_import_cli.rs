@@ -95,6 +95,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(connector_footprint["entry_direction"]["offset_deg"], 0.0);
     assert_eq!(
+        connector_footprint["entry_clearance"]["source"],
+        "kicad_footprint_property"
+    );
+    assert_eq!(connector_footprint["entry_clearance"]["depth_mm"], 2.5);
+    assert_eq!(
         imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["kind"],
         "fabrication"
     );
@@ -464,6 +469,22 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         0.0
     );
     assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["source"],
+        "kicad_footprint_property"
+    );
+    assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["depth_mm"],
+        2.5
+    );
+    assert_eq!(
+        entry_evidence["entry_clearance_depth_source"],
+        "footprint_property_depth"
+    );
+    assert_eq!(
+        entry_evidence["suggested_min_cable_entry_clearance_depth_mm"],
+        2.5
+    );
+    assert_eq!(
         entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["source"],
         "kicad_footprint_property"
     );
@@ -503,8 +524,9 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         entry_evidence["nearest_obstruction"]["obstruction_footprint_graphic_kind"],
         "fabrication"
     );
-    assert!(
-        entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"].is_null()
+    assert_eq!(
+        entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"],
+        2.5
     );
     assert!(entry_clearance["scenario"]["parameters"]["cable_entry_clearance_width_mm"].is_null());
     let route = suggestions["suggestions"]
@@ -684,7 +706,9 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     .unwrap()
     .lines()
     .filter(|line| {
-        !line.contains("CircuitCI_EntryAperture") && !line.contains("CircuitCI_EntryDirection")
+        !line.contains("CircuitCI_EntryAperture")
+            && !line.contains("CircuitCI_EntryDirection")
+            && !line.contains("CircuitCI_EntryClearance")
     })
     .collect::<Vec<_>>()
     .join("\n");
@@ -729,10 +753,30 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         "kicad_mapping"
     );
     assert_eq!(
+        mapped_entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        mapped_entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["depth_mm"],
+        2.0
+    );
+    assert_eq!(
         mapped_entry_evidence["entry_direction_source"],
         "kicad_mapping_offset"
     );
     assert_eq!(mapped_entry_evidence["entry_direction_offset_deg"], 0.0);
+    assert_eq!(
+        mapped_entry_evidence["entry_clearance_depth_source"],
+        "kicad_mapping_depth"
+    );
+    assert_eq!(
+        mapped_entry_evidence["suggested_min_cable_entry_clearance_depth_mm"],
+        2.0
+    );
+    assert_eq!(
+        mapped_entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"],
+        2.0
+    );
     assert_eq!(
         mapped_entry_evidence["entry_aperture_source"],
         "kicad_mapping_aperture"
@@ -844,6 +888,62 @@ fn import_kicad_pcb_rejects_invalid_entry_direction_properties() {
         assert!(
             !output.status.success(),
             "malformed KiCad PCB entry-direction fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains(expected_error),
+            "expected error containing {expected_error:?}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
+fn import_kicad_pcb_rejects_invalid_entry_clearance_properties() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let clearance_property =
+        "(property \"CircuitCI_EntryClearanceDepthMM\" \"2.5\" (at 0 1.1 0) (layer \"F.Fab\"))";
+    let malformed_cases = [
+        (
+            "duplicate_entry_clearance.kicad_pcb",
+            source_pcb.replace(
+                clearance_property,
+                &format!("{clearance_property}\n    {clearance_property}"),
+            ),
+            "duplicate entry-clearance property",
+        ),
+        (
+            "nonpositive_entry_clearance.kicad_pcb",
+            source_pcb.replace(
+                clearance_property,
+                "(property \"CircuitCI_EntryClearanceDepthMM\" \"0.0\" (at 0 1.1 0) (layer \"F.Fab\"))",
+            ),
+            "must be greater than zero",
+        ),
+    ];
+
+    for (file_name, pcb_contents, expected_error) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "malformed KiCad PCB entry-clearance fixture {file_name} unexpectedly imported"
         );
         let stderr = String::from_utf8(output.stderr).unwrap();
         assert!(

@@ -944,6 +944,14 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         0.0
     );
     assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_clearance"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_clearance"]["depth_mm"],
+        2.0
+    );
+    assert_eq!(
         imported["board"]["layout"]["footprints"]["J1"]["entry_aperture"]["width_mm"],
         1.2
     );
@@ -1116,6 +1124,45 @@ fn import_kicad_schematic_rejects_invalid_layout_entry_direction_offset() {
     assert!(
         stderr.contains("layout.entry_direction_offset_deg must be finite"),
         "expected invalid layout entry-direction offset error, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_invalid_layout_entry_clearance_depth() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("invalid_layout_entry_depth.project.yaml");
+    let mapping_path = dir.path().join("invalid_layout_entry_depth.kicad-map.yaml");
+    let mapping = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/circuitci.kicad-map.yaml",
+    )
+    .unwrap()
+    .replace(
+        "entry_clearance_depth_mm: 2.0",
+        "entry_clearance_depth_mm: 0.0",
+    );
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let output_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_usb_connector_protection_suggestions/root.kicad_sch",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "invalid_layout_entry_depth",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output_status.status.success(),
+        "invalid layout entry-depth mapping unexpectedly imported"
+    );
+    let stderr = String::from_utf8(output_status.stderr).unwrap();
+    assert!(
+        stderr.contains("layout.entry_clearance_depth_mm must be greater than zero"),
+        "expected invalid layout entry-clearance depth error, got:\n{stderr}"
     );
 }
 

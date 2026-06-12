@@ -17,6 +17,7 @@ pub(super) struct PcbFootprint {
     circles: Vec<PcbFootprintCircle>,
     arcs: Vec<PcbFootprintArc>,
     entry_direction: Option<PcbEntryDirection>,
+    entry_clearance: Option<PcbEntryClearance>,
     entry_aperture: Option<PcbEntryAperture>,
 }
 
@@ -66,6 +67,11 @@ struct PcbEntryDirection {
 }
 
 #[derive(Debug, Clone, Default)]
+struct PcbEntryClearance {
+    depth_mm: f64,
+}
+
+#[derive(Debug, Clone, Default)]
 struct PcbEntryAperture {
     front_offset_mm: Option<f64>,
     lateral_offset_mm: Option<f64>,
@@ -86,6 +92,8 @@ struct FootprintYaml {
     arcs: Vec<FootprintArcYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     entry_direction: Option<EntryDirectionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entry_clearance: Option<EntryClearanceYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     entry_aperture: Option<EntryApertureYaml>,
 }
@@ -137,6 +145,12 @@ struct EntryDirectionYaml {
 }
 
 #[derive(Debug, Serialize)]
+struct EntryClearanceYaml {
+    depth_mm: f64,
+    source: String,
+}
+
+#[derive(Debug, Serialize)]
 struct EntryApertureYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     front_offset_mm: Option<f64>,
@@ -158,6 +172,7 @@ pub(super) fn parse_footprints(
         let footprint_at = footprint_at(footprint, &reference)?;
         let mut evidence = PcbFootprint {
             entry_direction: parse_entry_direction(footprint, &reference, path)?,
+            entry_clearance: parse_entry_clearance(footprint, &reference, path)?,
             entry_aperture: parse_entry_aperture(footprint, &reference, path)?,
             ..Default::default()
         };
@@ -251,6 +266,7 @@ pub(super) fn parse_footprints(
         }
         if footprint_graphic_count(&evidence) > 0
             || evidence.entry_direction.is_some()
+            || evidence.entry_clearance.is_some()
             || evidence.entry_aperture.is_some()
         {
             footprints.insert(reference, evidence);
@@ -273,6 +289,10 @@ pub(super) fn footprint_has_entry_aperture(footprint: &PcbFootprint) -> bool {
 
 pub(super) fn footprint_has_entry_direction(footprint: &PcbFootprint) -> bool {
     footprint.entry_direction.is_some()
+}
+
+pub(super) fn footprint_has_entry_clearance(footprint: &PcbFootprint) -> bool {
+    footprint.entry_clearance.is_some()
 }
 
 pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
@@ -333,6 +353,12 @@ pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
                 source: "kicad_footprint_property".to_string(),
             }
         }),
+        entry_clearance: footprint.entry_clearance.as_ref().map(|entry_clearance| {
+            EntryClearanceYaml {
+                depth_mm: entry_clearance.depth_mm,
+                source: "kicad_footprint_property".to_string(),
+            }
+        }),
         entry_aperture: footprint
             .entry_aperture
             .as_ref()
@@ -388,6 +414,56 @@ fn parse_entry_direction(
         }
     }
     Ok(offset_deg.map(|offset_deg| PcbEntryDirection { offset_deg }))
+}
+
+fn parse_entry_clearance(
+    footprint: &[Sexp],
+    reference: &str,
+    path: &Path,
+) -> Result<Option<PcbEntryClearance>> {
+    let mut depth_mm = None;
+    for property in list_children(footprint, "property") {
+        let Some(name) = string_at(property, 1) else {
+            continue;
+        };
+        if name != "CircuitCI_EntryClearanceDepthMM" {
+            continue;
+        }
+        let value = string_at(property, 2)
+            .with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} entry-clearance property {name} in {} is missing a value.",
+                    path.display()
+                )
+            })?
+            .trim()
+            .parse::<f64>()
+            .with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} entry-clearance property {name} in {} is not a number.",
+                    path.display()
+                )
+            })?;
+        if !value.is_finite() {
+            bail!(
+                "KiCad PCB footprint {reference} entry-clearance property {name} in {} must be finite.",
+                path.display()
+            );
+        }
+        if value <= 0.0 {
+            bail!(
+                "KiCad PCB footprint {reference} entry-clearance property {name} in {} must be greater than zero.",
+                path.display()
+            );
+        }
+        if depth_mm.replace(value).is_some() {
+            bail!(
+                "KiCad PCB footprint {reference} has duplicate entry-clearance property {name} in {}.",
+                path.display()
+            );
+        }
+    }
+    Ok(depth_mm.map(|depth_mm| PcbEntryClearance { depth_mm }))
 }
 
 fn parse_entry_aperture(

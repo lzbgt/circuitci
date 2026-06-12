@@ -1,8 +1,9 @@
 use super::super::super::{
     SuggestedBoardEdge, SuggestedComponentClearance, SuggestedFootprint, SuggestedFootprintArc,
-    SuggestedFootprintCircle, SuggestedFootprintEntryAperture, SuggestedFootprintEntryDirection,
-    SuggestedFootprintPolygon, SuggestedFootprintRectangle, SuggestedFootprintSegment,
-    SuggestedPoint, SuggestedUsbEntryClearance, SuggestedUsbEntryObstruction,
+    SuggestedFootprintCircle, SuggestedFootprintEntryAperture, SuggestedFootprintEntryClearance,
+    SuggestedFootprintEntryDirection, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
+    SuggestedFootprintSegment, SuggestedPoint, SuggestedUsbEntryClearance,
+    SuggestedUsbEntryObstruction,
 };
 use super::super::component_placement;
 use crate::board_ir::{
@@ -78,6 +79,7 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
         || !circles.is_empty()
         || !arcs.is_empty()
         || footprint.entry_direction.is_some()
+        || footprint.entry_clearance.is_some()
         || footprint.entry_aperture.is_some())
     .then_some(SuggestedFootprint {
         segments,
@@ -89,6 +91,12 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
             SuggestedFootprintEntryDirection {
                 offset_deg: entry_direction.offset_deg,
                 source: entry_direction.source.clone(),
+            }
+        }),
+        entry_clearance: footprint.entry_clearance.as_ref().map(|entry_clearance| {
+            SuggestedFootprintEntryClearance {
+                depth_mm: entry_clearance.depth_mm,
+                source: entry_clearance.source.clone(),
             }
         }),
         entry_aperture: footprint.entry_aperture.as_ref().map(|entry_aperture| {
@@ -284,6 +292,7 @@ pub(super) fn entry_clearance_evidence(
         entry_direction_deg,
         connector_front_projection_mm,
     )?;
+    let depth = entry_clearance_depth_evidence(bound, connector_id, connector);
     let mut nearest: Option<EntryObstructionCandidate<'_>> = None;
     for component_id in bound.project.board.components.keys() {
         if component_id == connector_id {
@@ -317,6 +326,8 @@ pub(super) fn entry_clearance_evidence(
         entry_direction_deg,
         entry_direction_source: entry_direction_source.to_string(),
         entry_direction_offset_deg,
+        entry_clearance_depth_source: depth.as_ref().map(|depth| depth.source.to_string()),
+        suggested_min_cable_entry_clearance_depth_mm: depth.map(|depth| depth.depth_mm),
         entry_aperture_source: aperture.source.to_string(),
         connector_front_projection_mm,
         entry_aperture_front_projection_mm: aperture.front_projection_mm,
@@ -339,6 +350,43 @@ pub(super) fn entry_clearance_evidence(
                 .footprint_kind()
                 .map(str::to_string),
         }),
+    })
+}
+
+struct EntryClearanceDepthEvidence {
+    source: &'static str,
+    depth_mm: f64,
+}
+
+fn entry_clearance_depth_evidence(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    connector: &UsbConnector,
+) -> Option<EntryClearanceDepthEvidence> {
+    let layout_clearance = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(connector_id)
+        .and_then(|footprint| footprint.entry_clearance.as_ref());
+    let raw_depth_mm = layout_clearance.map_or(connector.entry_clearance_depth_mm, |clearance| {
+        clearance.depth_mm
+    });
+    let depth_mm = raw_depth_mm?;
+    if !depth_mm.is_finite() || depth_mm <= 0.0 {
+        return None;
+    }
+    Some(EntryClearanceDepthEvidence {
+        source: if let Some(layout_clearance) = layout_clearance {
+            match layout_clearance.source.as_deref() {
+                Some("kicad_mapping") => "kicad_mapping_depth",
+                _ => "footprint_property_depth",
+            }
+        } else {
+            "component_model_depth"
+        },
+        depth_mm,
     })
 }
 

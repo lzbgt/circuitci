@@ -340,6 +340,7 @@ usb_connector:
   gnd_pin: GND
   shield_pin: SHIELD
   entry_direction_offset_deg: 0.0
+  entry_clearance_depth_mm: 8.0
   entry_aperture_front_offset_mm: 0.0
   entry_aperture_lateral_offset_mm: 0.0
   entry_aperture_width_mm: 6.0
@@ -366,6 +367,17 @@ supplies the offset.
 See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.md)
 for a validation fixture that proves a nonzero offset changes the checked entry
 direction.
+
+`entry_clearance_depth_mm` is optional 2D cable-entry corridor depth metadata.
+When present, `suggest-scenarios` uses it to prefill
+`parameters.min_cable_entry_clearance_depth_mm` while still leaving the
+entry-clearance suggestion non-runnable until the remaining mechanical policy
+inputs are reviewed. KiCad schematic mapping
+`layout.entry_clearance_depth_mm` is reported as `kicad_mapping_depth`, and
+explicit KiCad PCB footprint property `CircuitCI_EntryClearanceDepthMM` is
+reported as `footprint_property_depth`. Footprint properties take precedence
+over mapping metadata, and both take precedence over component-model defaults.
+Depth values are millimeters and must be greater than zero.
 
 `entry_aperture_front_offset_mm`, `entry_aperture_lateral_offset_mm`, and
 `entry_aperture_width_mm` are optional 2D cable-entry aperture metadata. The

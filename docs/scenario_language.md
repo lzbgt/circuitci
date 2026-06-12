@@ -548,6 +548,11 @@ Connector entry-clearance algorithm:
    the corridor centerline perpendicular to entry direction, and aperture width
    becomes the minimum checked width when it is larger than
    `parameters.cable_entry_clearance_width_mm`.
+   `CircuitCI_EntryClearanceDepthMM`, KiCad mapping
+   `layout.entry_clearance_depth_mm`, or component-model
+   `usb_connector.entry_clearance_depth_mm` can prefill
+   `parameters.min_cable_entry_clearance_depth_mm` in suggestions, but
+   executable validation still uses the scenario parameter value.
 5. Build a 2D rectangular corridor extending
    `parameters.min_cable_entry_clearance_depth_mm` forward from that entry
    front with the effective checked width.

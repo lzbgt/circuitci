@@ -183,6 +183,9 @@ board:
         entry_direction:
           offset_deg: 0.0
           source: kicad_mapping
+        entry_clearance:
+          depth_mm: 2.5
+          source: kicad_footprint_property
         entry_aperture:
           front_offset_mm: 0.0
           lateral_offset_mm: 0.0
@@ -194,14 +197,16 @@ KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
 `fp_poly`, `fp_circle`, and `fp_arc` drawing items. It also imports optional
 connector entry-direction and entry-aperture metadata from explicit footprint
 properties named `CircuitCI_EntryDirectionOffsetDeg`,
+`CircuitCI_EntryClearanceDepthMM`,
 `CircuitCI_EntryApertureFrontOffsetMM`,
 `CircuitCI_EntryApertureLateralOffsetMM`, and
 `CircuitCI_EntryApertureWidthMM`. KiCad schematic mapping can also seed
-`entry_direction` with `source: kicad_mapping` and `entry_aperture` with
+`entry_direction`, `entry_clearance`, and `entry_aperture` with
 `source: kicad_mapping`; PCB import preserves that metadata unless the physical
-footprint declares more specific direction or aperture properties. Entry
-direction records store footprint-specific cable-entry rotation offsets in
-degrees for USB mechanical checks.
+footprint declares more specific direction, clearance-depth, or aperture
+properties. Entry direction records store footprint-specific cable-entry
+rotation offsets in degrees for USB mechanical checks; entry clearance records
+store suggested 2D cable-entry corridor depth in millimeters.
 The `kind` field is derived from the drawing
 layer and is intentionally conservative: `fabrication`, `courtyard`,
 `silkscreen`, or `other`. Curved graphics retain their source points in Board
