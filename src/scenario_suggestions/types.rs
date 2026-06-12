@@ -222,6 +222,10 @@ pub struct SuggestedUsbRoute {
     pub unreferenced_route_length_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unreferenced_segments: Option<Vec<SuggestedUsbUnreferencedSegment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_unreferenced_route_length_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filled_unreferenced_segments: Option<Vec<SuggestedUsbUnreferencedSegment>>,
 }
 
 #[derive(Debug, Clone, Serialize)]

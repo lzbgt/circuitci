@@ -239,6 +239,28 @@
                         },
                         "additionalProperties": false
                       }
+                    },
+                    "filled_unreferenced_route_length_mm": { "type": "number", "minimum": 0 },
+                    "filled_unreferenced_segments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "segment_index",
+                          "segment_length_mm",
+                          "midpoint_x_mm",
+                          "midpoint_y_mm",
+                          "layer"
+                        ],
+                        "properties": {
+                          "segment_index": { "type": "integer", "minimum": 0 },
+                          "segment_length_mm": { "type": "number", "minimum": 0 },
+                          "midpoint_x_mm": { "type": "number" },
+                          "midpoint_y_mm": { "type": "number" },
+                          "layer": { "type": "string", "minLength": 1 }
+                        },
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "additionalProperties": false

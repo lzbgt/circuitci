@@ -117,8 +117,12 @@ The command is conservative:
   `board.layout.routes` evidence and same-layer ground-zone outlines under
   `board.layout.zones` are present. The template includes each data net's
   `unreferenced_route_length_mm` plus `unreferenced_segments[]` midpoint/layer
-  evidence, but leaves `max_data_line_unreferenced_length_mm` as `null` until
-  an agent supplies the board-specific USB return-path rule. It also includes
+  evidence from zone outlines. When saved filled-zone evidence exists, it also
+  includes `filled_unreferenced_route_length_mm` and
+  `filled_unreferenced_segments[]` so agents can compare intended outline
+  coverage against actual filled-polygon coverage. It leaves
+  `max_data_line_unreferenced_length_mm` as `null` until an agent supplies the
+  board-specific USB return-path rule. It also includes
   `max_data_via_to_ground_stitch_distance_mm: null` so agents can enable
   stitching-via checks when USB data layer changes need nearby ground vias, and
   `require_filled_zone_coverage: null` so agents can choose whether saved

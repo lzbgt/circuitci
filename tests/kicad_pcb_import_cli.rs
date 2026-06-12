@@ -220,7 +220,17 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
             .iter()
             .all(|usb_route| {
                 (usb_route["unreferenced_route_length_mm"].as_f64().unwrap() - 0.0).abs() < 1.0e-9
+                    && (usb_route["filled_unreferenced_route_length_mm"]
+                        .as_f64()
+                        .unwrap()
+                        - 0.0)
+                        .abs()
+                        < 1.0e-9
                     && usb_route["unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                    && usb_route["filled_unreferenced_segments"]
                         .as_array()
                         .unwrap()
                         .is_empty()
@@ -420,7 +430,12 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .iter()
             .all(|usb_route| {
                 usb_route["unreferenced_route_length_mm"] == 0.0
+                    && usb_route["filled_unreferenced_route_length_mm"] == 0.0
                     && usb_route["unreferenced_segments"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                    && usb_route["filled_unreferenced_segments"]
                         .as_array()
                         .unwrap()
                         .is_empty()

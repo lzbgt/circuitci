@@ -7,8 +7,8 @@ use super::{
     USB_VBUS_ROUTE_VALID, sanitized_name,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, CopperZone, NetKind, NetLayoutRule, NetRoute,
-    PlacementSide, RouteSegment,
+    BoardProject, ComponentPlacement, ComponentSpec, CopperZone, LayoutPoint, NetKind,
+    NetLayoutRule, NetRoute, PlacementSide, RouteSegment,
 };
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
@@ -810,6 +810,8 @@ fn suggested_usb_route(
         protection_component,
         unreferenced_route_length_mm: None,
         unreferenced_segments: None,
+        filled_unreferenced_route_length_mm: None,
+        filled_unreferenced_segments: None,
     })
 }
 
@@ -843,6 +845,8 @@ fn suggested_usb_vbus_route(
         protection_component,
         unreferenced_route_length_mm: None,
         unreferenced_segments: None,
+        filled_unreferenced_route_length_mm: None,
+        filled_unreferenced_segments: None,
     })
 }
 
@@ -857,7 +861,18 @@ fn suggested_usb_route_with_return_path(
         return None;
     }
     let (unreferenced_route_length_mm, unreferenced_segments) =
-        return_path_unreferenced_segments(route, ground_zones);
+        return_path_unreferenced_segments(route, ground_zones, GroundReferenceGeometry::Outline);
+    let (filled_unreferenced_route_length_mm, filled_unreferenced_segments) =
+        if ground_zones_have_filled_polygons(ground_zones) {
+            let (length, segments) = return_path_unreferenced_segments(
+                route,
+                ground_zones,
+                GroundReferenceGeometry::FilledPolygon,
+            );
+            (Some(length), Some(segments))
+        } else {
+            (None, None)
+        };
     Some(SuggestedUsbRoute {
         signal: signal.to_string(),
         net: net_name.to_string(),
@@ -871,6 +886,8 @@ fn suggested_usb_route_with_return_path(
         protection_component: None,
         unreferenced_route_length_mm: Some(unreferenced_route_length_mm),
         unreferenced_segments: Some(unreferenced_segments),
+        filled_unreferenced_route_length_mm,
+        filled_unreferenced_segments,
     })
 }
 
@@ -932,6 +949,7 @@ fn segment_length_mm(segment: &RouteSegment) -> f64 {
 fn return_path_unreferenced_segments(
     route: &NetRoute,
     ground_zones: &[&CopperZone],
+    geometry: GroundReferenceGeometry,
 ) -> (f64, Vec<SuggestedUsbUnreferencedSegment>) {
     let mut unreferenced_length_mm = 0.0;
     let mut unreferenced_segments = Vec::new();
@@ -940,7 +958,7 @@ fn return_path_unreferenced_segments(
         let midpoint_y_mm = (segment.start.y_mm + segment.end.y_mm) / 2.0;
         let referenced = ground_zones.iter().any(|zone| {
             zone.layer == segment.layer
-                && point_inside_zone_outline(midpoint_x_mm, midpoint_y_mm, zone)
+                && point_inside_ground_reference(midpoint_x_mm, midpoint_y_mm, zone, geometry)
         });
         if referenced {
             continue;
@@ -958,6 +976,34 @@ fn return_path_unreferenced_segments(
     (unreferenced_length_mm, unreferenced_segments)
 }
 
+#[derive(Debug, Clone, Copy)]
+enum GroundReferenceGeometry {
+    Outline,
+    FilledPolygon,
+}
+
+fn point_inside_ground_reference(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    zone: &CopperZone,
+    geometry: GroundReferenceGeometry,
+) -> bool {
+    match geometry {
+        GroundReferenceGeometry::Outline => point_inside_zone_outline(point_x_mm, point_y_mm, zone),
+        GroundReferenceGeometry::FilledPolygon => {
+            point_inside_any_filled_polygon(point_x_mm, point_y_mm, zone)
+        }
+    }
+}
+
+fn ground_zones_have_filled_polygons(ground_zones: &[&CopperZone]) -> bool {
+    ground_zones.iter().any(|zone| {
+        zone.filled_polygons
+            .iter()
+            .any(|polygon| polygon_is_usable(polygon))
+    })
+}
+
 fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a CopperZone> {
     let mut zones = Vec::new();
     for (net_name, zone_list) in &bound.project.board.layout.zones {
@@ -973,21 +1019,34 @@ fn ground_zone_outlines<'a>(bound: &'a BoundBoard<'_>) -> Vec<&'a CopperZone> {
 }
 
 fn zone_outline_is_usable(zone: &CopperZone) -> bool {
-    !zone.layer.trim().is_empty()
-        && zone.polygon.len() >= 3
-        && zone
-            .polygon
+    !zone.layer.trim().is_empty() && polygon_is_usable(&zone.polygon)
+}
+
+fn point_inside_zone_outline(point_x_mm: f64, point_y_mm: f64, zone: &CopperZone) -> bool {
+    point_inside_polygon(point_x_mm, point_y_mm, &zone.polygon)
+}
+
+fn point_inside_any_filled_polygon(point_x_mm: f64, point_y_mm: f64, zone: &CopperZone) -> bool {
+    zone.filled_polygons
+        .iter()
+        .filter(|polygon| polygon_is_usable(polygon))
+        .any(|polygon| point_inside_polygon(point_x_mm, point_y_mm, polygon))
+}
+
+fn polygon_is_usable(polygon: &[LayoutPoint]) -> bool {
+    polygon.len() >= 3
+        && polygon
             .iter()
             .all(|point| point.x_mm.is_finite() && point.y_mm.is_finite())
 }
 
-fn point_inside_zone_outline(point_x_mm: f64, point_y_mm: f64, zone: &CopperZone) -> bool {
-    if zone.polygon.len() < 3 {
+fn point_inside_polygon(point_x_mm: f64, point_y_mm: f64, polygon: &[LayoutPoint]) -> bool {
+    if polygon.len() < 3 {
         return false;
     }
     let mut inside = false;
-    let mut previous = zone.polygon.last().expect("polygon has points");
-    for current in &zone.polygon {
+    let mut previous = polygon.last().expect("polygon has points");
+    for current in polygon {
         if point_on_segment(
             point_x_mm,
             point_y_mm,
