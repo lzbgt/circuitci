@@ -146,6 +146,7 @@
                   "properties": {
                     "driver": { "$ref": "#/$defs/endpoint" },
                     "victim": { "$ref": "#/$defs/endpoint" },
+                    "net": { "type": "string", "minLength": 1 },
                     "series_resistance_ohm": { "type": "number", "minimum": 0 }
                   },
                   "additionalProperties": false

@@ -150,6 +150,8 @@ pub struct SuggestedPinState {
 pub struct SuggestedBackdrivePath {
     pub driver: SuggestedEndpoint,
     pub victim: SuggestedEndpoint,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub net: Option<String>,
     pub series_resistance_ohm: f64,
 }
 
@@ -158,8 +160,8 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     if should_suggest_power_tree(bound.project) {
         suggestions.push(power_tree_suggestion(bound.project));
     }
-    if should_suggest_io_voltage(bound) {
-        suggestions.push(io_voltage_suggestion(bound.project));
+    if let Some(suggestion) = io_voltage_suggestion(bound) {
+        suggestions.push(suggestion);
     }
     suggestions.extend(gpio_backdrive_suggestions(bound));
     suggestions.extend(interface_protection_suggestions(bound));
@@ -214,7 +216,7 @@ fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
     }
 }
 
-fn should_suggest_io_voltage(bound: &BoundBoard<'_>) -> bool {
+fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
     let already_declared = bound.project.scenarios.iter().any(|scenario| {
         scenario.scenario_type == "power_tree"
             && scenario
@@ -222,54 +224,21 @@ fn should_suggest_io_voltage(bound: &BoundBoard<'_>) -> bool {
                 .iter()
                 .any(|check| check == IO_VOLTAGE_COMPATIBLE)
     });
-    !already_declared && has_io_voltage_pair(bound)
-}
-
-fn has_io_voltage_pair(bound: &BoundBoard<'_>) -> bool {
-    let mut outputs_by_net: BTreeMap<String, usize> = BTreeMap::new();
-    let mut inputs_by_net: BTreeMap<String, usize> = BTreeMap::new();
-    for component in bound.project.board.components.values() {
-        let Some(model) = bound.library.get(&component.model) else {
-            continue;
-        };
-        for (pin_name, net_name) in &component.pins {
-            let Some(port) = model.ports.get(pin_name) else {
-                continue;
-            };
-            if matches!(
-                port.kind,
-                PortKind::DigitalElectricalOutput | PortKind::DigitalElectricalIo
-            ) && kicad_pin_type_output_capable(component, pin_name)
-                && (port.electrical.drive_high_voltage_v.is_some()
-                    || port.electrical.source_impedance_ohm.is_some())
-            {
-                *outputs_by_net.entry(net_name.clone()).or_default() += 1;
-            }
-            if matches!(
-                port.kind,
-                PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
-            ) && kicad_pin_type_input_capable(component, pin_name)
-                && (port.electrical.vih_min_v.is_some()
-                    || port.electrical.injection_current_limit_a.is_some())
-            {
-                *inputs_by_net.entry(net_name.clone()).or_default() += 1;
-            }
-        }
+    if already_declared {
+        return None;
     }
-    outputs_by_net.into_iter().any(|(net, output_count)| {
-        output_count > 0 && inputs_by_net.get(&net).is_some_and(|count| *count > 0)
-    })
-}
-
-fn io_voltage_suggestion(project: &BoardProject) -> ScenarioSuggestion {
-    ScenarioSuggestion {
+    let paths = io_voltage_paths(bound);
+    if paths.is_empty() {
+        return None;
+    }
+    Some(ScenarioSuggestion {
         id: "io_voltage_compatible".to_string(),
         kind: "power_tree".to_string(),
         confidence: "medium".to_string(),
         runnable: true,
         reason: "Project has same-net digital output/input pairs with modeled I/O voltage metadata but no IO_VOLTAGE_COMPATIBLE check.".to_string(),
         scenario: SuggestedScenario {
-            name: format!("{}_io_voltage", sanitized_name(&project.project.name)),
+            name: format!("{}_io_voltage", sanitized_name(&bound.project.project.name)),
             scenario_type: "power_tree".to_string(),
             checks: vec![IO_VOLTAGE_COMPATIBLE.to_string()],
             target: None,
@@ -280,10 +249,81 @@ fn io_voltage_suggestion(project: &BoardProject) -> ScenarioSuggestion {
             events: Vec::new(),
             conditioning: None,
             pin_states: Vec::new(),
-            paths: Vec::new(),
+            paths,
         },
         required_inputs: Vec::new(),
+    })
+}
+
+fn io_voltage_paths(bound: &BoundBoard<'_>) -> Vec<SuggestedBackdrivePath> {
+    let mut paths = Vec::new();
+    for (driver_component_id, driver_component) in &bound.project.board.components {
+        let Some(driver_model) = bound.library.get(&driver_component.model) else {
+            continue;
+        };
+        for (driver_pin, driver_net) in &driver_component.pins {
+            let Some(driver_port) = driver_model.ports.get(driver_pin) else {
+                continue;
+            };
+            if !matches!(
+                driver_port.kind,
+                PortKind::DigitalElectricalOutput | PortKind::DigitalElectricalIo
+            ) || !kicad_pin_type_output_capable(driver_component, driver_pin)
+            {
+                continue;
+            }
+            for (victim_component_id, victim_component) in &bound.project.board.components {
+                let Some(victim_model) = bound.library.get(&victim_component.model) else {
+                    continue;
+                };
+                for (victim_pin, victim_net) in &victim_component.pins {
+                    if victim_net != driver_net
+                        || (driver_component_id == victim_component_id && driver_pin == victim_pin)
+                    {
+                        continue;
+                    }
+                    let Some(victim_port) = victim_model.ports.get(victim_pin) else {
+                        continue;
+                    };
+                    if !matches!(
+                        victim_port.kind,
+                        PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+                    ) || !kicad_pin_type_input_capable(victim_component, victim_pin)
+                    {
+                        continue;
+                    }
+                    if !io_voltage_pair_has_check(driver_port, victim_port) {
+                        continue;
+                    }
+                    paths.push(SuggestedBackdrivePath {
+                        driver: SuggestedEndpoint {
+                            component: driver_component_id.clone(),
+                            pin: driver_pin.clone(),
+                        },
+                        victim: SuggestedEndpoint {
+                            component: victim_component_id.clone(),
+                            pin: victim_pin.clone(),
+                        },
+                        net: Some(driver_net.clone()),
+                        series_resistance_ohm: 0.0,
+                    });
+                }
+            }
+        }
     }
+    paths
+}
+
+fn io_voltage_pair_has_check(
+    driver_port: &crate::library::Port,
+    victim_port: &crate::library::Port,
+) -> bool {
+    if driver_port.electrical.drive_high_voltage_v.is_none() {
+        return false;
+    }
+    victim_port.electrical.vih_min_v.is_some()
+        || (driver_port.electrical.source_impedance_ohm.is_some()
+            && victim_port.electrical.injection_current_limit_a.is_some())
 }
 
 fn gpio_backdrive_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
@@ -421,6 +461,7 @@ fn backdrive_suggestion(
                     component: victim_component.to_string(),
                     pin: victim_pin.to_string(),
                 },
+                net: Some(net.to_string()),
                 series_resistance_ohm: 0.0,
             }],
         },

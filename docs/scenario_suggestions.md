@@ -17,6 +17,9 @@ The command is conservative:
 - It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
   output/input pairs have modeled I/O voltage metadata and no existing
   `power_tree` scenario declares that check.
+  The suggestion includes `scenario.paths[]` entries with the implicated
+  driver, receiver, and net so agents can inspect the exact interfaces the
+  static rule will scan.
 - It emits reset templates when a component model declares reset behavior, the
   reset pin is connected, and the target power rail declares `power_valid_at_us`.
 - Reset suggestions are marked `runnable: false` until real
@@ -70,6 +73,23 @@ suggestions:
       type: power_tree
       checks:
         - IO_VOLTAGE_COMPATIBLE
+      paths:
+        - driver:
+            component: U1
+            pin: TX
+          victim:
+            component: U2
+            pin: RXD
+          net: uart_mcu_tx
+          series_resistance_ohm: 0
+        - driver:
+            component: U2
+            pin: TXD
+          victim:
+            component: U1
+            pin: RX
+          net: uart_mcu_rx
+          series_resistance_ohm: 0
   - id: reset_release_after_power_valid_u1
     kind: reset_boot
     confidence: medium
@@ -130,6 +150,7 @@ suggestions:
       paths:
         - driver: { component: U2, pin: TXD }
           victim: { component: U1, pin: RX }
+          net: uart_rx
           series_resistance_ohm: 0
     required_inputs:
       - Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.

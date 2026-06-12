@@ -58,6 +58,22 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
     assert_eq!(io_voltage["runnable"], true);
     assert_eq!(io_voltage["scenario"]["type"], "power_tree");
     assert_eq!(io_voltage["scenario"]["checks"][0], "IO_VOLTAGE_COMPATIBLE");
+    let io_paths = io_voltage["scenario"]["paths"].as_array().unwrap();
+    assert_eq!(io_paths.len(), 2);
+    let usb_to_mcu = io_paths
+        .iter()
+        .find(|path| path["driver"]["component"] == "U2" && path["driver"]["pin"] == "TXD")
+        .expect("USB-UART TX to MCU RX I/O voltage path");
+    assert_eq!(usb_to_mcu["victim"]["component"], "U1");
+    assert_eq!(usb_to_mcu["victim"]["pin"], "RX");
+    assert_eq!(usb_to_mcu["net"], "uart_mcu_rx");
+    let mcu_to_usb = io_paths
+        .iter()
+        .find(|path| path["driver"]["component"] == "U1" && path["driver"]["pin"] == "TX")
+        .expect("MCU TX to USB-UART RX I/O voltage path");
+    assert_eq!(mcu_to_usb["victim"]["component"], "U2");
+    assert_eq!(mcu_to_usb["victim"]["pin"], "RXD");
+    assert_eq!(mcu_to_usb["net"], "uart_mcu_tx");
     let reset = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -138,6 +154,7 @@ fn suggest_scenarios_derives_gpio_backdrive_template() {
         "U2"
     );
     assert_eq!(backdrive["scenario"]["paths"][0]["driver"]["pin"], "TXD");
+    assert_eq!(backdrive["scenario"]["paths"][0]["net"], "uart_rx");
     assert_eq!(
         backdrive["scenario"]["paths"][0]["victim"]["component"],
         "U1"
