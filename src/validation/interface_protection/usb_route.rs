@@ -1,5 +1,5 @@
 use crate::board_ir::{
-    ComponentPlacement, CopperZone, NetKind, NetLayoutRule, NetRoute, RouteVia, Scenario,
+    ComponentPlacement, CopperZone, LayoutPad, NetKind, NetLayoutRule, NetRoute, RouteVia, Scenario,
 };
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
@@ -372,6 +372,11 @@ pub(super) fn validate_usb_return_path(
     ) else {
         return;
     };
+    let Some(require_ground_zone_contact_evidence) =
+        optional_bool_parameter(scenario, "require_ground_zone_contact_evidence", findings)
+    else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -439,6 +444,7 @@ pub(super) fn validate_usb_return_path(
                 max_data_via_to_ground_stitch_distance_mm,
                 require_filled_zone_coverage,
                 min_data_line_filled_zone_edge_clearance_mm,
+                require_ground_zone_contact_evidence,
             },
             findings,
         );
@@ -477,10 +483,12 @@ struct UsbReturnPathSignalCheck<'a> {
     max_data_via_to_ground_stitch_distance_mm: Option<f64>,
     require_filled_zone_coverage: bool,
     min_data_line_filled_zone_edge_clearance_mm: Option<f64>,
+    require_ground_zone_contact_evidence: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
 struct GroundZoneRef<'a> {
+    net_name: &'a str,
     zone: &'a CopperZone,
 }
 
@@ -644,12 +652,14 @@ fn validate_usb_return_path_for_signal(
     for (segment_index, segment) in route.segments.iter().enumerate() {
         let midpoint = segment_midpoint(segment);
         let referenced = check.ground_zones.iter().any(|ground_zone| {
-            ground_zone.zone.layer == segment.layer
-                && point_inside_ground_reference(
-                    midpoint,
-                    ground_zone.zone,
-                    check.require_filled_zone_coverage,
-                )
+            ground_zone_references_point(
+                bound,
+                midpoint,
+                &segment.layer,
+                ground_zone,
+                check.require_filled_zone_coverage,
+                check.require_ground_zone_contact_evidence,
+            )
         });
         if referenced {
             continue;
@@ -675,6 +685,7 @@ fn validate_usb_return_path_for_signal(
                 max_unreferenced_length_mm: check.max_unreferenced_length_mm,
                 unreferenced_segments: &unreferenced_segments,
                 require_filled_zone_coverage: check.require_filled_zone_coverage,
+                require_ground_zone_contact_evidence: check.require_ground_zone_contact_evidence,
             },
         ));
     }
@@ -711,6 +722,90 @@ fn point_inside_ground_reference(
     } else {
         point_inside_zone_outline(midpoint, zone)
     }
+}
+
+fn ground_zone_references_point(
+    bound: &BoundBoard<'_>,
+    midpoint: PlacementPoint,
+    route_layer: &str,
+    ground_zone: &GroundZoneRef<'_>,
+    require_filled_zone_coverage: bool,
+    require_ground_zone_contact_evidence: bool,
+) -> bool {
+    if ground_zone.zone.layer != route_layer {
+        return false;
+    }
+    if !point_inside_ground_reference(midpoint, ground_zone.zone, require_filled_zone_coverage) {
+        return false;
+    }
+    if !require_ground_zone_contact_evidence {
+        return true;
+    }
+    ground_zone_has_contact_evidence(bound, ground_zone, require_filled_zone_coverage)
+}
+
+fn ground_zone_has_contact_evidence(
+    bound: &BoundBoard<'_>,
+    ground_zone: &GroundZoneRef<'_>,
+    require_filled_zone_coverage: bool,
+) -> bool {
+    ground_pads(bound, ground_zone.net_name).any(|pad| {
+        pad_layers_include(&pad.layers, &ground_zone.zone.layer)
+            && point_inside_ground_reference(
+                PlacementPoint::from(&pad.at),
+                ground_zone.zone,
+                require_filled_zone_coverage,
+            )
+    }) || ground_route_vias(bound, ground_zone.net_name).any(|via| {
+        via_layers_include(&via.layers, &ground_zone.zone.layer)
+            && point_inside_ground_reference(
+                PlacementPoint::from(&via.at),
+                ground_zone.zone,
+                require_filled_zone_coverage,
+            )
+    })
+}
+
+fn ground_pads<'a>(
+    bound: &'a BoundBoard<'_>,
+    ground_net_name: &'a str,
+) -> impl Iterator<Item = &'a LayoutPad> + 'a {
+    bound
+        .project
+        .board
+        .layout
+        .pads
+        .values()
+        .flat_map(|component_pads| component_pads.values())
+        .filter(move |pad| pad.net == ground_net_name)
+        .filter(|pad| pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite())
+}
+
+fn ground_route_vias<'a>(
+    bound: &'a BoundBoard<'_>,
+    ground_net_name: &'a str,
+) -> impl Iterator<Item = &'a RouteVia> + 'a {
+    bound
+        .project
+        .board
+        .layout
+        .routes
+        .get(ground_net_name)
+        .into_iter()
+        .flat_map(|route| route.vias.iter())
+        .filter(|via| via.at.x_mm.is_finite() && via.at.y_mm.is_finite())
+}
+
+fn pad_layers_include(layers: &[String], zone_layer: &str) -> bool {
+    layers.iter().any(|layer| layer_matches(layer, zone_layer))
+}
+
+fn via_layers_include(layers: &[String], zone_layer: &str) -> bool {
+    layers.iter().any(|layer| layer_matches(layer, zone_layer))
+}
+
+fn layer_matches(candidate: &str, zone_layer: &str) -> bool {
+    candidate == zone_layer || (candidate == "*.Cu" && zone_layer.ends_with(".Cu"))
 }
 
 fn validate_usb_return_path_stitch_vias(
@@ -960,7 +1055,7 @@ fn ground_reference_zones<'a>(
                 ));
                 return None;
             }
-            zones.push(GroundZoneRef { zone });
+            zones.push(GroundZoneRef { net_name, zone });
         }
     }
     if zones.is_empty() {

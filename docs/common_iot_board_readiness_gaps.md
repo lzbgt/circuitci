@@ -156,9 +156,10 @@ It can also require nearby ground-net stitching vias for USB data route vias
 when `max_data_via_to_ground_stitch_distance_mm` is declared, and can use saved
 `filled_polygons` when `require_filled_zone_coverage` is true. It can also
 screen route-midpoint margin to filled-copper polygon edges with
-`min_data_line_filled_zone_edge_clearance_mm`. It still does not prove
-filled-zone island continuity, adjacent-plane return paths, stitching-via
-inductance, or USB eye margin.
+`min_data_line_filled_zone_edge_clearance_mm`. It can now require imported
+same-net pad/via contact evidence with `require_ground_zone_contact_evidence`.
+It still does not prove filled-zone island continuity, adjacent-plane return
+paths, stitching-via inductance, or USB eye margin.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
 non-runnable placement, route-geometry, VBUS-route, and return-path templates

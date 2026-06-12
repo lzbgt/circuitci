@@ -481,6 +481,7 @@ scenarios:
       max_data_via_to_ground_stitch_distance_mm: 0.5
       require_filled_zone_coverage: true
       min_data_line_filled_zone_edge_clearance_mm: 0.25
+      require_ground_zone_contact_evidence: true
 ```
 
 USB return-path algorithm:
@@ -501,8 +502,13 @@ USB return-path algorithm:
 8. If `min_data_line_filled_zone_edge_clearance_mm` is declared, require each
    D+/D- segment midpoint to be inside same-layer filled ground copper and at
    least that far from the nearest filled-polygon edge.
-9. Treat this as an early layout screen only. Filled-polygon containment is
-   stronger than outline containment but still does not prove zone island
+9. If `require_ground_zone_contact_evidence` is `true`, a ground zone only
+   counts when imported pad or route-via evidence shows same-net contact on the
+   same layer. Imported pads come from `board.layout.pads`; stitching vias come
+   from same-net `board.layout.routes` via evidence.
+10. Treat this as an early layout screen only. Filled-polygon containment plus
+   same-net pad/via contact evidence is stronger than outline containment but
+   still does not prove zone island
    connectivity, adjacent-plane return paths, stitching-via inductance,
    impedance, or USB eye margin.
 

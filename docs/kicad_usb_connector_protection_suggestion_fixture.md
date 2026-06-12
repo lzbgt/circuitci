@@ -66,7 +66,10 @@ nearby ground-stitch checks when data vias cross layers, and
 present, each data route also reports `filled_zone_edge_clearance_min_mm` and
 `filled_zone_edge_clearance_segments[]`, while
 `min_data_line_filled_zone_edge_clearance_mm: null` remains for the
-board-specific filled-copper edge-margin policy. This is geometry and
+board-specific filled-copper edge-margin policy. The template also leaves
+`require_ground_zone_contact_evidence: null` so an agent can decide whether the
+imported same-net pad/via evidence must prove that the ground zone is connected
+before it counts as return-path coverage. This is geometry, pad-contact, and
 via-proximity evidence only; filled-zone island connectivity, controlled plane
 transitions, stitching-via inductance, and impedance still require richer
 layout evidence.

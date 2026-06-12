@@ -221,8 +221,8 @@ also include `segment_index`, `segment_length_mm`, `midpoint_x_mm`,
 `midpoint_y_mm`, `layer`, and, when same-layer filled copper contains the
 midpoint, `filled_zone_edge_clearance_mm`. Stable limit keys include
 `max_data_line_unreferenced_length_mm`, `reference_net_kind`,
-`reference_zone_geometry`, and `reference_zone_layer_policy`; stitching
-findings additionally include
+`reference_zone_geometry`, `reference_zone_layer_policy`, and
+`reference_zone_contact_policy`; stitching findings additionally include
 `max_data_via_to_ground_stitch_distance_mm` and
 `required_ground_stitch_layer_policy`; filled-zone clearance findings
 additionally include `min_data_line_filled_zone_edge_clearance_mm`.

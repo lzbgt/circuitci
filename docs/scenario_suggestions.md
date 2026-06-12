@@ -132,7 +132,10 @@ The command is conservative:
   `require_filled_zone_coverage: null` so agents can choose whether saved
   filled-zone geometry must be used instead of intended zone outlines. The
   `min_data_line_filled_zone_edge_clearance_mm` parameter remains `null` until
-  an agent supplies the board-specific filled-copper edge-margin rule.
+  an agent supplies the board-specific filled-copper edge-margin rule. The
+  template also includes `require_ground_zone_contact_evidence: null` so agents
+  can choose whether imported same-net pad/via evidence must prove that the
+  same-layer ground zone is tied to the ground net.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

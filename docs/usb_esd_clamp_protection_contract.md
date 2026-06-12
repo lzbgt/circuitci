@@ -160,10 +160,14 @@ Route-geometry validation:
   `parameters.min_data_line_filled_zone_edge_clearance_mm` to require each
   D+/D- route segment midpoint to sit at least that far from the nearest
   same-layer filled ground-copper polygon edge.
+- The scenario may declare `parameters.require_ground_zone_contact_evidence:
+  true` to require the same-layer ground zone to contain imported same-net pad
+  or route-via contact evidence before it counts as a return-path reference.
 - The rule checks D+ and D- only. A routed segment is treated as statically
   referenced when its midpoint is inside a same-layer ground-zone outline.
   In filled-zone mode, that midpoint must be inside a same-layer filled
-  polygon.
+  polygon. In contact-evidence mode, that polygon or outline must also contain
+  same-net pad or via evidence on the same layer.
 - When stitching-via distance is enabled, a data via passes only if a ground
   via whose layer list covers the same transition is within the declared
   distance.

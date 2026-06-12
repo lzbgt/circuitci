@@ -391,6 +391,14 @@ fn usb_return_path_passes_when_data_routes_have_ground_zone_coverage() {
 }
 
 #[test]
+fn usb_return_path_passes_with_imported_ground_pad_contact_evidence() {
+    let report = run_validation("examples/good_usb_return_path_pad_contact/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_return_path_reports_unreferenced_data_route_length() {
     let report = run_validation("examples/bad_usb_return_path/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -448,6 +456,30 @@ fn usb_return_path_reports_filled_zone_gap_when_required() {
     assert_eq!(
         failure["limit"]["reference_zone_layer_policy"],
         "same_layer"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_return_path_reports_floating_filled_zone_when_contact_required() {
+    let report = run_validation("examples/bad_usb_return_path_floating_zone/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| failure["id"] == "USB_RETURN_PATH_VALID")
+        .expect("USB return-path floating-zone finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["unreferenced_route_length_mm"], 1.0);
+    assert_eq!(
+        failure["limit"]["reference_zone_geometry"],
+        "filled_polygon"
+    );
+    assert_eq!(
+        failure["limit"]["reference_zone_contact_policy"],
+        "same_net_pad_or_via"
     );
     assert_report_schema_valid(&report);
 }

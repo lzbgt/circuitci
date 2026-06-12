@@ -240,6 +240,9 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
             .is_null()
     );
     assert!(
+        return_path["scenario"]["parameters"]["require_ground_zone_contact_evidence"].is_null()
+    );
+    assert!(
         return_path["scenario"]["usb_routes"]
             .as_array()
             .unwrap()
@@ -468,6 +471,9 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(
         return_path["scenario"]["parameters"]["min_data_line_filled_zone_edge_clearance_mm"]
             .is_null()
+    );
+    assert!(
+        return_path["scenario"]["parameters"]["require_ground_zone_contact_evidence"].is_null()
     );
     assert!(
         return_path["scenario"]["usb_routes"]

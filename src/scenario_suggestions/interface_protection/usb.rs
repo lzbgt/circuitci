@@ -517,6 +517,10 @@ pub(super) fn usb_return_path_suggestion(
                     "min_data_line_filled_zone_edge_clearance_mm".to_string(),
                     serde_json::Value::Null,
                 ),
+                (
+                    "require_ground_zone_contact_evidence".to_string(),
+                    serde_json::Value::Null,
+                ),
             ])),
             target: Some(SuggestedTarget {
                 component: component_id.to_string(),
@@ -546,7 +550,8 @@ pub(super) fn usb_return_path_suggestion(
             "Fill max_data_via_to_ground_stitch_distance_mm when USB data layer changes require nearby ground stitching vias.".to_string(),
             "Set require_filled_zone_coverage to true when imported filled_polygons should be used instead of intended zone outlines for return-path coverage.".to_string(),
             "Fill min_data_line_filled_zone_edge_clearance_mm when USB data routes need minimum margin from filled ground-copper edges.".to_string(),
-            "Treat this as a same-layer ground-zone outline screen only; adjacent planes, stitching vias, filled-zone continuity, impedance, and EMI need more specific evidence.".to_string(),
+            "Set require_ground_zone_contact_evidence to true when imported pad/via evidence should prove the same-layer ground zone is tied to the ground net.".to_string(),
+            "Treat this as a same-layer ground-zone screen only; adjacent planes, filled-zone island continuity, impedance, and EMI need more specific evidence.".to_string(),
         ],
     })
 }
