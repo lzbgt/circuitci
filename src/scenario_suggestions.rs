@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
+const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
@@ -45,6 +46,10 @@ pub struct SuggestedScenario {
     pub bootloader: Option<SuggestedBootloader>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<SuggestedEvent>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pin_states: Vec<SuggestedPinState>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub paths: Vec<SuggestedBackdrivePath>,
 }
 
 #[derive(Debug, Serialize)]
@@ -103,11 +108,28 @@ pub struct SuggestedEndpoint {
     pub pin: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct SuggestedPinState {
+    pub component: String,
+    pub pin: String,
+    pub mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedBackdrivePath {
+    pub driver: SuggestedEndpoint,
+    pub victim: SuggestedEndpoint,
+    pub series_resistance_ohm: f64,
+}
+
 pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     let mut suggestions = Vec::new();
     if should_suggest_power_tree(bound.project) {
         suggestions.push(power_tree_suggestion(bound.project));
     }
+    suggestions.extend(gpio_backdrive_suggestions(bound));
     suggestions.extend(reset_release_suggestions(bound));
     suggestions.extend(boot_strap_suggestions(bound));
     suggestions.extend(uart_bootloader_suggestions(bound));
@@ -151,8 +173,154 @@ fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
             straps: Vec::new(),
             bootloader: None,
             events: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
         },
         required_inputs: Vec::new(),
+    }
+}
+
+fn gpio_backdrive_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
+    let existing = existing_backdrive_paths(bound.project);
+    let mut suggestions = Vec::new();
+    for (driver_component_id, driver_component) in &bound.project.board.components {
+        let Some(driver_model) = bound.library.get(&driver_component.model) else {
+            continue;
+        };
+        if component_power_state(bound, driver_component_id, driver_model) != Some(true) {
+            continue;
+        }
+        for (driver_pin, driver_net) in &driver_component.pins {
+            let Some(driver_port) = driver_model.ports.get(driver_pin) else {
+                continue;
+            };
+            if !matches!(
+                driver_port.kind,
+                PortKind::DigitalElectricalOutput | PortKind::DigitalElectricalIo
+            ) || !kicad_pin_type_output_capable(driver_component, driver_pin)
+            {
+                continue;
+            }
+            if driver_port.electrical.drive_high_voltage_v.is_none()
+                || driver_port.electrical.source_impedance_ohm.is_none()
+            {
+                continue;
+            }
+            for (victim_component_id, victim_component) in &bound.project.board.components {
+                if victim_component_id == driver_component_id {
+                    continue;
+                }
+                let Some(victim_model) = bound.library.get(&victim_component.model) else {
+                    continue;
+                };
+                if component_power_state(bound, victim_component_id, victim_model) != Some(false) {
+                    continue;
+                }
+                for (victim_pin, victim_net) in &victim_component.pins {
+                    if victim_net != driver_net {
+                        continue;
+                    }
+                    let Some(victim_port) = victim_model.ports.get(victim_pin) else {
+                        continue;
+                    };
+                    if !matches!(
+                        victim_port.kind,
+                        PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+                    ) || !kicad_pin_type_input_capable(victim_component, victim_pin)
+                    {
+                        continue;
+                    }
+                    if victim_port.electrical.injection_current_limit_a.is_none() {
+                        continue;
+                    }
+                    let key = (
+                        driver_component_id.clone(),
+                        driver_pin.clone(),
+                        victim_component_id.clone(),
+                        victim_pin.clone(),
+                    );
+                    if existing.contains_key(&key) {
+                        continue;
+                    }
+                    suggestions.push(backdrive_suggestion(
+                        driver_component_id,
+                        driver_pin,
+                        victim_component_id,
+                        victim_pin,
+                        driver_net,
+                    ));
+                }
+            }
+        }
+    }
+    suggestions
+}
+
+fn backdrive_suggestion(
+    driver_component: &str,
+    driver_pin: &str,
+    victim_component: &str,
+    victim_pin: &str,
+    net: &str,
+) -> ScenarioSuggestion {
+    ScenarioSuggestion {
+        id: format!(
+            "gpio_backdrive_{}_{}_to_{}_{}",
+            sanitized_name(driver_component),
+            sanitized_name(driver_pin),
+            sanitized_name(victim_component),
+            sanitized_name(victim_pin)
+        ),
+        kind: "gpio_backdrive".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "Powered output {driver_component}.{driver_pin} shares net {net} with unpowered input {victim_component}.{victim_pin}, but no GPIO_BACKDRIVE scenario covers that path."
+        ),
+        scenario: SuggestedScenario {
+            name: format!(
+                "{}_to_{}_backdrive",
+                sanitized_name(driver_component),
+                sanitized_name(victim_component)
+            ),
+            scenario_type: "gpio_backdrive".to_string(),
+            checks: vec![GPIO_BACKDRIVE.to_string()],
+            target: None,
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            pin_states: vec![
+                SuggestedPinState {
+                    component: driver_component.to_string(),
+                    pin: driver_pin.to_string(),
+                    mode: "output".to_string(),
+                    state: Some("high".to_string()),
+                },
+                SuggestedPinState {
+                    component: victim_component.to_string(),
+                    pin: victim_pin.to_string(),
+                    mode: "input".to_string(),
+                    state: None,
+                },
+            ],
+            paths: vec![SuggestedBackdrivePath {
+                driver: SuggestedEndpoint {
+                    component: driver_component.to_string(),
+                    pin: driver_pin.to_string(),
+                },
+                victim: SuggestedEndpoint {
+                    component: victim_component.to_string(),
+                    pin: victim_pin.to_string(),
+                },
+                series_resistance_ohm: 0.0,
+            }],
+        },
+        required_inputs: vec![
+            "Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.".to_string(),
+            "Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.".to_string(),
+        ],
     }
 }
 
@@ -226,6 +394,8 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 straps: Vec::new(),
                 bootloader: None,
                 events: Vec::new(),
+                pin_states: Vec::new(),
+                paths: Vec::new(),
             },
             required_inputs: vec![
                 "Fill timing.reset_release_at_us from reset supervisor, RC, control-line, or analog waveform evidence before validation.".to_string(),
@@ -310,6 +480,8 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     straps,
                     bootloader: None,
                     events: Vec::new(),
+                    pin_states: Vec::new(),
+                    paths: Vec::new(),
                 },
                 required_inputs,
             });
@@ -391,12 +563,40 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                         }),
                         bytes: vec![interface.sync_byte],
                     }],
+                    pin_states: Vec::new(),
+                    paths: Vec::new(),
                 },
                 required_inputs,
             });
         }
     }
     suggestions
+}
+
+fn existing_backdrive_paths(
+    project: &BoardProject,
+) -> BTreeMap<(String, String, String, String), ()> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "gpio_backdrive"
+                && scenario.checks.iter().any(|check| check == GPIO_BACKDRIVE)
+        })
+        .flat_map(|scenario| {
+            scenario.paths.iter().map(|path| {
+                (
+                    (
+                        path.driver.component.clone(),
+                        path.driver.pin.clone(),
+                        path.victim.component.clone(),
+                        path.victim.pin.clone(),
+                    ),
+                    (),
+                )
+            })
+        })
+        .collect()
 }
 
 fn existing_reset_checks(project: &BoardProject) -> BTreeMap<String, ()> {
@@ -499,6 +699,25 @@ fn find_output_sender(
     None
 }
 
+fn component_power_state(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    model: &crate::library::ComponentModel,
+) -> Option<bool> {
+    let component = bound.project.board.components.get(component_id)?;
+    let power_port = model
+        .ports
+        .iter()
+        .find(|(_, port)| port.kind == PortKind::ElectricalPower)
+        .map(|(name, _)| name)?;
+    let net_name = component
+        .power_domains
+        .get(power_port)
+        .or_else(|| component.pins.get(power_port))
+        .or(component.power_domain.as_ref())?;
+    bound.project.board.nets.get(net_name)?.powered
+}
+
 fn kicad_pin_type_output_capable(
     component: &crate::board_ir::ComponentSpec,
     pin_name: &str,
@@ -517,6 +736,27 @@ fn kicad_pin_type_output_capable(
             .replace([' ', '-'], "_")
             .as_str(),
         "output" | "bidirectional" | "tri_state" | "power_out" | "open_collector" | "open_emitter"
+    )
+}
+
+fn kicad_pin_type_input_capable(
+    component: &crate::board_ir::ComponentSpec,
+    pin_name: &str,
+) -> bool {
+    let Some(electrical_type) = component
+        .source
+        .as_ref()
+        .and_then(|source| source.board_pin_electrical_types.get(pin_name))
+    else {
+        return true;
+    };
+    matches!(
+        electrical_type
+            .trim()
+            .to_ascii_lowercase()
+            .replace([' ', '-'], "_")
+            .as_str(),
+        "input" | "bidirectional" | "tri_state"
     )
 }
 

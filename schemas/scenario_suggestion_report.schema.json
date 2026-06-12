@@ -109,6 +109,33 @@
                   },
                   "additionalProperties": false
                 }
+              },
+              "pin_states": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["component", "pin", "mode"],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "pin": { "type": "string", "minLength": 1 },
+                    "mode": { "enum": ["input", "output", "high_z"] },
+                    "state": { "enum": ["high", "low", "z"] }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["driver", "victim", "series_resistance_ohm"],
+                  "properties": {
+                    "driver": { "$ref": "#/$defs/endpoint" },
+                    "victim": { "$ref": "#/$defs/endpoint" },
+                    "series_resistance_ohm": { "type": "number", "minimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
               }
             },
             "additionalProperties": false

@@ -19,6 +19,12 @@ The command is conservative:
 - Reset suggestions are marked `runnable: false` until real
   `timing.reset_release_at_us` evidence is filled from a reset supervisor, RC
   model, control-line model, firmware/host trace, or analog waveform.
+- It emits GPIO backdrive templates when a powered output-capable pin shares a
+  net with an unpowered input-capable pin, model electrical metadata is present,
+  and no existing `GPIO_BACKDRIVE` scenario covers that driver/victim path.
+- GPIO backdrive templates are marked `runnable: false` until the agent confirms
+  the driver can be high while the victim rail is unpowered and fills the actual
+  protection-path series resistance.
 - It emits boot-strap templates when model boot modes declare required straps
   and the strap pins are connected.
 - It emits UART bootloader templates when model bootloader metadata declares a
@@ -26,7 +32,8 @@ The command is conservative:
   RX net, the template includes that sender; otherwise it records the missing
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
-  delays, or SPICE assertions.
+  delays, GPIO pin-state observations, protection-path resistance, or SPICE
+  assertions.
 
 Example output shape:
 
@@ -83,6 +90,31 @@ suggestions:
           net: boot0
     required_inputs:
       - Fill strap actual states for boot mode bootloader: U1.BOOT0=high.
+  - id: gpio_backdrive_u2_txd_to_u1_rx
+    kind: gpio_backdrive
+    confidence: medium
+    runnable: false
+    reason: Powered output U2.TXD shares net uart_rx with unpowered input U1.RX, but no GPIO_BACKDRIVE scenario covers that path.
+    scenario:
+      name: u2_to_u1_backdrive
+      type: gpio_backdrive
+      checks:
+        - GPIO_BACKDRIVE
+      pin_states:
+        - component: U2
+          pin: TXD
+          mode: output
+          state: high
+        - component: U1
+          pin: RX
+          mode: input
+      paths:
+        - driver: { component: U2, pin: TXD }
+          victim: { component: U1, pin: RX }
+          series_resistance_ohm: 0
+    required_inputs:
+      - Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.
+      - Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.
   - id: uart_bootloader_sync_u1_uart
     kind: serial_programming
     confidence: medium

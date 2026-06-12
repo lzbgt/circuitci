@@ -91,10 +91,13 @@ Generated scenarios must remain conservative: no assertion means no sign-off.
 
 Executable slices: `circuitci suggest-scenarios` now emits runnable
 `POWER_TREE_VALID` scenarios for projects with declared power nets and
-non-runnable templates for reset release, boot straps, and UART bootloader sync
-when model/connectivity evidence is present but observations still need real
-evidence. It does not invent timing, strap states, protocol events, or analog
-assertions.
+non-runnable templates for reset release, boot straps, UART bootloader sync, and
+first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
+present but observations still need real evidence. It does not invent timing,
+strap states, protocol events, GPIO pin-state observations, protection-path
+resistance, or analog assertions. Broader automatic recognition for level
+shifters, protection devices, chargers, oscillators, and load switches remains a
+component-pack and scenario-generation gap.
 
 ## 5. Layout-Dependent Physics
 

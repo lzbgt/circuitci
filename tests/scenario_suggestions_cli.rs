@@ -1,14 +1,13 @@
 use serde_json::Value;
 use std::process::Command;
 
-#[test]
-fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
+fn run_suggest_scenarios(project: &str) -> Value {
     let dir = tempfile::tempdir().unwrap();
     let output = dir.path().join("suggestions.yaml");
     let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
             "suggest-scenarios",
-            "examples/scenario_suggestions_power_reset/project.yaml",
+            project,
             "--output",
             output.to_str().unwrap(),
         ])
@@ -17,16 +16,27 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
     assert!(status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(output).unwrap()).unwrap();
+    assert_suggestion_schema_valid(&suggestions);
+    suggestions
+}
+
+fn assert_suggestion_schema_valid(suggestions: &Value) {
     let schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
     .unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
     let errors: Vec<String> = validator
-        .iter_errors(&suggestions)
+        .iter_errors(suggestions)
         .map(|error| format!("{} at {}", error, error.instance_path()))
         .collect();
     assert!(errors.is_empty(), "suggestion schema errors: {errors:#?}");
+}
+
+#[test]
+fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_power_reset/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_power_reset");
     assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 5);
     let power_tree = suggestions["suggestions"]
@@ -90,4 +100,47 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
     assert_eq!(uart["scenario"]["events"][0]["to"]["pin"], "RX");
     assert_eq!(uart["scenario"]["events"][0]["bytes"][0], 127);
     assert!(uart["scenario"]["events"][0]["at_us"].is_null());
+}
+
+#[test]
+fn suggest_scenarios_derives_gpio_backdrive_template() {
+    let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");
+    let backdrive = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "gpio_backdrive_u2_txd_to_u1_rx")
+        .expect("gpio backdrive suggestion");
+    assert_eq!(backdrive["kind"], "gpio_backdrive");
+    assert_eq!(backdrive["runnable"], false);
+    assert_eq!(backdrive["scenario"]["type"], "gpio_backdrive");
+    assert_eq!(backdrive["scenario"]["checks"][0], "GPIO_BACKDRIVE");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["component"], "U2");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["pin"], "TXD");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["mode"], "output");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["state"], "high");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["component"], "U1");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["pin"], "RX");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["mode"], "input");
+    assert_eq!(
+        backdrive["scenario"]["paths"][0]["driver"]["component"],
+        "U2"
+    );
+    assert_eq!(backdrive["scenario"]["paths"][0]["driver"]["pin"], "TXD");
+    assert_eq!(
+        backdrive["scenario"]["paths"][0]["victim"]["component"],
+        "U1"
+    );
+    assert_eq!(backdrive["scenario"]["paths"][0]["victim"]["pin"], "RX");
+    assert_eq!(
+        backdrive["scenario"]["paths"][0]["series_resistance_ohm"],
+        0.0
+    );
+    assert!(
+        backdrive["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("driver can be high")
+    );
 }
