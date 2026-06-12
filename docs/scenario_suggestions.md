@@ -17,6 +17,10 @@ The command is conservative:
 - If a powered rail is fed by a model with `power_switch`, the power-tree
   suggestion includes the switch control pin and required enabled state, and is
   marked `runnable: false` until that enable-state evidence is confirmed.
+- If a board includes a model with `battery_charger` and the required
+  programmed charge-current component parameter is missing, the power-tree
+  suggestion is marked `runnable: false` and records the parameter the agent
+  must derive from the PROG resistor or board configuration.
 - It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
   output/input pairs have modeled I/O voltage metadata and no existing
   `power_tree` scenario declares that check.
@@ -57,7 +61,8 @@ The command is conservative:
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
   delays, GPIO pin-state observations, protection-path resistance, strap
-  current budgets, load-switch enable evidence, or SPICE assertions.
+  current budgets, load-switch enable evidence, charger programmed-current
+  evidence, or SPICE assertions.
 
 Example output shape:
 

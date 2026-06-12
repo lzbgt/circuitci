@@ -203,6 +203,8 @@ fn should_suggest_power_tree(project: &BoardProject) -> bool {
 
 fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
     let (pin_states, required_inputs) = load_switch_power_tree_inputs(bound);
+    let mut required_inputs = required_inputs;
+    required_inputs.extend(battery_charger_power_tree_inputs(bound));
     let runnable = required_inputs.is_empty();
     ScenarioSuggestion {
         id: "power_tree_valid".to_string(),
@@ -212,7 +214,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
         reason: if runnable {
             "Project declares power nets but no POWER_TREE_VALID scenario.".to_string()
         } else {
-            "Project declares power nets and switched rails but no POWER_TREE_VALID scenario with load-switch enable evidence.".to_string()
+            "Project declares power nets with switch or charger evidence gaps but no complete POWER_TREE_VALID scenario.".to_string()
         },
         scenario: SuggestedScenario {
             name: format!("{}_power_tree", sanitized_name(&bound.project.project.name)),
@@ -265,6 +267,28 @@ fn load_switch_power_tree_inputs(bound: &BoundBoard<'_>) -> (Vec<SuggestedPinSta
         ));
     }
     (pin_states, required_inputs)
+}
+
+fn battery_charger_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {
+    let mut required_inputs = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        let Some(charger) = &model.battery_charger else {
+            continue;
+        };
+        let Some(parameter) = charger.charge_current_parameter.as_deref() else {
+            continue;
+        };
+        if component.parameters.contains_key(parameter) {
+            continue;
+        }
+        required_inputs.push(format!(
+            "Add components.{component_id}.parameters.{parameter} from the charger PROG resistor or board charge-current configuration."
+        ));
+    }
+    required_inputs
 }
 
 fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
