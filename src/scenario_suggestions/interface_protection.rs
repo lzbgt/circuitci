@@ -211,10 +211,15 @@ fn usb_connector_protection_suggestion(
         .as_deref()
         .and_then(|net| bound.project.board.nets.get(net))
         .is_some_and(|net| net.kind == NetKind::Power);
+    let require_shield_ground = suggested_connector.shield_net.is_some();
     let mut parameters = BTreeMap::new();
     parameters.insert(
         "require_vbus_protection".to_string(),
         serde_json::Value::Bool(require_vbus_protection),
+    );
+    parameters.insert(
+        "require_shield_ground".to_string(),
+        serde_json::Value::Bool(require_shield_ground),
     );
     if let Some(data_voltage) = max_nominal_voltage(
         bound,
@@ -263,6 +268,11 @@ fn usb_connector_protection_suggestion(
                 "Review missing USB VBUS protection coverage; require_vbus_protection is true because VBUS is connected to a declared power net.".to_string(),
             );
         }
+    }
+    if require_shield_ground {
+        required_inputs.push(
+            "Review whether the simplified require_shield_ground check matches the board's intended USB shield strategy; model RC, ferrite, chassis-only, or spark-gap bonding explicitly before using this as EMC sign-off.".to_string(),
+        );
     }
     Some(ScenarioSuggestion {
         id: format!("usb_connector_protection_{}", sanitized_name(component_id)),

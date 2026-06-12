@@ -76,7 +76,11 @@ The command is conservative:
   `scenario.protection_clamps[]` evidence found on D+, D-, and VBUS. If VBUS is
   connected to a declared power net, the template sets
   `parameters.require_vbus_protection: true` so validation fails closed when no
-  VBUS clamp is modeled.
+  VBUS clamp is modeled. If the optional connector shield pin is connected to a
+  declared net, the template sets `parameters.require_shield_ground: true` so
+  validation checks the simple shield-to-ground case and asks agents to model
+  RC, ferrite, chassis-only, or spark-gap strategies explicitly before treating
+  the board as EMC-ready.
 - It emits non-runnable `USB_PROTECTION_PLACEMENT_VALID` templates when the USB
   connector and required connected protection components already have finite
   `board.layout.placements` evidence. The template includes connector/clamp

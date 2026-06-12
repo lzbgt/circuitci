@@ -16,6 +16,7 @@ board:
         "D+": usb_dp
         "D-": usb_dm
         GND: gnd
+        SHIELD: gnd
     UESD:
       model: vendor.ti.tpd2eusb30
       part_number: TPD2EUSB30

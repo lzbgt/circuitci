@@ -420,6 +420,10 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         true
     );
     assert_eq!(
+        connector["scenario"]["parameters"]["require_shield_ground"],
+        true
+    );
+    assert_eq!(
         connector["scenario"]["parameters"]["data_working_voltage_min_V"],
         3.3
     );
@@ -441,6 +445,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
     assert_eq!(usb["dm_net"], "usb_dm");
     assert_eq!(usb["gnd_pin"], "GND");
     assert_eq!(usb["gnd_net"], "gnd");
+    assert_eq!(usb["shield_pin"], "SHIELD");
+    assert_eq!(usb["shield_net"], "gnd");
     let clamps = connector["scenario"]["protection_clamps"]
         .as_array()
         .unwrap();
@@ -468,6 +474,13 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             .as_str()
             .unwrap()
             .contains("PCB/layout validation")
+    );
+    assert!(
+        connector["required_inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|input| input.as_str().unwrap().contains("require_shield_ground"))
     );
     let placement = suggestions["suggestions"]
         .as_array()
