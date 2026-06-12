@@ -1,0 +1,23 @@
+(kicad_pcb
+  (version 20240108)
+  (generator circuitci_fixture)
+
+  (footprint "Connector:USB2" (layer "F.Cu")
+    (at 0 0 0)
+    (property "Reference" "J1" (at 0 0 0) (layer "F.SilkS"))
+    (property "Value" "USB2_CONNECTOR" (at 0 1 0) (layer "F.Fab")))
+
+  (footprint "Protection:TPD2EUSB30" (layer "F.Cu")
+    (at 1 0 0)
+    (fp_text reference "UESD" (at 0 0 0) (layer "F.SilkS"))
+    (property "Value" "TPD2EUSB30" (at 0 1 0) (layer "F.Fab")))
+
+  (footprint "Protection:VBUS_ESD" (layer "F.Cu")
+    (at 1.5 0 0)
+    (property "Reference" "UVBUS" (at 0 0 0) (layer "F.SilkS"))
+    (property "Value" "VBUS_ESD" (at 0 1 0) (layer "F.Fab")))
+
+  (footprint "MountingHole:NPTH" (layer "F.Cu")
+    (at 20 20 0)
+    (property "Reference" "H1" (at 0 0 0) (layer "F.SilkS")))
+)

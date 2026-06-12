@@ -65,8 +65,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - Imported SPICE decks can produce solver and waveform evidence, but an
   assertion-free imported deck reports `ANALOG_ASSERTIONS_ABSENT`; waveform
   evidence alone is not design sign-off.
-- KiCad XML and native `.kicad_sch` import are conservative. Unsupported or
-  ambiguous constructs fail closed instead of being guessed.
+- KiCad XML, native `.kicad_sch`, and `.kicad_pcb` placement import are
+  conservative. Unsupported or ambiguous constructs fail closed instead of being
+  guessed. PCB import currently extracts component center placements only, not
+  routed geometry.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

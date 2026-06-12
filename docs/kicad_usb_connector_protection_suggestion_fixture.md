@@ -23,3 +23,18 @@ After import, `suggest-scenarios` emits a runnable
 The suggestion remains schematic-level evidence. It does not prove connector
 placement, ESD part placement, USB differential impedance, shield strategy,
 return-path quality, or ESD pulse performance.
+
+The same fixture directory also includes `board.kicad_pcb`. A regression chains:
+
+1. `import-kicad-schematic` for connector and ESD connectivity.
+2. `import-kicad-pcb` for `board.layout.placements`.
+3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`.
+
+That enriched flow emits connector-to-protection distance evidence:
+
+- `J1 -> UESD`: `1.0 mm` for D+ and D-
+- `J1 -> UVBUS`: `1.5 mm` for VBUS
+
+The placement suggestion remains non-runnable until an agent fills
+`parameters.max_connector_to_protection_distance_mm` from the board's actual
+ESD/layout rule.

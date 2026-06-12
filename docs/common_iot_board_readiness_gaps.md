@@ -167,8 +167,9 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 ## 5. Layout-Dependent Physics
 
 The current tool validates schematic/netlist behavior and a small amount of
-explicit placement evidence. It does not yet import or solve full PCB layout
-physics. Missing layout checks include:
+explicit placement evidence. KiCad `.kicad_pcb` import can now populate
+component center placements for matching Board IR components, but the tool does
+not yet import or solve full PCB layout physics. Missing layout checks include:
 
 - USB differential pair constraints, connector orientation, routed trace order,
   via count, and return-path discontinuities,
@@ -190,6 +191,7 @@ projects also need adapters for:
 - Altium,
 - JITX,
 - raw PCB/layout formats,
+- full KiCad routed geometry beyond component placement,
 - BOM and pick-and-place files,
 - vendor reference-design formats.
 

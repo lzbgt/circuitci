@@ -74,6 +74,13 @@ enum Command {
         #[arg(long)]
         mapping: Option<PathBuf>,
     },
+    ImportKicadPcb {
+        pcb: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -135,6 +142,11 @@ pub fn run() -> Result<()> {
             default_model,
             mapping,
         }) => run_import_kicad_schematic(schematic, output, name, default_model, mapping),
+        Some(Command::ImportKicadPcb {
+            pcb,
+            project,
+            output,
+        }) => run_import_kicad_pcb(pcb, project, output),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -236,6 +248,23 @@ fn run_import_kicad_schematic(
     println!(
         "CircuitCI imported KiCad schematic {} -> {}",
         schematic.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_kicad_pcb(pcb: PathBuf, project: PathBuf, output: PathBuf) -> Result<()> {
+    let imported_count = crate::importers::kicad_pcb::import_kicad_pcb_placements(
+        &crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
+            input: pcb.clone(),
+            project: project.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI imported {imported_count} KiCad PCB placements {} + {} -> {}",
+        pcb.display(),
+        project.display(),
         output.display()
     );
     Ok(())

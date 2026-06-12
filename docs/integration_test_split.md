@@ -28,6 +28,7 @@ source-file rule.
 - Native KiCad symbol metadata, symbol inheritance, multi-unit, and hidden-pin
   parser-rule tests live in `tests/kicad_symbol_rules_cli.rs`.
 - KiCad XML netlist importer tests live in `tests/kicad_xml_import_cli.rs`.
+- KiCad PCB placement enrichment tests live in `tests/kicad_pcb_import_cli.rs`.
 - The split is mechanical: no fixture semantics, report assertions, CLI
   arguments, or schema checks change.
 - Each integration file remains executable by Cargo as an independent test

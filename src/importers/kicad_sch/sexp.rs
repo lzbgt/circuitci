@@ -1,13 +1,13 @@
 use anyhow::{Result, bail};
 
 #[derive(Debug, Clone)]
-pub(super) enum Sexp {
+pub(crate) enum Sexp {
     Atom(String),
     Str(String),
     List(Vec<Sexp>),
 }
 
-pub(super) fn parse_sexp_document(text: &str) -> Result<Sexp> {
+pub(crate) fn parse_sexp_document(text: &str) -> Result<Sexp> {
     let mut parser = Parser { text, offset: 0 };
     parser.skip_ws_and_comments();
     let sexp = parser.parse_one()?;
@@ -122,38 +122,38 @@ impl Parser<'_> {
     }
 }
 
-pub(super) fn as_list(sexp: &Sexp) -> Option<&[Sexp]> {
+pub(crate) fn as_list(sexp: &Sexp) -> Option<&[Sexp]> {
     maybe_list(sexp)
 }
 
-pub(super) fn maybe_list(sexp: &Sexp) -> Option<&[Sexp]> {
+pub(crate) fn maybe_list(sexp: &Sexp) -> Option<&[Sexp]> {
     match sexp {
         Sexp::List(items) => Some(items),
         _ => None,
     }
 }
 
-pub(super) fn tag(list: &[Sexp]) -> Option<&str> {
+pub(crate) fn tag(list: &[Sexp]) -> Option<&str> {
     string_at(list, 0)
 }
 
-pub(super) fn string_at(list: &[Sexp], index: usize) -> Option<&str> {
+pub(crate) fn string_at(list: &[Sexp], index: usize) -> Option<&str> {
     match list.get(index)? {
         Sexp::Atom(value) | Sexp::Str(value) => Some(value),
         Sexp::List(_) => None,
     }
 }
 
-pub(super) fn numeric_at(list: &[Sexp], index: usize) -> Option<f64> {
+pub(crate) fn numeric_at(list: &[Sexp], index: usize) -> Option<f64> {
     let value = string_at(list, index)?.parse::<f64>().ok()?;
     value.is_finite().then_some(value)
 }
 
-pub(super) fn child_list<'a>(list: &'a [Sexp], name: &'a str) -> Option<&'a [Sexp]> {
+pub(crate) fn child_list<'a>(list: &'a [Sexp], name: &'a str) -> Option<&'a [Sexp]> {
     list_children(list, name).next()
 }
 
-pub(super) fn list_children<'a>(
+pub(crate) fn list_children<'a>(
     list: &'a [Sexp],
     name: &'a str,
 ) -> impl Iterator<Item = &'a [Sexp]> {

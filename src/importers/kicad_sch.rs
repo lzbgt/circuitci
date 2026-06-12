@@ -2,7 +2,7 @@ use super::kicad::{
     KicadImportOptions, ParsedComponent, ParsedComponentInstance, ParsedKicadNetlist, ParsedNet,
     ParsedNode, import_parsed_kicad,
 };
-mod sexp;
+pub(crate) mod sexp;
 mod symbols;
 use anyhow::{Context, Result, bail};
 use sexp::{

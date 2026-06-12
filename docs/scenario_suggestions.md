@@ -112,6 +112,10 @@ The command is conservative:
   when a connector symbol is mapped to a model with `usb_connector` metadata and
   the connected ESD/protection symbols are mapped to clamp models; see
   `examples/import_kicad_usb_connector_protection_suggestions/`.
+- The same fixture can be enriched with `import-kicad-pcb` using its
+  `board.kicad_pcb`; after enrichment, `suggest-scenarios` emits
+  `USB_PROTECTION_PLACEMENT_VALID` with connector-to-protection distance
+  evidence.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
