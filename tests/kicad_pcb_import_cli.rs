@@ -1121,13 +1121,17 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         1.0
     );
 
-    let stripped_pcb = dir.path().join("board_without_entry_aperture.kicad_pcb");
+    let stripped_pcb = dir
+        .path()
+        .join("board_without_entry_direction_or_aperture.kicad_pcb");
     let stripped_pcb_text = std::fs::read_to_string(
         "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
     )
     .unwrap()
     .lines()
-    .filter(|line| !line.contains("CircuitCI_EntryAperture"))
+    .filter(|line| {
+        !line.contains("CircuitCI_EntryAperture") && !line.contains("CircuitCI_EntryDirection")
+    })
     .collect::<Vec<_>>()
     .join("\n");
     std::fs::write(&stripped_pcb, stripped_pcb_text).unwrap();
@@ -1165,6 +1169,14 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         .iter()
         .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
         .expect("USB connector entry-clearance finding with mapping aperture");
+    assert_eq!(
+        mapping_entry_failure["measured"]["entry_direction_source"],
+        "kicad_mapping_offset"
+    );
+    assert_eq!(
+        mapping_entry_failure["measured"]["entry_direction_offset_deg"],
+        0.0
+    );
     assert_eq!(
         mapping_entry_failure["measured"]["entry_aperture_source"],
         "kicad_mapping_aperture"
