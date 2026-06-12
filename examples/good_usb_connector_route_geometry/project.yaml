@@ -43,6 +43,25 @@ board:
         x_mm: 1.0
         y_mm: 0.0
         side: top
+    pads:
+      J1:
+        "D+":
+          at: { x_mm: 0.0, y_mm: 0.0 }
+          net: usb_dp
+          layers: [F.Cu]
+        "D-":
+          at: { x_mm: 0.0, y_mm: 0.3 }
+          net: usb_dm
+          layers: [F.Cu]
+      UESD:
+        DP:
+          at: { x_mm: 1.0, y_mm: 0.0 }
+          net: usb_dp
+          layers: [F.Cu]
+        DM:
+          at: { x_mm: 1.0, y_mm: 0.3 }
+          net: usb_dm
+          layers: [F.Cu]
     routes:
       usb_dp:
         segments:
@@ -85,3 +104,4 @@ scenarios:
       max_data_pair_via_count_delta: 0
       max_data_line_width_delta_mm: 0.01
       max_data_pair_gap_delta_mm: 0.01
+      require_route_pad_contact_evidence: true

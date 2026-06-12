@@ -145,9 +145,12 @@ coverage for declared USB D+/D- and optional VBUS protection.
 connector-to-protection center distance from `board.layout.placements`.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
-distance from `board.layout.routes`. `USB_VBUS_ROUTE_VALID` adds the matching
-static VBUS power-entry route guard for route length, via count, optional
-minimum segment width, and connector-to-VBUS-protection route distance.
+distance from `board.layout.routes`. It can now require imported
+`board.layout.pads` evidence so connector-to-protection route distance is
+measured between same-net pad centers instead of component placement centers.
+`USB_VBUS_ROUTE_VALID` adds the matching static VBUS power-entry route guard
+for route length, via count, optional minimum segment width, and
+connector-to-VBUS-protection route distance.
 KiCad PCB import now also carries mapped copper-zone outlines into
 `board.layout.zones`. `USB_RETURN_PATH_VALID` adds the first static
 return-path guard by requiring D+/D- route segment midpoints to sit inside

@@ -271,6 +271,14 @@ pub(super) fn usb_route_geometry_suggestion(
     )?;
     let route_pair = suggested_usb_route_pair(bound, &dp_route, &dm_route)?;
     let route_limits = suggested_usb_route_limits(bound, &dp_route.net, &dm_route.net);
+    let has_pad_contact_evidence = usb_route_pad_contact_evidence_exists(
+        bound,
+        component_id,
+        component,
+        connector,
+        &dp_clamp,
+        &dm_clamp,
+    );
     let parameters = BTreeMap::from([
         (
             "max_data_line_route_length_mm".to_string(),
@@ -303,6 +311,14 @@ pub(super) fn usb_route_geometry_suggestion(
         (
             "max_data_pair_gap_delta_mm".to_string(),
             serde_json::Value::Null,
+        ),
+        (
+            "require_route_pad_contact_evidence".to_string(),
+            if has_pad_contact_evidence {
+                serde_json::Value::Bool(true)
+            } else {
+                serde_json::Value::Null
+            },
         ),
     ]);
     Some(ScenarioSuggestion {
@@ -354,6 +370,11 @@ pub(super) fn usb_route_geometry_suggestion(
             ),
             "Fill max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
             "Fill max_data_pair_gap_delta_mm when imported differential-pair gap constraints should be enforced.".to_string(),
+            if has_pad_contact_evidence {
+                "Review require_route_pad_contact_evidence=true against imported connector/protection pad evidence before treating the route template as sign-off.".to_string()
+            } else {
+                "Import PCB pad evidence or set require_route_pad_contact_evidence only after connector/protection pads are mapped to the routed USB nets.".to_string()
+            },
             "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
         ],
     })
@@ -951,6 +972,59 @@ fn route_ground_zone_contacts(
         }
     }
     contacts.into_values().collect()
+}
+
+fn usb_route_pad_contact_evidence_exists(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    component: &ComponentSpec,
+    connector: &UsbConnector,
+    dp_clamp: &SuggestedProtectionClamp,
+    dm_clamp: &SuggestedProtectionClamp,
+) -> bool {
+    route_pad_exists(
+        bound,
+        connector_id,
+        &connector.dp_pin,
+        component.pins.get(&connector.dp_pin).map(String::as_str),
+    ) && route_pad_exists(
+        bound,
+        connector_id,
+        &connector.dm_pin,
+        component.pins.get(&connector.dm_pin).map(String::as_str),
+    ) && route_pad_exists(
+        bound,
+        &dp_clamp.component,
+        &dp_clamp.protected_pin,
+        Some(dp_clamp.protected_net.as_str()),
+    ) && route_pad_exists(
+        bound,
+        &dm_clamp.component,
+        &dm_clamp.protected_pin,
+        Some(dm_clamp.protected_net.as_str()),
+    )
+}
+
+fn route_pad_exists(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    pin: &str,
+    expected_net: Option<&str>,
+) -> bool {
+    let Some(expected_net) = expected_net else {
+        return false;
+    };
+    let Some(pad) = bound
+        .project
+        .board
+        .layout
+        .pads
+        .get(component_id)
+        .and_then(|pads| pads.get(pin))
+    else {
+        return false;
+    };
+    pad.net == expected_net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()
 }
 
 fn ground_zone_contacts(

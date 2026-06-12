@@ -200,6 +200,105 @@ pub(super) fn usb_route_no_protection_path_finding(
     finding
 }
 
+pub(super) fn usb_route_pad_metadata_finding(
+    scenario: &Scenario,
+    evidence: UsbRoutePadMetadataEvidence<'_>,
+    message: String,
+) -> Finding {
+    let mut finding = Finding::critical(USB_ROUTE_GEOMETRY_VALID, &scenario.name, message);
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding.measured.insert(
+        "connector_signal".to_string(),
+        json!(evidence.signal.label()),
+    );
+    finding
+        .measured
+        .insert("pad_component".to_string(), json!(evidence.pad_component));
+    finding
+        .measured
+        .insert("pad_pin".to_string(), json!(evidence.pad_pin));
+    finding
+        .limit
+        .insert(evidence.field.to_string(), json!(evidence.pad_pin));
+    finding.limit.insert(
+        "route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Import PCB pad evidence with import-kicad-pcb before enabling require_route_pad_contact_evidence.".to_string(),
+        "Check that the connector/protection footprint pad names match the component model pins and that the pad net matches the routed net.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbRoutePadMetadataEvidence<'a> {
+    pub(super) connector_id: &'a str,
+    pub(super) signal: UsbConnectorSignal,
+    pub(super) net: &'a str,
+    pub(super) pad_component: &'a str,
+    pub(super) pad_pin: &'a str,
+    pub(super) field: &'a str,
+}
+
+pub(super) fn usb_route_no_protection_pad_path_finding(
+    scenario: &Scenario,
+    evidence: UsbRoutePadPathEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {} {} net {} has no protection pad with usable route-distance evidence.",
+            evidence.connector_id,
+            evidence.signal.label(),
+            evidence.net
+        ),
+    );
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.net = Some(evidence.net.to_string());
+    finding.measured.insert(
+        "connector_signal".to_string(),
+        json!(evidence.signal.label()),
+    );
+    finding
+        .measured
+        .insert("connector_pad".to_string(), json!(evidence.connector_pin));
+    finding.measured.insert(
+        "protection_pads_missing".to_string(),
+        json!(evidence.missing_pads),
+    );
+    finding.measured.insert(
+        "protection_pads_off_route".to_string(),
+        json!(evidence.off_route_pads),
+    );
+    finding.limit.insert(
+        "max_component_to_route_distance_mm".to_string(),
+        json!(evidence.max_pad_to_route_distance_mm),
+    );
+    finding.limit.insert(
+        "route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Route the USB net through the protection device pad before continuing downstream, then import updated PCB route and pad evidence.".to_string(),
+        "Check footprint pad names, net names, and copper layers when the protection pad exists but is not on the imported route.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbRoutePadPathEvidence<'a> {
+    pub(super) connector_id: &'a str,
+    pub(super) signal: UsbConnectorSignal,
+    pub(super) net: &'a str,
+    pub(super) connector_pin: &'a str,
+    pub(super) missing_pads: &'a [String],
+    pub(super) off_route_pads: &'a [String],
+    pub(super) max_pad_to_route_distance_mm: f64,
+}
+
 pub(super) fn usb_pair_gap_unmeasured_finding(
     scenario: &Scenario,
     connector_id: &str,
@@ -326,6 +425,70 @@ pub(super) fn usb_route_protection_distance_finding(
         "Route connector pins through the protection device before continuing to the USB transceiver.".to_string(),
     ];
     finding
+}
+
+pub(super) fn usb_route_protection_pad_distance_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    net: &str,
+    evidence: UsbRoutePadDistanceEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} reaches protection pad {}.{} after {:.3} mm of route, exceeding limit {:.3} mm.",
+            signal.label(),
+            evidence.protection_component,
+            evidence.protection_pin,
+            evidence.route_distance_mm,
+            evidence.max_route_distance_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding
+        .measured
+        .insert("connector_pad".to_string(), json!(evidence.connector_pin));
+    finding.measured.insert(
+        "protection_component".to_string(),
+        json!(evidence.protection_component),
+    );
+    finding
+        .measured
+        .insert("protection_pad".to_string(), json!(evidence.protection_pin));
+    finding.measured.insert(
+        "connector_to_protection_route_distance_mm".to_string(),
+        json!(evidence.route_distance_mm),
+    );
+    finding.limit.insert(
+        "max_connector_to_protection_route_distance_mm".to_string(),
+        json!(evidence.max_route_distance_mm),
+    );
+    finding.limit.insert(
+        "route_pad_contact_policy".to_string(),
+        json!("same_net_pad_center_on_route"),
+    );
+    finding.suggested_fixes = vec![
+        "Move the ESD protection pad closer to the USB connector pad along the routed data line."
+            .to_string(),
+        "Route the connector pad through the protection pad before continuing to the USB transceiver."
+            .to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct UsbRoutePadDistanceEvidence<'a> {
+    pub(super) connector_pin: &'a str,
+    pub(super) protection_component: &'a str,
+    pub(super) protection_pin: &'a str,
+    pub(super) route_distance_mm: f64,
+    pub(super) max_route_distance_mm: f64,
 }
 
 pub(super) fn usb_pair_length_mismatch_finding(

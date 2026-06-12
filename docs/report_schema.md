@@ -178,7 +178,10 @@ metadata, `board.layout.placements`, and `board.layout.routes`. Stable measured
 keys include `connector_signal`, `route_length_mm`, `via_count`,
 `protection_component`, `connector_to_protection_route_distance_mm`,
 `protection_components_without_placement`, and
-`protection_components_off_route`. Width findings also report
+`protection_components_off_route`. When pad-contact evidence is required,
+route-order findings also report `connector_pad`, `protection_pad`,
+`pad_component`, `pad_pin`, `protection_pads_missing`, and
+`protection_pads_off_route` as applicable. Width findings also report
 `segment_index`, `route_segment_width_mm`, and `route_width_delta_mm`.
 Differential-pair findings also report `dp_net`, `dm_net`,
 `dp_route_length_mm`, `dm_route_length_mm`, `data_pair_length_mismatch_mm`,
@@ -190,7 +193,8 @@ Differential-pair findings also report `dp_net`, `dm_net`,
 `max_connector_to_protection_route_distance_mm`,
 `max_component_to_route_distance_mm`, `max_data_pair_length_mismatch_mm`,
 `max_data_pair_via_count_delta`, `expected_data_pair_gap_mm`, and
-`max_data_pair_gap_delta_mm`.
+`max_data_pair_gap_delta_mm`. Pad-contact route findings additionally include
+`route_pad_contact_policy`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,

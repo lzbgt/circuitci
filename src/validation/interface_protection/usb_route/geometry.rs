@@ -210,6 +210,33 @@ pub(super) fn route_distance_between_placements(
     shortest_route_distance_mm(route, &from_projection, &to_projection)
 }
 
+pub(super) fn route_distance_between_pad_points(
+    route: &NetRoute,
+    from: PlacementPoint,
+    from_layers: &[String],
+    to: PlacementPoint,
+    to_layers: &[String],
+    max_point_to_route_distance_mm: f64,
+) -> Option<f64> {
+    let from_projection = nearest_projection_on_layers(route, from, from_layers)?;
+    let to_projection = nearest_projection_on_layers(route, to, to_layers)?;
+    if from_projection.distance_to_point_mm > max_point_to_route_distance_mm
+        || to_projection.distance_to_point_mm > max_point_to_route_distance_mm
+    {
+        return None;
+    }
+    shortest_route_distance_mm(route, &from_projection, &to_projection)
+}
+
+pub(super) fn point_to_route_distance_mm(
+    route: &NetRoute,
+    point: PlacementPoint,
+    pad_layers: &[String],
+) -> Option<f64> {
+    nearest_projection_on_layers(route, point, pad_layers)
+        .map(|projection| projection.distance_to_point_mm)
+}
+
 pub(super) fn worst_route_width_delta(
     route: &NetRoute,
     expected_width_mm: f64,
@@ -295,6 +322,39 @@ fn nearest_projection(route: &NetRoute, point: PlacementPoint) -> Option<Project
             left.distance_to_point_mm
                 .total_cmp(&right.distance_to_point_mm)
         })
+}
+
+fn nearest_projection_on_layers(
+    route: &NetRoute,
+    point: PlacementPoint,
+    pad_layers: &[String],
+) -> Option<Projection> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .filter(|(_, segment)| pad_layers_match_route_layer(pad_layers, &segment.layer))
+        .filter_map(|(segment_index, segment)| {
+            let start = PlacementPoint::from(&segment.start);
+            let end = PlacementPoint::from(&segment.end);
+            project_point_to_segment(point, start, end).map(|(t, projected)| Projection {
+                segment_index,
+                t,
+                point: projected,
+                distance_to_point_mm: point_distance_mm(point, projected),
+            })
+        })
+        .min_by(|left, right| {
+            left.distance_to_point_mm
+                .total_cmp(&right.distance_to_point_mm)
+        })
+}
+
+fn pad_layers_match_route_layer(pad_layers: &[String], route_layer: &str) -> bool {
+    pad_layers.is_empty()
+        || pad_layers
+            .iter()
+            .any(|layer| layer == route_layer || (layer == "*.Cu" && route_layer.ends_with(".Cu")))
 }
 
 fn project_point_to_segment(

@@ -308,9 +308,15 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
         dp_protection_distance["measured"]["protection_component"],
         "UESD"
     );
+    assert_eq!(dp_protection_distance["measured"]["connector_pad"], "D+");
+    assert_eq!(dp_protection_distance["measured"]["protection_pad"], "DP");
     assert_eq!(
         dp_protection_distance["limit"]["max_connector_to_protection_route_distance_mm"],
         2.0
+    );
+    assert_eq!(
+        dp_protection_distance["limit"]["route_pad_contact_policy"],
+        "same_net_pad_center_on_route"
     );
     let dm_vias = failures
         .iter()

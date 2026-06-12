@@ -64,6 +64,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   connector-to-protection route distance. They do not prove VBUS current
   capacity, fuse trip behavior, inrush current, voltage drop under load,
   temperature rise, or ESD pulse survival.
+- `USB_ROUTE_GEOMETRY_VALID` can use imported pad centers to make USB data-line
+  connector-to-protection route checks pad-aware, but pad centers are still an
+  abstraction of the footprint copper shape. It does not prove solder-joint
+  geometry, exact pad-edge trace entry, or high-frequency discontinuity.
 - `USB_RETURN_PATH_VALID` checks whether USB D+/D- route segment midpoints are
   inside same-layer ground-zone outlines, and can optionally check that USB
   data vias have nearby ground stitching vias spanning the same layer

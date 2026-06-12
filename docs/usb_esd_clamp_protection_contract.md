@@ -134,6 +134,12 @@ Route-geometry validation:
 - When `parameters.max_data_pair_gap_delta_mm` is present, it checks the
   edge-to-edge gap of overlapping parallel D+/D- segments against imported
   `diff_pair_gap_mm`.
+- When `parameters.require_route_pad_contact_evidence` is true, connector to
+  protection route-order checks use imported same-net connector/protection pad
+  centers from `board.layout.pads`, and each pad center must project onto a
+  matching route layer within `parameters.max_component_to_route_distance_mm`.
+  Without that parameter, the rule keeps the older component-placement
+  projection behavior for hand-authored route evidence.
 - Scenario suggestions expose route and pair evidence in `scenario.usb_routes[]`
   and `scenario.usb_route_pairs[]` so agents can inspect measured length,
   via-count, imported expected data-line width, measured line width, line-width

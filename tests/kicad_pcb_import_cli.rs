@@ -198,6 +198,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
     assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
+    assert_eq!(
+        route["scenario"]["parameters"]["require_route_pad_contact_evidence"],
+        true
+    );
     assert!(
         route["scenario"]["usb_routes"]
             .as_array()

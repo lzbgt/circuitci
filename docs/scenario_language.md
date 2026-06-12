@@ -396,6 +396,7 @@ scenarios:
       max_data_pair_via_count_delta: 0
       max_data_line_width_delta_mm: 0.01      # optional
       max_data_pair_gap_delta_mm: 0.01        # optional
+      require_route_pad_contact_evidence: true # optional
 ```
 
 USB route geometry algorithm:
@@ -418,10 +419,14 @@ USB route geometry algorithm:
 9. If `max_data_pair_gap_delta_mm` is declared, resolve
    `diff_pair_gap_mm`, find overlapping parallel D+/D- routed segments, and
    require edge-to-edge gap to match within that tolerance.
-10. Project connector and protection component placements onto the routed net
-   within `max_component_to_route_distance_mm`.
+10. By default, project connector and protection component placements onto the
+   routed net within `max_component_to_route_distance_mm`. When
+   `require_route_pad_contact_evidence` is true, use imported
+   `board.layout.pads` for the connector signal pin and matching protection
+   pad instead; each pad must be on the same net and on a route layer within
+   `max_component_to_route_distance_mm`.
 11. Compute graph distance along the routed segments and require the nearest
-   valid protection component to be within
+   valid protection component or protection pad to be within
    `max_connector_to_protection_route_distance_mm`.
 
 USB VBUS route geometry uses `USB_VBUS_ROUTE_VALID` when the Board IR includes
