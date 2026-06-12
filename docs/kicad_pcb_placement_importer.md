@@ -139,8 +139,8 @@ route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts matched footprint drawing
 items and connected pad center, kind, shape, size, rotation, scalar drill, net,
-and layer evidence. It samples curved board-outline graphics into bounded
-segments and preserves source primitive/sample provenance for each segment. It
+and layer evidence. It samples rectangular and curved board-outline graphics
+into bounded segments and preserves source primitive/sample provenance for each segment. It
 classifies enclosed closed outlines as cutouts for USB edge selection; it does
 not retain exact outline curve geometry, solve exact rotated-body polygons,
 filled-copper island connectivity, pad-to-zone connectivity, thermal relief

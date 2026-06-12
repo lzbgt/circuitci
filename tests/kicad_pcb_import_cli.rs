@@ -1644,15 +1644,15 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
 }
 
 #[test]
-fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
+fn import_kicad_pcb_sampled_edge_segments_feed_usb_layout_checks() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
-    assert_curved_usb_board_edge_fixture(
+    assert_sampled_usb_board_edge_fixture(
         dir.path(),
         "circle",
         "examples/import_kicad_usb_curved_board_edge_suggestions/board_circle.kicad_pcb",
         32,
-        CurvedEdgeExpectation {
+        SampledEdgeExpectation {
             start_x_mm: 1.0,
             start_y_mm: 0.0,
             end_x_mm: 0.9807852804032304,
@@ -1663,14 +1663,15 @@ fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
             source_primitive_index: 0,
             sample_index: 0,
             sample_count: 32,
+            body_overhang_limit_mm: None,
         },
     );
-    assert_curved_usb_board_edge_fixture(
+    assert_sampled_usb_board_edge_fixture(
         dir.path(),
         "arc",
         "examples/import_kicad_usb_curved_board_edge_suggestions/board_arc.kicad_pcb",
         16,
-        CurvedEdgeExpectation {
+        SampledEdgeExpectation {
             start_x_mm: 0.09754516100806417,
             start_y_mm: 0.4903926402016152,
             end_x_mm: 0.0,
@@ -1681,6 +1682,26 @@ fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
             source_primitive_index: 0,
             sample_index: 7,
             sample_count: 16,
+            body_overhang_limit_mm: None,
+        },
+    );
+    assert_sampled_usb_board_edge_fixture(
+        dir.path(),
+        "rect",
+        "examples/import_kicad_usb_curved_board_edge_suggestions/board_rect.kicad_pcb",
+        4,
+        SampledEdgeExpectation {
+            start_x_mm: 0.5,
+            start_y_mm: -0.5,
+            end_x_mm: 0.5,
+            end_y_mm: 0.5,
+            outward_normal_deg: 0.0,
+            body_overhang_mm: 0.06,
+            source_primitive: "gr_rect",
+            source_primitive_index: 0,
+            sample_index: 1,
+            sample_count: 4,
+            body_overhang_limit_mm: Some(0.05),
         },
     );
 }
@@ -1781,7 +1802,7 @@ fn import_kicad_pcb_cutout_edges_are_not_usb_entry_edges() {
     assert_report_schema_valid(&report);
 }
 
-struct CurvedEdgeExpectation {
+struct SampledEdgeExpectation {
     start_x_mm: f64,
     start_y_mm: f64,
     end_x_mm: f64,
@@ -1792,6 +1813,7 @@ struct CurvedEdgeExpectation {
     source_primitive_index: usize,
     sample_index: usize,
     sample_count: usize,
+    body_overhang_limit_mm: Option<f64>,
 }
 
 fn assert_cutout_suggestion_uses_external_edge(suggestions: &Value, suggestion_id: &str) {
@@ -1816,12 +1838,12 @@ fn assert_cutout_suggestion_uses_external_edge(suggestions: &Value, suggestion_i
     assert_eq!(edge["connector_edge_reference"], "footprint_polygon");
 }
 
-fn assert_curved_usb_board_edge_fixture(
+fn assert_sampled_usb_board_edge_fixture(
     dir: &Path,
     name: &str,
     board_path: &str,
     expected_outline_segments: usize,
-    expected: CurvedEdgeExpectation,
+    expected: SampledEdgeExpectation,
 ) {
     let enriched_project = dir.join(format!("{name}.project.yaml"));
     import_kicad_pcb(
@@ -1857,16 +1879,31 @@ fn assert_curved_usb_board_edge_fixture(
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_orientation_j1", &expected);
-    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_edge_proximity_j1", &expected);
-    assert_suggestion_uses_curved_edge(&suggestions, "usb_connector_body_overhang_j1", &expected);
+    assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_orientation_j1", &expected);
+    assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_edge_proximity_j1", &expected);
+    assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_body_overhang_j1", &expected);
 
     let check_project = dir.join(format!("{name}.checks.project.yaml"));
-    import_kicad_pcb(
-        board_path,
-        "examples/import_kicad_usb_curved_board_edge_suggestions/project_checks.yaml",
-        &check_project,
-    );
+    let check_source = if let Some(limit_mm) = expected.body_overhang_limit_mm {
+        let checks_text = std::fs::read_to_string(
+            "examples/import_kicad_usb_curved_board_edge_suggestions/project_checks.yaml",
+        )
+        .unwrap();
+        let tuned_checks = dir.join(format!("{name}.project_checks.yaml"));
+        std::fs::write(
+            &tuned_checks,
+            checks_text.replace(
+                "max_connector_body_overhang_mm: 0.2",
+                &format!("max_connector_body_overhang_mm: {limit_mm}"),
+            ),
+        )
+        .unwrap();
+        tuned_checks
+    } else {
+        Path::new("examples/import_kicad_usb_curved_board_edge_suggestions/project_checks.yaml")
+            .to_path_buf()
+    };
+    import_kicad_pcb(board_path, check_source.to_str().unwrap(), &check_project);
     let report_dir = dir.join(format!("{name}.report"));
     let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -1883,8 +1920,47 @@ fn assert_curved_usb_board_edge_fixture(
     let report: Value =
         serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
             .unwrap();
-    assert_eq!(report["result"], "pass");
-    assert_eq!(report["summary"]["critical"], 0);
+    if let Some(limit_mm) = expected.body_overhang_limit_mm {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["summary"]["critical"], 1);
+        let failure = report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|failure| failure["id"] == "USB_CONNECTOR_BODY_OVERHANG_VALID")
+            .expect("USB body-overhang finding");
+        assert_close(
+            failure["measured"]["connector_body_overhang_mm"]
+                .as_f64()
+                .unwrap(),
+            expected.body_overhang_mm,
+        );
+        assert_eq!(
+            failure["measured"]["board_edge_source_primitive"],
+            expected.source_primitive
+        );
+        assert_eq!(
+            failure["measured"]["board_edge_source_primitive_index"],
+            expected.source_primitive_index
+        );
+        assert_eq!(
+            failure["measured"]["board_edge_sample_index"],
+            expected.sample_index
+        );
+        assert_eq!(
+            failure["measured"]["board_edge_sample_count"],
+            expected.sample_count
+        );
+        assert_close(
+            failure["measured"]["outward_normal_deg"].as_f64().unwrap(),
+            expected.outward_normal_deg,
+        );
+        assert_eq!(failure["limit"]["max_connector_body_overhang_mm"], limit_mm);
+        assert_report_schema_valid(&report);
+    } else {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+    }
 }
 
 fn import_kicad_pcb(board_path: &str, project_path: &str, output_path: &Path) {
@@ -1902,10 +1978,10 @@ fn import_kicad_pcb(board_path: &str, project_path: &str, output_path: &Path) {
     assert!(status.success());
 }
 
-fn assert_suggestion_uses_curved_edge(
+fn assert_suggestion_uses_sampled_edge(
     suggestions: &Value,
     suggestion_id: &str,
-    expected: &CurvedEdgeExpectation,
+    expected: &SampledEdgeExpectation,
 ) {
     let suggestion = suggestions["suggestions"]
         .as_array()
