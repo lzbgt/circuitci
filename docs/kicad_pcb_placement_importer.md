@@ -47,7 +47,12 @@ footprint properties named `CircuitCI_EntryApertureFrontOffsetMM`,
 width must be greater than zero. Duplicate or malformed aperture properties
 fail closed. Imported values are written to
 `board.layout.footprints.<ref>.entry_aperture` with source
-`kicad_footprint_property`.
+`kicad_footprint_property`. If the incoming Board IR already has
+`board.layout.footprints.<ref>.entry_aperture` from schematic mapping metadata
+and the KiCad footprint does not declare explicit `CircuitCI_EntryAperture*`
+properties, PCB import preserves the existing aperture metadata while adding
+footprint drawing evidence. Explicit KiCad footprint properties take precedence
+over mapping-provided aperture metadata.
 
 This is drawing evidence, not a full mechanical body solver. Rectangles are
 stored as their transformed opposite corners; rotated rectangles should be
@@ -137,8 +142,8 @@ Fixture coverage:
 The regression imports the matching native KiCad schematic, enriches it with
 PCB placements, footprint drawing evidence, connected pad geometry, sampled
 straight/curved board-outline evidence, routed USB net geometry, copper-zone
-outline/fill evidence, connector entry-aperture footprint properties, and
-routing-rule evidence, then proves
+outline/fill evidence, connector entry-aperture mapping metadata and footprint
+properties, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
 

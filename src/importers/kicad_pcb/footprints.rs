@@ -234,7 +234,7 @@ pub(super) fn parse_footprints(
                 layer,
             });
         }
-        if footprint_graphic_count(&evidence) > 0 {
+        if footprint_graphic_count(&evidence) > 0 || evidence.entry_aperture.is_some() {
             footprints.insert(reference, evidence);
         }
     }
@@ -247,6 +247,10 @@ pub(super) fn footprint_graphic_count(footprint: &PcbFootprint) -> usize {
         + footprint.polygons.len()
         + footprint.circles.len()
         + footprint.arcs.len()
+}
+
+pub(super) fn footprint_has_entry_aperture(footprint: &PcbFootprint) -> bool {
+    footprint.entry_aperture.is_some()
 }
 
 pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {

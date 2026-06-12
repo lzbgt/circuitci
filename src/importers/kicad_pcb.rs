@@ -11,7 +11,10 @@ use std::path::{Component, Path, PathBuf};
 mod footprints;
 mod outline;
 
-use footprints::{PcbFootprint, footprint_graphic_count, footprint_yaml_value, parse_footprints};
+use footprints::{
+    PcbFootprint, footprint_graphic_count, footprint_has_entry_aperture, footprint_yaml_value,
+    parse_footprints,
+};
 use outline::{PcbOutline, outline_yaml_value, parse_outline};
 
 #[derive(Debug)]
@@ -1153,7 +1156,10 @@ fn merge_pcb_into_project(
         if !component_refs.contains(reference) {
             continue;
         }
-        let footprint_value = footprint_yaml_value(footprint)?;
+        let mut footprint_value = footprint_yaml_value(footprint)?;
+        if !footprint_has_entry_aperture(footprint) {
+            preserve_existing_entry_aperture(footprint_yaml, reference, &mut footprint_value)?;
+        }
         footprint_yaml.insert(Value::String(reference.clone()), footprint_value);
         summary.footprint_graphics += footprint_graphic_count(footprint);
     }
@@ -1216,6 +1222,28 @@ fn merge_pcb_into_project(
         summary.routing_constraints += 1;
     }
     Ok(summary)
+}
+
+fn preserve_existing_entry_aperture(
+    footprint_yaml: &Mapping,
+    reference: &str,
+    footprint_value: &mut Value,
+) -> Result<()> {
+    let Some(existing_entry_aperture) = footprint_yaml
+        .get(Value::String(reference.to_string()))
+        .and_then(Value::as_mapping)
+        .and_then(|footprint| footprint.get(Value::String("entry_aperture".to_string())))
+        .cloned()
+    else {
+        return Ok(());
+    };
+    let footprint_mapping = footprint_value
+        .as_mapping_mut()
+        .context("Serialized KiCad PCB footprint evidence must be a YAML object.")?;
+    footprint_mapping
+        .entry(Value::String("entry_aperture".to_string()))
+        .or_insert(existing_entry_aperture);
+    Ok(())
 }
 
 fn route_yaml_value(route: &PcbRoute) -> Result<Value> {

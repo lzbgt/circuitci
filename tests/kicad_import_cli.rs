@@ -932,6 +932,14 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         "gnd"
     );
     assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_aperture"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_aperture"]["width_mm"],
+        1.2
+    );
+    assert_eq!(
         imported["board"]["components"]["UESD"]["model"],
         "vendor.ti.tpd2eusb30"
     );
@@ -1022,6 +1030,42 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
             && clamp["clamp"] == "vbus"
             && clamp["protected_net"] == "net_usb_vbus"
     }));
+}
+
+#[test]
+fn import_kicad_schematic_rejects_invalid_layout_aperture_mapping() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("invalid_layout_aperture.project.yaml");
+    let mapping_path = dir.path().join("invalid_layout_aperture.kicad-map.yaml");
+    let mapping = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/circuitci.kicad-map.yaml",
+    )
+    .unwrap()
+    .replace("width_mm: 1.2", "width_mm: 0.0");
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let output_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_usb_connector_protection_suggestions/root.kicad_sch",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "invalid_layout_aperture",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output_status.status.success(),
+        "invalid layout aperture mapping unexpectedly imported"
+    );
+    let stderr = String::from_utf8(output_status.stderr).unwrap();
+    assert!(
+        stderr.contains("layout.entry_aperture.width_mm must be greater than zero"),
+        "expected invalid layout aperture width error, got:\n{stderr}"
+    );
 }
 
 #[test]

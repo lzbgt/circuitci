@@ -582,8 +582,11 @@ fn aperture_source<'a>(
     layout_aperture: Option<&'a LayoutEntryAperture>,
     connector: &'a UsbConnector,
 ) -> Option<&'static str> {
-    if layout_aperture.is_some() {
-        Some("footprint_property_aperture")
+    if let Some(layout_aperture) = layout_aperture {
+        Some(match layout_aperture.source.as_deref() {
+            Some("kicad_mapping") => "kicad_mapping_aperture",
+            _ => "footprint_property_aperture",
+        })
     } else if connector.entry_aperture_front_offset_mm.is_some()
         || connector.entry_aperture_lateral_offset_mm.is_some()
         || connector.entry_aperture_width_mm.is_some()

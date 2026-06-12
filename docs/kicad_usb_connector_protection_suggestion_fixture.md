@@ -80,7 +80,10 @@ corridor depth/width as explicit mechanical policy inputs. Its
 J1 footprint's `CircuitCI_EntryAperture*` properties as
 `entry_aperture_source: footprint_property_aperture` and reports the nearest
 forward obstruction candidate from imported footprint evidence, which is the
-`UESD` fabrication rectangle in this fixture.
+`UESD` fabrication rectangle in this fixture. The schematic mapping also
+declares `components.J1.layout.entry_aperture` as a `kicad_mapping` fallback
+for unmodified library footprints; the explicit PCB footprint properties take
+precedence when both sources are present.
 `project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
 wide corridor, proving the imported aperture evidence and `UESD` fabrication
 rectangle are reported as an entry-corridor obstruction.

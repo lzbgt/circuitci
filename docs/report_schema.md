@@ -270,8 +270,8 @@ keys include `obstructing_component`, `entry_obstruction_depth_mm`,
 `obstruction_reference`, optional `obstruction_footprint_graphic_layer`, and
 optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.
-`entry_aperture_source` is `footprint_front`, `component_model_aperture`, or
-`footprint_property_aperture`.
+`entry_aperture_source` is `footprint_front`, `component_model_aperture`,
+`kicad_mapping_aperture`, or `footprint_property_aperture`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,

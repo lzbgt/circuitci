@@ -339,8 +339,11 @@ fn entry_aperture_evidence(
     let center_lateral_projection_mm = placement_lateral_projection(placement, entry_direction_deg)
         + lateral_offset_mm.unwrap_or(0.0);
     Some(EntryApertureEvidence {
-        source: if layout_aperture.is_some() {
-            "footprint_property_aperture"
+        source: if let Some(layout_aperture) = layout_aperture {
+            match layout_aperture.source.as_deref() {
+                Some("kicad_mapping") => "kicad_mapping_aperture",
+                _ => "footprint_property_aperture",
+            }
         } else if has_model_aperture {
             "component_model_aperture"
         } else {

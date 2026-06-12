@@ -658,6 +658,61 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                         })
             })
     );
+
+    let board_without_aperture = dir.path().join("board_without_aperture.kicad_pcb");
+    let board_text = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap()
+    .lines()
+    .filter(|line| !line.contains("CircuitCI_EntryAperture"))
+    .collect::<Vec<_>>()
+    .join("\n");
+    std::fs::write(&board_without_aperture, board_text).unwrap();
+    let mapped_aperture_project = dir
+        .path()
+        .join("usb_connector_mapping_aperture.project.yaml");
+    import_kicad_pcb(
+        board_without_aperture.to_str().unwrap(),
+        schematic_project.to_str().unwrap(),
+        &mapped_aperture_project,
+    );
+    let mapped_aperture_suggestions_path = dir.path().join("mapping_aperture.suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            mapped_aperture_project.to_str().unwrap(),
+            "--output",
+            mapped_aperture_suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let mapped_aperture_suggestions: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(&mapped_aperture_suggestions_path).unwrap(),
+    )
+    .unwrap();
+    let mapped_entry_clearance = mapped_aperture_suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
+        .expect("USB connector entry-clearance suggestion from mapping aperture");
+    let mapped_entry_evidence =
+        &mapped_entry_clearance["scenario"]["usb_connectors"][0]["entry_clearance"];
+    assert_eq!(
+        mapped_entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        mapped_entry_evidence["entry_aperture_source"],
+        "kicad_mapping_aperture"
+    );
+    assert_eq!(mapped_entry_evidence["entry_aperture_width_mm"], 1.2);
+    assert_eq!(
+        mapped_entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        1.2
+    );
 }
 
 #[test]

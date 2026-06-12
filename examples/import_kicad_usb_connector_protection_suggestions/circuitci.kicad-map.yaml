@@ -11,6 +11,11 @@ components:
       "3": "D-"
       "4": GND
       "5": SHIELD
+    layout:
+      entry_aperture:
+        front_offset_mm: 0.0
+        lateral_offset_mm: 0.0
+        width_mm: 1.2
   UESD:
     model: vendor.ti.tpd2eusb30
     part_number: TPD2EUSB30

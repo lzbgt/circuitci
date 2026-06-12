@@ -68,6 +68,11 @@ components:
   R1:
     model: generic.analog.resistor
     pin_alias: two_terminal_ab
+    layout:
+      entry_aperture:
+        front_offset_mm: 0.0
+        lateral_offset_mm: 0.0
+        width_mm: 6.0
   C1:
     model: generic.analog.capacitor
     pin_alias: two_terminal_ab
@@ -88,9 +93,23 @@ nets:
 
 Mapping files are strictly parsed. Unknown keys, invalid net kinds, unknown
 component refs, unknown net names, unknown pin aliases, simultaneous
-`pin_alias` and `pin_map`, unconnected source pins, duplicate target model pins,
-unresolved model IDs, and target pins not declared by the selected model all
-fail import before a project file is written.
+`pin_alias`/`pin_map` use, malformed layout metadata, ambiguous libsource
+rules, unconnected source pins, duplicate target model pins, unresolved model
+IDs, and target pins not declared by the selected model all fail import before
+a project file is written.
+
+`components.<ref>.layout.entry_aperture` and
+`libsource_rules[].layout.entry_aperture` are optional physical metadata for
+USB connector cable-entry checks. They are emitted as
+`board.layout.footprints.<ref>.entry_aperture` with source `kicad_mapping`.
+Use this when a production KiCad footprint library should stay unmodified and
+the connector aperture is known from a package drawing or local footprint
+convention. Values are millimeters; offsets must be finite and width must be
+finite and greater than zero.
+
+Mapping-provided entry aperture metadata is lower precedence than explicit
+KiCad PCB footprint properties named `CircuitCI_EntryAperture*`, but higher
+precedence than component-model aperture defaults.
 
 ## Generated Analog Scenarios
 

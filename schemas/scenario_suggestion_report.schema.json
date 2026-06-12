@@ -590,6 +590,7 @@
           "enum": [
             "footprint_front",
             "component_model_aperture",
+            "kicad_mapping_aperture",
             "footprint_property_aperture"
           ]
         },

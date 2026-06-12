@@ -92,9 +92,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` checks a static 2D cable-entry corridor
   projected forward from the connector footprint body using imported placement
   rotation plus optional component-model `entry_direction_offset_deg`, or
-  explicit scenario `entry_direction_deg`. Optional imported footprint-property
-  or component-model aperture offsets and width can move and widen that 2D
-  corridor, but they still do not model plug geometry, connector shell volume,
+  explicit scenario `entry_direction_deg`. Optional imported footprint-property,
+  KiCad mapping, or component-model aperture offsets and width can move and
+  widen that 2D corridor, but they still do not model plug geometry, connector
+  shell volume,
   cable bend radius, panel cutouts, enclosure interference, or assembly
   stack-up.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static

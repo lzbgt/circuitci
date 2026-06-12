@@ -370,6 +370,12 @@ aperture width is used as a model-derived minimum checked corridor width when
 it is larger than the scenario's `cable_entry_clearance_width_mm`. Omit these
 fields when the connector placement center and footprint front are the best
 available 2D entry approximation.
+Design-specific aperture metadata can override these model defaults. KiCad
+schematic mapping `layout.entry_aperture` is reported as
+`kicad_mapping_aperture`, and explicit KiCad PCB footprint properties named
+`CircuitCI_EntryAperture*` are reported as `footprint_property_aperture`.
+Footprint properties take precedence over mapping metadata, and both take
+precedence over component-model defaults.
 See [usb_connector_entry_aperture_fixture.md](usb_connector_entry_aperture_fixture.md)
 for a validation fixture that proves aperture metadata changes the checked
 entry corridor.

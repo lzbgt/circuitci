@@ -537,10 +537,12 @@ Connector entry-clearance algorithm:
 3. Find the connector body's front projection from supported
    `fabrication`/`courtyard` `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or
    `fp_arc` footprint evidence.
-4. Apply optional aperture metadata from imported footprint properties or the
-   component model. Front offset shifts the corridor front, lateral offset
-   shifts the corridor centerline perpendicular to entry direction, and aperture
-   width becomes the minimum checked width when it is larger than
+4. Apply optional aperture metadata from imported footprint properties, KiCad
+   mapping metadata, or the component model. Footprint properties take
+   precedence over mapping metadata, and both take precedence over component
+   model defaults. Front offset shifts the corridor front, lateral offset shifts
+   the corridor centerline perpendicular to entry direction, and aperture width
+   becomes the minimum checked width when it is larger than
    `parameters.cable_entry_clearance_width_mm`.
 5. Build a 2D rectangular corridor extending
    `parameters.min_cable_entry_clearance_depth_mm` forward from that entry

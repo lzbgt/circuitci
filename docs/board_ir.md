@@ -192,7 +192,10 @@ KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
 connector entry-aperture metadata from explicit footprint properties named
 `CircuitCI_EntryApertureFrontOffsetMM`,
 `CircuitCI_EntryApertureLateralOffsetMM`, and
-`CircuitCI_EntryApertureWidthMM`. The `kind` field is derived from the drawing
+`CircuitCI_EntryApertureWidthMM`. KiCad schematic mapping can also seed
+`entry_aperture` with `source: kicad_mapping`; PCB import preserves that
+metadata unless the physical footprint declares explicit aperture properties.
+The `kind` field is derived from the drawing
 layer and is intentionally conservative: `fabrication`, `courtyard`,
 `silkscreen`, or `other`. Curved graphics retain their source points in Board
 IR; current 2D layout checks sample them into bounded polylines when computing

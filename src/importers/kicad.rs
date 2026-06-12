@@ -116,6 +116,8 @@ struct ComponentMapping {
     part_number: Option<String>,
     #[serde(default)]
     spice: Option<ComponentSpiceYaml>,
+    #[serde(default)]
+    layout: Option<ComponentLayoutMapping>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -132,6 +134,26 @@ struct LibsourceRuleMapping {
     pin_map: BTreeMap<String, String>,
     #[serde(default)]
     spice: Option<ComponentSpiceYaml>,
+    #[serde(default)]
+    layout: Option<ComponentLayoutMapping>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentLayoutMapping {
+    #[serde(default)]
+    entry_aperture: Option<ComponentEntryApertureMapping>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentEntryApertureMapping {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    front_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lateral_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    width_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -272,6 +294,30 @@ struct ProjectMetaYaml {
 struct BoardYaml {
     components: BTreeMap<String, ComponentYaml>,
     nets: BTreeMap<String, NetYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    layout: Option<BoardLayoutYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct BoardLayoutYaml {
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    footprints: BTreeMap<String, LayoutFootprintYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct LayoutFootprintYaml {
+    entry_aperture: LayoutEntryApertureYaml,
+}
+
+#[derive(Debug, Serialize)]
+struct LayoutEntryApertureYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    front_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lateral_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    width_mm: Option<f64>,
+    source: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -824,9 +870,44 @@ fn build_project_yaml(
             import_source: import_source.to_string(),
         },
         libraries: libraries_for_project(mapping, &loaded_mapping.base_dir),
-        board: BoardYaml { components, nets },
+        board: BoardYaml {
+            components,
+            nets,
+            layout: layout_from_mapping(parsed, mapping)?,
+        },
         scenarios,
     })
+}
+
+fn layout_from_mapping(
+    parsed: &ParsedKicadNetlist,
+    mapping: &KicadMapping,
+) -> Result<Option<BoardLayoutYaml>> {
+    let mut footprints = BTreeMap::new();
+    for component in parsed.components.values() {
+        let Some(component_mapping) = mapping_for_component(component, mapping)? else {
+            continue;
+        };
+        let Some(entry_aperture) = component_mapping
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.entry_aperture.as_ref())
+        else {
+            continue;
+        };
+        footprints.insert(
+            component.refdes.clone(),
+            LayoutFootprintYaml {
+                entry_aperture: LayoutEntryApertureYaml {
+                    front_offset_mm: entry_aperture.front_offset_mm,
+                    lateral_offset_mm: entry_aperture.lateral_offset_mm,
+                    width_mm: entry_aperture.width_mm,
+                    source: "kicad_mapping".to_string(),
+                },
+            },
+        );
+    }
+    Ok((!footprints.is_empty()).then_some(BoardLayoutYaml { footprints }))
 }
 
 fn build_analog_scenarios(
@@ -1203,6 +1284,7 @@ fn load_mapping(options: &KicadImportOptions) -> Result<LoadedKicadMapping> {
 fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) -> Result<()> {
     validate_pin_aliases(mapping)?;
     validate_net_mappings(mapping)?;
+    validate_layout_mappings(mapping)?;
     for refdes in mapping.components.keys() {
         if !parsed.components.contains_key(refdes) {
             bail!("KiCad mapping references unknown component {refdes}.");
@@ -1217,6 +1299,67 @@ fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) ->
         if !net_names.contains(net_name.as_str()) {
             bail!("KiCad mapping references unknown net {net_name}.");
         }
+    }
+    Ok(())
+}
+
+fn validate_layout_mappings(mapping: &KicadMapping) -> Result<()> {
+    for (refdes, component) in &mapping.components {
+        validate_component_layout_mapping(
+            &format!("component {refdes}"),
+            component.layout.as_ref(),
+        )?;
+    }
+    for rule in &mapping.libsource_rules {
+        validate_component_layout_mapping(
+            &format!("libsource rule {}:{}", rule.lib, rule.part),
+            rule.layout.as_ref(),
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_component_layout_mapping(
+    context: &str,
+    layout: Option<&ComponentLayoutMapping>,
+) -> Result<()> {
+    let Some(entry_aperture) = layout.and_then(|layout| layout.entry_aperture.as_ref()) else {
+        return Ok(());
+    };
+    if entry_aperture.front_offset_mm.is_none()
+        && entry_aperture.lateral_offset_mm.is_none()
+        && entry_aperture.width_mm.is_none()
+    {
+        bail!("KiCad mapping {context} layout.entry_aperture must declare at least one value.");
+    }
+    validate_optional_layout_number(
+        context,
+        "layout.entry_aperture.front_offset_mm",
+        entry_aperture.front_offset_mm,
+    )?;
+    validate_optional_layout_number(
+        context,
+        "layout.entry_aperture.lateral_offset_mm",
+        entry_aperture.lateral_offset_mm,
+    )?;
+    validate_optional_layout_number(
+        context,
+        "layout.entry_aperture.width_mm",
+        entry_aperture.width_mm,
+    )?;
+    if let Some(width_mm) = entry_aperture.width_mm
+        && width_mm <= 0.0
+    {
+        bail!("KiCad mapping {context} layout.entry_aperture.width_mm must be greater than zero.");
+    }
+    Ok(())
+}
+
+fn validate_optional_layout_number(context: &str, field: &str, value: Option<f64>) -> Result<()> {
+    if let Some(value) = value
+        && !value.is_finite()
+    {
+        bail!("KiCad mapping {context} {field} must be finite.");
     }
     Ok(())
 }
@@ -1294,6 +1437,7 @@ fn mapping_for_component(
                 pin_map: rule.pin_map.clone(),
                 part_number: component.value.clone(),
                 spice: rule.spice.clone(),
+                layout: rule.layout.clone(),
             },
         )?)),
         _ => bail!(
