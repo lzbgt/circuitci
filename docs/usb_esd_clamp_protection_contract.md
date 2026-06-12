@@ -110,6 +110,24 @@ Placement-distance validation:
   bonding, return path continuity, differential impedance, ESD pulse waveform,
   or USB eye margin.
 
+Route-geometry validation:
+
+- `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses
+  `board.layout.routes` evidence.
+- The scenario must declare `parameters.max_data_line_route_length_mm`,
+  `parameters.max_data_line_via_count`,
+  `parameters.max_connector_to_protection_route_distance_mm`, and
+  `parameters.max_component_to_route_distance_mm`.
+- The rule checks D+ and D- only. VBUS route validation should use a separate
+  power-path/layout rule because its constraints are different from data-line
+  geometry.
+- The rule projects connector/protection placements onto the imported routed
+  segments and then computes distance along the route graph, not straight-line
+  distance.
+- This check is still static layout evidence. It does not prove USB eye margin,
+  impedance, skew, return-path continuity, shield bonding, or ESD pulse
+  robustness.
+
 Datasheet-backed model pack:
 
 - `libs/vendor/ti/protection/tpd2eusb30.model.yaml`

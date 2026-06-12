@@ -367,6 +367,41 @@ Connector-to-protection placement algorithm:
    matching protection component to be no farther than
    `parameters.max_connector_to_protection_distance_mm`.
 
+USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
+`board.layout.routes` evidence imported from PCB data. The rule checks D+ and
+D- route length, via count, and the routed distance from the connector to the
+nearest valid protection component.
+
+```yaml
+scenarios:
+  - name: usb_route_geometry
+    type: interface_protection
+    checks:
+      - USB_ROUTE_GEOMETRY_VALID
+    target:
+      component: J1
+    parameters:
+      max_data_line_route_length_mm: 25.0
+      max_data_line_via_count: 0
+      max_connector_to_protection_route_distance_mm: 2.0
+      max_component_to_route_distance_mm: 0.2
+```
+
+USB route geometry algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Resolve D+ and D- nets from connector pin connectivity.
+3. Require `board.layout.routes` entries for both data nets.
+4. Sum routed segment lengths and require each data net to stay within
+   `max_data_line_route_length_mm`.
+5. Count vias in each net route and require the count to stay within
+   `max_data_line_via_count`.
+6. Project connector and protection component placements onto the routed net
+   within `max_component_to_route_distance_mm`.
+7. Compute graph distance along the routed segments and require the nearest
+   valid protection component to be within
+   `max_connector_to_protection_route_distance_mm`.
+
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
 

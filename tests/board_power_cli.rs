@@ -247,6 +247,71 @@ fn usb_connector_protection_placement_requires_close_data_clamps() {
 }
 
 #[test]
+fn usb_route_geometry_passes_for_short_data_routes() {
+    let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_route_geometry_reports_length_vias_and_protection_order() {
+    let report = run_validation("examples/bad_usb_connector_route_geometry/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let dp_length = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["net"] == "usb_dp"
+                && failure["measured"]["route_length_mm"] == 6.0
+        })
+        .expect("D+ route length finding");
+    assert_eq!(dp_length["component"], "J1");
+    assert_eq!(dp_length["measured"]["connector_signal"], "D+");
+    assert_eq!(dp_length["limit"]["max_data_line_route_length_mm"], 5.0);
+    let dp_protection_distance = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["net"] == "usb_dp"
+                && failure["measured"]["connector_to_protection_route_distance_mm"] == 6.0
+        })
+        .expect("D+ protection route distance finding");
+    assert_eq!(
+        dp_protection_distance["measured"]["protection_component"],
+        "UESD"
+    );
+    assert_eq!(
+        dp_protection_distance["limit"]["max_connector_to_protection_route_distance_mm"],
+        2.0
+    );
+    let dm_vias = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["net"] == "usb_dm"
+                && failure["measured"]["via_count"] == 2
+        })
+        .expect("D- via count finding");
+    assert_eq!(dm_vias["measured"]["connector_signal"], "D-");
+    assert_eq!(dm_vias["limit"]["max_data_line_via_count"], 0);
+    let dm_off_route = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["net"] == "usb_dm"
+                && failure["measured"]["protection_components_off_route"][0] == "UESD"
+        })
+        .expect("D- off-route protection finding");
+    assert_eq!(
+        dm_off_route["limit"]["max_component_to_route_distance_mm"],
+        0.1
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ti_tpd2eusb30_usb_esd_passes_static_review() {
     let report = run_validation("examples/good_ti_tpd2eusb30_usb_esd/project.yaml");
     assert_eq!(report["result"], "pass");

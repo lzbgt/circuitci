@@ -97,6 +97,9 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
+- `USB_CONNECTOR_PROTECTION_VALID`
+- `USB_PROTECTION_PLACEMENT_VALID`
+- `USB_ROUTE_GEOMETRY_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -165,6 +168,17 @@ keys include `connector_component`, `connector_pin`, `protected_net`,
 evidence is available. Stable limit keys include
 `max_connector_to_protection_distance_mm`, `required_placement`, and
 `required_protection`.
+
+`USB_ROUTE_GEOMETRY_VALID` reports are emitted by `interface_protection`
+scenarios that combine `usb_connector` metadata, clamp-only protection
+metadata, `board.layout.placements`, and `board.layout.routes`. Stable measured
+keys include `connector_signal`, `route_length_mm`, `via_count`,
+`protection_component`, `connector_to_protection_route_distance_mm`,
+`protection_components_without_placement`, and
+`protection_components_off_route`. Stable limit keys include
+`max_data_line_route_length_mm`, `max_data_line_via_count`,
+`max_connector_to_protection_route_distance_mm`, and
+`max_component_to_route_distance_mm`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

@@ -6,10 +6,20 @@ use crate::library::{
 use crate::reports::Finding;
 use serde_json::json;
 
+mod usb_route;
+
 use super::INTERFACE_PROTECTION_REVIEW;
 use super::USB_CONNECTOR_PROTECTION_VALID;
 use super::USB_PROTECTION_PLACEMENT_VALID;
 use super::common::validation_input_missing;
+
+pub(super) fn validate_usb_route_geometry(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    usb_route::validate_usb_route_geometry(bound, scenario, findings);
+}
 
 pub(super) fn validate_interface_protection(
     bound: &BoundBoard<'_>,
