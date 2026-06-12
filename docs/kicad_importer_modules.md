@@ -6,6 +6,8 @@ inside the smallest module that owns the behavior:
 - `src/importers/kicad.rs` owns the public XML import entry point, shared Board
   IR construction, mapping-file validation, analog scenario construction, and
   helper types used by the native schematic importer.
+- `src/importers/kicad/xml.rs` owns generic KiCad XML netlist parsing before
+  handing the parsed connectivity to the shared KiCad builder.
 - `src/importers/kicad/passive_values.rs` owns strict opt-in schematic `Value`
   parsing for mapped resistor and capacitor SPICE primitive values.
 - `src/importers/kicad_sch.rs` owns native `.kicad_sch` S-expression
