@@ -69,3 +69,5 @@ scenarios:
       max_data_line_via_count: 0
       max_connector_to_protection_route_distance_mm: 2.0
       max_component_to_route_distance_mm: 0.1
+      max_data_pair_length_mismatch_mm: 0.5
+      max_data_pair_via_count_delta: 0

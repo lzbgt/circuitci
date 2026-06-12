@@ -39,6 +39,16 @@ pub(super) fn validate_usb_route_geometry(
     else {
         return;
     };
+    let Some(max_pair_length_mismatch_mm) =
+        required_nonnegative_parameter(scenario, "max_data_pair_length_mismatch_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_pair_via_count_delta) =
+        required_integer_parameter(scenario, "max_data_pair_via_count_delta", findings)
+    else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -111,6 +121,20 @@ pub(super) fn validate_usb_route_geometry(
             findings,
         );
     }
+    validate_usb_pair_consistency(
+        bound,
+        scenario,
+        &target.component,
+        UsbPairRouteTarget {
+            component,
+            connector,
+        },
+        UsbPairLimits {
+            max_length_mismatch_mm: max_pair_length_mismatch_mm,
+            max_via_count_delta: max_pair_via_count_delta,
+        },
+        findings,
+    );
 }
 
 struct UsbRouteSignalCheck<'a> {
@@ -292,6 +316,92 @@ fn validate_protection_route_distance(
             check.max_protection_route_distance_mm,
         ));
     }
+}
+
+fn validate_usb_pair_consistency(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    connector_id: &str,
+    target: UsbPairRouteTarget<'_>,
+    limits: UsbPairLimits,
+    findings: &mut Vec<Finding>,
+) {
+    let Some((dp_net, dp_route)) = route_for_signal(
+        bound,
+        target.component,
+        target.connector,
+        UsbConnectorSignal::Dp,
+    ) else {
+        return;
+    };
+    let Some((dm_net, dm_route)) = route_for_signal(
+        bound,
+        target.component,
+        target.connector,
+        UsbConnectorSignal::Dm,
+    ) else {
+        return;
+    };
+    if validate_route_shape(dp_route).is_err() || validate_route_shape(dm_route).is_err() {
+        return;
+    }
+    let dp_length_mm = route_length_mm(dp_route);
+    let dm_length_mm = route_length_mm(dm_route);
+    let length_mismatch_mm = (dp_length_mm - dm_length_mm).abs();
+    if length_mismatch_mm > limits.max_length_mismatch_mm {
+        findings.push(usb_pair_length_mismatch_finding(
+            scenario,
+            connector_id,
+            UsbPairLengthEvidence {
+                dp_net,
+                dm_net,
+                dp_length_mm,
+                dm_length_mm,
+                length_mismatch_mm,
+                max_length_mismatch_mm: limits.max_length_mismatch_mm,
+            },
+        ));
+    }
+    let dp_via_count = dp_route.vias.len();
+    let dm_via_count = dm_route.vias.len();
+    let via_count_delta = dp_via_count.abs_diff(dm_via_count);
+    if via_count_delta > limits.max_via_count_delta {
+        findings.push(usb_pair_via_delta_finding(
+            scenario,
+            connector_id,
+            UsbPairViaEvidence {
+                dp_net,
+                dm_net,
+                dp_via_count,
+                dm_via_count,
+                via_count_delta,
+                max_via_count_delta: limits.max_via_count_delta,
+            },
+        ));
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairRouteTarget<'a> {
+    component: &'a crate::board_ir::ComponentSpec,
+    connector: &'a UsbConnector,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairLimits {
+    max_length_mismatch_mm: f64,
+    max_via_count_delta: usize,
+}
+
+fn route_for_signal<'a>(
+    bound: &'a BoundBoard<'_>,
+    component: &'a crate::board_ir::ComponentSpec,
+    connector: &UsbConnector,
+    signal: UsbConnectorSignal,
+) -> Option<(&'a str, &'a NetRoute)> {
+    let net_name = component.pins.get(signal.pin(connector))?;
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    Some((net_name, route))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -569,6 +679,14 @@ fn required_positive_parameter(
     Some(value)
 }
 
+fn required_nonnegative_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    required_scenario_numeric_parameter(scenario, name, findings)
+}
+
 fn required_integer_parameter(
     scenario: &Scenario,
     name: &str,
@@ -757,4 +875,109 @@ fn usb_route_protection_distance_finding(
         "Route connector pins through the protection device before continuing to the USB transceiver.".to_string(),
     ];
     finding
+}
+
+fn usb_pair_length_mismatch_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    evidence: UsbPairLengthEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} D+/D- route length mismatch {:.3} mm exceeds limit {:.3} mm.",
+            evidence.length_mismatch_mm, evidence.max_length_mismatch_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding
+        .measured
+        .insert("dp_net".to_string(), json!(evidence.dp_net));
+    finding
+        .measured
+        .insert("dm_net".to_string(), json!(evidence.dm_net));
+    finding.measured.insert(
+        "dp_route_length_mm".to_string(),
+        json!(evidence.dp_length_mm),
+    );
+    finding.measured.insert(
+        "dm_route_length_mm".to_string(),
+        json!(evidence.dm_length_mm),
+    );
+    finding.measured.insert(
+        "data_pair_length_mismatch_mm".to_string(),
+        json!(evidence.length_mismatch_mm),
+    );
+    finding.limit.insert(
+        "max_data_pair_length_mismatch_mm".to_string(),
+        json!(evidence.max_length_mismatch_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Length-match the USB D+ and D- routes within the board's USB routing rule.".to_string(),
+        "Route D+ and D- as a pair and avoid unnecessary jogs or detours on only one line."
+            .to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairLengthEvidence<'a> {
+    dp_net: &'a str,
+    dm_net: &'a str,
+    dp_length_mm: f64,
+    dm_length_mm: f64,
+    length_mismatch_mm: f64,
+    max_length_mismatch_mm: f64,
+}
+
+fn usb_pair_via_delta_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    evidence: UsbPairViaEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} D+/D- via-count delta {} exceeds limit {}.",
+            evidence.via_count_delta, evidence.max_via_count_delta
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding
+        .measured
+        .insert("dp_net".to_string(), json!(evidence.dp_net));
+    finding
+        .measured
+        .insert("dm_net".to_string(), json!(evidence.dm_net));
+    finding
+        .measured
+        .insert("dp_via_count".to_string(), json!(evidence.dp_via_count));
+    finding
+        .measured
+        .insert("dm_via_count".to_string(), json!(evidence.dm_via_count));
+    finding.measured.insert(
+        "data_pair_via_count_delta".to_string(),
+        json!(evidence.via_count_delta),
+    );
+    finding.limit.insert(
+        "max_data_pair_via_count_delta".to_string(),
+        json!(evidence.max_via_count_delta),
+    );
+    finding.suggested_fixes = vec![
+        "Keep D+ and D- layer changes symmetric when vias are unavoidable.".to_string(),
+        "Remove unnecessary vias from one side of the USB pair or add the matching transition only when the layout stackup requires it.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairViaEvidence<'a> {
+    dp_net: &'a str,
+    dm_net: &'a str,
+    dp_via_count: usize,
+    dm_via_count: usize,
+    via_count_delta: usize,
+    max_via_count_delta: usize,
 }

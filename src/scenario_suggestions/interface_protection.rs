@@ -434,6 +434,14 @@ fn usb_route_geometry_suggestion(
             "max_component_to_route_distance_mm".to_string(),
             serde_json::Value::Null,
         ),
+        (
+            "max_data_pair_length_mismatch_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_data_pair_via_count_delta".to_string(),
+            serde_json::Value::Null,
+        ),
     ]);
     Some(ScenarioSuggestion {
         id: format!("usb_route_geometry_{}", sanitized_name(component_id)),
@@ -471,6 +479,7 @@ fn usb_route_geometry_suggestion(
         required_inputs: vec![
             "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.".to_string(),
             "Fill max_data_line_via_count from the board's USB routing policy; use zero when layer changes are not allowed.".to_string(),
+            "Fill max_data_pair_length_mismatch_mm and max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
             "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
         ],
     })

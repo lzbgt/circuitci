@@ -117,10 +117,14 @@ Route-geometry validation:
 - The scenario must declare `parameters.max_data_line_route_length_mm`,
   `parameters.max_data_line_via_count`,
   `parameters.max_connector_to_protection_route_distance_mm`, and
-  `parameters.max_component_to_route_distance_mm`.
+  `parameters.max_component_to_route_distance_mm`,
+  `parameters.max_data_pair_length_mismatch_mm`, and
+  `parameters.max_data_pair_via_count_delta`.
 - The rule checks D+ and D- only. VBUS route validation should use a separate
   power-path/layout rule because its constraints are different from data-line
   geometry.
+- The rule also checks D+/D- length mismatch and via-count symmetry using the
+  imported route evidence.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

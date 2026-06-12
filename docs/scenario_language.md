@@ -385,6 +385,8 @@ scenarios:
       max_data_line_via_count: 0
       max_connector_to_protection_route_distance_mm: 2.0
       max_component_to_route_distance_mm: 0.2
+      max_data_pair_length_mismatch_mm: 0.5
+      max_data_pair_via_count_delta: 0
 ```
 
 USB route geometry algorithm:
@@ -396,9 +398,13 @@ USB route geometry algorithm:
    `max_data_line_route_length_mm`.
 5. Count vias in each net route and require the count to stay within
    `max_data_line_via_count`.
-6. Project connector and protection component placements onto the routed net
+6. Require the D+/D- route length mismatch to stay within
+   `max_data_pair_length_mismatch_mm`.
+7. Require the D+/D- via-count delta to stay within
+   `max_data_pair_via_count_delta`.
+8. Project connector and protection component placements onto the routed net
    within `max_component_to_route_distance_mm`.
-7. Compute graph distance along the routed segments and require the nearest
+9. Compute graph distance along the routed segments and require the nearest
    valid protection component to be within
    `max_connector_to_protection_route_distance_mm`.
 

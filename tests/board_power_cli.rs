@@ -308,6 +308,32 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
         dm_off_route["limit"]["max_component_to_route_distance_mm"],
         0.1
     );
+    let pair_length = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["measured"]["data_pair_length_mismatch_mm"] == 5.0
+        })
+        .expect("D+/D- length mismatch finding");
+    assert_eq!(pair_length["component"], "J1");
+    assert_eq!(pair_length["measured"]["dp_net"], "usb_dp");
+    assert_eq!(pair_length["measured"]["dm_net"], "usb_dm");
+    assert_eq!(pair_length["measured"]["dp_route_length_mm"], 6.0);
+    assert_eq!(pair_length["measured"]["dm_route_length_mm"], 1.0);
+    assert_eq!(
+        pair_length["limit"]["max_data_pair_length_mismatch_mm"],
+        0.5
+    );
+    let pair_vias = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
+                && failure["measured"]["data_pair_via_count_delta"] == 2
+        })
+        .expect("D+/D- via-count delta finding");
+    assert_eq!(pair_vias["measured"]["dp_via_count"], 0);
+    assert_eq!(pair_vias["measured"]["dm_via_count"], 2);
+    assert_eq!(pair_vias["limit"]["max_data_pair_via_count_delta"], 0);
     assert_report_schema_valid(&report);
 }
 
