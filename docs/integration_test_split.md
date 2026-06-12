@@ -11,7 +11,10 @@ source-file rule.
 ## Split Contract
 
 - Shared CLI helpers live in `tests/common/mod.rs`.
-- Existing non-import CLI and acceptance tests stay in `tests/backdrive_cli.rs`.
+- Behavioral CLI, schema-walk, and suite acceptance tests stay in
+  `tests/backdrive_cli.rs`.
+- Analog SPICE, embedded-ngspice, generated-netlist, operating-limit, and
+  SPICE-deck importer tests live in `tests/analog_spice_cli.rs`.
 - Native KiCad schematic workflow tests live in `tests/kicad_import_cli.rs`.
 - Native KiCad schematic geometry, bus, label, no-connect, and junction
   parser-rule tests live in
