@@ -51,6 +51,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   reference wiring and optional standoff-voltage evidence. It does not prove ESD
   pulse robustness, connector placement, shield bonding, differential routing,
   return-path quality, USB eye margin, or layout-level protection effectiveness.
+- `USB_PROTECTION_PLACEMENT_VALID` checks explicit component placement
+  coordinates and center-to-center connector-to-protection distance for USB
+  clamp coverage. It does not prove trace order, trace length, via count,
+  parasitic inductance, shield strategy, return-path continuity, differential
+  impedance, ESD pulse survival, or USB signal integrity.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

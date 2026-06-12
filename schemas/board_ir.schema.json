@@ -114,6 +114,25 @@
             },
             "additionalProperties": true
           }
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "placements": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["x_mm", "y_mm"],
+                "properties": {
+                  "x_mm": { "type": "number" },
+                  "y_mm": { "type": "number" },
+                  "side": { "enum": ["top", "bottom"] }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true

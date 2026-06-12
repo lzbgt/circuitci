@@ -36,6 +36,7 @@ pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
+pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -129,6 +130,15 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         &mut findings,
                     )
                 }
+                USB_PROTECTION_PLACEMENT_VALID
+                    if scenario.scenario_type == "interface_protection" =>
+                {
+                    interface_protection::validate_usb_protection_placement(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 RESET_RELEASE_AFTER_POWER_VALID if scenario.scenario_type == "reset_boot" => {
                     target_contract::validate_reset_release(bound, scenario, &mut findings)
                 }
@@ -216,6 +226,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | POWER_TREE_VALID
                 | IO_VOLTAGE_COMPATIBLE
                 | USB_CONNECTOR_PROTECTION_VALID
+                | USB_PROTECTION_PLACEMENT_VALID
                 | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

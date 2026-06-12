@@ -74,6 +74,7 @@ scenarios:
 | component power domains | power-port-to-net map | `power_domains` maps model power pins to rails. |
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
+| layout placements | optional component map | Component center coordinates used by first-order placement checks. |
 | scenarios | list | Scenario definitions select validation checks. |
 
 ## Net Kinds
@@ -101,6 +102,32 @@ Power semantics:
   In that case, both input and output rails must declare this timing field.
   `RESET_RELEASE_AFTER_POWER_VALID` also prefers this target-rail timing over
   duplicated scenario `timing.power_valid_at_us`.
+
+## Layout Placement Evidence
+
+Board IR can carry explicit component placement evidence under
+`board.layout.placements`. Coordinates are in millimeters in a common board
+coordinate system. `side` is optional and currently records `top` or `bottom`
+for report evidence; the first placement-distance rules use center-to-center
+distance only.
+
+```yaml
+board:
+  layout:
+    placements:
+      J1:
+        x_mm: 0.0
+        y_mm: 0.0
+        side: top
+      UESD:
+        x_mm: 1.2
+        y_mm: 0.0
+        side: top
+```
+
+`USB_PROTECTION_PLACEMENT_VALID` uses this evidence to check that USB ESD
+protection components are close to the connector. Missing or non-finite
+placement coordinates fail closed for rules that declare a placement limit.
 
 ## Consistency Rules
 

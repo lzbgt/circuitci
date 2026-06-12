@@ -209,6 +209,44 @@ fn usb_connector_protection_requires_vbus_clamp_when_requested() {
 }
 
 #[test]
+fn usb_connector_protection_placement_passes_when_clamps_are_close() {
+    let report = run_validation("examples/good_usb_connector_protection_placement/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_protection_placement_requires_close_data_clamps() {
+    let report =
+        run_validation("examples/bad_usb_connector_protection_placement_distance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let dp = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_PROTECTION_PLACEMENT_VALID"
+                && failure["measured"]["connector_signal"] == "D+"
+        })
+        .expect("D+ placement finding");
+    assert_eq!(dp["component"], "J1");
+    assert_eq!(dp["net"], "usb_dp");
+    assert_eq!(dp["measured"]["protection_component"], "UESD");
+    assert_eq!(dp["measured"]["distance_mm"], 6.0);
+    assert_eq!(dp["limit"]["max_connector_to_protection_distance_mm"], 2.0);
+    let dm = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_PROTECTION_PLACEMENT_VALID"
+                && failure["measured"]["connector_signal"] == "D-"
+        })
+        .expect("D- placement finding");
+    assert_eq!(dm["net"], "usb_dm");
+    assert_eq!(dm["measured"]["distance_mm"], 6.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ti_tpd2eusb30_usb_esd_passes_static_review() {
     let report = run_validation("examples/good_ti_tpd2eusb30_usb_esd/project.yaml");
     assert_eq!(report["result"], "pass");

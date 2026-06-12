@@ -141,6 +141,8 @@ USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are
 declared. `USB_CONNECTOR_PROTECTION_VALID` adds connector-level schematic
 coverage for declared USB D+/D- and optional VBUS protection.
+`USB_PROTECTION_PLACEMENT_VALID` adds the first explicit layout-evidence guard:
+connector-to-protection center distance from `board.layout.placements`.
 `suggest-scenarios` now emits this connector-level template automatically from
 `usb_connector` metadata and connected clamp evidence. These checks do not
 invent timing, observed strap
@@ -148,8 +150,9 @@ states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
 assertions. Broader automatic recognition for device-specific protection
-behavior, additional datasheet-backed USB ESD arrays, ESD pulse behavior, and
-USB signal integrity remain component-pack and physics gaps.
+behavior, PCB placement extraction, trace-order proof, additional
+datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal integrity
+remain component-pack and physics gaps.
 
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load
@@ -161,10 +164,12 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 
 ## 5. Layout-Dependent Physics
 
-The current tool validates schematic/netlist behavior, not PCB layout physics.
-Missing layout checks include:
+The current tool validates schematic/netlist behavior and a small amount of
+explicit placement evidence. It does not yet import or solve full PCB layout
+physics. Missing layout checks include:
 
-- USB differential pair constraints and connector orientation,
+- USB differential pair constraints, connector orientation, routed trace order,
+  via count, and return-path discontinuities,
 - RF antenna matching, keepout, and 2.4 GHz layout,
 - impedance, return path, and high-speed signal integrity,
 - thermal copper and power dissipation from layout,

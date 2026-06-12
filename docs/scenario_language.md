@@ -330,6 +330,43 @@ Connector protection algorithm:
 5. If `data_working_voltage_min_V` or `vbus_working_voltage_min_V` is declared,
    require the found clamp standoff voltage to meet that minimum.
 
+USB protection placement uses `USB_PROTECTION_PLACEMENT_VALID` to add explicit
+layout-distance evidence to the same connector/clamp model contract. The rule
+does not infer trace routing from the schematic; it requires
+`board.layout.placements` for the connector and matching protection components.
+
+```yaml
+board:
+  layout:
+    placements:
+      J1: { x_mm: 0.0, y_mm: 0.0, side: top }
+      UESD: { x_mm: 1.0, y_mm: 0.0, side: top }
+
+scenarios:
+  - name: usb_protection_placement
+    type: interface_protection
+    checks:
+      - USB_PROTECTION_PLACEMENT_VALID
+    target:
+      component: J1
+    parameters:
+      require_vbus_protection: true
+      max_connector_to_protection_distance_mm: 2.0
+```
+
+Connector-to-protection placement algorithm:
+
+1. Resolve `target.component`.
+2. Resolve `usb_connector` metadata from the target component model.
+3. Require finite placement coordinates for the connector.
+4. For D+, D-, and VBUS when `require_vbus_protection` is true, find
+   clamp-only protection on the same net with a valid reference net kind.
+5. Require at least one matching protection component for each protected net to
+   have finite placement coordinates.
+6. Compute center-to-center distance in millimeters and require the nearest
+   matching protection component to be no farther than
+   `parameters.max_connector_to_protection_distance_mm`.
+
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
 

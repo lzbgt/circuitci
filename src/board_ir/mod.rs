@@ -29,6 +29,29 @@ pub struct Board {
     pub components: BTreeMap<String, ComponentSpec>,
     #[serde(default)]
     pub nets: BTreeMap<String, NetSpec>,
+    #[serde(default)]
+    pub layout: BoardLayout,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BoardLayout {
+    #[serde(default)]
+    pub placements: BTreeMap<String, ComponentPlacement>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ComponentPlacement {
+    pub x_mm: f64,
+    pub y_mm: f64,
+    #[serde(default)]
+    pub side: Option<PlacementSide>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PlacementSide {
+    Top,
+    Bottom,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,4 +1,4 @@
-use crate::board_ir::{NetKind, PinLogicState, Scenario};
+use crate::board_ir::{ComponentPlacement, NetKind, PinLogicState, PlacementSide, Scenario};
 use crate::library::{
     BoundBoard, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
     SignalSupplyConstraint, SignalSupplyRelation, UsbConnector,
@@ -8,6 +8,7 @@ use serde_json::json;
 
 use super::INTERFACE_PROTECTION_REVIEW;
 use super::USB_CONNECTOR_PROTECTION_VALID;
+use super::USB_PROTECTION_PLACEMENT_VALID;
 use super::common::validation_input_missing;
 
 pub(super) fn validate_interface_protection(
@@ -229,6 +230,121 @@ pub(super) fn validate_usb_connector_protection(
     }
 }
 
+pub(super) fn validate_usb_protection_placement(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(max_distance_mm) = required_scenario_numeric_parameter(
+        scenario,
+        "max_connector_to_protection_distance_mm",
+        findings,
+    ) else {
+        return;
+    };
+    if max_distance_mm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection parameters.max_connector_to_protection_distance_mm must be greater than zero.",
+        );
+        return;
+    }
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_PROTECTION_PLACEMENT_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB placement target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB placement target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector) = &model.usb_connector else {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector_placement) =
+        valid_component_placement(bound, scenario, &target.component, findings)
+    else {
+        return;
+    };
+    validate_usb_protection_placement_for_pin(
+        bound,
+        scenario,
+        UsbPlacementPinCheck {
+            connector_id: &target.component,
+            component,
+            connector,
+            connector_placement,
+            signal: UsbConnectorSignal::Dp,
+            max_distance_mm,
+        },
+        findings,
+    );
+    validate_usb_protection_placement_for_pin(
+        bound,
+        scenario,
+        UsbPlacementPinCheck {
+            connector_id: &target.component,
+            component,
+            connector,
+            connector_placement,
+            signal: UsbConnectorSignal::Dm,
+            max_distance_mm,
+        },
+        findings,
+    );
+    if scenario_bool_parameter(scenario, "require_vbus_protection").unwrap_or(false) {
+        validate_usb_protection_placement_for_pin(
+            bound,
+            scenario,
+            UsbPlacementPinCheck {
+                connector_id: &target.component,
+                component,
+                connector,
+                connector_placement,
+                signal: UsbConnectorSignal::Vbus,
+                max_distance_mm,
+            },
+            findings,
+        );
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum UsbConnectorSignal {
     Dp,
@@ -329,11 +445,43 @@ struct ResolvedUsbProtection<'a> {
     reference_net_kind: &'a NetKind,
 }
 
+struct UsbPlacementPinCheck<'a> {
+    connector_id: &'a str,
+    component: &'a crate::board_ir::ComponentSpec,
+    connector: &'a UsbConnector,
+    connector_placement: &'a ComponentPlacement,
+    signal: UsbConnectorSignal,
+    max_distance_mm: f64,
+}
+
+struct UsbPlacementDistanceEvidence<'a> {
+    scenario: &'a Scenario,
+    connector_id: &'a str,
+    signal: UsbConnectorSignal,
+    net: &'a str,
+    protection: &'a ResolvedUsbProtection<'a>,
+    connector_placement: &'a ComponentPlacement,
+    protection_placement: &'a ComponentPlacement,
+    distance_mm: f64,
+    max_distance_mm: f64,
+}
+
 fn find_valid_clamp_for_net<'a>(
     bound: &'a BoundBoard<'_>,
     connector_id: &str,
     net_name: &str,
 ) -> Option<ResolvedUsbProtection<'a>> {
+    valid_protection_clamps_for_net(bound, connector_id, net_name)
+        .into_iter()
+        .next()
+}
+
+fn valid_protection_clamps_for_net<'a>(
+    bound: &'a BoundBoard<'_>,
+    connector_id: &str,
+    net_name: &str,
+) -> Vec<ResolvedUsbProtection<'a>> {
+    let mut protections = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         if component_id == connector_id {
             continue;
@@ -359,7 +507,7 @@ fn find_valid_clamp_for_net<'a>(
                 ProtectionReference::Power => NetKind::Power,
             };
             if reference_net.kind == expected_kind {
-                return Some(ResolvedUsbProtection {
+                protections.push(ResolvedUsbProtection {
                     component_id,
                     clamp,
                     reference_net_name,
@@ -368,7 +516,118 @@ fn find_valid_clamp_for_net<'a>(
             }
         }
     }
-    None
+    protections
+}
+
+fn validate_usb_protection_placement_for_pin(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: UsbPlacementPinCheck<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let connector_id = check.connector_id;
+    let connector_placement = check.connector_placement;
+    let signal = check.signal;
+    let max_distance_mm = check.max_distance_mm;
+    let component = check.component;
+    let connector = check.connector;
+    let pin = signal.pin(connector);
+    let Some(net_name) = component.pins.get(pin) else {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} {} pin {pin} is not connected, so protection placement cannot be checked.",
+                signal.label()
+            ),
+            "missing_pin",
+            pin,
+        ));
+        return;
+    };
+    if !bound.project.board.nets.contains_key(net_name) {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} {} net {net_name} is not declared, so protection placement cannot be checked.",
+                signal.label()
+            ),
+            "missing_net",
+            net_name,
+        ));
+        return;
+    }
+    let protections = valid_protection_clamps_for_net(bound, connector_id, net_name);
+    if protections.is_empty() {
+        findings.push(usb_placement_missing_protection_finding(
+            scenario,
+            connector_id,
+            signal,
+            pin,
+            net_name,
+        ));
+        return;
+    }
+    let mut nearest: Option<(&ResolvedUsbProtection<'_>, &ComponentPlacement, f64)> = None;
+    let mut missing_placements = Vec::new();
+    for protection in &protections {
+        let Some(protection_placement) = bound
+            .project
+            .board
+            .layout
+            .placements
+            .get(protection.component_id)
+        else {
+            missing_placements.push(protection.component_id.to_string());
+            continue;
+        };
+        if !placement_is_finite(protection_placement) {
+            findings.push(usb_placement_metadata_finding(
+                scenario,
+                protection.component_id,
+                format!(
+                    "USB protection component {} placement must have finite x_mm and y_mm.",
+                    protection.component_id
+                ),
+                "placement",
+                protection.component_id,
+            ));
+            continue;
+        }
+        let distance_mm = placement_distance_mm(connector_placement, protection_placement);
+        if nearest
+            .as_ref()
+            .is_none_or(|(_, _, nearest_distance)| distance_mm < *nearest_distance)
+        {
+            nearest = Some((protection, protection_placement, distance_mm));
+        }
+    }
+    let Some((protection, protection_placement, distance_mm)) = nearest else {
+        findings.push(usb_placement_missing_protection_placement_finding(
+            scenario,
+            connector_id,
+            signal,
+            net_name,
+            &missing_placements,
+        ));
+        return;
+    };
+    if distance_mm > max_distance_mm {
+        findings.push(usb_placement_distance_finding(
+            UsbPlacementDistanceEvidence {
+                scenario,
+                connector_id,
+                signal,
+                net: net_name,
+                protection,
+                connector_placement,
+                protection_placement,
+                distance_mm,
+                max_distance_mm,
+            },
+        ));
+    }
 }
 
 fn validate_protection_clamp(
@@ -574,11 +833,74 @@ fn scenario_numeric_parameter(
     Some(number)
 }
 
+fn required_scenario_numeric_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if !scenario.parameters.contains_key(name) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} is required."),
+        );
+        return None;
+    }
+    scenario_numeric_parameter(scenario, name, findings)
+}
+
 fn scenario_bool_parameter(scenario: &Scenario, name: &str) -> Option<bool> {
     scenario
         .parameters
         .get(name)
         .and_then(serde_yaml_ng::Value::as_bool)
+}
+
+fn valid_component_placement<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<&'a ComponentPlacement> {
+    let Some(placement) = bound.project.board.layout.placements.get(component_id) else {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            component_id,
+            format!("Component {component_id} has no board.layout.placements entry."),
+            "placement",
+            component_id,
+        ));
+        return None;
+    };
+    if !placement_is_finite(placement) {
+        findings.push(usb_placement_metadata_finding(
+            scenario,
+            component_id,
+            format!("Component {component_id} placement must have finite x_mm and y_mm."),
+            "placement",
+            component_id,
+        ));
+        return None;
+    }
+    Some(placement)
+}
+
+fn placement_is_finite(placement: &ComponentPlacement) -> bool {
+    placement.x_mm.is_finite() && placement.y_mm.is_finite()
+}
+
+fn placement_distance_mm(a: &ComponentPlacement, b: &ComponentPlacement) -> f64 {
+    let dx = a.x_mm - b.x_mm;
+    let dy = a.y_mm - b.y_mm;
+    dx.hypot(dy)
+}
+
+fn placement_side_name(side: &Option<PlacementSide>) -> Option<&'static str> {
+    match side {
+        Some(PlacementSide::Top) => Some("top"),
+        Some(PlacementSide::Bottom) => Some("bottom"),
+        None => None,
+    }
 }
 
 fn channel_disabled_by_observation(
@@ -1267,6 +1589,170 @@ fn usb_connector_standoff_finding(
     finding.suggested_fixes = vec![
         "Select a protection device whose reverse standoff voltage covers the exposed USB connector operating voltage.".to_string(),
         "Use separate VBUS-rated protection for the VBUS pin when the data-line ESD part is not rated for the power rail.".to_string(),
+    ];
+    finding
+}
+
+fn usb_placement_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_PROTECTION_PLACEMENT_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Add board.layout.placements entries with finite x_mm/y_mm for the USB connector and protection components.".to_string(),
+        "Use placement data extracted from the PCB design before declaring USB_PROTECTION_PLACEMENT_VALID.".to_string(),
+    ];
+    finding
+}
+
+fn usb_placement_missing_protection_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    pin: &str,
+    net: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_PROTECTION_PLACEMENT_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} pin {pin} on net {net} has no valid protection component to place near the connector.",
+            signal.label()
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_pin".to_string(), json!(pin));
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding
+        .limit
+        .insert("required_protection_clamp".to_string(), json!(true));
+    finding.suggested_fixes = vec![
+        format!(
+            "Add a datasheet-backed ESD/protection component on USB connector {connector_id}.{pin} net {net} before checking placement."
+        ),
+        "Then place the protection component close enough to the connector to satisfy max_connector_to_protection_distance_mm.".to_string(),
+    ];
+    finding
+}
+
+fn usb_placement_missing_protection_placement_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    net: &str,
+    missing_components: &[String],
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_PROTECTION_PLACEMENT_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} has protection components but none have usable placement evidence.",
+            signal.label()
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding.measured.insert(
+        "protection_components_without_placement".to_string(),
+        json!(missing_components),
+    );
+    finding
+        .limit
+        .insert("required_protection_placement".to_string(), json!(true));
+    finding.suggested_fixes = vec![
+        "Add board.layout.placements entries for the USB protection component candidates."
+            .to_string(),
+        "Extract placement from the PCB layout instead of relying only on schematic connectivity."
+            .to_string(),
+    ];
+    finding
+}
+
+fn usb_placement_distance_finding(evidence: UsbPlacementDistanceEvidence<'_>) -> Finding {
+    let connector_id = evidence.connector_id;
+    let signal = evidence.signal;
+    let net = evidence.net;
+    let protection = evidence.protection;
+    let connector_placement = evidence.connector_placement;
+    let protection_placement = evidence.protection_placement;
+    let distance_mm = evidence.distance_mm;
+    let max_distance_mm = evidence.max_distance_mm;
+    let mut finding = Finding::critical(
+        USB_PROTECTION_PLACEMENT_VALID,
+        &evidence.scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} is protected by {}.{}, but placement distance {:.3} mm exceeds limit {:.3} mm.",
+            signal.label(),
+            protection.component_id,
+            protection.clamp.name,
+            distance_mm,
+            max_distance_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding.measured.insert(
+        "protection_component".to_string(),
+        json!(protection.component_id),
+    );
+    finding
+        .measured
+        .insert("protection_clamp".to_string(), json!(protection.clamp.name));
+    finding
+        .measured
+        .insert("distance_mm".to_string(), json!(distance_mm));
+    finding.measured.insert(
+        "connector_x_mm".to_string(),
+        json!(connector_placement.x_mm),
+    );
+    finding.measured.insert(
+        "connector_y_mm".to_string(),
+        json!(connector_placement.y_mm),
+    );
+    if let Some(side) = placement_side_name(&connector_placement.side) {
+        finding
+            .measured
+            .insert("connector_side".to_string(), json!(side));
+    }
+    finding.measured.insert(
+        "protection_x_mm".to_string(),
+        json!(protection_placement.x_mm),
+    );
+    finding.measured.insert(
+        "protection_y_mm".to_string(),
+        json!(protection_placement.y_mm),
+    );
+    if let Some(side) = placement_side_name(&protection_placement.side) {
+        finding
+            .measured
+            .insert("protection_side".to_string(), json!(side));
+    }
+    finding.limit.insert(
+        "max_connector_to_protection_distance_mm".to_string(),
+        json!(max_distance_mm),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Move protection component {} closer to USB connector {connector_id} on the protected net {net}.",
+            protection.component_id
+        ),
+        "Keep the ESD current path short and low-inductance; use PCB/layout review for trace order, via count, return path, and shield strategy.".to_string(),
     ];
     finding
 }

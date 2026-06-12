@@ -155,6 +155,17 @@ is found. Stable limit keys include `required_protection`, `required_reference`,
 `required_data_working_voltage_min_V`, and
 `required_vbus_working_voltage_min_V`.
 
+`USB_PROTECTION_PLACEMENT_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata,
+clamp-only protection metadata, and `board.layout.placements`. Stable measured
+keys include `connector_component`, `connector_pin`, `protected_net`,
+`connector_x_mm`, `connector_y_mm`, `connector_side`,
+`protection_component`, `protection_clamp`, `protection_x_mm`,
+`protection_y_mm`, `protection_side`, and `distance_mm` when placement
+evidence is available. Stable limit keys include
+`max_connector_to_protection_distance_mm`, `required_placement`, and
+`required_protection`.
+
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.

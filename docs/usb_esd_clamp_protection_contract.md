@@ -66,6 +66,8 @@ Current fixtures:
 - `examples/good_usb_connector_protection`
 - `examples/bad_usb_connector_missing_data_protection`
 - `examples/bad_usb_connector_missing_vbus_protection`
+- `examples/good_usb_connector_protection_placement`
+- `examples/bad_usb_connector_protection_placement_distance`
 - `examples/scenario_suggestions_usb_connector_protection`
 - `examples/import_kicad_usb_connector_protection_suggestions`
 
@@ -82,6 +84,24 @@ Connector-level validation:
 - This check proves schematic coverage only. It does not prove ESD pulse
   robustness, connector placement, shield strategy, return-path quality, trace
   impedance, or USB eye margin.
+
+Placement-distance validation:
+
+- `USB_PROTECTION_PLACEMENT_VALID` targets the same connector component and
+  uses `board.layout.placements` evidence.
+- The scenario must declare
+  `parameters.max_connector_to_protection_distance_mm`.
+- The rule checks D+ and D- protection placement, and also checks VBUS when
+  `parameters.require_vbus_protection: true`.
+- Each required protected net must have clamp-only protection on the same net
+  with a valid reference net kind, and at least one matching protection
+  component must have finite placement coordinates.
+- The nearest matching protection component must be no farther from the
+  connector placement than the declared maximum distance.
+- This check is a first-order component placement guard. It does not inspect
+  routed trace order, trace length, via count, parasitic inductance, shield
+  bonding, return path continuity, differential impedance, ESD pulse waveform,
+  or USB eye margin.
 
 Datasheet-backed model pack:
 
