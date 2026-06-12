@@ -430,6 +430,9 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
     let usb = &connector["scenario"]["usb_connectors"][0];
     assert_eq!(usb["component"], "J1");
     assert_eq!(usb["standard"], "usb2");
+    assert_eq!(usb["placement"]["x_mm"], 0.0);
+    assert_eq!(usb["placement"]["y_mm"], 0.0);
+    assert_eq!(usb["placement"]["side"], "top");
     assert_eq!(usb["vbus_pin"], "VBUS");
     assert_eq!(usb["vbus_net"], "usb_vbus");
     assert_eq!(usb["dp_pin"], "D+");
@@ -446,22 +449,71 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         clamp["component"] == "UESD"
             && clamp["clamp"] == "d1_plus"
             && clamp["protected_net"] == "usb_dp"
+            && clamp["placement"]["x_mm"] == 1.0
     }));
     assert!(clamps.iter().any(|clamp| {
         clamp["component"] == "UESD"
             && clamp["clamp"] == "d1_minus"
             && clamp["protected_net"] == "usb_dm"
+            && clamp["placement"]["side"] == "top"
     }));
     assert!(clamps.iter().any(|clamp| {
         clamp["component"] == "UVBUS"
             && clamp["clamp"] == "vbus"
             && clamp["protected_net"] == "usb_vbus"
+            && clamp["placement"]["x_mm"] == 1.5
     }));
     assert!(
         connector["required_inputs"][0]
             .as_str()
             .unwrap()
             .contains("PCB/layout validation")
+    );
+    let placement = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_protection_placement_j1")
+        .expect("USB protection placement suggestion");
+    assert_eq!(placement["kind"], "interface_protection");
+    assert_eq!(placement["runnable"], false);
+    assert_eq!(placement["scenario"]["type"], "interface_protection");
+    assert_eq!(
+        placement["scenario"]["checks"][0],
+        "USB_PROTECTION_PLACEMENT_VALID"
+    );
+    assert_eq!(placement["scenario"]["target"]["component"], "J1");
+    assert_eq!(
+        placement["scenario"]["parameters"]["require_vbus_protection"],
+        true
+    );
+    assert!(
+        placement["scenario"]["parameters"]["max_connector_to_protection_distance_mm"].is_null()
+    );
+    let placement_clamps = placement["scenario"]["protection_clamps"]
+        .as_array()
+        .unwrap();
+    assert_eq!(placement_clamps.len(), 3);
+    assert!(placement_clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["protected_net"] == "usb_dp"
+            && clamp["distance_to_target_mm"] == 1.0
+    }));
+    assert!(placement_clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["protected_net"] == "usb_dm"
+            && clamp["distance_to_target_mm"] == 1.0
+    }));
+    assert!(placement_clamps.iter().any(|clamp| {
+        clamp["component"] == "UVBUS"
+            && clamp["protected_net"] == "usb_vbus"
+            && clamp["distance_to_target_mm"] == 1.5
+    }));
+    assert!(
+        placement["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("max_connector_to_protection_distance_mm")
     );
 }
 

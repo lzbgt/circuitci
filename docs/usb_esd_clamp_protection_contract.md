@@ -57,6 +57,13 @@ evidence. When VBUS is connected to a declared power net, the template sets
 `parameters.require_vbus_protection: true` so missing VBUS protection becomes an
 executable validation failure.
 
+When `board.layout.placements` has finite coordinates for the USB connector and
+the required connected protection components, `suggest-scenarios` also emits a
+non-runnable `USB_PROTECTION_PLACEMENT_VALID` template. The suggestion includes
+placement coordinates and connector-to-protection `distance_to_target_mm`
+evidence, but leaves `parameters.max_connector_to_protection_distance_mm` as
+`null` until an agent fills the board-specific ESD/layout rule.
+
 Current fixtures:
 
 - `examples/good_usb_esd_protection`

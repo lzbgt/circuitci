@@ -154,6 +154,10 @@ pub struct SuggestedProtectionClamp {
     pub working_voltage_max_v: Option<f64>,
     #[serde(rename = "line_capacitance_F", skip_serializing_if = "Option::is_none")]
     pub line_capacitance_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub placement: Option<SuggestedPlacement>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance_to_target_mm: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -173,6 +177,16 @@ pub struct SuggestedUsbConnector {
     pub shield_pin: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shield_net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub placement: Option<SuggestedPlacement>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedPlacement {
+    pub x_mm: f64,
+    pub y_mm: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub side: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

@@ -1,9 +1,10 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
-    SuggestedConditioningSide, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
-    SuggestedUsbConnector, USB_CONNECTOR_PROTECTION_VALID, sanitized_name,
+    SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
+    SuggestedTarget, SuggestedUsbConnector, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, sanitized_name,
 };
-use crate::board_ir::{BoardProject, ComponentSpec, NetKind};
+use crate::board_ir::{BoardProject, ComponentPlacement, ComponentSpec, NetKind, PlacementSide};
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
     SignalConditioningKind, UsbConnector,
@@ -13,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
     let existing = existing_interface_protection_checks(bound.project);
     let existing_usb_connectors = existing_usb_connector_protection_checks(bound.project);
+    let existing_usb_placements = existing_usb_protection_placement_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -151,6 +153,13 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
         {
             suggestions.push(suggestion);
         }
+        if model.usb_connector.is_some()
+            && !existing_usb_placements.contains(component_id)
+            && let Some(suggestion) =
+                usb_protection_placement_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
     }
     suggestions
 }
@@ -275,6 +284,92 @@ fn usb_connector_protection_suggestion(
     })
 }
 
+fn usb_protection_placement_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let connector_placement = component_placement(bound, component_id)?;
+    let require_vbus_protection = suggested_connector
+        .vbus_net
+        .as_deref()
+        .and_then(|net| bound.project.board.nets.get(net))
+        .is_some_and(|net| net.kind == NetKind::Power);
+    let mut protection_clamps = vec![
+        nearest_placed_protection_clamp_for_net(
+            bound,
+            component_id,
+            &suggested_connector.dp_net,
+            connector_placement,
+        )?,
+        nearest_placed_protection_clamp_for_net(
+            bound,
+            component_id,
+            &suggested_connector.dm_net,
+            connector_placement,
+        )?,
+    ];
+    if require_vbus_protection {
+        let vbus_net = suggested_connector.vbus_net.as_deref()?;
+        protection_clamps.push(nearest_placed_protection_clamp_for_net(
+            bound,
+            component_id,
+            vbus_net,
+            connector_placement,
+        )?);
+    }
+    let parameters = BTreeMap::from([
+        (
+            "require_vbus_protection".to_string(),
+            serde_json::Value::Bool(require_vbus_protection),
+        ),
+        (
+            "max_connector_to_protection_distance_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+    ]);
+    Some(ScenarioSuggestion {
+        id: format!("usb_protection_placement_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} and connected protection components have placement evidence; add a connector-to-protection distance scenario."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_protection_placement", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_PROTECTION_PLACEMENT_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps,
+            usb_connectors: vec![suggested_connector],
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            "Fill parameters.max_connector_to_protection_distance_mm from the board's ESD/layout rule or datasheet/layout guidance; do not invent the limit from component coordinates.".to_string(),
+            "Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.".to_string(),
+        ],
+    })
+}
+
 fn suggested_usb_connector(
     bound: &BoundBoard<'_>,
     component_id: &str,
@@ -304,6 +399,7 @@ fn suggested_usb_connector(
         gnd_net,
         shield_pin: connector.shield_pin.clone(),
         shield_net,
+        placement: suggested_placement(bound, component_id),
     })
 }
 
@@ -391,6 +487,8 @@ fn suggested_protection_clamp(
         reference: reference.to_string(),
         working_voltage_max_v: clamp.working_voltage_max_v,
         line_capacitance_f: clamp.line_capacitance_f,
+        placement: suggested_placement(bound, component_id),
+        distance_to_target_mm: None,
     })
 }
 
@@ -429,6 +527,96 @@ fn suggested_valid_protection_clamp_for_net(
         }
     }
     None
+}
+
+fn nearest_placed_protection_clamp_for_net(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    net_name: &str,
+    connector_placement: &ComponentPlacement,
+) -> Option<SuggestedProtectionClamp> {
+    let mut nearest: Option<(SuggestedProtectionClamp, f64)> = None;
+    for (component_id, component) in &bound.project.board.components {
+        if component_id == connector_id {
+            continue;
+        }
+        let Some(protection_placement) = component_placement(bound, component_id) else {
+            continue;
+        };
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        for clamp in &model.signal_conditioning.protection_clamps {
+            let Some(protected_net) = component.pins.get(&clamp.protected_pin) else {
+                continue;
+            };
+            if protected_net != net_name {
+                continue;
+            }
+            let Some(reference_net_name) = component.pins.get(&clamp.reference_pin) else {
+                continue;
+            };
+            let Some(reference_net) = bound.project.board.nets.get(reference_net_name) else {
+                continue;
+            };
+            let expected_kind = match clamp.reference {
+                ProtectionReference::Ground => NetKind::Ground,
+                ProtectionReference::Power => NetKind::Power,
+            };
+            if reference_net.kind != expected_kind {
+                continue;
+            }
+            let distance_mm = placement_distance_mm(connector_placement, protection_placement);
+            let Some(mut suggested) =
+                suggested_protection_clamp(bound, component_id, component, model, clamp)
+            else {
+                continue;
+            };
+            suggested.distance_to_target_mm = Some(distance_mm);
+            if nearest
+                .as_ref()
+                .is_none_or(|(_, nearest_distance)| distance_mm < *nearest_distance)
+            {
+                nearest = Some((suggested, distance_mm));
+            }
+        }
+    }
+    nearest.map(|(suggested, _)| suggested)
+}
+
+fn component_placement<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &str,
+) -> Option<&'a ComponentPlacement> {
+    let placement = bound.project.board.layout.placements.get(component_id)?;
+    if placement.x_mm.is_finite() && placement.y_mm.is_finite() {
+        Some(placement)
+    } else {
+        None
+    }
+}
+
+fn suggested_placement(bound: &BoundBoard<'_>, component_id: &str) -> Option<SuggestedPlacement> {
+    let placement = component_placement(bound, component_id)?;
+    Some(SuggestedPlacement {
+        x_mm: placement.x_mm,
+        y_mm: placement.y_mm,
+        side: placement_side_name(&placement.side).map(str::to_string),
+    })
+}
+
+fn placement_distance_mm(a: &ComponentPlacement, b: &ComponentPlacement) -> f64 {
+    let dx = a.x_mm - b.x_mm;
+    let dy = a.y_mm - b.y_mm;
+    (dx.mul_add(dx, dy * dy)).sqrt()
+}
+
+fn placement_side_name(side: &Option<PlacementSide>) -> Option<&'static str> {
+    match side {
+        Some(PlacementSide::Top) => Some("top"),
+        Some(PlacementSide::Bottom) => Some("bottom"),
+        None => None,
+    }
 }
 
 fn signal_conditioning_kind_name(kind: &SignalConditioningKind) -> &'static str {
@@ -519,6 +707,26 @@ fn existing_usb_connector_protection_checks(project: &BoardProject) -> BTreeSet<
                     .checks
                     .iter()
                     .any(|check| check == USB_CONNECTOR_PROTECTION_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+fn existing_usb_protection_placement_checks(project: &BoardProject) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == USB_PROTECTION_PLACEMENT_VALID)
         })
         .filter_map(|scenario| {
             scenario

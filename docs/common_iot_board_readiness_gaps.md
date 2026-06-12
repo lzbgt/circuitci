@@ -143,9 +143,11 @@ declared. `USB_CONNECTOR_PROTECTION_VALID` adds connector-level schematic
 coverage for declared USB D+/D- and optional VBUS protection.
 `USB_PROTECTION_PLACEMENT_VALID` adds the first explicit layout-evidence guard:
 connector-to-protection center distance from `board.layout.placements`.
-`suggest-scenarios` now emits this connector-level template automatically from
-`usb_connector` metadata and connected clamp evidence. These checks do not
-invent timing, observed strap
+`suggest-scenarios` now emits connector-level schematic templates automatically
+from `usb_connector` metadata and connected clamp evidence, and emits
+non-runnable placement templates when the connector and required protection
+components already have placement coordinates. These checks do not invent
+placement limits, timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog

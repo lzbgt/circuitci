@@ -77,6 +77,13 @@ The command is conservative:
   connected to a declared power net, the template sets
   `parameters.require_vbus_protection: true` so validation fails closed when no
   VBUS clamp is modeled.
+- It emits non-runnable `USB_PROTECTION_PLACEMENT_VALID` templates when the USB
+  connector and required connected protection components already have finite
+  `board.layout.placements` evidence. The template includes connector/clamp
+  placement coordinates and `distance_to_target_mm` evidence, but leaves
+  `parameters.max_connector_to_protection_distance_mm` as `null` until an agent
+  fills the board-specific ESD/layout rule. CircuitCI does not invent placement
+  limits from component coordinates.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The
@@ -220,6 +227,54 @@ suggestions:
           dm_net: usb_dm
           gnd_pin: GND
           gnd_net: gnd
+  - id: usb_protection_placement_j1
+    kind: interface_protection
+    confidence: medium
+    runnable: false
+    reason: USB connector J1 and connected protection components have placement evidence; add a connector-to-protection distance scenario.
+    scenario:
+      name: j1_usb_protection_placement
+      type: interface_protection
+      checks:
+        - USB_PROTECTION_PLACEMENT_VALID
+      parameters:
+        require_vbus_protection: true
+        max_connector_to_protection_distance_mm: null
+      target:
+        component: J1
+      protection_clamps:
+        - component: UESD
+          clamp: d1_plus
+          protected_pin: D1+
+          protected_net: usb_dp
+          reference_pin: GND
+          reference_net: gnd
+          reference: ground
+          working_voltage_max_V: 5.5
+          line_capacitance_F: 0.0000000000007
+          placement:
+            x_mm: 1
+            y_mm: 0
+            side: top
+          distance_to_target_mm: 1
+      usb_connectors:
+        - component: J1
+          standard: usb2
+          vbus_pin: VBUS
+          vbus_net: usb_vbus
+          dp_pin: D+
+          dp_net: usb_dp
+          dm_pin: D-
+          dm_net: usb_dm
+          gnd_pin: GND
+          gnd_net: gnd
+          placement:
+            x_mm: 0
+            y_mm: 0
+            side: top
+    required_inputs:
+      - Fill parameters.max_connector_to_protection_distance_mm from the board's ESD/layout rule or datasheet/layout guidance; do not invent the limit from component coordinates.
+      - Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.
   - id: reset_release_after_power_valid_u1
     kind: reset_boot
     confidence: medium

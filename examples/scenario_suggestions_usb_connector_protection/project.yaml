@@ -41,5 +41,19 @@ board:
       nominal_voltage: 3.3
     gnd:
       kind: ground
+  layout:
+    placements:
+      J1:
+        x_mm: 0.0
+        y_mm: 0.0
+        side: top
+      UESD:
+        x_mm: 1.0
+        y_mm: 0.0
+        side: top
+      UVBUS:
+        x_mm: 1.5
+        y_mm: 0.0
+        side: top
 
 scenarios: []

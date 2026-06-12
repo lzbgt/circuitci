@@ -157,7 +157,9 @@
                     "reference_net": { "type": "string", "minLength": 1 },
                     "reference": { "enum": ["ground", "power"] },
                     "working_voltage_max_V": { "type": "number", "exclusiveMinimum": 0 },
-                    "line_capacitance_F": { "type": "number", "minimum": 0 }
+                    "line_capacitance_F": { "type": "number", "minimum": 0 },
+                    "placement": { "$ref": "#/$defs/placement" },
+                    "distance_to_target_mm": { "type": "number", "minimum": 0 }
                   },
                   "additionalProperties": false
                 }
@@ -189,7 +191,8 @@
                     "gnd_pin": { "type": "string", "minLength": 1 },
                     "gnd_net": { "type": "string", "minLength": 1 },
                     "shield_pin": { "type": "string", "minLength": 1 },
-                    "shield_net": { "type": "string", "minLength": 1 }
+                    "shield_net": { "type": "string", "minLength": 1 },
+                    "placement": { "$ref": "#/$defs/placement" }
                   },
                   "additionalProperties": false
                 }
@@ -335,6 +338,16 @@
         "net": { "type": "string", "minLength": 1 },
         "supply_pin": { "type": "string", "minLength": 1 },
         "supply_net": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "placement": {
+      "type": "object",
+      "required": ["x_mm", "y_mm"],
+      "properties": {
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" },
+        "side": { "enum": ["top", "bottom"] }
       },
       "additionalProperties": false
     }
