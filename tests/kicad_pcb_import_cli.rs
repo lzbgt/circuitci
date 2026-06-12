@@ -1121,19 +1121,85 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         1.0
     );
 
+    let pcb_text = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let property_offset = "(property \"CircuitCI_EntryDirectionOffsetDeg\" \"0.0\"";
+    assert_eq!(pcb_text.matches(property_offset).count(), 1);
+    let nonzero_property_pcb = dir
+        .path()
+        .join("board_with_nonzero_entry_direction_property.kicad_pcb");
+    std::fs::write(
+        &nonzero_property_pcb,
+        pcb_text.replace(
+            property_offset,
+            "(property \"CircuitCI_EntryDirectionOffsetDeg\" \"10.0\"",
+        ),
+    )
+    .unwrap();
+    let property_direction_project = dir
+        .path()
+        .join("usb_connector_property_direction_checks.yaml");
+    import_kicad_pcb(
+        nonzero_property_pcb.to_str().unwrap(),
+        "examples/import_kicad_usb_connector_protection_suggestions/project_checks.yaml",
+        &property_direction_project,
+    );
+    assert_yaml_file_valid(&property_direction_project, &validator);
+
+    let property_direction_report_dir = dir.path().join("property_direction_checks.report");
+    let property_direction_validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            property_direction_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            property_direction_report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(property_direction_validate_status.success());
+    let property_direction_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(property_direction_report_dir.join("report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(property_direction_report["result"], "fail");
+    let property_direction_entry_failure = property_direction_report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding with nonzero footprint-property direction");
+    assert_eq!(
+        property_direction_entry_failure["measured"]["entry_direction_source"],
+        "footprint_property_offset"
+    );
+    assert_eq!(
+        property_direction_entry_failure["measured"]["entry_direction_offset_deg"],
+        10.0
+    );
+    assert_eq!(
+        property_direction_entry_failure["measured"]["entry_direction_deg"],
+        10.0
+    );
+    assert_eq!(
+        property_direction_entry_failure["measured"]["obstructing_component"],
+        "UVBUS"
+    );
+    assert_report_schema_valid(&property_direction_report);
+
     let stripped_pcb = dir
         .path()
         .join("board_without_entry_direction_or_aperture.kicad_pcb");
-    let stripped_pcb_text = std::fs::read_to_string(
-        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
-    )
-    .unwrap()
-    .lines()
-    .filter(|line| {
-        !line.contains("CircuitCI_EntryAperture") && !line.contains("CircuitCI_EntryDirection")
-    })
-    .collect::<Vec<_>>()
-    .join("\n");
+    let stripped_pcb_text = pcb_text
+        .lines()
+        .filter(|line| {
+            !line.contains("CircuitCI_EntryAperture") && !line.contains("CircuitCI_EntryDirection")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
     std::fs::write(&stripped_pcb, stripped_pcb_text).unwrap();
     let mapping_aperture_project = dir
         .path()

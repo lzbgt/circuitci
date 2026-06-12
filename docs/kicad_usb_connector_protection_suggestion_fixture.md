@@ -99,16 +99,20 @@ precedence when both sources are present.
 `project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
 wide corridor, proving the imported aperture evidence and `UESD` fabrication
 rectangle are reported as an entry-corridor obstruction. Regression coverage
-also strips the J1 `CircuitCI_EntryDirectionOffsetDeg` and
-`CircuitCI_EntryAperture*` footprint properties before PCB import and proves
-executable validation falls back to `project_checks.yaml` `kicad_mapping`
-metadata, reporting `entry_direction_source: kicad_mapping_offset`,
+also rewrites the J1 `CircuitCI_EntryDirectionOffsetDeg` footprint property to
+`10.0 deg` in a temporary PCB and proves executable validation reports
+`entry_direction_source: footprint_property_offset` and
+`entry_direction_deg: 10.0`. A second path strips the J1
+`CircuitCI_EntryDirectionOffsetDeg` and `CircuitCI_EntryAperture*` footprint
+properties before PCB import and proves executable validation falls back to
+`project_checks.yaml` `kicad_mapping` metadata, reporting
+`entry_direction_source: kicad_mapping_offset`,
 `entry_aperture_source: kicad_mapping_aperture`, and the mapped `1.2 mm`
-aperture width. The same regression rewrites the mapping fallback offset to
+aperture width. That fallback path also rewrites the mapping offset to
 `10.0 deg` in a temporary checks file and proves executable validation reports
-`entry_direction_deg: 10.0`, so the mapping offset changes the checked corridor
-direction rather than only annotating the report. With that shifted direction,
-the nearest entry-corridor obstruction changes to `UVBUS`.
+`entry_direction_deg: 10.0`, so both metadata sources change the checked
+corridor direction rather than only annotating the report. With that shifted
+direction, the nearest entry-corridor obstruction changes to `UVBUS`.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under
