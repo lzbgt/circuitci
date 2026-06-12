@@ -71,7 +71,9 @@
               "side_a_supply_pin": { "type": "string", "minLength": 1 },
               "side_b_supply_pin": { "type": "string", "minLength": 1 },
               "direction": { "enum": ["a_to_b", "b_to_a", "bidirectional"] },
-              "unpowered_isolation": { "type": "boolean" }
+              "unpowered_isolation": { "type": "boolean" },
+              "enable_pin": { "type": "string", "minLength": 1 },
+              "disabled_state": { "enum": ["high", "low", "z"] }
             },
             "additionalProperties": false
           }

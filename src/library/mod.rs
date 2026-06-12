@@ -60,6 +60,10 @@ pub struct SignalConditioningChannel {
     pub direction: Option<String>,
     #[serde(default)]
     pub unpowered_isolation: Option<bool>,
+    #[serde(default)]
+    pub enable_pin: Option<String>,
+    #[serde(default)]
+    pub disabled_state: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

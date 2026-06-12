@@ -221,7 +221,40 @@ scenarios:
    `powered` state.
 5. If both side supplies have the same powered state, the static review passes.
 6. If one side is powered and the other is unpowered, the channel must declare
-   `unpowered_isolation: true`; otherwise the check fails critically.
+   `unpowered_isolation: true`, or the scenario must observe the channel's
+   declared `enable_pin` in its `disabled_state`; otherwise the check fails
+   critically.
+
+For controlled level shifters, declare the disabled control state in the
+component model and prove it in the scenario:
+
+```yaml
+signal_conditioning:
+  channels:
+    - name: ch1
+      kind: level_shifter
+      side_a_pin: A1
+      side_b_pin: B1
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
+
+scenarios:
+  - name: level_shifter_unpowered_side
+    type: interface_protection
+    target: { component: U3 }
+    parameters: { channel: ch1 }
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    pin_states:
+      - component: U3
+        pin: OE
+        mode: input
+        state: low
+```
 
 This is a static datasheet-contract check. It does not prove propagation delay,
 edge rate, leakage, clamp current, ESD pulse behavior, or analog waveform

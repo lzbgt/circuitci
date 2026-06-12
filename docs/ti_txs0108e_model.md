@@ -20,6 +20,9 @@ needed for static validation:
 - The model records `unpowered_isolation: false` for each channel because this
   pack does not treat TXS0108E as an unconditional powered-to-unpowered
   isolator.
+- Each channel records `enable_pin: OE` and `disabled_state: low`, so a
+  powered-to-unpowered review can pass only when the scenario proves the shared
+  OE control is low.
 - Datasheet guidance says OE low places outputs in high impedance, and OE should
   be held low through power-up or power-down and not enabled until both supplies
   are ramped and stable.
@@ -28,8 +31,8 @@ needed for static validation:
 
 `INTERFACE_PROTECTION_REVIEW` can use this model to catch designs where one side
 of the TXS0108E is powered and the other is unpowered without explicit isolation
-or OE-state evidence. This is intentionally conservative. A passing board should
-model the rail states, OE/reset behavior, and any timing scenario needed to show
+or OE-low evidence. This is intentionally conservative. A passing board should
+model the rail states, OE/reset behavior, and any timing scenario needed to prove
 that the device is high impedance before relying on the level shifter for
 protection.
 

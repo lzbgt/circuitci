@@ -123,6 +123,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
 ```
 
 - `kind` is one of `level_shifter`, `protection`, `series_resistor`, or
@@ -133,11 +135,16 @@ signal_conditioning:
 - `direction` is `a_to_b`, `b_to_a`, or `bidirectional`.
 - `unpowered_isolation` records whether the datasheet guarantees isolation when
   one side's supply is absent.
+- `enable_pin` and `disabled_state` optionally record the channel-control pin
+  and the logic state that disables the channel.
 
 `circuitci suggest-scenarios` uses this metadata to emit non-runnable
 `interface_protection` review templates. It does not treat the metadata alone as
 proof that a level shifter prevents backdrive; agents must confirm datasheet
 conditions, OE/reset state, and any unpowered-side behavior before sign-off.
+`INTERFACE_PROTECTION_REVIEW` accepts a powered-to-unpowered channel only when
+the model declares `unpowered_isolation: true`, or when the scenario observes
+the declared `enable_pin` in its `disabled_state`.
 
 The first back-drive approximation computes injection current as:
 

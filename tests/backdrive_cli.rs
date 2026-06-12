@@ -79,8 +79,39 @@ fn ti_txs0108e_unpowered_side_requires_isolation_or_oe_evidence() {
         failure["message"]
             .as_str()
             .unwrap()
-            .contains("unpowered_isolation is false")
+            .contains("does not prove the channel is disabled")
     );
+    assert_eq!(failure["limit"]["enable_pin"], "OE");
+    assert_eq!(failure["limit"]["required_disabled_state"], "low");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_txs0108e_oe_low_allows_one_sided_power_review() {
+    let report = run_validation("examples/good_ti_txs0108e_oe_low_unpowered_side/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn ti_txs0108e_oe_low_requires_connected_enable_pin() {
+    let report = run_validation("examples/bad_ti_txs0108e_oe_low_unconnected/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "INTERFACE_PROTECTION_REVIEW")
+        .expect("interface protection finding");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("does not prove the channel is disabled")
+    );
+    assert_eq!(failure["limit"]["enable_pin"], "OE");
+    assert_eq!(failure["limit"]["required_disabled_state"], "low");
     assert_report_schema_valid(&report);
 }
 

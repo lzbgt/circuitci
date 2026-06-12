@@ -1,4 +1,4 @@
-use crate::board_ir::{NetKind, Scenario};
+use crate::board_ir::{NetKind, PinLogicState, Scenario};
 use crate::library::{BoundBoard, SignalConditioningChannel};
 use crate::reports::Finding;
 use serde_json::json;
@@ -101,22 +101,70 @@ pub(super) fn validate_interface_protection(
     }
     match channel.unpowered_isolation {
         Some(true) => {}
-        Some(false) => findings.push(unpowered_isolation_finding(
-            scenario,
-            &target.component,
-            channel,
-            &side_a,
-            &side_b,
-            "datasheet metadata says unpowered_isolation is false",
-        )),
-        None => findings.push(unpowered_isolation_finding(
-            scenario,
-            &target.component,
-            channel,
-            &side_a,
-            &side_b,
-            "datasheet metadata does not declare unpowered_isolation",
-        )),
+        Some(false) => {
+            if channel_disabled_by_observation(bound, scenario, &target.component, channel) {
+                return;
+            }
+            findings.push(unpowered_isolation_finding(
+                scenario,
+                &target.component,
+                channel,
+                &side_a,
+                &side_b,
+                "datasheet metadata says unpowered_isolation is false and the scenario does not prove the channel is disabled",
+            ));
+        }
+        None => {
+            if channel_disabled_by_observation(bound, scenario, &target.component, channel) {
+                return;
+            }
+            findings.push(unpowered_isolation_finding(
+                scenario,
+                &target.component,
+                channel,
+                &side_a,
+                &side_b,
+                "datasheet metadata does not declare unpowered_isolation and the scenario does not prove the channel is disabled",
+            ));
+        }
+    }
+}
+
+fn channel_disabled_by_observation(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    channel: &SignalConditioningChannel,
+) -> bool {
+    let Some(enable_pin) = &channel.enable_pin else {
+        return false;
+    };
+    let Some(component) = bound.project.board.components.get(component_id) else {
+        return false;
+    };
+    if !component.pins.contains_key(enable_pin) {
+        return false;
+    }
+    let Some(disabled_state) = channel
+        .disabled_state
+        .as_deref()
+        .and_then(parse_logic_state)
+    else {
+        return false;
+    };
+    scenario.pin_states.iter().any(|state| {
+        state.component == component_id
+            && state.pin == *enable_pin
+            && state.state.as_ref() == Some(&disabled_state)
+    })
+}
+
+fn parse_logic_state(value: &str) -> Option<PinLogicState> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "high" => Some(PinLogicState::High),
+        "low" => Some(PinLogicState::Low),
+        "z" => Some(PinLogicState::Z),
+        _ => None,
     }
 }
 
@@ -309,10 +357,30 @@ fn unpowered_isolation_finding(
     finding
         .limit
         .insert("required_unpowered_isolation".to_string(), json!(true));
+    if let Some(enable_pin) = &channel.enable_pin {
+        finding
+            .limit
+            .insert("enable_pin".to_string(), json!(enable_pin));
+    }
+    if let Some(disabled_state) = &channel.disabled_state {
+        finding
+            .limit
+            .insert("required_disabled_state".to_string(), json!(disabled_state));
+    }
     finding.suggested_fixes = vec![
         "Use a level shifter, bus switch, or protection device whose datasheet guarantees powered-to-unpowered isolation for this rail state.".to_string(),
         "Hold the driving side high impedance until both sides are powered, or add an explicit isolation switch controlled by a valid power-good signal.".to_string(),
         "Add a GPIO_BACKDRIVE or analog_transient scenario for the unpowered condition when the datasheet does not guarantee isolation.".to_string(),
     ];
+    if let (Some(enable_pin), Some(disabled_state)) = (&channel.enable_pin, &channel.disabled_state)
+    {
+        finding.suggested_fixes.insert(
+            0,
+            format!(
+                "Prove {component_id}.{enable_pin} is held {disabled_state} whenever only one side of channel {} is powered, or change the control circuit so that state is guaranteed by power sequencing.",
+                channel.name
+            ),
+        );
+    }
     finding
 }

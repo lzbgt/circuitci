@@ -78,6 +78,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch2
       kind: level_shifter
       side_a_pin: A2
@@ -86,6 +88,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch3
       kind: level_shifter
       side_a_pin: A3
@@ -94,6 +98,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch4
       kind: level_shifter
       side_a_pin: A4
@@ -102,6 +108,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch5
       kind: level_shifter
       side_a_pin: A5
@@ -110,6 +118,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch6
       kind: level_shifter
       side_a_pin: A6
@@ -118,6 +128,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch7
       kind: level_shifter
       side_a_pin: A7
@@ -126,6 +138,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
     - name: ch8
       kind: level_shifter
       side_a_pin: A8
@@ -134,6 +148,8 @@ signal_conditioning:
       side_b_supply_pin: VCCB
       direction: bidirectional
       unpowered_isolation: false
+      enable_pin: OE
+      disabled_state: low
 datasheet:
   manufacturer: Texas Instruments
   part_number: TXS0108E
