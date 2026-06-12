@@ -107,7 +107,12 @@ The command is conservative:
   exists for both data lines, the template sets
   `require_route_pad_contact_evidence: true` so validation measures
   connector-to-protection route order from pad centers instead of component
-  placement centers.
+  placement centers. Each matching `scenario.usb_routes[]` entry also reports
+  `connector_pad`, `protection_pad`,
+  `connector_pad_to_route_distance_mm`,
+  `protection_pad_to_route_distance_mm`, and
+  `connector_to_protection_pad_route_distance_mm` when the imported pad centers
+  can be projected onto the routed net on compatible copper layers.
 - It emits non-runnable `USB_VBUS_ROUTE_VALID` templates when the USB connector,
   VBUS protection component, placements, and `board.layout.routes` evidence are
   present. The template includes `scenario.usb_routes[]` with VBUS net, route

@@ -215,6 +215,31 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                     && usb_route["expected_data_line_width_mm"] == 0.15
                     && usb_route["measured_data_line_width_mm"] == 0.15
                     && usb_route["data_line_width_delta_mm"] == 0.0
+                    && usb_route["connector_pad"]["component"] == "J1"
+                    && usb_route["connector_pad"]["pin"] == "D+"
+                    && usb_route["connector_pad"]["net"] == "net_usb_dp"
+                    && usb_route["connector_pad"]["x_mm"] == 0.0
+                    && usb_route["connector_pad"]["layers"][0] == "F.Cu"
+                    && usb_route["protection_pad"]["component"] == "UESD"
+                    && usb_route["protection_pad"]["pin"] == "D1+"
+                    && usb_route["protection_pad"]["net"] == "net_usb_dp"
+                    && usb_route["protection_pad"]["x_mm"] == 1.0
+                    && usb_route["protection_pad"]["layers"][0] == "F.Cu"
+                    && usb_route["connector_pad_to_route_distance_mm"] == 0.0
+                    && usb_route["protection_pad_to_route_distance_mm"] == 0.0
+                    && usb_route["connector_to_protection_pad_route_distance_mm"] == 1.0
+            })
+    );
+    assert!(
+        route["scenario"]["usb_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|usb_route| {
+                usb_route["signal"] == "D-"
+                    && usb_route["connector_pad"]["pin"] == "D-"
+                    && usb_route["protection_pad"]["pin"] == "D1-"
+                    && usb_route["connector_to_protection_pad_route_distance_mm"] == 1.0
             })
     );
     let route_pair = &route["scenario"]["usb_route_pairs"].as_array().unwrap()[0];

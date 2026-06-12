@@ -1,9 +1,10 @@
 use super::super::{
     ScenarioSuggestion, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
     SuggestedUsbConnector, SuggestedUsbFilledZoneClearanceSegment, SuggestedUsbGroundZoneContact,
-    SuggestedUsbRoute, SuggestedUsbRoutePair, SuggestedUsbUnreferencedSegment,
-    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
-    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
+    SuggestedUsbRoute, SuggestedUsbRoutePad, SuggestedUsbRoutePair,
+    SuggestedUsbUnreferencedSegment, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
+    USB_VBUS_ROUTE_VALID,
 };
 use super::{
     component_placement, placement_distance_mm, sanitized_name, suggested_placement,
@@ -262,12 +263,16 @@ pub(super) fn usb_route_geometry_suggestion(
         "D+",
         &suggested_connector.dp_net,
         Some(dp_clamp.component.clone()),
+        Some((component_id, connector.dp_pin.as_str())),
+        Some((dp_clamp.component.as_str(), dp_clamp.protected_pin.as_str())),
     )?;
     let dm_route = suggested_usb_route(
         bound,
         "D-",
         &suggested_connector.dm_net,
         Some(dm_clamp.component.clone()),
+        Some((component_id, connector.dm_pin.as_str())),
+        Some((dm_clamp.component.as_str(), dm_clamp.protected_pin.as_str())),
     )?;
     let route_pair = suggested_usb_route_pair(bound, &dp_route, &dm_route)?;
     let route_limits = suggested_usb_route_limits(bound, &dp_route.net, &dm_route.net);
@@ -632,6 +637,8 @@ fn suggested_usb_route(
     signal: &str,
     net_name: &str,
     protection_component: Option<String>,
+    connector_pad_ref: Option<(&str, &str)>,
+    protection_pad_ref: Option<(&str, &str)>,
 ) -> Option<SuggestedUsbRoute> {
     let route = bound.project.board.layout.routes.get(net_name)?;
     if route.segments.is_empty() {
@@ -647,6 +654,24 @@ fn suggested_usb_route(
         .and_then(expected_usb_data_width_mm);
     let width_evidence = expected_data_line_width_mm
         .and_then(|expected_width_mm| route_width_delta(route, expected_width_mm));
+    let connector_pad = connector_pad_ref.and_then(|(component_id, pin)| {
+        suggested_usb_route_pad(bound, component_id, pin, net_name)
+    });
+    let protection_pad = protection_pad_ref.and_then(|(component_id, pin)| {
+        suggested_usb_route_pad(bound, component_id, pin, net_name)
+    });
+    let connector_pad_to_route_distance_mm = connector_pad
+        .as_ref()
+        .and_then(|pad| pad_to_route_distance_mm(route, pad));
+    let protection_pad_to_route_distance_mm = protection_pad
+        .as_ref()
+        .and_then(|pad| pad_to_route_distance_mm(route, pad));
+    let connector_to_protection_pad_route_distance_mm =
+        connector_pad.as_ref().and_then(|connector_pad| {
+            protection_pad.as_ref().and_then(|protection_pad| {
+                route_distance_between_pads_mm(route, connector_pad, protection_pad)
+            })
+        });
     Some(SuggestedUsbRoute {
         signal: signal.to_string(),
         net: net_name.to_string(),
@@ -658,6 +683,11 @@ fn suggested_usb_route(
         expected_vbus_route_width_mm: None,
         measured_vbus_route_width_min_mm: None,
         protection_component,
+        connector_pad,
+        protection_pad,
+        connector_pad_to_route_distance_mm,
+        protection_pad_to_route_distance_mm,
+        connector_to_protection_pad_route_distance_mm,
         unreferenced_route_length_mm: None,
         unreferenced_segments: None,
         filled_unreferenced_route_length_mm: None,
@@ -697,6 +727,11 @@ fn suggested_usb_vbus_route(
         expected_vbus_route_width_mm,
         measured_vbus_route_width_min_mm: narrowest_route_width_mm(route),
         protection_component,
+        connector_pad: None,
+        protection_pad: None,
+        connector_pad_to_route_distance_mm: None,
+        protection_pad_to_route_distance_mm: None,
+        connector_to_protection_pad_route_distance_mm: None,
         unreferenced_route_length_mm: None,
         unreferenced_segments: None,
         filled_unreferenced_route_length_mm: None,
@@ -765,6 +800,11 @@ fn suggested_usb_route_with_return_path(
         expected_vbus_route_width_mm: None,
         measured_vbus_route_width_min_mm: None,
         protection_component: None,
+        connector_pad: None,
+        protection_pad: None,
+        connector_pad_to_route_distance_mm: None,
+        protection_pad_to_route_distance_mm: None,
+        connector_to_protection_pad_route_distance_mm: None,
         unreferenced_route_length_mm: Some(unreferenced_route_length_mm),
         unreferenced_segments: Some(unreferenced_segments),
         filled_unreferenced_route_length_mm,
@@ -1025,6 +1065,220 @@ fn route_pad_exists(
         return false;
     };
     pad.net == expected_net && pad.at.x_mm.is_finite() && pad.at.y_mm.is_finite()
+}
+
+fn suggested_usb_route_pad(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    pin: &str,
+    expected_net: &str,
+) -> Option<SuggestedUsbRoutePad> {
+    let pad = bound
+        .project
+        .board
+        .layout
+        .pads
+        .get(component_id)?
+        .get(pin)?;
+    if pad.net != expected_net || !pad.at.x_mm.is_finite() || !pad.at.y_mm.is_finite() {
+        return None;
+    }
+    Some(SuggestedUsbRoutePad {
+        component: component_id.to_string(),
+        pin: pin.to_string(),
+        net: pad.net.clone(),
+        x_mm: pad.at.x_mm,
+        y_mm: pad.at.y_mm,
+        layers: pad.layers.clone(),
+    })
+}
+
+fn pad_to_route_distance_mm(route: &NetRoute, pad: &SuggestedUsbRoutePad) -> Option<f64> {
+    nearest_pad_projection(route, pad).map(|projection| projection.distance_to_pad_mm)
+}
+
+fn route_distance_between_pads_mm(
+    route: &NetRoute,
+    from: &SuggestedUsbRoutePad,
+    to: &SuggestedUsbRoutePad,
+) -> Option<f64> {
+    let from_projection = nearest_pad_projection(route, from)?;
+    let to_projection = nearest_pad_projection(route, to)?;
+    shortest_route_distance_mm(route, &from_projection, &to_projection)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PadProjection {
+    segment_index: usize,
+    t: f64,
+    x_mm: f64,
+    y_mm: f64,
+    distance_to_pad_mm: f64,
+}
+
+fn nearest_pad_projection(route: &NetRoute, pad: &SuggestedUsbRoutePad) -> Option<PadProjection> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .filter(|(_, segment)| pad_layers_include(&pad.layers, segment.layer.as_str()))
+        .filter_map(|(segment_index, segment)| {
+            project_point_to_segment(
+                pad.x_mm,
+                pad.y_mm,
+                segment.start.x_mm,
+                segment.start.y_mm,
+                segment.end.x_mm,
+                segment.end.y_mm,
+            )
+            .map(|projection| PadProjection {
+                segment_index,
+                t: projection.t,
+                x_mm: projection.x_mm,
+                y_mm: projection.y_mm,
+                distance_to_pad_mm: (pad.x_mm - projection.x_mm).hypot(pad.y_mm - projection.y_mm),
+            })
+        })
+        .min_by(|left, right| left.distance_to_pad_mm.total_cmp(&right.distance_to_pad_mm))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SegmentProjection {
+    t: f64,
+    x_mm: f64,
+    y_mm: f64,
+}
+
+fn project_point_to_segment(
+    point_x_mm: f64,
+    point_y_mm: f64,
+    start_x_mm: f64,
+    start_y_mm: f64,
+    end_x_mm: f64,
+    end_y_mm: f64,
+) -> Option<SegmentProjection> {
+    let dx = end_x_mm - start_x_mm;
+    let dy = end_y_mm - start_y_mm;
+    let length_squared = dx.mul_add(dx, dy * dy);
+    if length_squared <= f64::EPSILON {
+        return None;
+    }
+    let raw_t = ((point_x_mm - start_x_mm) * dx + (point_y_mm - start_y_mm) * dy) / length_squared;
+    let t = raw_t.clamp(0.0, 1.0);
+    Some(SegmentProjection {
+        t,
+        x_mm: start_x_mm + t * dx,
+        y_mm: start_y_mm + t * dy,
+    })
+}
+
+fn shortest_route_distance_mm(
+    route: &NetRoute,
+    from: &PadProjection,
+    to: &PadProjection,
+) -> Option<f64> {
+    let mut graph = RouteGraph::default();
+    for (segment_index, segment) in route.segments.iter().enumerate() {
+        add_segment_to_graph(&mut graph, segment_index, segment, from, to);
+    }
+    let from_node = graph.find_node(from.x_mm, from.y_mm)?;
+    let to_node = graph.find_node(to.x_mm, to.y_mm)?;
+    graph.shortest_distance(from_node, to_node)
+}
+
+#[derive(Default)]
+struct RouteGraph {
+    nodes: Vec<(f64, f64)>,
+    edges: Vec<Vec<(usize, f64)>>,
+}
+
+impl RouteGraph {
+    fn node_for(&mut self, x_mm: f64, y_mm: f64) -> usize {
+        if let Some(index) = self.find_node(x_mm, y_mm) {
+            return index;
+        }
+        let index = self.nodes.len();
+        self.nodes.push((x_mm, y_mm));
+        self.edges.push(Vec::new());
+        index
+    }
+
+    fn find_node(&self, x_mm: f64, y_mm: f64) -> Option<usize> {
+        self.nodes.iter().position(|(candidate_x, candidate_y)| {
+            points_equal(*candidate_x, *candidate_y, x_mm, y_mm)
+        })
+    }
+
+    fn connect(&mut self, a: usize, b: usize, distance_mm: f64) {
+        if a == b || distance_mm <= f64::EPSILON {
+            return;
+        }
+        self.edges[a].push((b, distance_mm));
+        self.edges[b].push((a, distance_mm));
+    }
+
+    fn shortest_distance(&self, start: usize, end: usize) -> Option<f64> {
+        let mut distances = vec![f64::INFINITY; self.nodes.len()];
+        let mut visited = vec![false; self.nodes.len()];
+        distances[start] = 0.0;
+        loop {
+            let Some(current) = distances
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| !visited[*index])
+                .min_by(|(_, left), (_, right)| left.total_cmp(right))
+                .map(|(index, _)| index)
+            else {
+                break;
+            };
+            if current == end {
+                return Some(distances[current]);
+            }
+            visited[current] = true;
+            for (next, edge_distance) in &self.edges[current] {
+                let candidate = distances[current] + edge_distance;
+                if candidate < distances[*next] {
+                    distances[*next] = candidate;
+                }
+            }
+        }
+        distances[end].is_finite().then_some(distances[end])
+    }
+}
+
+fn add_segment_to_graph(
+    graph: &mut RouteGraph,
+    segment_index: usize,
+    segment: &RouteSegment,
+    from: &PadProjection,
+    to: &PadProjection,
+) {
+    let mut points = vec![
+        (0.0, segment.start.x_mm, segment.start.y_mm),
+        (1.0, segment.end.x_mm, segment.end.y_mm),
+    ];
+    if from.segment_index == segment_index {
+        points.push((from.t, from.x_mm, from.y_mm));
+    }
+    if to.segment_index == segment_index {
+        points.push((to.t, to.x_mm, to.y_mm));
+    }
+    points.sort_by(|left, right| left.0.total_cmp(&right.0));
+    points.dedup_by(|left, right| points_equal(left.1, left.2, right.1, right.2));
+    for window in points.windows(2) {
+        let first = graph.node_for(window[0].1, window[0].2);
+        let second = graph.node_for(window[1].1, window[1].2);
+        graph.connect(
+            first,
+            second,
+            (window[0].1 - window[1].1).hypot(window[0].2 - window[1].2),
+        );
+    }
+}
+
+fn points_equal(a_x_mm: f64, a_y_mm: f64, b_x_mm: f64, b_y_mm: f64) -> bool {
+    const EPSILON_MM: f64 = 1.0e-9;
+    (a_x_mm - b_x_mm).abs() <= EPSILON_MM && (a_y_mm - b_y_mm).abs() <= EPSILON_MM
 }
 
 fn ground_zone_contacts(

@@ -145,6 +145,10 @@ Route-geometry validation:
   via-count, imported expected data-line width, measured line width, line-width
   delta, measured pair mismatch, via-count delta, imported expected pair gap,
   measured pair gap, and pair-gap delta before choosing board-specific limits.
+  When same-net connector/protection pad centers are available, each
+  `scenario.usb_routes[]` entry also reports the pad records and measured
+  connector-to-protection pad route distance used by
+  `require_route_pad_contact_evidence`.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.

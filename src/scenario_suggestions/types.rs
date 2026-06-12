@@ -219,6 +219,16 @@ pub struct SuggestedUsbRoute {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_pad: Option<SuggestedUsbRoutePad>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protection_pad: Option<SuggestedUsbRoutePad>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_pad_to_route_distance_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protection_pad_to_route_distance_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_to_protection_pad_route_distance_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub unreferenced_route_length_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unreferenced_segments: Option<Vec<SuggestedUsbUnreferencedSegment>>,
@@ -234,6 +244,16 @@ pub struct SuggestedUsbRoute {
     pub ground_zone_contacts: Option<Vec<SuggestedUsbGroundZoneContact>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filled_ground_zone_contacts: Option<Vec<SuggestedUsbGroundZoneContact>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedUsbRoutePad {
+    pub component: String,
+    pub pin: String,
+    pub net: String,
+    pub x_mm: f64,
+    pub y_mm: f64,
+    pub layers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

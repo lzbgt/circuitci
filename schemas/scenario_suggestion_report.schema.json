@@ -218,6 +218,11 @@
                     "expected_vbus_route_width_mm": { "type": "number", "exclusiveMinimum": 0 },
                     "measured_vbus_route_width_min_mm": { "type": "number", "exclusiveMinimum": 0 },
                     "protection_component": { "type": "string", "minLength": 1 },
+                    "connector_pad": { "$ref": "#/$defs/usb_route_pad" },
+                    "protection_pad": { "$ref": "#/$defs/usb_route_pad" },
+                    "connector_pad_to_route_distance_mm": { "type": "number", "minimum": 0 },
+                    "protection_pad_to_route_distance_mm": { "type": "number", "minimum": 0 },
+                    "connector_to_protection_pad_route_distance_mm": { "type": "number", "minimum": 0 },
                     "unreferenced_route_length_mm": { "type": "number", "minimum": 0 },
                     "unreferenced_segments": {
                       "type": "array",
@@ -478,6 +483,22 @@
         "x_mm": { "type": "number" },
         "y_mm": { "type": "number" },
         "side": { "enum": ["top", "bottom"] }
+      },
+      "additionalProperties": false
+    },
+    "usb_route_pad": {
+      "type": "object",
+      "required": ["component", "pin", "net", "x_mm", "y_mm", "layers"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "pin": { "type": "string", "minLength": 1 },
+        "net": { "type": "string", "minLength": 1 },
+        "x_mm": { "type": "number" },
+        "y_mm": { "type": "number" },
+        "layers": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       },
       "additionalProperties": false
     },
