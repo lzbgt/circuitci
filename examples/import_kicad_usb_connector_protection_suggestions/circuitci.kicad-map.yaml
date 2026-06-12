@@ -12,6 +12,7 @@ components:
       "4": GND
       "5": SHIELD
     layout:
+      entry_direction_offset_deg: 0.0
       entry_aperture:
         front_offset_mm: 0.0
         lateral_offset_mm: 0.0

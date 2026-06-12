@@ -64,7 +64,17 @@ pub struct LayoutFootprint {
     #[serde(default)]
     pub arcs: Vec<LayoutFootprintArc>,
     #[serde(default)]
+    pub entry_direction: Option<LayoutEntryDirection>,
+    #[serde(default)]
     pub entry_aperture: Option<LayoutEntryAperture>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutEntryDirection {
+    #[serde(default)]
+    pub offset_deg: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

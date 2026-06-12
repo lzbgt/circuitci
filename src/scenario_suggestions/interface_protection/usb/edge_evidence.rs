@@ -1,8 +1,8 @@
 use super::super::super::{
     SuggestedBoardEdge, SuggestedComponentClearance, SuggestedFootprint, SuggestedFootprintArc,
-    SuggestedFootprintCircle, SuggestedFootprintEntryAperture, SuggestedFootprintPolygon,
-    SuggestedFootprintRectangle, SuggestedFootprintSegment, SuggestedPoint,
-    SuggestedUsbEntryClearance, SuggestedUsbEntryObstruction,
+    SuggestedFootprintCircle, SuggestedFootprintEntryAperture, SuggestedFootprintEntryDirection,
+    SuggestedFootprintPolygon, SuggestedFootprintRectangle, SuggestedFootprintSegment,
+    SuggestedPoint, SuggestedUsbEntryClearance, SuggestedUsbEntryObstruction,
 };
 use super::super::component_placement;
 use crate::board_ir::{
@@ -77,6 +77,7 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
         || !polygons.is_empty()
         || !circles.is_empty()
         || !arcs.is_empty()
+        || footprint.entry_direction.is_some()
         || footprint.entry_aperture.is_some())
     .then_some(SuggestedFootprint {
         segments,
@@ -84,6 +85,12 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
         polygons,
         circles,
         arcs,
+        entry_direction: footprint.entry_direction.as_ref().map(|entry_direction| {
+            SuggestedFootprintEntryDirection {
+                offset_deg: entry_direction.offset_deg,
+                source: entry_direction.source.clone(),
+            }
+        }),
         entry_aperture: footprint.entry_aperture.as_ref().map(|entry_aperture| {
             SuggestedFootprintEntryAperture {
                 front_offset_mm: entry_aperture.front_offset_mm,
@@ -119,7 +126,8 @@ pub(super) fn nearest_board_edge_evidence(
         .min_by(|left, right| left.1.distance_mm.total_cmp(&right.1.distance_mm))?;
     let edge_angle_deg = segment_angle_deg(edge.0);
     let outward_normal_deg = outward_normal_deg(edge.0, &centroid, edge_angle_deg);
-    let entry_direction_offset_deg = connector.entry_direction_offset_deg;
+    let (entry_direction_offset_deg, entry_direction_offset_source) =
+        connector_entry_direction_offset(bound, component_id, connector);
     let expected_connector_rotation_deg =
         normalize_rotation_deg(outward_normal_deg - entry_direction_offset_deg.unwrap_or(0.0));
     Some(SuggestedBoardEdge {
@@ -141,11 +149,36 @@ pub(super) fn nearest_board_edge_evidence(
         outward_normal_deg,
         expected_connector_rotation_deg: Some(expected_connector_rotation_deg),
         connector_entry_direction_offset_deg: entry_direction_offset_deg,
+        connector_entry_direction_offset_source: entry_direction_offset_source,
         connector_rotation_error_deg: angular_error_deg(
             rotation_deg,
             expected_connector_rotation_deg,
         ),
     })
+}
+
+fn connector_entry_direction_offset(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    connector: &UsbConnector,
+) -> (Option<f64>, Option<String>) {
+    let layout_offset_deg = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(component_id)
+        .and_then(|footprint| footprint.entry_direction.as_ref())
+        .and_then(|entry_direction| entry_direction.offset_deg);
+    if let Some(offset_deg) = layout_offset_deg {
+        return (Some(offset_deg), Some("kicad_mapping".to_string()));
+    }
+    (
+        connector.entry_direction_offset_deg,
+        connector
+            .entry_direction_offset_deg
+            .map(|_| "component_model".to_string()),
+    )
 }
 
 pub(super) fn nearest_component_clearance_evidence(

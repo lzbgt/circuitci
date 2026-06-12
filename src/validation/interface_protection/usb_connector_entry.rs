@@ -1,6 +1,6 @@
 use crate::board_ir::{
-    ComponentPlacement, LayoutEntryAperture, LayoutFootprintPolygon, LayoutFootprintSegment,
-    LayoutPoint, Scenario,
+    ComponentPlacement, LayoutEntryAperture, LayoutEntryDirection, LayoutFootprintPolygon,
+    LayoutFootprintSegment, LayoutPoint, Scenario,
 };
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
@@ -123,6 +123,13 @@ pub(super) fn validate_usb_connector_entry_clearance(
         ));
         return;
     }
+    let layout_direction = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(&target.component)
+        .and_then(|footprint| footprint.entry_direction.as_ref());
     let entry_direction = match scenario_numeric_parameter(
         scenario,
         "entry_direction_deg",
@@ -134,7 +141,9 @@ pub(super) fn validate_usb_connector_entry_clearance(
             offset_deg: None,
         },
         None => {
-            let Some(entry_direction) = model_entry_direction(placement, connector) else {
+            let Some(entry_direction) =
+                model_entry_direction(placement, connector, layout_direction)
+            else {
                 findings.push(entry_metadata_finding(
                     scenario,
                     &target.component,
@@ -213,15 +222,19 @@ pub(super) fn validate_usb_connector_entry_clearance(
 fn model_entry_direction(
     placement: &ComponentPlacement,
     connector: &UsbConnector,
+    layout_direction: Option<&LayoutEntryDirection>,
 ) -> Option<EntryDirectionEvidence> {
     let rotation_deg = placement.rotation_deg?;
-    let offset_deg = connector.entry_direction_offset_deg;
+    let layout_offset_deg = layout_direction.and_then(|entry_direction| entry_direction.offset_deg);
+    let offset_deg = layout_offset_deg.or(connector.entry_direction_offset_deg);
     let entry_direction_deg = (rotation_deg + offset_deg.unwrap_or(0.0)).rem_euclid(360.0);
     entry_direction_deg
         .is_finite()
         .then_some(EntryDirectionEvidence {
             deg: entry_direction_deg,
-            source: if offset_deg.is_some() {
+            source: if layout_offset_deg.is_some() {
+                "kicad_mapping_offset"
+            } else if offset_deg.is_some() {
                 "component_model_offset"
             } else {
                 "placement_rotation"

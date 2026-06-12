@@ -542,6 +542,9 @@
         "outward_normal_deg": { "type": "number" },
         "expected_connector_rotation_deg": { "type": "number" },
         "connector_entry_direction_offset_deg": { "type": "number" },
+        "connector_entry_direction_offset_source": {
+          "enum": ["component_model", "kicad_mapping"]
+        },
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false
@@ -583,7 +586,11 @@
       "properties": {
         "entry_direction_deg": { "type": "number" },
         "entry_direction_source": {
-          "enum": ["placement_rotation", "component_model_offset"]
+          "enum": [
+            "placement_rotation",
+            "component_model_offset",
+            "kicad_mapping_offset"
+          ]
         },
         "entry_direction_offset_deg": { "type": "number" },
         "entry_aperture_source": {
@@ -656,6 +663,14 @@
         "arcs": {
           "type": "array",
           "items": { "$ref": "#/$defs/footprint_arc" }
+        },
+        "entry_direction": {
+          "type": "object",
+          "properties": {
+            "offset_deg": { "type": "number" },
+            "source": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
         },
         "entry_aperture": {
           "type": "object",

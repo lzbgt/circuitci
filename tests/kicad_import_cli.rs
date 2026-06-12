@@ -936,6 +936,14 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         "kicad_mapping"
     );
     assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_direction"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_direction"]["offset_deg"],
+        0.0
+    );
+    assert_eq!(
         imported["board"]["layout"]["footprints"]["J1"]["entry_aperture"]["width_mm"],
         1.2
     );
@@ -1065,6 +1073,49 @@ fn import_kicad_schematic_rejects_invalid_layout_aperture_mapping() {
     assert!(
         stderr.contains("layout.entry_aperture.width_mm must be greater than zero"),
         "expected invalid layout aperture width error, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_invalid_layout_entry_direction_offset() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir
+        .path()
+        .join("invalid_layout_entry_direction.project.yaml");
+    let mapping_path = dir
+        .path()
+        .join("invalid_layout_entry_direction.kicad-map.yaml");
+    let mapping = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/circuitci.kicad-map.yaml",
+    )
+    .unwrap()
+    .replace(
+        "entry_direction_offset_deg: 0.0",
+        "entry_direction_offset_deg: .inf",
+    );
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let output_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_usb_connector_protection_suggestions/root.kicad_sch",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "invalid_layout_entry_direction",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output_status.status.success(),
+        "invalid layout entry-direction mapping unexpectedly imported"
+    );
+    let stderr = String::from_utf8(output_status.stderr).unwrap();
+    assert!(
+        stderr.contains("layout.entry_direction_offset_deg must be finite"),
+        "expected invalid layout entry-direction offset error, got:\n{stderr}"
     );
 }
 

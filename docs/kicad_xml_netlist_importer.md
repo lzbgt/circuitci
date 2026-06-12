@@ -69,6 +69,7 @@ components:
     model: generic.analog.resistor
     pin_alias: two_terminal_ab
     layout:
+      entry_direction_offset_deg: 0.0
       entry_aperture:
         front_offset_mm: 0.0
         lateral_offset_mm: 0.0
@@ -98,14 +99,19 @@ rules, unconnected source pins, duplicate target model pins, unresolved model
 IDs, and target pins not declared by the selected model all fail import before
 a project file is written.
 
-`components.<ref>.layout.entry_aperture` and
+`components.<ref>.layout.entry_direction_offset_deg`,
+`libsource_rules[].layout.entry_direction_offset_deg`,
+`components.<ref>.layout.entry_aperture`, and
 `libsource_rules[].layout.entry_aperture` are optional physical metadata for
-USB connector cable-entry checks. They are emitted as
+USB connector cable-entry checks. Direction offsets are emitted as
+`board.layout.footprints.<ref>.entry_direction` with source `kicad_mapping`.
+Entry apertures are emitted as
 `board.layout.footprints.<ref>.entry_aperture` with source `kicad_mapping`.
-Use this when a production KiCad footprint library should stay unmodified and
-the connector aperture is known from a package drawing or local footprint
-convention. Values are millimeters; offsets must be finite and width must be
-finite and greater than zero.
+Use these fields when a production KiCad footprint library should stay
+unmodified and the connector insertion convention or aperture is known from a
+package drawing or local footprint convention. Direction offsets are degrees;
+aperture values are millimeters; all values must be finite, and aperture width
+must be greater than zero.
 
 Mapping-provided entry aperture metadata is lower precedence than explicit
 KiCad PCB footprint properties named `CircuitCI_EntryAperture*`, but higher

@@ -43,6 +43,12 @@ board:
       nominal_voltage: 3.3
     gnd:
       kind: ground
+  layout:
+    footprints:
+      J1:
+        entry_direction:
+          offset_deg: 0.0
+          source: kicad_mapping
 
 scenarios:
   - name: usb_connector_component_clearance_from_imported_pcb

@@ -211,6 +211,14 @@
                       "additionalProperties": false
                     }
                   },
+                  "entry_direction": {
+                    "type": "object",
+                    "properties": {
+                      "offset_deg": { "type": "number" },
+                      "source": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  },
                   "entry_aperture": {
                     "type": "object",
                     "properties": {

@@ -206,7 +206,17 @@ pub struct SuggestedFootprint {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub arcs: Vec<SuggestedFootprintArc>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_direction: Option<SuggestedFootprintEntryDirection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub entry_aperture: Option<SuggestedFootprintEntryAperture>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintEntryDirection {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -293,6 +303,8 @@ pub struct SuggestedBoardEdge {
     pub expected_connector_rotation_deg: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connector_entry_direction_offset_deg: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_entry_direction_offset_source: Option<String>,
     pub connector_rotation_error_deg: f64,
 }
 

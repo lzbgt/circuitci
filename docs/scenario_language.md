@@ -532,8 +532,10 @@ Connector entry-clearance algorithm:
 1. Resolve `target.component` and its `usb_connector` metadata.
 2. Use `parameters.entry_direction_deg` when declared. Otherwise compute the
    cable insertion direction from imported connector `rotation_deg` plus
-   optional component-model `usb_connector.entry_direction_offset_deg`, then
-   normalize it into `[0, 360)`.
+   optional KiCad mapping `layout.entry_direction_offset_deg`; if no mapping
+   override is present, use component-model
+   `usb_connector.entry_direction_offset_deg`. Normalize the result into
+   `[0, 360)`.
 3. Find the connector body's front projection from supported
    `fabrication`/`courtyard` `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or
    `fp_arc` footprint evidence.

@@ -180,6 +180,9 @@ board:
             end: { x_mm: 0.2, y_mm: 0.9 }
             layer: F.CrtYd
             kind: courtyard
+        entry_direction:
+          offset_deg: 0.0
+          source: kicad_mapping
         entry_aperture:
           front_offset_mm: 0.0
           lateral_offset_mm: 0.0
@@ -193,8 +196,11 @@ connector entry-aperture metadata from explicit footprint properties named
 `CircuitCI_EntryApertureFrontOffsetMM`,
 `CircuitCI_EntryApertureLateralOffsetMM`, and
 `CircuitCI_EntryApertureWidthMM`. KiCad schematic mapping can also seed
-`entry_aperture` with `source: kicad_mapping`; PCB import preserves that
-metadata unless the physical footprint declares explicit aperture properties.
+`entry_direction` with `source: kicad_mapping` and `entry_aperture` with
+`source: kicad_mapping`; PCB import preserves that metadata unless the physical
+footprint declares more specific aperture properties. Entry direction records
+store footprint-specific cable-entry rotation offsets in degrees for USB
+mechanical checks.
 The `kind` field is derived from the drawing
 layer and is intentionally conservative: `fabrication`, `courtyard`,
 `silkscreen`, or `other`. Curved graphics retain their source points in Board

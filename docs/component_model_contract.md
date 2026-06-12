@@ -355,8 +355,11 @@ ESD pulse energy handling, or USB signal integrity.
 checks. When declared, `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` and
 `suggest-scenarios` compute the default cable insertion direction as imported
 placement `rotation_deg + entry_direction_offset_deg`, normalized into
-`[0, 360)`. Omit it only when the footprint's zero-degree convention already
-points in the cable insertion direction.
+`[0, 360)`. KiCad schematic mapping metadata can override this model default
+per footprint/library convention through `layout.entry_direction_offset_deg`;
+that path is reported as `kicad_mapping_offset`. Omit the model value only when
+the footprint's zero-degree convention already points in the cable insertion
+direction or when every supported KiCad footprint mapping supplies the offset.
 See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.md)
 for a validation fixture that proves a nonzero offset changes the checked entry
 direction.

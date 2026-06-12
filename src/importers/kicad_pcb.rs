@@ -1157,6 +1157,7 @@ fn merge_pcb_into_project(
             continue;
         }
         let mut footprint_value = footprint_yaml_value(footprint)?;
+        preserve_existing_entry_direction(footprint_yaml, reference, &mut footprint_value)?;
         if !footprint_has_entry_aperture(footprint) {
             preserve_existing_entry_aperture(footprint_yaml, reference, &mut footprint_value)?;
         }
@@ -1224,15 +1225,37 @@ fn merge_pcb_into_project(
     Ok(summary)
 }
 
+fn preserve_existing_entry_direction(
+    footprint_yaml: &Mapping,
+    reference: &str,
+    footprint_value: &mut Value,
+) -> Result<()> {
+    preserve_existing_footprint_field(
+        footprint_yaml,
+        reference,
+        footprint_value,
+        "entry_direction",
+    )
+}
+
 fn preserve_existing_entry_aperture(
     footprint_yaml: &Mapping,
     reference: &str,
     footprint_value: &mut Value,
 ) -> Result<()> {
-    let Some(existing_entry_aperture) = footprint_yaml
+    preserve_existing_footprint_field(footprint_yaml, reference, footprint_value, "entry_aperture")
+}
+
+fn preserve_existing_footprint_field(
+    footprint_yaml: &Mapping,
+    reference: &str,
+    footprint_value: &mut Value,
+    field: &str,
+) -> Result<()> {
+    let Some(existing_value) = footprint_yaml
         .get(Value::String(reference.to_string()))
         .and_then(Value::as_mapping)
-        .and_then(|footprint| footprint.get(Value::String("entry_aperture".to_string())))
+        .and_then(|footprint| footprint.get(Value::String(field.to_string())))
         .cloned()
     else {
         return Ok(());
@@ -1241,8 +1264,8 @@ fn preserve_existing_entry_aperture(
         .as_mapping_mut()
         .context("Serialized KiCad PCB footprint evidence must be a YAML object.")?;
     footprint_mapping
-        .entry(Value::String("entry_aperture".to_string()))
-        .or_insert(existing_entry_aperture);
+        .entry(Value::String(field.to_string()))
+        .or_insert(existing_value);
     Ok(())
 }
 

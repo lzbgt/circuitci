@@ -94,14 +94,15 @@ The command is conservative:
   When `board.layout.outline.segments` contains imported board-edge segment
   evidence, the template also reports `nearest_board_edge` evidence and
   pre-fills `expected_connector_rotation_deg` from the nearest edge's inferred
-  outward normal minus optional component-model
+  outward normal minus optional entry-direction offset evidence from KiCad
+  mapping metadata or the component model's
   `usb_connector.entry_direction_offset_deg`. `nearest_board_edge` keeps both
-  raw `outward_normal_deg` and offset-aware `expected_connector_rotation_deg`
-  evidence. `max_connector_rotation_error_deg` remains `null` until an agent
-  supplies a board-specific tolerance, and the inferred expected rotation
-  should be reviewed against the connector footprint convention before making
-  the scenario runnable. Without outline evidence, both orientation parameters
-  remain manual.
+  raw `outward_normal_deg`, offset-aware `expected_connector_rotation_deg`, and
+  `connector_entry_direction_offset_source` evidence. `max_connector_rotation_error_deg`
+  remains `null` until an agent supplies a board-specific tolerance, and the
+  inferred expected rotation should be reviewed against the connector footprint
+  convention before making the scenario runnable. Without outline evidence,
+  both orientation parameters remain manual.
 - It emits non-runnable `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
   USB connector has finite placement evidence and
   `board.layout.outline.segments` contains usable board-edge segment evidence.
@@ -143,8 +144,8 @@ The command is conservative:
 - It emits non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` templates when
   the USB connector has imported placement rotation and supported
   `fabrication`/`courtyard` footprint evidence. The template copies
-  `entry_direction_deg` from imported placement rotation plus optional
-  component-model `usb_connector.entry_direction_offset_deg`, includes the
+  `entry_direction_deg` from imported placement rotation plus optional KiCad
+  mapping or component-model entry-direction offset evidence, includes the
   connector placement and footprint evidence, and includes
   `scenario.usb_connectors[].entry_clearance` with connector-front projection
   plus `entry_direction_source`, optional `entry_direction_offset_deg`, aperture

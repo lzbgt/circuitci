@@ -90,6 +90,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_footprint["arcs"][0]["start"]["x_mm"], 0.0);
     assert_eq!(connector_footprint["arcs"][0]["mid"]["y_mm"], 1.0);
     assert_eq!(
+        connector_footprint["entry_direction"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(connector_footprint["entry_direction"]["offset_deg"], 0.0);
+    assert_eq!(
         imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["kind"],
         "fabrication"
     );
@@ -303,6 +308,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(nearest_edge["footprint_graphic_layer"], "F.Fab");
     assert_eq!(nearest_edge["footprint_graphic_kind"], "fabrication");
     assert_eq!(nearest_edge["outward_normal_deg"], 180.0);
+    assert_eq!(nearest_edge["connector_entry_direction_offset_deg"], 0.0);
+    assert_eq!(
+        nearest_edge["connector_entry_direction_offset_source"],
+        "kicad_mapping"
+    );
     assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
     let edge_proximity = suggestions["suggestions"]
         .as_array()
@@ -442,9 +452,17 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(entry_evidence["entry_direction_deg"], 0.0);
     assert_eq!(
         entry_evidence["entry_direction_source"],
-        "component_model_offset"
+        "kicad_mapping_offset"
     );
     assert_eq!(entry_evidence["entry_direction_offset_deg"], 0.0);
+    assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_direction"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_direction"]["offset_deg"],
+        0.0
+    );
     assert_eq!(
         entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["source"],
         "kicad_footprint_property"
@@ -705,6 +723,15 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         "kicad_mapping"
     );
     assert_eq!(
+        mapped_entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_direction"]["source"],
+        "kicad_mapping"
+    );
+    assert_eq!(
+        mapped_entry_evidence["entry_direction_source"],
+        "kicad_mapping_offset"
+    );
+    assert_eq!(mapped_entry_evidence["entry_direction_offset_deg"], 0.0);
+    assert_eq!(
         mapped_entry_evidence["entry_aperture_source"],
         "kicad_mapping_aperture"
     );
@@ -852,6 +879,11 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     assert_eq!(entry_failure["component"], "J1");
     assert_eq!(entry_failure["measured"]["obstructing_component"], "UESD");
     assert_eq!(entry_failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        entry_failure["measured"]["entry_direction_source"],
+        "kicad_mapping_offset"
+    );
+    assert_eq!(entry_failure["measured"]["entry_direction_offset_deg"], 0.0);
     assert_eq!(
         entry_failure["measured"]["entry_aperture_source"],
         "footprint_property_aperture"

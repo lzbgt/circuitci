@@ -1048,7 +1048,7 @@ pub(super) fn suggested_usb_connector(
         .and_then(|pin| connected_declared_net(bound, component, pin))
         .map(str::to_string);
     let entry_direction = component_placement(bound, component_id)
-        .and_then(|placement| usb_entry_direction(placement, connector));
+        .and_then(|placement| usb_entry_direction(bound, component_id, placement, connector));
     Some(SuggestedUsbConnector {
         component: component_id.to_string(),
         standard: connector.standard.clone(),
@@ -1086,15 +1086,27 @@ pub(super) struct UsbEntryDirection {
 }
 
 pub(super) fn usb_entry_direction(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
     placement: &ComponentPlacement,
     connector: &UsbConnector,
 ) -> Option<UsbEntryDirection> {
     let rotation_deg = placement.rotation_deg?;
-    let offset_deg = connector.entry_direction_offset_deg;
+    let layout_offset_deg = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(component_id)
+        .and_then(|footprint| footprint.entry_direction.as_ref())
+        .and_then(|entry_direction| entry_direction.offset_deg);
+    let offset_deg = layout_offset_deg.or(connector.entry_direction_offset_deg);
     let deg = normalize_rotation_deg(rotation_deg + offset_deg.unwrap_or(0.0));
     deg.is_finite().then_some(UsbEntryDirection {
         deg,
-        source: if offset_deg.is_some() {
+        source: if layout_offset_deg.is_some() {
+            "kicad_mapping_offset"
+        } else if offset_deg.is_some() {
             "component_model_offset"
         } else {
             "placement_rotation"

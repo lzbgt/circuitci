@@ -38,16 +38,28 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
             .to_string(),
     ];
     if expected_rotation.is_some() {
-        if let Some(offset_deg) = connector.entry_direction_offset_deg {
-            required_inputs.push(format!(
-                "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus usb_connector.entry_direction_offset_deg {:.3} before making this scenario runnable.",
-                offset_deg
-            ));
-        } else {
-            required_inputs.push(
-                "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
-            );
-        }
+        let offset = suggested_connector
+            .nearest_board_edge
+            .as_ref()
+            .and_then(|edge| edge.connector_entry_direction_offset_deg);
+        let offset_source = suggested_connector
+            .nearest_board_edge
+            .as_ref()
+            .and_then(|edge| edge.connector_entry_direction_offset_source.as_deref());
+        required_inputs.push(offset.map_or_else(
+            || "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
+            |offset_deg| {
+                let source = if offset_source == Some("kicad_mapping") {
+                    "KiCad mapping entry-direction offset"
+                } else {
+                    "component-model usb_connector.entry_direction_offset_deg"
+                };
+                format!(
+                    "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus {source} {:.3} before making this scenario runnable.",
+                    offset_deg
+                )
+            },
+        ));
     } else {
         required_inputs.push(
             "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
@@ -281,7 +293,7 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
     let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
     suggested_connector.footprint.as_ref()?;
     let placement = component_placement(bound, component_id)?;
-    let entry_direction = usb_entry_direction(placement, connector)?;
+    let entry_direction = usb_entry_direction(bound, component_id, placement, connector)?;
     let entry_direction_deg = entry_direction.deg;
     let obstruction_summary = suggested_connector
         .entry_clearance
@@ -373,9 +385,14 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
             entry_direction.offset_deg.map_or_else(
                 || "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
                 |offset_deg| {
+                    let source = if entry_direction.source == "kicad_mapping_offset" {
+                        "the KiCad mapping"
+                    } else {
+                        "the component model"
+                    };
                     format!(
-                        "Review entry_direction_deg; it is computed from imported connector placement rotation plus usb_connector.entry_direction_offset_deg {:.3} from the component model.",
-                        offset_deg
+                        "Review entry_direction_deg; it is computed from imported connector placement rotation plus entry-direction offset {:.3} from {}.",
+                        offset_deg, source
                     )
                 },
             ),

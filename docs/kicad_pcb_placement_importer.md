@@ -48,11 +48,13 @@ width must be greater than zero. Duplicate or malformed aperture properties
 fail closed. Imported values are written to
 `board.layout.footprints.<ref>.entry_aperture` with source
 `kicad_footprint_property`. If the incoming Board IR already has
+`board.layout.footprints.<ref>.entry_direction` from schematic mapping metadata,
+PCB import preserves that direction-offset metadata while adding footprint
+drawing evidence. If the incoming Board IR already has
 `board.layout.footprints.<ref>.entry_aperture` from schematic mapping metadata
 and the KiCad footprint does not declare explicit `CircuitCI_EntryAperture*`
-properties, PCB import preserves the existing aperture metadata while adding
-footprint drawing evidence. Explicit KiCad footprint properties take precedence
-over mapping-provided aperture metadata.
+properties, PCB import preserves the existing aperture metadata. Explicit KiCad
+footprint properties take precedence over mapping-provided aperture metadata.
 
 This is drawing evidence, not a full mechanical body solver. Rectangles are
 stored as their transformed opposite corners; rotated rectangles should be

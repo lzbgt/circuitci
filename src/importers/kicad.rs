@@ -141,6 +141,8 @@ struct LibsourceRuleMapping {
 #[serde(deny_unknown_fields)]
 struct ComponentLayoutMapping {
     #[serde(default)]
+    entry_direction_offset_deg: Option<f64>,
+    #[serde(default)]
     entry_aperture: Option<ComponentEntryApertureMapping>,
 }
 
@@ -299,7 +301,17 @@ struct BoardLayoutYaml {
 
 #[derive(Debug, Serialize)]
 struct LayoutFootprintYaml {
-    entry_aperture: LayoutEntryApertureYaml,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entry_direction: Option<LayoutEntryDirectionYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entry_aperture: Option<LayoutEntryApertureYaml>,
+}
+
+#[derive(Debug, Serialize)]
+struct LayoutEntryDirectionYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset_deg: Option<f64>,
+    source: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -742,22 +754,31 @@ fn layout_from_mapping(
         let Some(component_mapping) = mapping_for_component(component, mapping)? else {
             continue;
         };
-        let Some(entry_aperture) = component_mapping
-            .layout
-            .as_ref()
-            .and_then(|layout| layout.entry_aperture.as_ref())
-        else {
+        let Some(layout) = component_mapping.layout.as_ref() else {
             continue;
         };
+        if layout.entry_direction_offset_deg.is_none() && layout.entry_aperture.is_none() {
+            continue;
+        }
+        let entry_aperture = layout.entry_aperture.as_ref();
+        let entry_direction =
+            layout
+                .entry_direction_offset_deg
+                .map(|offset_deg| LayoutEntryDirectionYaml {
+                    offset_deg: Some(offset_deg),
+                    source: "kicad_mapping".to_string(),
+                });
+        let entry_aperture = entry_aperture.map(|entry_aperture| LayoutEntryApertureYaml {
+            front_offset_mm: entry_aperture.front_offset_mm,
+            lateral_offset_mm: entry_aperture.lateral_offset_mm,
+            width_mm: entry_aperture.width_mm,
+            source: "kicad_mapping".to_string(),
+        });
         footprints.insert(
             component.refdes.clone(),
             LayoutFootprintYaml {
-                entry_aperture: LayoutEntryApertureYaml {
-                    front_offset_mm: entry_aperture.front_offset_mm,
-                    lateral_offset_mm: entry_aperture.lateral_offset_mm,
-                    width_mm: entry_aperture.width_mm,
-                    source: "kicad_mapping".to_string(),
-                },
+                entry_direction,
+                entry_aperture,
             },
         );
     }
@@ -1177,7 +1198,20 @@ fn validate_component_layout_mapping(
     context: &str,
     layout: Option<&ComponentLayoutMapping>,
 ) -> Result<()> {
-    let Some(entry_aperture) = layout.and_then(|layout| layout.entry_aperture.as_ref()) else {
+    let Some(layout) = layout else {
+        return Ok(());
+    };
+    if layout.entry_direction_offset_deg.is_none() && layout.entry_aperture.is_none() {
+        bail!(
+            "KiCad mapping {context} layout must declare entry_direction_offset_deg or entry_aperture."
+        );
+    }
+    validate_optional_layout_number(
+        context,
+        "layout.entry_direction_offset_deg",
+        layout.entry_direction_offset_deg,
+    )?;
+    let Some(entry_aperture) = layout.entry_aperture.as_ref() else {
         return Ok(());
     };
     if entry_aperture.front_offset_mm.is_none()
