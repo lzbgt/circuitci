@@ -11,9 +11,10 @@ use super::findings::{
     usb_return_path_unreferenced_finding,
 };
 use super::geometry::{
-    PlacementPoint, point_clearance_to_filled_zone_edge, point_inside_filled_zone,
-    point_inside_zone_outline, points_inside_same_filled_zone_polygon, segment_length_mm,
-    segment_midpoint, validate_route_shape, validate_zone_outline,
+    PlacementPoint, pad_overlaps_same_filled_zone_polygon, pad_overlaps_zone_outline,
+    point_clearance_to_filled_zone_edge, point_inside_filled_zone, point_inside_zone_outline,
+    points_inside_same_filled_zone_polygon, segment_length_mm, segment_midpoint,
+    validate_route_shape, validate_zone_outline,
 };
 use super::{
     optional_bool_parameter, optional_nonnegative_parameter, required_nonnegative_parameter,
@@ -309,11 +310,10 @@ fn ground_zone_has_contact_evidence(
     require_filled_zone_coverage: bool,
 ) -> bool {
     ground_pads(bound, ground_zone.net_name).any(|pad| {
-        let contact_point = PlacementPoint::from(&pad.at);
         pad_layers_include(&pad.layers, &ground_zone.zone.layer)
-            && contact_proves_ground_reference(
+            && pad_proves_ground_reference(
                 covered_point,
-                contact_point,
+                pad,
                 ground_zone.zone,
                 require_filled_zone_coverage,
             )
@@ -327,6 +327,19 @@ fn ground_zone_has_contact_evidence(
                 require_filled_zone_coverage,
             )
     })
+}
+
+fn pad_proves_ground_reference(
+    covered_point: PlacementPoint,
+    pad: &LayoutPad,
+    zone: &CopperZone,
+    require_filled_zone_coverage: bool,
+) -> bool {
+    if require_filled_zone_coverage {
+        pad_overlaps_same_filled_zone_polygon(covered_point, pad, zone)
+    } else {
+        pad_overlaps_zone_outline(pad, zone)
+    }
 }
 
 fn contact_proves_ground_reference(

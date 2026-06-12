@@ -31,9 +31,12 @@ board:
     pads:
       J1:
         GND:
-          at: { x_mm: 0.0, y_mm: 0.6 }
+          at: { x_mm: 0.0, y_mm: 0.85 }
           net: gnd
           layers: [F.Cu, F.Paste, F.Mask]
+          kind: smd
+          shape: rect
+          size: { x_mm: 0.3, y_mm: 0.4 }
     routes:
       usb_dp:
         segments:

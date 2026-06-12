@@ -775,14 +775,7 @@ fn ground_zone_contacts(
                 || !pad_layers_include(&pad.layers, zone.zone.layer.as_str())
                 || !pad.at.x_mm.is_finite()
                 || !pad.at.y_mm.is_finite()
-                || !contact_proves_ground_reference(
-                    covered_x_mm,
-                    covered_y_mm,
-                    pad.at.x_mm,
-                    pad.at.y_mm,
-                    zone,
-                    geometry,
-                )
+                || !pad_proves_ground_reference(covered_x_mm, covered_y_mm, pad, zone, geometry)
             {
                 continue;
             }
@@ -811,6 +804,23 @@ fn ground_zone_contacts(
     contacts
 }
 
+fn pad_proves_ground_reference(
+    covered_x_mm: f64,
+    covered_y_mm: f64,
+    pad: &LayoutPad,
+    zone: &GroundZoneEvidence<'_>,
+    geometry: GroundReferenceGeometry,
+) -> bool {
+    match geometry {
+        GroundReferenceGeometry::Outline => layout_pad_overlaps_polygon(pad, &zone.zone.polygon),
+        GroundReferenceGeometry::FilledPolygon => zone.zone.filled_polygons.iter().any(|polygon| {
+            polygon_is_usable(polygon)
+                && point_inside_polygon(covered_x_mm, covered_y_mm, polygon)
+                && layout_pad_overlaps_polygon(pad, polygon)
+        }),
+    }
+}
+
 fn contact_proves_ground_reference(
     covered_x_mm: f64,
     covered_y_mm: f64,
@@ -830,6 +840,150 @@ fn contact_proves_ground_reference(
             contact_y_mm,
             zone.zone,
         ),
+    }
+}
+
+fn layout_pad_overlaps_polygon(pad: &LayoutPad, polygon: &[LayoutPoint]) -> bool {
+    if !polygon_is_usable(polygon) || !pad.at.x_mm.is_finite() || !pad.at.y_mm.is_finite() {
+        return false;
+    }
+    if point_inside_polygon(pad.at.x_mm, pad.at.y_mm, polygon) {
+        return true;
+    }
+    if !layout_pad_has_supported_extent(pad) {
+        return false;
+    }
+    if polygon
+        .iter()
+        .any(|point| layout_pad_contains_point(pad, point.x_mm, point.y_mm))
+    {
+        return true;
+    }
+    let mut previous = polygon.last().expect("polygon has points");
+    for current in polygon {
+        if layout_segment_touches_pad(
+            (previous.x_mm, previous.y_mm),
+            (current.x_mm, current.y_mm),
+            pad,
+        ) {
+            return true;
+        }
+        previous = current;
+    }
+    false
+}
+
+fn layout_pad_has_supported_extent(pad: &LayoutPad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    if size.x_mm <= 0.0 || size.y_mm <= 0.0 || !size.x_mm.is_finite() || !size.y_mm.is_finite() {
+        return false;
+    }
+    pad.shape.as_deref().is_some_and(|shape| {
+        matches!(
+            shape.trim().to_ascii_lowercase().as_str(),
+            "rect" | "circle" | "oval"
+        )
+    })
+}
+
+fn layout_segment_touches_pad(start: (f64, f64), end: (f64, f64), pad: &LayoutPad) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    let Some(shape) = pad.shape.as_deref().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let start = layout_point_to_pad_local(start.0, start.1, pad);
+    let end = layout_point_to_pad_local(end.0, end.1, pad);
+    match shape.trim() {
+        "rect" => {
+            segment_intersects_axis_aligned_rect(start, end, size.x_mm / 2.0, size.y_mm / 2.0)
+        }
+        "circle" => {
+            let radius_mm = size.x_mm.min(size.y_mm) / 2.0;
+            point_to_segment_distance_mm(0.0, 0.0, start.0, start.1, end.0, end.1)
+                .is_some_and(|distance_mm| distance_mm <= radius_mm + f64::EPSILON)
+        }
+        "oval" => layout_segment_touches_oval_pad(start, end, size.x_mm, size.y_mm),
+        _ => false,
+    }
+}
+
+fn layout_pad_contains_point(pad: &LayoutPad, x_mm: f64, y_mm: f64) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    let Some(shape) = pad.shape.as_deref().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let local = layout_point_to_pad_local(x_mm, y_mm, pad);
+    match shape.trim() {
+        "rect" => point_inside_axis_aligned_rect(local, size.x_mm / 2.0, size.y_mm / 2.0),
+        "circle" => local.0.hypot(local.1) <= size.x_mm.min(size.y_mm) / 2.0 + f64::EPSILON,
+        "oval" => layout_point_inside_oval_pad(local, size.x_mm, size.y_mm),
+        _ => false,
+    }
+}
+
+fn layout_point_to_pad_local(x_mm: f64, y_mm: f64, pad: &LayoutPad) -> (f64, f64) {
+    let dx = x_mm - pad.at.x_mm;
+    let dy = y_mm - pad.at.y_mm;
+    let radians = -pad.rotation_deg.unwrap_or(0.0).to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    (dx * cos - dy * sin, dx * sin + dy * cos)
+}
+
+fn layout_segment_touches_oval_pad(
+    start: (f64, f64),
+    end: (f64, f64),
+    size_x_mm: f64,
+    size_y_mm: f64,
+) -> bool {
+    if (size_x_mm - size_y_mm).abs() <= f64::EPSILON {
+        let radius_mm = size_x_mm.min(size_y_mm) / 2.0;
+        return point_to_segment_distance_mm(0.0, 0.0, start.0, start.1, end.0, end.1)
+            .is_some_and(|distance_mm| distance_mm <= radius_mm + f64::EPSILON);
+    }
+    if size_x_mm > size_y_mm {
+        let radius_mm = size_y_mm / 2.0;
+        let half_straight_mm = (size_x_mm - size_y_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            (-half_straight_mm, 0.0),
+            (half_straight_mm, 0.0),
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm + f64::EPSILON)
+    } else {
+        let radius_mm = size_x_mm / 2.0;
+        let half_straight_mm = (size_y_mm - size_x_mm) / 2.0;
+        segment_to_segment_distance_mm(
+            start,
+            end,
+            (0.0, -half_straight_mm),
+            (0.0, half_straight_mm),
+        )
+        .is_some_and(|distance_mm| distance_mm <= radius_mm + f64::EPSILON)
+    }
+}
+
+fn layout_point_inside_oval_pad(point: (f64, f64), size_x_mm: f64, size_y_mm: f64) -> bool {
+    if (size_x_mm - size_y_mm).abs() <= f64::EPSILON {
+        return point.0.hypot(point.1) <= size_x_mm.min(size_y_mm) / 2.0 + f64::EPSILON;
+    }
+    if size_x_mm > size_y_mm {
+        let radius_mm = size_y_mm / 2.0;
+        let half_straight_mm = (size_x_mm - size_y_mm) / 2.0;
+        let nearest_x_mm = point.0.clamp(-half_straight_mm, half_straight_mm);
+        (point.0 - nearest_x_mm).hypot(point.1) <= radius_mm + f64::EPSILON
+    } else {
+        let radius_mm = size_x_mm / 2.0;
+        let half_straight_mm = (size_y_mm - size_x_mm) / 2.0;
+        let nearest_y_mm = point.1.clamp(-half_straight_mm, half_straight_mm);
+        point.0.hypot(point.1 - nearest_y_mm) <= radius_mm + f64::EPSILON
     }
 }
 

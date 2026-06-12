@@ -147,7 +147,8 @@ connector-to-protection center distance from `board.layout.placements`.
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported
 `board.layout.pads` evidence so connector-to-protection route distance is
-measured between same-net pad centers instead of component placement centers.
+measured with same-net pad evidence instead of component placement centers;
+supported pad geometry is checked against imported pad copper extent.
 `USB_VBUS_ROUTE_VALID` adds the matching static VBUS power-entry route guard
 for route length, via count, optional minimum segment width, and
 connector-to-VBUS-protection route distance.
@@ -161,10 +162,11 @@ when `max_data_via_to_ground_stitch_distance_mm` is declared, and can use saved
 screen route-midpoint margin to filled-copper polygon edges with
 `min_data_line_filled_zone_edge_clearance_mm`. It can now require imported
 same-net pad/via contact evidence with `require_ground_zone_contact_evidence`.
-When filled-zone coverage is required, the contact must be in the same saved
-filled polygon as the route midpoint. It still does not prove unmodeled
-filled-zone island continuity, adjacent-plane return paths, stitching-via
-inductance, or USB eye margin.
+When supported pad geometry exists, pad contact is checked against imported pad
+copper extent, and when filled-zone coverage is required, that pad copper or
+via contact must overlap the same saved filled polygon as the route midpoint.
+It still does not prove unmodeled filled-zone island continuity, adjacent-plane
+return paths, stitching-via inductance, or USB eye margin.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
 non-runnable placement, route-geometry, VBUS-route, and return-path templates

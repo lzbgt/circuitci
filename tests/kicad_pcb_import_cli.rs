@@ -74,6 +74,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         "gnd"
     );
     assert_eq!(
+        imported["board"]["layout"]["pads"]["J1"]["GND"]["at"]["y_mm"],
+        1.02
+    );
+    assert_eq!(
         imported["board"]["layout"]["pads"]["UESD"]["D1-"]["at"]["x_mm"],
         1.0
     );
@@ -343,6 +347,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                                 && contact["component"] == "J1"
                                 && contact["pad"] == "GND"
                                 && contact["net"] == "gnd"
+                                && contact["y_mm"] == 1.02
                         })
                     && usb_route["filled_ground_zone_contacts"]
                         .as_array()
@@ -353,6 +358,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                                 && contact["component"] == "J1"
                                 && contact["pad"] == "GND"
                                 && contact["net"] == "gnd"
+                                && contact["y_mm"] == 1.02
                         })
             })
     );
@@ -607,6 +613,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
                                 && contact["component"] == "J1"
                                 && contact["pad"] == "GND"
                                 && contact["net"] == "gnd"
+                                && contact["y_mm"] == 1.02
                         })
                     && usb_route["filled_ground_zone_contacts"]
                         .as_array()
@@ -617,6 +624,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
                                 && contact["component"] == "J1"
                                 && contact["pad"] == "GND"
                                 && contact["net"] == "gnd"
+                                && contact["y_mm"] == 1.02
                         })
             })
     );

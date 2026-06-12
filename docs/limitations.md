@@ -79,11 +79,13 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   `min_data_line_filled_zone_edge_clearance_mm` is declared. When
   `require_ground_zone_contact_evidence` is true, the same-layer ground zone
   must also contain imported same-net pad or via contact evidence; in
-  filled-zone mode, that contact must be in the same saved filled polygon as
-  the route midpoint. This still does not prove unmodeled filled-zone island
-  connectivity, adjacent-plane coupling, impedance, eye margin, stitching-via
-  inductance, common-mode radiation, or return-current behavior under signal
-  transitions.
+  filled-zone mode, pad copper or via contact evidence must overlap the same
+  saved filled polygon as the route midpoint. Supported KiCad pad shapes use
+  imported pad copper extent; incomplete or unsupported pad geometry falls back
+  to pad-center containment. This still does not prove unmodeled filled-zone
+  island connectivity, adjacent-plane coupling, impedance, eye margin,
+  stitching-via inductance, common-mode radiation, or return-current behavior
+  under signal transitions.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

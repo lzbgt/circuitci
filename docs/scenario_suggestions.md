@@ -105,9 +105,9 @@ The command is conservative:
   tolerance, and ESD placement limits remain `null` until an agent supplies
   board-specific policy. When imported connector and protection pad evidence
   exists for both data lines, the template sets
-  `require_route_pad_contact_evidence: true` so validation measures
-  connector-to-protection route order from pad centers instead of component
-  placement centers. Each matching `scenario.usb_routes[]` entry also reports
+  `require_route_pad_contact_evidence: true` so validation measures route order
+  from same-net pad evidence instead of component placement centers. Each
+  matching `scenario.usb_routes[]` entry also reports
   `connector_pad`, `protection_pad`,
   `connector_pad_to_route_distance_mm`,
   `protection_pad_to_route_distance_mm`, and
@@ -156,7 +156,9 @@ The command is conservative:
   same-layer ground zone is tied to the ground net. Each route can include
   `ground_zone_contacts[]` and, when saved filled polygons exist,
   `filled_ground_zone_contacts[]`; these list imported same-net pad or via
-  contacts found inside the relevant same-layer ground reference geometry. In
+  contacts found inside the relevant same-layer ground reference geometry. For
+  supported imported pad geometry, suggestions list pad contacts when pad copper
+  overlaps the reference geometry, even if the pad center is outside it. In
   filled-zone evidence, contacts are only listed when they share a saved
   `filled_polygon` island with at least one covered route segment midpoint.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model

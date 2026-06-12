@@ -120,6 +120,20 @@ pub(super) fn points_inside_same_filled_zone_polygon(
     })
 }
 
+pub(super) fn pad_overlaps_zone_outline(pad: &LayoutPad, zone: &CopperZone) -> bool {
+    pad_overlaps_polygon(pad, &zone.polygon)
+}
+
+pub(super) fn pad_overlaps_same_filled_zone_polygon(
+    covered_point: PlacementPoint,
+    pad: &LayoutPad,
+    zone: &CopperZone,
+) -> bool {
+    zone.filled_polygons.iter().any(|polygon| {
+        point_inside_polygon(covered_point, polygon) && pad_overlaps_polygon(pad, polygon)
+    })
+}
+
 pub(super) fn point_clearance_to_filled_zone_edge(
     point: PlacementPoint,
     zone: &CopperZone,
@@ -185,6 +199,63 @@ fn point_clearance_to_polygon_edge(point: PlacementPoint, polygon: &[LayoutPoint
         previous = current;
     }
     clearance_mm.is_finite().then_some(clearance_mm)
+}
+
+fn pad_overlaps_polygon(pad: &LayoutPad, polygon: &[LayoutPoint]) -> bool {
+    if polygon.len() < 3 || !pad.at.x_mm.is_finite() || !pad.at.y_mm.is_finite() {
+        return false;
+    }
+    let center = PlacementPoint::from(&pad.at);
+    if point_inside_polygon(center, polygon) {
+        return true;
+    }
+    if !pad_has_supported_extent(pad) {
+        return false;
+    }
+    if polygon
+        .iter()
+        .map(PlacementPoint::from)
+        .any(|point| pad_contains_point(pad, point))
+    {
+        return true;
+    }
+    let mut previous = PlacementPoint::from(polygon.last().expect("polygon has points"));
+    for current_point in polygon {
+        let current = PlacementPoint::from(current_point);
+        let edge = RouteSegment {
+            start: LayoutPoint {
+                x_mm: previous.x_mm,
+                y_mm: previous.y_mm,
+            },
+            end: LayoutPoint {
+                x_mm: current.x_mm,
+                y_mm: current.y_mm,
+            },
+            width_mm: 0.0,
+            layer: String::new(),
+        };
+        if segment_touches_pad(&edge, pad) {
+            return true;
+        }
+        previous = current;
+    }
+    false
+}
+
+fn pad_contains_point(pad: &LayoutPad, point: PlacementPoint) -> bool {
+    let Some(size) = &pad.size else {
+        return false;
+    };
+    let Some(shape) = pad.shape.as_deref().map(str::to_ascii_lowercase) else {
+        return false;
+    };
+    let local = point_to_pad_local(point, pad);
+    match shape.trim() {
+        "rect" => point_inside_axis_aligned_rect(local, size.x_mm / 2.0, size.y_mm / 2.0),
+        "circle" => local.x_mm.hypot(local.y_mm) <= size.x_mm.min(size.y_mm) / 2.0 + EPSILON_MM,
+        "oval" => point_inside_oval_pad(local, size.x_mm, size.y_mm),
+        _ => false,
+    }
 }
 
 fn point_to_segment_distance_mm(
@@ -395,9 +466,12 @@ fn pad_has_supported_extent(pad: &LayoutPad) -> bool {
     if size.x_mm <= 0.0 || size.y_mm <= 0.0 || !size.x_mm.is_finite() || !size.y_mm.is_finite() {
         return false;
     }
-    pad.shape
-        .as_deref()
-        .is_some_and(|shape| matches!(shape.trim(), "rect" | "circle" | "oval"))
+    pad.shape.as_deref().is_some_and(|shape| {
+        matches!(
+            shape.trim().to_ascii_lowercase().as_str(),
+            "rect" | "circle" | "oval"
+        )
+    })
 }
 
 fn segment_touches_pad(segment: &RouteSegment, pad: &LayoutPad) -> bool {
@@ -498,6 +572,23 @@ fn segment_touches_oval_pad(
             },
         )
         .is_some_and(|distance_mm| distance_mm <= radius_mm)
+    }
+}
+
+fn point_inside_oval_pad(point: PlacementPoint, size_x_mm: f64, size_y_mm: f64) -> bool {
+    if (size_x_mm - size_y_mm).abs() <= EPSILON_MM {
+        return point.x_mm.hypot(point.y_mm) <= size_x_mm.min(size_y_mm) / 2.0 + EPSILON_MM;
+    }
+    if size_x_mm > size_y_mm {
+        let radius_mm = size_y_mm / 2.0;
+        let half_straight_mm = (size_x_mm - size_y_mm) / 2.0;
+        let nearest_x_mm = point.x_mm.clamp(-half_straight_mm, half_straight_mm);
+        (point.x_mm - nearest_x_mm).hypot(point.y_mm) <= radius_mm + EPSILON_MM
+    } else {
+        let radius_mm = size_x_mm / 2.0;
+        let half_straight_mm = (size_y_mm - size_x_mm) / 2.0;
+        let nearest_y_mm = point.y_mm.clamp(-half_straight_mm, half_straight_mm);
+        point.x_mm.hypot(point.y_mm - nearest_y_mm) <= radius_mm + EPSILON_MM
     }
 }
 
