@@ -362,6 +362,14 @@ scenarios:
 15. If `battery_charger.regulation_voltage_V` is declared and the battery net
     has `nominal_voltage`, the battery net may not exceed the regulation
     voltage.
+16. If a component model declares `power_mux`, the output and all input pins
+    must name `electrical_power` ports and be connected to rails.
+17. If `power_mux.selected_input_parameter` is declared, the component instance
+    must provide that string parameter, and the selected input must match one
+    of the model input names.
+18. If the mux output rail is powered, the selected input rail must be powered.
+19. If the mux output rail is powered and an inactive input rail is unpowered,
+    that inactive input must declare `reverse_blocking: true`.
 
 `IO_VOLTAGE_COMPATIBLE` can be declared on the same `power_tree` scenario. It
 checks same-net digital output/input pairs when both sides have enough

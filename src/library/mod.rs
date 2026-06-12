@@ -26,6 +26,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub battery_charger: Option<BatteryCharger>,
     #[serde(default)]
+    pub power_mux: Option<PowerMux>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub datasheet: Option<Datasheet>,
@@ -73,6 +75,23 @@ pub struct BatteryCharger {
     pub max_charge_current_a: Option<f64>,
     #[serde(default, rename = "regulation_voltage_V")]
     pub regulation_voltage_v: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PowerMux {
+    pub output_pin: String,
+    #[serde(default)]
+    pub selected_input_parameter: Option<String>,
+    #[serde(default)]
+    pub inputs: Vec<PowerMuxInput>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PowerMuxInput {
+    pub name: String,
+    pub input_pin: String,
+    #[serde(default)]
+    pub reverse_blocking: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

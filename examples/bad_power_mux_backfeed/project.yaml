@@ -1,0 +1,45 @@
+project:
+  name: bad_power_mux_backfeed
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - models
+
+board:
+  components:
+    UMUX:
+      model: fixture.simple_power_or
+      part_number: SIMPLE_POWER_OR
+      parameters:
+        selected_input: usb
+      power_domains:
+        USB_IN: usb_5v
+        BAT_IN: battery
+        SYS: sys
+      pins:
+        USB_IN: usb_5v
+        BAT_IN: battery
+        SYS: sys
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 4.0
+      powered: false
+    sys:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: mux_inactive_battery_backfeed
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

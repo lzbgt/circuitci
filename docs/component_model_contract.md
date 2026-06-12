@@ -168,6 +168,43 @@ This is a static input-budget/range check. It does not sign off battery
 chemistry, thermal foldback, charge termination, USB negotiation, or transient
 load sharing.
 
+Power mux and ideal-diode models can declare static source-selection metadata:
+
+```yaml
+power_mux:
+  output_pin: SYS
+  selected_input_parameter: selected_input
+  inputs:
+    - name: usb
+      input_pin: USB_IN
+      reverse_blocking: true
+    - name: battery
+      input_pin: BAT_IN
+      reverse_blocking: true
+```
+
+- `output_pin` and each `input_pin` must name distinct `electrical_power`
+  model ports.
+- `selected_input_parameter` names a Board IR component instance parameter that
+  identifies the active source in this scenario.
+- `inputs[].name` values are the allowed source-selection strings.
+- `reverse_blocking: true` means the model claims that a powered output rail
+  will not backfeed that input when the input is inactive and unpowered.
+
+Example component instance:
+
+```yaml
+components:
+  UMUX:
+    model: generic.analog.power_mux_basic
+    parameters:
+      selected_input: usb
+```
+
+This is a static topology/evidence check. It does not quantify reverse current,
+switchover timing, inrush, body-diode conduction, thermal margin, or transient
+source sharing.
+
 ## Signal Conditioning Metadata
 
 Interface, protection, and level-shifter models can declare explicit

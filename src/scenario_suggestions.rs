@@ -205,6 +205,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
     let (pin_states, required_inputs) = load_switch_power_tree_inputs(bound);
     let mut required_inputs = required_inputs;
     required_inputs.extend(battery_charger_power_tree_inputs(bound));
+    required_inputs.extend(power_mux_power_tree_inputs(bound));
     let runnable = required_inputs.is_empty();
     ScenarioSuggestion {
         id: "power_tree_valid".to_string(),
@@ -214,7 +215,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
         reason: if runnable {
             "Project declares power nets but no POWER_TREE_VALID scenario.".to_string()
         } else {
-            "Project declares power nets with switch or charger evidence gaps but no complete POWER_TREE_VALID scenario.".to_string()
+            "Project declares power nets with switch, charger, or power-mux evidence gaps but no complete POWER_TREE_VALID scenario.".to_string()
         },
         scenario: SuggestedScenario {
             name: format!("{}_power_tree", sanitized_name(&bound.project.project.name)),
@@ -286,6 +287,43 @@ fn battery_charger_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {
         }
         required_inputs.push(format!(
             "Add components.{component_id}.parameters.{parameter} from the charger PROG resistor or board charge-current configuration."
+        ));
+    }
+    required_inputs
+}
+
+fn power_mux_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {
+    let mut required_inputs = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        let Some(mux) = &model.power_mux else {
+            continue;
+        };
+        let Some(parameter) = mux.selected_input_parameter.as_deref() else {
+            continue;
+        };
+        if component.parameters.contains_key(parameter) {
+            continue;
+        }
+        let Some(output_net_name) = resolve_power_pin_net(component, &mux.output_pin) else {
+            continue;
+        };
+        let Some(output_net) = bound.project.board.nets.get(output_net_name) else {
+            continue;
+        };
+        if output_net.powered != Some(true) {
+            continue;
+        }
+        let allowed_inputs = mux
+            .inputs
+            .iter()
+            .map(|input| input.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        required_inputs.push(format!(
+            "Add components.{component_id}.parameters.{parameter} with the selected power-mux input for powered output rail {output_net_name}; allowed inputs: {allowed_inputs}."
         ));
     }
     required_inputs

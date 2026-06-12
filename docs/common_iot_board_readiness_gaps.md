@@ -61,14 +61,16 @@ Executable slices now covered by `POWER_TREE_VALID`:
   switched-output current budget,
 - explicit battery-charger `battery_charger` programmed-current range and
   input-source current budget,
+- explicit power-mux `power_mux` source-selection evidence and inactive-input
+  reverse-blocking checks,
 - reset release checked against target rail `power_valid_at_us` plus optional
   reset-supervisor or power-good delay metadata.
 
 The remaining gap is waveform-dependent power behavior: real ramp shape,
 load-dependent dropout under waveform load, inrush, soft-start,
 load-switch turn-on/reverse-current behavior, charger thermal foldback,
-charge termination, battery chemistry, power-mux behavior, thermal margin, and
-stability.
+charge termination, battery chemistry, power-mux switchover/reverse-current
+magnitude, thermal margin, and stability.
 
 ## 3. Functional MCU And Peripheral Models
 
@@ -114,12 +116,14 @@ without RC evidence, observed boot-strap states, UART bootloader sync, and
 first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
 present but observations still need real evidence. It also emits
 interface-protection review templates when component models declare explicit
-`signal_conditioning.channels`. It does not invent timing, observed strap
+`signal_conditioning.channels`, and marks power-tree templates non-runnable
+when load-switch enable, charger programmed-current, or power-mux
+selected-source evidence is missing. It does not invent timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
-resistance, datasheet isolation behavior, load-switch enable evidence, or
-analog assertions. Broader automatic recognition for chargers, oscillators, and
-device-specific protection behavior remains a component-pack and
-scenario-generation gap.
+resistance, datasheet isolation behavior, load-switch enable evidence,
+power-mux selected-source evidence, or analog assertions. Broader automatic
+recognition for oscillators and device-specific protection behavior remains a
+component-pack and scenario-generation gap.
 
 ## 5. Layout-Dependent Physics
 

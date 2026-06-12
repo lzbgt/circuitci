@@ -297,6 +297,76 @@ fn microchip_mcp73831_requires_programmed_charge_current() {
 }
 
 #[test]
+fn good_power_mux_usb_selected_passes_with_reverse_blocking() {
+    let report = run_validation("examples/good_power_mux_usb_selected/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn power_mux_requires_selected_input_parameter() {
+    let report = run_validation("examples/bad_power_mux_missing_selection/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("required_component_parameter")
+                .is_some()
+        })
+        .expect("expected selected input parameter finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UMUX");
+    assert_eq!(
+        failure["limit"]["required_component_parameter"],
+        "selected_input"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn power_mux_selected_input_must_be_powered() {
+    let report = run_validation("examples/bad_power_mux_selected_unpowered/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("selected_input_powered").is_some())
+        .expect("expected selected unpowered input finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UMUX");
+    assert_eq!(failure["net"], "sys");
+    assert_eq!(failure["measured"]["selected_input"], "battery");
+    assert_eq!(failure["measured"]["selected_input_powered"], false);
+    assert_eq!(failure["limit"]["selected_input_powered"], true);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn power_mux_inactive_unpowered_input_requires_reverse_blocking() {
+    let report = run_validation("examples/bad_power_mux_backfeed/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_reverse_blocking").is_some())
+        .expect("expected reverse-blocking finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UMUX");
+    assert_eq!(failure["net"], "battery");
+    assert_eq!(failure["measured"]["inactive_input"], "battery");
+    assert_eq!(failure["measured"]["inactive_input_powered"], false);
+    assert_eq!(failure["measured"]["output_powered"], true);
+    assert_eq!(failure["limit"]["required_reverse_blocking"], true);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

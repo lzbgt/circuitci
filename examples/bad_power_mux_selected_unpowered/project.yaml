@@ -1,0 +1,44 @@
+project:
+  name: bad_power_mux_selected_unpowered
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    UMUX:
+      model: generic.analog.power_mux_basic
+      part_number: GENERIC_POWER_MUX
+      parameters:
+        selected_input: battery
+      power_domains:
+        USB_IN: usb_5v
+        BAT_IN: battery
+        SYS: sys
+      pins:
+        USB_IN: usb_5v
+        BAT_IN: battery
+        SYS: sys
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    battery:
+      kind: power
+      nominal_voltage: 4.0
+      powered: false
+    sys:
+      kind: power
+      nominal_voltage: 4.0
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: mux_selected_source_unpowered
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

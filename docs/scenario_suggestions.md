@@ -21,6 +21,9 @@ The command is conservative:
   programmed charge-current component parameter is missing, the power-tree
   suggestion is marked `runnable: false` and records the parameter the agent
   must derive from the PROG resistor or board configuration.
+- If a powered output rail is fed by a model with `power_mux` and the selected
+  input component parameter is missing, the power-tree suggestion is marked
+  `runnable: false` and records the exact parameter plus allowed source names.
 - It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
   output/input pairs have modeled I/O voltage metadata and no existing
   `power_tree` scenario declares that check.
@@ -62,7 +65,7 @@ The command is conservative:
 - It never invents boot strap states, reset-release timestamps, power-good
   delays, GPIO pin-state observations, protection-path resistance, strap
   current budgets, load-switch enable evidence, charger programmed-current
-  evidence, or SPICE assertions.
+  evidence, power-mux selected-source evidence, or SPICE assertions.
 
 Example output shape:
 

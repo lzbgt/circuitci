@@ -1,0 +1,45 @@
+component_id: generic.analog.power_mux_basic
+version: 0.1.0
+category: power_mux
+ports:
+  USB_IN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+  BAT_IN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 4.3
+  SYS:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+power_mux:
+  output_pin: SYS
+  selected_input_parameter: selected_input
+  inputs:
+    - name: usb
+      input_pin: USB_IN
+      reverse_blocking: true
+    - name: battery
+      input_pin: BAT_IN
+      reverse_blocking: true
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_tree_validation
+    - power_mux_static_screening
+  not_valid_for:
+    - switchover_transient_signoff
+    - reverse_current_magnitude_signoff
+    - thermal_signoff

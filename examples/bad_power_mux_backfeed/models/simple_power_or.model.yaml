@@ -1,0 +1,33 @@
+component_id: fixture.simple_power_or
+version: 0.1.0
+category: power_mux
+ports:
+  USB_IN:
+    kind: electrical_power
+    required: true
+  BAT_IN:
+    kind: electrical_power
+    required: true
+  SYS:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+power_mux:
+  output_pin: SYS
+  selected_input_parameter: selected_input
+  inputs:
+    - name: usb
+      input_pin: USB_IN
+      reverse_blocking: false
+    - name: battery
+      input_pin: BAT_IN
+      reverse_blocking: false
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_mux_backfeed_fixture
+  not_valid_for:
+    - real_component_signoff
