@@ -35,6 +35,7 @@ pub(super) const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
+pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -114,6 +115,15 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 }
                 INTERFACE_PROTECTION_REVIEW if scenario.scenario_type == "interface_protection" => {
                     interface_protection::validate_interface_protection(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
+                USB_CONNECTOR_PROTECTION_VALID
+                    if scenario.scenario_type == "interface_protection" =>
+                {
+                    interface_protection::validate_usb_connector_protection(
                         bound,
                         scenario,
                         &mut findings,
@@ -205,6 +215,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | FUNCTIONAL_MCU_FIRMWARE
                 | POWER_TREE_VALID
                 | IO_VOLTAGE_COMPATIBLE
+                | USB_CONNECTOR_PROTECTION_VALID
                 | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

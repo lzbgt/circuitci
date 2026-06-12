@@ -1,0 +1,36 @@
+component_id: generic.connector.usb2
+version: 0.1.0
+category: connector
+ports:
+  VBUS:
+    kind: electrical_power
+    required: true
+  "D+":
+    kind: passive
+    required: true
+  "D-":
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+  SHIELD:
+    kind: passive
+    required: false
+usb_connector:
+  standard: usb2
+  vbus_pin: VBUS
+  dp_pin: "D+"
+  dm_pin: "D-"
+  gnd_pin: GND
+  shield_pin: SHIELD
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - usb_connector_static_protection_review
+    - interface_protection_review
+  not_valid_for:
+    - connector_mechanical_signoff
+    - usb_signal_integrity_signoff
+    - layout_placement_signoff

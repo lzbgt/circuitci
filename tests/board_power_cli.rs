@@ -161,6 +161,54 @@ fn usb_esd_clamp_capacitance_must_fit_interface_budget() {
 }
 
 #[test]
+fn usb_connector_protection_passes_when_data_and_vbus_are_clamped() {
+    let report = run_validation("examples/good_usb_connector_protection/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_protection_requires_data_line_clamps() {
+    let report = run_validation("examples/bad_usb_connector_missing_data_protection/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let dp = failures
+        .iter()
+        .find(|finding| finding["net"] == "usb_dp")
+        .expect("D+ missing protection finding");
+    assert_eq!(dp["id"], "USB_CONNECTOR_PROTECTION_VALID");
+    assert_eq!(dp["component"], "J1");
+    assert_eq!(dp["measured"]["connector_signal"], "D+");
+    assert_eq!(dp["limit"]["required_protection_clamp"], true);
+    let dm = failures
+        .iter()
+        .find(|finding| finding["net"] == "usb_dm")
+        .expect("D- missing protection finding");
+    assert_eq!(dm["id"], "USB_CONNECTOR_PROTECTION_VALID");
+    assert_eq!(dm["measured"]["connector_signal"], "D-");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_protection_requires_vbus_clamp_when_requested() {
+    let report = run_validation("examples/bad_usb_connector_missing_vbus_protection/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["net"] == "usb_vbus")
+        .expect("VBUS missing protection finding");
+    assert_eq!(failure["id"], "USB_CONNECTOR_PROTECTION_VALID");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["connector_signal"], "VBUS");
+    assert_eq!(failure["measured"]["connector_pin"], "VBUS");
+    assert_eq!(failure["limit"]["required_protection_clamp"], true);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ti_tpd2eusb30_usb_esd_passes_static_review() {
     let report = run_validation("examples/good_ti_tpd2eusb30_usb_esd/project.yaml");
     assert_eq!(report["result"], "pass");

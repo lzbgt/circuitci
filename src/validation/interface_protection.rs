@@ -1,12 +1,13 @@
 use crate::board_ir::{NetKind, PinLogicState, Scenario};
 use crate::library::{
     BoundBoard, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
-    SignalSupplyConstraint, SignalSupplyRelation,
+    SignalSupplyConstraint, SignalSupplyRelation, UsbConnector,
 };
 use crate::reports::Finding;
 use serde_json::json;
 
 use super::INTERFACE_PROTECTION_REVIEW;
+use super::USB_CONNECTOR_PROTECTION_VALID;
 use super::common::validation_input_missing;
 
 pub(super) fn validate_interface_protection(
@@ -141,6 +142,233 @@ pub(super) fn validate_interface_protection(
             ));
         }
     }
+}
+
+pub(super) fn validate_usb_connector_protection(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_CONNECTOR_PROTECTION_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector) = &model.usb_connector else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            &component.model,
+        ));
+        return;
+    };
+
+    validate_usb_connector_pin(
+        bound,
+        scenario,
+        &target.component,
+        component,
+        connector,
+        UsbConnectorSignal::Dp,
+        findings,
+    );
+    validate_usb_connector_pin(
+        bound,
+        scenario,
+        &target.component,
+        component,
+        connector,
+        UsbConnectorSignal::Dm,
+        findings,
+    );
+
+    if scenario_bool_parameter(scenario, "require_vbus_protection").unwrap_or(false) {
+        validate_usb_connector_pin(
+            bound,
+            scenario,
+            &target.component,
+            component,
+            connector,
+            UsbConnectorSignal::Vbus,
+            findings,
+        );
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum UsbConnectorSignal {
+    Dp,
+    Dm,
+    Vbus,
+}
+
+impl UsbConnectorSignal {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Dp => "D+",
+            Self::Dm => "D-",
+            Self::Vbus => "VBUS",
+        }
+    }
+
+    fn pin(self, connector: &UsbConnector) -> &str {
+        match self {
+            Self::Dp => &connector.dp_pin,
+            Self::Dm => &connector.dm_pin,
+            Self::Vbus => &connector.vbus_pin,
+        }
+    }
+}
+
+fn validate_usb_connector_pin(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    connector_id: &str,
+    component: &crate::board_ir::ComponentSpec,
+    connector: &UsbConnector,
+    signal: UsbConnectorSignal,
+    findings: &mut Vec<Finding>,
+) {
+    let pin = signal.pin(connector);
+    let Some(net_name) = component.pins.get(pin) else {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} {} pin {pin} is not connected.",
+                signal.label()
+            ),
+            "missing_pin",
+            pin,
+        ));
+        return;
+    };
+    if !bound.project.board.nets.contains_key(net_name) {
+        findings.push(usb_connector_metadata_finding(
+            scenario,
+            connector_id,
+            format!(
+                "USB connector {connector_id} {} net {net_name} is not declared.",
+                signal.label()
+            ),
+            "missing_net",
+            net_name,
+        ));
+        return;
+    }
+    if let Some(protection) = find_valid_clamp_for_net(bound, connector_id, net_name) {
+        if let Some(min_standoff_v) = scenario_numeric_parameter(
+            scenario,
+            match signal {
+                UsbConnectorSignal::Vbus => "vbus_working_voltage_min_V",
+                UsbConnectorSignal::Dp | UsbConnectorSignal::Dm => "data_working_voltage_min_V",
+            },
+            findings,
+        ) && let Some(working_voltage_max_v) = protection.clamp.working_voltage_max_v
+            && working_voltage_max_v < min_standoff_v
+        {
+            findings.push(usb_connector_standoff_finding(
+                scenario,
+                connector_id,
+                signal,
+                net_name,
+                &protection,
+                working_voltage_max_v,
+                min_standoff_v,
+            ));
+        }
+        return;
+    }
+    findings.push(usb_connector_missing_protection_finding(
+        scenario,
+        connector_id,
+        signal,
+        pin,
+        net_name,
+    ));
+}
+
+struct ResolvedUsbProtection<'a> {
+    component_id: &'a str,
+    clamp: &'a ProtectionClamp,
+    reference_net_name: &'a str,
+    reference_net_kind: &'a NetKind,
+}
+
+fn find_valid_clamp_for_net<'a>(
+    bound: &'a BoundBoard<'_>,
+    connector_id: &str,
+    net_name: &str,
+) -> Option<ResolvedUsbProtection<'a>> {
+    for (component_id, component) in &bound.project.board.components {
+        if component_id == connector_id {
+            continue;
+        }
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        for clamp in &model.signal_conditioning.protection_clamps {
+            let Some(protected_net) = component.pins.get(&clamp.protected_pin) else {
+                continue;
+            };
+            if protected_net != net_name {
+                continue;
+            }
+            let Some(reference_net_name) = component.pins.get(&clamp.reference_pin) else {
+                continue;
+            };
+            let Some(reference_net) = bound.project.board.nets.get(reference_net_name) else {
+                continue;
+            };
+            let expected_kind = match clamp.reference {
+                ProtectionReference::Ground => NetKind::Ground,
+                ProtectionReference::Power => NetKind::Power,
+            };
+            if reference_net.kind == expected_kind {
+                return Some(ResolvedUsbProtection {
+                    component_id,
+                    clamp,
+                    reference_net_name,
+                    reference_net_kind: &reference_net.kind,
+                });
+            }
+        }
+    }
+    None
 }
 
 fn validate_protection_clamp(
@@ -344,6 +572,13 @@ fn scenario_numeric_parameter(
         return None;
     }
     Some(number)
+}
+
+fn scenario_bool_parameter(scenario: &Scenario, name: &str) -> Option<bool> {
+    scenario
+        .parameters
+        .get(name)
+        .and_then(serde_yaml_ng::Value::as_bool)
 }
 
 fn channel_disabled_by_observation(
@@ -920,6 +1155,118 @@ fn protection_capacitance_finding(
     finding.suggested_fixes = vec![
         "Select a lower-capacitance ESD/protection device for this interface.".to_string(),
         "Raise max_line_capacitance_F only when the interface budget and signal-integrity analysis allow the added capacitance.".to_string(),
+    ];
+    finding
+}
+
+fn usb_connector_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_CONNECTOR_PROTECTION_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Declare usb_connector metadata and connect every required USB connector pin before using this protection check.".to_string(),
+        "Use explicit protection-clamp models on exposed USB nets instead of treating connector exposure as implicitly protected.".to_string(),
+    ];
+    finding
+}
+
+fn usb_connector_missing_protection_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    pin: &str,
+    net: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_PROTECTION_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} pin {pin} on net {net} has no valid protection clamp coverage.",
+            signal.label()
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_pin".to_string(), json!(pin));
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding
+        .limit
+        .insert("required_protection_clamp".to_string(), json!(true));
+    finding.suggested_fixes = vec![
+        format!(
+            "Add a datasheet-backed ESD/protection component whose protected pin connects to USB connector {connector_id}.{pin} net {net}."
+        ),
+        "Place the protection device close to the USB connector in PCB layout and add explicit clamp-review scenarios for standoff voltage and capacitance.".to_string(),
+    ];
+    finding
+}
+
+fn usb_connector_standoff_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    net: &str,
+    protection: &ResolvedUsbProtection<'_>,
+    working_voltage_max_v: f64,
+    min_standoff_v: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_PROTECTION_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} is protected by {}.{}, but clamp standoff {:.6} V is below required {:.6} V.",
+            signal.label(),
+            protection.component_id,
+            protection.clamp.name,
+            working_voltage_max_v,
+            min_standoff_v
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding.measured.insert(
+        "protection_component".to_string(),
+        json!(protection.component_id),
+    );
+    finding
+        .measured
+        .insert("protection_clamp".to_string(), json!(protection.clamp.name));
+    finding.measured.insert(
+        "reference_pin".to_string(),
+        json!(protection.clamp.reference_pin),
+    );
+    finding.measured.insert(
+        "reference_net".to_string(),
+        json!(protection.reference_net_name),
+    );
+    finding.measured.insert(
+        "reference_net_kind".to_string(),
+        json!(format!("{:?}", protection.reference_net_kind).to_lowercase()),
+    );
+    finding.measured.insert(
+        "working_voltage_max_V".to_string(),
+        json!(working_voltage_max_v),
+    );
+    finding.limit.insert(
+        "required_working_voltage_min_V".to_string(),
+        json!(min_standoff_v),
+    );
+    finding.suggested_fixes = vec![
+        "Select a protection device whose reverse standoff voltage covers the exposed USB connector operating voltage.".to_string(),
+        "Use separate VBUS-rated protection for the VBUS pin when the data-line ESD part is not rated for the power rail.".to_string(),
     ];
     finding
 }

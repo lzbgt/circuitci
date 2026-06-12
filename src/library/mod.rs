@@ -30,6 +30,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub reset_supervisor: Option<ResetSupervisor>,
     #[serde(default)]
+    pub usb_connector: Option<UsbConnector>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub clock_sources: Vec<ClockSource>,
@@ -126,6 +128,17 @@ pub struct ResetSupervisor {
 pub enum ResetSupervisorActive {
     High,
     Low,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UsbConnector {
+    pub standard: String,
+    pub vbus_pin: String,
+    pub dp_pin: String,
+    pub dm_pin: String,
+    pub gnd_pin: String,
+    #[serde(default)]
+    pub shield_pin: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

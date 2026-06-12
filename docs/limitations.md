@@ -46,6 +46,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   such as reference net kind, standoff voltage, and line capacitance. It does
   not prove analog leakage, dynamic clamp current, ESD pulse performance,
   propagation delay, edge rate, USB eye margin, or signal integrity.
+- `USB_CONNECTOR_PROTECTION_VALID` checks that declared USB connector D+/D- and,
+  when requested, VBUS nets have connected clamp-only protection with compatible
+  reference wiring and optional standoff-voltage evidence. It does not prove ESD
+  pulse robustness, connector placement, shield bonding, differential routing,
+  return-path quality, USB eye margin, or layout-level protection effectiveness.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

@@ -326,10 +326,32 @@ signal_conditioning:
   may see. `line_capacitance_F` records the modeled capacitance added to that
   interface line.
 
-`circuitci suggest-scenarios` uses this metadata to emit non-runnable
-`interface_protection` review templates. It does not treat the metadata alone as
-proof that a level shifter prevents backdrive; agents must confirm datasheet
-conditions, OE/reset state, and any unpowered-side behavior before sign-off.
+## USB Connector Metadata
+
+USB connector models can declare board-facing connector pins so validation can
+check whether common protection coverage exists:
+
+```yaml
+usb_connector:
+  standard: usb2
+  vbus_pin: VBUS
+  dp_pin: D+
+  dm_pin: D-
+  gnd_pin: GND
+  shield_pin: SHIELD
+```
+
+`USB_CONNECTOR_PROTECTION_VALID` uses this metadata to locate the connector's
+D+, D-, and optional VBUS nets, then searches connected clamp-only protection
+models for matching protection paths. This is connector-level schematic
+coverage; it does not prove placement, trace routing, differential impedance,
+ESD pulse energy handling, or USB signal integrity.
+
+`circuitci suggest-scenarios` uses `signal_conditioning` metadata to emit
+non-runnable `interface_protection` review templates. It does not treat the
+metadata alone as proof that a level shifter prevents backdrive; agents must
+confirm datasheet conditions, OE/reset state, and any unpowered-side behavior
+before sign-off.
 `INTERFACE_PROTECTION_REVIEW` accepts a powered-to-unpowered channel only when
 the model declares `unpowered_isolation: true`, or when the scenario observes
 the declared `enable_pin` in its `disabled_state`. It also checks declared

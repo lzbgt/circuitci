@@ -127,6 +127,19 @@
       },
       "additionalProperties": false
     },
+    "usb_connector": {
+      "type": "object",
+      "required": ["standard", "vbus_pin", "dp_pin", "dm_pin", "gnd_pin"],
+      "properties": {
+        "standard": { "type": "string", "minLength": 1 },
+        "vbus_pin": { "type": "string", "minLength": 1 },
+        "dp_pin": { "type": "string", "minLength": 1 },
+        "dm_pin": { "type": "string", "minLength": 1 },
+        "gnd_pin": { "type": "string", "minLength": 1 },
+        "shield_pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "signal_conditioning": {
       "type": "object",
       "properties": {

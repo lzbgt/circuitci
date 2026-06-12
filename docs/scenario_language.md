@@ -299,6 +299,37 @@ Clamp review algorithm:
    `max_line_capacitance_F`, require the clamp capacitance to fit the interface
    budget.
 
+USB connector coverage uses `USB_CONNECTOR_PROTECTION_VALID` against a connector
+model that declares `usb_connector` pin metadata. The rule verifies that D+ and
+D- have connected clamp-only protection on the same nets. It also verifies VBUS
+when `parameters.require_vbus_protection` is true.
+
+```yaml
+scenarios:
+  - name: usb_connector_protection
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_PROTECTION_VALID
+    target:
+      component: J1
+    parameters:
+      require_vbus_protection: true
+      data_working_voltage_min_V: 3.6
+      vbus_working_voltage_min_V: 5.5
+```
+
+Connector protection algorithm:
+
+1. Resolve `target.component`.
+2. Resolve `usb_connector` metadata from the target component model.
+3. Resolve connector D+, D-, GND, and optional VBUS nets from board
+   connectivity.
+4. For each required protected net, find a different component with
+   `signal_conditioning.protection_clamps` whose protected pin is on the same
+   net and whose reference pin is connected to the declared reference kind.
+5. If `data_working_voltage_min_V` or `vbus_working_voltage_min_V` is declared,
+   require the found clamp standoff voltage to meet that minimum.
+
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
 

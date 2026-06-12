@@ -55,6 +55,23 @@ Current fixtures:
 - `examples/bad_usb_esd_reference`
 - `examples/bad_usb_esd_standoff`
 - `examples/bad_usb_esd_line_capacitance`
+- `examples/good_usb_connector_protection`
+- `examples/bad_usb_connector_missing_data_protection`
+- `examples/bad_usb_connector_missing_vbus_protection`
+
+Connector-level validation:
+
+- `USB_CONNECTOR_PROTECTION_VALID` targets a connector component whose model
+  declares `usb_connector` pins.
+- The rule requires clamp-only protection on D+ and D-.
+- VBUS protection is required when the scenario declares
+  `parameters.require_vbus_protection: true`.
+- `parameters.data_working_voltage_min_V` and
+  `parameters.vbus_working_voltage_min_V` optionally enforce minimum clamp
+  reverse-standoff voltage.
+- This check proves schematic coverage only. It does not prove ESD pulse
+  robustness, connector placement, shield strategy, return-path quality, trace
+  impedance, or USB eye margin.
 
 Datasheet-backed model pack:
 

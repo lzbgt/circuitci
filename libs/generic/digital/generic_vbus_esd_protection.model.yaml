@@ -1,0 +1,28 @@
+component_id: generic.protection.vbus_esd_basic
+version: 0.1.0
+category: protection
+ports:
+  VBUS:
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: vbus
+      protected_pin: VBUS
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 0.0
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - vbus_esd_static_screening
+    - interface_protection_review
+  not_valid_for:
+    - esd_pulse_clamp_waveform
+    - surge_or_iec61000_4_2_signoff
+    - layout_placement_signoff

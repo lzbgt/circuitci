@@ -146,6 +146,15 @@ Interface-protection findings may include supply constraint detail:
   `required_reference`, `working_voltage_max_V`, or
   `max_line_capacitance_F`.
 
+`USB_CONNECTOR_PROTECTION_VALID` reports are emitted by `interface_protection`
+scenarios that target a component model with `usb_connector` metadata. Stable
+measured keys include `connector_component`, `connector_model`, `connector_pin`,
+`protected_net`, `protection_component`, `protection_clamp`, `reference_pin`,
+`reference_net`, `reference_net_kind`, and `working_voltage_max_V` when a clamp
+is found. Stable limit keys include `required_protection`, `required_reference`,
+`required_data_working_voltage_min_V`, and
+`required_vbus_working_voltage_min_V`.
+
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.

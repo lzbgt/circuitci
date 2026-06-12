@@ -139,7 +139,9 @@ programmed-current, or power-mux selected-source evidence is missing.
 `INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are
-declared. It does not invent timing, observed strap
+declared. `USB_CONNECTOR_PROTECTION_VALID` adds connector-level schematic
+coverage for declared USB D+/D- and optional VBUS protection. These checks do
+not invent timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
