@@ -574,6 +574,10 @@ fn import_kicad_schematic_suggests_ap2112_regulator_evidence() {
     assert_eq!(regulator["max_output_current_A"], 0.6);
     assert_eq!(regulator["input_capacitance_min_F"], 0.000001);
     assert_eq!(regulator["output_capacitance_min_F"], 0.000001);
+    assert_eq!(regulator["input_support_capacitance_F"], 0.000001);
+    assert_eq!(regulator["input_support_capacitors"][0], "C1");
+    assert_eq!(regulator["output_support_capacitance_F"], 0.000001);
+    assert_eq!(regulator["output_support_capacitors"][0], "C2");
 }
 
 #[test]

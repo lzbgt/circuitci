@@ -22,7 +22,10 @@ After import, `circuitci suggest-scenarios` emits a runnable
 - output pin/net `VOUT` / `net_rail_3v3`,
 - AP2112K dropout limit `0.4 V`,
 - AP2112K output current limit `0.6 A`,
-- AP2112K input/output capacitance requirements of `1 uF` each.
+- AP2112K input/output capacitance requirements of `1 uF` each,
+- measured support-capacitor evidence:
+  - `C1 = 1 uF` on `net_usb_5v`,
+  - `C2 = 1 uF` on `net_rail_3v3`.
 
 This fixture is intentionally static. It proves dropout/current/capacitance
 validation evidence is available to agents from schematic import, not regulator

@@ -197,6 +197,20 @@ pub struct SuggestedRegulator {
         skip_serializing_if = "Option::is_none"
     )]
     pub output_capacitance_min_f: Option<f64>,
+    #[serde(
+        rename = "input_support_capacitance_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub input_support_capacitance_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_support_capacitors: Option<Vec<String>>,
+    #[serde(
+        rename = "output_support_capacitance_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub output_support_capacitance_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_support_capacitors: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -430,6 +444,12 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
             let conversion = model.power_conversion.as_ref()?;
             let input_net = resolve_power_pin_net(component, &conversion.input_pin)?;
             let output_net = resolve_power_pin_net(component, &conversion.output_pin)?;
+            let input_support = conversion
+                .input_capacitance_min_f
+                .map(|_| support_capacitance_to_ground(bound, input_net));
+            let output_support = conversion
+                .output_capacitance_min_f
+                .map(|_| support_capacitance_to_ground(bound, output_net));
             Some(SuggestedRegulator {
                 component: component_id.clone(),
                 input_pin: conversion.input_pin.clone(),
@@ -441,9 +461,58 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                 startup_delay_us: conversion.startup_delay_us,
                 input_capacitance_min_f: conversion.input_capacitance_min_f,
                 output_capacitance_min_f: conversion.output_capacitance_min_f,
+                input_support_capacitance_f: input_support
+                    .as_ref()
+                    .map(|(capacitance_f, _)| *capacitance_f),
+                input_support_capacitors: input_support.map(|(_, capacitors)| capacitors),
+                output_support_capacitance_f: output_support
+                    .as_ref()
+                    .map(|(capacitance_f, _)| *capacitance_f),
+                output_support_capacitors: output_support.map(|(_, capacitors)| capacitors),
             })
         })
         .collect()
+}
+
+fn support_capacitance_to_ground(bound: &BoundBoard<'_>, net_name: &str) -> (f64, Vec<String>) {
+    let mut total_f = 0.0;
+    let mut capacitors = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        if spice.primitive != SpicePrimitive::Capacitor {
+            continue;
+        }
+        let Some(value_f) = spice.value_f else {
+            continue;
+        };
+        if !value_f.is_finite() || value_f <= 0.0 {
+            continue;
+        }
+        if component_connects_net_to_ground(bound, component, net_name) {
+            total_f += value_f;
+            capacitors.push(component_id.clone());
+        }
+    }
+    (total_f, capacitors)
+}
+
+fn component_connects_net_to_ground(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    net_name: &str,
+) -> bool {
+    component.pins.values().any(|net| net == net_name)
+        && component.pins.values().any(|net| {
+            net != net_name
+                && bound
+                    .project
+                    .board
+                    .nets
+                    .get(net)
+                    .is_some_and(|spec| spec.kind == NetKind::Ground)
+        })
 }
 
 fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {

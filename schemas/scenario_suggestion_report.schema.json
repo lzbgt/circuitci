@@ -194,7 +194,17 @@
                     "max_output_current_A": { "type": "number", "minimum": 0 },
                     "startup_delay_us": { "type": "number", "minimum": 0 },
                     "input_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 },
-                    "output_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 }
+                    "output_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 },
+                    "input_support_capacitance_F": { "type": "number", "minimum": 0 },
+                    "input_support_capacitors": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    },
+                    "output_support_capacitance_F": { "type": "number", "minimum": 0 },
+                    "output_support_capacitors": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    }
                   },
                   "additionalProperties": false
                 }

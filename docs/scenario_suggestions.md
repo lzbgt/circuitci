@@ -27,8 +27,10 @@ The command is conservative:
 - If a model declares `power_conversion`, the power-tree suggestion includes
   `scenario.regulators[]` with the regulator component, input/output pins,
   input/output nets, and declared dropout/current/startup/capacitance limits.
-  This gives agents the exact regulator evidence that `POWER_TREE_VALID` will
-  execute.
+  When a capacitance requirement is declared, the entry also includes measured
+  input/output support capacitance and the capacitor component IDs contributing
+  to each rail. This gives agents the exact regulator evidence that
+  `POWER_TREE_VALID` will execute.
 - If a model declares `reset_supervisor`, the power-tree suggestion includes
   `scenario.reset_supervisors[]` with the supervisor component, monitored
   pin/net, reset output pin/net, and threshold range. This points agents at the
@@ -114,6 +116,12 @@ suggestions:
           max_output_current_A: 0.6
           input_capacitance_min_F: 0.000001
           output_capacitance_min_F: 0.000001
+          input_support_capacitance_F: 0.000001
+          input_support_capacitors:
+            - CIN
+          output_support_capacitance_F: 0.000001
+          output_support_capacitors:
+            - COUT
       reset_supervisors:
         - component: USUP
           monitored_pin: VDD
