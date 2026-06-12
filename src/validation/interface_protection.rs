@@ -21,6 +21,14 @@ pub(super) fn validate_usb_route_geometry(
     usb_route::validate_usb_route_geometry(bound, scenario, findings);
 }
 
+pub(super) fn validate_usb_vbus_route(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    usb_route::validate_usb_vbus_route(bound, scenario, findings);
+}
+
 pub(super) fn validate_interface_protection(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,

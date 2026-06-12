@@ -206,6 +206,16 @@ pub struct SuggestedUsbRoute {
         skip_serializing_if = "Option::is_none"
     )]
     pub data_line_width_delta_mm: Option<f64>,
+    #[serde(
+        rename = "expected_vbus_route_width_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub expected_vbus_route_width_mm: Option<f64>,
+    #[serde(
+        rename = "measured_vbus_route_width_min_mm",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub measured_vbus_route_width_min_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protection_component: Option<String>,
 }

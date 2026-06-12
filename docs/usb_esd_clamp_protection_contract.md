@@ -125,8 +125,8 @@ Route-geometry validation:
   `parameters.max_data_pair_length_mismatch_mm`, and
   `parameters.max_data_pair_via_count_delta`.
 - The rule checks D+ and D- only. VBUS route validation should use a separate
-  power-path/layout rule because its constraints are different from data-line
-  geometry.
+  `USB_VBUS_ROUTE_VALID` rule because its constraints are different from
+  data-line geometry.
 - The rule also checks D+/D- length mismatch and via-count symmetry using the
   imported route evidence.
 - When `parameters.max_data_line_width_delta_mm` is present, it checks data-line
@@ -145,6 +145,24 @@ Route-geometry validation:
 - This check is still static layout evidence. It does not prove USB eye margin,
   impedance, skew, return-path continuity, shield bonding, or ESD pulse
   robustness.
+
+- `USB_VBUS_ROUTE_VALID` targets the same connector component and uses
+  `board.layout.routes` evidence for the connector VBUS net.
+- The scenario must declare `parameters.max_vbus_route_length_mm`,
+  `parameters.max_vbus_via_count`,
+  `parameters.max_connector_to_vbus_protection_route_distance_mm`, and
+  `parameters.max_component_to_route_distance_mm`.
+- When `parameters.min_vbus_route_width_mm` is present, every imported VBUS
+  route segment must be at least that wide.
+- The rule projects connector/protection placements onto the VBUS route graph
+  and checks the routed distance from connector VBUS to the nearest valid VBUS
+  protection component.
+- Scenario suggestions expose VBUS route evidence in `scenario.usb_routes[]`,
+  including measured length, via count, optional imported expected VBUS route
+  width, measured minimum VBUS route width, and matching protection component.
+- This check is still static layout evidence. It does not prove VBUS ampacity,
+  fuse trip behavior, inrush current, voltage drop under load, temperature
+  rise, or ESD pulse robustness.
 
 Datasheet-backed model pack:
 

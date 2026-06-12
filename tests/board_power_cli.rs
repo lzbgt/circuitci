@@ -383,6 +383,67 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
 }
 
 #[test]
+fn usb_vbus_route_geometry_passes_for_short_power_entry_route() {
+    let report = run_validation("examples/good_usb_vbus_route_geometry/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_vbus_route_geometry_reports_length_vias_width_and_protection_order() {
+    let report = run_validation("examples/bad_usb_vbus_route_geometry/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let route_length = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_VBUS_ROUTE_VALID"
+                && failure["net"] == "usb_vbus"
+                && failure["measured"]["route_length_mm"] == 6.0
+        })
+        .expect("VBUS route length finding");
+    assert_eq!(route_length["component"], "J1");
+    assert_eq!(route_length["measured"]["connector_signal"], "VBUS");
+    assert_eq!(route_length["limit"]["max_vbus_route_length_mm"], 5.0);
+    let vias = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_VBUS_ROUTE_VALID"
+                && failure["net"] == "usb_vbus"
+                && failure["measured"]["via_count"] == 2
+        })
+        .expect("VBUS via count finding");
+    assert_eq!(vias["limit"]["max_vbus_via_count"], 0);
+    let width = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_VBUS_ROUTE_VALID"
+                && failure["net"] == "usb_vbus"
+                && failure["measured"]["route_segment_width_mm"] == 0.10
+        })
+        .expect("VBUS route width finding");
+    assert_eq!(width["limit"]["min_vbus_route_width_mm"], 0.25);
+    let protection_distance = failures
+        .iter()
+        .find(|failure| {
+            failure["id"] == "USB_VBUS_ROUTE_VALID"
+                && failure["net"] == "usb_vbus"
+                && failure["measured"]["connector_to_vbus_protection_route_distance_mm"] == 6.0
+        })
+        .expect("VBUS protection route distance finding");
+    assert_eq!(
+        protection_distance["measured"]["protection_component"],
+        "UVBUS"
+    );
+    assert_eq!(
+        protection_distance["limit"]["max_connector_to_vbus_protection_route_distance_mm"],
+        2.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ti_tpd2eusb30_usb_esd_passes_static_review() {
     let report = run_validation("examples/good_ti_tpd2eusb30_usb_esd/project.yaml");
     assert_eq!(report["result"], "pass");

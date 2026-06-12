@@ -424,6 +424,44 @@ USB route geometry algorithm:
    valid protection component to be within
    `max_connector_to_protection_route_distance_mm`.
 
+USB VBUS route geometry uses `USB_VBUS_ROUTE_VALID` when the Board IR includes
+`board.layout.routes` evidence for the connector VBUS net. This rule is
+separate from D+/D- route geometry because VBUS route policy is power-entry and
+protection-order focused rather than differential-pair focused.
+
+```yaml
+scenarios:
+  - name: usb_vbus_route
+    type: interface_protection
+    checks:
+      - USB_VBUS_ROUTE_VALID
+    target:
+      component: J1
+    parameters:
+      max_vbus_route_length_mm: 20.0
+      max_vbus_via_count: 0
+      min_vbus_route_width_mm: 0.30   # optional
+      max_connector_to_vbus_protection_route_distance_mm: 2.0
+      max_component_to_route_distance_mm: 0.2
+```
+
+USB VBUS route algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Resolve the connector VBUS net and require a `board.layout.routes` entry.
+3. Sum routed segment lengths and require the net to stay within
+   `max_vbus_route_length_mm`.
+4. Count vias and require the count to stay within `max_vbus_via_count`.
+5. If `min_vbus_route_width_mm` is declared, require every VBUS segment to be at
+   least that wide.
+6. Project connector and VBUS protection component placements onto the routed
+   net within `max_component_to_route_distance_mm`.
+7. Compute graph distance along the routed VBUS segments and require the nearest
+   valid VBUS protection component to be within
+   `max_connector_to_vbus_protection_route_distance_mm`.
+8. Use a separate power-path/current-capacity or thermal review for VBUS copper
+   ampacity, fuse behavior, inrush, or temperature-rise sign-off.
+
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:
 

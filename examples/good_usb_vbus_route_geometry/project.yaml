@@ -1,28 +1,18 @@
 project:
-  name: scenario_suggestions_usb_connector_protection
+  name: good_usb_vbus_route_geometry
   version: 0.1.0
 
 libraries:
   - ../../libs/generic
-  - ../../libs/vendor/ti/protection
 
 board:
   components:
     J1:
       model: generic.connector.usb2
-      part_number: USB2_CONNECTOR
       pins:
         VBUS: usb_vbus
         "D+": usb_dp
         "D-": usb_dm
-        GND: gnd
-        SHIELD: gnd
-    UESD:
-      model: vendor.ti.tpd2eusb30
-      part_number: TPD2EUSB30
-      pins:
-        "D1+": usb_dp
-        "D1-": usb_dm
         GND: gnd
     UVBUS:
       model: generic.protection.vbus_esd_basic
@@ -48,36 +38,15 @@ board:
         x_mm: 0.0
         y_mm: 0.0
         side: top
-      UESD:
+      UVBUS:
         x_mm: 1.0
         y_mm: 0.0
         side: top
-      UVBUS:
-        x_mm: 1.5
-        y_mm: 0.0
-        side: top
     routes:
-      usb_dp:
-        segments:
-          - start: { x_mm: 0.0, y_mm: 0.0 }
-            end: { x_mm: 1.0, y_mm: 0.0 }
-            width_mm: 0.15
-            layer: F.Cu
-      usb_dm:
-        segments:
-          - start: { x_mm: 0.0, y_mm: 0.4 }
-            end: { x_mm: 1.0, y_mm: 0.4 }
-            width_mm: 0.15
-            layer: F.Cu
-        vias:
-          - at: { x_mm: 0.5, y_mm: 0.4 }
-            size_mm: 0.6
-            drill_mm: 0.3
-            layers: [F.Cu, B.Cu]
       usb_vbus:
         segments:
           - start: { x_mm: 0.0, y_mm: 0.0 }
-            end: { x_mm: 1.5, y_mm: 0.0 }
+            end: { x_mm: 1.0, y_mm: 0.0 }
             width_mm: 0.30
             layer: F.Cu
     constraints:
@@ -87,4 +56,16 @@ board:
           track_width_mm: 0.30
           length_max_mm: 20.0
 
-scenarios: []
+scenarios:
+  - name: usb_vbus_route_geometry
+    type: interface_protection
+    checks:
+      - USB_VBUS_ROUTE_VALID
+    target:
+      component: J1
+    parameters:
+      max_vbus_route_length_mm: 5.0
+      max_vbus_via_count: 0
+      min_vbus_route_width_mm: 0.25
+      max_connector_to_vbus_protection_route_distance_mm: 2.0
+      max_component_to_route_distance_mm: 0.5

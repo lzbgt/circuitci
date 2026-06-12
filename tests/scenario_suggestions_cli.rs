@@ -589,6 +589,40 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             .unwrap()
             .contains("max_data_line_route_length_mm")
     );
+    let vbus_route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
+        .expect("USB VBUS route suggestion");
+    assert_eq!(vbus_route["kind"], "interface_protection");
+    assert_eq!(vbus_route["runnable"], false);
+    assert_eq!(vbus_route["scenario"]["type"], "interface_protection");
+    assert_eq!(vbus_route["scenario"]["checks"][0], "USB_VBUS_ROUTE_VALID");
+    assert_eq!(vbus_route["scenario"]["target"]["component"], "J1");
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_vbus_route_length_mm"],
+        20.0
+    );
+    assert!(vbus_route["scenario"]["parameters"]["max_vbus_via_count"].is_null());
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["min_vbus_route_width_mm"],
+        0.30
+    );
+    assert!(
+        vbus_route["scenario"]["parameters"]["max_connector_to_vbus_protection_route_distance_mm"]
+            .is_null()
+    );
+    assert!(vbus_route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
+    let vbus_routes = vbus_route["scenario"]["usb_routes"].as_array().unwrap();
+    assert_eq!(vbus_routes.len(), 1);
+    assert_eq!(vbus_routes[0]["signal"], "VBUS");
+    assert_eq!(vbus_routes[0]["net"], "usb_vbus");
+    assert_eq!(vbus_routes[0]["route_length_mm"], 1.5);
+    assert_eq!(vbus_routes[0]["via_count"], 0);
+    assert_eq!(vbus_routes[0]["expected_vbus_route_width_mm"], 0.30);
+    assert_eq!(vbus_routes[0]["measured_vbus_route_width_min_mm"], 0.30);
+    assert_eq!(vbus_routes[0]["protection_component"], "UVBUS");
 }
 
 #[test]

@@ -100,6 +100,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `USB_CONNECTOR_PROTECTION_VALID`
 - `USB_PROTECTION_PLACEMENT_VALID`
 - `USB_ROUTE_GEOMETRY_VALID`
+- `USB_VBUS_ROUTE_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
@@ -189,6 +190,19 @@ Differential-pair findings also report `dp_net`, `dm_net`,
 `max_component_to_route_distance_mm`, `max_data_pair_length_mismatch_mm`,
 `max_data_pair_via_count_delta`, `expected_data_pair_gap_mm`, and
 `max_data_pair_gap_delta_mm`.
+
+`USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
+that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
+`board.layout.placements`, and `board.layout.routes`. Stable measured keys
+include `connector_signal`, `route_length_mm`, `via_count`,
+`route_segment_width_mm`, `protection_component`,
+`connector_to_vbus_protection_route_distance_mm`,
+`protection_components_without_placement`, and
+`protection_components_off_route`. Stable limit keys include
+`max_vbus_route_length_mm`, `max_vbus_via_count`,
+`min_vbus_route_width_mm`,
+`max_connector_to_vbus_protection_route_distance_mm`, and
+`max_component_to_route_distance_mm`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

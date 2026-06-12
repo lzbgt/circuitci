@@ -48,6 +48,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `USB_CONNECTOR_PROTECTION_VALID`
 - `USB_PROTECTION_PLACEMENT_VALID`
 - `USB_ROUTE_GEOMETRY_VALID`
+- `USB_VBUS_ROUTE_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`

@@ -1,6 +1,8 @@
 use crate::board_ir::{ComponentPlacement, NetLayoutRule, NetRoute, Scenario};
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
+use crate::validation::USB_VBUS_ROUTE_VALID;
+use serde_json::json;
 
 use super::{
     UsbConnectorSignal, placement_is_finite, required_scenario_numeric_parameter,
@@ -154,6 +156,189 @@ pub(super) fn validate_usb_route_geometry(
     );
 }
 
+pub(super) fn validate_usb_vbus_route(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(max_route_length_mm) =
+        required_positive_parameter(scenario, "max_vbus_route_length_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_via_count) = required_integer_parameter(scenario, "max_vbus_via_count", findings)
+    else {
+        return;
+    };
+    let Some(max_protection_route_distance_mm) = required_positive_parameter(
+        scenario,
+        "max_connector_to_vbus_protection_route_distance_mm",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(max_component_to_route_distance_mm) =
+        required_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
+    else {
+        return;
+    };
+    let Some(min_vbus_route_width_mm) =
+        optional_nonnegative_parameter(scenario, "min_vbus_route_width_mm", findings)
+    else {
+        return;
+    };
+
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_VBUS_ROUTE_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB VBUS route target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB VBUS route target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector) = &model.usb_connector else {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            &component.model,
+        ));
+        return;
+    };
+    let Some(connector_placement) =
+        valid_component_placement(bound, scenario, &target.component, findings)
+    else {
+        return;
+    };
+    let pin = &connector.vbus_pin;
+    let Some(net_name) = component.pins.get(pin) else {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector {} VBUS pin {pin} is not connected, so VBUS route geometry cannot be checked.",
+                target.component
+            ),
+            "missing_pin",
+            pin,
+        ));
+        return;
+    };
+    if !bound.project.board.nets.contains_key(net_name) {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector {} VBUS net {net_name} is not declared, so VBUS route geometry cannot be checked.",
+                target.component
+            ),
+            "missing_net",
+            net_name,
+        ));
+        return;
+    }
+    let Some(route) = bound.project.board.layout.routes.get(net_name) else {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector {} VBUS net {net_name} has no board.layout.routes entry.",
+                target.component
+            ),
+            "missing_route",
+            net_name,
+        ));
+        return;
+    };
+    if let Err(message) = validate_route_shape(route) {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            &target.component,
+            message,
+            "route_geometry",
+            net_name,
+        ));
+        return;
+    }
+
+    let route_length_mm = route_length_mm(route);
+    if route_length_mm > max_route_length_mm {
+        findings.push(usb_vbus_route_length_finding(
+            scenario,
+            &target.component,
+            net_name,
+            route_length_mm,
+            max_route_length_mm,
+        ));
+    }
+    let via_count = route.vias.len();
+    if via_count > max_via_count {
+        findings.push(usb_vbus_route_via_count_finding(
+            scenario,
+            &target.component,
+            net_name,
+            via_count,
+            max_via_count,
+        ));
+    }
+    if let Some(min_width_mm) = min_vbus_route_width_mm
+        && let Some((segment_index, measured_width_mm)) = narrowest_route_segment(route)
+        && measured_width_mm < min_width_mm
+    {
+        findings.push(usb_vbus_route_width_finding(
+            scenario,
+            &target.component,
+            net_name,
+            segment_index,
+            measured_width_mm,
+            min_width_mm,
+        ));
+    }
+    validate_vbus_protection_route_distance(
+        bound,
+        scenario,
+        VbusRouteProtectionCheck {
+            connector_id: &target.component,
+            connector_placement,
+            net_name,
+            route,
+            max_protection_route_distance_mm,
+            max_component_to_route_distance_mm,
+        },
+        findings,
+    );
+}
+
 struct UsbRouteSignalCheck<'a> {
     connector_id: &'a str,
     component: &'a crate::board_ir::ComponentSpec,
@@ -163,6 +348,15 @@ struct UsbRouteSignalCheck<'a> {
     max_route_length_mm: f64,
     max_via_count: usize,
     max_data_line_width_delta_mm: Option<f64>,
+    max_protection_route_distance_mm: f64,
+    max_component_to_route_distance_mm: f64,
+}
+
+struct VbusRouteProtectionCheck<'a> {
+    connector_id: &'a str,
+    connector_placement: &'a ComponentPlacement,
+    net_name: &'a str,
+    route: &'a NetRoute,
     max_protection_route_distance_mm: f64,
     max_component_to_route_distance_mm: f64,
 }
@@ -347,6 +541,85 @@ fn validate_protection_route_distance(
     }
 }
 
+fn validate_vbus_protection_route_distance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: VbusRouteProtectionCheck<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let protections = valid_protection_clamps_for_net(bound, check.connector_id, check.net_name);
+    if protections.is_empty() {
+        findings.push(usb_vbus_route_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {} VBUS net {} has no valid protection clamp for route-order validation.",
+                check.connector_id, check.net_name
+            ),
+            "required_vbus_protection_clamp",
+            check.net_name,
+        ));
+        return;
+    }
+    let connector_point = PlacementPoint::from(check.connector_placement);
+    let mut nearest = None;
+    let mut missing_placements = Vec::new();
+    let mut off_route = Vec::new();
+    for protection in &protections {
+        let Some(protection_placement) = bound
+            .project
+            .board
+            .layout
+            .placements
+            .get(protection.component_id)
+        else {
+            missing_placements.push(protection.component_id.to_string());
+            continue;
+        };
+        if !placement_is_finite(protection_placement) {
+            missing_placements.push(protection.component_id.to_string());
+            continue;
+        }
+        let protection_point = PlacementPoint::from(protection_placement);
+        let Some(route_distance) = route_distance_between_placements(
+            check.route,
+            connector_point,
+            protection_point,
+            check.max_component_to_route_distance_mm,
+        ) else {
+            off_route.push(protection.component_id.to_string());
+            continue;
+        };
+        if nearest
+            .as_ref()
+            .is_none_or(|(_, distance): &(&str, f64)| route_distance < *distance)
+        {
+            nearest = Some((protection.component_id, route_distance));
+        }
+    }
+    let Some((protection_component, route_distance_mm)) = nearest else {
+        findings.push(usb_vbus_route_no_protection_path_finding(
+            scenario,
+            check.connector_id,
+            check.net_name,
+            &missing_placements,
+            &off_route,
+            check.max_component_to_route_distance_mm,
+        ));
+        return;
+    };
+    if route_distance_mm > check.max_protection_route_distance_mm {
+        findings.push(usb_vbus_route_protection_distance_finding(
+            scenario,
+            check.connector_id,
+            check.net_name,
+            protection_component,
+            route_distance_mm,
+            check.max_protection_route_distance_mm,
+        ));
+    }
+}
+
 fn validate_route_width_against_rule(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -517,6 +790,217 @@ fn route_for_signal<'a>(
 
 fn expected_usb_data_width_mm(rule: &NetLayoutRule) -> Option<f64> {
     rule.diff_pair_width_mm.or(rule.track_width_mm)
+}
+
+fn narrowest_route_segment(route: &NetRoute) -> Option<(usize, f64)> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .map(|(index, segment)| (index, segment.width_mm))
+        .min_by(|left, right| left.1.total_cmp(&right.1))
+}
+
+fn usb_vbus_route_metadata_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_VBUS_ROUTE_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import PCB route geometry with import-kicad-pcb before declaring USB_VBUS_ROUTE_VALID."
+            .to_string(),
+        "Declare VBUS route limits from the board USB power/layout rule instead of inferring them from coordinates.".to_string(),
+    ];
+    finding
+}
+
+fn usb_vbus_route_length_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    route_length_mm: f64,
+    max_route_length_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} route length {:.3} mm exceeds limit {:.3} mm.",
+            route_length_mm, max_route_length_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("route_length_mm".to_string(), json!(route_length_mm));
+    finding.limit.insert(
+        "max_vbus_route_length_mm".to_string(),
+        json!(max_route_length_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Shorten the USB VBUS route or move the connector/protection/power-entry path closer together.".to_string(),
+        "Use a board-specific USB power-layout rule for max_vbus_route_length_mm.".to_string(),
+    ];
+    finding
+}
+
+fn usb_vbus_route_via_count_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    via_count: usize,
+    max_via_count: usize,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} has {via_count} vias, above limit {max_via_count}."
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("via_count".to_string(), json!(via_count));
+    finding
+        .limit
+        .insert("max_vbus_via_count".to_string(), json!(max_via_count));
+    finding.suggested_fixes = vec![
+        "Reduce USB VBUS layer changes before the protection/power-entry stage or relax max_vbus_via_count only with layout justification.".to_string(),
+        "Use a separate power-path/current-capacity review for VBUS copper sizing and fuse behavior.".to_string(),
+    ];
+    finding
+}
+
+fn usb_vbus_route_width_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    segment_index: usize,
+    measured_width_mm: f64,
+    min_width_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} segment {segment_index} width {:.3} mm is below minimum {:.3} mm.",
+            measured_width_mm, min_width_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding
+        .measured
+        .insert("segment_index".to_string(), json!(segment_index));
+    finding.measured.insert(
+        "route_segment_width_mm".to_string(),
+        json!(measured_width_mm),
+    );
+    finding
+        .limit
+        .insert("min_vbus_route_width_mm".to_string(), json!(min_width_mm));
+    finding.suggested_fixes = vec![
+        "Widen the USB VBUS route to satisfy the board's USB power-entry layout rule.".to_string(),
+        "Keep current-capacity and temperature-rise sign-off in a separate power-layout review."
+            .to_string(),
+    ];
+    finding
+}
+
+fn usb_vbus_route_no_protection_path_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    missing_placements: &[String],
+    off_route_components: &[String],
+    max_component_to_route_distance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} has no protection component with usable route-distance evidence."
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding.measured.insert(
+        "protection_components_without_placement".to_string(),
+        json!(missing_placements),
+    );
+    finding.measured.insert(
+        "protection_components_off_route".to_string(),
+        json!(off_route_components),
+    );
+    finding.limit.insert(
+        "max_component_to_route_distance_mm".to_string(),
+        json!(max_component_to_route_distance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Place the USB VBUS protection component on the routed VBUS net near the connector and import updated PCB route geometry.".to_string(),
+        "Check that component placement coordinates and route coordinates share the same PCB coordinate system.".to_string(),
+    ];
+    finding
+}
+
+fn usb_vbus_route_protection_distance_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    net: &str,
+    protection_component: &str,
+    route_distance_mm: f64,
+    max_route_distance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_VBUS_ROUTE_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} VBUS net {net} reaches protection component {protection_component} after {:.3} mm of route, exceeding limit {:.3} mm.",
+            route_distance_mm, max_route_distance_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!("VBUS"));
+    finding.measured.insert(
+        "protection_component".to_string(),
+        json!(protection_component),
+    );
+    finding.measured.insert(
+        "connector_to_vbus_protection_route_distance_mm".to_string(),
+        json!(route_distance_mm),
+    );
+    finding.limit.insert(
+        "max_connector_to_vbus_protection_route_distance_mm".to_string(),
+        json!(max_route_distance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move the VBUS protection component closer to the USB connector along the routed VBUS path.".to_string(),
+        "Route connector VBUS through the protection/power-entry component before continuing to downstream loads.".to_string(),
+    ];
+    finding
 }
 
 fn validate_usb_pair_gap(

@@ -104,6 +104,15 @@ The command is conservative:
   `max_data_pair_length_mismatch_mm`; via-count, width tolerance, gap
   tolerance, and ESD placement limits remain `null` until an agent supplies
   board-specific policy.
+- It emits non-runnable `USB_VBUS_ROUTE_VALID` templates when the USB connector,
+  VBUS protection component, placements, and `board.layout.routes` evidence are
+  present. The template includes `scenario.usb_routes[]` with VBUS net, route
+  length, via count, optional imported `expected_vbus_route_width_mm`, measured
+  `measured_vbus_route_width_min_mm`, and the matching protection component.
+  If imported net rules include a VBUS `length` constraint or `track_width_mm`,
+  the template pre-fills `max_vbus_route_length_mm` and
+  `min_vbus_route_width_mm`; via-count and connector-to-protection route
+  distance limits remain `null` until an agent supplies board-specific policy.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

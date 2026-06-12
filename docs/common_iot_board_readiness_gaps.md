@@ -145,7 +145,9 @@ coverage for declared USB D+/D- and optional VBUS protection.
 connector-to-protection center distance from `board.layout.placements`.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
-distance from `board.layout.routes`.
+distance from `board.layout.routes`. `USB_VBUS_ROUTE_VALID` adds the matching
+static VBUS power-entry route guard for route length, via count, optional
+minimum segment width, and connector-to-VBUS-protection route distance.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence, and emits
 non-runnable placement templates when the connector and required protection
@@ -155,9 +157,9 @@ states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
 assertions. Broader automatic recognition for device-specific protection
-behavior, PCB placement extraction, trace-order proof, additional
-datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal integrity
-remain component-pack and physics gaps.
+behavior, VBUS current capacity and transient fuse behavior, trace-order proof,
+additional datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal
+integrity remain component-pack and physics gaps.
 
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load

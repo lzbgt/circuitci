@@ -3,7 +3,7 @@ use super::{
     SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
     SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
     USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_ROUTE_GEOMETRY_VALID,
-    sanitized_name,
+    USB_VBUS_ROUTE_VALID, sanitized_name,
 };
 use crate::board_ir::{
     BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetLayoutRule, NetRoute,
@@ -20,6 +20,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
     let existing_usb_connectors = existing_usb_connector_protection_checks(bound.project);
     let existing_usb_placements = existing_usb_protection_placement_checks(bound.project);
     let existing_usb_routes = existing_usb_route_geometry_checks(bound.project);
+    let existing_usb_vbus_routes = existing_usb_vbus_route_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -173,6 +174,13 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
             && !existing_usb_routes.contains(component_id)
             && let Some(suggestion) =
                 usb_route_geometry_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
+        if model.usb_connector.is_some()
+            && !existing_usb_vbus_routes.contains(component_id)
+            && let Some(suggestion) =
+                usb_vbus_route_suggestion(bound, component_id, component, model)
         {
             suggestions.push(suggestion);
         }
@@ -523,6 +531,107 @@ fn usb_route_geometry_suggestion(
     })
 }
 
+fn usb_vbus_route_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let vbus_net = suggested_connector.vbus_net.as_deref()?;
+    if bound
+        .project
+        .board
+        .nets
+        .get(vbus_net)
+        .is_none_or(|net| net.kind != NetKind::Power)
+    {
+        return None;
+    }
+    let connector_placement = component_placement(bound, component_id)?;
+    let vbus_clamp = nearest_placed_protection_clamp_for_net(
+        bound,
+        component_id,
+        vbus_net,
+        connector_placement,
+    )?;
+    let vbus_route = suggested_usb_vbus_route(bound, vbus_net, Some(vbus_clamp.component.clone()))?;
+    let route_limit = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .net_rules
+        .get(vbus_net)
+        .and_then(|rule| rule.length_max_mm);
+    let min_width = vbus_route.expected_vbus_route_width_mm;
+    let parameters = BTreeMap::from([
+        (
+            "max_vbus_route_length_mm".to_string(),
+            optional_number_value(route_limit),
+        ),
+        ("max_vbus_via_count".to_string(), serde_json::Value::Null),
+        (
+            "min_vbus_route_width_mm".to_string(),
+            optional_number_value(min_width),
+        ),
+        (
+            "max_connector_to_vbus_protection_route_distance_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_component_to_route_distance_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+    ]);
+    Some(ScenarioSuggestion {
+        id: format!("usb_vbus_route_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has VBUS route and protection evidence; add VBUS power-entry route checks."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_vbus_route", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_VBUS_ROUTE_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: vec![vbus_clamp],
+            usb_connectors: vec![suggested_connector],
+            usb_routes: vec![vbus_route],
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            route_limit_required_input(
+                route_limit,
+                "max_vbus_route_length_mm",
+                "Fill max_vbus_route_length_mm from the board's USB power-entry layout rule.",
+            ),
+            "Fill max_vbus_via_count from the board's USB power-entry routing policy.".to_string(),
+            "Review or fill min_vbus_route_width_mm from the board's VBUS current/temperature-rise routing rule.".to_string(),
+            "Fill max_connector_to_vbus_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/power-entry layout guidance before treating the VBUS route template as sign-off.".to_string(),
+        ],
+    })
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct SuggestedUsbRouteLimits {
     max_data_line_route_length_mm: Option<f64>,
@@ -601,6 +710,39 @@ fn suggested_usb_route(
         expected_data_line_width_mm,
         measured_data_line_width_mm: width_evidence.map(|evidence| evidence.measured_width_mm),
         data_line_width_delta_mm: width_evidence.map(|evidence| evidence.width_delta_mm),
+        expected_vbus_route_width_mm: None,
+        measured_vbus_route_width_min_mm: None,
+        protection_component,
+    })
+}
+
+fn suggested_usb_vbus_route(
+    bound: &BoundBoard<'_>,
+    net_name: &str,
+    protection_component: Option<String>,
+) -> Option<SuggestedUsbRoute> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.segments.is_empty() {
+        return None;
+    }
+    let expected_vbus_route_width_mm = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .net_rules
+        .get(net_name)
+        .and_then(|rule| rule.track_width_mm);
+    Some(SuggestedUsbRoute {
+        signal: "VBUS".to_string(),
+        net: net_name.to_string(),
+        route_length_mm: route_length_mm(route),
+        via_count: route.vias.len(),
+        expected_data_line_width_mm: None,
+        measured_data_line_width_mm: None,
+        data_line_width_delta_mm: None,
+        expected_vbus_route_width_mm,
+        measured_vbus_route_width_min_mm: narrowest_route_width_mm(route),
         protection_component,
     })
 }
@@ -677,6 +819,14 @@ fn route_width_delta(route: &NetRoute, expected_width_mm: f64) -> Option<RouteWi
             width_delta_mm: (segment.width_mm - expected_width_mm).abs(),
         })
         .max_by(|left, right| left.width_delta_mm.total_cmp(&right.width_delta_mm))
+}
+
+fn narrowest_route_width_mm(route: &NetRoute) -> Option<f64> {
+    route
+        .segments
+        .iter()
+        .map(|segment| segment.width_mm)
+        .min_by(f64::total_cmp)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1122,6 +1272,26 @@ fn existing_usb_route_geometry_checks(project: &BoardProject) -> BTreeSet<String
                     .checks
                     .iter()
                     .any(|check| check == USB_ROUTE_GEOMETRY_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+fn existing_usb_vbus_route_checks(project: &BoardProject) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == USB_VBUS_ROUTE_VALID)
         })
         .filter_map(|scenario| {
             scenario

@@ -58,6 +58,12 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   clamp coverage. It does not prove trace order, trace length, via count,
   parasitic inductance, shield strategy, return-path continuity, differential
   impedance, ESD pulse survival, or USB signal integrity.
+- `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
+  route geometry for USB data nets and VBUS respectively. VBUS route checks are
+  limited to route length, via count, optional minimum segment width, and
+  connector-to-protection route distance. They do not prove VBUS current
+  capacity, fuse trip behavior, inrush current, voltage drop under load,
+  temperature rise, or ESD pulse survival.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature

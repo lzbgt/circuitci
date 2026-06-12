@@ -241,7 +241,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 7);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 8);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -255,6 +255,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
     );
     let route = suggestions["suggestions"]
         .as_array()
@@ -305,4 +312,28 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .abs()
             < 1.0e-9
     );
+    let vbus_route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
+        .unwrap();
+    assert_eq!(vbus_route["scenario"]["checks"][0], "USB_VBUS_ROUTE_VALID");
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_vbus_route_length_mm"],
+        20.0
+    );
+    assert!(vbus_route["scenario"]["parameters"]["max_vbus_via_count"].is_null());
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["min_vbus_route_width_mm"],
+        0.3
+    );
+    let vbus = &vbus_route["scenario"]["usb_routes"][0];
+    assert_eq!(vbus["signal"], "VBUS");
+    assert_eq!(vbus["net"], "usb_vbus");
+    assert_eq!(vbus["route_length_mm"], 1.5);
+    assert_eq!(vbus["via_count"], 0);
+    assert_eq!(vbus["expected_vbus_route_width_mm"], 0.3);
+    assert_eq!(vbus["measured_vbus_route_width_min_mm"], 0.3);
+    assert_eq!(vbus["protection_component"], "UVBUS");
 }
