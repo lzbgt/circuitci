@@ -262,10 +262,11 @@ fn run_import_kicad_pcb(pcb: PathBuf, project: PathBuf, output: PathBuf) -> Resu
         },
     )?;
     println!(
-        "CircuitCI imported {} KiCad PCB placements, {} route segments, and {} vias {} + {} -> {}",
+        "CircuitCI imported {} KiCad PCB placements, {} route segments, {} vias, and {} routing constraints {} + {} -> {}",
         summary.placements,
         summary.route_segments,
         summary.route_vias,
+        summary.routing_constraints,
         pcb.display(),
         project.display(),
         output.display()

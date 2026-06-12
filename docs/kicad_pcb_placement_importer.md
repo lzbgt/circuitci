@@ -45,9 +45,12 @@ When the enriched project is written to a different directory, relative
 `validate`/`suggest-scenarios` commands still resolve the same model packs.
 
 This is bounded layout evidence, not a full PCB layout solver. The importer
-does not extract differential-pair constraints, shield bonding, copper pours,
-clearances, footprint pad geometry, return paths, net classes, impedance rules,
-or pin-1/BOM/PNP alignment.
+extracts component center placements, routed `segment`/`via` geometry, net-class
+route/differential-pair defaults, and simple custom DRC `length`/`skew`
+constraints whose conditions name a net class or explicit net. It does not
+extract shield bonding, copper pours, footprint pad geometry, return paths,
+impedance calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP
+alignment.
 
 Fixture coverage:
 

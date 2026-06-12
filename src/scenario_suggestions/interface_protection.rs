@@ -6,7 +6,8 @@ use super::{
     sanitized_name,
 };
 use crate::board_ir::{
-    BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetRoute, PlacementSide,
+    BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetLayoutRule, NetRoute,
+    PlacementSide,
 };
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
@@ -423,10 +424,11 @@ fn usb_route_geometry_suggestion(
         Some(dm_clamp.component.clone()),
     )?;
     let route_pair = suggested_usb_route_pair(&dp_route, &dm_route)?;
+    let route_limits = suggested_usb_route_limits(bound, &dp_route.net, &dm_route.net);
     let parameters = BTreeMap::from([
         (
             "max_data_line_route_length_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_data_line_route_length_mm),
         ),
         (
             "max_data_line_via_count".to_string(),
@@ -442,7 +444,7 @@ fn usb_route_geometry_suggestion(
         ),
         (
             "max_data_pair_length_mismatch_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_data_pair_length_mismatch_mm),
         ),
         (
             "max_data_pair_via_count_delta".to_string(),
@@ -484,12 +486,67 @@ fn usb_route_geometry_suggestion(
             paths: Vec::new(),
         },
         required_inputs: vec![
-            "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.".to_string(),
+            route_limit_required_input(
+                route_limits.max_data_line_route_length_mm,
+                "max_data_line_route_length_mm",
+                "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.",
+            ),
             "Fill max_data_line_via_count from the board's USB routing policy; use zero when layer changes are not allowed.".to_string(),
-            "Fill max_data_pair_length_mismatch_mm and max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
+            route_limit_required_input(
+                route_limits.max_data_pair_length_mismatch_mm,
+                "max_data_pair_length_mismatch_mm",
+                "Fill max_data_pair_length_mismatch_mm from the USB differential-pair matching rule.",
+            ),
+            "Fill max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
             "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
         ],
     })
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct SuggestedUsbRouteLimits {
+    max_data_line_route_length_mm: Option<f64>,
+    max_data_pair_length_mismatch_mm: Option<f64>,
+}
+
+fn suggested_usb_route_limits(
+    bound: &BoundBoard<'_>,
+    dp_net: &str,
+    dm_net: &str,
+) -> SuggestedUsbRouteLimits {
+    let dp_rule = bound.project.board.layout.constraints.net_rules.get(dp_net);
+    let dm_rule = bound.project.board.layout.constraints.net_rules.get(dm_net);
+    SuggestedUsbRouteLimits {
+        max_data_line_route_length_mm: min_rule_value(dp_rule, dm_rule, |rule| rule.length_max_mm),
+        max_data_pair_length_mismatch_mm: min_rule_value(dp_rule, dm_rule, |rule| rule.skew_max_mm),
+    }
+}
+
+fn min_rule_value(
+    first: Option<&NetLayoutRule>,
+    second: Option<&NetLayoutRule>,
+    value: impl Fn(&NetLayoutRule) -> Option<f64>,
+) -> Option<f64> {
+    match (first.and_then(&value), second.and_then(value)) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+    }
+}
+
+fn optional_number_value(value: Option<f64>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, serde_json::Value::from)
+}
+
+fn route_limit_required_input(value: Option<f64>, field: &str, fallback: &str) -> String {
+    if value.is_some() {
+        format!(
+            "Review imported KiCad routing constraint {field} before treating the route template as sign-off."
+        )
+    } else {
+        fallback.to_string()
+    }
 }
 
 fn suggested_usb_route(

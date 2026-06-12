@@ -39,3 +39,10 @@ That enriched flow emits connector-to-protection distance evidence:
 The placement suggestion remains non-runnable until an agent fills
 `parameters.max_connector_to_protection_distance_mm` from the board's actual
 ESD/layout rule.
+
+The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
+for USB data length/skew. Import preserves that evidence under
+`board.layout.constraints.net_rules`, and the USB route suggestion pre-fills:
+
+- `max_data_line_route_length_mm: 25.0`
+- `max_data_pair_length_mismatch_mm: 0.5`

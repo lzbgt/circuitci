@@ -77,6 +77,17 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         imported["board"]["layout"]["routes"]["net_usb_vbus"]["segments"][0]["end"]["x_mm"],
         1.5
     );
+    let dp_rule = &imported["board"]["layout"]["constraints"]["net_rules"]["net_usb_dp"];
+    assert_eq!(dp_rule["net_class"], "USB_HS");
+    assert_eq!(dp_rule["track_width_mm"], 0.15);
+    assert_eq!(dp_rule["diff_pair_width_mm"], 0.15);
+    assert_eq!(dp_rule["diff_pair_gap_mm"], 0.15);
+    assert_eq!(dp_rule["length_max_mm"], 25.0);
+    assert_eq!(dp_rule["skew_max_mm"], 0.5);
+    let dm_rule = &imported["board"]["layout"]["constraints"]["net_rules"]["net_usb_dm"];
+    assert_eq!(dm_rule["net_class"], "USB_HS");
+    assert_eq!(dm_rule["length_max_mm"], 25.0);
+    assert_eq!(dm_rule["skew_max_mm"], 0.5);
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -128,7 +139,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
         .expect("USB route geometry suggestion");
     assert_eq!(route["scenario"]["checks"][0], "USB_ROUTE_GEOMETRY_VALID");
-    assert!(route["scenario"]["parameters"]["max_data_line_route_length_mm"].is_null());
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_route_length_mm"],
+        25.0
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"],
+        0.5
+    );
     assert!(
         route["scenario"]["usb_routes"]
             .as_array()
@@ -179,6 +197,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         imported["board"]["layout"]["routes"]["usb_vbus"]["segments"][0]["width_mm"],
         0.3
     );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["net_rules"]["usb_dp"]["length_max_mm"],
+        25.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["net_rules"]["usb_dm"]["skew_max_mm"],
+        0.5
+    );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -206,5 +232,19 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
+    );
+    let route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
+        .unwrap();
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_route_length_mm"],
+        25.0
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"],
+        0.5
     );
 }

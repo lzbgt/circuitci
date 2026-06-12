@@ -68,8 +68,9 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - KiCad XML, native `.kicad_sch`, and `.kicad_pcb` layout-evidence import are
   conservative. Unsupported or ambiguous constructs fail closed instead of being
   guessed. PCB import currently extracts component center placements plus
-  segment/via route geometry for mapped nets, not full pad geometry, net-class
-  rules, copper pours, return paths, or signal-integrity constraints.
+  segment/via route geometry and a bounded subset of net-class/custom-rule
+  route constraints for mapped nets, not full pad geometry, arbitrary DRC rule
+  semantics, copper pours, return paths, or signal-integrity constraints.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

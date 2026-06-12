@@ -170,6 +170,27 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "net_rules": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "net_class": { "type": "string", "minLength": 1 },
+                      "track_width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "diff_pair_width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "diff_pair_gap_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "length_max_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "skew_max_mm": { "type": "number", "minimum": 0 }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

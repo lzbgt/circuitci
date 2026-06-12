@@ -42,6 +42,7 @@ pub struct KicadPcbImportSummary {
     pub placements: usize,
     pub route_segments: usize,
     pub route_vias: usize,
+    pub routing_constraints: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -64,6 +65,16 @@ struct PcbRouteVia {
     size_mm: f64,
     drill_mm: f64,
     layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct PcbNetRule {
+    net_class: Option<String>,
+    track_width_mm: Option<f64>,
+    diff_pair_width_mm: Option<f64>,
+    diff_pair_gap_mm: Option<f64>,
+    length_max_mm: Option<f64>,
+    skew_max_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -95,6 +106,22 @@ struct RouteViaYaml<'a> {
     drill_mm: f64,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     layers: Vec<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct NetRuleYaml<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    net_class: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    track_width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diff_pair_width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diff_pair_gap_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    length_max_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skew_max_mm: Option<f64>,
 }
 
 pub fn import_kicad_pcb_placements(
@@ -147,6 +174,7 @@ pub fn import_kicad_pcb_placements(
 struct ParsedPcb {
     placements: BTreeMap<String, PcbPlacement>,
     routes: BTreeMap<String, PcbRoute>,
+    net_rules: BTreeMap<String, PcbNetRule>,
 }
 
 fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
@@ -159,7 +187,12 @@ fn parse_kicad_pcb(path: &PathBuf) -> Result<ParsedPcb> {
     }
     let placements = parse_placements(root_list, path)?;
     let routes = parse_routes(root_list, path)?;
-    Ok(ParsedPcb { placements, routes })
+    let net_rules = parse_net_rules(root_list, path)?;
+    Ok(ParsedPcb {
+        placements,
+        routes,
+        net_rules,
+    })
 }
 
 fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbPlacement>> {
@@ -232,6 +265,286 @@ fn parse_routes(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbR
         });
     }
     Ok(routes)
+}
+
+fn parse_net_rules(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, PcbNetRule>> {
+    let mut class_rules = BTreeMap::<String, PcbNetRule>::new();
+    let mut net_classes = BTreeMap::<String, Vec<String>>::new();
+    for net_class in all_lists_by_tag(root_list, "net_class") {
+        let Some(class_name) = string_at(net_class, 1).map(str::trim) else {
+            continue;
+        };
+        if class_name.is_empty() {
+            continue;
+        }
+        let mut rule = PcbNetRule {
+            net_class: Some(class_name.to_string()),
+            track_width_mm: first_positive_child_length_mm(
+                net_class,
+                &["trace_width", "track_width"],
+                path,
+            )?,
+            diff_pair_width_mm: first_positive_child_length_mm(
+                net_class,
+                &["diff_pair_width"],
+                path,
+            )?,
+            diff_pair_gap_mm: first_positive_child_length_mm(net_class, &["diff_pair_gap"], path)?,
+            length_max_mm: None,
+            skew_max_mm: None,
+        };
+        let nets = list_children(net_class, "add_net")
+            .filter_map(|item| string_at(item, 1).map(str::trim))
+            .filter(|net| !net.is_empty())
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        if nets.is_empty() {
+            continue;
+        }
+        for net in &nets {
+            net_classes
+                .entry(class_name.to_string())
+                .or_default()
+                .push(net.clone());
+        }
+        class_rules.insert(class_name.to_string(), rule.clone());
+        rule.net_class = None;
+    }
+
+    let mut net_rules = BTreeMap::<String, PcbNetRule>::new();
+    for (class_name, nets) in &net_classes {
+        let Some(class_rule) = class_rules.get(class_name) else {
+            continue;
+        };
+        for net in nets {
+            merge_net_rule(net_rules.entry(net.clone()).or_default(), class_rule);
+        }
+    }
+
+    for custom_rule in all_lists_by_tag(root_list, "rule") {
+        let Some(condition) =
+            child_list(custom_rule, "condition").and_then(|condition| string_at(condition, 1))
+        else {
+            continue;
+        };
+        let mut rule_update = PcbNetRule::default();
+        for constraint in list_children(custom_rule, "constraint") {
+            match string_at(constraint, 1) {
+                Some("length") => {
+                    rule_update.length_max_mm =
+                        positive_constraint_bound_mm(constraint, "max", path)?;
+                }
+                Some("skew") => {
+                    rule_update.skew_max_mm =
+                        nonnegative_constraint_bound_mm(constraint, "max", path)?;
+                }
+                _ => {}
+            }
+        }
+        if rule_update.length_max_mm.is_none() && rule_update.skew_max_mm.is_none() {
+            continue;
+        }
+        for class_name in condition_net_classes(condition) {
+            if let Some(nets) = net_classes.get(&class_name) {
+                for net in nets {
+                    merge_net_rule(net_rules.entry(net.clone()).or_default(), &rule_update);
+                }
+            }
+        }
+        for net in condition_net_names(condition) {
+            merge_net_rule(net_rules.entry(net).or_default(), &rule_update);
+        }
+    }
+
+    Ok(net_rules)
+}
+
+fn all_lists_by_tag<'a>(list: &'a [Sexp], wanted: &'a str) -> Vec<&'a [Sexp]> {
+    let mut matches = Vec::new();
+    collect_lists_by_tag(list, wanted, &mut matches);
+    matches
+}
+
+fn collect_lists_by_tag<'a>(list: &'a [Sexp], wanted: &str, matches: &mut Vec<&'a [Sexp]>) {
+    if tag(list) == Some(wanted) {
+        matches.push(list);
+    }
+    for item in list.iter().skip(1) {
+        if let Some(child) = as_list(item) {
+            collect_lists_by_tag(child, wanted, matches);
+        }
+    }
+}
+
+fn first_positive_child_length_mm(
+    list: &[Sexp],
+    names: &[&str],
+    path: &Path,
+) -> Result<Option<f64>> {
+    for name in names {
+        if let Some(child) = child_list(list, name) {
+            let value = length_at_mm(child, 1).with_context(|| {
+                format!(
+                    "KiCad PCB {} entry in {} has invalid {} value.",
+                    tag(list).unwrap_or("constraint"),
+                    path.display(),
+                    name
+                )
+            })?;
+            if value <= 0.0 {
+                bail!(
+                    "KiCad PCB {} entry in {} has non-positive {} {}.",
+                    tag(list).unwrap_or("constraint"),
+                    path.display(),
+                    name,
+                    value
+                );
+            }
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
+}
+
+fn positive_constraint_bound_mm(
+    constraint: &[Sexp],
+    name: &str,
+    path: &Path,
+) -> Result<Option<f64>> {
+    let Some(value) = constraint_bound_mm(constraint, name, path)? else {
+        return Ok(None);
+    };
+    if value <= 0.0 {
+        bail!(
+            "KiCad PCB custom rule in {} has non-positive {} bound {}.",
+            path.display(),
+            name,
+            value
+        );
+    }
+    Ok(Some(value))
+}
+
+fn nonnegative_constraint_bound_mm(
+    constraint: &[Sexp],
+    name: &str,
+    path: &Path,
+) -> Result<Option<f64>> {
+    let Some(value) = constraint_bound_mm(constraint, name, path)? else {
+        return Ok(None);
+    };
+    if value < 0.0 {
+        bail!(
+            "KiCad PCB custom rule in {} has negative {} bound {}.",
+            path.display(),
+            name,
+            value
+        );
+    }
+    Ok(Some(value))
+}
+
+fn constraint_bound_mm(constraint: &[Sexp], name: &str, path: &Path) -> Result<Option<f64>> {
+    let Some(bound) = child_list(constraint, name) else {
+        return Ok(None);
+    };
+    length_at_mm(bound, 1)
+        .with_context(|| {
+            format!(
+                "KiCad PCB custom rule in {} has invalid {name} bound.",
+                path.display()
+            )
+        })
+        .map(Some)
+}
+
+fn length_at_mm(list: &[Sexp], index: usize) -> Option<f64> {
+    let value = string_at(list, index)?.trim();
+    let (number, scale) = if let Some(number) = value.strip_suffix("mm") {
+        (number, 1.0)
+    } else if let Some(number) = value.strip_suffix("mil") {
+        (number, 0.0254)
+    } else if let Some(number) = value.strip_suffix("in") {
+        (number, 25.4)
+    } else {
+        (value, 1.0)
+    };
+    let parsed = number.trim().parse::<f64>().ok()? * scale;
+    parsed.is_finite().then_some(parsed)
+}
+
+fn condition_net_classes(condition: &str) -> Vec<String> {
+    quoted_condition_values(condition, "hasNetclass")
+        .into_iter()
+        .chain(quoted_equality_values(condition, "NetClass"))
+        .collect()
+}
+
+fn condition_net_names(condition: &str) -> Vec<String> {
+    quoted_equality_values(condition, "NetName")
+}
+
+fn quoted_condition_values(condition: &str, function_name: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    let needle = format!("{function_name}(");
+    let mut rest = condition;
+    while let Some(start) = rest.find(&needle) {
+        rest = &rest[start + needle.len()..];
+        if let Some(value) = leading_quoted_value(rest) {
+            values.push(value);
+        }
+    }
+    values
+}
+
+fn quoted_equality_values(condition: &str, property: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    for operator in ["==", "="] {
+        let mut rest = condition;
+        while let Some(property_start) = rest.find(property) {
+            rest = &rest[property_start + property.len()..];
+            let trimmed = rest.trim_start();
+            let Some(after_operator) = trimmed.strip_prefix(operator) else {
+                continue;
+            };
+            if let Some(value) = leading_quoted_value(after_operator.trim_start()) {
+                values.push(value);
+            }
+            rest = after_operator;
+        }
+    }
+    values
+}
+
+fn leading_quoted_value(input: &str) -> Option<String> {
+    let quote = input
+        .chars()
+        .find(|character| *character == '\'' || *character == '"')?;
+    let start = input.find(quote)? + quote.len_utf8();
+    let tail = &input[start..];
+    let end = tail.find(quote)?;
+    let value = tail[..end].trim();
+    (!value.is_empty()).then(|| value.to_string())
+}
+
+fn merge_net_rule(target: &mut PcbNetRule, update: &PcbNetRule) {
+    if target.net_class.is_none() {
+        target.net_class = update.net_class.clone();
+    }
+    target.track_width_mm = target.track_width_mm.or(update.track_width_mm);
+    target.diff_pair_width_mm = target.diff_pair_width_mm.or(update.diff_pair_width_mm);
+    target.diff_pair_gap_mm = target.diff_pair_gap_mm.or(update.diff_pair_gap_mm);
+    target.length_max_mm = min_optional(target.length_max_mm, update.length_max_mm);
+    target.skew_max_mm = min_optional(target.skew_max_mm, update.skew_max_mm);
+}
+
+fn min_optional(current: Option<f64>, update: Option<f64>) -> Option<f64> {
+    match (current, update) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+    }
 }
 
 fn parse_net_names(root_list: &[Sexp]) -> Result<BTreeMap<String, String>> {
@@ -424,6 +737,15 @@ fn merge_pcb_into_project(
         summary.route_segments += route.segments.len();
         summary.route_vias += route.vias.len();
     }
+    let constraints = ensure_mapping_field_mut(layout, "constraints")?;
+    let net_rules_yaml = ensure_mapping_field_mut(constraints, "net_rules")?;
+    for (pcb_net_name, rule) in &parsed_pcb.net_rules {
+        let Some(board_net_name) = map_pcb_net_to_board_net(pcb_net_name, &board_nets)? else {
+            continue;
+        };
+        net_rules_yaml.insert(Value::String(board_net_name), net_rule_yaml_value(rule)?);
+        summary.routing_constraints += 1;
+    }
     Ok(summary)
 }
 
@@ -451,6 +773,18 @@ fn route_yaml_value(route: &PcbRoute) -> Result<Value> {
             .collect(),
     })
     .context("Failed to serialize KiCad PCB route geometry into Board IR YAML.")
+}
+
+fn net_rule_yaml_value(rule: &PcbNetRule) -> Result<Value> {
+    serde_yaml_ng::to_value(NetRuleYaml {
+        net_class: rule.net_class.as_deref(),
+        track_width_mm: rule.track_width_mm,
+        diff_pair_width_mm: rule.diff_pair_width_mm,
+        diff_pair_gap_mm: rule.diff_pair_gap_mm,
+        length_max_mm: rule.length_max_mm,
+        skew_max_mm: rule.skew_max_mm,
+    })
+    .context("Failed to serialize KiCad PCB route constraints into Board IR YAML.")
 }
 
 fn map_pcb_net_to_board_net(

@@ -90,8 +90,10 @@ The command is conservative:
   `scenario.usb_routes[]` with data-line net, route length, via count, and the
   matching protection component. It also includes `scenario.usb_route_pairs[]`
   with computed D+/D- route lengths, length mismatch, via counts, and via-count
-  delta. Board-specific USB route limits remain `null`, including
-  differential-pair length-mismatch and via-count-delta limits.
+  delta. If KiCad PCB import found applicable custom DRC `length` or `skew`
+  constraints, the template pre-fills `max_data_line_route_length_mm` and
+  `max_data_pair_length_mismatch_mm`; via-count and ESD placement limits remain
+  `null` until an agent supplies board-specific policy.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

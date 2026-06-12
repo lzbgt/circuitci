@@ -39,6 +39,30 @@ pub struct BoardLayout {
     pub placements: BTreeMap<String, ComponentPlacement>,
     #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,
+    #[serde(default)]
+    pub constraints: LayoutConstraints,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutConstraints {
+    #[serde(default)]
+    pub net_rules: BTreeMap<String, NetLayoutRule>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct NetLayoutRule {
+    #[serde(default)]
+    pub net_class: Option<String>,
+    #[serde(default)]
+    pub track_width_mm: Option<f64>,
+    #[serde(default)]
+    pub diff_pair_width_mm: Option<f64>,
+    #[serde(default)]
+    pub diff_pair_gap_mm: Option<f64>,
+    #[serde(default)]
+    pub length_max_mm: Option<f64>,
+    #[serde(default)]
+    pub skew_max_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -159,6 +159,32 @@ replacement for signal-integrity or ESD-pulse validation; it is structured
 input for geometry-aware rules such as trace length, via count, and protection
 ordering.
 
+## Layout Constraint Evidence
+
+Board IR can carry imported routing constraints under
+`board.layout.constraints.net_rules`. Each key is an existing Board IR net.
+Values are in millimeters and are evidence from the board tool, not inferred
+sign-off rules.
+
+```yaml
+board:
+  layout:
+    constraints:
+      net_rules:
+        usb_dp:
+          net_class: USB_HS
+          track_width_mm: 0.15
+          diff_pair_width_mm: 0.15
+          diff_pair_gap_mm: 0.15
+          length_max_mm: 25.0
+          skew_max_mm: 0.5
+```
+
+KiCad PCB import fills this from `net_class` entries and simple custom DRC
+`length`/`skew` constraints whose conditions name a net class or explicit net.
+CircuitCI does not treat net-class track width as a hard DRC limit; KiCad uses
+net-class widths as router defaults unless a custom rule constrains them.
+
 ## Consistency Rules
 
 The parser and binder must report:

@@ -7,6 +7,19 @@
   (net 3 "USB_VBUS")
   (net 4 "GND")
 
+  (net_class "USB_HS" "USB high-speed data"
+    (clearance 0.15)
+    (trace_width 0.15)
+    (diff_pair_width 0.15)
+    (diff_pair_gap 0.15)
+    (add_net "USB_DP")
+    (add_net "USB_DM"))
+
+  (rule "USB data length and skew"
+    (condition "A.hasNetclass('USB_HS')")
+    (constraint length (max 25mm))
+    (constraint skew (max 0.5mm) within_diff_pairs))
+
   (footprint "Connector:USB2" (layer "F.Cu")
     (at 0 0 0)
     (property "Reference" "J1" (at 0 0 0) (layer "F.SilkS"))
