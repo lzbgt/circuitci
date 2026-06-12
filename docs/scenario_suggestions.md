@@ -14,6 +14,9 @@ The command is conservative:
 
 - It emits runnable `power_tree` suggestions when a project declares power nets
   but has no `POWER_TREE_VALID` scenario.
+- If a powered rail is fed by a model with `power_switch`, the power-tree
+  suggestion includes the switch control pin and required enabled state, and is
+  marked `runnable: false` until that enable-state evidence is confirmed.
 - It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
   output/input pairs have modeled I/O voltage metadata and no existing
   `power_tree` scenario declares that check.
@@ -54,7 +57,7 @@ The command is conservative:
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
   delays, GPIO pin-state observations, protection-path resistance, strap
-  current budgets, or SPICE assertions.
+  current budgets, load-switch enable evidence, or SPICE assertions.
 
 Example output shape:
 

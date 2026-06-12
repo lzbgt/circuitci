@@ -129,6 +129,33 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
 }
 
 #[test]
+fn suggest_scenarios_marks_load_switch_power_tree_template_non_runnable() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_load_switch/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_load_switch");
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power_tree suggestion");
+    assert_eq!(power_tree["kind"], "power_tree");
+    assert_eq!(power_tree["runnable"], false);
+    assert_eq!(power_tree["scenario"]["type"], "power_tree");
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    assert_eq!(power_tree["scenario"]["pin_states"][0]["component"], "USW");
+    assert_eq!(power_tree["scenario"]["pin_states"][0]["pin"], "EN");
+    assert_eq!(power_tree["scenario"]["pin_states"][0]["mode"], "input");
+    assert_eq!(power_tree["scenario"]["pin_states"][0]["state"], "high");
+    assert!(
+        power_tree["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("sensor_3v3")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");

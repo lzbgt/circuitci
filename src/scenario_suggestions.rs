@@ -1,6 +1,7 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::library::{
-    BoundBoard, ComponentModel, PortKind, SignalConditioningChannel, SignalConditioningKind,
+    BoundBoard, ComponentModel, PortKind, PowerSwitchState, SignalConditioningChannel,
+    SignalConditioningKind,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -167,7 +168,7 @@ struct ResetRcEvidence {
 pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     let mut suggestions = Vec::new();
     if should_suggest_power_tree(bound.project) {
-        suggestions.push(power_tree_suggestion(bound.project));
+        suggestions.push(power_tree_suggestion(bound));
     }
     if let Some(suggestion) = io_voltage_suggestion(bound) {
         suggestions.push(suggestion);
@@ -200,15 +201,21 @@ fn should_suggest_power_tree(project: &BoardProject) -> bool {
     has_power_net && !already_declared
 }
 
-fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
+fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
+    let (pin_states, required_inputs) = load_switch_power_tree_inputs(bound);
+    let runnable = required_inputs.is_empty();
     ScenarioSuggestion {
         id: "power_tree_valid".to_string(),
         kind: "power_tree".to_string(),
         confidence: "high".to_string(),
-        runnable: true,
-        reason: "Project declares power nets but no POWER_TREE_VALID scenario.".to_string(),
+        runnable,
+        reason: if runnable {
+            "Project declares power nets but no POWER_TREE_VALID scenario.".to_string()
+        } else {
+            "Project declares power nets and switched rails but no POWER_TREE_VALID scenario with load-switch enable evidence.".to_string()
+        },
         scenario: SuggestedScenario {
-            name: format!("{}_power_tree", sanitized_name(&project.project.name)),
+            name: format!("{}_power_tree", sanitized_name(&bound.project.project.name)),
             scenario_type: "power_tree".to_string(),
             checks: vec![POWER_TREE_VALID.to_string()],
             target: None,
@@ -218,11 +225,46 @@ fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
-            pin_states: Vec::new(),
+            pin_states,
             paths: Vec::new(),
         },
-        required_inputs: Vec::new(),
+        required_inputs,
     }
+}
+
+fn load_switch_power_tree_inputs(bound: &BoundBoard<'_>) -> (Vec<SuggestedPinState>, Vec<String>) {
+    let mut pin_states = Vec::new();
+    let mut required_inputs = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        let Some(power_switch) = &model.power_switch else {
+            continue;
+        };
+        let Some(output_net_name) = resolve_power_pin_net(component, &power_switch.output_pin)
+        else {
+            continue;
+        };
+        let Some(output_net) = bound.project.board.nets.get(output_net_name) else {
+            continue;
+        };
+        if output_net.powered != Some(true) {
+            continue;
+        }
+        let enabled_state = power_switch_state_name(&power_switch.enabled_state);
+        pin_states.push(SuggestedPinState {
+            component: component_id.clone(),
+            pin: power_switch.control_pin.clone(),
+            mode: "input".to_string(),
+            state: Some(enabled_state.to_string()),
+        });
+        required_inputs.push(format!(
+            "Prove {component_id}.{} is {enabled_state} whenever switched rail {output_net_name} is declared powered.",
+            power_switch.control_pin
+        ));
+    }
+    (pin_states, required_inputs)
 }
 
 fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
@@ -1276,6 +1318,22 @@ fn component_power_state(
         .or_else(|| component.pins.get(power_port))
         .or(component.power_domain.as_ref())?;
     bound.project.board.nets.get(net_name)?.powered
+}
+
+fn resolve_power_pin_net<'a>(component: &'a ComponentSpec, pin_name: &str) -> Option<&'a str> {
+    component
+        .power_domains
+        .get(pin_name)
+        .or_else(|| component.pins.get(pin_name))
+        .or(component.power_domain.as_ref())
+        .map(String::as_str)
+}
+
+fn power_switch_state_name(state: &PowerSwitchState) -> &'static str {
+    match state {
+        PowerSwitchState::High => "high",
+        PowerSwitchState::Low => "low",
+    }
 }
 
 fn kicad_pin_type_output_capable(
