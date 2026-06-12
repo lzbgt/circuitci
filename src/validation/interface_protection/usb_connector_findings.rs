@@ -616,4 +616,14 @@ fn add_board_edge_provenance(finding: &mut Finding, edge: &crate::board_ir::Layo
             .measured
             .insert("board_edge_sample_count".to_string(), json!(sample_count));
     }
+    if let Some(contour_index) = edge.contour_index {
+        finding
+            .measured
+            .insert("board_edge_contour_index".to_string(), json!(contour_index));
+    }
+    if let Some(boundary_role) = &edge.boundary_role {
+        finding
+            .measured
+            .insert("board_edge_boundary_role".to_string(), json!(boundary_role));
+    }
 }

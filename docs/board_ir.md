@@ -208,6 +208,8 @@ board:
           source_primitive_index: 0
           sample_index: 0
           sample_count: 1
+          contour_index: 0
+          boundary_role: external
 ```
 
 KiCad PCB import currently populates this from `gr_line`, `gr_circle`, and
@@ -217,9 +219,12 @@ contract. Imported segments carry optional source provenance:
 `source_primitive` is `gr_line`, `gr_circle`, or `gr_arc`;
 `source_primitive_index` identifies the imported outline primitive; and
 `sample_index`/`sample_count` identify the segment within that primitive's
-sampled output. This evidence supports nearest-edge USB orientation
-suggestions; it is not a complete mechanical outline solver and does not yet
-model arbitrary slots, cutouts, panel tabs, or connector body intrusion.
+sampled output. When imported Edge.Cuts segments form closed contours,
+`contour_index` groups the segments and `boundary_role` is `external` for
+outer board edges, `cutout` for enclosed interior holes, or `unknown` when the
+importer cannot prove a closed contour. This evidence supports nearest-edge USB
+orientation suggestions; it is not a complete mechanical outline solver and
+does not yet model arbitrary slots, panel tabs, or connector body intrusion.
 
 ## Layout Pad Evidence
 

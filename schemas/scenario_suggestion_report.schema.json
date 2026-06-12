@@ -519,6 +519,8 @@
         "source_primitive_index": { "type": "integer", "minimum": 0 },
         "sample_index": { "type": "integer", "minimum": 0 },
         "sample_count": { "type": "integer", "minimum": 1 },
+        "contour_index": { "type": "integer", "minimum": 0 },
+        "boundary_role": { "enum": ["external", "cutout", "unknown"] },
         "distance_to_connector_mm": { "type": "number", "minimum": 0 },
         "connector_edge_reference": {
           "type": "string",

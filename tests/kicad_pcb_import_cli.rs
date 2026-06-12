@@ -1,6 +1,6 @@
 mod common;
 
-use common::assert_yaml_file_valid;
+use common::{assert_report_schema_valid, assert_yaml_file_valid};
 use serde_json::Value;
 use std::path::Path;
 use std::process::Command;
@@ -851,6 +851,102 @@ fn import_kicad_pcb_curved_edge_segments_feed_usb_layout_checks() {
     );
 }
 
+#[test]
+fn import_kicad_pcb_cutout_edges_are_not_usb_entry_edges() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let board_path = "examples/import_kicad_usb_cutout_board_edge_suggestions/board.kicad_pcb";
+    let enriched_project = dir.path().join("cutout.project.yaml");
+    import_kicad_pcb(
+        board_path,
+        "examples/import_kicad_usb_cutout_board_edge_suggestions/project.yaml",
+        &enriched_project,
+    );
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&enriched_project, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
+    let outline_segments = imported["board"]["layout"]["outline"]["segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(outline_segments.len(), 36);
+    assert_eq!(outline_segments[0]["boundary_role"], "external");
+    assert_eq!(outline_segments[0]["contour_index"], 0);
+    assert_eq!(outline_segments[0]["source_primitive"], "gr_line");
+    assert_eq!(outline_segments[4]["boundary_role"], "cutout");
+    assert_eq!(outline_segments[4]["contour_index"], 1);
+    assert_eq!(outline_segments[4]["source_primitive"], "gr_circle");
+    assert!(
+        outline_segments
+            .iter()
+            .skip(4)
+            .all(|segment| segment["boundary_role"] == "cutout")
+    );
+
+    let suggestions_path = dir.path().join("cutout.suggestions.yaml");
+    let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            enriched_project.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(suggest_status.success());
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_orientation_j1");
+    assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_edge_proximity_j1");
+    assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_body_overhang_j1");
+
+    let check_project = dir.path().join("cutout.checks.project.yaml");
+    import_kicad_pcb(
+        board_path,
+        "examples/import_kicad_usb_cutout_board_edge_suggestions/project_checks.yaml",
+        &check_project,
+    );
+    let report_dir = dir.path().join("cutout.report");
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            check_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_EDGE_PROXIMITY_VALID")
+        .unwrap();
+    assert_eq!(
+        failure["measured"]["connector_to_board_edge_distance_mm"],
+        4.7
+    );
+    assert_eq!(failure["measured"]["board_edge_boundary_role"], "external");
+    assert_eq!(failure["measured"]["board_edge_contour_index"], 0);
+    assert_eq!(
+        failure["measured"]["board_edge_source_primitive"],
+        "gr_line"
+    );
+    assert_eq!(failure["measured"]["board_edge_source_primitive_index"], 1);
+    assert_report_schema_valid(&report);
+}
+
 struct CurvedEdgeExpectation {
     start_x_mm: f64,
     start_y_mm: f64,
@@ -862,6 +958,28 @@ struct CurvedEdgeExpectation {
     source_primitive_index: usize,
     sample_index: usize,
     sample_count: usize,
+}
+
+fn assert_cutout_suggestion_uses_external_edge(suggestions: &Value, suggestion_id: &str) {
+    let suggestion = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == suggestion_id)
+        .unwrap_or_else(|| panic!("missing suggestion {suggestion_id}"));
+    let edge = &suggestion["scenario"]["usb_connectors"][0]["nearest_board_edge"];
+    assert_eq!(edge["boundary_role"], "external");
+    assert_eq!(edge["contour_index"], 0);
+    assert_eq!(edge["source_primitive"], "gr_line");
+    assert_eq!(edge["source_primitive_index"], 1);
+    assert_eq!(edge["sample_index"], 0);
+    assert_eq!(edge["sample_count"], 1);
+    assert_eq!(edge["start"]["x_mm"], 10.0);
+    assert_eq!(edge["start"]["y_mm"], 0.0);
+    assert_eq!(edge["end"]["x_mm"], 10.0);
+    assert_eq!(edge["end"]["y_mm"], 10.0);
+    assert_eq!(edge["distance_to_connector_mm"], 4.7);
+    assert_eq!(edge["connector_edge_reference"], "footprint_polygon");
 }
 
 fn assert_curved_usb_board_edge_fixture(

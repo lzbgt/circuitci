@@ -257,6 +257,10 @@ pub struct SuggestedBoardEdge {
     pub sample_index: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sample_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contour_index: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boundary_role: Option<String>,
     pub distance_to_connector_mm: f64,
     pub connector_edge_reference: String,
     #[serde(skip_serializing_if = "Option::is_none")]

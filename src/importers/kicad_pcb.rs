@@ -123,6 +123,8 @@ struct PcbOutlineSegment {
     source_primitive_index: usize,
     sample_index: usize,
     sample_count: usize,
+    contour_index: Option<usize>,
+    boundary_role: PcbOutlineBoundaryRole,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -133,6 +135,14 @@ enum PcbOutlinePrimitive {
     Circle,
     #[serde(rename = "gr_arc")]
     Arc,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum PcbOutlineBoundaryRole {
+    External,
+    Cutout,
+    Unknown,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -238,6 +248,9 @@ struct OutlineSegmentYaml {
     source_primitive_index: usize,
     sample_index: usize,
     sample_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    contour_index: Option<usize>,
+    boundary_role: PcbOutlineBoundaryRole,
 }
 
 pub fn import_kicad_pcb_placements(
@@ -492,6 +505,8 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
             source_primitive_index,
             sample_index: 0,
             sample_count: 1,
+            contour_index: None,
+            boundary_role: PcbOutlineBoundaryRole::Unknown,
         });
         source_primitive_index += 1;
     }
@@ -536,6 +551,7 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
         segments.extend(sampled_segments);
         source_primitive_index += 1;
     }
+    classify_outline_contours(&mut segments);
     Ok(PcbOutline { segments })
 }
 
@@ -561,6 +577,8 @@ fn sample_outline_circle(
                 source_primitive_index,
                 sample_index: index,
                 sample_count: OUTLINE_CIRCLE_SAMPLE_SEGMENTS,
+                contour_index: None,
+                boundary_role: PcbOutlineBoundaryRole::Unknown,
             }
         })
         .collect()
@@ -602,10 +620,134 @@ fn sample_outline_arc(
                     source_primitive_index,
                     sample_index: index,
                     sample_count: segment_count,
+                    contour_index: None,
+                    boundary_role: PcbOutlineBoundaryRole::Unknown,
                 }
             })
             .collect(),
     )
+}
+
+struct OutlineContour {
+    segment_indices: Vec<usize>,
+    points: Vec<PcbPoint>,
+    area_mm2: f64,
+}
+
+fn classify_outline_contours(segments: &mut [PcbOutlineSegment]) {
+    let contours = outline_contours(segments);
+    for (contour_index, contour) in contours.iter().enumerate() {
+        let containing_contours = contours
+            .iter()
+            .enumerate()
+            .filter(|(other_index, other)| {
+                *other_index != contour_index
+                    && other.area_mm2.abs() > contour.area_mm2.abs()
+                    && point_inside_polygon(contour_representative_point(contour), &other.points)
+            })
+            .count();
+        let boundary_role = if containing_contours % 2 == 0 {
+            PcbOutlineBoundaryRole::External
+        } else {
+            PcbOutlineBoundaryRole::Cutout
+        };
+        for segment_index in &contour.segment_indices {
+            segments[*segment_index].contour_index = Some(contour_index);
+            segments[*segment_index].boundary_role = boundary_role;
+        }
+    }
+}
+
+fn outline_contours(segments: &[PcbOutlineSegment]) -> Vec<OutlineContour> {
+    let mut contours = Vec::new();
+    let mut used = vec![false; segments.len()];
+    for first_index in 0..segments.len() {
+        if used[first_index] {
+            continue;
+        }
+        let start = segments[first_index].start;
+        let mut current = segments[first_index].end;
+        let mut segment_indices = vec![first_index];
+        let mut points = vec![start, current];
+        used[first_index] = true;
+        loop {
+            if points_close(current, start) {
+                break;
+            }
+            let Some((next_index, next_point)) = segments
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| !used[*index])
+                .find_map(|(index, segment)| {
+                    if points_close(segment.start, current) {
+                        Some((index, segment.end))
+                    } else if points_close(segment.end, current) {
+                        Some((index, segment.start))
+                    } else {
+                        None
+                    }
+                })
+            else {
+                break;
+            };
+            used[next_index] = true;
+            segment_indices.push(next_index);
+            current = next_point;
+            points.push(current);
+        }
+        if segment_indices.len() >= 3 && points_close(current, start) {
+            points.pop();
+            let area_mm2 = polygon_signed_area_mm2(&points);
+            if area_mm2.abs() > f64::EPSILON {
+                contours.push(OutlineContour {
+                    segment_indices,
+                    points,
+                    area_mm2,
+                });
+            }
+        }
+    }
+    contours
+}
+
+fn contour_representative_point(contour: &OutlineContour) -> PcbPoint {
+    let count = contour.points.len() as f64;
+    PcbPoint {
+        x_mm: contour.points.iter().map(|point| point.x_mm).sum::<f64>() / count,
+        y_mm: contour.points.iter().map(|point| point.y_mm).sum::<f64>() / count,
+    }
+}
+
+fn polygon_signed_area_mm2(points: &[PcbPoint]) -> f64 {
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .take(points.len())
+        .map(|(a, b)| a.x_mm * b.y_mm - b.x_mm * a.y_mm)
+        .sum::<f64>()
+        / 2.0
+}
+
+fn point_inside_polygon(point: PcbPoint, polygon: &[PcbPoint]) -> bool {
+    let mut inside = false;
+    for (a, b) in polygon
+        .iter()
+        .zip(polygon.iter().cycle().skip(1))
+        .take(polygon.len())
+    {
+        let crosses_y = (a.y_mm > point.y_mm) != (b.y_mm > point.y_mm);
+        if crosses_y {
+            let x_at_y = (b.x_mm - a.x_mm) * (point.y_mm - a.y_mm) / (b.y_mm - a.y_mm) + a.x_mm;
+            if point.x_mm < x_at_y {
+                inside = !inside;
+            }
+        }
+    }
+    inside
+}
+
+fn points_close(a: PcbPoint, b: PcbPoint) -> bool {
+    (a.x_mm - b.x_mm).abs() <= 1.0e-9 && (a.y_mm - b.y_mm).abs() <= 1.0e-9
 }
 
 fn point_on_circle(center: PcbPoint, radius_mm: f64, angle_rad: f64) -> PcbPoint {
@@ -1460,6 +1602,8 @@ fn outline_yaml_value(outline: &PcbOutline) -> Result<Value> {
                 source_primitive_index: segment.source_primitive_index,
                 sample_index: segment.sample_index,
                 sample_count: segment.sample_count,
+                contour_index: segment.contour_index,
+                boundary_role: segment.boundary_role,
             })
             .collect(),
     })

@@ -95,7 +95,9 @@ Imported outline evidence includes:
   segments from curved KiCad outline graphics,
 - source layer, currently `Edge.Cuts`,
 - source primitive provenance (`gr_line`, `gr_circle`, or `gr_arc`), imported
-  primitive index, sample index, and sample count.
+  primitive index, sample index, and sample count,
+- closed-contour provenance: `contour_index` plus `boundary_role` of
+  `external`, `cutout`, or `unknown`.
 
 When the enriched project is written to a different directory, relative
 `libraries` entries are rewritten to absolute paths so follow-up
@@ -108,17 +110,19 @@ constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts matched footprint drawing
 items and connected pad center, kind, shape, size, rotation, scalar drill, net,
 and layer evidence. It samples curved board-outline graphics into bounded
-segments and preserves source primitive/sample provenance for each segment; it
-does not retain exact outline curve geometry, solve exact rotated-body
-polygons, filled-copper island connectivity, pad-to-zone connectivity, thermal
-relief behavior, solder-mask expansion, shield bonding, return paths,
-impedance calculations, arbitrary DRC rule semantics, or
+segments and preserves source primitive/sample provenance for each segment. It
+classifies enclosed closed outlines as cutouts for USB edge selection; it does
+not retain exact outline curve geometry, solve exact rotated-body polygons,
+filled-copper island connectivity, pad-to-zone connectivity, thermal relief
+behavior, solder-mask expansion, shield bonding, return paths, impedance
+calculations, arbitrary DRC rule semantics, or
 pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
 - `examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb`
 - `examples/import_kicad_usb_curved_board_edge_suggestions/`
+- `examples/import_kicad_usb_cutout_board_edge_suggestions/`
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
@@ -132,3 +136,7 @@ measured layout evidence.
 board-edge behavior. It proves USB connector orientation, edge-proximity, and
 body-overhang suggestions and validators can use sampled `gr_circle` and
 `gr_arc` `Edge.Cuts` segments as the nearest board edge.
+
+`examples/import_kicad_usb_cutout_board_edge_suggestions/` isolates closed
+contour classification. It proves enclosed circular Edge.Cuts contours import
+as `cutout` and are not selected as USB connector entry edges.

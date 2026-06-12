@@ -63,14 +63,16 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   not prove enclosure entry direction, connector keepout, cable clearance, or
   mechanical insertion robustness. Suggestions may infer an expected rotation
   from imported `Edge.Cuts` outline segment evidence. KiCad outline arcs and
-  circles are sampled into segments with source provenance, but exact curve geometry, slots,
-  cutouts, and footprint-specific connector-entry conventions still require
-  review.
+  circles are sampled into segments with source provenance. Closed contour
+  classification can identify enclosed cutouts for nearest-edge filtering, but
+  exact curve geometry, slots, and footprint-specific connector-entry
+  conventions still require review.
 - `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks the nearest imported board-edge
   segment against supported connector `fabrication`/`courtyard` footprint
   drawing evidence when available, falling back to connector-center distance
-  otherwise. It does not prove connector body overhang, panel
-  alignment, shell clearance, cable insertion clearance, slots, cutout
+  otherwise. It ignores imported board-outline segments marked as interior
+  `cutout` contours. It does not prove connector body overhang, panel
+  alignment, shell clearance, cable insertion clearance, slots, complex cutout
   geometry, or full enclosure fit. Imported `fp_rect` evidence is treated as a
   rectangular extent from its transformed endpoints, not a full mechanical body
   model; imported `fp_poly` evidence is a 2D drawing outline, and imported

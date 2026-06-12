@@ -217,7 +217,8 @@ evidence. Stable measured keys include
 `board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
 `board_edge_end_y_mm`, optional `board_edge_layer`, optional
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
-optional `board_edge_sample_index`, and optional `board_edge_sample_count`.
+optional `board_edge_sample_index`, optional `board_edge_sample_count`,
+optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
 Stable limit keys include `max_connector_to_board_edge_distance_mm`.
 
 `USB_CONNECTOR_BODY_OVERHANG_VALID` reports are emitted by
@@ -230,6 +231,7 @@ include `connector_body_overhang_mm`, `connector_edge_reference`, optional
 `board_edge_end_y_mm`, optional `board_edge_layer`, optional
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
 optional `board_edge_sample_index`, optional `board_edge_sample_count`,
+optional `board_edge_contour_index`, optional `board_edge_boundary_role`,
 `edge_angle_deg`, and `outward_normal_deg`. Stable limit keys include
 `max_connector_body_overhang_mm`.
 

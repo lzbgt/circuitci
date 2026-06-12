@@ -98,7 +98,7 @@ pub(super) fn nearest_board_edge_evidence(
         .outline
         .segments
         .iter()
-        .filter(|segment| outline_segment_length_mm(segment) > f64::EPSILON)
+        .filter(|segment| outline_segment_is_entry_candidate(segment))
         .map(|segment| {
             let distance =
                 connector_to_board_edge_distance(bound, component_id, placement, segment);
@@ -115,6 +115,8 @@ pub(super) fn nearest_board_edge_evidence(
         source_primitive_index: edge.0.source_primitive_index,
         sample_index: edge.0.sample_index,
         sample_count: edge.0.sample_count,
+        contour_index: edge.0.contour_index,
+        boundary_role: edge.0.boundary_role.clone(),
         distance_to_connector_mm: edge.1.distance_mm,
         connector_edge_reference: edge.1.reference.label().to_string(),
         footprint_graphic_layer: edge.1.reference.footprint_layer().map(str::to_string),
@@ -320,7 +322,7 @@ fn outline_centroid(segments: &[LayoutSegment]) -> Option<LayoutPoint> {
     let mut x_sum = 0.0;
     let mut y_sum = 0.0;
     for segment in segments {
-        if outline_segment_length_mm(segment) <= f64::EPSILON {
+        if !outline_segment_is_entry_candidate(segment) {
             continue;
         }
         x_sum += segment.start.x_mm + segment.end.x_mm;
@@ -672,6 +674,11 @@ fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by:
 
 fn outline_segment_length_mm(segment: &LayoutSegment) -> f64 {
     (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+}
+
+fn outline_segment_is_entry_candidate(segment: &LayoutSegment) -> bool {
+    outline_segment_length_mm(segment) > f64::EPSILON
+        && segment.boundary_role.as_deref() != Some("cutout")
 }
 
 fn segment_angle_deg(segment: &LayoutSegment) -> f64 {

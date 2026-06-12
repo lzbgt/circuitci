@@ -956,7 +956,7 @@ fn nearest_board_edge<'a>(
         .outline
         .segments
         .iter()
-        .filter(|segment| outline_segment_is_usable(segment))
+        .filter(|segment| outline_segment_is_entry_candidate(segment))
         .map(|edge| {
             let (distance_mm, connector_reference) =
                 connector_to_edge_distance(bound, component_id, placement, edge);
@@ -981,7 +981,7 @@ fn nearest_body_overhang_edge<'a>(
         .outline
         .segments
         .iter()
-        .filter(|segment| outline_segment_is_usable(segment))
+        .filter(|segment| outline_segment_is_entry_candidate(segment))
         .filter_map(|edge| {
             let distance_mm = connector_body_to_edge_distance(bound, component_id, edge)?;
             let evidence = body_overhang_for_edge(bound, component_id, edge, &centroid)?;
@@ -1285,6 +1285,10 @@ fn outline_segment_is_usable(segment: &LayoutSegment) -> bool {
         && point_is_finite(&segment.end)
         && (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
             > f64::EPSILON
+}
+
+fn outline_segment_is_entry_candidate(segment: &LayoutSegment) -> bool {
+    outline_segment_is_usable(segment) && segment.boundary_role.as_deref() != Some("cutout")
 }
 
 fn point_is_finite(point: &LayoutPoint) -> bool {
@@ -1629,7 +1633,7 @@ fn outline_centroid(segments: &[LayoutSegment]) -> Option<LayoutPoint> {
     let mut x_sum = 0.0;
     let mut y_sum = 0.0;
     for segment in segments {
-        if !outline_segment_is_usable(segment) {
+        if !outline_segment_is_entry_candidate(segment) {
             continue;
         }
         x_sum += segment.start.x_mm + segment.end.x_mm;

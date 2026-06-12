@@ -109,9 +109,11 @@ The command is conservative:
   `fp_circle`, or `fp_arc` evidence when available and falls back to
   placement-center distance otherwise. Imported KiCad outline segments also
   expose optional `nearest_board_edge.source_primitive`,
-  `source_primitive_index`, `sample_index`, and `sample_count` evidence so an
-  agent can distinguish native `gr_line` edges from sampled `gr_circle` or
-  `gr_arc` edges. When imported footprint drawing evidence exists,
+  `source_primitive_index`, `sample_index`, `sample_count`, `contour_index`,
+  and `boundary_role` evidence so an agent can distinguish native `gr_line`
+  edges from sampled `gr_circle` or `gr_arc` edges and external contours from
+  cutouts. Segments marked `boundary_role: cutout` are not selected as USB
+  connector entry edges. When imported footprint drawing evidence exists,
   `scenario.usb_connectors[].footprint` also reports transformed
   `fp_line`/`fp_rect`/`fp_poly`/`fp_circle`/`fp_arc` body, courtyard, or
   silkscreen evidence for mechanical review. The template leaves

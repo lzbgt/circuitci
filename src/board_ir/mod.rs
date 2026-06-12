@@ -221,6 +221,10 @@ pub struct LayoutSegment {
     pub sample_index: Option<usize>,
     #[serde(default)]
     pub sample_count: Option<usize>,
+    #[serde(default)]
+    pub contour_index: Option<usize>,
+    #[serde(default)]
+    pub boundary_role: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
