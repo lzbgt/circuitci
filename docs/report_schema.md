@@ -61,7 +61,7 @@ CircuitCI reports are built for both AI agents and engineers.
 - `fail`: at least one critical finding.
 - `pass`: no critical finding.
 
-The MVP result is exactly:
+For schema version `0.1.0`, the result is exactly:
 
 ```text
 fail iff summary.critical > 0, otherwise pass
@@ -74,10 +74,10 @@ Warnings and limitations remain visible in the report but do not change `result`
 ```json
 {
   "id": "UNSUPPORTED_SCENARIO",
-  "scope": "scenario:reset_boot",
+  "scope": "scenario:thermal_map",
   "confidence": "low",
   "blocking": true,
-  "message": "Scenario type reset_boot is documented but not implemented in this runtime."
+  "message": "Scenario type thermal_map is documented but not implemented in this runtime."
 }
 ```
 

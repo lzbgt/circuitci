@@ -14,15 +14,20 @@ The engine backbone is Rust. C/C++ backends are acceptable for solver integratio
 ## Runtime Pipeline
 
 ```text
-project.yaml or imported EDA artifact
+project.yaml, imported KiCad schematic/netlist, or imported SPICE deck
   -> Board Graph IR
   -> component model binding
   -> scenario execution
-  -> validation rules
+  -> validation rules and optional SPICE-class analog solver
   -> report.json + report.md + waveform artifacts
 ```
 
-The MVP implements the pipeline for YAML project files first. KiCad, EasyEDA, Altium, SPICE, and JITX importers are future adapter layers that should produce the same Board Graph IR.
+The current runtime accepts hand-authored Board IR YAML, SPICE decks through
+`import-spice`, KiCad generic XML netlists through `import-kicad-netlist`, and
+native `.kicad_sch` schematics through `import-kicad-schematic`. Importers are
+adapters into the same Board IR shape; validation and reporting do not branch
+on the original EDA source after import. EasyEDA, Altium, and JITX remain future
+adapter layers.
 
 ## Core Modules
 
@@ -77,15 +82,25 @@ crates/
   circuitci-gui
 ```
 
-## MVP Execution Model
+## Execution Model
 
-The first executable slice intentionally avoids full analog solving. It uses declared power-domain state and electrical pin metadata to validate the `GPIO_BACKDRIVE` condition:
+CircuitCI combines deterministic board-rule validation with solver-backed
+analog validation. Behavioral rules use declared board/model metadata and
+scenario events. For example, `GPIO_BACKDRIVE` uses declared power-domain state
+and electrical pin metadata to validate:
 
 ```text
 powered output pin drives an unpowered input pin above injection-current limit
 ```
 
-This proves the IR, model binding, scenario, validation, and report contracts before adding ngspice/Xyce integration.
+`analog_transient` scenarios provide the physical waveform path. They can run
+file-backed imported SPICE decks or generated Board IR netlists through a
+SPICE-class backend. The supported mature backend path is ngspice, either via
+the external `ngspice` binary or dynamically loaded `libngspice`; unavailable
+or misconfigured backends fail closed with report findings instead of fabricated
+passes. Generated semiconductor scenarios can also emit datasheet operating
+limit findings for MOSFET, BJT, and diode ratings, including derating, qualified
+pulse current, and digitized MOSFET SOA evidence when metadata is present.
 
 ## Library Contract
 
@@ -93,21 +108,25 @@ Library paths in a project are package roots. The loader recursively discovers `
 
 Rules:
 
-- `board.components.*.model` is an exact `component_id` match for the MVP.
+- `board.components.*.model` is an exact `component_id` match.
 - duplicate `component_id` values are binding errors.
-- version selection is not implicit in the MVP; a future schema can add semver-qualified model references.
+- version selection is not implicit; a future schema can add semver-qualified model references.
 - unreadable or malformed model files produce report findings.
 
 Chip and IC support must arrive as library packs. For example, STM32L4 support for the acceptance demo should be a vendor model pack plus fixtures; it must not add STM32L4-specific branches to the validation engine. The same engine path must be able to load future packs for ESP32, STM32F1/F4/L1/L4, STM8, C51/STC, 555 timers, USB-UART bridges, regulators, and other common embedded parts.
 
-## Future Simulation Kernel
+## Simulation Kernel
 
-The future mixed-domain kernel should have replaceable adapters:
+The mixed-domain kernel uses replaceable adapters:
 
-- analog solver adapter: ngspice first, Xyce later
-- digital event solver: scheduled state changes, protocol events, pin modes
-- analog/digital bridge: threshold crossings, power-state changes, digital output to analog source mapping
-- firmware adapter: Renode or QEMU when firmware-in-loop validation is needed
+- analog solver adapter: external `ngspice`, embedded `libngspice`, and a
+  fail-closed Xyce placeholder,
+- digital event solver: scheduled state changes, protocol events, and pin
+  modes encoded in scenarios,
+- analog/digital bridge: explicit generated stimuli and probes; threshold
+  crossing automation remains future work,
+- firmware adapter: Renode or QEMU remains future work for firmware-in-loop
+  validation.
 
 The CLI and JSON report schema must remain stable as solver fidelity increases.
 

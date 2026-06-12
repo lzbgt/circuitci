@@ -5,11 +5,11 @@ project that runs the same deck through the analog validation pipeline.
 
 ## Scope
 
-The first importer targets simulator decks exported from schematic tools or
-written by hand. It is intentionally not a KiCad schematic parser yet. KiCad,
-EasyEDA, Altium, and other schematic importers should eventually produce the
-same Board IR shape, but the SPICE deck path gives agents an immediate way to
-run physical waveforms from real design artifacts.
+This importer targets simulator decks exported from schematic tools or written
+by hand. Native KiCad and KiCad XML importers now also produce Board IR, while
+EasyEDA, Altium, and other schematic importers remain future adapter layers.
+The SPICE deck path gives agents a direct way to run physical waveforms from
+real design artifacts when a board region already has a solver deck.
 
 Command:
 

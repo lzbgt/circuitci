@@ -54,7 +54,7 @@ model_quality:
 | `digital_electrical_io` | Bidirectional GPIO. |
 | `passive` | Passive two-terminal behavior. |
 
-## MVP Electrical Metadata
+## Electrical Metadata
 
 Inputs should declare:
 
@@ -74,7 +74,12 @@ The first back-drive approximation computes injection current as:
 max(0, driver_high_voltage - victim_power_voltage - diode_drop) / source_resistance
 ```
 
-The MVP defaults diode drop to `0.3 V` and combines the output source impedance with any scenario-declared series resistance. Later analog backends can replace this approximation with a solver result.
+The behavioral `GPIO_BACKDRIVE` rule defaults diode drop to `0.3 V` and
+combines the output source impedance with any scenario-declared series
+resistance. Physical voltage/current proof belongs in `analog_transient`
+scenarios, where generated or file-backed SPICE decks provide waveform evidence
+and generated semiconductor models can be checked against datasheet operating
+limits.
 
 ## GPIO_BACKDRIVE Rule
 

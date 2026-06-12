@@ -1,8 +1,11 @@
 # Scenario Language
 
-Scenarios describe validation conditions applied to a bound board. The MVP supports static scenario metadata and selected checks. Later versions add time-ordered events and solver-backed waveforms.
+Scenarios describe validation conditions applied to a bound board. CircuitCI
+supports deterministic behavioral checks, time-ordered scenario events for
+protocol/control-line validation, and solver-backed `analog_transient`
+waveforms for physical voltage/current checks.
 
-## MVP Scenario
+## Behavioral Scenario Example
 
 ```yaml
 scenarios:
@@ -30,7 +33,7 @@ scenarios:
         series_resistance_ohm: 0
 ```
 
-## Future Event Form
+## Event Form
 
 ```yaml
 events:
@@ -44,7 +47,7 @@ events:
     baud: 115200
 ```
 
-## Required MVP Scenario Types
+## Scenario Types
 
 - `power_up`
 - `power_down`
@@ -57,7 +60,7 @@ events:
 - `brownout`
 - `tolerance_sweep`
 
-Executable first-stage scenario types:
+Executable scenario types:
 
 - `gpio_backdrive`
 - `reset_boot`
@@ -79,7 +82,7 @@ For the first Rust implementation:
 5. Unsupported checks produce `UNSUPPORTED_CHECK` limitations.
 6. Unsupported scenario types produce `UNSUPPORTED_SCENARIO` limitations.
 
-Canonical executable check IDs in the first stage:
+Canonical executable check IDs:
 
 - `GPIO_BACKDRIVE`
 - `RESET_RELEASE_AFTER_POWER_VALID`
