@@ -11,6 +11,12 @@ inside the smallest module that owns the behavior:
 - `src/importers/kicad_sch.rs` owns native `.kicad_sch` S-expression
   connectivity extraction before handing the parsed netlist to the shared KiCad
   builder.
+- `src/importers/kicad_pcb.rs` owns the `import-kicad-pcb` orchestration,
+  project enrichment, shared footprint placement/pad coordinate transforms,
+  routed geometry, zones, board outline evidence, and KiCad routing-rule import.
+- `src/importers/kicad_pcb/footprints.rs` owns matched footprint drawing
+  evidence import and serialization for `fp_line`, `fp_rect`, `fp_poly`,
+  `fp_circle`, and `fp_arc` items.
 
 The split is intentionally conservative. It does not change mapping semantics,
 generated Board IR shape, or validation behavior; it only keeps the importer
