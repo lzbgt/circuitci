@@ -11,13 +11,17 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - GHz RF or antenna solving
 - DDR or high-speed signal integrity solving
 - full USB PHY simulation
-- full transistor-level MCU simulation
 - full SMPS compensation design
 - automatic datasheet-to-perfect-model generation
-- firmware-in-loop emulation
+- firmware-in-loop MCU emulation
 
 ## Current Technical Limits
 
+- Full transistor-level MCU simulation is intentionally not a CircuitCI goal.
+  MCU models should be functional black boxes at the board boundary: firmware
+  execution, reset/boot behavior, peripheral state, pin modes, electrical pin
+  limits, thresholds, clamps, leakage, and timing that matter to the surrounding
+  circuit.
 - Behavioral power states are declared in Board IR rather than inferred from a
   whole-board analog power-tree simulation.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.

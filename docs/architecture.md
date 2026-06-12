@@ -125,8 +125,10 @@ The mixed-domain kernel uses replaceable adapters:
   modes encoded in scenarios,
 - analog/digital bridge: explicit generated stimuli and probes; threshold
   crossing automation remains future work,
-- firmware adapter: Renode or QEMU remains future work for firmware-in-loop
-  validation.
+- firmware adapter: Renode or QEMU remains future work for functional
+  firmware-in-loop MCU validation. This should model firmware-visible
+  peripherals and board-facing pin behavior, not internal MCU transistor
+  implementation.
 
 The CLI and JSON report schema must remain stable as solver fidelity increases.
 
@@ -136,3 +138,6 @@ The CLI and JSON report schema must remain stable as solver fidelity increases.
 - A component model must declare model quality and unsupported use cases.
 - Reports must include low-confidence or unmodeled areas.
 - Backends must fail with actionable diagnostics instead of silent crashes.
+- MCU internals should be modeled as functional black boxes. CircuitCI cares
+  about the externally observable pin behavior, firmware-visible peripheral
+  state, reset/boot sequencing, and electrical limits that affect the board.

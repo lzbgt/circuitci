@@ -138,6 +138,12 @@ behavior:
 
 This metadata can represent STM32-like boot flows, ESP32-like EN/IO0 flows, STM8/C51/STC serial entry flows, or simpler generic boot selectors. Vendor packs provide concrete values; the validation engine reads only the generic contract.
 
+MCU models should remain functional black boxes. A stronger MCU model may run
+firmware and expose correct peripheral/pin behavior, reset causes, boot-ROM
+entry, pin modes, thresholds, clamp/leakage limits, and timing at the board
+boundary. It should not attempt transistor-level modeling of the MCU core or
+internal silicon implementation.
+
 ## Resident Protocol Metadata
 
 Firmware-specific models can declare resident update protocols without changing the engine:
