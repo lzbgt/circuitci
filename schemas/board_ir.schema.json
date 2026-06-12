@@ -181,6 +181,35 @@
                       },
                       "additionalProperties": false
                     }
+                  },
+                  "circles": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["center", "end", "layer", "kind"],
+                      "properties": {
+                        "center": { "$ref": "#/$defs/layout_point" },
+                        "end": { "$ref": "#/$defs/layout_point" },
+                        "layer": { "type": "string", "minLength": 1 },
+                        "kind": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "arcs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["start", "mid", "end", "layer", "kind"],
+                      "properties": {
+                        "start": { "$ref": "#/$defs/layout_point" },
+                        "mid": { "$ref": "#/$defs/layout_point" },
+                        "end": { "$ref": "#/$defs/layout_point" },
+                        "layer": { "type": "string", "minLength": 1 },
+                        "kind": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "additionalProperties": false

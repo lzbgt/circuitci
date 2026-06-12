@@ -197,6 +197,10 @@ pub struct SuggestedFootprint {
     pub rectangles: Vec<SuggestedFootprintRectangle>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub polygons: Vec<SuggestedFootprintPolygon>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub circles: Vec<SuggestedFootprintCircle>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub arcs: Vec<SuggestedFootprintArc>,
 }
 
 #[derive(Debug, Serialize)]
@@ -218,6 +222,23 @@ pub struct SuggestedFootprintRectangle {
 #[derive(Debug, Serialize)]
 pub struct SuggestedFootprintPolygon {
     pub points: Vec<SuggestedPoint>,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintCircle {
+    pub center: SuggestedPoint,
+    pub end: SuggestedPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintArc {
+    pub start: SuggestedPoint,
+    pub mid: SuggestedPoint,
+    pub end: SuggestedPoint,
     pub layer: String,
     pub kind: String,
 }

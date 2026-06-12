@@ -55,8 +55,10 @@ evidence. The fixture's imported `F.Fab` polygon crosses the nearest straight
 board edge, so `nearest_board_edge.distance_to_connector_mm` is `0.0` with
 `connector_edge_reference: footprint_polygon`. The body-overhang suggestion
 uses the same polygon evidence and reports `connector_body_overhang_mm: 0.4`.
-Placement-center distance is still available as the fallback behavior when no
-supported footprint drawing evidence exists.
+The fixture also imports one `fp_circle` and one `fp_arc` so
+`scenario.usb_connectors[].footprint` exposes curved footprint drawing evidence
+for mechanical review. Placement-center distance is still available as the
+fallback behavior when no supported footprint drawing evidence exists.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

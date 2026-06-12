@@ -68,16 +68,17 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   board-edge segment against supported connector `fabrication`/`courtyard`
   footprint drawing evidence when available, falling back to connector-center
   distance otherwise. It does not prove connector body overhang, panel
-  alignment, shell clearance, cable insertion clearance, arcs, slots, cutout
+  alignment, shell clearance, cable insertion clearance, slots, cutout
   geometry, or full enclosure fit. Imported `fp_rect` evidence is treated as a
   rectangular extent from its transformed endpoints, not a full mechanical body
-  model; imported `fp_poly` evidence is a 2D drawing outline, not a 3D connector
-  envelope.
+  model; imported `fp_poly` evidence is a 2D drawing outline, and imported
+  `fp_circle`/`fp_arc` evidence is sampled into bounded 2D polylines for static
+  measurements, not a 3D connector envelope.
 - `USB_CONNECTOR_BODY_OVERHANG_VALID` measures supported 2D connector
   `fabrication`/`courtyard` footprint drawing protrusion past the nearest
   straight board-edge segment. It does not model 3D connector shell volume,
-  panel cutouts, board slots, arcs, enclosure interference, cable insertion
-  clearance, or assembly tolerances.
+  panel cutouts, board slots, enclosure interference, cable insertion clearance,
+  or assembly tolerances.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

@@ -1,11 +1,13 @@
 use super::super::super::{
-    SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
-    SuggestedFootprintSegment, SuggestedPoint,
+    SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintArc, SuggestedFootprintCircle,
+    SuggestedFootprintPolygon, SuggestedFootprintRectangle, SuggestedFootprintSegment,
+    SuggestedPoint,
 };
 use super::super::component_placement;
 use crate::board_ir::{
-    ComponentPlacement, LayoutFootprint, LayoutFootprintPolygon, LayoutFootprintRectangle,
-    LayoutFootprintSegment, LayoutPoint, LayoutSegment,
+    ComponentPlacement, LayoutFootprint, LayoutFootprintArc, LayoutFootprintCircle,
+    LayoutFootprintPolygon, LayoutFootprintRectangle, LayoutFootprintSegment, LayoutPoint,
+    LayoutSegment,
 };
 use crate::library::BoundBoard;
 
@@ -47,13 +49,39 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
             kind: polygon.kind.clone(),
         })
         .collect::<Vec<_>>();
-    (!segments.is_empty() || !rectangles.is_empty() || !polygons.is_empty()).then_some(
-        SuggestedFootprint {
-            segments,
-            rectangles,
-            polygons,
-        },
-    )
+    let circles = footprint
+        .circles
+        .iter()
+        .map(|circle| SuggestedFootprintCircle {
+            center: suggested_point(&circle.center),
+            end: suggested_point(&circle.end),
+            layer: circle.layer.clone(),
+            kind: circle.kind.clone(),
+        })
+        .collect::<Vec<_>>();
+    let arcs = footprint
+        .arcs
+        .iter()
+        .map(|arc| SuggestedFootprintArc {
+            start: suggested_point(&arc.start),
+            mid: suggested_point(&arc.mid),
+            end: suggested_point(&arc.end),
+            layer: arc.layer.clone(),
+            kind: arc.kind.clone(),
+        })
+        .collect::<Vec<_>>();
+    (!segments.is_empty()
+        || !rectangles.is_empty()
+        || !polygons.is_empty()
+        || !circles.is_empty()
+        || !arcs.is_empty())
+    .then_some(SuggestedFootprint {
+        segments,
+        rectangles,
+        polygons,
+        circles,
+        arcs,
+    })
 }
 
 pub(super) fn nearest_board_edge_evidence(
@@ -106,6 +134,8 @@ enum BoardEdgeConnectorReference<'a> {
     FootprintSegment { layer: &'a str, kind: &'a str },
     FootprintRectangle { layer: &'a str, kind: &'a str },
     FootprintPolygon { layer: &'a str, kind: &'a str },
+    FootprintCircle { layer: &'a str, kind: &'a str },
+    FootprintArc { layer: &'a str, kind: &'a str },
 }
 
 impl BoardEdgeConnectorReference<'_> {
@@ -115,6 +145,8 @@ impl BoardEdgeConnectorReference<'_> {
             BoardEdgeConnectorReference::FootprintSegment { .. } => "footprint_segment",
             BoardEdgeConnectorReference::FootprintRectangle { .. } => "footprint_rectangle",
             BoardEdgeConnectorReference::FootprintPolygon { .. } => "footprint_polygon",
+            BoardEdgeConnectorReference::FootprintCircle { .. } => "footprint_circle",
+            BoardEdgeConnectorReference::FootprintArc { .. } => "footprint_arc",
         }
     }
 
@@ -123,7 +155,9 @@ impl BoardEdgeConnectorReference<'_> {
             BoardEdgeConnectorReference::PlacementCenter => None,
             BoardEdgeConnectorReference::FootprintSegment { layer, .. }
             | BoardEdgeConnectorReference::FootprintRectangle { layer, .. }
-            | BoardEdgeConnectorReference::FootprintPolygon { layer, .. } => Some(layer),
+            | BoardEdgeConnectorReference::FootprintPolygon { layer, .. }
+            | BoardEdgeConnectorReference::FootprintCircle { layer, .. }
+            | BoardEdgeConnectorReference::FootprintArc { layer, .. } => Some(layer),
         }
     }
 
@@ -132,7 +166,9 @@ impl BoardEdgeConnectorReference<'_> {
             BoardEdgeConnectorReference::PlacementCenter => None,
             BoardEdgeConnectorReference::FootprintSegment { kind, .. }
             | BoardEdgeConnectorReference::FootprintRectangle { kind, .. }
-            | BoardEdgeConnectorReference::FootprintPolygon { kind, .. } => Some(kind),
+            | BoardEdgeConnectorReference::FootprintPolygon { kind, .. }
+            | BoardEdgeConnectorReference::FootprintCircle { kind, .. }
+            | BoardEdgeConnectorReference::FootprintArc { kind, .. } => Some(kind),
         }
     }
 }
@@ -214,6 +250,50 @@ fn connector_to_board_edge_distance<'a>(
                 },
                 body_overhang_mm: outward_normal_deg
                     .map(|normal| body_overhang_from_points(polygon.points.iter(), edge, normal)),
+            };
+        }
+    }
+    for circle in &footprint.circles {
+        if !mechanical_footprint_kind(&circle.kind) {
+            continue;
+        }
+        let Some(points) = footprint_circle_points(circle) else {
+            continue;
+        };
+        let Some(distance_mm) = closed_polyline_to_edge_distance_mm(&points, edge) else {
+            continue;
+        };
+        if distance_mm <= best.distance_mm {
+            best = BoardEdgeConnectorDistance {
+                distance_mm,
+                reference: BoardEdgeConnectorReference::FootprintCircle {
+                    layer: &circle.layer,
+                    kind: &circle.kind,
+                },
+                body_overhang_mm: outward_normal_deg
+                    .map(|normal| body_overhang_from_points(points.iter(), edge, normal)),
+            };
+        }
+    }
+    for arc in &footprint.arcs {
+        if !mechanical_footprint_kind(&arc.kind) {
+            continue;
+        }
+        let Some(points) = footprint_arc_points(arc) else {
+            continue;
+        };
+        let Some(distance_mm) = open_polyline_to_edge_distance_mm(&points, edge) else {
+            continue;
+        };
+        if distance_mm <= best.distance_mm {
+            best = BoardEdgeConnectorDistance {
+                distance_mm,
+                reference: BoardEdgeConnectorReference::FootprintArc {
+                    layer: &arc.layer,
+                    kind: &arc.kind,
+                },
+                body_overhang_mm: outward_normal_deg
+                    .map(|normal| body_overhang_from_points(points.iter(), edge, normal)),
             };
         }
     }
@@ -339,16 +419,123 @@ fn footprint_polygon_to_edge_distance_mm(
     if polygon.points.len() < 3 || polygon.points.iter().any(|point| !point_is_finite(point)) {
         return None;
     }
+    closed_polyline_to_edge_distance_mm(&polygon.points, edge)
+}
+
+fn footprint_circle_points(circle: &LayoutFootprintCircle) -> Option<Vec<LayoutPoint>> {
+    if !point_is_finite(&circle.center) || !point_is_finite(&circle.end) {
+        return None;
+    }
+    let radius = point_distance_mm(&circle.center, &circle.end);
+    if radius <= f64::EPSILON {
+        return None;
+    }
+    let segments = 32;
     Some(
-        (0..polygon.points.len())
+        (0..segments)
             .map(|index| {
-                let next_index = (index + 1) % polygon.points.len();
+                let angle = 2.0 * std::f64::consts::PI * (index as f64) / (segments as f64);
+                LayoutPoint {
+                    x_mm: circle.center.x_mm + radius * angle.cos(),
+                    y_mm: circle.center.y_mm + radius * angle.sin(),
+                }
+            })
+            .collect(),
+    )
+}
+
+fn footprint_arc_points(arc: &LayoutFootprintArc) -> Option<Vec<LayoutPoint>> {
+    if !point_is_finite(&arc.start) || !point_is_finite(&arc.mid) || !point_is_finite(&arc.end) {
+        return None;
+    }
+    let center = arc_center(&arc.start, &arc.mid, &arc.end)?;
+    let radius = point_distance_mm(&center, &arc.start);
+    if radius <= f64::EPSILON {
+        return None;
+    }
+    let start_angle = (arc.start.y_mm - center.y_mm).atan2(arc.start.x_mm - center.x_mm);
+    let mid_angle = (arc.mid.y_mm - center.y_mm).atan2(arc.mid.x_mm - center.x_mm);
+    let end_angle = (arc.end.y_mm - center.y_mm).atan2(arc.end.x_mm - center.x_mm);
+    let ccw = angle_on_ccw_arc(start_angle, mid_angle, end_angle);
+    let delta = if ccw {
+        (end_angle - start_angle).rem_euclid(2.0 * std::f64::consts::PI)
+    } else {
+        -((start_angle - end_angle).rem_euclid(2.0 * std::f64::consts::PI))
+    };
+    let segments = 16;
+    Some(
+        (0..=segments)
+            .map(|index| {
+                let angle = start_angle + delta * (index as f64) / (segments as f64);
+                LayoutPoint {
+                    x_mm: center.x_mm + radius * angle.cos(),
+                    y_mm: center.y_mm + radius * angle.sin(),
+                }
+            })
+            .collect(),
+    )
+}
+
+fn arc_center(start: &LayoutPoint, mid: &LayoutPoint, end: &LayoutPoint) -> Option<LayoutPoint> {
+    let d = 2.0
+        * (start.x_mm * (mid.y_mm - end.y_mm)
+            + mid.x_mm * (end.y_mm - start.y_mm)
+            + end.x_mm * (start.y_mm - mid.y_mm));
+    if d.abs() <= f64::EPSILON {
+        return None;
+    }
+    let start_sq = start.x_mm * start.x_mm + start.y_mm * start.y_mm;
+    let mid_sq = mid.x_mm * mid.x_mm + mid.y_mm * mid.y_mm;
+    let end_sq = end.x_mm * end.x_mm + end.y_mm * end.y_mm;
+    Some(LayoutPoint {
+        x_mm: (start_sq * (mid.y_mm - end.y_mm)
+            + mid_sq * (end.y_mm - start.y_mm)
+            + end_sq * (start.y_mm - mid.y_mm))
+            / d,
+        y_mm: (start_sq * (end.x_mm - mid.x_mm)
+            + mid_sq * (start.x_mm - end.x_mm)
+            + end_sq * (mid.x_mm - start.x_mm))
+            / d,
+    })
+}
+
+fn angle_on_ccw_arc(start_angle: f64, test_angle: f64, end_angle: f64) -> bool {
+    let total = (end_angle - start_angle).rem_euclid(2.0 * std::f64::consts::PI);
+    let partial = (test_angle - start_angle).rem_euclid(2.0 * std::f64::consts::PI);
+    partial <= total
+}
+
+fn closed_polyline_to_edge_distance_mm(
+    points: &[LayoutPoint],
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    if points.len() < 2 || points.iter().any(|point| !point_is_finite(point)) {
+        return None;
+    }
+    Some(
+        (0..points.len())
+            .map(|index| {
+                let next_index = (index + 1) % points.len();
                 segment_to_segment_distance_mm(
-                    &polygon.points[index],
-                    &polygon.points[next_index],
+                    &points[index],
+                    &points[next_index],
                     &edge.start,
                     &edge.end,
                 )
+            })
+            .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn open_polyline_to_edge_distance_mm(points: &[LayoutPoint], edge: &LayoutSegment) -> Option<f64> {
+    if points.len() < 2 || points.iter().any(|point| !point_is_finite(point)) {
+        return None;
+    }
+    Some(
+        points
+            .windows(2)
+            .map(|window| {
+                segment_to_segment_distance_mm(&window[0], &window[1], &edge.start, &edge.end)
             })
             .fold(f64::INFINITY, f64::min),
     )

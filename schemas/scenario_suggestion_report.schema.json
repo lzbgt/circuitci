@@ -516,7 +516,14 @@
         "distance_to_connector_mm": { "type": "number", "minimum": 0 },
         "connector_edge_reference": {
           "type": "string",
-          "enum": ["placement_center", "footprint_segment", "footprint_rectangle", "footprint_polygon"]
+          "enum": [
+            "placement_center",
+            "footprint_segment",
+            "footprint_rectangle",
+            "footprint_polygon",
+            "footprint_circle",
+            "footprint_arc"
+          ]
         },
         "footprint_graphic_layer": { "type": "string", "minLength": 1 },
         "footprint_graphic_kind": { "type": "string", "minLength": 1 },
@@ -541,6 +548,14 @@
         "polygons": {
           "type": "array",
           "items": { "$ref": "#/$defs/footprint_polygon" }
+        },
+        "circles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/footprint_circle" }
+        },
+        "arcs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/footprint_arc" }
         }
       },
       "additionalProperties": false
@@ -565,6 +580,29 @@
           "minItems": 3,
           "items": { "$ref": "#/$defs/layout_point" }
         },
+        "layer": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "footprint_circle": {
+      "type": "object",
+      "required": ["center", "end", "layer", "kind"],
+      "properties": {
+        "center": { "$ref": "#/$defs/layout_point" },
+        "end": { "$ref": "#/$defs/layout_point" },
+        "layer": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "footprint_arc": {
+      "type": "object",
+      "required": ["start", "mid", "end", "layer", "kind"],
+      "properties": {
+        "start": { "$ref": "#/$defs/layout_point" },
+        "mid": { "$ref": "#/$defs/layout_point" },
+        "end": { "$ref": "#/$defs/layout_point" },
         "layer": { "type": "string", "minLength": 1 },
         "kind": { "type": "string", "minLength": 1 }
       },

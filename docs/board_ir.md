@@ -169,13 +169,26 @@ board:
               - { x_mm: -0.8, y_mm: 1.2 }
             layer: F.Fab
             kind: fabrication
+        circles:
+          - center: { x_mm: 0.2, y_mm: 0.9 }
+            end: { x_mm: 0.3, y_mm: 0.9 }
+            layer: F.Fab
+            kind: fabrication
+        arcs:
+          - start: { x_mm: 0.0, y_mm: 0.9 }
+            mid: { x_mm: 0.1, y_mm: 1.0 }
+            end: { x_mm: 0.2, y_mm: 0.9 }
+            layer: F.CrtYd
+            kind: courtyard
 ```
 
 KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
-and `fp_poly` drawing items. The `kind` field is derived from the drawing layer
-and is intentionally conservative: `fabrication`, `courtyard`, `silkscreen`, or
-`other`. This is drawing evidence for follow-up layout rules; it is not a full
-3D body, enclosure, or keepout model.
+`fp_poly`, `fp_circle`, and `fp_arc` drawing items. The `kind` field is derived
+from the drawing layer and is intentionally conservative: `fabrication`,
+`courtyard`, `silkscreen`, or `other`. Curved graphics retain their source
+points in Board IR; current 2D layout checks sample them into bounded polylines
+when computing edge distance or overhang evidence. This is drawing evidence for
+follow-up layout rules; it is not a full 3D body, enclosure, or keepout model.
 
 ## Layout Outline Evidence
 

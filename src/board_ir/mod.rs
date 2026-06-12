@@ -59,6 +59,10 @@ pub struct LayoutFootprint {
     pub rectangles: Vec<LayoutFootprintRectangle>,
     #[serde(default)]
     pub polygons: Vec<LayoutFootprintPolygon>,
+    #[serde(default)]
+    pub circles: Vec<LayoutFootprintCircle>,
+    #[serde(default)]
+    pub arcs: Vec<LayoutFootprintArc>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -80,6 +84,23 @@ pub struct LayoutFootprintRectangle {
 #[derive(Debug, Clone, Deserialize)]
 pub struct LayoutFootprintPolygon {
     pub points: Vec<LayoutPoint>,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintCircle {
+    pub center: LayoutPoint,
+    pub end: LayoutPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintArc {
+    pub start: LayoutPoint,
+    pub mid: LayoutPoint,
+    pub end: LayoutPoint,
     pub layer: String,
     pub kind: String,
 }

@@ -80,6 +80,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         -0.8
     );
     assert_eq!(connector_footprint["polygons"][0]["points"][3]["y_mm"], 1.2);
+    assert_eq!(connector_footprint["circles"][0]["kind"], "fabrication");
+    assert_eq!(connector_footprint["circles"][0]["layer"], "F.Fab");
+    assert_eq!(connector_footprint["circles"][0]["center"]["x_mm"], 0.2);
+    assert_eq!(connector_footprint["circles"][0]["end"]["x_mm"], 0.3);
+    assert_eq!(connector_footprint["arcs"][0]["kind"], "courtyard");
+    assert_eq!(connector_footprint["arcs"][0]["layer"], "F.CrtYd");
+    assert_eq!(connector_footprint["arcs"][0]["start"]["x_mm"], 0.0);
+    assert_eq!(connector_footprint["arcs"][0]["mid"]["y_mm"], 1.0);
     assert!(imported["board"]["layout"]["footprints"]["H1"].is_null());
     let connector_dp_pad = &imported["board"]["layout"]["pads"]["J1"]["D+"];
     assert_eq!(connector_dp_pad["at"]["x_mm"], 0.0);
@@ -290,6 +298,14 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["polygons"][0]["kind"],
         "fabrication"
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["circles"][0]["kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["arcs"][0]["kind"],
+        "courtyard"
     );
     let body_overhang = suggestions["suggestions"]
         .as_array()

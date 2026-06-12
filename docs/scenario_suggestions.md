@@ -105,18 +105,18 @@ The command is conservative:
   The template includes `nearest_board_edge.distance_to_connector_mm` and
   `nearest_board_edge.connector_edge_reference` in
   `scenario.usb_connectors[]`. That distance uses supported
-  `fabrication`/`courtyard` footprint `fp_line`, `fp_rect`, or `fp_poly`
-  evidence when available and falls back to placement-center distance
-  otherwise. When imported footprint drawing evidence exists,
+  `fabrication`/`courtyard` footprint `fp_line`, `fp_rect`, `fp_poly`,
+  `fp_circle`, or `fp_arc` evidence when available and falls back to
+  placement-center distance otherwise. When imported footprint drawing evidence exists,
   `scenario.usb_connectors[].footprint` also reports transformed
-  `fp_line`/`fp_rect`/`fp_poly` body, courtyard, or silkscreen evidence for
-  mechanical review. The template leaves
+  `fp_line`/`fp_rect`/`fp_poly`/`fp_circle`/`fp_arc` body, courtyard, or
+  silkscreen evidence for mechanical review. The template leaves
   `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
   connector/enclosure mechanical rule.
 - It emits non-runnable `USB_CONNECTOR_BODY_OVERHANG_VALID` templates when the
   USB connector has finite placement evidence, straight board-edge outline
   evidence, and supported `fabrication`/`courtyard` footprint `fp_line`,
-  `fp_rect`, or `fp_poly` evidence. The template reports
+  `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence. The template reports
   `nearest_board_edge.connector_body_overhang_mm`,
   `connector_edge_reference`, `footprint_graphic_layer`, and
   `footprint_graphic_kind` in `scenario.usb_connectors[]`. It leaves

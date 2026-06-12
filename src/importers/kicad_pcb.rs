@@ -28,6 +28,8 @@ struct PcbFootprint {
     segments: Vec<PcbFootprintSegment>,
     rectangles: Vec<PcbFootprintRectangle>,
     polygons: Vec<PcbFootprintPolygon>,
+    circles: Vec<PcbFootprintCircle>,
+    arcs: Vec<PcbFootprintArc>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +51,23 @@ struct PcbFootprintRectangle {
 #[derive(Debug, Clone)]
 struct PcbFootprintPolygon {
     points: Vec<PcbPoint>,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintCircle {
+    center: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintArc {
+    start: PcbPoint,
+    mid: PcbPoint,
+    end: PcbPoint,
     layer: String,
     kind: String,
 }
@@ -85,6 +104,10 @@ struct FootprintYaml {
     rectangles: Vec<FootprintRectangleYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     polygons: Vec<FootprintPolygonYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    circles: Vec<FootprintCircleYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    arcs: Vec<FootprintArcYaml>,
 }
 
 #[derive(Debug, Serialize)]
@@ -106,6 +129,23 @@ struct FootprintRectangleYaml {
 #[derive(Debug, Serialize)]
 struct FootprintPolygonYaml {
     points: Vec<PcbPoint>,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintCircleYaml {
+    center: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintArcYaml {
+    start: PcbPoint,
+    mid: PcbPoint,
+    end: PcbPoint,
     layer: String,
     kind: String,
 }
@@ -513,9 +553,47 @@ fn parse_footprints(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, 
                 layer,
             });
         }
+        for circle in list_children(footprint, "fp_circle") {
+            let center = transformed_child_point(circle, "center", footprint_at, path)?;
+            let end = transformed_child_point(circle, "end", footprint_at, path)?;
+            if point_distance_mm(center, end) <= f64::EPSILON {
+                bail!(
+                    "KiCad PCB footprint {reference} fp_circle in {} has zero radius.",
+                    path.display()
+                );
+            }
+            let layer = non_empty_child_string(circle, "layer", path)?;
+            evidence.circles.push(PcbFootprintCircle {
+                center,
+                end,
+                kind: footprint_graphic_kind(&layer).to_string(),
+                layer,
+            });
+        }
+        for arc in list_children(footprint, "fp_arc") {
+            let start = transformed_child_point(arc, "start", footprint_at, path)?;
+            let mid = transformed_child_point(arc, "mid", footprint_at, path)?;
+            let end = transformed_child_point(arc, "end", footprint_at, path)?;
+            if arc_center(start, mid, end).is_none() {
+                bail!(
+                    "KiCad PCB footprint {reference} fp_arc in {} is degenerate.",
+                    path.display()
+                );
+            }
+            let layer = non_empty_child_string(arc, "layer", path)?;
+            evidence.arcs.push(PcbFootprintArc {
+                start,
+                mid,
+                end,
+                kind: footprint_graphic_kind(&layer).to_string(),
+                layer,
+            });
+        }
         if !evidence.segments.is_empty()
             || !evidence.rectangles.is_empty()
             || !evidence.polygons.is_empty()
+            || !evidence.circles.is_empty()
+            || !evidence.arcs.is_empty()
         {
             footprints.insert(reference, evidence);
         }
@@ -1142,6 +1220,33 @@ fn transform_footprint_point(
     }
 }
 
+fn point_distance_mm(a: PcbPoint, b: PcbPoint) -> f64 {
+    (a.x_mm - b.x_mm).hypot(a.y_mm - b.y_mm)
+}
+
+fn arc_center(start: PcbPoint, mid: PcbPoint, end: PcbPoint) -> Option<PcbPoint> {
+    let d = 2.0
+        * (start.x_mm * (mid.y_mm - end.y_mm)
+            + mid.x_mm * (end.y_mm - start.y_mm)
+            + end.x_mm * (start.y_mm - mid.y_mm));
+    if d.abs() <= f64::EPSILON {
+        return None;
+    }
+    let start_sq = start.x_mm * start.x_mm + start.y_mm * start.y_mm;
+    let mid_sq = mid.x_mm * mid.x_mm + mid.y_mm * mid.y_mm;
+    let end_sq = end.x_mm * end.x_mm + end.y_mm * end.y_mm;
+    Some(PcbPoint {
+        x_mm: (start_sq * (mid.y_mm - end.y_mm)
+            + mid_sq * (end.y_mm - start.y_mm)
+            + end_sq * (start.y_mm - mid.y_mm))
+            / d,
+        y_mm: (start_sq * (end.x_mm - mid.x_mm)
+            + mid_sq * (start.x_mm - end.x_mm)
+            + end_sq * (mid.x_mm - start.x_mm))
+            / d,
+    })
+}
+
 fn transformed_child_point(
     item: &[Sexp],
     field: &str,
@@ -1376,8 +1481,11 @@ fn merge_pcb_into_project(
         }
         let footprint_value = footprint_yaml_value(footprint)?;
         footprint_yaml.insert(Value::String(reference.clone()), footprint_value);
-        summary.footprint_graphics +=
-            footprint.segments.len() + footprint.rectangles.len() + footprint.polygons.len();
+        summary.footprint_graphics += footprint.segments.len()
+            + footprint.rectangles.len()
+            + footprint.polygons.len()
+            + footprint.circles.len()
+            + footprint.arcs.len();
     }
     let pad_yaml = ensure_mapping_field_mut(layout, "pads")?;
     for (reference, pads) in &parsed_pcb.pads {
@@ -1484,6 +1592,27 @@ fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
                 points: polygon.points.clone(),
                 layer: polygon.layer.clone(),
                 kind: polygon.kind.clone(),
+            })
+            .collect(),
+        circles: footprint
+            .circles
+            .iter()
+            .map(|circle| FootprintCircleYaml {
+                center: circle.center,
+                end: circle.end,
+                layer: circle.layer.clone(),
+                kind: circle.kind.clone(),
+            })
+            .collect(),
+        arcs: footprint
+            .arcs
+            .iter()
+            .map(|arc| FootprintArcYaml {
+                start: arc.start,
+                mid: arc.mid,
+                end: arc.end,
+                layer: arc.layer.clone(),
+                kind: arc.kind.clone(),
             })
             .collect(),
     })

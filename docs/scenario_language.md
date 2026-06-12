@@ -430,8 +430,9 @@ Connector-to-board-edge algorithm:
 3. Require at least one usable straight segment under
    `board.layout.outline.segments`.
 4. If `board.layout.footprints.<component>` contains transformed
-   `fabrication` or `courtyard` `fp_line`, `fp_rect`, or `fp_poly` evidence,
-   measure the nearest supported footprint graphic to each board-edge segment.
+   `fabrication` or `courtyard` `fp_line`, `fp_rect`, `fp_poly`,
+   `fp_circle`, or `fp_arc` evidence, measure the nearest supported footprint
+   graphic to each board-edge segment.
 5. If no usable footprint drawing evidence is available, project the connector
    placement point to each segment and use that fallback distance.
 6. Require the nearest distance to be no greater than
@@ -459,7 +460,7 @@ Connector-body overhang algorithm:
 2. Require finite connector placement evidence and at least one usable straight
    segment under `board.layout.outline.segments`.
 3. Require imported connector footprint `fabrication` or `courtyard`
-   `fp_line`, `fp_rect`, or `fp_poly` evidence.
+   `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence.
 4. Find the nearest supported body/courtyard graphic to the board edge.
 5. Infer the edge outward normal from the board outline centroid.
 6. Measure the maximum supported footprint point protrusion past that edge
@@ -469,7 +470,8 @@ Connector-body overhang algorithm:
 
 This is a static 2D board/footprint drawing guard. It does not sign off 3D
 connector shell volume, panel cutouts, arcs, enclosure interference, or cable
-insertion clearance.
+insertion clearance. Curved footprint graphics are sampled into bounded
+polylines for distance and overhang measurements.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

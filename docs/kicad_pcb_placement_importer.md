@@ -27,13 +27,15 @@ Placement evidence includes component center coordinates, side when it can be
 derived from the footprint layer, and footprint `rotation_deg` from the KiCad
 `(at x y rotation)` tuple.
 
-The importer also reads footprint `fp_line`, `fp_rect`, and `fp_poly` drawing
-items and writes transformed drawing evidence under `board.layout.footprints`
-for matching Board IR components. Imported footprint drawing evidence includes:
+The importer also reads footprint `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`,
+and `fp_arc` drawing items and writes transformed drawing evidence under
+`board.layout.footprints` for matching Board IR components. Imported footprint
+drawing evidence includes:
 
 - component reference,
-- transformed start/end coordinates for lines and rectangles or transformed
-  point lists for polygons, in millimeters,
+- transformed start/end coordinates for lines and rectangles, transformed
+  point lists for polygons, transformed center/end radius evidence for circles,
+  or transformed start/mid/end evidence for arcs, in millimeters,
 - source layer,
 - a bounded semantic kind derived from the layer: `fabrication`, `courtyard`,
   `silkscreen`, or `other`.
@@ -41,6 +43,8 @@ for matching Board IR components. Imported footprint drawing evidence includes:
 This is drawing evidence, not a full mechanical body solver. Rectangles are
 stored as their transformed opposite corners; rotated rectangles should be
 treated as evidence for follow-up rules, not as exact polygonal body sign-off.
+Curved graphics retain their source-defining points; current layout checks
+sample circles/arcs into bounded polylines for distance and overhang evidence.
 
 The importer also reads connected footprint `pad` entries and writes pad
 evidence under `board.layout.pads` when the footprint reference and pad net both
