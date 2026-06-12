@@ -125,10 +125,10 @@ The mixed-domain kernel uses replaceable adapters:
   modes encoded in scenarios,
 - analog/digital bridge: explicit generated stimuli and probes; threshold
   crossing automation remains future work,
-- firmware adapter: Renode or QEMU remains future work for functional
-  firmware-in-loop MCU validation. This should model firmware-visible
-  peripherals and board-facing pin behavior, not internal MCU transistor
-  implementation.
+- firmware adapter: QEMU-backed functional firmware-in-loop validation with
+  explicit board-facing pin observations; Renode remains a fail-closed future
+  adapter. Firmware models should expose firmware-visible peripherals and
+  package pin behavior, not internal MCU transistor implementation.
 
 The CLI and JSON report schema must remain stable as solver fidelity increases.
 

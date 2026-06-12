@@ -147,6 +147,8 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         bound,
                         scenario,
                         &mut findings,
+                        &mut artifacts,
+                        output,
                     )
                 }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {

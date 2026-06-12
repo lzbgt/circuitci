@@ -306,9 +306,13 @@ scenarios:
     checks:
       - FUNCTIONAL_MCU_FIRMWARE
     firmware:
-      backend: auto
+      backend: qemu
       image: firmware/app.elf
       machine: stm32l4_functional
+      qemu:
+        executable: qemu-system-arm
+        timeout_ms: 5000
+        extra_args: []
       expected_pin_states:
         - component: U1
           pin: TX
@@ -316,13 +320,28 @@ scenarios:
           state: high
 ```
 
-The current runtime validates that the scenario names a target MCU, firmware
-image, and expected board-facing pin behavior. It then fails closed with
-`FUNCTIONAL_MCU_FIRMWARE` until a supported functional backend, such as Renode
-or QEMU, is wired into the validator. A passing firmware-in-loop result must
-come from executing the functional model and observing declared pin behavior;
-it must not be inferred from a transistor-level MCU substitute or from a
-generic "firmware present" marker.
+The QEMU backend runs `qemu-system-arm` by default with `-M <machine>`,
+`-kernel <image>`, `-nographic`, and `-semihosting`; `qemu.extra_args` are
+appended as explicit argv entries. `qemu.executable` can point to a specific
+QEMU binary, `qemu.timeout_ms` bounds execution, and
+`qemu.pin_trace_prefix` overrides the default `CIRCUITCI_PIN ` trace prefix.
+`backend: auto` selects QEMU only when a machine is declared and QEMU is
+available.
+
+A passing firmware-in-loop result must come from executing the functional model
+and observing declared pin behavior. The QEMU run must emit one line per
+observed pin using this format:
+
+```text
+CIRCUITCI_PIN U1.TX mode=output state=high
+```
+
+Valid modes are `input`, `output`, and `high_z`; valid states are `high`,
+`low`, and `z`. Missing, malformed, conflicting, or mismatched observations
+produce `FUNCTIONAL_MCU_FIRMWARE` critical findings. Renode remains fail-closed
+until a Renode adapter is integrated. Firmware-in-loop pass/fail must not be
+inferred from a transistor-level MCU substitute or from a generic "firmware
+present" marker.
 
 ## Analog Transient Scenario Shape
 

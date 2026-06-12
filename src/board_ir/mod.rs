@@ -246,7 +246,21 @@ pub struct FirmwareScenario {
     #[serde(default)]
     pub machine: Option<String>,
     #[serde(default)]
+    pub qemu: Option<QemuFirmwareOptions>,
+    #[serde(default)]
     pub expected_pin_states: Vec<PinState>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct QemuFirmwareOptions {
+    #[serde(default)]
+    pub executable: Option<String>,
+    #[serde(default)]
+    pub extra_args: Vec<String>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+    #[serde(default)]
+    pub pin_trace_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

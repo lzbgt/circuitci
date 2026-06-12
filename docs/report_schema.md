@@ -114,14 +114,19 @@ Stable rule detail keys:
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
-Until a functional runtime backend is available, this rule fails closed after
-validating the target MCU, firmware image, and expected board-facing pin
-behavior. Stable measured keys include `target_component`, `target_model`,
-`backend`, `firmware_image`, optional `machine`, and `expected_pin_states`.
-Stable limit keys include `functional_blackbox_boundary` and
-`transistor_level_mcu_required: false`. This rule is for functional firmware
-execution and MCU pin behavior; it must not imply transistor-level MCU
-simulation.
+For QEMU-backed scenarios, a pass requires successful QEMU execution plus
+matching `CIRCUITCI_PIN` observations for every declared expected board-facing
+pin state. Missing backend configuration, missing firmware images, QEMU launch
+or timeout failures, malformed traces, conflicting observations, and pin
+mismatches fail closed under this rule. Stable measured keys include
+`target_component`, `target_model`, `backend`, `firmware_image`, optional
+`machine`, and `expected_pin_states`; pin mismatches also include
+`pin_component`, `pin`, `observed_mode`, and `observed_state`. Stable limit
+keys include `functional_blackbox_boundary`,
+`transistor_level_mcu_required: false`, and, for mismatches, `expected_mode`
+and `expected_state`. Passing QEMU scenarios include a `qemu.log` artifact.
+This rule is for functional firmware execution and MCU pin behavior; it must
+not imply transistor-level MCU simulation.
 
 `SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
 generated Board IR MOSFET/BJT/diode operating probes exceed datasheet absolute

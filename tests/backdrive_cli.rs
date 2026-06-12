@@ -5,6 +5,7 @@ use common::{
     binary_available, run_validation,
 };
 use serde_json::Value;
+use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use walkdir::WalkDir;
 
@@ -480,7 +481,7 @@ fn functional_mcu_firmware_check_fails_closed_without_backend() {
         report["failures"][0]["message"]
             .as_str()
             .unwrap()
-            .contains("no Renode/QEMU adapter")
+            .contains("No functional MCU firmware backend is selectable")
     );
     assert_report_schema_valid(&report);
 }
@@ -506,6 +507,88 @@ fn functional_mcu_firmware_requires_expected_pin_behavior() {
             .as_str()
             .unwrap()
             .contains("expected_pin_states")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn functional_mcu_qemu_backend_passes_with_matching_pin_trace() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("firmware_qemu.project.yaml");
+    let output = dir.path().join("out");
+    let qemu = write_fake_qemu(
+        dir.path(),
+        "CIRCUITCI_PIN U1.TX mode=output state=high\n",
+        0,
+    );
+    write_dummy_firmware(dir.path());
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_qemu_project(
+            &repo.join("libs/generic").display().to_string(),
+            &qemu.display().to_string(),
+            "high",
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    let qemu_log = report["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|artifact| artifact.as_str())
+        .find(|artifact| artifact.ends_with("qemu.log"))
+        .expect("qemu.log artifact");
+    let qemu_log_text = std::fs::read_to_string(qemu_log).unwrap();
+    assert!(qemu_log_text.contains("CIRCUITCI_PIN U1.TX mode=output state=high"));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn functional_mcu_qemu_backend_fails_on_pin_trace_mismatch() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("firmware_qemu_mismatch.project.yaml");
+    let qemu = write_fake_qemu(dir.path(), "CIRCUITCI_PIN U1.TX mode=output state=low\n", 0);
+    write_dummy_firmware(dir.path());
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_qemu_project(
+            &repo.join("libs/generic").display().to_string(),
+            &qemu.display().to_string(),
+            "high",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "FUNCTIONAL_MCU_FIRMWARE");
+    assert_eq!(report["failures"][0]["measured"]["observed_state"], "low");
+    assert_eq!(report["failures"][0]["limit"]["expected_state"], "high");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Observed QEMU pin behavior did not match")
     );
     assert_report_schema_valid(&report);
 }
@@ -1116,4 +1199,76 @@ scenarios:
       image: firmware/app.elf
 {expected_pin_states}"#
     )
+}
+
+fn firmware_qemu_project(
+    library_path: &str,
+    qemu_executable: &str,
+    expected_state: &str,
+) -> String {
+    format!(
+        r#"project:
+  name: firmware_qemu_contract
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        TX: uart_mcu_tx
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    uart_mcu_tx:
+      kind: digital_or_analog
+scenarios:
+  - name: firmware_qemu_pin_behavior
+    type: firmware_in_loop
+    target:
+      component: U1
+    checks:
+      - FUNCTIONAL_MCU_FIRMWARE
+    firmware:
+      backend: qemu
+      image: firmware/app.elf
+      machine: stm32vldiscovery
+      qemu:
+        executable: {qemu_executable}
+        timeout_ms: 1000
+      expected_pin_states:
+        - component: U1
+          pin: TX
+          mode: output
+          state: {expected_state}
+"#
+    )
+}
+
+fn write_dummy_firmware(dir: &std::path::Path) {
+    let firmware_dir = dir.join("firmware");
+    std::fs::create_dir_all(&firmware_dir).unwrap();
+    std::fs::write(firmware_dir.join("app.elf"), b"dummy firmware bytes").unwrap();
+}
+
+fn write_fake_qemu(dir: &std::path::Path, output: &str, exit_code: i32) -> std::path::PathBuf {
+    let path = dir.join("qemu-system-arm");
+    std::fs::write(
+        &path,
+        format!("#!/bin/sh\ncat <<'EOF'\n{output}EOF\nexit {exit_code}\n"),
+    )
+    .unwrap();
+    let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&path, permissions).unwrap();
+    path
 }
