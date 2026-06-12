@@ -110,8 +110,9 @@ Power semantics:
 Board IR can carry explicit component placement evidence under
 `board.layout.placements`. Coordinates are in millimeters in a common board
 coordinate system. `side` is optional and currently records `top` or `bottom`
-for report evidence; the first placement-distance rules use center-to-center
-distance only.
+for report evidence. `rotation_deg` is optional component rotation evidence in
+degrees and is used by USB connector-orientation checks. The first
+placement-distance rules use center-to-center distance only.
 
 ```yaml
 board:
@@ -121,6 +122,7 @@ board:
         x_mm: 0.0
         y_mm: 0.0
         side: top
+        rotation_deg: 0.0
       UESD:
         x_mm: 1.2
         y_mm: 0.0
@@ -128,8 +130,11 @@ board:
 ```
 
 `USB_PROTECTION_PLACEMENT_VALID` uses this evidence to check that USB ESD
-protection components are close to the connector. Missing or non-finite
-placement coordinates fail closed for rules that declare a placement limit.
+protection components are close to the connector.
+`USB_CONNECTOR_ORIENTATION_VALID` uses `rotation_deg` to check connector
+footprint orientation against an explicit mechanical/layout rule. Missing or
+non-finite placement coordinates fail closed for rules that declare a placement
+limit, and missing rotation evidence fails closed for orientation rules.
 
 ## Layout Pad Evidence
 

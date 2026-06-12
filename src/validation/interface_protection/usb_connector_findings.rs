@@ -5,7 +5,10 @@ use serde_json::json;
 use super::{
     ResolvedUsbProtection, UsbConnectorSignal, UsbPlacementDistanceEvidence, placement_side_name,
 };
-use crate::validation::{USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID};
+use crate::board_ir::ComponentPlacement;
+use crate::validation::{
+    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID,
+};
 
 pub(super) fn usb_connector_metadata_finding(
     scenario: &crate::board_ir::Scenario,
@@ -317,6 +320,77 @@ pub(super) fn usb_placement_distance_finding(
             protection.component_id
         ),
         "Keep the ESD current path short and low-inductance; use PCB/layout review for trace order, via count, return path, and shield strategy.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_orientation_metadata_finding(
+    scenario: &crate::board_ir::Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(USB_CONNECTOR_ORIENTATION_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import PCB component placement rotation with import-kicad-pcb before declaring USB_CONNECTOR_ORIENTATION_VALID.".to_string(),
+        "Use explicit board-edge or mechanical review evidence to set expected_connector_rotation_deg and max_connector_rotation_error_deg.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_orientation_finding(
+    scenario: &crate::board_ir::Scenario,
+    connector_id: &str,
+    placement: &ComponentPlacement,
+    actual_rotation_deg: f64,
+    expected_rotation_deg: f64,
+    rotation_error_deg: f64,
+    max_error_deg: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_ORIENTATION_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} placement rotation {:.3} deg differs from expected {:.3} deg by {:.3} deg, exceeding limit {:.3} deg.",
+            actual_rotation_deg, expected_rotation_deg, rotation_error_deg, max_error_deg
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.measured.insert(
+        "connector_rotation_deg".to_string(),
+        json!(actual_rotation_deg),
+    );
+    finding.measured.insert(
+        "connector_rotation_error_deg".to_string(),
+        json!(rotation_error_deg),
+    );
+    finding
+        .measured
+        .insert("connector_x_mm".to_string(), json!(placement.x_mm));
+    finding
+        .measured
+        .insert("connector_y_mm".to_string(), json!(placement.y_mm));
+    if let Some(side) = placement_side_name(&placement.side) {
+        finding
+            .measured
+            .insert("connector_side".to_string(), json!(side));
+    }
+    finding.limit.insert(
+        "expected_connector_rotation_deg".to_string(),
+        json!(expected_rotation_deg),
+    );
+    finding.limit.insert(
+        "max_connector_rotation_error_deg".to_string(),
+        json!(max_error_deg),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Rotate or remap USB connector {connector_id} footprint so its imported placement rotation matches the intended board-edge orientation."
+        ),
+        "If the board intentionally uses a different connector entry direction, update expected_connector_rotation_deg from the mechanical/layout rule and rerun validation.".to_string(),
     ];
     finding
 }

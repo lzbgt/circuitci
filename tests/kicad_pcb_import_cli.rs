@@ -48,6 +48,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
     assert_eq!(imported["board"]["layout"]["placements"]["J1"]["x_mm"], 0.0);
     assert_eq!(
+        imported["board"]["layout"]["placements"]["J1"]["rotation_deg"],
+        0.0
+    );
+    assert_eq!(
         imported["board"]["layout"]["placements"]["J1"]["side"],
         "top"
     );
@@ -193,6 +197,22 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
             && clamp["protected_net"] == "net_usb_vbus"
             && clamp["distance_to_target_mm"] == 1.5
     }));
+    let orientation = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_orientation_j1")
+        .expect("USB connector orientation suggestion");
+    assert_eq!(
+        orientation["scenario"]["checks"][0],
+        "USB_CONNECTOR_ORIENTATION_VALID"
+    );
+    assert!(orientation["scenario"]["parameters"]["expected_connector_rotation_deg"].is_null());
+    assert!(orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"].is_null());
+    assert_eq!(
+        orientation["scenario"]["usb_connectors"][0]["placement"]["rotation_deg"],
+        0.0
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -437,7 +457,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 9);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 10);
     assert!(
         suggestions["suggestions"]
             .as_array()

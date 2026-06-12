@@ -528,6 +528,31 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             .unwrap()
             .contains("max_connector_to_protection_distance_mm")
     );
+    let orientation = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_orientation_j1")
+        .expect("USB connector orientation suggestion");
+    assert_eq!(orientation["kind"], "interface_protection");
+    assert_eq!(orientation["runnable"], false);
+    assert_eq!(orientation["scenario"]["type"], "interface_protection");
+    assert_eq!(
+        orientation["scenario"]["checks"][0],
+        "USB_CONNECTOR_ORIENTATION_VALID"
+    );
+    assert!(orientation["scenario"]["parameters"]["expected_connector_rotation_deg"].is_null());
+    assert!(orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"].is_null());
+    assert_eq!(
+        orientation["scenario"]["usb_connectors"][0]["placement"]["rotation_deg"],
+        0.0
+    );
+    assert!(
+        orientation["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("expected_connector_rotation_deg")
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()

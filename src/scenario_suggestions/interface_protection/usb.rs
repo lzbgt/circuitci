@@ -1,8 +1,9 @@
 use super::super::{
     ScenarioSuggestion, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
     SuggestedUsbConnector, SuggestedUsbRoute, SuggestedUsbRoutePair,
-    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
-    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
+    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
+    USB_VBUS_ROUTE_VALID,
 };
 use super::{
     component_placement, placement_distance_mm, sanitized_name, suggested_placement,
@@ -240,6 +241,67 @@ pub(super) fn usb_protection_placement_suggestion(
         required_inputs: vec![
             "Fill parameters.max_connector_to_protection_distance_mm from the board's ESD/layout rule or datasheet/layout guidance; do not invent the limit from component coordinates.".to_string(),
             "Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.".to_string(),
+        ],
+    })
+}
+
+pub(super) fn usb_connector_orientation_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let placement = component_placement(bound, component_id)?;
+    placement.rotation_deg?;
+    let parameters = BTreeMap::from([
+        (
+            "expected_connector_rotation_deg".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_connector_rotation_error_deg".to_string(),
+            serde_json::Value::Null,
+        ),
+    ]);
+    Some(ScenarioSuggestion {
+        id: format!("usb_connector_orientation_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has imported placement rotation evidence; add a connector-orientation scenario from the mechanical board-edge rule."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_connector_orientation", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_CONNECTOR_ORIENTATION_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: Vec::new(),
+            usb_connectors: vec![suggested_connector],
+            usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
+            "Fill max_connector_rotation_error_deg from the allowed footprint-orientation tolerance.".to_string(),
         ],
     })
 }
@@ -1193,6 +1255,28 @@ pub(super) fn existing_usb_protection_placement_checks(project: &BoardProject) -
                     .checks
                     .iter()
                     .any(|check| check == USB_PROTECTION_PLACEMENT_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+pub(super) fn existing_usb_connector_orientation_checks(
+    project: &BoardProject,
+) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| scenario.scenario_type == "interface_protection")
+        .filter(|scenario| {
+            scenario
+                .checks
+                .iter()
+                .any(|check| check == USB_CONNECTOR_ORIENTATION_VALID)
         })
         .filter_map(|scenario| {
             scenario

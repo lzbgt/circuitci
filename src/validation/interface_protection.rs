@@ -37,6 +37,112 @@ pub(super) fn validate_usb_return_path(
     usb_route::validate_usb_return_path(bound, scenario, findings);
 }
 
+pub(super) fn validate_usb_connector_orientation(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(expected_rotation_deg) =
+        required_scenario_numeric_parameter(scenario, "expected_connector_rotation_deg", findings)
+    else {
+        return;
+    };
+    let Some(max_error_deg) =
+        required_scenario_numeric_parameter(scenario, "max_connector_rotation_error_deg", findings)
+    else {
+        return;
+    };
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_CONNECTOR_ORIENTATION_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_orientation_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector orientation target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_orientation_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector orientation target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    if model.usb_connector.is_none() {
+        findings.push(usb_orientation_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            "missing",
+        ));
+        return;
+    }
+    let Some(placement) = valid_component_placement(bound, scenario, &target.component, findings)
+    else {
+        return;
+    };
+    let Some(actual_rotation_deg) = placement.rotation_deg else {
+        findings.push(usb_orientation_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector {} placement has no rotation_deg evidence.",
+                target.component
+            ),
+            "rotation_deg",
+            "missing",
+        ));
+        return;
+    };
+    if !actual_rotation_deg.is_finite() {
+        findings.push(usb_orientation_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector {} placement rotation_deg must be finite.",
+                target.component
+            ),
+            "rotation_deg",
+            "non_finite",
+        ));
+        return;
+    }
+    let rotation_error_deg = angular_error_deg(actual_rotation_deg, expected_rotation_deg);
+    if rotation_error_deg > max_error_deg {
+        findings.push(usb_orientation_finding(
+            scenario,
+            &target.component,
+            placement,
+            actual_rotation_deg,
+            expected_rotation_deg,
+            rotation_error_deg,
+            max_error_deg,
+        ));
+    }
+}
+
 pub(super) fn validate_interface_protection(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -982,6 +1088,15 @@ fn placement_distance_mm(a: &ComponentPlacement, b: &ComponentPlacement) -> f64 
     let dx = a.x_mm - b.x_mm;
     let dy = a.y_mm - b.y_mm;
     dx.hypot(dy)
+}
+
+fn normalize_rotation_deg(rotation_deg: f64) -> f64 {
+    rotation_deg.rem_euclid(360.0)
+}
+
+fn angular_error_deg(actual_deg: f64, expected_deg: f64) -> f64 {
+    let delta = (normalize_rotation_deg(actual_deg) - normalize_rotation_deg(expected_deg)).abs();
+    delta.min(360.0 - delta)
 }
 
 fn placement_side_name(side: &Option<PlacementSide>) -> Option<&'static str> {

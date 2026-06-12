@@ -482,7 +482,8 @@
       "properties": {
         "x_mm": { "type": "number" },
         "y_mm": { "type": "number" },
-        "side": { "enum": ["top", "bottom"] }
+        "side": { "enum": ["top", "bottom"] },
+        "rotation_deg": { "type": "number" }
       },
       "additionalProperties": false
     },

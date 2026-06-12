@@ -20,6 +20,7 @@ struct PcbPlacement {
     x_mm: f64,
     y_mm: f64,
     side: Option<PcbPlacementSide>,
+    rotation_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -42,6 +43,8 @@ struct PlacementYaml {
     y_mm: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     side: Option<PcbPlacementSide>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rotation_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -345,6 +348,7 @@ fn parse_placements(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, 
                 x_mm: at.x_mm,
                 y_mm: at.y_mm,
                 side,
+                rotation_deg: Some(at.rotation_deg),
             },
         );
     }
@@ -1121,6 +1125,7 @@ fn merge_pcb_into_project(
                 x_mm: placement.x_mm,
                 y_mm: placement.y_mm,
                 side: placement.side,
+                rotation_deg: placement.rotation_deg,
             })?,
         );
         summary.placements += 1;

@@ -75,6 +75,8 @@ pub struct ComponentPlacement {
     pub y_mm: f64,
     #[serde(default)]
     pub side: Option<PlacementSide>,
+    #[serde(default)]
+    pub rotation_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

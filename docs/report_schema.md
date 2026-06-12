@@ -196,6 +196,14 @@ Differential-pair findings also report `dp_net`, `dm_net`,
 `max_data_pair_gap_delta_mm`. Pad-contact route findings additionally include
 `route_pad_contact_policy`.
 
+`USB_CONNECTOR_ORIENTATION_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata with
+`board.layout.placements.<connector>.rotation_deg`. Stable measured keys
+include `connector_rotation_deg`, `connector_rotation_error_deg`,
+`connector_x_mm`, `connector_y_mm`, and optional `connector_side`. Stable limit
+keys include `expected_connector_rotation_deg` and
+`max_connector_rotation_error_deg`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

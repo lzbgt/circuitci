@@ -48,6 +48,7 @@ board:
         x_mm: 0.0
         y_mm: 0.0
         side: top
+        rotation_deg: 0.0
       UESD:
         x_mm: 1.0
         y_mm: 0.0

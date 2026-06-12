@@ -340,6 +340,8 @@ pub struct SuggestedPlacement {
     pub y_mm: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation_deg: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

@@ -273,6 +273,32 @@ fn usb_connector_protection_placement_requires_close_data_clamps() {
 }
 
 #[test]
+fn usb_connector_orientation_passes_within_rotation_tolerance() {
+    let report = run_validation("examples/good_usb_connector_orientation/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_orientation_reports_rotation_mismatch() {
+    let report = run_validation("examples/bad_usb_connector_orientation/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ORIENTATION_VALID")
+        .expect("USB connector orientation finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["connector_rotation_deg"], 180.0);
+    assert_eq!(failure["measured"]["connector_rotation_error_deg"], 180.0);
+    assert_eq!(failure["limit"]["expected_connector_rotation_deg"], 0.0);
+    assert_eq!(failure["limit"]["max_connector_rotation_error_deg"], 5.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

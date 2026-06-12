@@ -88,6 +88,12 @@ The command is conservative:
   `parameters.max_connector_to_protection_distance_mm` as `null` until an agent
   fills the board-specific ESD/layout rule. CircuitCI does not invent placement
   limits from component coordinates.
+- It emits non-runnable `USB_CONNECTOR_ORIENTATION_VALID` templates when the USB
+  connector placement includes imported `rotation_deg` evidence. The template
+  includes the measured placement rotation in `scenario.usb_connectors[]` and
+  leaves `expected_connector_rotation_deg` and
+  `max_connector_rotation_error_deg` as `null` until an agent fills them from a
+  board-edge or enclosure-entry mechanical rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

@@ -1,0 +1,47 @@
+project:
+  name: good_usb_connector_orientation
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    J1:
+      model: generic.connector.usb2
+      pins:
+        VBUS: usb_vbus
+        "D+": usb_dp
+        "D-": usb_dm
+        GND: gnd
+  nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+  layout:
+    placements:
+      J1:
+        x_mm: 0.0
+        y_mm: 0.0
+        side: top
+        rotation_deg: 359.0
+
+scenarios:
+  - name: usb_connector_orientation
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_ORIENTATION_VALID
+    target:
+      component: J1
+    parameters:
+      expected_connector_rotation_deg: 0.0
+      max_connector_rotation_error_deg: 2.0

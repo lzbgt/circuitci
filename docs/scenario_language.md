@@ -374,6 +374,33 @@ Connector-to-protection placement algorithm:
    matching protection component to be no farther than
    `parameters.max_connector_to_protection_distance_mm`.
 
+USB connector orientation uses `USB_CONNECTOR_ORIENTATION_VALID` when
+`board.layout.placements.<connector>.rotation_deg` evidence is present and a
+mechanical/layout rule declares the expected entry direction.
+
+```yaml
+scenarios:
+  - name: usb_connector_orientation
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_ORIENTATION_VALID
+    target:
+      component: J1
+    parameters:
+      expected_connector_rotation_deg: 0.0
+      max_connector_rotation_error_deg: 5.0
+```
+
+Connector-orientation algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Require finite placement coordinates and finite `rotation_deg` evidence for
+   the connector.
+3. Normalize actual and expected rotations modulo `360 deg`.
+4. Compute the smallest angular error, so `359 deg` is `1 deg` from `0 deg`.
+5. Require the error to be no greater than
+   `parameters.max_connector_rotation_error_deg`.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the

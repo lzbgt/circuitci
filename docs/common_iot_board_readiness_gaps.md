@@ -143,6 +143,9 @@ declared. `USB_CONNECTOR_PROTECTION_VALID` adds connector-level schematic
 coverage for declared USB D+/D- and optional VBUS protection.
 `USB_PROTECTION_PLACEMENT_VALID` adds the first explicit layout-evidence guard:
 connector-to-protection center distance from `board.layout.placements`.
+`USB_CONNECTOR_ORIENTATION_VALID` adds a static footprint-orientation guard
+from imported connector placement `rotation_deg` evidence and explicit
+mechanical/layout rotation limits.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

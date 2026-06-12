@@ -23,6 +23,9 @@ Only footprint references that match existing `board.components` are written to
 `board.layout.placements`. Extra mechanical footprints are ignored. Duplicate
 footprint references, missing references, invalid coordinates, files without
 footprints, and PCB files with no matching Board IR components fail closed.
+Placement evidence includes component center coordinates, side when it can be
+derived from the footprint layer, and footprint `rotation_deg` from the KiCad
+`(at x y rotation)` tuple.
 
 The importer also reads connected footprint `pad` entries and writes pad
 evidence under `board.layout.pads` when the footprint reference and pad net both

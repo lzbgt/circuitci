@@ -114,6 +114,18 @@ Placement-distance validation:
   bonding, return path continuity, differential impedance, ESD pulse waveform,
   or USB eye margin.
 
+Connector-orientation validation:
+
+- `USB_CONNECTOR_ORIENTATION_VALID` targets the same connector component and
+  uses `board.layout.placements.<connector>.rotation_deg` evidence.
+- The scenario must declare `parameters.expected_connector_rotation_deg` and
+  `parameters.max_connector_rotation_error_deg` from the board-edge or enclosure
+  mechanical rule.
+- The rule compares rotations modulo `360 deg`, using the smallest angular
+  error. It is a static footprint-orientation screen; it does not infer board
+  edge geometry, enclosure clearance, cable insertion clearance, or connector
+  keepouts.
+
 Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses

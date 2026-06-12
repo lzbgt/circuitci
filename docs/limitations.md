@@ -58,6 +58,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   clamp coverage. It does not prove trace order, trace length, via count,
   parasitic inductance, shield strategy, return-path continuity, differential
   impedance, ESD pulse survival, or USB signal integrity.
+- `USB_CONNECTOR_ORIENTATION_VALID` checks imported connector placement
+  `rotation_deg` against an explicit expected rotation and tolerance. It does
+  not infer the real board edge, enclosure entry direction, connector keepout,
+  cable clearance, or mechanical insertion robustness.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and
