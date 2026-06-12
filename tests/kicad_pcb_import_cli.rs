@@ -477,12 +477,24 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         2.5
     );
     assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["width_mm"],
+        1.4
+    );
+    assert_eq!(
         entry_evidence["entry_clearance_depth_source"],
         "footprint_property_depth"
     );
     assert_eq!(
         entry_evidence["suggested_min_cable_entry_clearance_depth_mm"],
         2.5
+    );
+    assert_eq!(
+        entry_evidence["entry_clearance_width_source"],
+        "footprint_property_width"
+    );
+    assert_eq!(
+        entry_evidence["suggested_cable_entry_clearance_width_mm"],
+        1.4
     );
     assert_eq!(
         entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["source"],
@@ -528,7 +540,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"],
         2.5
     );
-    assert!(entry_clearance["scenario"]["parameters"]["cable_entry_clearance_width_mm"].is_null());
+    assert_eq!(
+        entry_clearance["scenario"]["parameters"]["cable_entry_clearance_width_mm"],
+        1.4
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -761,6 +776,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         2.0
     );
     assert_eq!(
+        mapped_entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_clearance"]["width_mm"],
+        1.3
+    );
+    assert_eq!(
         mapped_entry_evidence["entry_direction_source"],
         "kicad_mapping_offset"
     );
@@ -776,6 +795,18 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(
         mapped_entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"],
         2.0
+    );
+    assert_eq!(
+        mapped_entry_evidence["entry_clearance_width_source"],
+        "kicad_mapping_width"
+    );
+    assert_eq!(
+        mapped_entry_evidence["suggested_cable_entry_clearance_width_mm"],
+        1.3
+    );
+    assert_eq!(
+        mapped_entry_clearance["scenario"]["parameters"]["cable_entry_clearance_width_mm"],
+        1.3
     );
     assert_eq!(
         mapped_entry_evidence["entry_aperture_source"],
@@ -905,22 +936,40 @@ fn import_kicad_pcb_rejects_invalid_entry_clearance_properties() {
         "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
     )
     .unwrap();
-    let clearance_property =
+    let clearance_depth_property =
         "(property \"CircuitCI_EntryClearanceDepthMM\" \"2.5\" (at 0 1.1 0) (layer \"F.Fab\"))";
+    let clearance_width_property =
+        "(property \"CircuitCI_EntryClearanceWidthMM\" \"1.4\" (at 0 1.15 0) (layer \"F.Fab\"))";
     let malformed_cases = [
         (
             "duplicate_entry_clearance.kicad_pcb",
             source_pcb.replace(
-                clearance_property,
-                &format!("{clearance_property}\n    {clearance_property}"),
+                clearance_depth_property,
+                &format!("{clearance_depth_property}\n    {clearance_depth_property}"),
             ),
             "duplicate entry-clearance property",
         ),
         (
             "nonpositive_entry_clearance.kicad_pcb",
             source_pcb.replace(
-                clearance_property,
+                clearance_depth_property,
                 "(property \"CircuitCI_EntryClearanceDepthMM\" \"0.0\" (at 0 1.1 0) (layer \"F.Fab\"))",
+            ),
+            "must be greater than zero",
+        ),
+        (
+            "duplicate_entry_clearance_width.kicad_pcb",
+            source_pcb.replace(
+                clearance_width_property,
+                &format!("{clearance_width_property}\n    {clearance_width_property}"),
+            ),
+            "duplicate entry-clearance property",
+        ),
+        (
+            "nonpositive_entry_clearance_width.kicad_pcb",
+            source_pcb.replace(
+                clearance_width_property,
+                "(property \"CircuitCI_EntryClearanceWidthMM\" \"0.0\" (at 0 1.15 0) (layer \"F.Fab\"))",
             ),
             "must be greater than zero",
         ),

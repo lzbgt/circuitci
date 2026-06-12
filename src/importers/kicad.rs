@@ -145,6 +145,8 @@ struct ComponentLayoutMapping {
     #[serde(default)]
     entry_clearance_depth_mm: Option<f64>,
     #[serde(default)]
+    entry_clearance_width_mm: Option<f64>,
+    #[serde(default)]
     entry_aperture: Option<ComponentEntryApertureMapping>,
 }
 
@@ -322,6 +324,8 @@ struct LayoutEntryDirectionYaml {
 struct LayoutEntryClearanceYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     depth_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    width_mm: Option<f64>,
     source: String,
 }
 
@@ -770,6 +774,7 @@ fn layout_from_mapping(
         };
         if layout.entry_direction_offset_deg.is_none()
             && layout.entry_clearance_depth_mm.is_none()
+            && layout.entry_clearance_width_mm.is_none()
             && layout.entry_aperture.is_none()
         {
             continue;
@@ -782,13 +787,17 @@ fn layout_from_mapping(
                     offset_deg: Some(offset_deg),
                     source: "kicad_mapping".to_string(),
                 });
-        let entry_clearance =
-            layout
-                .entry_clearance_depth_mm
-                .map(|depth_mm| LayoutEntryClearanceYaml {
-                    depth_mm: Some(depth_mm),
-                    source: "kicad_mapping".to_string(),
-                });
+        let entry_clearance = if layout.entry_clearance_depth_mm.is_some()
+            || layout.entry_clearance_width_mm.is_some()
+        {
+            Some(LayoutEntryClearanceYaml {
+                depth_mm: layout.entry_clearance_depth_mm,
+                width_mm: layout.entry_clearance_width_mm,
+                source: "kicad_mapping".to_string(),
+            })
+        } else {
+            None
+        };
         let entry_aperture = entry_aperture.map(|entry_aperture| LayoutEntryApertureYaml {
             front_offset_mm: entry_aperture.front_offset_mm,
             lateral_offset_mm: entry_aperture.lateral_offset_mm,
@@ -1225,10 +1234,11 @@ fn validate_component_layout_mapping(
     };
     if layout.entry_direction_offset_deg.is_none()
         && layout.entry_clearance_depth_mm.is_none()
+        && layout.entry_clearance_width_mm.is_none()
         && layout.entry_aperture.is_none()
     {
         bail!(
-            "KiCad mapping {context} layout must declare entry_direction_offset_deg, entry_clearance_depth_mm, or entry_aperture."
+            "KiCad mapping {context} layout must declare entry_direction_offset_deg, entry_clearance_depth_mm, entry_clearance_width_mm, or entry_aperture."
         );
     }
     validate_optional_layout_number(
@@ -1245,6 +1255,16 @@ fn validate_component_layout_mapping(
         && depth_mm <= 0.0
     {
         bail!("KiCad mapping {context} layout.entry_clearance_depth_mm must be greater than zero.");
+    }
+    validate_optional_layout_number(
+        context,
+        "layout.entry_clearance_width_mm",
+        layout.entry_clearance_width_mm,
+    )?;
+    if let Some(width_mm) = layout.entry_clearance_width_mm
+        && width_mm <= 0.0
+    {
+        bail!("KiCad mapping {context} layout.entry_clearance_width_mm must be greater than zero.");
     }
     let Some(entry_aperture) = layout.entry_aperture.as_ref() else {
         return Ok(());

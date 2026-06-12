@@ -68,7 +68,8 @@ struct PcbEntryDirection {
 
 #[derive(Debug, Clone, Default)]
 struct PcbEntryClearance {
-    depth_mm: f64,
+    depth_mm: Option<f64>,
+    width_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -146,7 +147,10 @@ struct EntryDirectionYaml {
 
 #[derive(Debug, Serialize)]
 struct EntryClearanceYaml {
-    depth_mm: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    depth_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    width_mm: Option<f64>,
     source: String,
 }
 
@@ -356,6 +360,7 @@ pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
         entry_clearance: footprint.entry_clearance.as_ref().map(|entry_clearance| {
             EntryClearanceYaml {
                 depth_mm: entry_clearance.depth_mm,
+                width_mm: entry_clearance.width_mm,
                 source: "kicad_footprint_property".to_string(),
             }
         }),
@@ -422,13 +427,16 @@ fn parse_entry_clearance(
     path: &Path,
 ) -> Result<Option<PcbEntryClearance>> {
     let mut depth_mm = None;
+    let mut width_mm = None;
     for property in list_children(footprint, "property") {
         let Some(name) = string_at(property, 1) else {
             continue;
         };
-        if name != "CircuitCI_EntryClearanceDepthMM" {
-            continue;
-        }
+        let target = match name {
+            "CircuitCI_EntryClearanceDepthMM" => &mut depth_mm,
+            "CircuitCI_EntryClearanceWidthMM" => &mut width_mm,
+            _ => continue,
+        };
         let value = string_at(property, 2)
             .with_context(|| {
                 format!(
@@ -456,14 +464,18 @@ fn parse_entry_clearance(
                 path.display()
             );
         }
-        if depth_mm.replace(value).is_some() {
+        if target.replace(value).is_some() {
             bail!(
                 "KiCad PCB footprint {reference} has duplicate entry-clearance property {name} in {}.",
                 path.display()
             );
         }
     }
-    Ok(depth_mm.map(|depth_mm| PcbEntryClearance { depth_mm }))
+    if depth_mm.is_none() && width_mm.is_none() {
+        Ok(None)
+    } else {
+        Ok(Some(PcbEntryClearance { depth_mm, width_mm }))
+    }
 }
 
 fn parse_entry_aperture(

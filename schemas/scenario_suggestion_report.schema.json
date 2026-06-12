@@ -605,6 +605,17 @@
           "type": "number",
           "exclusiveMinimum": 0
         },
+        "entry_clearance_width_source": {
+          "enum": [
+            "component_model_width",
+            "kicad_mapping_width",
+            "footprint_property_width"
+          ]
+        },
+        "suggested_cable_entry_clearance_width_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
         "entry_aperture_source": {
           "enum": [
             "footprint_front",
@@ -688,6 +699,7 @@
           "type": "object",
           "properties": {
             "depth_mm": { "type": "number", "exclusiveMinimum": 0 },
+            "width_mm": { "type": "number", "exclusiveMinimum": 0 },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false

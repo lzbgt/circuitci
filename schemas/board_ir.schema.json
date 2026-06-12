@@ -223,6 +223,7 @@
                     "type": "object",
                     "properties": {
                       "depth_mm": { "type": "number", "exclusiveMinimum": 0 },
+                      "width_mm": { "type": "number", "exclusiveMinimum": 0 },
                       "source": { "type": "string", "minLength": 1 }
                     },
                     "additionalProperties": false

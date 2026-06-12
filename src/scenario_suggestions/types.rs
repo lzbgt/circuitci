@@ -226,6 +226,8 @@ pub struct SuggestedFootprintEntryClearance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub depth_mm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
 
@@ -344,6 +346,10 @@ pub struct SuggestedUsbEntryClearance {
     pub entry_clearance_depth_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggested_min_cable_entry_clearance_depth_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_clearance_width_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggested_cable_entry_clearance_width_mm: Option<f64>,
     pub entry_aperture_source: String,
     pub connector_front_projection_mm: f64,
     pub entry_aperture_front_projection_mm: f64,

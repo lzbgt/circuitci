@@ -186,10 +186,13 @@ Connector entry-clearance validation:
   `parameters.min_cable_entry_clearance_depth_mm` and
   `parameters.cable_entry_clearance_width_mm` from connector plug, cable, panel,
   enclosure, or assembly drawings. Connector metadata from KiCad footprint
-  property `CircuitCI_EntryClearanceDepthMM`, KiCad mapping
-  `layout.entry_clearance_depth_mm`, or component-model
-  `usb_connector.entry_clearance_depth_mm` can prefill the suggested depth, but
-  the executable rule still uses the scenario parameter as the reviewed limit.
+  properties `CircuitCI_EntryClearanceDepthMM` and
+  `CircuitCI_EntryClearanceWidthMM`, KiCad mapping
+  `layout.entry_clearance_depth_mm` / `layout.entry_clearance_width_mm`, or
+  component-model `usb_connector.entry_clearance_depth_mm` /
+  `usb_connector.entry_clearance_width_mm` can prefill the suggested depth and
+  width, but the executable rule still uses the scenario parameters as the
+  reviewed limits.
 - The rule projects a 2D rectangular cable-entry corridor forward from the
   connector body and fails when any other component footprint or placement
   evidence intersects that corridor. Optional imported footprint properties,

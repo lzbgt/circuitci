@@ -150,7 +150,9 @@ The command is conservative:
   `scenario.usb_connectors[].entry_clearance` with connector-front projection
   plus `entry_direction_source`, optional `entry_direction_offset_deg`, optional
   `entry_clearance_depth_source`,
-  `suggested_min_cable_entry_clearance_depth_mm`, aperture source/front/center
+  `suggested_min_cable_entry_clearance_depth_mm`, optional
+  `entry_clearance_width_source`, optional
+  `suggested_cable_entry_clearance_width_mm`, aperture source/front/center
   evidence, optional imported mapping, component-model, or footprint-property
   aperture offsets and width, optional
   `model_min_cable_entry_clearance_width_mm`, and the nearest
@@ -158,10 +160,11 @@ The command is conservative:
   evidence is available. Obstruction evidence reports depth in the entry
   direction, lateral offset from the aperture centerline, and whether the
   obstruction came from footprint or placement-center evidence.
-  The template leaves
-  `min_cable_entry_clearance_depth_mm` and
-  `cable_entry_clearance_width_mm` as `null` until an agent fills those values
-  from connector, plug, panel, enclosure, or assembly mechanical drawings.
+  The template prefills `min_cable_entry_clearance_depth_mm` and
+  `cable_entry_clearance_width_mm` when explicit connector metadata provides
+  those policy hints; otherwise it leaves missing values as `null` until an
+  agent fills them from connector, plug, panel, enclosure, or assembly
+  mechanical drawings.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

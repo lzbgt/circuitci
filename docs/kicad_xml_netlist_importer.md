@@ -102,27 +102,32 @@ a project file is written.
 `components.<ref>.layout.entry_direction_offset_deg`,
 `libsource_rules[].layout.entry_direction_offset_deg`,
 `components.<ref>.layout.entry_clearance_depth_mm`,
+`components.<ref>.layout.entry_clearance_width_mm`,
 `libsource_rules[].layout.entry_clearance_depth_mm`,
+`libsource_rules[].layout.entry_clearance_width_mm`,
 `components.<ref>.layout.entry_aperture`, and
 `libsource_rules[].layout.entry_aperture` are optional physical metadata for
 USB connector cable-entry checks. Direction offsets are emitted as
 `board.layout.footprints.<ref>.entry_direction` with source `kicad_mapping`.
-Clearance depths are emitted as
+Clearance depths and widths are emitted as
 `board.layout.footprints.<ref>.entry_clearance` with source `kicad_mapping`.
 Entry apertures are emitted as
 `board.layout.footprints.<ref>.entry_aperture` with source `kicad_mapping`.
 Use these fields when a production KiCad footprint library should stay
 unmodified and the connector insertion convention or aperture is known from a
 package drawing or local footprint convention. Direction offsets are degrees;
-clearance depth and aperture values are millimeters; all values must be finite,
-and clearance depth/aperture width must be greater than zero.
+clearance depth, clearance width, and aperture values are millimeters; all
+values must be finite, and clearance depth/width plus aperture width must be
+greater than zero.
 
 Mapping-provided entry-direction metadata is lower precedence than explicit
 KiCad PCB footprint property `CircuitCI_EntryDirectionOffsetDeg`, but higher
 precedence than component-model `usb_connector.entry_direction_offset_deg`.
-Mapping-provided entry-clearance depth metadata is lower precedence than
-explicit KiCad PCB footprint property `CircuitCI_EntryClearanceDepthMM`, but
-higher precedence than component-model `usb_connector.entry_clearance_depth_mm`.
+Mapping-provided entry-clearance metadata is lower precedence than explicit
+KiCad PCB footprint properties `CircuitCI_EntryClearanceDepthMM` and
+`CircuitCI_EntryClearanceWidthMM`, but higher precedence than component-model
+`usb_connector.entry_clearance_depth_mm` and
+`usb_connector.entry_clearance_width_mm`.
 Mapping-provided entry aperture metadata is lower precedence than explicit
 KiCad PCB footprint properties named `CircuitCI_EntryAperture*`, but higher
 precedence than component-model aperture defaults.

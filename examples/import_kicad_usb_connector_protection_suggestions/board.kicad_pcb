@@ -33,6 +33,7 @@
     (property "Value" "USB2_CONNECTOR" (at 0 1 0) (layer "F.Fab"))
     (property "CircuitCI_EntryDirectionOffsetDeg" "0.0" (at 0 1.0 0) (layer "F.Fab"))
     (property "CircuitCI_EntryClearanceDepthMM" "2.5" (at 0 1.1 0) (layer "F.Fab"))
+    (property "CircuitCI_EntryClearanceWidthMM" "1.4" (at 0 1.15 0) (layer "F.Fab"))
     (property "CircuitCI_EntryApertureFrontOffsetMM" "0.0" (at 0 1.2 0) (layer "F.Fab"))
     (property "CircuitCI_EntryApertureLateralOffsetMM" "0.0" (at 0 1.4 0) (layer "F.Fab"))
     (property "CircuitCI_EntryApertureWidthMM" "1.0" (at 0 1.6 0) (layer "F.Fab"))

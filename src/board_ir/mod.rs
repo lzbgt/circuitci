@@ -84,6 +84,8 @@ pub struct LayoutEntryClearance {
     #[serde(default)]
     pub depth_mm: Option<f64>,
     #[serde(default)]
+    pub width_mm: Option<f64>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 

@@ -341,6 +341,7 @@ usb_connector:
   shield_pin: SHIELD
   entry_direction_offset_deg: 0.0
   entry_clearance_depth_mm: 8.0
+  entry_clearance_width_mm: 6.0
   entry_aperture_front_offset_mm: 0.0
   entry_aperture_lateral_offset_mm: 0.0
   entry_aperture_width_mm: 6.0
@@ -368,16 +369,19 @@ See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.m
 for a validation fixture that proves a nonzero offset changes the checked entry
 direction.
 
-`entry_clearance_depth_mm` is optional 2D cable-entry corridor depth metadata.
-When present, `suggest-scenarios` uses it to prefill
-`parameters.min_cable_entry_clearance_depth_mm` while still leaving the
-entry-clearance suggestion non-runnable until the remaining mechanical policy
-inputs are reviewed. KiCad schematic mapping
-`layout.entry_clearance_depth_mm` is reported as `kicad_mapping_depth`, and
-explicit KiCad PCB footprint property `CircuitCI_EntryClearanceDepthMM` is
-reported as `footprint_property_depth`. Footprint properties take precedence
-over mapping metadata, and both take precedence over component-model defaults.
-Depth values are millimeters and must be greater than zero.
+`entry_clearance_depth_mm` and `entry_clearance_width_mm` are optional 2D
+cable-entry corridor policy hints. When present, `suggest-scenarios` uses them
+to prefill `parameters.min_cable_entry_clearance_depth_mm` and
+`parameters.cable_entry_clearance_width_mm` while still leaving the
+entry-clearance suggestion non-runnable until the mechanical policy inputs are
+reviewed. KiCad schematic mapping `layout.entry_clearance_depth_mm` and
+`layout.entry_clearance_width_mm` are reported as `kicad_mapping_depth` and
+`kicad_mapping_width`. Explicit KiCad PCB footprint properties
+`CircuitCI_EntryClearanceDepthMM` and `CircuitCI_EntryClearanceWidthMM` are
+reported as `footprint_property_depth` and `footprint_property_width`.
+Footprint properties take precedence over mapping metadata, and both take
+precedence over component-model defaults. Values are millimeters and must be
+greater than zero.
 
 `entry_aperture_front_offset_mm`, `entry_aperture_lateral_offset_mm`, and
 `entry_aperture_width_mm` are optional 2D cable-entry aperture metadata. The

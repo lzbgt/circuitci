@@ -310,6 +310,10 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         .entry_clearance
         .as_ref()
         .and_then(|entry| entry.suggested_min_cable_entry_clearance_depth_mm);
+    let suggested_width_mm = suggested_connector
+        .entry_clearance
+        .as_ref()
+        .and_then(|entry| entry.suggested_cable_entry_clearance_width_mm);
     let parameters = BTreeMap::from([
         (
             "entry_direction_deg".to_string(),
@@ -323,7 +327,9 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         ),
         (
             "cable_entry_clearance_width_mm".to_string(),
-            serde_json::Value::Null,
+            suggested_width_mm
+                .map(serde_json::Value::from)
+                .unwrap_or(serde_json::Value::Null),
         ),
     ]);
     Some(ScenarioSuggestion {
@@ -379,20 +385,44 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         required_inputs: vec![
             obstruction_summary.as_ref().map_or_else(
                 || {
-                    if let Some(depth_mm) = suggested_depth_mm {
+                    if let (Some(depth_mm), Some(width_mm)) =
+                        (suggested_depth_mm, suggested_width_mm)
+                    {
+                        format!(
+                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} and cable_entry_clearance_width_mm {:.3} from connector metadata before making this scenario runnable.",
+                            depth_mm, width_mm
+                        )
+                    } else if let Some(depth_mm) = suggested_depth_mm {
                         format!(
                             "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.",
                             depth_mm
+                        )
+                    } else if let Some(width_mm) = suggested_width_mm {
+                        format!(
+                            "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata before making this scenario runnable.",
+                            width_mm
                         )
                     } else {
                         "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string()
                     }
                 },
                 |(component, depth_mm, lateral_offset_mm)| {
-                    if let Some(suggested_depth_mm) = suggested_depth_mm {
+                    if let (Some(suggested_depth_mm), Some(suggested_width_mm)) =
+                        (suggested_depth_mm, suggested_width_mm)
+                    {
+                        format!(
+                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} and cable_entry_clearance_width_mm {:.3} from connector metadata after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                            suggested_depth_mm, suggested_width_mm, component, depth_mm, lateral_offset_mm
+                        )
+                    } else if let Some(suggested_depth_mm) = suggested_depth_mm {
                         format!(
                             "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
                             suggested_depth_mm, component, depth_mm, lateral_offset_mm
+                        )
+                    } else if let Some(suggested_width_mm) = suggested_width_mm {
+                        format!(
+                            "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                            suggested_width_mm, component, depth_mm, lateral_offset_mm
                         )
                     } else {
                         format!(

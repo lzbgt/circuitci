@@ -96,6 +96,7 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
         entry_clearance: footprint.entry_clearance.as_ref().map(|entry_clearance| {
             SuggestedFootprintEntryClearance {
                 depth_mm: entry_clearance.depth_mm,
+                width_mm: entry_clearance.width_mm,
                 source: entry_clearance.source.clone(),
             }
         }),
@@ -293,6 +294,7 @@ pub(super) fn entry_clearance_evidence(
         connector_front_projection_mm,
     )?;
     let depth = entry_clearance_depth_evidence(bound, connector_id, connector);
+    let width = entry_clearance_width_evidence(bound, connector_id, connector);
     let mut nearest: Option<EntryObstructionCandidate<'_>> = None;
     for component_id in bound.project.board.components.keys() {
         if component_id == connector_id {
@@ -328,6 +330,8 @@ pub(super) fn entry_clearance_evidence(
         entry_direction_offset_deg,
         entry_clearance_depth_source: depth.as_ref().map(|depth| depth.source.to_string()),
         suggested_min_cable_entry_clearance_depth_mm: depth.map(|depth| depth.depth_mm),
+        entry_clearance_width_source: width.as_ref().map(|width| width.source.to_string()),
+        suggested_cable_entry_clearance_width_mm: width.map(|width| width.width_mm),
         entry_aperture_source: aperture.source.to_string(),
         connector_front_projection_mm,
         entry_aperture_front_projection_mm: aperture.front_projection_mm,
@@ -356,6 +360,11 @@ pub(super) fn entry_clearance_evidence(
 struct EntryClearanceDepthEvidence {
     source: &'static str,
     depth_mm: f64,
+}
+
+struct EntryClearanceWidthEvidence {
+    source: &'static str,
+    width_mm: f64,
 }
 
 fn entry_clearance_depth_evidence(
@@ -387,6 +396,38 @@ fn entry_clearance_depth_evidence(
             "component_model_depth"
         },
         depth_mm,
+    })
+}
+
+fn entry_clearance_width_evidence(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    connector: &UsbConnector,
+) -> Option<EntryClearanceWidthEvidence> {
+    let layout_clearance = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(connector_id)
+        .and_then(|footprint| footprint.entry_clearance.as_ref());
+    let raw_width_mm = layout_clearance.map_or(connector.entry_clearance_width_mm, |clearance| {
+        clearance.width_mm
+    });
+    let width_mm = raw_width_mm?;
+    if !width_mm.is_finite() || width_mm <= 0.0 {
+        return None;
+    }
+    Some(EntryClearanceWidthEvidence {
+        source: if let Some(layout_clearance) = layout_clearance {
+            match layout_clearance.source.as_deref() {
+                Some("kicad_mapping") => "kicad_mapping_width",
+                _ => "footprint_property_width",
+            }
+        } else {
+            "component_model_width"
+        },
+        width_mm,
     })
 }
 

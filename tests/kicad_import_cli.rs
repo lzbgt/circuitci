@@ -952,6 +952,10 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         2.0
     );
     assert_eq!(
+        imported["board"]["layout"]["footprints"]["J1"]["entry_clearance"]["width_mm"],
+        1.3
+    );
+    assert_eq!(
         imported["board"]["layout"]["footprints"]["J1"]["entry_aperture"]["width_mm"],
         1.2
     );
@@ -1163,6 +1167,45 @@ fn import_kicad_schematic_rejects_invalid_layout_entry_clearance_depth() {
     assert!(
         stderr.contains("layout.entry_clearance_depth_mm must be greater than zero"),
         "expected invalid layout entry-clearance depth error, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_invalid_layout_entry_clearance_width() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("invalid_layout_entry_width.project.yaml");
+    let mapping_path = dir.path().join("invalid_layout_entry_width.kicad-map.yaml");
+    let mapping = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/circuitci.kicad-map.yaml",
+    )
+    .unwrap()
+    .replace(
+        "entry_clearance_width_mm: 1.3",
+        "entry_clearance_width_mm: 0.0",
+    );
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let output_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_usb_connector_protection_suggestions/root.kicad_sch",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "invalid_layout_entry_width",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output_status.status.success(),
+        "invalid layout entry-width mapping unexpectedly imported"
+    );
+    let stderr = String::from_utf8(output_status.stderr).unwrap();
+    assert!(
+        stderr.contains("layout.entry_clearance_width_mm must be greater than zero"),
+        "expected invalid layout entry-clearance width error, got:\n{stderr}"
     );
 }
 
