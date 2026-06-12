@@ -34,7 +34,8 @@ threshold/delay pack, and Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
 Advanced Monolithic Systems AMS1117-3.3 now covers a common 1117-style 3.3 V
 LDO with its larger dropout and output-capacitance requirements. TI TPD2EUSB30
 now covers a first datasheet-backed clamp-only USB ESD array for static
-standoff-voltage and capacitance screening. The gap
+standoff-voltage and capacitance screening. Nexperia PRTR5V0U2X now covers a
+rail-to-rail two-line USB ESD array with VCC reference validation. The gap
 remains broad library depth across other USB-UART bridges, debug probes,
 radios, sensors, regulators, power muxes, reset supervisors, and protection
 devices.

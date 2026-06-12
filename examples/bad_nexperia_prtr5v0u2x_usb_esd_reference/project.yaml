@@ -1,0 +1,37 @@
+project:
+  name: bad_nexperia_prtr5v0u2x_usb_esd_reference
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/nexperia/protection
+
+board:
+  components:
+    UESD:
+      model: vendor.nexperia.prtr5v0u2x
+      part_number: PRTR5V0U2X
+      pins:
+        GND: gnd
+        IO1: usb_dp
+        IO2: usb_dm
+        VCC: usb_dp
+  nets:
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: prtr5v0u2x_bad_reference
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UESD
+    parameters:
+      clamp: io1_to_vcc
+      max_line_capacitance_F: 2.0e-12

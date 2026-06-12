@@ -1,0 +1,79 @@
+component_id: vendor.nexperia.prtr5v0u2x
+version: 0.1.0
+category: protection
+ports:
+  GND:
+    kind: electrical_ground
+    required: true
+  IO1:
+    kind: passive
+    required: true
+  IO2:
+    kind: passive
+    required: true
+  VCC:
+    kind: electrical_power
+    required: true
+    voltage:
+      min: 0.0
+      max: 5.5
+signal_conditioning:
+  protection_clamps:
+    - name: io1_to_vcc
+      protected_pin: IO1
+      reference_pin: VCC
+      reference: power
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.5e-12
+    - name: io2_to_vcc
+      protected_pin: IO2
+      reference_pin: VCC
+      reference: power
+      working_voltage_max_V: 5.5
+      line_capacitance_F: 1.5e-12
+datasheet:
+  manufacturer: Nexperia
+  part_number: PRTR5V0U2X
+  package: SOT143B
+  polarity: rail_to_rail_two_channel_usb_esd_protection
+  pinout:
+    GND: GND
+    IO1: I/O 1
+    IO2: I/O 2
+    VCC: VCC
+  electrical_characteristics:
+    reverse_standoff_voltage:
+      conditions: PRTR5V0U2X quick reference and limiting values.
+      max: 5.5
+      unit: V
+    io_to_ground_capacitance:
+      conditions: f = 1 MHz, V(I/O-GND) = 0 V, Tamb = 25 C.
+      typ: 1.0
+      max: 1.5
+      unit: pF
+    io_to_io_capacitance:
+      conditions: f = 1 MHz, V(I/O-I/O) = 0 V, Tamb = 25 C.
+      typ: 0.6
+      unit: pF
+    supply_pin_to_ground_capacitance:
+      conditions: f = 1 MHz, VCC = 0 V, Tamb = 25 C.
+      typ: 16.0
+      unit: pF
+  documents:
+    - title: PRTR5V0U2X Ultra low capacitance double rail-to-rail ESD protection diode
+      path: docs/research/datasheets/nexperia/prtr5v0u2x.pdf
+      source_url: https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf
+      sha256: 70105e57571142f00f389b9bf6fe5145cc4832232ec71730d818a77a655bde11
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - usb_esd_static_screening
+    - interface_protection_review
+    - preliminary_usb_board_validation
+  not_valid_for:
+    - esd_pulse_clamp_waveform
+    - usb_signal_integrity_signoff
+    - layout_return_path_signoff
+    - surge_or_iec61000_4_2_signoff

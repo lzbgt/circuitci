@@ -66,8 +66,10 @@ The command is conservative:
   declare `signal_conditioning.protection_clamps`, such as USB ESD arrays. The
   template includes `parameters.clamp` plus `scenario.protection_clamps[]`
   evidence with protected/reference pins and nets, standoff voltage, and line
-  capacitance. Agents should fill `parameters.max_line_capacitance_F` from the
-  real interface budget when capacitance screening is required.
+  capacitance. Ground-referenced clamps such as TPD2EUSB30 and power-referenced
+  rail-to-rail clamps such as PRTR5V0U2X are both represented. Agents should
+  fill `parameters.max_line_capacitance_F` from the real interface budget when
+  capacitance screening is required.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

@@ -350,6 +350,49 @@ fn suggest_scenarios_derives_usb_esd_clamp_templates() {
 }
 
 #[test]
+fn suggest_scenarios_derives_prtr5v0u2x_rail_to_rail_usb_esd_templates() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_prtr5v0u2x_usb_esd/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_prtr5v0u2x_usb_esd"
+    );
+    let dp = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_io1_to_vcc")
+        .expect("IO1 clamp suggestion");
+    assert_eq!(dp["kind"], "interface_protection");
+    assert_eq!(dp["runnable"], true);
+    assert_eq!(dp["scenario"]["type"], "interface_protection");
+    assert_eq!(dp["scenario"]["checks"][0], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(dp["scenario"]["target"]["component"], "UESD");
+    assert_eq!(dp["scenario"]["parameters"]["clamp"], "io1_to_vcc");
+    let clamp = &dp["scenario"]["protection_clamps"][0];
+    assert_eq!(clamp["component"], "UESD");
+    assert_eq!(clamp["clamp"], "io1_to_vcc");
+    assert_eq!(clamp["protected_pin"], "IO1");
+    assert_eq!(clamp["protected_net"], "usb_dp");
+    assert_eq!(clamp["reference_pin"], "VCC");
+    assert_eq!(clamp["reference_net"], "usb_vbus");
+    assert_eq!(clamp["reference"], "power");
+    assert_eq!(clamp["working_voltage_max_V"], 5.5);
+    assert_eq!(clamp["line_capacitance_F"], 1.5e-12);
+    let dm = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_uesd_io2_to_vcc")
+        .expect("IO2 clamp suggestion");
+    assert_eq!(dm["scenario"]["parameters"]["clamp"], "io2_to_vcc");
+    assert_eq!(
+        dm["scenario"]["protection_clamps"][0]["protected_net"],
+        "usb_dm"
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_boot_strap_bias_template() {
     let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
     assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");

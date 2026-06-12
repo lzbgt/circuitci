@@ -205,6 +205,55 @@ fn ti_tpd2eusb30_usb_esd_line_capacitance_must_fit_budget() {
 }
 
 #[test]
+fn nexperia_prtr5v0u2x_usb_esd_passes_static_review() {
+    let report = run_validation("examples/good_nexperia_prtr5v0u2x_usb_esd/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn nexperia_prtr5v0u2x_requires_power_reference_net() {
+    let report = run_validation("examples/bad_nexperia_prtr5v0u2x_usb_esd_reference/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["required_reference"] == "power")
+        .expect("PRTR5V0U2X reference finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(
+        failure["measured"]["reference_net_kind"],
+        "digital_or_analog"
+    );
+    assert_eq!(failure["limit"]["protection_clamp"], "io1_to_vcc");
+    assert_eq!(failure["limit"]["reference_pin"], "VCC");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn nexperia_prtr5v0u2x_line_capacitance_must_fit_budget() {
+    let report =
+        run_validation("examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"]["max_line_capacitance_F"] == 1.0e-12)
+        .expect("PRTR5V0U2X capacitance finding");
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "UESD");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["line_capacitance_F"], 1.5e-12);
+    assert_eq!(failure["limit"]["protection_clamp"], "io1_to_vcc");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");

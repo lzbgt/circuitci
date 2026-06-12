@@ -63,3 +63,8 @@ Datasheet-backed model pack:
 - `examples/good_ti_tpd2eusb30_usb_esd`
 - `examples/bad_ti_tpd2eusb30_usb_esd_standoff`
 - `examples/bad_ti_tpd2eusb30_usb_esd_capacitance`
+- `libs/vendor/nexperia/protection/prtr5v0u2x.model.yaml`
+- `docs/nexperia_prtr5v0u2x_model.md`
+- `examples/good_nexperia_prtr5v0u2x_usb_esd`
+- `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference`
+- `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance`
