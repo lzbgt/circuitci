@@ -1,5 +1,6 @@
 use crate::board_ir::{
-    ComponentPlacement, LayoutFootprintPolygon, LayoutFootprintSegment, LayoutPoint, Scenario,
+    ComponentPlacement, LayoutEntryAperture, LayoutFootprintPolygon, LayoutFootprintSegment,
+    LayoutPoint, Scenario,
 };
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
@@ -175,6 +176,13 @@ pub(super) fn validate_usb_connector_entry_clearance(
         connector_id: &target.component,
         placement,
         connector,
+        layout_aperture: bound
+            .project
+            .board
+            .layout
+            .footprints
+            .get(&target.component)
+            .and_then(|footprint| footprint.entry_aperture.as_ref()),
         entry_direction_deg,
         connector_front_projection_mm,
         requested_width_mm: width_mm,
@@ -256,6 +264,7 @@ struct EntryApertureInput<'a, 'b> {
     connector_id: &'a str,
     placement: &'a ComponentPlacement,
     connector: &'a UsbConnector,
+    layout_aperture: Option<&'a LayoutEntryAperture>,
     entry_direction_deg: f64,
     connector_front_projection_mm: f64,
     requested_width_mm: f64,
@@ -484,33 +493,48 @@ fn connector_front_projection(
 }
 
 fn entry_aperture_evidence(input: EntryApertureInput<'_, '_>) -> Option<EntryApertureEvidence> {
+    let aperture_source = aperture_source(input.layout_aperture, input.connector);
+    let raw_front_offset_mm = input
+        .layout_aperture
+        .map_or(input.connector.entry_aperture_front_offset_mm, |aperture| {
+            aperture.front_offset_mm
+        });
+    let raw_lateral_offset_mm = input.layout_aperture.map_or(
+        input.connector.entry_aperture_lateral_offset_mm,
+        |aperture| aperture.lateral_offset_mm,
+    );
+    let raw_width_mm = input
+        .layout_aperture
+        .map_or(input.connector.entry_aperture_width_mm, |aperture| {
+            aperture.width_mm
+        });
     let front_offset_mm = match finite_optional_model_value(
         input.scenario,
         input.connector_id,
-        "usb_connector.entry_aperture_front_offset_mm",
-        input.connector.entry_aperture_front_offset_mm,
+        "entry_aperture.front_offset_mm",
+        raw_front_offset_mm,
         input.findings,
     ) {
         Some(value) => Some(value),
-        None if input.connector.entry_aperture_front_offset_mm.is_some() => return None,
+        None if raw_front_offset_mm.is_some() => return None,
         None => None,
     };
     let lateral_offset_mm = match finite_optional_model_value(
         input.scenario,
         input.connector_id,
-        "usb_connector.entry_aperture_lateral_offset_mm",
-        input.connector.entry_aperture_lateral_offset_mm,
+        "entry_aperture.lateral_offset_mm",
+        raw_lateral_offset_mm,
         input.findings,
     ) {
         Some(value) => Some(value),
-        None if input.connector.entry_aperture_lateral_offset_mm.is_some() => return None,
+        None if raw_lateral_offset_mm.is_some() => return None,
         None => None,
     };
     let aperture_width_mm = match finite_optional_model_value(
         input.scenario,
         input.connector_id,
-        "usb_connector.entry_aperture_width_mm",
-        input.connector.entry_aperture_width_mm,
+        "entry_aperture.width_mm",
+        raw_width_mm,
         input.findings,
     ) {
         Some(width) if width > 0.0 => Some(width),
@@ -519,15 +543,15 @@ fn entry_aperture_evidence(input: EntryApertureInput<'_, '_>) -> Option<EntryApe
                 input.scenario,
                 input.connector_id,
                 format!(
-                    "USB connector {} usb_connector.entry_aperture_width_mm must be greater than zero when declared.",
+                    "USB connector {} entry_aperture.width_mm must be greater than zero when declared.",
                     input.connector_id
                 ),
-                "usb_connector.entry_aperture_width_mm",
+                "entry_aperture.width_mm",
                 "invalid",
             ));
             return None;
         }
-        None if input.connector.entry_aperture_width_mm.is_some() => return None,
+        None if raw_width_mm.is_some() => return None,
         None => None,
     };
     let placement_lateral_projection_mm =
@@ -535,11 +559,11 @@ fn entry_aperture_evidence(input: EntryApertureInput<'_, '_>) -> Option<EntryApe
     let has_model_aperture =
         front_offset_mm.is_some() || lateral_offset_mm.is_some() || aperture_width_mm.is_some();
     Some(EntryApertureEvidence {
-        source: if has_model_aperture {
+        source: aperture_source.unwrap_or(if has_model_aperture {
             "component_model_aperture"
         } else {
             "footprint_front"
-        },
+        }),
         connector_front_projection_mm: input.connector_front_projection_mm,
         front_projection_mm: input.connector_front_projection_mm + front_offset_mm.unwrap_or(0.0),
         center_lateral_projection_mm: placement_lateral_projection_mm
@@ -552,6 +576,22 @@ fn entry_aperture_evidence(input: EntryApertureInput<'_, '_>) -> Option<EntryApe
                 input.requested_width_mm.max(aperture_width_mm)
             }),
     })
+}
+
+fn aperture_source<'a>(
+    layout_aperture: Option<&'a LayoutEntryAperture>,
+    connector: &'a UsbConnector,
+) -> Option<&'static str> {
+    if layout_aperture.is_some() {
+        Some("footprint_property_aperture")
+    } else if connector.entry_aperture_front_offset_mm.is_some()
+        || connector.entry_aperture_lateral_offset_mm.is_some()
+        || connector.entry_aperture_width_mm.is_some()
+    {
+        Some("component_model_aperture")
+    } else {
+        None
+    }
 }
 
 fn finite_optional_model_value(

@@ -587,7 +587,11 @@
         },
         "entry_direction_offset_deg": { "type": "number" },
         "entry_aperture_source": {
-          "enum": ["footprint_front", "component_model_aperture"]
+          "enum": [
+            "footprint_front",
+            "component_model_aperture",
+            "footprint_property_aperture"
+          ]
         },
         "connector_front_projection_mm": { "type": "number" },
         "entry_aperture_front_projection_mm": { "type": "number" },
@@ -651,6 +655,16 @@
         "arcs": {
           "type": "array",
           "items": { "$ref": "#/$defs/footprint_arc" }
+        },
+        "entry_aperture": {
+          "type": "object",
+          "properties": {
+            "front_offset_mm": { "type": "number" },
+            "lateral_offset_mm": { "type": "number" },
+            "width_mm": { "type": "number", "exclusiveMinimum": 0 },
+            "source": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

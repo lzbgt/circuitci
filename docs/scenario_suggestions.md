@@ -148,8 +148,9 @@ The command is conservative:
   connector placement and footprint evidence, and includes
   `scenario.usb_connectors[].entry_clearance` with connector-front projection
   plus `entry_direction_source`, optional `entry_direction_offset_deg`, aperture
-  source/front/center evidence, optional component-model aperture offsets and
-  width, optional `model_min_cable_entry_clearance_width_mm`, and the nearest
+  source/front/center evidence, optional component-model or imported
+  footprint-property aperture offsets and width, optional
+  `model_min_cable_entry_clearance_width_mm`, and the nearest
   forward obstruction candidate when imported component footprint or placement
   evidence is available. Obstruction evidence reports depth in the entry
   direction, lateral offset from the aperture centerline, and whether the

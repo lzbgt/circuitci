@@ -1,8 +1,8 @@
 use super::super::super::{
     SuggestedBoardEdge, SuggestedComponentClearance, SuggestedFootprint, SuggestedFootprintArc,
-    SuggestedFootprintCircle, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
-    SuggestedFootprintSegment, SuggestedPoint, SuggestedUsbEntryClearance,
-    SuggestedUsbEntryObstruction,
+    SuggestedFootprintCircle, SuggestedFootprintEntryAperture, SuggestedFootprintPolygon,
+    SuggestedFootprintRectangle, SuggestedFootprintSegment, SuggestedPoint,
+    SuggestedUsbEntryClearance, SuggestedUsbEntryObstruction,
 };
 use super::super::component_placement;
 use crate::board_ir::{
@@ -76,13 +76,22 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
         || !rectangles.is_empty()
         || !polygons.is_empty()
         || !circles.is_empty()
-        || !arcs.is_empty())
+        || !arcs.is_empty()
+        || footprint.entry_aperture.is_some())
     .then_some(SuggestedFootprint {
         segments,
         rectangles,
         polygons,
         circles,
         arcs,
+        entry_aperture: footprint.entry_aperture.as_ref().map(|entry_aperture| {
+            SuggestedFootprintEntryAperture {
+                front_offset_mm: entry_aperture.front_offset_mm,
+                lateral_offset_mm: entry_aperture.lateral_offset_mm,
+                width_mm: entry_aperture.width_mm,
+                source: entry_aperture.source.clone(),
+            }
+        }),
     })
 }
 
@@ -219,6 +228,8 @@ pub(super) fn entry_clearance_evidence(
         .map(|point| direction_projection(&point, entry_direction_deg))
         .max_by(|left, right| left.total_cmp(right))?;
     let aperture = entry_aperture_evidence(
+        bound,
+        connector_id,
         placement,
         connector,
         entry_direction_deg,
@@ -292,14 +303,34 @@ struct EntryApertureEvidence {
 }
 
 fn entry_aperture_evidence(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
     placement: &ComponentPlacement,
     connector: &UsbConnector,
     entry_direction_deg: f64,
     connector_front_projection_mm: f64,
 ) -> Option<EntryApertureEvidence> {
-    let front_offset_mm = finite_optional(connector.entry_aperture_front_offset_mm)?;
-    let lateral_offset_mm = finite_optional(connector.entry_aperture_lateral_offset_mm)?;
-    let aperture_width_mm = finite_optional(connector.entry_aperture_width_mm)?;
+    let layout_aperture = bound
+        .project
+        .board
+        .layout
+        .footprints
+        .get(connector_id)
+        .and_then(|footprint| footprint.entry_aperture.as_ref());
+    let raw_front_offset_mm = layout_aperture
+        .map_or(connector.entry_aperture_front_offset_mm, |aperture| {
+            aperture.front_offset_mm
+        });
+    let raw_lateral_offset_mm = layout_aperture
+        .map_or(connector.entry_aperture_lateral_offset_mm, |aperture| {
+            aperture.lateral_offset_mm
+        });
+    let raw_width_mm = layout_aperture.map_or(connector.entry_aperture_width_mm, |aperture| {
+        aperture.width_mm
+    });
+    let front_offset_mm = finite_optional(raw_front_offset_mm)?;
+    let lateral_offset_mm = finite_optional(raw_lateral_offset_mm)?;
+    let aperture_width_mm = finite_optional(raw_width_mm)?;
     if aperture_width_mm.is_some_and(|width_mm| width_mm <= 0.0) {
         return None;
     }
@@ -308,7 +339,9 @@ fn entry_aperture_evidence(
     let center_lateral_projection_mm = placement_lateral_projection(placement, entry_direction_deg)
         + lateral_offset_mm.unwrap_or(0.0);
     Some(EntryApertureEvidence {
-        source: if has_model_aperture {
+        source: if layout_aperture.is_some() {
+            "footprint_property_aperture"
+        } else if has_model_aperture {
             "component_model_aperture"
         } else {
             "footprint_front"

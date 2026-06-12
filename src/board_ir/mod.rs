@@ -63,6 +63,20 @@ pub struct LayoutFootprint {
     pub circles: Vec<LayoutFootprintCircle>,
     #[serde(default)]
     pub arcs: Vec<LayoutFootprintArc>,
+    #[serde(default)]
+    pub entry_aperture: Option<LayoutEntryAperture>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutEntryAperture {
+    #[serde(default)]
+    pub front_offset_mm: Option<f64>,
+    #[serde(default)]
+    pub lateral_offset_mm: Option<f64>,
+    #[serde(default)]
+    pub width_mm: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

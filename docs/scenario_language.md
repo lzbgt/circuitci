@@ -537,12 +537,11 @@ Connector entry-clearance algorithm:
 3. Find the connector body's front projection from supported
    `fabrication`/`courtyard` `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or
    `fp_arc` footprint evidence.
-4. Apply optional component-model aperture metadata:
-   `usb_connector.entry_aperture_front_offset_mm` shifts the corridor front,
-   `usb_connector.entry_aperture_lateral_offset_mm` shifts the corridor
-   centerline perpendicular to entry direction, and
-   `usb_connector.entry_aperture_width_mm` becomes the minimum checked width
-   when it is larger than `parameters.cable_entry_clearance_width_mm`.
+4. Apply optional aperture metadata from imported footprint properties or the
+   component model. Front offset shifts the corridor front, lateral offset
+   shifts the corridor centerline perpendicular to entry direction, and aperture
+   width becomes the minimum checked width when it is larger than
+   `parameters.cable_entry_clearance_width_mm`.
 5. Build a 2D rectangular corridor extending
    `parameters.min_cable_entry_clearance_depth_mm` forward from that entry
    front with the effective checked width.

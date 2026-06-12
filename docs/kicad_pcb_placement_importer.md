@@ -40,6 +40,15 @@ drawing evidence includes:
 - a bounded semantic kind derived from the layer: `fabrication`, `courtyard`,
   `silkscreen`, or `other`.
 
+For USB connector entry-clearance checks, the importer also reads optional
+footprint properties named `CircuitCI_EntryApertureFrontOffsetMM`,
+`CircuitCI_EntryApertureLateralOffsetMM`, and
+`CircuitCI_EntryApertureWidthMM`. Values must be finite millimeter numbers, and
+width must be greater than zero. Duplicate or malformed aperture properties
+fail closed. Imported values are written to
+`board.layout.footprints.<ref>.entry_aperture` with source
+`kicad_footprint_property`.
+
 This is drawing evidence, not a full mechanical body solver. Rectangles are
 stored as their transformed opposite corners; rotated rectangles should be
 treated as evidence for follow-up rules, not as exact polygonal body sign-off.
@@ -128,7 +137,8 @@ Fixture coverage:
 The regression imports the matching native KiCad schematic, enriches it with
 PCB placements, footprint drawing evidence, connected pad geometry, sampled
 straight/curved board-outline evidence, routed USB net geometry, copper-zone
-outline/fill evidence, and routing-rule evidence, then proves
+outline/fill evidence, connector entry-aperture footprint properties, and
+routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
 

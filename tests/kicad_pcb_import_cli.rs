@@ -445,7 +445,29 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         "component_model_offset"
     );
     assert_eq!(entry_evidence["entry_direction_offset_deg"], 0.0);
+    assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["source"],
+        "kicad_footprint_property"
+    );
+    assert_eq!(
+        entry_clearance["scenario"]["usb_connectors"][0]["footprint"]["entry_aperture"]["width_mm"],
+        1.0
+    );
+    assert_eq!(
+        entry_evidence["entry_aperture_source"],
+        "footprint_property_aperture"
+    );
     assert_eq!(entry_evidence["connector_front_projection_mm"], 0.4);
+    assert_eq!(entry_evidence["entry_aperture_front_projection_mm"], 0.4);
+    assert_eq!(
+        entry_evidence["entry_aperture_center_lateral_projection_mm"],
+        0.0
+    );
+    assert_eq!(entry_evidence["entry_aperture_width_mm"], 1.0);
+    assert_eq!(
+        entry_evidence["model_min_cable_entry_clearance_width_mm"],
+        1.0
+    );
     assert_eq!(entry_evidence["nearest_obstruction"]["component"], "UESD");
     assert_eq!(
         entry_evidence["nearest_obstruction"]["obstruction_depth_mm"],
@@ -639,6 +661,59 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
 }
 
 #[test]
+fn import_kicad_pcb_rejects_invalid_entry_aperture_properties() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let width_property =
+        "(property \"CircuitCI_EntryApertureWidthMM\" \"1.0\" (at 0 1.6 0) (layer \"F.Fab\"))";
+    let malformed_cases = [
+        (
+            "duplicate_aperture_width.kicad_pcb",
+            source_pcb.replace(width_property, &format!("{width_property}\n    {width_property}")),
+            "duplicate aperture property",
+        ),
+        (
+            "nonpositive_aperture_width.kicad_pcb",
+            source_pcb.replace(
+                width_property,
+                "(property \"CircuitCI_EntryApertureWidthMM\" \"0.0\" (at 0 1.6 0) (layer \"F.Fab\"))",
+            ),
+            "must be greater than zero",
+        ),
+    ];
+
+    for (file_name, pcb_contents, expected_error) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "malformed KiCad PCB aperture fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains(expected_error),
+            "expected {expected_error:?} in stderr for {file_name}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
 fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -722,6 +797,15 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     assert_eq!(entry_failure["component"], "J1");
     assert_eq!(entry_failure["measured"]["obstructing_component"], "UESD");
     assert_eq!(entry_failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        entry_failure["measured"]["entry_aperture_source"],
+        "footprint_property_aperture"
+    );
+    assert_eq!(entry_failure["measured"]["entry_aperture_width_mm"], 1.0);
+    assert_eq!(
+        entry_failure["measured"]["effective_cable_entry_clearance_width_mm"],
+        1.0
+    );
     assert_eq!(
         entry_failure["measured"]["obstruction_reference"],
         "footprint_rectangle"

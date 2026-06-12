@@ -76,12 +76,14 @@ non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It computes
 `entry_direction_deg: 0.0` from the KiCad placement rotation plus the generic
 connector model's `entry_direction_offset_deg: 0.0`, then leaves cable entry
 corridor depth/width as explicit mechanical policy inputs. Its
-`scenario.usb_connectors[].entry_clearance` evidence reports the nearest
+`scenario.usb_connectors[].entry_clearance` evidence reports the imported
+J1 footprint's `CircuitCI_EntryAperture*` properties as
+`entry_aperture_source: footprint_property_aperture` and reports the nearest
 forward obstruction candidate from imported footprint evidence, which is the
 `UESD` fabrication rectangle in this fixture.
 `project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
-wide corridor, proving the imported `UESD` fabrication rectangle is reported as
-an entry-corridor obstruction.
+wide corridor, proving the imported aperture evidence and `UESD` fabrication
+rectangle are reported as an entry-corridor obstruction.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

@@ -180,15 +180,24 @@ board:
             end: { x_mm: 0.2, y_mm: 0.9 }
             layer: F.CrtYd
             kind: courtyard
+        entry_aperture:
+          front_offset_mm: 0.0
+          lateral_offset_mm: 0.0
+          width_mm: 1.0
+          source: kicad_footprint_property
 ```
 
 KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
-`fp_poly`, `fp_circle`, and `fp_arc` drawing items. The `kind` field is derived
-from the drawing layer and is intentionally conservative: `fabrication`,
-`courtyard`, `silkscreen`, or `other`. Curved graphics retain their source
-points in Board IR; current 2D layout checks sample them into bounded polylines
-when computing edge distance or overhang evidence. This is drawing evidence for
-follow-up layout rules; it is not a full 3D body, enclosure, or keepout model.
+`fp_poly`, `fp_circle`, and `fp_arc` drawing items. It also imports optional
+connector entry-aperture metadata from explicit footprint properties named
+`CircuitCI_EntryApertureFrontOffsetMM`,
+`CircuitCI_EntryApertureLateralOffsetMM`, and
+`CircuitCI_EntryApertureWidthMM`. The `kind` field is derived from the drawing
+layer and is intentionally conservative: `fabrication`, `courtyard`,
+`silkscreen`, or `other`. Curved graphics retain their source points in Board
+IR; current 2D layout checks sample them into bounded polylines when computing
+edge distance or overhang evidence. This is drawing evidence for follow-up
+layout rules; it is not a full 3D body, enclosure, or keepout model.
 
 ## Layout Outline Evidence
 

@@ -205,6 +205,20 @@ pub struct SuggestedFootprint {
     pub circles: Vec<SuggestedFootprintCircle>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub arcs: Vec<SuggestedFootprintArc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_aperture: Option<SuggestedFootprintEntryAperture>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintEntryAperture {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub front_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lateral_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

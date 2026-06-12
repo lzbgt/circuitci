@@ -2,7 +2,7 @@ use super::{
     FootprintAt, PcbPoint, coordinate_points, footprint_at, footprint_reference,
     non_empty_child_string, transform_footprint_point,
 };
-use crate::importers::kicad_sch::sexp::{Sexp, child_list, list_children, numeric_at};
+use crate::importers::kicad_sch::sexp::{Sexp, child_list, list_children, numeric_at, string_at};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_yaml_ng::Value;
@@ -16,6 +16,7 @@ pub(super) struct PcbFootprint {
     polygons: Vec<PcbFootprintPolygon>,
     circles: Vec<PcbFootprintCircle>,
     arcs: Vec<PcbFootprintArc>,
+    entry_aperture: Option<PcbEntryAperture>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,13 @@ struct PcbFootprintArc {
     kind: String,
 }
 
+#[derive(Debug, Clone, Default)]
+struct PcbEntryAperture {
+    front_offset_mm: Option<f64>,
+    lateral_offset_mm: Option<f64>,
+    width_mm: Option<f64>,
+}
+
 #[derive(Debug, Serialize)]
 struct FootprintYaml {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -70,6 +78,8 @@ struct FootprintYaml {
     circles: Vec<FootprintCircleYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     arcs: Vec<FootprintArcYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entry_aperture: Option<EntryApertureYaml>,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,6 +122,17 @@ struct FootprintArcYaml {
     kind: String,
 }
 
+#[derive(Debug, Serialize)]
+struct EntryApertureYaml {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    front_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lateral_offset_mm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    width_mm: Option<f64>,
+    source: String,
+}
+
 pub(super) fn parse_footprints(
     root_list: &[Sexp],
     path: &Path,
@@ -121,7 +142,10 @@ pub(super) fn parse_footprints(
         let reference = footprint_reference(footprint)
             .with_context(|| "KiCad PCB footprint is missing Reference property or fp_text.")?;
         let footprint_at = footprint_at(footprint, &reference)?;
-        let mut evidence = PcbFootprint::default();
+        let mut evidence = PcbFootprint {
+            entry_aperture: parse_entry_aperture(footprint, &reference, path)?,
+            ..Default::default()
+        };
         for line in list_children(footprint, "fp_line") {
             let start = transformed_child_point(line, "start", footprint_at, path)?;
             let end = transformed_child_point(line, "end", footprint_at, path)?;
@@ -277,8 +301,108 @@ pub(super) fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
                 kind: arc.kind.clone(),
             })
             .collect(),
+        entry_aperture: footprint
+            .entry_aperture
+            .as_ref()
+            .map(|entry_aperture| EntryApertureYaml {
+                front_offset_mm: entry_aperture.front_offset_mm,
+                lateral_offset_mm: entry_aperture.lateral_offset_mm,
+                width_mm: entry_aperture.width_mm,
+                source: "kicad_footprint_property".to_string(),
+            }),
     })
     .context("Failed to serialize KiCad PCB footprint drawing evidence into Board IR YAML.")
+}
+
+fn parse_entry_aperture(
+    footprint: &[Sexp],
+    reference: &str,
+    path: &Path,
+) -> Result<Option<PcbEntryAperture>> {
+    let mut aperture = PcbEntryAperture::default();
+    let mut saw_aperture_property = false;
+    for property in list_children(footprint, "property") {
+        let Some(name) = string_at(property, 1) else {
+            continue;
+        };
+        let field = match name {
+            "CircuitCI_EntryApertureFrontOffsetMM" => EntryApertureField::FrontOffset,
+            "CircuitCI_EntryApertureLateralOffsetMM" => EntryApertureField::LateralOffset,
+            "CircuitCI_EntryApertureWidthMM" => EntryApertureField::Width,
+            _ => continue,
+        };
+        saw_aperture_property = true;
+        let value = string_at(property, 2)
+            .with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} aperture property {name} in {} is missing a value.",
+                    path.display()
+                )
+            })?
+            .trim()
+            .parse::<f64>()
+            .with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} aperture property {name} in {} is not a number.",
+                    path.display()
+                )
+            })?;
+        if !value.is_finite() {
+            bail!(
+                "KiCad PCB footprint {reference} aperture property {name} in {} must be finite.",
+                path.display()
+            );
+        }
+        match field {
+            EntryApertureField::FrontOffset => set_unique_aperture_value(
+                &mut aperture.front_offset_mm,
+                value,
+                reference,
+                name,
+                path,
+            )?,
+            EntryApertureField::LateralOffset => set_unique_aperture_value(
+                &mut aperture.lateral_offset_mm,
+                value,
+                reference,
+                name,
+                path,
+            )?,
+            EntryApertureField::Width => {
+                if value <= 0.0 {
+                    bail!(
+                        "KiCad PCB footprint {reference} aperture property {name} in {} must be greater than zero.",
+                        path.display()
+                    );
+                }
+                set_unique_aperture_value(&mut aperture.width_mm, value, reference, name, path)?;
+            }
+        }
+    }
+    Ok(saw_aperture_property.then_some(aperture))
+}
+
+#[derive(Clone, Copy)]
+enum EntryApertureField {
+    FrontOffset,
+    LateralOffset,
+    Width,
+}
+
+fn set_unique_aperture_value(
+    target: &mut Option<f64>,
+    value: f64,
+    reference: &str,
+    name: &str,
+    path: &Path,
+) -> Result<()> {
+    if target.replace(value).is_some() {
+        bail!(
+            "KiCad PCB footprint {reference} has duplicate aperture property {name} in {}.",
+            path.display()
+        );
+    }
+    Ok(())
 }
 
 fn transformed_coordinate_points(
