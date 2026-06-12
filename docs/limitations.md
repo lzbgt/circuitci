@@ -13,7 +13,7 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - full USB PHY simulation
 - full SMPS compensation design
 - automatic datasheet-to-perfect-model generation
-- firmware-in-loop MCU emulation
+- firmware-in-loop functional MCU backend execution
 
 ## Current Technical Limits
 
@@ -22,6 +22,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   execution, reset/boot behavior, peripheral state, pin modes, electrical pin
   limits, thresholds, clamps, leakage, and timing that matter to the surrounding
   circuit.
+- `firmware_in_loop` scenarios currently validate their declared target,
+  firmware image, and expected board-facing pin behavior, then fail closed with
+  `FUNCTIONAL_MCU_FIRMWARE` until a supported functional runtime backend such
+  as Renode or QEMU is integrated.
 - Behavioral power states are declared in Board IR rather than inferred from a
   whole-board analog power-tree simulation.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.

@@ -2,8 +2,9 @@
 
 Scenarios describe validation conditions applied to a bound board. CircuitCI
 supports deterministic behavioral checks, time-ordered scenario events for
-protocol/control-line validation, and solver-backed `analog_transient`
-waveforms for physical voltage/current checks.
+protocol/control-line validation, functional-MCU firmware-in-loop contracts,
+and solver-backed `analog_transient` waveforms for physical voltage/current
+checks.
 
 ## Behavioral Scenario Example
 
@@ -67,6 +68,7 @@ Executable scenario types:
 - `serial_programming`
 - `firmware_update`
 - `control_line_sequence`
+- `firmware_in_loop`
 - `analog_transient`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
@@ -90,6 +92,7 @@ Canonical executable check IDs:
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
+- `FUNCTIONAL_MCU_FIRMWARE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
@@ -285,6 +288,41 @@ scenarios:
 6. Compare derived states with reset polarity and required boot-mode straps.
 
 This is an abstract control-line timing check. It does not solve transistor storage, hidden RC networks, or physical CH340 modem-pin voltage truth tables.
+
+## Functional MCU Firmware Scenario Shape
+
+`firmware_in_loop` scenarios describe a functional black-box MCU check. The
+runtime boundary is the firmware-visible MCU plus board-facing pins: reset/boot
+state, peripheral effects, pin modes, logic states, timing, thresholds, clamps,
+leakage, and other pin behavior visible to the surrounding board. It is
+explicitly not a transistor-level MCU model.
+
+```yaml
+scenarios:
+  - name: application_pin_behavior
+    type: firmware_in_loop
+    target:
+      component: U1
+    checks:
+      - FUNCTIONAL_MCU_FIRMWARE
+    firmware:
+      backend: auto
+      image: firmware/app.elf
+      machine: stm32l4_functional
+      expected_pin_states:
+        - component: U1
+          pin: TX
+          mode: output
+          state: high
+```
+
+The current runtime validates that the scenario names a target MCU, firmware
+image, and expected board-facing pin behavior. It then fails closed with
+`FUNCTIONAL_MCU_FIRMWARE` until a supported functional backend, such as Renode
+or QEMU, is wired into the validator. A passing firmware-in-loop result must
+come from executing the functional model and observing declared pin behavior;
+it must not be inferred from a transistor-level MCU substitute or from a
+generic "firmware present" marker.
 
 ## Analog Transient Scenario Shape
 

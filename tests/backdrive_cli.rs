@@ -443,6 +443,74 @@ fn backdrive_rejects_kicad_output_victim_metadata() {
 }
 
 #[test]
+fn functional_mcu_firmware_check_fails_closed_without_backend() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("firmware_blackbox.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_functional_project(&repo.join("libs/generic").display().to_string(), true),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "FUNCTIONAL_MCU_FIRMWARE");
+    assert_eq!(report["failures"][0]["component"], "U1");
+    assert_eq!(report["failures"][0]["measured"]["target_component"], "U1");
+    assert_eq!(
+        report["failures"][0]["measured"]["target_model"],
+        "generic.mcu.basic"
+    );
+    assert_eq!(report["failures"][0]["measured"]["backend"], "auto");
+    assert_eq!(
+        report["failures"][0]["measured"]["firmware_image"],
+        "firmware/app.elf"
+    );
+    assert_eq!(report["failures"][0]["measured"]["expected_pin_states"], 1);
+    assert_eq!(
+        report["failures"][0]["limit"]["functional_blackbox_boundary"],
+        "firmware-visible peripherals and board-facing pin behavior"
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["transistor_level_mcu_required"],
+        false
+    );
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("no Renode/QEMU adapter")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn functional_mcu_firmware_requires_expected_pin_behavior() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("firmware_missing_pin_behavior.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        firmware_functional_project(&repo.join("libs/generic").display().to_string(), false),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("expected_pin_states")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn c51_control_line_release_uses_generic_reset_polarity() {
     let report = run_validation("examples/good_c51_control_line_app_release/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -988,5 +1056,64 @@ scenarios:
           pin: RX
         series_resistance_ohm: 0
 "#
+    )
+}
+
+fn firmware_functional_project(library_path: &str, include_expected_pin_state: bool) -> String {
+    let expected_pin_states = if include_expected_pin_state {
+        r#"      expected_pin_states:
+        - component: U1
+          pin: TX
+          mode: output
+          state: high
+"#
+    } else {
+        "      expected_pin_states: []\n"
+    };
+    format!(
+        r#"project:
+  name: firmware_blackbox_contract
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        NRST: nrst
+        BOOT0: boot0
+        RX: uart_mcu_rx
+        TX: uart_mcu_tx
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+    uart_mcu_tx:
+      kind: digital_or_analog
+scenarios:
+  - name: firmware_blackbox_pin_behavior
+    type: firmware_in_loop
+    target:
+      component: U1
+    checks:
+      - FUNCTIONAL_MCU_FIRMWARE
+    firmware:
+      backend: auto
+      image: firmware/app.elf
+{expected_pin_states}"#
     )
 }

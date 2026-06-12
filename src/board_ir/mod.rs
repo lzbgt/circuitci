@@ -132,6 +132,8 @@ pub struct Scenario {
     #[serde(default)]
     pub protocol: Option<ProtocolScenario>,
     #[serde(default)]
+    pub firmware: Option<FirmwareScenario>,
+    #[serde(default)]
     pub analog: Option<AnalogScenario>,
     #[serde(default)]
     pub events: Vec<ScenarioEvent>,
@@ -235,6 +237,24 @@ pub struct ProtocolScenario {
     pub chunk_size_bytes: Option<u64>,
     #[serde(default)]
     pub expected_final_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FirmwareScenario {
+    pub backend: FirmwareBackend,
+    pub image: String,
+    #[serde(default)]
+    pub machine: Option<String>,
+    #[serde(default)]
+    pub expected_pin_states: Vec<PinState>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FirmwareBackend {
+    Auto,
+    Renode,
+    Qemu,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -94,6 +94,8 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
+- `FUNCTIONAL_MCU_FIRMWARE`
+- `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
 Reports must include `scenario`, `component` when applicable, measured timing values in `measured`, limits or expected states in `limit`, and concrete suggested fixes.
@@ -110,6 +112,16 @@ Stable rule detail keys:
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.
+
+`FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
+Until a functional runtime backend is available, this rule fails closed after
+validating the target MCU, firmware image, and expected board-facing pin
+behavior. Stable measured keys include `target_component`, `target_model`,
+`backend`, `firmware_image`, optional `machine`, and `expected_pin_states`.
+Stable limit keys include `functional_blackbox_boundary` and
+`transistor_level_mcu_required: false`. This rule is for functional firmware
+execution and MCU pin behavior; it must not imply transistor-level MCU
+simulation.
 
 `SPICE_OPERATING_LIMIT` reports are emitted by physical analog validation when
 generated Board IR MOSFET/BJT/diode operating probes exceed datasheet absolute

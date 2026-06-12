@@ -40,6 +40,8 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `UART_BOOTLOADER_SYNC`
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
+- `FUNCTIONAL_MCU_FIRMWARE`
+- `SPICE_TRANSIENT_ANALYSIS`
 
 ## Rule Completion Standard
 
