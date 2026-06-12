@@ -47,11 +47,13 @@ Executable slices now covered by `POWER_TREE_VALID`:
 - static `supply_current_limit_A` budget against declared
   `max_supply_current_A` loads,
 - explicit regulator `power_conversion` dropout margin,
-- explicit regulator maximum output-current budget.
+- explicit regulator maximum output-current budget,
+- explicit regulator startup-delay sequencing against `power_valid_at_us` rail
+  metadata.
 
-The remaining gap is dynamic power behavior: startup, load-dependent dropout
-under waveform load, inrush, soft-start, charger/power-mux behavior, thermal
-margin, and stability.
+The remaining gap is waveform-dependent power behavior: real ramp shape,
+load-dependent dropout under waveform load, inrush, soft-start,
+charger/power-mux behavior, thermal margin, and stability.
 
 ## 3. Functional MCU And Peripheral Models
 

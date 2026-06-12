@@ -121,10 +121,12 @@ operating ranges, declared rail current budgets are exceeded, or explicit
 regulator conversion metadata is violated. Stable measured keys include
 `nominal_voltage_V`, `powered`, `declared_load_current_A`,
 `declared_output_load_current_A`, `input_voltage_V`, `output_voltage_V`,
-`dropout_margin_V`, and `missing_load_current_metadata` depending on the
+`dropout_margin_V`, `input_power_valid_at_us`, `output_power_valid_at_us`,
+`startup_delay_us`, and `missing_load_current_metadata` depending on the
 failure. Stable limit keys include `operating_voltage_minimum_V`,
 `operating_voltage_maximum_V`, `powered`, `supply_current_limit_A`,
-`dropout_voltage_V`, `regulator_max_output_current_A`, and
+`dropout_voltage_V`, `regulator_max_output_current_A`,
+`earliest_output_power_valid_at_us`, `required_rail_timing_field`, and
 `power_conversion_field`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.

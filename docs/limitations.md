@@ -29,10 +29,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   infer pins from MCU internals. Renode remains fail-closed until a Renode
   adapter is integrated.
 - `POWER_TREE_VALID` checks declared rail power state, nominal voltage ranges,
-  static current budgets, and explicit regulator dropout/output-current
+  static current budgets, and explicit regulator dropout/output-current/startup
   metadata. It does not infer a whole-board analog power tree or solve
-  regulator startup, load-dependent dropout, inrush, charger/power-mux
-  behavior, thermal behavior, or load-transient stability.
+  regulator ramp waveform shape, load-dependent dropout, inrush,
+  charger/power-mux behavior, thermal behavior, or load-transient stability.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.
 - Quantitative waveform proof is available only through `analog_transient`
   scenarios with a SPICE-class backend and explicit assertions.

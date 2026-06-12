@@ -34,6 +34,7 @@ board:
       nominal_voltage: 3.3
       powered: false
       supply_current_limit_A: 0.08
+      power_valid_at_us: 1500
     gnd:
       kind: ground
     uart_rx:
@@ -92,6 +93,9 @@ Power semantics:
 - `supply_current_limit_A`: optional worst-case current budget used by
   `POWER_TREE_VALID` when component model power ports declare
   `max_supply_current_A`.
+- `power_valid_at_us`: optional rail-valid time used by `POWER_TREE_VALID`
+  when regulator model metadata declares `power_conversion.startup_delay_us`.
+  In that case, both input and output rails must declare this timing field.
 
 ## Consistency Rules
 

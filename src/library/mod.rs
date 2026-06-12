@@ -34,6 +34,8 @@ pub struct PowerConversion {
     pub dropout_voltage_v: Option<f64>,
     #[serde(default, rename = "max_output_current_A")]
     pub max_output_current_a: Option<f64>,
+    #[serde(default)]
+    pub startup_delay_us: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

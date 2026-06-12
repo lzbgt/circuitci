@@ -36,10 +36,12 @@ board:
       kind: power
       nominal_voltage: 3.4
       powered: true
+      power_valid_at_us: 0
     rail_3v3:
       kind: power
       nominal_voltage: 3.3
       powered: true
+      power_valid_at_us: 1500
     gnd:
       kind: ground
 

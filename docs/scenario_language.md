@@ -219,12 +219,17 @@ scenarios:
 8. If `power_conversion.max_output_current_A` is declared, every output-rail
    load must declare `max_supply_current_A`, and the summed worst-case output
    load must not exceed the regulator limit.
+9. If `power_conversion.startup_delay_us` is declared, input and output rails
+   must declare `power_valid_at_us`, and the output rail may not become valid
+   before `input_power_valid_at_us + startup_delay_us`.
 
 This rule is intended to catch common IoT mistakes such as a 3.3 V MCU tied to
 5 V, an unpowered rail marked as valid for logic checks, or an undersized
-regulator budget. Load-transient stability, startup sequencing, inrush,
-load-dependent dropout, loop stability, and thermal behavior still require
-datasheet-backed dynamic models or `analog_transient` scenarios.
+regulator budget. It can also catch inconsistent declared startup sequencing
+when regulator metadata supplies a startup delay. Load-transient stability,
+inrush, load-dependent dropout, loop stability, thermal behavior, and real ramp
+waveform shape still require datasheet-backed dynamic models or
+`analog_transient` scenarios.
 
 ## Firmware Update Scenario Shape
 

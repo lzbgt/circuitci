@@ -149,6 +149,53 @@ fn regulator_conversion_metadata_fails_closed() {
 }
 
 #[test]
+fn regulator_startup_sequence_fails() {
+    let report = run_validation("examples/bad_regulator_startup_sequence/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("earliest_output_power_valid_at_us")
+                .is_some()
+        })
+        .expect("expected regulator startup timing finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["input_power_valid_at_us"], 800.0);
+    assert_eq!(failure["measured"]["output_power_valid_at_us"], 1200.0);
+    assert_eq!(failure["measured"]["startup_delay_us"], 1000.0);
+    assert_eq!(
+        failure["limit"]["earliest_output_power_valid_at_us"],
+        1800.0
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn regulator_startup_missing_timing_fails_closed() {
+    let report = run_validation("examples/bad_regulator_startup_missing_timing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_rail_timing_field").is_some())
+        .expect("expected missing rail timing finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(
+        failure["limit"]["required_rail_timing_field"],
+        "output_power_valid_at_us"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_bootloader_board_passes_reset_boot_and_sync() {
     let report = run_validation("examples/good_bootloader_board/project.yaml");
     assert_eq!(report["result"], "pass");

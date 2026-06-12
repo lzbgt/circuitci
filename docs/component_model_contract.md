@@ -87,6 +87,7 @@ power_conversion:
   output_pin: VOUT
   dropout_voltage_V: 0.3
   max_output_current_A: 0.1
+  startup_delay_us: 1000
 ```
 
 - `input_pin` and `output_pin` must name model ports connected to Board IR power
@@ -95,13 +96,16 @@ power_conversion:
   `V(input) - V(output)` must be at least this value.
 - `max_output_current_A` checks the sum of declared `max_supply_current_A`
   loads on the output rail.
+- `startup_delay_us` checks declared rail timing:
+  `output.power_valid_at_us` must be no earlier than
+  `input.power_valid_at_us + startup_delay_us`.
 
 `POWER_TREE_VALID` uses these values to check that a component is connected to
 a powered rail inside its allowed operating range, that declared rail current
 budgets are not exceeded, and that explicitly modeled regulator dropout/output
-current margins are plausible. Invalid `power_conversion` metadata fails closed
-at validation time. Generic models may use conservative screening values;
-datasheet-backed packs should cite their source documents.
+current/startup timing margins are plausible. Invalid `power_conversion`
+metadata fails closed at validation time. Generic models may use conservative
+screening values; datasheet-backed packs should cite their source documents.
 
 The first back-drive approximation computes injection current as:
 

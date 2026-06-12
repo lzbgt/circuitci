@@ -96,6 +96,8 @@ pub struct NetSpec {
     pub powered: Option<bool>,
     #[serde(default, rename = "supply_current_limit_A")]
     pub supply_current_limit_a: Option<f64>,
+    #[serde(default)]
+    pub power_valid_at_us: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

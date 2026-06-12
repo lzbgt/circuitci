@@ -22,6 +22,7 @@ power_conversion:
   output_pin: VOUT
   dropout_voltage_V: 0.3
   max_output_current_A: 0.1
+  startup_delay_us: 1000
 model_quality:
   source: generic
   confidence: low

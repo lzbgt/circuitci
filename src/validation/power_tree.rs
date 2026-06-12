@@ -275,6 +275,21 @@ fn validate_power_conversion(
             findings.push(finding);
         }
     }
+
+    if let Some(startup_delay_us) = conversion.startup_delay_us {
+        validate_regulator_startup_timing(
+            RegulatorStartupContext {
+                component_id,
+                input_net_name,
+                input_net,
+                output_net_name,
+                output_net,
+                startup_delay_us,
+            },
+            scenario,
+            findings,
+        );
+    }
 }
 
 fn validate_power_conversion_metadata(
@@ -349,7 +364,175 @@ fn validate_power_conversion_metadata(
         );
         valid = false;
     }
+    if let Some(startup_delay_us) = conversion.startup_delay_us
+        && (!startup_delay_us.is_finite() || startup_delay_us < 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "startup_delay_us",
+            "power_conversion startup_delay_us must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
     valid
+}
+
+fn validate_regulator_startup_timing(
+    context: RegulatorStartupContext<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(input_valid_at_us) = context.input_net.power_valid_at_us else {
+        regulator_startup_missing_timing_finding(
+            context.component_id,
+            context.input_net_name,
+            "input_power_valid_at_us",
+            context.startup_delay_us,
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(output_valid_at_us) = context.output_net.power_valid_at_us else {
+        regulator_startup_missing_timing_finding(
+            context.component_id,
+            context.output_net_name,
+            "output_power_valid_at_us",
+            context.startup_delay_us,
+            scenario,
+            findings,
+        );
+        return;
+    };
+    if !input_valid_at_us.is_finite() || input_valid_at_us < 0.0 {
+        regulator_startup_invalid_timing_finding(
+            context.component_id,
+            context.input_net_name,
+            "input_power_valid_at_us",
+            input_valid_at_us,
+            scenario,
+            findings,
+        );
+        return;
+    }
+    if !output_valid_at_us.is_finite() || output_valid_at_us < 0.0 {
+        regulator_startup_invalid_timing_finding(
+            context.component_id,
+            context.output_net_name,
+            "output_power_valid_at_us",
+            output_valid_at_us,
+            scenario,
+            findings,
+        );
+        return;
+    }
+
+    let earliest_output_valid_at_us = input_valid_at_us + context.startup_delay_us;
+    if output_valid_at_us < earliest_output_valid_at_us {
+        let mut finding = Finding::critical(
+            POWER_TREE_VALID,
+            &scenario.name,
+            format!(
+                "Regulator {component_id} output rail {output_net_name} is declared valid at {:.6} us before input-valid plus startup delay {:.6} us.",
+                output_valid_at_us,
+                earliest_output_valid_at_us,
+                component_id = context.component_id,
+                output_net_name = context.output_net_name,
+            ),
+        );
+        finding.component = Some(context.component_id.to_string());
+        finding.net = Some(context.output_net_name.to_string());
+        finding.measured.insert(
+            "input_power_valid_at_us".to_string(),
+            json!(input_valid_at_us),
+        );
+        finding.measured.insert(
+            "output_power_valid_at_us".to_string(),
+            json!(output_valid_at_us),
+        );
+        finding.measured.insert(
+            "startup_delay_us".to_string(),
+            json!(context.startup_delay_us),
+        );
+        finding.limit.insert(
+            "earliest_output_power_valid_at_us".to_string(),
+            json!(earliest_output_valid_at_us),
+        );
+        finding.suggested_fixes = vec![
+            "Delay downstream reset release, enable pins, or boot sampling until the regulator output rail is valid.".to_string(),
+            "Correct the rail power_valid_at_us metadata if measured startup timing shows a later valid point.".to_string(),
+            "Use analog_transient when startup ramp, soft-start, load current, or power-good waveform shape matters.".to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
+struct RegulatorStartupContext<'a> {
+    component_id: &'a str,
+    input_net_name: &'a str,
+    input_net: &'a NetSpec,
+    output_net_name: &'a str,
+    output_net: &'a NetSpec,
+    startup_delay_us: f64,
+}
+
+fn regulator_startup_missing_timing_finding(
+    component_id: &str,
+    net_name: &str,
+    field: &str,
+    startup_delay_us: f64,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!(
+            "Regulator {component_id} declares startup_delay_us but rail {net_name} has no power_valid_at_us timing."
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.net = Some(net_name.to_string());
+    finding
+        .measured
+        .insert("startup_delay_us".to_string(), json!(startup_delay_us));
+    finding
+        .limit
+        .insert("required_rail_timing_field".to_string(), json!(field));
+    finding.suggested_fixes = vec![
+        "Declare power_valid_at_us on both input and output rails for regulator startup timing checks.".to_string(),
+        "Remove startup_delay_us only when the model is not intended to make startup sequencing claims.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn regulator_startup_invalid_timing_finding(
+    component_id: &str,
+    net_name: &str,
+    field: &str,
+    value: f64,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!("Rail {net_name} has invalid {field} value {value}."),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.net = Some(net_name.to_string());
+    finding.measured.insert(field.to_string(), json!(value));
+    finding
+        .limit
+        .insert("power_valid_at_us_non_negative".to_string(), json!(true));
+    finding.suggested_fixes = vec![
+        "Use finite non-negative power_valid_at_us rail timing metadata.".to_string(),
+        "Use analog_transient if rail validity must be derived from a waveform crossing threshold."
+            .to_string(),
+    ];
+    findings.push(finding);
 }
 
 fn power_conversion_metadata_finding(

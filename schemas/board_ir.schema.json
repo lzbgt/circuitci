@@ -105,7 +105,8 @@
               },
               "nominal_voltage": { "type": "number" },
               "powered": { "type": "boolean" },
-              "supply_current_limit_A": { "type": "number", "exclusiveMinimum": 0 }
+              "supply_current_limit_A": { "type": "number", "exclusiveMinimum": 0 },
+              "power_valid_at_us": { "type": "number", "minimum": 0 }
             },
             "additionalProperties": true
           }
