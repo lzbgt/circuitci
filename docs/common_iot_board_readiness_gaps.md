@@ -31,9 +31,11 @@ load-switch metadata plus Microchip MCP73831 charger metadata. TI TPS2115A now
 covers a first datasheet-backed power-mux source-selection and reverse-blocking
 pack, TI TLV803EA29 covers a first datasheet-backed reset supervisor
 threshold/delay pack, and Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
-The gap remains broad library depth across other USB-UART bridges, debug
-probes, radios, sensors, regulators, power muxes, reset supervisors, and
-protection devices.
+Advanced Monolithic Systems AMS1117-3.3 now covers a common 1117-style 3.3 V
+LDO with its larger dropout and output-capacitance requirements. The gap
+remains broad library depth across other USB-UART bridges, debug probes,
+radios, sensors, regulators, power muxes, reset supervisors, and protection
+devices.
 
 ## 2. Power-Tree Validation
 

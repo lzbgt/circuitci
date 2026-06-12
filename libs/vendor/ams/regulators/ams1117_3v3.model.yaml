@@ -1,0 +1,85 @@
+component_id: vendor.ams.ams1117_3v3
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_max_V: 15.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.201
+      operating_voltage_max_V: 3.399
+  GND:
+    kind: electrical_ground
+    required: true
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  dropout_voltage_V: 1.3
+  max_output_current_A: 0.8
+  output_capacitance_min_F: 0.000022
+datasheet:
+  manufacturer: Advanced Monolithic Systems
+  part_number: AMS1117-3.3
+  package: SOT-223
+  polarity: fixed_3v3_ldo
+  pinout:
+    VIN: VIN
+    VOUT: VOUT
+    GND: GND
+  absolute_maximum_ratings:
+    input_voltage:
+      conditions: Absolute maximum input voltage.
+      value: 15
+      unit: V
+  electrical_characteristics:
+    output_voltage:
+      conditions: AMS1117-3.3 fixed output table; full listed range.
+      min: 3.201
+      typ: 3.3
+      max: 3.399
+      unit: V
+    dropout_voltage:
+      conditions: IOUT = 0.8 A; dropout is higher above 0.8 A.
+      typ: 1.1
+      max: 1.3
+      unit: V
+    current_limit:
+      conditions: Fixed variants, VIN - VOUT = 1.5 V.
+      min: 900
+      typ: 1100
+      max: 1500
+      unit: mA
+    minimum_load_current:
+      conditions: Minimum output current required to maintain guaranteed regulation.
+      typ: 5
+      max: 10
+      unit: mA
+    output_capacitor:
+      conditions: Stability section says 22 uF solid tantalum on output ensures stability for all operating conditions.
+      min: 22
+      unit: uF
+  documents:
+    - title: AMS1117 1A Low Dropout Voltage Regulator
+      path: docs/research/datasheets/ams/ams1117.pdf
+      source_url: http://www.advanced-monolithic.com/pdf/ds1117.pdf
+      sha256: 189a2651878a87d590b768eaa9b44217a3fdf460352ce6ecaff127221282a3f0
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - regulator_static_screening
+    - common_iot_3v3_rail_screening
+  not_valid_for:
+    - regulator_transient_or_stability_signoff
+    - regulator_thermal_signoff
+    - minimum_load_regulation_signoff
+    - load_dependent_dropout_curve
+    - output_capacitor_esr_material_signoff
+    - startup_waveform_signoff

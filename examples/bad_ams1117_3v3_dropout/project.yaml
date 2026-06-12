@@ -1,0 +1,54 @@
+project:
+  name: bad_ams1117_3v3_dropout
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UREG:
+      model: vendor.ams.ams1117_3v3
+      part_number: AMS1117-3.3
+      power_domains:
+        VIN: weak_input
+        VOUT: rail_3v3
+      pins:
+        VIN: weak_input
+        VOUT: rail_3v3
+        GND: gnd
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+    COUT:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: rail_3v3
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+  nets:
+    weak_input:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: ams1117_dropout_margin
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
