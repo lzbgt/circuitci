@@ -163,10 +163,10 @@ properties, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
 
-`examples/import_kicad_usb_curved_board_edge_suggestions/` isolates curved
+`examples/import_kicad_usb_curved_board_edge_suggestions/` isolates sampled
 board-edge behavior. It proves USB connector orientation, edge-proximity, and
-body-overhang suggestions and validators can use sampled `gr_circle` and
-`gr_arc` `Edge.Cuts` segments as the nearest board edge.
+body-overhang suggestions and validators can use sampled `gr_rect`,
+`gr_circle`, and `gr_arc` `Edge.Cuts` segments as the nearest board edge.
 
 `examples/import_kicad_usb_cutout_board_edge_suggestions/` isolates closed
 contour classification. It proves enclosed circular Edge.Cuts contours import
