@@ -1016,6 +1016,59 @@ fn import_kicad_pcb_rejects_invalid_entry_clearance_properties() {
 }
 
 #[test]
+fn import_kicad_pcb_rejects_degenerate_rectangular_board_outlines() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let source_pcb = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+    )
+    .unwrap();
+    let rect_outline = "(gr_rect (start 1.55 1.05) (end 1.70 1.20) (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))";
+    let malformed_cases = [
+        (
+            "zero_width_rect_outline.kicad_pcb",
+            source_pcb.replace(
+                rect_outline,
+                "(gr_rect (start 1.55 1.05) (end 1.55 1.20) (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))",
+            ),
+        ),
+        (
+            "zero_height_rect_outline.kicad_pcb",
+            source_pcb.replace(
+                rect_outline,
+                "(gr_rect (start 1.55 1.05) (end 1.70 1.05) (stroke (width 0.05) (type solid)) (fill none) (layer \"Edge.Cuts\"))",
+            ),
+        ),
+    ];
+
+    for (file_name, pcb_contents) in malformed_cases {
+        let pcb_path = dir.path().join(file_name);
+        let output_path = dir.path().join(format!("{file_name}.project.yaml"));
+        std::fs::write(&pcb_path, pcb_contents).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+            .args([
+                "import-kicad-pcb",
+                pcb_path.to_str().unwrap(),
+                "--project",
+                "examples/import_kicad_usb_connector_protection_suggestions/project.yaml",
+                "--output",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "degenerate KiCad PCB rectangular outline fixture {file_name} unexpectedly imported"
+        );
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains("Edge.Cuts gr_rect") && stderr.contains("zero width or height"),
+            "expected rectangular outline error for {file_name}, got:\n{stderr}"
+        );
+    }
+}
+
+#[test]
 fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
