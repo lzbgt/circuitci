@@ -29,8 +29,8 @@ shield strategy, return-path quality, or ESD pulse performance.
 The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 
 1. `import-kicad-schematic` for connector and ESD connectivity.
-2. `import-kicad-pcb` for `board.layout.placements`, straight Edge.Cuts
-   outline evidence under `board.layout.outline`, connected pad geometry
+2. `import-kicad-pcb` for `board.layout.placements`, Edge.Cuts
+   outline segment evidence under `board.layout.outline`, connected pad geometry
    evidence under `board.layout.pads`, routed USB net geometry under
    `board.layout.routes`, plus ground copper-zone outline and saved
    filled-polygon evidence under `board.layout.zones`.
@@ -49,10 +49,10 @@ The placement suggestion remains non-runnable until an agent fills
 `parameters.max_connector_to_protection_distance_mm` from the board's actual
 ESD/layout rule.
 
-Because the PCB fixture also imports straight `Edge.Cuts` board-outline
-segments, the orientation and edge-proximity suggestions include nearest-edge
-evidence. The fixture's imported `F.Fab` polygon crosses the nearest straight
-board edge, so `nearest_board_edge.distance_to_connector_mm` is `0.0` with
+Because the PCB fixture also imports `Edge.Cuts` board-outline segment
+evidence, the orientation and edge-proximity suggestions include nearest-edge
+evidence. The fixture's imported `F.Fab` polygon crosses the nearest board-edge
+segment, so `nearest_board_edge.distance_to_connector_mm` is `0.0` with
 `connector_edge_reference: footprint_polygon`. The body-overhang suggestion
 uses the same polygon evidence and reports `connector_body_overhang_mm: 0.4`.
 The fixture also imports one `fp_circle` and one `fp_arc` so

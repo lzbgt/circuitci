@@ -5,12 +5,17 @@ use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_yaml_ng::{Mapping, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::f64::consts::TAU;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 mod footprints;
 
 use footprints::{PcbFootprint, footprint_graphic_count, footprint_yaml_value, parse_footprints};
+
+const OUTLINE_CIRCLE_SAMPLE_SEGMENTS: usize = 32;
+const OUTLINE_ARC_MAX_SEGMENT_ANGLE_RAD: f64 = std::f64::consts::PI / 16.0;
+const OUTLINE_ARC_MAX_SAMPLE_SEGMENTS: usize = 64;
 
 #[derive(Debug)]
 pub struct KicadPcbPlacementImportOptions {
@@ -462,7 +467,132 @@ fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutline> {
         }
         segments.push(PcbOutlineSegment { start, end, layer });
     }
+    for circle in list_children(root_list, "gr_circle") {
+        let layer = non_empty_child_string(circle, "layer", path)?;
+        if layer != "Edge.Cuts" {
+            continue;
+        }
+        let center = route_point(circle, "center", path)?;
+        let end = route_point(circle, "end", path)?;
+        let radius_mm = point_distance_mm(center, end);
+        if radius_mm <= f64::EPSILON {
+            bail!(
+                "KiCad PCB Edge.Cuts gr_circle in {} has zero radius.",
+                path.display()
+            );
+        }
+        segments.extend(sample_outline_circle(center, end, layer));
+    }
+    for arc in list_children(root_list, "gr_arc") {
+        let layer = non_empty_child_string(arc, "layer", path)?;
+        if layer != "Edge.Cuts" {
+            continue;
+        }
+        let start = route_point(arc, "start", path)?;
+        let mid = route_point(arc, "mid", path)?;
+        let end = route_point(arc, "end", path)?;
+        let Some(sampled_segments) = sample_outline_arc(start, mid, end, layer) else {
+            bail!(
+                "KiCad PCB Edge.Cuts gr_arc in {} is degenerate.",
+                path.display()
+            );
+        };
+        segments.extend(sampled_segments);
+    }
     Ok(PcbOutline { segments })
+}
+
+fn sample_outline_circle(center: PcbPoint, end: PcbPoint, layer: String) -> Vec<PcbOutlineSegment> {
+    let radius_mm = point_distance_mm(center, end);
+    let initial_angle = (end.y_mm - center.y_mm).atan2(end.x_mm - center.x_mm);
+    (0..OUTLINE_CIRCLE_SAMPLE_SEGMENTS)
+        .map(|index| {
+            let start_angle =
+                initial_angle + TAU * index as f64 / OUTLINE_CIRCLE_SAMPLE_SEGMENTS as f64;
+            let end_angle =
+                initial_angle + TAU * (index + 1) as f64 / OUTLINE_CIRCLE_SAMPLE_SEGMENTS as f64;
+            PcbOutlineSegment {
+                start: point_on_circle(center, radius_mm, start_angle),
+                end: point_on_circle(center, radius_mm, end_angle),
+                layer: layer.clone(),
+            }
+        })
+        .collect()
+}
+
+fn sample_outline_arc(
+    start: PcbPoint,
+    mid: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+) -> Option<Vec<PcbOutlineSegment>> {
+    let center = arc_center(start, mid, end)?;
+    let radius_mm = point_distance_mm(center, start);
+    if radius_mm <= f64::EPSILON {
+        return None;
+    }
+    let start_angle = (start.y_mm - center.y_mm).atan2(start.x_mm - center.x_mm);
+    let mid_angle = (mid.y_mm - center.y_mm).atan2(mid.x_mm - center.x_mm);
+    let end_angle = (end.y_mm - center.y_mm).atan2(end.x_mm - center.x_mm);
+    let ccw = angle_on_ccw_arc(start_angle, mid_angle, end_angle);
+    let sweep = if ccw {
+        positive_angle_delta(start_angle, end_angle)
+    } else {
+        -positive_angle_delta(end_angle, start_angle)
+    };
+    let segment_count = ((sweep.abs() / OUTLINE_ARC_MAX_SEGMENT_ANGLE_RAD).ceil() as usize)
+        .clamp(1, OUTLINE_ARC_MAX_SAMPLE_SEGMENTS);
+    Some(
+        (0..segment_count)
+            .map(|index| {
+                let start_t = index as f64 / segment_count as f64;
+                let end_t = (index + 1) as f64 / segment_count as f64;
+                PcbOutlineSegment {
+                    start: point_on_circle(center, radius_mm, start_angle + sweep * start_t),
+                    end: point_on_circle(center, radius_mm, start_angle + sweep * end_t),
+                    layer: layer.clone(),
+                }
+            })
+            .collect(),
+    )
+}
+
+fn point_on_circle(center: PcbPoint, radius_mm: f64, angle_rad: f64) -> PcbPoint {
+    PcbPoint {
+        x_mm: center.x_mm + radius_mm * angle_rad.cos(),
+        y_mm: center.y_mm + radius_mm * angle_rad.sin(),
+    }
+}
+
+fn arc_center(start: PcbPoint, mid: PcbPoint, end: PcbPoint) -> Option<PcbPoint> {
+    let d = 2.0
+        * (start.x_mm * (mid.y_mm - end.y_mm)
+            + mid.x_mm * (end.y_mm - start.y_mm)
+            + end.x_mm * (start.y_mm - mid.y_mm));
+    if d.abs() <= f64::EPSILON {
+        return None;
+    }
+    let start_sq = start.x_mm * start.x_mm + start.y_mm * start.y_mm;
+    let mid_sq = mid.x_mm * mid.x_mm + mid.y_mm * mid.y_mm;
+    let end_sq = end.x_mm * end.x_mm + end.y_mm * end.y_mm;
+    Some(PcbPoint {
+        x_mm: (start_sq * (mid.y_mm - end.y_mm)
+            + mid_sq * (end.y_mm - start.y_mm)
+            + end_sq * (start.y_mm - mid.y_mm))
+            / d,
+        y_mm: (start_sq * (end.x_mm - mid.x_mm)
+            + mid_sq * (start.x_mm - end.x_mm)
+            + end_sq * (mid.x_mm - start.x_mm))
+            / d,
+    })
+}
+
+fn angle_on_ccw_arc(start_angle: f64, test_angle: f64, end_angle: f64) -> bool {
+    positive_angle_delta(start_angle, test_angle) <= positive_angle_delta(start_angle, end_angle)
+}
+
+fn positive_angle_delta(from: f64, to: f64) -> f64 {
+    (to - from).rem_euclid(TAU)
 }
 
 fn parse_zones(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, Vec<PcbZone>>> {
@@ -1002,6 +1132,10 @@ pub(super) fn transform_footprint_point(
         x_mm: footprint_at.x_mm + local_x_mm * cos - local_y_mm * sin,
         y_mm: footprint_at.y_mm + local_x_mm * sin + local_y_mm * cos,
     }
+}
+
+fn point_distance_mm(a: PcbPoint, b: PcbPoint) -> f64 {
+    (a.x_mm - b.x_mm).hypot(a.y_mm - b.y_mm)
 }
 
 fn pad_net_name(

@@ -206,10 +206,12 @@ board:
           layer: Edge.Cuts
 ```
 
-KiCad PCB import currently populates this from straight `gr_line` items on
-`Edge.Cuts`. This evidence supports nearest-edge USB orientation suggestions;
-it is not a complete mechanical outline solver and does not yet model board
-outline arcs, slots, cutouts, panel tabs, or connector body intrusion.
+KiCad PCB import currently populates this from `gr_line`, `gr_circle`, and
+`gr_arc` items on `Edge.Cuts`. Circles and arcs are sampled into bounded line
+segments so downstream layout rules can use one simple segment geometry
+contract. This evidence supports nearest-edge USB orientation suggestions; it
+is not a complete mechanical outline solver and does not yet model arbitrary
+slots, cutouts, panel tabs, or connector body intrusion.
 
 ## Layout Pad Evidence
 

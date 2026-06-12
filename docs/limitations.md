@@ -62,12 +62,14 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   `rotation_deg` against an explicit expected rotation and tolerance. It does
   not prove enclosure entry direction, connector keepout, cable clearance, or
   mechanical insertion robustness. Suggestions may infer an expected rotation
-  from imported straight `Edge.Cuts` segments, but arcs, slots, cutouts, and
-  footprint-specific connector-entry conventions still require review.
-- `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks the nearest imported straight
-  board-edge segment against supported connector `fabrication`/`courtyard`
-  footprint drawing evidence when available, falling back to connector-center
-  distance otherwise. It does not prove connector body overhang, panel
+  from imported `Edge.Cuts` outline segment evidence. KiCad outline arcs and
+  circles are sampled into segments, but exact curve primitives, slots,
+  cutouts, and footprint-specific connector-entry conventions still require
+  review.
+- `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks the nearest imported board-edge
+  segment against supported connector `fabrication`/`courtyard` footprint
+  drawing evidence when available, falling back to connector-center distance
+  otherwise. It does not prove connector body overhang, panel
   alignment, shell clearance, cable insertion clearance, slots, cutout
   geometry, or full enclosure fit. Imported `fp_rect` evidence is treated as a
   rectangular extent from its transformed endpoints, not a full mechanical body
@@ -76,7 +78,7 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   measurements, not a 3D connector envelope.
 - `USB_CONNECTOR_BODY_OVERHANG_VALID` measures supported 2D connector
   `fabrication`/`courtyard` footprint drawing protrusion past the nearest
-  straight board-edge segment. It does not model 3D connector shell volume,
+  board-edge segment. It does not model 3D connector shell volume,
   panel cutouts, board slots, enclosure interference, cable insertion clearance,
   or assembly tolerances.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
@@ -119,8 +121,8 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - KiCad XML, native `.kicad_sch`, and `.kicad_pcb` layout-evidence import are
   conservative. Unsupported or ambiguous constructs fail closed instead of being
   guessed. PCB import currently extracts component center placements,
-  connected pad center/kind/shape/size/rotation/net/layer evidence, straight
-  Edge.Cuts outline segments, segment/via route geometry, copper-zone
+  connected pad center/kind/shape/size/rotation/net/layer evidence,
+  `Edge.Cuts` outline segment evidence, segment/via route geometry, copper-zone
   outlines/fill polygons, and a bounded subset of
   net-class/custom-rule route constraints for mapped nets, not arbitrary DRC
   rule semantics, filled-copper connectivity, thermal relief behavior, solder

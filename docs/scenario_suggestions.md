@@ -91,7 +91,7 @@ The command is conservative:
 - It emits non-runnable `USB_CONNECTOR_ORIENTATION_VALID` templates when the USB
   connector placement includes imported `rotation_deg` evidence. The template
   includes the measured placement rotation in `scenario.usb_connectors[]`.
-  When `board.layout.outline.segments` contains imported straight board-edge
+  When `board.layout.outline.segments` contains imported board-edge segment
   evidence, the template also reports `nearest_board_edge` evidence and
   pre-fills `expected_connector_rotation_deg` from the nearest edge's inferred
   outward normal. `max_connector_rotation_error_deg` remains `null` until an
@@ -101,7 +101,7 @@ The command is conservative:
   remain manual.
 - It emits non-runnable `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
   USB connector has finite placement evidence and
-  `board.layout.outline.segments` contains usable straight board-edge evidence.
+  `board.layout.outline.segments` contains usable board-edge segment evidence.
   The template includes `nearest_board_edge.distance_to_connector_mm` and
   `nearest_board_edge.connector_edge_reference` in
   `scenario.usb_connectors[]`. That distance uses supported
@@ -114,7 +114,7 @@ The command is conservative:
   `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
   connector/enclosure mechanical rule.
 - It emits non-runnable `USB_CONNECTOR_BODY_OVERHANG_VALID` templates when the
-  USB connector has finite placement evidence, straight board-edge outline
+  USB connector has finite placement evidence, board-edge outline segment
   evidence, and supported `fabrication`/`courtyard` footprint `fp_line`,
   `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence. The template reports
   `nearest_board_edge.connector_body_overhang_mm`,

@@ -121,7 +121,7 @@ Connector-orientation validation:
 - The scenario must declare `parameters.expected_connector_rotation_deg` and
   `parameters.max_connector_rotation_error_deg` from the board-edge or enclosure
   mechanical rule.
-- Scenario suggestions can use imported straight `Edge.Cuts` outline segments
+- Scenario suggestions can use imported `Edge.Cuts` outline segment evidence
   to report nearest-board-edge evidence and prefill the expected rotation from
   the inferred outward normal, but this is still only a starting point for the
   footprint-specific mechanical convention.
@@ -133,17 +133,18 @@ Connector-orientation validation:
 Connector edge-proximity validation:
 
 - `USB_CONNECTOR_EDGE_PROXIMITY_VALID` targets the same connector component and
-  uses `board.layout.placements` plus straight
-  `board.layout.outline.segments` evidence.
+  uses `board.layout.placements` plus
+  `board.layout.outline.segments` evidence. KiCad outline arcs and circles are
+  sampled into segments during PCB import.
 - The scenario must declare
   `parameters.max_connector_to_board_edge_distance_mm` from the connector,
   enclosure, or panel-entry mechanical rule.
 - The rule measures the nearest supported `fabrication`/`courtyard` footprint
-  drawing extent to a straight board-edge segment when imported footprint
+  drawing extent to a board-edge segment when imported footprint
   evidence is available. It falls back to connector-center distance for older
   Board IR without footprint graphics.
 - It does not prove connector body overhang, keepout, insertion clearance,
-  panel alignment, or outline features not captured as straight segments.
+  panel alignment, or outline features not captured in imported segment evidence.
 
 Connector body-overhang validation:
 

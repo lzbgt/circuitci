@@ -143,10 +143,16 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     let outline_segments = imported["board"]["layout"]["outline"]["segments"]
         .as_array()
         .unwrap();
-    assert_eq!(outline_segments.len(), 4);
+    assert_eq!(outline_segments.len(), 52);
     assert_eq!(outline_segments[0]["layer"], "Edge.Cuts");
     assert_eq!(outline_segments[0]["start"]["x_mm"], -0.4);
     assert_eq!(outline_segments[0]["end"]["x_mm"], 2.0);
+    assert_eq!(outline_segments[4]["start"]["x_mm"], 1.9);
+    assert_eq!(outline_segments[4]["start"]["y_mm"], 1.2);
+    assert_eq!(outline_segments[36]["start"]["x_mm"], 1.6);
+    assert_eq!(outline_segments[36]["start"]["y_mm"], 1.4);
+    assert!((outline_segments[51]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
+    assert!((outline_segments[51]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
     let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
         .as_array()
         .unwrap();

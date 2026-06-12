@@ -372,7 +372,7 @@ pub(super) fn usb_connector_edge_proximity_suggestion(
         },
         required_inputs: vec![
             "Fill max_connector_to_board_edge_distance_mm from the connector/enclosure mechanical rule before making this scenario runnable.".to_string(),
-            "Review the nearest_board_edge evidence; straight Edge.Cuts segments do not model arcs, cutouts, panel tabs, or connector body intrusion.".to_string(),
+            "Review the nearest_board_edge evidence; sampled Edge.Cuts segments do not retain exact curve primitives, cutouts, panel tabs, or connector body intrusion.".to_string(),
         ],
     })
 }

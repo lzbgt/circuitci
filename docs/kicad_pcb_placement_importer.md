@@ -61,9 +61,10 @@ evidence includes:
 - scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
-The importer also reads KiCad `gr_line`, `net`, `segment`, `via`, and `zone`
-entries. Straight board-edge `gr_line` items on `Edge.Cuts` are written under
-`board.layout.outline.segments`. Routed geometry is written under
+The importer also reads KiCad `gr_line`, `gr_circle`, `gr_arc`, `net`,
+`segment`, `via`, and `zone` entries. Board-edge graphics on `Edge.Cuts` are
+written under `board.layout.outline.segments`; `gr_circle` and `gr_arc`
+graphics are sampled into bounded straight segments. Routed geometry is written under
 `board.layout.routes`; copper-zone outlines and saved `filled_polygon` geometry
 are written under `board.layout.zones` only when the PCB net can be matched to
 an existing Board IR net. The importer does not create new schematic nets from
@@ -90,7 +91,8 @@ Imported zone evidence includes:
 
 Imported outline evidence includes:
 
-- straight `Edge.Cuts` segment start/end points in millimeters,
+- `Edge.Cuts` segment start/end points in millimeters, including sampled
+  segments from curved KiCad outline graphics,
 - source layer, currently `Edge.Cuts`.
 
 When the enriched project is written to a different directory, relative
@@ -103,11 +105,12 @@ route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts matched footprint drawing
 items and connected pad center, kind, shape, size, rotation, scalar drill, net,
-and layer evidence. It does not solve arcs or non-line board edges, exact
+and layer evidence. It samples curved board-outline graphics into bounded
+segments; it does not retain exact outline curve primitives, solve exact
 rotated-body polygons, filled-copper island connectivity, pad-to-zone
 connectivity, thermal relief behavior, solder-mask expansion, shield bonding,
-return paths, impedance calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP
-alignment.
+return paths, impedance calculations, arbitrary DRC rule semantics, or
+pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
@@ -115,7 +118,8 @@ Fixture coverage:
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, footprint drawing evidence, connected pad geometry, routed USB
-net geometry, copper-zone outline/fill evidence, and routing-rule evidence, then proves
+PCB placements, footprint drawing evidence, connected pad geometry, sampled
+straight/curved board-outline evidence, routed USB net geometry, copper-zone
+outline/fill evidence, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.

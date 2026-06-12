@@ -402,14 +402,14 @@ Connector-orientation algorithm:
    `parameters.max_connector_rotation_error_deg`.
 
 `suggest-scenarios` can prefill `expected_connector_rotation_deg` from imported
-straight `board.layout.outline.segments` evidence by finding the nearest board
+`board.layout.outline.segments` evidence by finding the nearest board
 edge and using its outward normal. That suggestion is still non-runnable until a
 layout-specific tolerance is supplied, and the inferred direction must be
 checked against the footprint's connector-entry rotation convention.
 
 USB connector edge proximity uses `USB_CONNECTOR_EDGE_PROXIMITY_VALID` when
-the Board IR includes connector placement evidence and straight board-edge
-outline segments.
+the Board IR includes connector placement evidence and board-edge outline
+segment evidence.
 
 ```yaml
 scenarios:
@@ -427,8 +427,9 @@ Connector-to-board-edge algorithm:
 
 1. Resolve `target.component` and its `usb_connector` metadata.
 2. Require finite placement coordinates for the connector.
-3. Require at least one usable straight segment under
-   `board.layout.outline.segments`.
+3. Require at least one usable segment under
+   `board.layout.outline.segments`. KiCad curved Edge.Cuts graphics are
+   imported as sampled segments.
 4. If `board.layout.footprints.<component>` contains transformed
    `fabrication` or `courtyard` `fp_line`, `fp_rect`, `fp_poly`,
    `fp_circle`, or `fp_arc` evidence, measure the nearest supported footprint
@@ -439,7 +440,7 @@ Connector-to-board-edge algorithm:
    `parameters.max_connector_to_board_edge_distance_mm`.
 
 USB connector body overhang uses `USB_CONNECTOR_BODY_OVERHANG_VALID` when
-the Board IR includes straight board-edge outline evidence and imported
+the Board IR includes board-edge outline segment evidence and imported
 connector `fabrication` or `courtyard` footprint graphics.
 
 ```yaml
@@ -457,8 +458,9 @@ scenarios:
 Connector-body overhang algorithm:
 
 1. Resolve `target.component` and its `usb_connector` metadata.
-2. Require finite connector placement evidence and at least one usable straight
-   segment under `board.layout.outline.segments`.
+2. Require finite connector placement evidence and at least one usable segment
+   under `board.layout.outline.segments`. KiCad curved Edge.Cuts graphics are
+   imported as sampled segments.
 3. Require imported connector footprint `fabrication` or `courtyard`
    `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence.
 4. Find the nearest supported body/courtyard graphic to the board edge.

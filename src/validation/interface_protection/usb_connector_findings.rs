@@ -412,7 +412,7 @@ pub(super) fn usb_edge_proximity_metadata_finding(
     finding.limit.insert(field.to_string(), json!(value));
     finding.suggested_fixes = vec![
         "Import PCB board outline evidence with import-kicad-pcb before declaring USB_CONNECTOR_EDGE_PROXIMITY_VALID.".to_string(),
-        "Use straight Edge.Cuts board-edge evidence plus connector placement evidence to set max_connector_to_board_edge_distance_mm.".to_string(),
+        "Use Edge.Cuts board-edge segment evidence plus connector placement evidence to set max_connector_to_board_edge_distance_mm.".to_string(),
     ];
     finding
 }
