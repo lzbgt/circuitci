@@ -1,0 +1,227 @@
+component_id: vendor.silabs.cp2102n
+version: 0.1.0
+category: comms
+ports:
+  VREGIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.25
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.014
+  VIO:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.71
+      operating_voltage_max_V: 3.6
+  GND:
+    kind: electrical_ground
+    required: true
+  D+:
+    kind: passive
+    required: false
+  D-:
+    kind: passive
+    required: false
+  VBUS:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      injection_current_limit_A: 0.00015
+  RSTb:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vil_max_V: 0.6
+  TXD:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.6
+      source_impedance_ohm: 100
+  RXD:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.7
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.00015
+  RTS:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.6
+      source_impedance_ohm: 100
+  DTR:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.6
+      source_impedance_ohm: 100
+  CTS:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.7
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.00015
+  DSR:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.7
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.00015
+  DCD:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.7
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.00015
+  RI:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.7
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.00015
+power_conversion:
+  input_pin: VREGIN
+  output_pin: VDD
+  dropout_voltage_V: 0.8
+  max_output_current_A: 0.1
+datasheet:
+  manufacturer: Silicon Labs
+  part_number: CP2102N
+  package: QFN24
+  polarity: usb_uart_bridge
+  pinout:
+    VIO: VIO
+    VDD: VDD
+    VREGIN: VREGIN
+    VBUS: VBUS
+    RSTb: RSTb
+    D+: D+
+    D-: D-
+    TXD: TXD
+    RXD: RXD
+    RTS: RTS
+    CTS: CTS
+    DTR: DTR
+    DSR: DSR
+    DCD: DCD
+    RI: RI
+    GND: GND
+  absolute_maximum_ratings:
+    VDD:
+      conditions: Voltage on VDD with respect to GND.
+      value: 4.2
+      unit: V
+    VIO:
+      conditions: Voltage on VIO with respect to GND.
+      value: 4.2
+      unit: V
+    VREGIN:
+      conditions: Voltage on VREGIN with respect to GND.
+      value: 5.8
+      unit: V
+    non_usb_io_when_vio_gt_3v3:
+      conditions: Voltage on UART pins, GPIO, VBUS, RSTb, or any other non-power non-USB pin when VIO > 3.3 V.
+      value: 5.8
+      unit: V
+    non_usb_io_when_vio_lt_3v3:
+      conditions: Voltage on UART pins, GPIO, VBUS, RSTb, or any other non-power non-USB pin when VIO < 3.3 V; limit is VIO + 2.5 V.
+      value: 2.5
+      unit: V
+  electrical_characteristics:
+    VDD:
+      min: 3.0
+      max: 3.6
+      unit: V
+    VIO:
+      min: 1.71
+      max: 3.6
+      unit: V
+      conditions: VIO must be less than or equal to VDD; static maximum shown for schema-compatible board screening.
+    VREGIN:
+      min: 3.0
+      max: 5.25
+      unit: V
+    IDD_normal_115200:
+      typ: 9.5
+      unit: mA
+    IDD_normal_3Mbaud:
+      typ: 13.7
+      unit: mA
+    VREGOUT:
+      conditions: VREGIN >= 4.1 V, output current 1 mA to 100 mA
+      min: 3.1
+      typ: 3.3
+      max: 3.6
+      unit: V
+    IREGOUT:
+      max: 100
+      unit: mA
+    VDROPOUT:
+      conditions: output current 100 mA
+      max: 0.8
+      unit: V
+    GPIO_VOH_high_drive:
+      conditions: IOH = -7 mA, VIO >= 3.0 V
+      min: 2.6
+      unit: V
+    GPIO_VIL:
+      max: 0.6
+      unit: V
+    GPIO_VIH:
+      conditions: VIO = 3.3 V board-level threshold approximation from VIH >= VIO - 0.6 V.
+      min: 2.7
+      unit: V
+    GPIO_leakage_above_vio:
+      conditions: VIO < VIN < VIO + 2.0 V
+      typ: 5
+      max: 150
+      unit: uA
+  device_parameters:
+    integrated_usb_uart:
+      conditions: Integrated USB 2.0 full-speed function controller, USB transceiver, oscillator, and UART.
+      unit: note
+      simulation_relevance: Board validation should treat the bridge as a functional black box, not transistor-level USB logic.
+    reset_pullup:
+      conditions: Datasheet recommends a 1 kOhm pull-up on RSTb to VIO, or to VDD when VIO is tied to VDD.
+      unit: note
+      simulation_relevance: Supports reset-net review when the bridge reset pin is wired into board reset circuits.
+    uart_modem_pins:
+      conditions: UART includes TXD/RXD plus RTS, CTS, DSR, DTR, DCD, and RI control signals.
+      unit: note
+      simulation_relevance: Supports serial bootloader and host-controlled reset/boot strap validation.
+  documents:
+    - title: CP2102N data sheet
+      path: docs/research/datasheets/silabs/cp2102n-datasheet.pdf
+      source_url: https://www.silabs.com/documents/public/data-sheets/cp2102n-datasheet.pdf
+      sha256: 32fbab0ba17f394ab76fbbd8129bddad228c1c486a1693d96ea5905936e437fe
+      retrieved: "2026-06-12"
+rules:
+  - UART_BOOTLOADER_SYNC
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - board_connectivity
+    - uart_bootloader_sync
+    - power_tree_screening
+    - regulator_static_screening
+    - preliminary_gpio_backdrive_screening
+  not_valid_for:
+    - full_usb_phy
+    - final_io_injection_current_signoff
+    - regulator_transient_or_stability_signoff
+    - transistor_level_control_line_behavior

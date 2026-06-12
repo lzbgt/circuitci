@@ -1,0 +1,48 @@
+project:
+  name: bad_silabs_cp2102n_vdd_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/silabs
+
+board:
+  components:
+    U6:
+      model: vendor.silabs.cp2102n
+      part_number: CP2102N-A02-GQFN24
+      power_domains:
+        VREGIN: usb_5v
+        VDD: cp2102n_vdd_bad_5v
+        VIO: rail_3v3
+      pins:
+        VREGIN: usb_5v
+        VDD: cp2102n_vdd_bad_5v
+        VIO: rail_3v3
+        GND: gnd
+        TXD: uart_tx
+        RXD: uart_rx
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    cp2102n_vdd_bad_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    uart_tx:
+      kind: digital_or_analog
+    uart_rx:
+      kind: digital_or_analog
+
+scenarios:
+  - name: cp2102n_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
