@@ -14,8 +14,12 @@ without turning the validator into a single large file.
   route length, component-to-route projection, route graph distance, width
   deltas, and differential-pair gap evidence.
 - `src/validation/interface_protection/usb_route/findings.rs` owns report
-  construction for USB route and return-path failures.
+  construction for USB data-route and return-path failures.
+- `src/validation/interface_protection/usb_route/vbus_findings.rs` owns report
+  construction for `USB_VBUS_ROUTE_VALID` failures, including placement-based
+  and pad-aware VBUS protection route evidence.
 
 When adding a new USB layout check, keep route/VBUS extraction in
 `usb_route.rs`, return-path policy in `return_path.rs`, pure geometry in
-`geometry.rs`, and user-facing finding text/evidence keys in `findings.rs`.
+`geometry.rs`, and user-facing finding text/evidence keys in the matching
+findings module.
