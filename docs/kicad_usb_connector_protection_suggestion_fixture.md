@@ -104,7 +104,11 @@ also strips the J1 `CircuitCI_EntryDirectionOffsetDeg` and
 executable validation falls back to `project_checks.yaml` `kicad_mapping`
 metadata, reporting `entry_direction_source: kicad_mapping_offset`,
 `entry_aperture_source: kicad_mapping_aperture`, and the mapped `1.2 mm`
-aperture width.
+aperture width. The same regression rewrites the mapping fallback offset to
+`10.0 deg` in a temporary checks file and proves executable validation reports
+`entry_direction_deg: 10.0`, so the mapping offset changes the checked corridor
+direction rather than only annotating the report. With that shifted direction,
+the nearest entry-corridor obstruction changes to `UVBUS`.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

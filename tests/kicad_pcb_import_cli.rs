@@ -1198,6 +1198,75 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
         1.0
     );
     assert_report_schema_valid(&mapping_report);
+
+    let mapping_project_text = std::fs::read_to_string(
+        "examples/import_kicad_usb_connector_protection_suggestions/project_checks.yaml",
+    )
+    .unwrap();
+    assert_eq!(mapping_project_text.matches("offset_deg: 0.0").count(), 1);
+    let nonzero_mapping_project_checks = dir
+        .path()
+        .join("project_checks_mapping_entry_direction_offset.yaml");
+    std::fs::write(
+        &nonzero_mapping_project_checks,
+        mapping_project_text.replace("offset_deg: 0.0", "offset_deg: 10.0"),
+    )
+    .unwrap();
+    let mapping_direction_project = dir
+        .path()
+        .join("usb_connector_mapping_direction_checks.yaml");
+    import_kicad_pcb(
+        stripped_pcb.to_str().unwrap(),
+        nonzero_mapping_project_checks.to_str().unwrap(),
+        &mapping_direction_project,
+    );
+    assert_yaml_file_valid(&mapping_direction_project, &validator);
+
+    let mapping_direction_report_dir = dir.path().join("mapping_direction_checks.report");
+    let mapping_direction_validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            mapping_direction_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            mapping_direction_report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(mapping_direction_validate_status.success());
+    let mapping_direction_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(mapping_direction_report_dir.join("report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(mapping_direction_report["result"], "fail");
+    let mapping_direction_entry_failure = mapping_direction_report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding with nonzero mapping direction");
+    assert_eq!(
+        mapping_direction_entry_failure["measured"]["entry_direction_source"],
+        "kicad_mapping_offset"
+    );
+    assert_eq!(
+        mapping_direction_entry_failure["measured"]["entry_direction_offset_deg"],
+        10.0
+    );
+    assert_eq!(
+        mapping_direction_entry_failure["measured"]["entry_direction_deg"],
+        10.0
+    );
+    assert_eq!(
+        mapping_direction_entry_failure["measured"]["entry_aperture_source"],
+        "kicad_mapping_aperture"
+    );
+    assert_eq!(
+        mapping_direction_entry_failure["measured"]["obstructing_component"],
+        "UVBUS"
+    );
+    assert_report_schema_valid(&mapping_direction_report);
     assert_report_schema_valid(&report);
 }
 
