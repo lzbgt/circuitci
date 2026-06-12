@@ -568,6 +568,76 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
 }
 
 #[test]
+fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let enriched_project = dir.path().join("usb_connector_checks.project.yaml");
+    import_kicad_pcb(
+        "examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb",
+        "examples/import_kicad_usb_connector_protection_suggestions/project_checks.yaml",
+        &enriched_project,
+    );
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&enriched_project, &validator);
+
+    let report_dir = dir.path().join("usb_connector_checks.report");
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            enriched_project.to_str().unwrap(),
+            "--profile",
+            "iot_basic_v0",
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_COMPONENT_CLEARANCE_VALID")
+        .expect("USB connector component-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["nearby_component"], "UESD");
+    assert_eq!(
+        failure["measured"]["connector_clearance_reference"],
+        "footprint_polygon"
+    );
+    assert_eq!(
+        failure["measured"]["connector_footprint_graphic_layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        failure["measured"]["connector_footprint_graphic_kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        failure["measured"]["nearby_component_clearance_reference"],
+        "placement_center"
+    );
+    let clearance = failure["measured"]["connector_to_component_clearance_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((clearance - 0.6).abs() < 1e-12);
+    assert_eq!(
+        failure["limit"]["min_connector_to_component_clearance_mm"],
+        0.7
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

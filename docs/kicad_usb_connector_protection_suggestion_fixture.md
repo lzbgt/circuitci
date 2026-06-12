@@ -60,6 +60,14 @@ The fixture also imports one `fp_circle` and one `fp_arc` so
 for mechanical review. Placement-center distance is still available as the
 fallback behavior when no supported footprint drawing evidence exists.
 
+`project_checks.yaml` in the same fixture directory exercises the imported PCB
+evidence through `validate`, not just through suggestions. After
+`import-kicad-pcb` enriches that project, its
+`USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` scenario uses the imported `J1`
+fabrication polygon and the imported `UESD` placement center. The executable
+check reports the measured clearance as `0.6 mm` and fails against the fixture's
+`0.7 mm` minimum connector-to-component clearance limit.
+
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under
 `board.layout.constraints.net_rules`, and the USB route suggestion pre-fills:

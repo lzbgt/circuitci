@@ -1,0 +1,55 @@
+project:
+  name: import_kicad_usb_connector_protection_checks
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor/ti/protection
+
+board:
+  components:
+    J1:
+      model: generic.connector.usb2
+      part_number: USB2_CONNECTOR
+      pins:
+        VBUS: net_usb_vbus
+        "D+": net_usb_dp
+        "D-": net_usb_dm
+        GND: gnd
+        SHIELD: gnd
+    UESD:
+      model: vendor.ti.tpd2eusb30
+      part_number: TPD2EUSB30
+      pins:
+        "D1+": net_usb_dp
+        "D1-": net_usb_dm
+        GND: gnd
+    UVBUS:
+      model: generic.protection.vbus_esd_basic
+      part_number: VBUS_ESD
+      pins:
+        VBUS: net_usb_vbus
+        GND: gnd
+  nets:
+    net_usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    net_usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    net_usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: usb_connector_component_clearance_from_imported_pcb
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+    target:
+      component: J1
+    parameters:
+      min_connector_to_component_clearance_mm: 0.7
