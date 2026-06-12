@@ -156,6 +156,10 @@ available and falls back to component placement-center distance otherwise.
 protrusion guard from the same board-outline and footprint drawing evidence, so
 connector overhang can be checked against a connector/enclosure mechanical
 limit instead of being conflated with connector-to-edge proximity.
+`USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` adds a static connector keepout guard
+from supported connector footprint graphics and other component footprint or
+placement evidence, so nearby component intrusion can be screened separately
+from edge proximity and overhang.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

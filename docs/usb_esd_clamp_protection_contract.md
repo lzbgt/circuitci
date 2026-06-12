@@ -158,6 +158,19 @@ Connector body-overhang validation:
 - It does not prove 3D shell volume, panel cutouts, board slots, arcs,
   enclosure interference, or cable insertion clearance.
 
+Connector component-clearance validation:
+
+- `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` targets the same connector
+  component and uses supported connector `fabrication`/`courtyard` footprint
+  drawing evidence plus other component footprint or placement evidence.
+- The scenario must declare
+  `parameters.min_connector_to_component_clearance_mm` from connector keepout,
+  cable insertion, enclosure, panel, or assembly drawings.
+- The rule measures 2D clearance to every other component with usable layout
+  evidence and fails components below the declared minimum.
+- It does not prove 3D shell volume, cable sweep, panel/enclosure interference,
+  or assembly stack-up clearance.
+
 Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses

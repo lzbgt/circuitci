@@ -7,6 +7,7 @@ use crate::reports::Finding;
 use serde_json::json;
 
 mod usb_connector;
+mod usb_connector_clearance;
 mod usb_connector_findings;
 mod usb_route;
 
@@ -59,6 +60,14 @@ pub(super) fn validate_usb_connector_body_overhang(
     findings: &mut Vec<Finding>,
 ) {
     usb_connector::validate_usb_connector_body_overhang(bound, scenario, findings);
+}
+
+pub(super) fn validate_usb_connector_component_clearance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    usb_connector_clearance::validate_usb_connector_component_clearance(bound, scenario, findings);
 }
 
 pub(super) fn validate_interface_protection(

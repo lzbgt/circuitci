@@ -40,6 +40,8 @@ pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMEN
 pub(super) const USB_CONNECTOR_ORIENTATION_VALID: &str = "USB_CONNECTOR_ORIENTATION_VALID";
 pub(super) const USB_CONNECTOR_EDGE_PROXIMITY_VALID: &str = "USB_CONNECTOR_EDGE_PROXIMITY_VALID";
 pub(super) const USB_CONNECTOR_BODY_OVERHANG_VALID: &str = "USB_CONNECTOR_BODY_OVERHANG_VALID";
+pub(super) const USB_CONNECTOR_COMPONENT_CLEARANCE_VALID: &str =
+    "USB_CONNECTOR_COMPONENT_CLEARANCE_VALID";
 pub(super) const USB_ROUTE_GEOMETRY_VALID: &str = "USB_ROUTE_GEOMETRY_VALID";
 pub(super) const USB_VBUS_ROUTE_VALID: &str = "USB_VBUS_ROUTE_VALID";
 pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
@@ -172,6 +174,15 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         &mut findings,
                     )
                 }
+                USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+                    if scenario.scenario_type == "interface_protection" =>
+                {
+                    interface_protection::validate_usb_connector_component_clearance(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 USB_ROUTE_GEOMETRY_VALID if scenario.scenario_type == "interface_protection" => {
                     interface_protection::validate_usb_route_geometry(
                         bound,
@@ -276,6 +287,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | USB_CONNECTOR_ORIENTATION_VALID
                 | USB_CONNECTOR_EDGE_PROXIMITY_VALID
                 | USB_CONNECTOR_BODY_OVERHANG_VALID
+                | USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
                 | USB_ROUTE_GEOMETRY_VALID
                 | USB_VBUS_ROUTE_VALID
                 | USB_RETURN_PATH_VALID

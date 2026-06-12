@@ -1276,7 +1276,7 @@ fn update_body_overhang_candidate<'a>(
     }
 }
 
-fn mechanical_footprint_kind(kind: &str) -> bool {
+pub(super) fn mechanical_footprint_kind(kind: &str) -> bool {
     matches!(kind, "fabrication" | "courtyard")
 }
 
@@ -1291,7 +1291,7 @@ fn outline_segment_is_entry_candidate(segment: &LayoutSegment) -> bool {
     outline_segment_is_usable(segment) && segment.boundary_role.as_deref() != Some("cutout")
 }
 
-fn point_is_finite(point: &LayoutPoint) -> bool {
+pub(super) fn point_is_finite(point: &LayoutPoint) -> bool {
     point.x_mm.is_finite() && point.y_mm.is_finite()
 }
 
@@ -1347,7 +1347,7 @@ fn footprint_rectangle_to_edge_distance_mm(
     )
 }
 
-fn rectangle_corners(rectangle: &LayoutFootprintRectangle) -> Option<[LayoutPoint; 4]> {
+pub(super) fn rectangle_corners(rectangle: &LayoutFootprintRectangle) -> Option<[LayoutPoint; 4]> {
     if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
         return None;
     }
@@ -1388,7 +1388,7 @@ fn footprint_polygon_to_edge_distance_mm(
     closed_polyline_to_edge_distance_mm(&polygon.points, edge)
 }
 
-fn footprint_circle_points(circle: &LayoutFootprintCircle) -> Option<Vec<LayoutPoint>> {
+pub(super) fn footprint_circle_points(circle: &LayoutFootprintCircle) -> Option<Vec<LayoutPoint>> {
     if !point_is_finite(&circle.center) || !point_is_finite(&circle.end) {
         return None;
     }
@@ -1410,7 +1410,7 @@ fn footprint_circle_points(circle: &LayoutFootprintCircle) -> Option<Vec<LayoutP
     )
 }
 
-fn footprint_arc_points(arc: &LayoutFootprintArc) -> Option<Vec<LayoutPoint>> {
+pub(super) fn footprint_arc_points(arc: &LayoutFootprintArc) -> Option<Vec<LayoutPoint>> {
     if !point_is_finite(&arc.start) || !point_is_finite(&arc.mid) || !point_is_finite(&arc.end) {
         return None;
     }
@@ -1507,7 +1507,7 @@ fn open_polyline_to_edge_distance_mm(points: &[LayoutPoint], edge: &LayoutSegmen
     )
 }
 
-fn segment_length_mm(start: &LayoutPoint, end: &LayoutPoint) -> f64 {
+pub(super) fn segment_length_mm(start: &LayoutPoint, end: &LayoutPoint) -> f64 {
     (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm)
 }
 
@@ -1535,7 +1535,7 @@ fn point_body_overhang_mm(
     (dx * normal_x + dy * normal_y).max(0.0)
 }
 
-fn segment_to_segment_distance_mm(
+pub(super) fn segment_to_segment_distance_mm(
     a_start: &LayoutPoint,
     a_end: &LayoutPoint,
     b_start: &LayoutPoint,
@@ -1615,7 +1615,14 @@ fn point_on_segment(point: &LayoutPoint, start: &LayoutPoint, end: &LayoutPoint)
         && point.y_mm <= start.y_mm.max(end.y_mm) + f64::EPSILON
 }
 
-fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+pub(super) fn point_to_segment_distance_mm(
+    px: f64,
+    py: f64,
+    ax: f64,
+    ay: f64,
+    bx: f64,
+    by: f64,
+) -> f64 {
     let dx = bx - ax;
     let dy = by - ay;
     let length_sq = dx * dx + dy * dy;

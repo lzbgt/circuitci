@@ -358,6 +358,24 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .as_f64()
         .unwrap();
     assert!((overhang - 0.4).abs() < 1e-12);
+    let component_clearance = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_component_clearance_j1")
+        .expect("USB connector component-clearance suggestion");
+    assert_eq!(
+        component_clearance["scenario"]["checks"][0],
+        "USB_CONNECTOR_COMPONENT_CLEARANCE_VALID"
+    );
+    assert!(
+        component_clearance["scenario"]["parameters"]["min_connector_to_component_clearance_mm"]
+            .is_null()
+    );
+    assert_eq!(
+        component_clearance["scenario"]["usb_connectors"][0]["footprint"]["polygons"][0]["kind"],
+        "fabrication"
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -602,7 +620,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 12);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 13);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -637,6 +655,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_connector_body_overhang_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_connector_component_clearance_j1")
     );
     assert!(
         suggestions["suggestions"]

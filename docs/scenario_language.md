@@ -475,6 +475,40 @@ connector shell volume, panel cutouts, arcs, enclosure interference, or cable
 insertion clearance. Curved footprint graphics are sampled into bounded
 polylines for distance and overhang measurements.
 
+USB connector component clearance uses
+`USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` when the Board IR includes connector
+`fabrication` or `courtyard` footprint graphics and nearby component placement
+or footprint evidence.
+
+```yaml
+scenarios:
+  - name: usb_connector_component_clearance
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+    target:
+      component: J1
+    parameters:
+      min_connector_to_component_clearance_mm: 0.5
+```
+
+Connector component-clearance algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Require imported connector footprint `fabrication` or `courtyard`
+   `fp_line`, `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence.
+3. Convert supported connector and nearby component footprint graphics into 2D
+   line segments; when a nearby component has no usable footprint graphics,
+   fall back to its finite placement center.
+4. Measure the minimum 2D clearance between the connector evidence and each
+   other component's evidence.
+5. Require every measured clearance to be at least
+   `parameters.min_connector_to_component_clearance_mm`.
+
+This is a static 2D component keepout screen. It does not prove 3D connector
+shell clearance, cable insertion clearance, panel/enclosure clearance, or
+assembly stack-up tolerances.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the

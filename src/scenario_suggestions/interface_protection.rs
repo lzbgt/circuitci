@@ -21,6 +21,8 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
         usb::existing_usb_connector_edge_proximity_checks(bound.project);
     let existing_usb_body_overhang =
         usb::existing_usb_connector_body_overhang_checks(bound.project);
+    let existing_usb_component_clearance =
+        usb::existing_usb_connector_component_clearance_checks(bound.project);
     let existing_usb_routes = usb::existing_usb_route_geometry_checks(bound.project);
     let existing_usb_vbus_routes = usb::existing_usb_vbus_route_checks(bound.project);
     let existing_usb_return_paths = usb::existing_usb_return_path_checks(bound.project);
@@ -191,6 +193,17 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
             && !existing_usb_body_overhang.contains(component_id)
             && let Some(suggestion) =
                 usb::usb_connector_body_overhang_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
+        if model.usb_connector.is_some()
+            && !existing_usb_component_clearance.contains(component_id)
+            && let Some(suggestion) = usb::usb_connector_component_clearance_suggestion(
+                bound,
+                component_id,
+                component,
+                model,
+            )
         {
             suggestions.push(suggestion);
         }

@@ -7,11 +7,14 @@ use super::usb_connector::{
     ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbBodyOverhangEvidence,
     UsbConnectorSignal, UsbPlacementDistanceEvidence,
 };
+use super::usb_connector_clearance::{
+    UsbComponentClearanceEvidence, UsbComponentClearanceReference,
+};
 use crate::board_ir::ComponentPlacement;
 use crate::validation::{
-    USB_CONNECTOR_BODY_OVERHANG_VALID, USB_CONNECTOR_EDGE_PROXIMITY_VALID,
-    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID,
+    USB_CONNECTOR_BODY_OVERHANG_VALID, USB_CONNECTOR_COMPONENT_CLEARANCE_VALID,
+    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID,
 };
 
 pub(super) fn usb_connector_metadata_finding(
@@ -583,6 +586,87 @@ pub(super) fn usb_body_overhang_finding(
         "If this connector intentionally protrudes beyond the PCB edge, set max_connector_body_overhang_mm from the connector, enclosure, and assembly drawing and rerun validation.".to_string(),
     ];
     finding
+}
+
+pub(super) fn usb_component_clearance_metadata_finding(
+    scenario: &crate::board_ir::Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_COMPONENT_CLEARANCE_VALID,
+        &scenario.name,
+        message,
+    );
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import connector and nearby component fabrication/courtyard footprint evidence with import-kicad-pcb before declaring USB_CONNECTOR_COMPONENT_CLEARANCE_VALID.".to_string(),
+        "Use explicit mechanical keepout or assembly drawing limits to set min_connector_to_component_clearance_mm.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_component_clearance_finding(
+    evidence: UsbComponentClearanceEvidence<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_COMPONENT_CLEARANCE_VALID,
+        &evidence.scenario.name,
+        format!(
+            "USB connector {} clearance to component {} is {:.3} mm, below required {:.3} mm.",
+            evidence.connector_id,
+            evidence.other_component_id,
+            evidence.clearance_mm,
+            evidence.min_clearance_mm
+        ),
+    );
+    finding.component = Some(evidence.connector_id.to_string());
+    finding.measured.insert(
+        "nearby_component".to_string(),
+        json!(evidence.other_component_id),
+    );
+    finding.measured.insert(
+        "connector_to_component_clearance_mm".to_string(),
+        json!(evidence.clearance_mm),
+    );
+    add_clearance_reference(&mut finding, "connector", evidence.connector_reference);
+    add_clearance_reference(&mut finding, "nearby_component", evidence.other_reference);
+    finding.limit.insert(
+        "min_connector_to_component_clearance_mm".to_string(),
+        json!(evidence.min_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Move component {} away from USB connector {} or revise the connector keepout rule from mechanical evidence.",
+            evidence.other_component_id, evidence.connector_id
+        ),
+        "Use PCB footprint courtyard/fabrication data and enclosure/cable insertion review before treating this static 2D clearance check as full mechanical sign-off.".to_string(),
+    ];
+    finding
+}
+
+fn add_clearance_reference(
+    finding: &mut Finding,
+    prefix: &str,
+    reference: UsbComponentClearanceReference<'_>,
+) {
+    finding.measured.insert(
+        format!("{prefix}_clearance_reference"),
+        json!(reference.label()),
+    );
+    if let Some(layer) = reference.footprint_layer() {
+        finding
+            .measured
+            .insert(format!("{prefix}_footprint_graphic_layer"), json!(layer));
+    }
+    if let Some(kind) = reference.footprint_kind() {
+        finding
+            .measured
+            .insert(format!("{prefix}_footprint_graphic_kind"), json!(kind));
+    }
 }
 
 fn net_kind_name(kind: &NetKind) -> &'static str {

@@ -235,6 +235,18 @@ optional `board_edge_contour_index`, optional `board_edge_boundary_role`,
 `edge_angle_deg`, and `outward_normal_deg`. Stable limit keys include
 `max_connector_body_overhang_mm`.
 
+`USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata with
+connector `fabrication` or `courtyard` footprint graphics and other component
+placement or footprint evidence. Stable measured keys include
+`nearby_component`, `connector_to_component_clearance_mm`,
+`connector_clearance_reference`, `nearby_component_clearance_reference`,
+optional `connector_footprint_graphic_layer`, optional
+`connector_footprint_graphic_kind`, optional
+`nearby_component_footprint_graphic_layer`, and optional
+`nearby_component_footprint_graphic_kind`. Stable limit keys include
+`min_connector_to_component_clearance_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

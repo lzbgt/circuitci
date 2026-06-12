@@ -128,6 +128,12 @@ The command is conservative:
   `footprint_graphic_kind` in `scenario.usb_connectors[]`. It leaves
   `max_connector_body_overhang_mm` as `null` until an agent fills the
   connector, enclosure, panel, or assembly mechanical limit.
+- It emits non-runnable `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` templates
+  when the USB connector has supported footprint evidence and at least one
+  other component has placement or footprint evidence. The template includes
+  the connector footprint evidence in `scenario.usb_connectors[]` and leaves
+  `min_connector_to_component_clearance_mm` as `null` until an agent fills the
+  connector keepout, cable insertion, enclosure, or assembly clearance rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

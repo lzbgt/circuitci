@@ -429,6 +429,49 @@ fn usb_connector_body_overhang_reports_circle_reference() {
 }
 
 #[test]
+fn usb_connector_component_clearance_passes_when_neighbor_is_clear() {
+    let report = run_validation("examples/good_usb_connector_component_clearance/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_component_clearance_reports_nearby_component() {
+    let report = run_validation("examples/bad_usb_connector_component_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_COMPONENT_CLEARANCE_VALID")
+        .expect("USB connector component-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["nearby_component"], "R1");
+    let clearance = failure["measured"]["connector_to_component_clearance_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((clearance - 0.3).abs() < 1e-12);
+    assert_eq!(
+        failure["measured"]["connector_clearance_reference"],
+        "footprint_polygon"
+    );
+    assert_eq!(
+        failure["measured"]["nearby_component_clearance_reference"],
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        failure["measured"]["nearby_component_footprint_graphic_kind"],
+        "courtyard"
+    );
+    assert_eq!(
+        failure["limit"]["min_connector_to_component_clearance_mm"],
+        0.5
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

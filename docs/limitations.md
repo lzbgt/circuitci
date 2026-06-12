@@ -83,6 +83,12 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   board-edge segment. It does not model 3D connector shell volume,
   panel cutouts, board slots, enclosure interference, cable insertion clearance,
   or assembly tolerances.
+- `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` measures supported 2D connector
+  `fabrication`/`courtyard` footprint evidence against other component
+  footprint evidence, falling back to other component placement centers only
+  when no usable footprint graphics are present. It is a static keepout screen;
+  it does not prove 3D connector shell, cable insertion, panel, enclosure, or
+  assembly stack-up clearance.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and
