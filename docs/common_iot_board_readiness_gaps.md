@@ -93,11 +93,13 @@ Executable slices: `circuitci suggest-scenarios` now emits runnable
 `POWER_TREE_VALID` scenarios for projects with declared power nets and
 non-runnable templates for reset release, boot straps, UART bootloader sync, and
 first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
-present but observations still need real evidence. It does not invent timing,
-strap states, protocol events, GPIO pin-state observations, protection-path
-resistance, or analog assertions. Broader automatic recognition for level
-shifters, protection devices, chargers, oscillators, and load switches remains a
-component-pack and scenario-generation gap.
+present but observations still need real evidence. It also emits
+interface-protection review templates when component models declare explicit
+`signal_conditioning.channels`. It does not invent timing, strap states,
+protocol events, GPIO pin-state observations, protection-path resistance,
+datasheet isolation behavior, or analog assertions. Broader automatic
+recognition for chargers, oscillators, load switches, and device-specific
+protection behavior remains a component-pack and scenario-generation gap.
 
 ## 5. Layout-Dependent Physics
 

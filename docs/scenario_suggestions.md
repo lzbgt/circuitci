@@ -25,6 +25,12 @@ The command is conservative:
 - GPIO backdrive templates are marked `runnable: false` until the agent confirms
   the driver can be high while the victim rail is unpowered and fills the actual
   protection-path series resistance.
+- It emits interface-protection templates for component models that declare
+  `signal_conditioning.channels`, such as level shifters, protection devices,
+  series resistors, or bus switches.
+- Interface-protection templates are marked `runnable: false`; they are review
+  prompts for datasheet direction, voltage-domain, enable/OE, and
+  unpowered-isolation evidence.
 - It emits boot-strap templates when model boot modes declare required straps
   and the strap pins are connected.
 - It emits UART bootloader templates when model bootloader metadata declares a
@@ -115,6 +121,38 @@ suggestions:
     required_inputs:
       - Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.
       - Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.
+  - id: interface_protection_u3_ch1
+    kind: interface_protection
+    confidence: medium
+    runnable: false
+    reason: Component U3 model declares signal-conditioning channel ch1, but no interface protection review scenario covers it.
+    scenario:
+      name: u3_ch1_interface_protection
+      type: interface_protection
+      checks:
+        - INTERFACE_PROTECTION_REVIEW
+      target:
+        component: U3
+      conditioning:
+        component: U3
+        channel: ch1
+        kind: level_shifter
+        side_a:
+          pin: A1
+          net: mcu_rx_shifted
+          supply_pin: VCCA
+          supply_net: mcu_3v3
+        side_b:
+          pin: B1
+          net: usb_uart_tx
+          supply_pin: VCCB
+          supply_net: usb_uart_3v3
+        direction: bidirectional
+        unpowered_isolation: false
+    required_inputs:
+      - Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.
+      - Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.
+      - Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.
   - id: uart_bootloader_sync_u1_uart
     kind: serial_programming
     confidence: medium

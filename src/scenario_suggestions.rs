@@ -1,10 +1,13 @@
 use crate::board_ir::{BoardProject, NetKind};
-use crate::library::{BoundBoard, PortKind};
+use crate::library::{
+    BoundBoard, ComponentModel, PortKind, SignalConditioningChannel, SignalConditioningKind,
+};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
 const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
+const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
@@ -46,6 +49,8 @@ pub struct SuggestedScenario {
     pub bootloader: Option<SuggestedBootloader>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<SuggestedEvent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conditioning: Option<SuggestedConditioning>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pin_states: Vec<SuggestedPinState>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -109,6 +114,29 @@ pub struct SuggestedEndpoint {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SuggestedConditioning {
+    pub component: String,
+    pub channel: String,
+    pub kind: String,
+    pub side_a: SuggestedConditioningSide,
+    pub side_b: SuggestedConditioningSide,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unpowered_isolation: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedConditioningSide {
+    pub pin: String,
+    pub net: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supply_pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supply_net: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SuggestedPinState {
     pub component: String,
     pub pin: String,
@@ -130,6 +158,7 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
         suggestions.push(power_tree_suggestion(bound.project));
     }
     suggestions.extend(gpio_backdrive_suggestions(bound));
+    suggestions.extend(interface_protection_suggestions(bound));
     suggestions.extend(reset_release_suggestions(bound));
     suggestions.extend(boot_strap_suggestions(bound));
     suggestions.extend(uart_bootloader_suggestions(bound));
@@ -173,6 +202,7 @@ fn power_tree_suggestion(project: &BoardProject) -> ScenarioSuggestion {
             straps: Vec::new(),
             bootloader: None,
             events: Vec::new(),
+            conditioning: None,
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
@@ -291,6 +321,7 @@ fn backdrive_suggestion(
             straps: Vec::new(),
             bootloader: None,
             events: Vec::new(),
+            conditioning: None,
             pin_states: vec![
                 SuggestedPinState {
                     component: driver_component.to_string(),
@@ -322,6 +353,134 @@ fn backdrive_suggestion(
             "Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.".to_string(),
         ],
     }
+}
+
+fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
+    let existing = existing_interface_protection_checks(bound.project);
+    let mut suggestions = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        for channel in &model.signal_conditioning.channels {
+            if existing.contains_key(&(component_id.clone(), channel.name.clone())) {
+                continue;
+            }
+            let Some(conditioning) = suggested_conditioning(bound, component_id, model, channel)
+            else {
+                continue;
+            };
+            suggestions.push(ScenarioSuggestion {
+                id: format!(
+                    "interface_protection_{}_{}",
+                    sanitized_name(component_id),
+                    sanitized_name(&channel.name)
+                ),
+                kind: "interface_protection".to_string(),
+                confidence: "medium".to_string(),
+                runnable: false,
+                reason: format!(
+                    "Component {component_id} model declares signal-conditioning channel {}, but no interface protection review scenario covers it.",
+                    channel.name
+                ),
+                scenario: SuggestedScenario {
+                    name: format!(
+                        "{}_{}_interface_protection",
+                        sanitized_name(component_id),
+                        sanitized_name(&channel.name)
+                    ),
+                    scenario_type: "interface_protection".to_string(),
+                    checks: vec![INTERFACE_PROTECTION_REVIEW.to_string()],
+                    target: Some(SuggestedTarget {
+                        component: component_id.clone(),
+                        power_pin: None,
+                        reset_pin: None,
+                    }),
+                    timing: None,
+                    required_boot_mode: None,
+                    straps: Vec::new(),
+                    bootloader: None,
+                    events: Vec::new(),
+                    conditioning: Some(conditioning),
+                    pin_states: Vec::new(),
+                    paths: Vec::new(),
+                },
+                required_inputs: vec![
+                    "Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.".to_string(),
+                    "Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.".to_string(),
+                    "Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.".to_string(),
+                ],
+            });
+        }
+    }
+    suggestions
+}
+
+fn suggested_conditioning(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    model: &ComponentModel,
+    channel: &SignalConditioningChannel,
+) -> Option<SuggestedConditioning> {
+    let side_a = suggested_conditioning_side(
+        bound,
+        component_id,
+        &channel.side_a_pin,
+        channel.side_a_supply_pin.as_deref(),
+    )?;
+    let side_b = suggested_conditioning_side(
+        bound,
+        component_id,
+        &channel.side_b_pin,
+        channel.side_b_supply_pin.as_deref(),
+    )?;
+    if !model.ports.contains_key(&channel.side_a_pin)
+        || !model.ports.contains_key(&channel.side_b_pin)
+    {
+        return None;
+    }
+    Some(SuggestedConditioning {
+        component: component_id.to_string(),
+        channel: channel.name.clone(),
+        kind: signal_conditioning_kind_name(&channel.kind).to_string(),
+        side_a,
+        side_b,
+        direction: channel.direction.clone(),
+        unpowered_isolation: channel.unpowered_isolation,
+    })
+}
+
+fn signal_conditioning_kind_name(kind: &SignalConditioningKind) -> &'static str {
+    match kind {
+        SignalConditioningKind::LevelShifter => "level_shifter",
+        SignalConditioningKind::Protection => "protection",
+        SignalConditioningKind::SeriesResistor => "series_resistor",
+        SignalConditioningKind::BusSwitch => "bus_switch",
+    }
+}
+
+fn suggested_conditioning_side(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    pin: &str,
+    supply_pin: Option<&str>,
+) -> Option<SuggestedConditioningSide> {
+    let component = bound.project.board.components.get(component_id)?;
+    let net = component.pins.get(pin)?.clone();
+    let supply_net = supply_pin
+        .and_then(|pin_name| {
+            component
+                .power_domains
+                .get(pin_name)
+                .or_else(|| component.pins.get(pin_name))
+        })
+        .cloned();
+    Some(SuggestedConditioningSide {
+        pin: pin.to_string(),
+        net,
+        supply_pin: supply_pin.map(str::to_string),
+        supply_net,
+    })
 }
 
 fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
@@ -394,6 +553,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 straps: Vec::new(),
                 bootloader: None,
                 events: Vec::new(),
+                conditioning: None,
                 pin_states: Vec::new(),
                 paths: Vec::new(),
             },
@@ -480,6 +640,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     straps,
                     bootloader: None,
                     events: Vec::new(),
+                    conditioning: None,
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -563,6 +724,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                         }),
                         bytes: vec![interface.sync_byte],
                     }],
+                    conditioning: None,
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -595,6 +757,28 @@ fn existing_backdrive_paths(
                     (),
                 )
             })
+        })
+        .collect()
+}
+
+fn existing_interface_protection_checks(project: &BoardProject) -> BTreeMap<(String, String), ()> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == INTERFACE_PROTECTION_REVIEW)
+        })
+        .filter_map(|scenario| {
+            let target = scenario.target.as_ref()?;
+            let channel = scenario
+                .parameters
+                .get("channel")
+                .and_then(serde_yaml_ng::Value::as_str)?;
+            Some(((target.component.clone(), channel.to_string()), ()))
         })
         .collect()
 }
@@ -674,6 +858,9 @@ fn find_output_sender(
         let Some(model) = bound.library.get(&component.model) else {
             continue;
         };
+        if !model.signal_conditioning.channels.is_empty() {
+            continue;
+        }
         for (pin_name, net_name) in &component.pins {
             if net_name != target_rx_net {
                 continue;

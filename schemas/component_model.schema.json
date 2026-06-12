@@ -55,6 +55,30 @@
       },
       "additionalProperties": false
     },
+    "signal_conditioning": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "kind", "side_a_pin", "side_b_pin"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "kind": { "enum": ["level_shifter", "protection", "series_resistor", "bus_switch"] },
+              "side_a_pin": { "type": "string", "minLength": 1 },
+              "side_b_pin": { "type": "string", "minLength": 1 },
+              "side_a_supply_pin": { "type": "string", "minLength": 1 },
+              "side_b_supply_pin": { "type": "string", "minLength": 1 },
+              "direction": { "enum": ["a_to_b", "b_to_a", "bidirectional"] },
+              "unpowered_isolation": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "model_faces": { "type": "object" },
     "datasheet": {
       "type": "object",

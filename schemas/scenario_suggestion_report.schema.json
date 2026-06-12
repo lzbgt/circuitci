@@ -110,6 +110,20 @@
                   "additionalProperties": false
                 }
               },
+              "conditioning": {
+                "type": "object",
+                "required": ["component", "channel", "kind", "side_a", "side_b"],
+                "properties": {
+                  "component": { "type": "string", "minLength": 1 },
+                  "channel": { "type": "string", "minLength": 1 },
+                  "kind": { "enum": ["level_shifter", "protection", "series_resistor", "bus_switch"] },
+                  "side_a": { "$ref": "#/$defs/conditioning_side" },
+                  "side_b": { "$ref": "#/$defs/conditioning_side" },
+                  "direction": { "enum": ["a_to_b", "b_to_a", "bidirectional"] },
+                  "unpowered_isolation": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              },
               "pin_states": {
                 "type": "array",
                 "items": {
@@ -153,6 +167,17 @@
       "properties": {
         "component": { "type": "string", "minLength": 1 },
         "pin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "conditioning_side": {
+      "type": "object",
+      "required": ["pin", "net"],
+      "properties": {
+        "pin": { "type": "string", "minLength": 1 },
+        "net": { "type": "string", "minLength": 1 },
+        "supply_pin": { "type": "string", "minLength": 1 },
+        "supply_net": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     }

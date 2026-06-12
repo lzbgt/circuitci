@@ -107,6 +107,38 @@ current/startup timing margins are plausible. Invalid `power_conversion`
 metadata fails closed at validation time. Generic models may use conservative
 screening values; datasheet-backed packs should cite their source documents.
 
+## Signal Conditioning Metadata
+
+Interface, protection, and level-shifter models can declare explicit
+board-facing channels:
+
+```yaml
+signal_conditioning:
+  channels:
+    - name: ch1
+      kind: level_shifter
+      side_a_pin: A1
+      side_b_pin: B1
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+```
+
+- `kind` is one of `level_shifter`, `protection`, `series_resistor`, or
+  `bus_switch`.
+- `side_a_pin` and `side_b_pin` name the protected or translated signal pins.
+- `side_a_supply_pin` and `side_b_supply_pin` identify the rails that define
+  each side's voltage domain when applicable.
+- `direction` is `a_to_b`, `b_to_a`, or `bidirectional`.
+- `unpowered_isolation` records whether the datasheet guarantees isolation when
+  one side's supply is absent.
+
+`circuitci suggest-scenarios` uses this metadata to emit non-runnable
+`interface_protection` review templates. It does not treat the metadata alone as
+proof that a level shifter prevents backdrive; agents must confirm datasheet
+conditions, OE/reset state, and any unpowered-side behavior before sign-off.
+
 The first back-drive approximation computes injection current as:
 
 ```text

@@ -22,6 +22,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub power_conversion: Option<PowerConversion>,
     #[serde(default)]
+    pub signal_conditioning: SignalConditioning,
+    #[serde(default)]
     pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
 }
@@ -36,6 +38,37 @@ pub struct PowerConversion {
     pub max_output_current_a: Option<f64>,
     #[serde(default)]
     pub startup_delay_us: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct SignalConditioning {
+    #[serde(default)]
+    pub channels: Vec<SignalConditioningChannel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SignalConditioningChannel {
+    pub name: String,
+    pub kind: SignalConditioningKind,
+    pub side_a_pin: String,
+    pub side_b_pin: String,
+    #[serde(default)]
+    pub side_a_supply_pin: Option<String>,
+    #[serde(default)]
+    pub side_b_supply_pin: Option<String>,
+    #[serde(default)]
+    pub direction: Option<String>,
+    #[serde(default)]
+    pub unpowered_isolation: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SignalConditioningKind {
+    LevelShifter,
+    Protection,
+    SeriesResistor,
+    BusSwitch,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

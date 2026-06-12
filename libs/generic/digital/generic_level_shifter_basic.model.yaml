@@ -1,0 +1,52 @@
+component_id: generic.level_shifter.basic
+version: 0.1.0
+category: interface
+ports:
+  VCCA:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.2
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.0005
+  VCCB:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.65
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.0005
+  GND:
+    kind: electrical_ground
+    required: true
+  A1:
+    kind: digital_electrical_io
+    required: false
+  B1:
+    kind: digital_electrical_io
+    required: false
+  OE:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 1.0
+      vil_max_V: 0.4
+signal_conditioning:
+  channels:
+    - name: ch1
+      kind: level_shifter
+      side_a_pin: A1
+      side_b_pin: B1
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - level_translation_review
+    - interface_protection_suggestion
+  not_valid_for:
+    - high_speed_signal_integrity
+    - analog_transient_without_datasheet_model

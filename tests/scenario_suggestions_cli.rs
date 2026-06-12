@@ -144,3 +144,64 @@ fn suggest_scenarios_derives_gpio_backdrive_template() {
             .contains("driver can be high")
     );
 }
+
+#[test]
+fn suggest_scenarios_derives_interface_protection_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_level_shifter/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_level_shifter");
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|suggestion| suggestion["kind"] != "gpio_backdrive")
+    );
+    let protection = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_u3_ch1")
+        .expect("interface protection suggestion");
+    assert_eq!(protection["kind"], "interface_protection");
+    assert_eq!(protection["runnable"], false);
+    assert_eq!(protection["scenario"]["type"], "interface_protection");
+    assert_eq!(
+        protection["scenario"]["checks"][0],
+        "INTERFACE_PROTECTION_REVIEW"
+    );
+    assert_eq!(protection["scenario"]["target"]["component"], "U3");
+    let conditioning = &protection["scenario"]["conditioning"];
+    assert_eq!(conditioning["component"], "U3");
+    assert_eq!(conditioning["channel"], "ch1");
+    assert_eq!(conditioning["kind"], "level_shifter");
+    assert_eq!(conditioning["direction"], "bidirectional");
+    assert_eq!(conditioning["unpowered_isolation"], false);
+    assert_eq!(conditioning["side_a"]["pin"], "A1");
+    assert_eq!(conditioning["side_a"]["net"], "mcu_rx_shifted");
+    assert_eq!(conditioning["side_a"]["supply_pin"], "VCCA");
+    assert_eq!(conditioning["side_a"]["supply_net"], "mcu_3v3");
+    assert_eq!(conditioning["side_b"]["pin"], "B1");
+    assert_eq!(conditioning["side_b"]["net"], "usb_uart_tx");
+    assert_eq!(conditioning["side_b"]["supply_pin"], "VCCB");
+    assert_eq!(conditioning["side_b"]["supply_net"], "usb_uart_3v3");
+    assert!(
+        protection["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("datasheet supports")
+    );
+    let uart = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "uart_bootloader_sync_u1_uart")
+        .expect("uart bootloader suggestion");
+    assert!(uart["scenario"]["events"][0]["from"].is_null());
+    assert!(
+        uart["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("output-capable sender")
+    );
+}
