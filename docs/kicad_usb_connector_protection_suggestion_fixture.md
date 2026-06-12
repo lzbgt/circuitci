@@ -30,8 +30,8 @@ The same fixture directory also includes `board.kicad_pcb`. A regression chains:
 
 1. `import-kicad-schematic` for connector and ESD connectivity.
 2. `import-kicad-pcb` for `board.layout.placements` and routed USB net
-   geometry under `board.layout.routes`, plus ground copper-zone outline
-   evidence under `board.layout.zones`.
+   geometry under `board.layout.routes`, plus ground copper-zone outline and
+   saved filled-polygon evidence under `board.layout.zones`.
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
    `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
    `USB_RETURN_PATH_VALID`.

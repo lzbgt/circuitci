@@ -85,6 +85,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(ground_zones[0]["polygon"].as_array().unwrap().len(), 4);
     assert_eq!(ground_zones[0]["polygon"][0]["x_mm"], -1.0);
     assert_eq!(ground_zones[0]["polygon"][2]["y_mm"], 1.0);
+    let filled_polygons = ground_zones[0]["filled_polygons"].as_array().unwrap();
+    assert_eq!(filled_polygons.len(), 1);
+    assert_eq!(filled_polygons[0].as_array().unwrap().len(), 4);
+    assert_eq!(filled_polygons[0][0]["x_mm"], -0.9);
+    assert_eq!(filled_polygons[0][2]["y_mm"], 0.9);
     let dp_rule = &imported["board"]["layout"]["constraints"]["net_rules"]["net_usb_dp"];
     assert_eq!(dp_rule["net_class"], "USB_HS");
     assert_eq!(dp_rule["track_width_mm"], 0.15);
@@ -261,6 +266,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(
         imported["board"]["layout"]["zones"]["gnd"][0]["polygon"][2]["x_mm"],
         2.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["zones"]["gnd"][0]["filled_polygons"][0][2]["x_mm"],
+        1.9
     );
     assert_eq!(
         imported["board"]["layout"]["constraints"]["net_rules"]["usb_dp"]["length_max_mm"],

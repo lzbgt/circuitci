@@ -111,6 +111,8 @@ pub struct RouteVia {
 pub struct CopperZone {
     pub layer: String,
     pub polygon: Vec<LayoutPoint>,
+    #[serde(default)]
+    pub filled_polygons: Vec<Vec<LayoutPoint>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

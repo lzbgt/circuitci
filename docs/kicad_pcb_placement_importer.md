@@ -24,12 +24,13 @@ footprint references, missing references, invalid coordinates, files without
 footprints, and PCB files with no matching Board IR components fail closed.
 
 The importer also reads KiCad `net`, `segment`, `via`, and `zone` entries.
-Routed geometry is written under `board.layout.routes` and copper-zone outlines
-are written under `board.layout.zones` only when the PCB net can be matched to
-an existing Board IR net. The importer does not create new schematic nets from
-PCB data. Net matching tries exact names, lowercase names, common ground
-aliases, native KiCad import names such as `net_usb_dp`, and a deterministic
-sanitized-name match. Ambiguous net matches fail closed.
+Routed geometry is written under `board.layout.routes`; copper-zone outlines
+and saved `filled_polygon` geometry are written under `board.layout.zones` only
+when the PCB net can be matched to an existing Board IR net. The importer does
+not create new schematic nets from PCB data. Net matching tries exact names,
+lowercase names, common ground aliases, native KiCad import names such as
+`net_usb_dp`, and a deterministic sanitized-name match. Ambiguous net matches
+fail closed.
 
 Imported route evidence currently includes:
 
@@ -55,10 +56,10 @@ This is bounded layout evidence, not a full PCB layout solver. The importer
 extracts component center placements, routed `segment`/`via` geometry, net-class
 route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
-outlines. It does not extract filled-copper islands, pad-to-zone connectivity,
-thermal relief behavior, shield bonding, footprint pad geometry, return paths,
-impedance calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP
-alignment.
+outlines plus saved filled polygons. It does not solve filled-copper island
+connectivity, pad-to-zone connectivity, thermal relief behavior, shield
+bonding, footprint pad geometry, return paths, impedance calculations,
+arbitrary DRC rule semantics, or pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 

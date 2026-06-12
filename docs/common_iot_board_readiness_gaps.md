@@ -183,8 +183,9 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 The current tool validates schematic/netlist behavior and a bounded amount of
 explicit layout evidence. KiCad `.kicad_pcb` import can now populate component
 center placements, routed segment/via geometry, route constraints, and
-copper-zone outlines for matching Board IR nets, but the tool does not yet solve
-full PCB layout physics. Missing layout checks include:
+copper-zone outlines plus saved filled polygons for matching Board IR nets, but
+the tool does not yet solve full PCB layout physics. Missing layout checks
+include:
 
 - USB connector orientation, routed trace order, adjacent-plane return paths,
   stitching-via continuity, and filled-zone continuity,

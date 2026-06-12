@@ -72,6 +72,7 @@ struct PcbRouteVia {
 struct PcbZone {
     layer: String,
     polygon: Vec<PcbPoint>,
+    filled_polygons: Vec<Vec<PcbPoint>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -135,6 +136,8 @@ struct NetRuleYaml<'a> {
 struct ZoneYaml {
     layer: String,
     polygon: Vec<PcbPoint>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    filled_polygons: Vec<Vec<PcbPoint>>,
 }
 
 pub fn import_kicad_pcb_placements(
@@ -292,10 +295,16 @@ fn parse_zones(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, Vec<P
         };
         let layers = zone_layers(zone, path)?;
         let polygon = zone_polygon(zone, path)?;
+        let filled_polygons_by_layer = zone_filled_polygons_by_layer(zone, path)?;
         for layer in layers {
+            let filled_polygons = filled_polygons_by_layer
+                .get(&layer)
+                .cloned()
+                .unwrap_or_default();
             zones.entry(net_name.clone()).or_default().push(PcbZone {
                 layer,
                 polygon: polygon.clone(),
+                filled_polygons,
             });
         }
     }
@@ -693,26 +702,69 @@ fn zone_polygon(zone: &[Sexp], path: &Path) -> Result<Vec<PcbPoint>> {
             path.display()
         )
     })?;
+    coordinate_points(pts, "zone polygon", path)
+}
+
+fn zone_filled_polygons_by_layer(
+    zone: &[Sexp],
+    path: &Path,
+) -> Result<BTreeMap<String, Vec<Vec<PcbPoint>>>> {
+    let mut filled_polygons = BTreeMap::<String, Vec<Vec<PcbPoint>>>::new();
+    for filled_polygon in list_children(zone, "filled_polygon") {
+        let layer = child_list(filled_polygon, "layer").with_context(|| {
+            format!(
+                "KiCad PCB zone filled_polygon in {} is missing layer.",
+                path.display()
+            )
+        })?;
+        let layer = string_at(layer, 1).with_context(|| {
+            format!(
+                "KiCad PCB zone filled_polygon in {} has invalid layer.",
+                path.display()
+            )
+        })?;
+        let layer = layer.trim();
+        if layer.is_empty() {
+            bail!(
+                "KiCad PCB zone filled_polygon in {} has empty layer.",
+                path.display()
+            );
+        }
+        let pts = child_list(filled_polygon, "pts").with_context(|| {
+            format!(
+                "KiCad PCB zone filled_polygon in {} is missing pts list.",
+                path.display()
+            )
+        })?;
+        filled_polygons
+            .entry(layer.to_string())
+            .or_default()
+            .push(coordinate_points(pts, "zone filled_polygon", path)?);
+    }
+    Ok(filled_polygons)
+}
+
+fn coordinate_points(pts: &[Sexp], item_kind: &str, path: &Path) -> Result<Vec<PcbPoint>> {
     let mut points = Vec::new();
     for xy in list_children(pts, "xy") {
         let x_mm = numeric_at(xy, 1).with_context(|| {
             format!(
-                "KiCad PCB zone polygon in {} has invalid x coordinate.",
-                path.display()
+                "KiCad PCB {item_kind} in {} has invalid x coordinate.",
+                path.display(),
             )
         })?;
         let y_mm = numeric_at(xy, 2).with_context(|| {
             format!(
-                "KiCad PCB zone polygon in {} has invalid y coordinate.",
-                path.display()
+                "KiCad PCB {item_kind} in {} has invalid y coordinate.",
+                path.display(),
             )
         })?;
         points.push(PcbPoint { x_mm, y_mm });
     }
     if points.len() < 3 {
         bail!(
-            "KiCad PCB zone polygon in {} has fewer than three points.",
-            path.display()
+            "KiCad PCB {item_kind} in {} has fewer than three points.",
+            path.display(),
         );
     }
     Ok(points)
@@ -930,6 +982,7 @@ fn zone_yaml_value(zones: &[PcbZone]) -> Result<Value> {
             .map(|zone| ZoneYaml {
                 layer: zone.layer.clone(),
                 polygon: zone.polygon.clone(),
+                filled_polygons: zone.filled_polygons.clone(),
             })
             .collect::<Vec<_>>(),
     )

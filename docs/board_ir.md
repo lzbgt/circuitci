@@ -163,7 +163,8 @@ ordering.
 
 Board IR can carry imported copper-zone outline evidence under
 `board.layout.zones`. Each key is an existing Board IR net. Each zone records a
-KiCad copper layer and the polygon points in millimeters.
+KiCad copper layer, the intended zone outline polygon, and optional filled
+copper polygons in millimeters.
 
 ```yaml
 board:
@@ -176,12 +177,19 @@ board:
             - { x_mm: 2.0, y_mm: -1.0 }
             - { x_mm: 2.0, y_mm: 1.0 }
             - { x_mm: -1.0, y_mm: 1.0 }
+          filled_polygons:
+            - - { x_mm: -0.9, y_mm: -0.9 }
+              - { x_mm: 1.9, y_mm: -0.9 }
+              - { x_mm: 1.9, y_mm: 0.9 }
+              - { x_mm: -0.9, y_mm: 0.9 }
 ```
 
 KiCad PCB import fills this from `zone` entries when the PCB zone net maps
-unambiguously to an existing Board IR net. This is outline evidence only. It
-does not prove filled-copper islands, pad-to-zone connectivity, thermal relief
-behavior, clearances, or return-path continuity.
+unambiguously to an existing Board IR net. `polygon` is the zone outline.
+`filled_polygons` comes from KiCad `filled_polygon` entries and is absent when
+the board file has not saved filled-zone geometry. This is still static
+geometry evidence: it does not prove pad-to-zone connectivity, thermal relief
+behavior, clearances, or return-path continuity by itself.
 
 ## Layout Constraint Evidence
 
