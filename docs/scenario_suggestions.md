@@ -24,6 +24,10 @@ The command is conservative:
 - If a powered output rail is fed by a model with `power_mux` and the selected
   input component parameter is missing, the power-tree suggestion is marked
   `runnable: false` and records the exact parameter plus allowed source names.
+- If a model declares `reset_supervisor`, the power-tree suggestion includes
+  `scenario.reset_supervisors[]` with the supervisor component, monitored
+  pin/net, reset output pin/net, and threshold range. This points agents at the
+  exact threshold check that `POWER_TREE_VALID` will execute.
 - It emits runnable `IO_VOLTAGE_COMPATIBLE` suggestions when same-net digital
   output/input pairs have modeled I/O voltage metadata and no existing
   `power_tree` scenario declares that check.
@@ -89,6 +93,14 @@ suggestions:
       type: power_tree
       checks:
         - POWER_TREE_VALID
+      reset_supervisors:
+        - component: USUP
+          monitored_pin: VDD
+          monitored_net: rail_3v3
+          reset_output_pin: RESET
+          reset_net: nrst
+          threshold_min_V: 2.93
+          threshold_max_V: 3.08
   - id: io_voltage_compatible
     kind: power_tree
     confidence: medium

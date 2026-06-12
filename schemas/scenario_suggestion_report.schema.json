@@ -148,6 +148,31 @@
                   "additionalProperties": false
                 }
               },
+              "reset_supervisors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "component",
+                    "monitored_pin",
+                    "monitored_net",
+                    "reset_output_pin",
+                    "reset_net",
+                    "threshold_min_V",
+                    "threshold_max_V"
+                  ],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "monitored_pin": { "type": "string", "minLength": 1 },
+                    "monitored_net": { "type": "string", "minLength": 1 },
+                    "reset_output_pin": { "type": "string", "minLength": 1 },
+                    "reset_net": { "type": "string", "minLength": 1 },
+                    "threshold_min_V": { "type": "number", "exclusiveMinimum": 0 },
+                    "threshold_max_V": { "type": "number", "exclusiveMinimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "pin_states": {
                 "type": "array",
                 "items": {

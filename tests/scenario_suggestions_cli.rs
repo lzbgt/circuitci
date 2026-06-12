@@ -407,3 +407,30 @@ fn suggest_scenarios_derives_clock_source_template() {
     assert_eq!(clock_evidence["crystal_component"], "Y1");
     assert!(clock.get("required_inputs").is_none());
 }
+
+#[test]
+fn suggest_scenarios_reports_reset_supervisor_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_reset_supervisor/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_reset_supervisor"
+    );
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power tree suggestion");
+    assert_eq!(power_tree["kind"], "power_tree");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let supervisor = &power_tree["scenario"]["reset_supervisors"][0];
+    assert_eq!(supervisor["component"], "USUP");
+    assert_eq!(supervisor["monitored_pin"], "VDD");
+    assert_eq!(supervisor["monitored_net"], "rail_3v3");
+    assert_eq!(supervisor["reset_output_pin"], "RESET");
+    assert_eq!(supervisor["reset_net"], "nrst");
+    assert_eq!(supervisor["threshold_min_V"], 2.93);
+    assert_eq!(supervisor["threshold_max_V"], 3.08);
+}
