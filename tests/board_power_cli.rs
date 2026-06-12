@@ -307,6 +307,15 @@ fn usb_connector_edge_proximity_passes_when_close_to_board_edge() {
 }
 
 #[test]
+fn usb_connector_edge_proximity_uses_footprint_body_when_available() {
+    let report =
+        run_validation("examples/good_usb_connector_edge_proximity_footprint/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_connector_edge_proximity_reports_distant_connector() {
     let report = run_validation("examples/bad_usb_connector_edge_proximity/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -321,12 +330,40 @@ fn usb_connector_edge_proximity_reports_distant_connector() {
         failure["measured"]["connector_to_board_edge_distance_mm"],
         1.4
     );
+    assert_eq!(
+        failure["measured"]["connector_edge_reference"],
+        "placement_center"
+    );
     assert_eq!(failure["measured"]["board_edge_layer"], "Edge.Cuts");
     assert_eq!(failure["measured"]["board_edge_start_x_mm"], -0.4);
     assert_eq!(
         failure["limit"]["max_connector_to_board_edge_distance_mm"],
         0.5
     );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_connector_edge_proximity_reports_footprint_reference() {
+    let report = run_validation("examples/bad_usb_connector_edge_proximity_footprint/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_EDGE_PROXIMITY_VALID")
+        .expect("USB connector edge proximity finding");
+    assert_eq!(failure["component"], "J1");
+    let distance = failure["measured"]["connector_to_board_edge_distance_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((distance - 1.2).abs() < 1e-12);
+    assert_eq!(
+        failure["measured"]["connector_edge_reference"],
+        "footprint_rectangle"
+    );
+    assert_eq!(failure["measured"]["footprint_graphic_layer"], "F.CrtYd");
+    assert_eq!(failure["measured"]["footprint_graphic_kind"], "courtyard");
     assert_report_schema_valid(&report);
 }
 

@@ -209,9 +209,10 @@ keys include `expected_connector_rotation_deg` and
 `board.layout.placements`, and straight `board.layout.outline.segments`
 evidence. Stable measured keys include
 `connector_to_board_edge_distance_mm`, `connector_x_mm`, `connector_y_mm`,
-optional `connector_side`, `board_edge_start_x_mm`, `board_edge_start_y_mm`,
-`board_edge_end_x_mm`, `board_edge_end_y_mm`, and optional
-`board_edge_layer`. Stable limit keys include
+`connector_edge_reference`, optional `connector_side`, optional
+`footprint_graphic_layer`, optional `footprint_graphic_kind`,
+`board_edge_start_x_mm`, `board_edge_start_y_mm`, `board_edge_end_x_mm`,
+`board_edge_end_y_mm`, and optional `board_edge_layer`. Stable limit keys include
 `max_connector_to_board_edge_distance_mm`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios

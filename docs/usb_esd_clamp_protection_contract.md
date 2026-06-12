@@ -138,10 +138,12 @@ Connector edge-proximity validation:
 - The scenario must declare
   `parameters.max_connector_to_board_edge_distance_mm` from the connector,
   enclosure, or panel-entry mechanical rule.
-- The rule measures the nearest connector-center to straight-board-edge
-  distance. It does not prove connector body overhang, keepout, insertion
-  clearance, panel alignment, or outline features not captured as straight
-  segments.
+- The rule measures the nearest supported `fabrication`/`courtyard` footprint
+  drawing extent to a straight board-edge segment when imported footprint
+  evidence is available. It falls back to connector-center distance for older
+  Board IR without footprint graphics.
+- It does not prove connector body overhang, keepout, insertion clearance,
+  panel alignment, or outline features not captured as straight segments.
 
 Route-geometry validation:
 

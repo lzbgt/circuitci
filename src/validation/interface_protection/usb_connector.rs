@@ -1,5 +1,6 @@
 use crate::board_ir::{
-    ComponentPlacement, ComponentSpec, LayoutPoint, LayoutSegment, NetKind, Scenario,
+    ComponentPlacement, ComponentSpec, LayoutFootprintRectangle, LayoutFootprintSegment,
+    LayoutPoint, LayoutSegment, NetKind, Scenario,
 };
 use crate::library::{BoundBoard, ProtectionClamp, ProtectionReference, UsbConnector};
 use crate::reports::Finding;
@@ -187,7 +188,7 @@ pub(super) fn validate_usb_connector_edge_proximity(
     else {
         return;
     };
-    let Some(edge) = nearest_board_edge(bound, placement) else {
+    let Some(edge) = nearest_board_edge(bound, &target.component, placement) else {
         findings.push(usb_edge_proximity_metadata_finding(
             scenario,
             &target.component,
@@ -595,6 +596,40 @@ pub(super) struct UsbPlacementDistanceEvidence<'a> {
 pub(super) struct UsbBoardEdgeDistanceEvidence<'a> {
     pub(super) distance_mm: f64,
     pub(super) edge: &'a LayoutSegment,
+    pub(super) connector_reference: UsbBoardEdgeConnectorReference<'a>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum UsbBoardEdgeConnectorReference<'a> {
+    PlacementCenter,
+    FootprintSegment { layer: &'a str, kind: &'a str },
+    FootprintRectangle { layer: &'a str, kind: &'a str },
+}
+
+impl UsbBoardEdgeConnectorReference<'_> {
+    pub(super) fn label(&self) -> &'static str {
+        match self {
+            UsbBoardEdgeConnectorReference::PlacementCenter => "placement_center",
+            UsbBoardEdgeConnectorReference::FootprintSegment { .. } => "footprint_segment",
+            UsbBoardEdgeConnectorReference::FootprintRectangle { .. } => "footprint_rectangle",
+        }
+    }
+
+    pub(super) fn footprint_layer(&self) -> Option<&str> {
+        match self {
+            UsbBoardEdgeConnectorReference::PlacementCenter => None,
+            UsbBoardEdgeConnectorReference::FootprintSegment { layer, .. }
+            | UsbBoardEdgeConnectorReference::FootprintRectangle { layer, .. } => Some(layer),
+        }
+    }
+
+    pub(super) fn footprint_kind(&self) -> Option<&str> {
+        match self {
+            UsbBoardEdgeConnectorReference::PlacementCenter => None,
+            UsbBoardEdgeConnectorReference::FootprintSegment { kind, .. }
+            | UsbBoardEdgeConnectorReference::FootprintRectangle { kind, .. } => Some(kind),
+        }
+    }
 }
 
 fn find_valid_clamp_for_net<'a>(
@@ -802,6 +837,7 @@ fn placement_distance_mm(a: &ComponentPlacement, b: &ComponentPlacement) -> f64 
 
 fn nearest_board_edge<'a>(
     bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
     placement: &ComponentPlacement,
 ) -> Option<UsbBoardEdgeDistanceEvidence<'a>> {
     bound
@@ -812,11 +848,67 @@ fn nearest_board_edge<'a>(
         .segments
         .iter()
         .filter(|segment| outline_segment_is_usable(segment))
-        .map(|edge| UsbBoardEdgeDistanceEvidence {
-            distance_mm: placement_to_segment_distance_mm(placement, edge),
-            edge,
+        .map(|edge| {
+            let (distance_mm, connector_reference) =
+                connector_to_edge_distance(bound, component_id, placement, edge);
+            UsbBoardEdgeDistanceEvidence {
+                distance_mm,
+                edge,
+                connector_reference,
+            }
         })
         .min_by(|left, right| left.distance_mm.total_cmp(&right.distance_mm))
+}
+
+fn connector_to_edge_distance<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
+    placement: &ComponentPlacement,
+    edge: &LayoutSegment,
+) -> (f64, UsbBoardEdgeConnectorReference<'a>) {
+    let mut best_distance = placement_to_segment_distance_mm(placement, edge);
+    let mut best_reference = UsbBoardEdgeConnectorReference::PlacementCenter;
+    let Some(footprint) = bound.project.board.layout.footprints.get(component_id) else {
+        return (best_distance, best_reference);
+    };
+
+    for segment in &footprint.segments {
+        if !mechanical_footprint_kind(&segment.kind) {
+            continue;
+        }
+        let Some(distance_mm) = footprint_segment_to_edge_distance_mm(segment, edge) else {
+            continue;
+        };
+        if distance_mm < best_distance {
+            best_distance = distance_mm;
+            best_reference = UsbBoardEdgeConnectorReference::FootprintSegment {
+                layer: &segment.layer,
+                kind: &segment.kind,
+            };
+        }
+    }
+
+    for rectangle in &footprint.rectangles {
+        if !mechanical_footprint_kind(&rectangle.kind) {
+            continue;
+        }
+        let Some(distance_mm) = footprint_rectangle_to_edge_distance_mm(rectangle, edge) else {
+            continue;
+        };
+        if distance_mm < best_distance {
+            best_distance = distance_mm;
+            best_reference = UsbBoardEdgeConnectorReference::FootprintRectangle {
+                layer: &rectangle.layer,
+                kind: &rectangle.kind,
+            };
+        }
+    }
+
+    (best_distance, best_reference)
+}
+
+fn mechanical_footprint_kind(kind: &str) -> bool {
+    matches!(kind, "fabrication" | "courtyard")
 }
 
 fn outline_segment_is_usable(segment: &LayoutSegment) -> bool {
@@ -842,6 +934,155 @@ fn placement_to_segment_distance_mm(
         segment.end.x_mm,
         segment.end.y_mm,
     )
+}
+
+fn footprint_segment_to_edge_distance_mm(
+    segment: &LayoutFootprintSegment,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    if !point_is_finite(&segment.start)
+        || !point_is_finite(&segment.end)
+        || segment_length_mm(&segment.start, &segment.end) <= f64::EPSILON
+    {
+        return None;
+    }
+    Some(segment_to_segment_distance_mm(
+        &segment.start,
+        &segment.end,
+        &edge.start,
+        &edge.end,
+    ))
+}
+
+fn footprint_rectangle_to_edge_distance_mm(
+    rectangle: &LayoutFootprintRectangle,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    if !point_is_finite(&rectangle.start) || !point_is_finite(&rectangle.end) {
+        return None;
+    }
+    let min_x = rectangle.start.x_mm.min(rectangle.end.x_mm);
+    let max_x = rectangle.start.x_mm.max(rectangle.end.x_mm);
+    let min_y = rectangle.start.y_mm.min(rectangle.end.y_mm);
+    let max_y = rectangle.start.y_mm.max(rectangle.end.y_mm);
+    if (max_x - min_x).abs() <= f64::EPSILON || (max_y - min_y).abs() <= f64::EPSILON {
+        return None;
+    }
+    let corners = [
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: max_y,
+        },
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: max_y,
+        },
+    ];
+    Some(
+        (0..corners.len())
+            .map(|index| {
+                let next_index = (index + 1) % corners.len();
+                segment_to_segment_distance_mm(
+                    &corners[index],
+                    &corners[next_index],
+                    &edge.start,
+                    &edge.end,
+                )
+            })
+            .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn segment_length_mm(start: &LayoutPoint, end: &LayoutPoint) -> f64 {
+    (end.x_mm - start.x_mm).hypot(end.y_mm - start.y_mm)
+}
+
+fn segment_to_segment_distance_mm(
+    a_start: &LayoutPoint,
+    a_end: &LayoutPoint,
+    b_start: &LayoutPoint,
+    b_end: &LayoutPoint,
+) -> f64 {
+    if segments_intersect(a_start, a_end, b_start, b_end) {
+        return 0.0;
+    }
+    [
+        point_to_segment_distance_mm(
+            a_start.x_mm,
+            a_start.y_mm,
+            b_start.x_mm,
+            b_start.y_mm,
+            b_end.x_mm,
+            b_end.y_mm,
+        ),
+        point_to_segment_distance_mm(
+            a_end.x_mm,
+            a_end.y_mm,
+            b_start.x_mm,
+            b_start.y_mm,
+            b_end.x_mm,
+            b_end.y_mm,
+        ),
+        point_to_segment_distance_mm(
+            b_start.x_mm,
+            b_start.y_mm,
+            a_start.x_mm,
+            a_start.y_mm,
+            a_end.x_mm,
+            a_end.y_mm,
+        ),
+        point_to_segment_distance_mm(
+            b_end.x_mm,
+            b_end.y_mm,
+            a_start.x_mm,
+            a_start.y_mm,
+            a_end.x_mm,
+            a_end.y_mm,
+        ),
+    ]
+    .into_iter()
+    .fold(f64::INFINITY, f64::min)
+}
+
+fn segments_intersect(
+    a_start: &LayoutPoint,
+    a_end: &LayoutPoint,
+    b_start: &LayoutPoint,
+    b_end: &LayoutPoint,
+) -> bool {
+    let d1 = cross_product(a_start, a_end, b_start);
+    let d2 = cross_product(a_start, a_end, b_end);
+    let d3 = cross_product(b_start, b_end, a_start);
+    let d4 = cross_product(b_start, b_end, a_end);
+    if ((d1 > f64::EPSILON && d2 < -f64::EPSILON) || (d1 < -f64::EPSILON && d2 > f64::EPSILON))
+        && ((d3 > f64::EPSILON && d4 < -f64::EPSILON) || (d3 < -f64::EPSILON && d4 > f64::EPSILON))
+    {
+        return true;
+    }
+    (d1.abs() <= f64::EPSILON && point_on_segment(b_start, a_start, a_end))
+        || (d2.abs() <= f64::EPSILON && point_on_segment(b_end, a_start, a_end))
+        || (d3.abs() <= f64::EPSILON && point_on_segment(a_start, b_start, b_end))
+        || (d4.abs() <= f64::EPSILON && point_on_segment(a_end, b_start, b_end))
+}
+
+fn cross_product(origin: &LayoutPoint, end: &LayoutPoint, point: &LayoutPoint) -> f64 {
+    (end.x_mm - origin.x_mm) * (point.y_mm - origin.y_mm)
+        - (end.y_mm - origin.y_mm) * (point.x_mm - origin.x_mm)
+}
+
+fn point_on_segment(point: &LayoutPoint, start: &LayoutPoint, end: &LayoutPoint) -> bool {
+    point.x_mm >= start.x_mm.min(end.x_mm) - f64::EPSILON
+        && point.x_mm <= start.x_mm.max(end.x_mm) + f64::EPSILON
+        && point.y_mm >= start.y_mm.min(end.y_mm) - f64::EPSILON
+        && point.y_mm <= start.y_mm.max(end.y_mm) + f64::EPSILON
 }
 
 fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {

@@ -1,0 +1,58 @@
+project:
+  name: good_usb_connector_edge_proximity_footprint
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    J1:
+      model: generic.connector.usb2
+      pins:
+        VBUS: usb_vbus
+        "D+": usb_dp
+        "D-": usb_dm
+        GND: gnd
+  nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+  layout:
+    placements:
+      J1:
+        x_mm: 1.0
+        y_mm: 0.0
+        side: top
+        rotation_deg: 0.0
+    footprints:
+      J1:
+        rectangles:
+          - start: { x_mm: -0.45, y_mm: -0.5 }
+            end: { x_mm: 0.7, y_mm: 0.5 }
+            layer: F.CrtYd
+            kind: courtyard
+    outline:
+      segments:
+        - start: { x_mm: -0.4, y_mm: -1.0 }
+          end: { x_mm: -0.4, y_mm: 1.0 }
+          layer: Edge.Cuts
+
+scenarios:
+  - name: usb_connector_edge_proximity_footprint
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_EDGE_PROXIMITY_VALID
+    target:
+      component: J1
+    parameters:
+      max_connector_to_board_edge_distance_mm: 0.5

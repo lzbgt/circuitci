@@ -448,6 +448,20 @@ pub(super) fn usb_edge_proximity_finding(
         json!(edge.distance_mm),
     );
     finding.measured.insert(
+        "connector_edge_reference".to_string(),
+        json!(edge.connector_reference.label()),
+    );
+    if let Some(layer) = edge.connector_reference.footprint_layer() {
+        finding
+            .measured
+            .insert("footprint_graphic_layer".to_string(), json!(layer));
+    }
+    if let Some(kind) = edge.connector_reference.footprint_kind() {
+        finding
+            .measured
+            .insert("footprint_graphic_kind".to_string(), json!(kind));
+    }
+    finding.measured.insert(
         "board_edge_start_x_mm".to_string(),
         json!(edge.edge.start.x_mm),
     );

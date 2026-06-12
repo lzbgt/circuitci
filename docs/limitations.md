@@ -64,12 +64,14 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   mechanical insertion robustness. Suggestions may infer an expected rotation
   from imported straight `Edge.Cuts` segments, but arcs, slots, cutouts, and
   footprint-specific connector-entry conventions still require review.
-- `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks connector-center distance to the
-  nearest imported straight board-edge segment. It does not prove connector
-  body overhang, panel alignment, shell clearance, cable insertion clearance,
-  arcs, slots, or cutout geometry. KiCad PCB import can now expose matched
-  footprint `fp_line`/`fp_rect` drawing evidence for review, but those drawings
-  are not yet a full mechanical body or enclosure model.
+- `USB_CONNECTOR_EDGE_PROXIMITY_VALID` checks the nearest imported straight
+  board-edge segment against supported connector `fabrication`/`courtyard`
+  footprint drawing evidence when available, falling back to connector-center
+  distance otherwise. It does not prove connector body overhang, panel
+  alignment, shell clearance, cable insertion clearance, arcs, slots, cutout
+  geometry, or full enclosure fit. Imported `fp_rect` evidence is treated as a
+  rectangular extent from its transformed endpoints, not a full mechanical body
+  model.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

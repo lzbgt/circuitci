@@ -150,6 +150,8 @@ mechanical/layout rotation limits. KiCad PCB import now preserves straight
 rotation from nearest-edge outward-normal evidence when available.
 `USB_CONNECTOR_EDGE_PROXIMITY_VALID` adds the corresponding executable
 connector-to-board-edge distance guard from the same straight outline evidence.
+It uses imported `fabrication`/`courtyard` footprint drawing extents when
+available and falls back to component placement-center distance otherwise.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

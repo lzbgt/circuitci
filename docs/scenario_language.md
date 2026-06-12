@@ -429,9 +429,12 @@ Connector-to-board-edge algorithm:
 2. Require finite placement coordinates for the connector.
 3. Require at least one usable straight segment under
    `board.layout.outline.segments`.
-4. Project the connector placement point to each segment and use the nearest
-   distance in millimeters.
-5. Require that distance to be no greater than
+4. If `board.layout.footprints.<component>` contains transformed
+   `fabrication` or `courtyard` `fp_line`/`fp_rect` evidence, measure the
+   nearest supported footprint graphic to each board-edge segment.
+5. If no usable footprint drawing evidence is available, project the connector
+   placement point to each segment and use that fallback distance.
+6. Require the nearest distance to be no greater than
    `parameters.max_connector_to_board_edge_distance_mm`.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
