@@ -149,15 +149,17 @@ Interface-protection findings may include supply constraint detail:
 when active power pins are tied to non-power nets, rails are not declared
 powered, nominal rail voltages are missing/invalid/outside component-model
 operating ranges, declared rail current budgets are exceeded, or explicit
-regulator conversion, load-switch, battery-charger, or power-mux metadata is
-violated.
+regulator conversion, load-switch, reset-supervisor, battery-charger, or
+power-mux metadata is violated.
 Stable measured keys include
 `nominal_voltage_V`, `powered`, `declared_load_current_A`,
 `declared_output_load_current_A`, `input_voltage_V`, `output_voltage_V`,
 `dropout_margin_V`, `input_power_valid_at_us`, `output_power_valid_at_us`,
 `startup_delay_us`, `input_powered`, `output_powered`, `control_state`,
-`programmed_charge_current_A`, `battery_nominal_voltage_V`, `selected_input`,
-`selected_input_powered`, `inactive_input`, `inactive_input_powered`, and
+`reset_supervisor_threshold_min_V`, `monitored_load_component`,
+`monitored_load_pin`, `programmed_charge_current_A`,
+`battery_nominal_voltage_V`, `selected_input`, `selected_input_powered`,
+`inactive_input`, `inactive_input_powered`, and
 `missing_load_current_metadata` depending on the
 failure. Stable limit keys include `operating_voltage_minimum_V`,
 `operating_voltage_maximum_V`, `powered`, `supply_current_limit_A`,
@@ -165,6 +167,8 @@ failure. Stable limit keys include `operating_voltage_minimum_V`,
 `earliest_output_power_valid_at_us`, `required_rail_timing_field`, and
 `power_conversion_field`, `control_pin`, `required_enabled_state`,
 `load_switch_max_output_current_A`, `power_switch_field`,
+`reset_supervisor_threshold_max_V`, `load_operating_voltage_min_V`,
+`reset_supervisor_field`,
 `required_component_parameter`, `battery_charger_min_charge_current_A`,
 `battery_charger_max_charge_current_A`, `input_supply_current_limit_A`,
 `battery_charger_regulation_voltage_V`, `battery_charger_field`,

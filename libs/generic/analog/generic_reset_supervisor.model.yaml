@@ -1,0 +1,37 @@
+component_id: generic.analog.reset_supervisor
+version: 0.1.0
+category: reset_supervisor
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.00001
+  GND:
+    kind: electrical_ground
+    required: true
+  RESET:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 100
+reset_supervisor:
+  monitored_pin: VDD
+  reset_output_pin: RESET
+  active: low
+  threshold_min_V: 2.93
+  threshold_max_V: 3.08
+  reset_release_delay_us: 200000
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - reset_supervisor_threshold_screening
+    - power_tree_validation
+  not_valid_for:
+    - reset_output_waveform_shape
+    - open_drain_pullup_timing
+    - reset_supervisor_transient_or_noise_immunity_signoff

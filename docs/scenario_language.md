@@ -390,26 +390,32 @@ scenarios:
 11. If `power_switch.max_output_current_A` is declared, every switched-output
     rail load must declare `max_supply_current_A`, and the summed worst-case
     output load must not exceed the switch limit.
-12. If a component model declares `battery_charger`, the declared input and
+12. If a component model declares `reset_supervisor`, the monitored pin must be
+    an `electrical_power` port connected to a power rail, and the reset output
+    must be a digital output/IO port connected to a net.
+13. The monitored rail nominal voltage must be above the supervisor
+    `threshold_max_V`, and `threshold_min_V` must not be below the highest
+    powered-load `operating_voltage_min_V` on that rail.
+14. If a component model declares `battery_charger`, the declared input and
     battery pins must name distinct `electrical_power` ports and be connected
     to rails. Invalid charger metadata fails closed.
-13. If `battery_charger.charge_current_parameter` is declared, the component
+15. If `battery_charger.charge_current_parameter` is declared, the component
     instance must provide that numeric parameter. The programmed current must
     fit `min_charge_current_A` / `max_charge_current_A` when present.
-14. If the charger input rail declares `supply_current_limit_A`, the programmed
+16. If the charger input rail declares `supply_current_limit_A`, the programmed
     charge current must fit that input-source budget.
-15. If `battery_charger.regulation_voltage_V` is declared and the battery net
+17. If `battery_charger.regulation_voltage_V` is declared and the battery net
     has `nominal_voltage`, the battery net may not exceed the regulation
     voltage.
-16. If a component model declares `power_mux`, the output and all input pins
+18. If a component model declares `power_mux`, the output and all input pins
     must name `electrical_power` ports and be connected to rails.
-17. If `power_mux.selected_input_parameter` is declared, the component instance
+19. If `power_mux.selected_input_parameter` is declared, the component instance
     must provide that string parameter, and the selected input must match one
     of the model input names.
-18. If the mux output rail is powered, the selected input rail must be powered.
-19. If the mux output rail is powered and an inactive input rail is unpowered,
+20. If the mux output rail is powered, the selected input rail must be powered.
+21. If the mux output rail is powered and an inactive input rail is unpowered,
     that inactive input must declare `reverse_blocking: true`.
-20. If `power_mux.max_output_current_A` is declared, every load on the mux
+22. If `power_mux.max_output_current_A` is declared, every load on the mux
     output rail must declare `max_supply_current_A`, and the summed load must
     not exceed the mux output-current limit.
 

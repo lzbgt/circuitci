@@ -157,6 +157,35 @@ This is a static topology/evidence check. It does not sign off inrush,
 turn-on ramp, reverse current, switch SOA, or thermal behavior; those require
 SPICE or a datasheet-backed transient/power-path model.
 
+Reset supervisor models can declare static threshold metadata:
+
+```yaml
+reset_supervisor:
+  monitored_pin: VDD
+  reset_output_pin: RESET
+  active: low
+  threshold_min_V: 2.93
+  threshold_max_V: 3.08
+  reset_release_delay_us: 200000
+```
+
+- `monitored_pin` must name an `electrical_power` port connected to the
+  supervised rail.
+- `reset_output_pin` must name a `digital_electrical_output` or
+  `digital_electrical_io` port connected to the reset net.
+- `active` is `low` or `high`.
+- `threshold_min_V` and `threshold_max_V` bound the worst-case supervisor
+  release/assert threshold tolerance.
+- `reset_release_delay_us` is optional static delay metadata for reset timing
+  scenarios.
+
+`POWER_TREE_VALID` checks that the monitored rail nominal voltage is above the
+worst-case threshold maximum, and that the worst-case threshold minimum is not
+below the minimum operating voltage of powered loads on the monitored rail.
+This is a static threshold-screening rule; it does not model output topology,
+pull-up RC shape, noise immunity, comparator hysteresis, or transient
+oscillation around threshold.
+
 Battery charger models can declare static charge-current metadata:
 
 ```yaml

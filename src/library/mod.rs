@@ -28,6 +28,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub power_mux: Option<PowerMux>,
     #[serde(default)]
+    pub reset_supervisor: Option<ResetSupervisor>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub clock_sources: Vec<ClockSource>,
@@ -98,6 +100,26 @@ pub struct PowerMuxInput {
     pub input_pin: String,
     #[serde(default)]
     pub reverse_blocking: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResetSupervisor {
+    pub monitored_pin: String,
+    pub reset_output_pin: String,
+    pub active: ResetSupervisorActive,
+    #[serde(rename = "threshold_min_V")]
+    pub threshold_min_v: f64,
+    #[serde(rename = "threshold_max_V")]
+    pub threshold_max_v: f64,
+    #[serde(default)]
+    pub reset_release_delay_us: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ResetSupervisorActive {
+    High,
+    Low,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

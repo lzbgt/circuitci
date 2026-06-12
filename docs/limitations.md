@@ -30,9 +30,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   adapter is integrated.
 - `POWER_TREE_VALID` checks declared rail power state, nominal voltage ranges,
   static current budgets, and explicit regulator dropout/output-current/startup
-  metadata. It does not infer a whole-board analog power tree or solve
-  regulator ramp waveform shape, load-dependent dropout, inrush,
-  charger/power-mux behavior, thermal behavior, or load-transient stability.
+  metadata plus reset-supervisor threshold metadata. It does not infer a
+  whole-board analog power tree or solve regulator ramp waveform shape,
+  load-dependent dropout, inrush, charger/power-mux behavior, reset-output
+  waveform shape, thermal behavior, or load-transient stability.
 - `RESET_RELEASE_AFTER_POWER_VALID` can consume target rail `power_valid_at_us`
   and reset-supervisor delay metadata. It does not derive reset release from an
   analog RC/supervisor waveform unless an explicit `analog_transient` scenario

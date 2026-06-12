@@ -594,6 +594,38 @@ fn good_regulator_power_tree_passes() {
 }
 
 #[test]
+fn good_reset_supervisor_threshold_passes() {
+    let report = run_validation("examples/good_reset_supervisor_threshold/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn reset_supervisor_threshold_below_load_minimum_fails() {
+    let report = run_validation("examples/bad_reset_supervisor_threshold_too_low/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["id"] == "POWER_TREE_VALID"
+                && finding["measured"]
+                    .get("reset_supervisor_threshold_min_V")
+                    .is_some()
+        })
+        .expect("expected reset-supervisor threshold finding");
+    assert_eq!(failure["component"], "USUP_LOW_THRESHOLD");
+    assert_eq!(failure["net"], "nrst");
+    assert_eq!(failure["measured"]["reset_supervisor_threshold_min_V"], 2.4);
+    assert_eq!(failure["measured"]["monitored_load_component"], "U1");
+    assert_eq!(failure["measured"]["monitored_load_pin"], "VDD");
+    assert_eq!(failure["limit"]["load_operating_voltage_min_V"], 2.7);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn regulator_dropout_fails() {
     let report = run_validation("examples/bad_regulator_dropout/project.yaml");
     assert_eq!(report["result"], "fail");

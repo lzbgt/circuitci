@@ -104,6 +104,25 @@
       },
       "additionalProperties": false
     },
+    "reset_supervisor": {
+      "type": "object",
+      "required": [
+        "monitored_pin",
+        "reset_output_pin",
+        "active",
+        "threshold_min_V",
+        "threshold_max_V"
+      ],
+      "properties": {
+        "monitored_pin": { "type": "string", "minLength": 1 },
+        "reset_output_pin": { "type": "string", "minLength": 1 },
+        "active": { "enum": ["high", "low"] },
+        "threshold_min_V": { "type": "number", "exclusiveMinimum": 0 },
+        "threshold_max_V": { "type": "number", "exclusiveMinimum": 0 },
+        "reset_release_delay_us": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "signal_conditioning": {
       "type": "object",
       "properties": {

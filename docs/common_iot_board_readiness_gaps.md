@@ -64,6 +64,8 @@ Executable slices now covered by `POWER_TREE_VALID`:
   input-source current budget,
 - explicit power-mux `power_mux` source-selection evidence and inactive-input
   reverse-blocking checks,
+- explicit reset-supervisor `reset_supervisor` threshold checks against rail
+  nominal voltage and monitored-load minimum operating voltage,
 - reset release checked against target rail `power_valid_at_us` plus optional
   reset-supervisor or power-good delay metadata.
 
