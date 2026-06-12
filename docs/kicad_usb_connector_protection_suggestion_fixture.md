@@ -64,8 +64,9 @@ fallback behavior when no supported footprint drawing evidence exists.
 evidence through `validate`, not just through suggestions. After
 `import-kicad-pcb` enriches that project, its
 `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` scenario uses the imported `J1`
-fabrication polygon and the imported `UESD` placement center. The executable
-check reports the measured clearance as `0.6 mm` and fails against the fixture's
+fabrication polygon and the imported `UESD` fabrication rectangle. The executable
+check reports the measured footprint-to-footprint clearance as `0.5 mm` and
+fails against the fixture's
 `0.7 mm` minimum connector-to-component clearance limit.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule

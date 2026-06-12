@@ -89,6 +89,26 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_footprint["arcs"][0]["layer"], "F.CrtYd");
     assert_eq!(connector_footprint["arcs"][0]["start"]["x_mm"], 0.0);
     assert_eq!(connector_footprint["arcs"][0]["mid"]["y_mm"], 1.0);
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["start"]["x_mm"],
+        0.9
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["UESD"]["rectangles"][0]["end"]["y_mm"],
+        0.7
+    );
+    assert_eq!(
+        imported["board"]["layout"]["footprints"]["UVBUS"]["rectangles"][0]["start"]["x_mm"],
+        1.38
+    );
     assert!(imported["board"]["layout"]["footprints"]["H1"].is_null());
     let connector_dp_pad = &imported["board"]["layout"]["pads"]["J1"]["D+"];
     assert_eq!(connector_dp_pad["at"]["x_mm"], 0.0);
@@ -379,7 +399,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     let nearest_clearance =
         &component_clearance["scenario"]["usb_connectors"][0]["nearest_component_clearance"];
     assert_eq!(nearest_clearance["component"], "UESD");
-    assert_eq!(nearest_clearance["clearance_mm"], 0.6);
+    assert_eq!(nearest_clearance["clearance_mm"], 0.5);
     assert_eq!(
         nearest_clearance["connector_clearance_reference"],
         "footprint_polygon"
@@ -394,7 +414,15 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(
         nearest_clearance["component_clearance_reference"],
-        "placement_center"
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        nearest_clearance["component_footprint_graphic_layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        nearest_clearance["component_footprint_graphic_kind"],
+        "fabrication"
     );
     let route = suggestions["suggestions"]
         .as_array()
@@ -624,12 +652,20 @@ fn import_kicad_pcb_component_clearance_check_uses_imported_layout() {
     );
     assert_eq!(
         failure["measured"]["nearby_component_clearance_reference"],
-        "placement_center"
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        failure["measured"]["nearby_component_footprint_graphic_layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        failure["measured"]["nearby_component_footprint_graphic_kind"],
+        "fabrication"
     );
     let clearance = failure["measured"]["connector_to_component_clearance_mm"]
         .as_f64()
         .unwrap();
-    assert!((clearance - 0.6).abs() < 1e-12);
+    assert!((clearance - 0.5).abs() < 1e-12);
     assert_eq!(
         failure["limit"]["min_connector_to_component_clearance_mm"],
         0.7
