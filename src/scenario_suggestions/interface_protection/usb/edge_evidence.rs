@@ -1,7 +1,7 @@
 use super::super::super::{
-    SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintArc, SuggestedFootprintCircle,
-    SuggestedFootprintPolygon, SuggestedFootprintRectangle, SuggestedFootprintSegment,
-    SuggestedPoint,
+    SuggestedBoardEdge, SuggestedComponentClearance, SuggestedFootprint, SuggestedFootprintArc,
+    SuggestedFootprintCircle, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
+    SuggestedFootprintSegment, SuggestedPoint,
 };
 use super::super::component_placement;
 use crate::board_ir::{
@@ -128,10 +128,75 @@ pub(super) fn nearest_board_edge_evidence(
     })
 }
 
+pub(super) fn nearest_component_clearance_evidence(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+) -> Option<SuggestedComponentClearance> {
+    let connector_primitives = mechanical_clearance_primitives(bound, connector_id, false);
+    if connector_primitives.is_empty() {
+        return None;
+    }
+    let mut nearest: Option<ComponentClearanceCandidate<'_>> = None;
+    for component_id in bound.project.board.components.keys() {
+        if component_id == connector_id {
+            continue;
+        }
+        let component_primitives = mechanical_clearance_primitives(bound, component_id, true);
+        if component_primitives.is_empty() {
+            continue;
+        }
+        let Some((clearance_mm, connector_reference, component_reference)) =
+            nearest_clearance_between(&connector_primitives, &component_primitives)
+        else {
+            continue;
+        };
+        if nearest
+            .as_ref()
+            .is_none_or(|candidate| clearance_mm < candidate.clearance_mm)
+        {
+            nearest = Some(ComponentClearanceCandidate {
+                component_id,
+                clearance_mm,
+                connector_reference,
+                component_reference,
+            });
+        }
+    }
+    nearest.map(|candidate| SuggestedComponentClearance {
+        component: candidate.component_id.to_string(),
+        clearance_mm: candidate.clearance_mm,
+        connector_clearance_reference: candidate.connector_reference.label().to_string(),
+        connector_footprint_graphic_layer: candidate
+            .connector_reference
+            .footprint_layer()
+            .map(str::to_string),
+        connector_footprint_graphic_kind: candidate
+            .connector_reference
+            .footprint_kind()
+            .map(str::to_string),
+        component_clearance_reference: candidate.component_reference.label().to_string(),
+        component_footprint_graphic_layer: candidate
+            .component_reference
+            .footprint_layer()
+            .map(str::to_string),
+        component_footprint_graphic_kind: candidate
+            .component_reference
+            .footprint_kind()
+            .map(str::to_string),
+    })
+}
+
 struct BoardEdgeConnectorDistance<'a> {
     distance_mm: f64,
     reference: BoardEdgeConnectorReference<'a>,
     body_overhang_mm: Option<f64>,
+}
+
+struct ComponentClearanceCandidate<'a> {
+    component_id: &'a str,
+    clearance_mm: f64,
+    connector_reference: ComponentClearanceReference<'a>,
+    component_reference: ComponentClearanceReference<'a>,
 }
 
 #[derive(Clone, Copy)]
@@ -142,6 +207,51 @@ enum BoardEdgeConnectorReference<'a> {
     FootprintPolygon { layer: &'a str, kind: &'a str },
     FootprintCircle { layer: &'a str, kind: &'a str },
     FootprintArc { layer: &'a str, kind: &'a str },
+}
+
+#[derive(Clone, Copy)]
+enum ComponentClearanceReference<'a> {
+    PlacementCenter,
+    FootprintSegment { layer: &'a str, kind: &'a str },
+    FootprintRectangle { layer: &'a str, kind: &'a str },
+    FootprintPolygon { layer: &'a str, kind: &'a str },
+    FootprintCircle { layer: &'a str, kind: &'a str },
+    FootprintArc { layer: &'a str, kind: &'a str },
+}
+
+impl ComponentClearanceReference<'_> {
+    fn label(&self) -> &'static str {
+        match self {
+            ComponentClearanceReference::PlacementCenter => "placement_center",
+            ComponentClearanceReference::FootprintSegment { .. } => "footprint_segment",
+            ComponentClearanceReference::FootprintRectangle { .. } => "footprint_rectangle",
+            ComponentClearanceReference::FootprintPolygon { .. } => "footprint_polygon",
+            ComponentClearanceReference::FootprintCircle { .. } => "footprint_circle",
+            ComponentClearanceReference::FootprintArc { .. } => "footprint_arc",
+        }
+    }
+
+    fn footprint_layer(&self) -> Option<&str> {
+        match self {
+            ComponentClearanceReference::PlacementCenter => None,
+            ComponentClearanceReference::FootprintSegment { layer, .. }
+            | ComponentClearanceReference::FootprintRectangle { layer, .. }
+            | ComponentClearanceReference::FootprintPolygon { layer, .. }
+            | ComponentClearanceReference::FootprintCircle { layer, .. }
+            | ComponentClearanceReference::FootprintArc { layer, .. } => Some(layer),
+        }
+    }
+
+    fn footprint_kind(&self) -> Option<&str> {
+        match self {
+            ComponentClearanceReference::PlacementCenter => None,
+            ComponentClearanceReference::FootprintSegment { kind, .. }
+            | ComponentClearanceReference::FootprintRectangle { kind, .. }
+            | ComponentClearanceReference::FootprintPolygon { kind, .. }
+            | ComponentClearanceReference::FootprintCircle { kind, .. }
+            | ComponentClearanceReference::FootprintArc { kind, .. } => Some(kind),
+        }
+    }
 }
 
 impl BoardEdgeConnectorReference<'_> {
@@ -304,6 +414,232 @@ fn connector_to_board_edge_distance<'a>(
         }
     }
     best
+}
+
+#[derive(Clone)]
+enum ClearancePrimitive<'a> {
+    Point {
+        point: LayoutPoint,
+        reference: ComponentClearanceReference<'a>,
+    },
+    Segment {
+        start: LayoutPoint,
+        end: LayoutPoint,
+        reference: ComponentClearanceReference<'a>,
+    },
+}
+
+impl<'a> ClearancePrimitive<'a> {
+    fn reference(&self) -> ComponentClearanceReference<'a> {
+        match self {
+            ClearancePrimitive::Point { reference, .. }
+            | ClearancePrimitive::Segment { reference, .. } => *reference,
+        }
+    }
+}
+
+fn mechanical_clearance_primitives<'a>(
+    bound: &'a BoundBoard<'_>,
+    component_id: &'a str,
+    include_placement_fallback: bool,
+) -> Vec<ClearancePrimitive<'a>> {
+    let mut primitives = Vec::new();
+    if let Some(footprint) = bound.project.board.layout.footprints.get(component_id) {
+        for segment in &footprint.segments {
+            if !mechanical_footprint_kind(&segment.kind)
+                || !point_is_finite(&segment.start)
+                || !point_is_finite(&segment.end)
+                || point_distance_mm(&segment.start, &segment.end) <= f64::EPSILON
+            {
+                continue;
+            }
+            primitives.push(ClearancePrimitive::Segment {
+                start: segment.start.clone(),
+                end: segment.end.clone(),
+                reference: ComponentClearanceReference::FootprintSegment {
+                    layer: &segment.layer,
+                    kind: &segment.kind,
+                },
+            });
+        }
+        for rectangle in &footprint.rectangles {
+            if !mechanical_footprint_kind(&rectangle.kind) {
+                continue;
+            }
+            let Some(corners) = rectangle_corners(rectangle) else {
+                continue;
+            };
+            push_closed_clearance_polyline(
+                &mut primitives,
+                &corners,
+                ComponentClearanceReference::FootprintRectangle {
+                    layer: &rectangle.layer,
+                    kind: &rectangle.kind,
+                },
+            );
+        }
+        for polygon in &footprint.polygons {
+            if !mechanical_footprint_kind(&polygon.kind)
+                || polygon.points.len() < 3
+                || polygon.points.iter().any(|point| !point_is_finite(point))
+            {
+                continue;
+            }
+            push_closed_clearance_polyline(
+                &mut primitives,
+                &polygon.points,
+                ComponentClearanceReference::FootprintPolygon {
+                    layer: &polygon.layer,
+                    kind: &polygon.kind,
+                },
+            );
+        }
+        for circle in &footprint.circles {
+            if !mechanical_footprint_kind(&circle.kind) {
+                continue;
+            }
+            let Some(points) = footprint_circle_points(circle) else {
+                continue;
+            };
+            push_closed_clearance_polyline(
+                &mut primitives,
+                &points,
+                ComponentClearanceReference::FootprintCircle {
+                    layer: &circle.layer,
+                    kind: &circle.kind,
+                },
+            );
+        }
+        for arc in &footprint.arcs {
+            if !mechanical_footprint_kind(&arc.kind) {
+                continue;
+            }
+            let Some(points) = footprint_arc_points(arc) else {
+                continue;
+            };
+            push_open_clearance_polyline(
+                &mut primitives,
+                &points,
+                ComponentClearanceReference::FootprintArc {
+                    layer: &arc.layer,
+                    kind: &arc.kind,
+                },
+            );
+        }
+    }
+    if primitives.is_empty()
+        && include_placement_fallback
+        && let Some(placement) = component_placement(bound, component_id)
+    {
+        primitives.push(ClearancePrimitive::Point {
+            point: LayoutPoint {
+                x_mm: placement.x_mm,
+                y_mm: placement.y_mm,
+            },
+            reference: ComponentClearanceReference::PlacementCenter,
+        });
+    }
+    primitives
+}
+
+fn push_closed_clearance_polyline<'a>(
+    primitives: &mut Vec<ClearancePrimitive<'a>>,
+    points: &[LayoutPoint],
+    reference: ComponentClearanceReference<'a>,
+) {
+    if points.len() < 2 {
+        return;
+    }
+    for index in 0..points.len() {
+        let next_index = (index + 1) % points.len();
+        primitives.push(ClearancePrimitive::Segment {
+            start: points[index].clone(),
+            end: points[next_index].clone(),
+            reference,
+        });
+    }
+}
+
+fn push_open_clearance_polyline<'a>(
+    primitives: &mut Vec<ClearancePrimitive<'a>>,
+    points: &[LayoutPoint],
+    reference: ComponentClearanceReference<'a>,
+) {
+    if points.len() < 2 {
+        return;
+    }
+    for window in points.windows(2) {
+        primitives.push(ClearancePrimitive::Segment {
+            start: window[0].clone(),
+            end: window[1].clone(),
+            reference,
+        });
+    }
+}
+
+fn nearest_clearance_between<'a>(
+    connector: &[ClearancePrimitive<'a>],
+    other: &[ClearancePrimitive<'a>],
+) -> Option<(
+    f64,
+    ComponentClearanceReference<'a>,
+    ComponentClearanceReference<'a>,
+)> {
+    let mut nearest: Option<(
+        f64,
+        ComponentClearanceReference<'a>,
+        ComponentClearanceReference<'a>,
+    )> = None;
+    for connector_primitive in connector {
+        for other_primitive in other {
+            let clearance_mm = clearance_primitive_distance(connector_primitive, other_primitive);
+            if nearest
+                .as_ref()
+                .is_none_or(|(nearest_clearance, _, _)| clearance_mm < *nearest_clearance)
+            {
+                nearest = Some((
+                    clearance_mm,
+                    connector_primitive.reference(),
+                    other_primitive.reference(),
+                ));
+            }
+        }
+    }
+    nearest
+}
+
+fn clearance_primitive_distance(
+    first: &ClearancePrimitive<'_>,
+    second: &ClearancePrimitive<'_>,
+) -> f64 {
+    match (first, second) {
+        (
+            ClearancePrimitive::Point { point: a, .. },
+            ClearancePrimitive::Point { point: b, .. },
+        ) => point_distance_mm(a, b),
+        (
+            ClearancePrimitive::Point { point, .. },
+            ClearancePrimitive::Segment { start, end, .. },
+        )
+        | (
+            ClearancePrimitive::Segment { start, end, .. },
+            ClearancePrimitive::Point { point, .. },
+        ) => point_to_segment_distance_mm(
+            point.x_mm, point.y_mm, start.x_mm, start.y_mm, end.x_mm, end.y_mm,
+        ),
+        (
+            ClearancePrimitive::Segment {
+                start: a_start,
+                end: a_end,
+                ..
+            },
+            ClearancePrimitive::Segment {
+                start: b_start,
+                end: b_end,
+                ..
+            },
+        ) => segment_to_segment_distance_mm(a_start, a_end, b_start, b_end),
+    }
 }
 
 fn mechanical_footprint_kind(kind: &str) -> bool {

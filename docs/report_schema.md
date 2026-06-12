@@ -247,6 +247,13 @@ optional `connector_footprint_graphic_layer`, optional
 `nearby_component_footprint_graphic_kind`. Stable limit keys include
 `min_connector_to_component_clearance_mm`.
 
+Scenario suggestion reports may also include
+`scenario.usb_connectors[].nearest_component_clearance` for
+`USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` templates. That suggestion evidence
+uses the same stable key names except `component` identifies the nearby
+component and `clearance_mm` carries the measured connector-to-component
+distance.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

@@ -376,6 +376,26 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         component_clearance["scenario"]["usb_connectors"][0]["footprint"]["polygons"][0]["kind"],
         "fabrication"
     );
+    let nearest_clearance =
+        &component_clearance["scenario"]["usb_connectors"][0]["nearest_component_clearance"];
+    assert_eq!(nearest_clearance["component"], "UESD");
+    assert_eq!(nearest_clearance["clearance_mm"], 0.6);
+    assert_eq!(
+        nearest_clearance["connector_clearance_reference"],
+        "footprint_polygon"
+    );
+    assert_eq!(
+        nearest_clearance["connector_footprint_graphic_layer"],
+        "F.Fab"
+    );
+    assert_eq!(
+        nearest_clearance["connector_footprint_graphic_kind"],
+        "fabrication"
+    );
+    assert_eq!(
+        nearest_clearance["component_clearance_reference"],
+        "placement_center"
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()

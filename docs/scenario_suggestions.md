@@ -131,7 +131,10 @@ The command is conservative:
 - It emits non-runnable `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` templates
   when the USB connector has supported footprint evidence and at least one
   other component has placement or footprint evidence. The template includes
-  the connector footprint evidence in `scenario.usb_connectors[]` and leaves
+  the connector footprint evidence plus
+  `scenario.usb_connectors[].nearest_component_clearance`, which reports the
+  nearest component, measured 2D clearance, and whether each side used
+  footprint or placement-center evidence. It leaves
   `min_connector_to_component_clearance_mm` as `null` until an agent fills the
   connector keepout, cable insertion, enclosure, or assembly clearance rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB

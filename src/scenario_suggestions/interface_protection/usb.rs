@@ -19,7 +19,9 @@ use std::collections::{BTreeMap, BTreeSet};
 mod edge_evidence;
 mod route_evidence;
 
-use edge_evidence::{nearest_board_edge_evidence, suggested_footprint};
+use edge_evidence::{
+    nearest_board_edge_evidence, nearest_component_clearance_evidence, suggested_footprint,
+};
 use route_evidence::{
     GroundReferenceGeometry, GroundZoneEvidence, ground_zone_outlines,
     ground_zones_have_filled_polygons, pad_to_route_distance_mm,
@@ -443,9 +445,9 @@ pub(super) fn usb_connector_component_clearance_suggestion(
     let connector = model.usb_connector.as_ref()?;
     let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
     suggested_connector.footprint.as_ref()?;
-    if !has_component_clearance_candidate(bound, component_id) {
-        return None;
-    }
+    let nearest_clearance = suggested_connector.nearest_component_clearance.as_ref()?;
+    let nearest_clearance_mm = nearest_clearance.clearance_mm;
+    let nearest_clearance_component = nearest_clearance.component.clone();
     let parameters = BTreeMap::from([(
         "min_connector_to_component_clearance_mm".to_string(),
         serde_json::Value::Null,
@@ -459,7 +461,9 @@ pub(super) fn usb_connector_component_clearance_suggestion(
         confidence: "medium".to_string(),
         runnable: false,
         reason: format!(
-            "USB connector {component_id} and other placed or footprint-backed components have layout evidence; add a connector keepout/component-clearance scenario."
+            "USB connector {component_id} has measured clearance {:.3} mm to nearby component {}; add a connector keepout/component-clearance scenario.",
+            nearest_clearance_mm,
+            nearest_clearance_component
         ),
         scenario: SuggestedScenario {
             name: format!(
@@ -491,7 +495,11 @@ pub(super) fn usb_connector_component_clearance_suggestion(
             paths: Vec::new(),
         },
         required_inputs: vec![
-            "Fill min_connector_to_component_clearance_mm from the connector courtyard, cable insertion, enclosure, or assembly keepout rule before making this scenario runnable.".to_string(),
+            format!(
+                "Fill min_connector_to_component_clearance_mm from the connector courtyard, cable insertion, enclosure, or assembly keepout rule after reviewing measured nearest-component clearance {:.3} mm to {}.",
+                nearest_clearance_mm,
+                nearest_clearance_component
+            ),
             "Review imported fabrication/courtyard evidence; this is a 2D component-clearance screen and does not prove 3D shell, cable, panel, or enclosure fit.".to_string(),
         ],
     })
@@ -911,24 +919,6 @@ fn optional_number_value(value: Option<f64>) -> serde_json::Value {
     value.map_or(serde_json::Value::Null, serde_json::Value::from)
 }
 
-fn has_component_clearance_candidate(bound: &BoundBoard<'_>, connector_id: &str) -> bool {
-    bound
-        .project
-        .board
-        .components
-        .keys()
-        .filter(|component_id| component_id.as_str() != connector_id)
-        .any(|component_id| {
-            bound
-                .project
-                .board
-                .layout
-                .footprints
-                .contains_key(component_id)
-                || component_placement(bound, component_id).is_some()
-        })
-}
-
 fn route_limit_required_input(value: Option<f64>, field: &str, fallback: &str) -> String {
     if value.is_some() {
         format!(
@@ -1321,6 +1311,7 @@ fn suggested_usb_connector(
         placement: suggested_placement(bound, component_id),
         footprint: suggested_footprint(bound, component_id),
         nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
+        nearest_component_clearance: nearest_component_clearance_evidence(bound, component_id),
     })
 }
 

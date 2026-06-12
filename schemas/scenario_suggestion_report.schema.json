@@ -194,7 +194,8 @@
                     "shield_net": { "type": "string", "minLength": 1 },
                     "placement": { "$ref": "#/$defs/placement" },
                     "footprint": { "$ref": "#/$defs/footprint" },
-                    "nearest_board_edge": { "$ref": "#/$defs/board_edge" }
+                    "nearest_board_edge": { "$ref": "#/$defs/board_edge" },
+                    "nearest_component_clearance": { "$ref": "#/$defs/component_clearance" }
                   },
                   "additionalProperties": false
                 }
@@ -541,6 +542,41 @@
         "connector_rotation_error_deg": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false
+    },
+    "component_clearance": {
+      "type": "object",
+      "required": [
+        "component",
+        "clearance_mm",
+        "connector_clearance_reference",
+        "component_clearance_reference"
+      ],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "clearance_mm": { "type": "number", "minimum": 0 },
+        "connector_clearance_reference": {
+          "$ref": "#/$defs/clearance_reference"
+        },
+        "connector_footprint_graphic_layer": { "type": "string", "minLength": 1 },
+        "connector_footprint_graphic_kind": { "type": "string", "minLength": 1 },
+        "component_clearance_reference": {
+          "$ref": "#/$defs/clearance_reference"
+        },
+        "component_footprint_graphic_layer": { "type": "string", "minLength": 1 },
+        "component_footprint_graphic_kind": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "clearance_reference": {
+      "type": "string",
+      "enum": [
+        "placement_center",
+        "footprint_segment",
+        "footprint_rectangle",
+        "footprint_polygon",
+        "footprint_circle",
+        "footprint_arc"
+      ]
     },
     "footprint": {
       "type": "object",

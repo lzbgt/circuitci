@@ -187,6 +187,8 @@ pub struct SuggestedUsbConnector {
     pub footprint: Option<SuggestedFootprint>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_board_edge: Option<SuggestedBoardEdge>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nearest_component_clearance: Option<SuggestedComponentClearance>,
 }
 
 #[derive(Debug, Serialize)]
@@ -272,6 +274,22 @@ pub struct SuggestedBoardEdge {
     pub edge_angle_deg: f64,
     pub outward_normal_deg: f64,
     pub connector_rotation_error_deg: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedComponentClearance {
+    pub component: String,
+    pub clearance_mm: f64,
+    pub connector_clearance_reference: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_footprint_graphic_layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connector_footprint_graphic_kind: Option<String>,
+    pub component_clearance_reference: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_footprint_graphic_layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_footprint_graphic_kind: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
