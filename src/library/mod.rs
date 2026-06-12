@@ -22,6 +22,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub power_conversion: Option<PowerConversion>,
     #[serde(default)]
+    pub power_switch: Option<PowerSwitch>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub datasheet: Option<Datasheet>,
@@ -38,6 +40,23 @@ pub struct PowerConversion {
     pub max_output_current_a: Option<f64>,
     #[serde(default)]
     pub startup_delay_us: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PowerSwitch {
+    pub input_pin: String,
+    pub output_pin: String,
+    pub control_pin: String,
+    pub enabled_state: PowerSwitchState,
+    #[serde(default, rename = "max_output_current_A")]
+    pub max_output_current_a: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PowerSwitchState {
+    High,
+    Low,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

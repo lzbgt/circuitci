@@ -55,6 +55,18 @@
       },
       "additionalProperties": false
     },
+    "power_switch": {
+      "type": "object",
+      "required": ["input_pin", "output_pin", "control_pin", "enabled_state"],
+      "properties": {
+        "input_pin": { "type": "string", "minLength": 1 },
+        "output_pin": { "type": "string", "minLength": 1 },
+        "control_pin": { "type": "string", "minLength": 1 },
+        "enabled_state": { "enum": ["high", "low"] },
+        "max_output_current_A": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "signal_conditioning": {
       "type": "object",
       "properties": {

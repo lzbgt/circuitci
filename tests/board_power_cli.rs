@@ -103,6 +103,73 @@ fn good_power_tree_board_passes() {
 }
 
 #[test]
+fn good_load_switch_power_tree_passes_with_enable_evidence() {
+    let report = run_validation("examples/good_load_switch_power_tree/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn load_switch_powered_output_requires_enable_evidence() {
+    let report = run_validation("examples/bad_load_switch_missing_enable/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_enabled_state").is_some())
+        .expect("expected load switch enable finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USW");
+    assert_eq!(failure["net"], "sensor_3v3");
+    assert_eq!(failure["measured"]["control_state"], "missing");
+    assert_eq!(failure["limit"]["control_pin"], "EN");
+    assert_eq!(failure["limit"]["required_enabled_state"], "high");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn load_switch_disabled_control_cannot_power_output_rail() {
+    let report = run_validation("examples/bad_load_switch_disabled_output_powered/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_enabled_state").is_some())
+        .expect("expected load switch enable finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USW");
+    assert_eq!(failure["net"], "sensor_3v3");
+    assert_eq!(failure["measured"]["control_state"], "low");
+    assert_eq!(failure["limit"]["required_enabled_state"], "high");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn load_switch_output_current_limit_fails() {
+    let report = run_validation("examples/bad_load_switch_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("load_switch_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected load switch output current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "USW");
+    assert_eq!(failure["net"], "sensor_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 0.07);
+    assert_eq!(failure["limit"]["load_switch_max_output_current_A"], 0.05);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

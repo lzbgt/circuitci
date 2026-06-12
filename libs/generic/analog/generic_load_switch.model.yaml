@@ -1,0 +1,41 @@
+component_id: generic.analog.load_switch
+version: 0.1.0
+category: load_switch
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 6.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 6.0
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.2
+      vil_max_V: 0.4
+  GND:
+    kind: electrical_ground
+    required: true
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: EN
+  enabled_state: high
+  max_output_current_A: 0.05
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_tree_validation
+    - load_switch_static_screening
+  not_valid_for:
+    - inrush_or_soft_start_signoff
+    - load_switch_transient_or_reverse_current_signoff
+    - thermal_signoff

@@ -344,6 +344,13 @@ scenarios:
 9. If `power_conversion.startup_delay_us` is declared, input and output rails
    must declare `power_valid_at_us`, and the output rail may not become valid
    before `input_power_valid_at_us + startup_delay_us`.
+10. If a component model declares `power_switch`, the declared input and output
+    pins must name distinct `electrical_power` ports, the control pin must be a
+    digital input/IO port, and a powered output rail must have matching
+    scenario `pin_states` evidence for the required enabled state.
+11. If `power_switch.max_output_current_A` is declared, every switched-output
+    rail load must declare `max_supply_current_A`, and the summed worst-case
+    output load must not exceed the switch limit.
 
 `IO_VOLTAGE_COMPATIBLE` can be declared on the same `power_tree` scenario. It
 checks same-net digital output/input pairs when both sides have enough

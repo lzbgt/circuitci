@@ -1,5 +1,5 @@
-use crate::board_ir::{ComponentSpec, NetKind, NetSpec, Scenario};
-use crate::library::{BoundBoard, ComponentModel, PortKind};
+use crate::board_ir::{ComponentSpec, NetKind, NetSpec, PinLogicState, Scenario};
+use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use crate::reports::Finding;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -56,6 +56,15 @@ pub(super) fn validate_power_tree(
             continue;
         };
         validate_power_conversion(
+            component_id,
+            component,
+            model,
+            &loads_by_net,
+            bound,
+            scenario,
+            findings,
+        );
+        validate_power_switch(
             component_id,
             component,
             model,
@@ -292,6 +301,161 @@ fn validate_power_conversion(
     }
 }
 
+fn validate_power_switch(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    loads_by_net: &BTreeMap<String, Vec<PowerLoad>>,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(switch) = &model.power_switch else {
+        return;
+    };
+    if !validate_power_switch_metadata(component_id, model, scenario, findings) {
+        return;
+    }
+    let Some(input_net_name) = resolve_power_net(component, &switch.input_pin) else {
+        power_switch_pin_finding(component_id, &switch.input_pin, "input", scenario, findings);
+        return;
+    };
+    let Some(output_net_name) = resolve_power_net(component, &switch.output_pin) else {
+        power_switch_pin_finding(
+            component_id,
+            &switch.output_pin,
+            "output",
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(input_net) = bound.project.board.nets.get(input_net_name) else {
+        return;
+    };
+    let Some(output_net) = bound.project.board.nets.get(output_net_name) else {
+        return;
+    };
+
+    if output_net.powered == Some(true) {
+        let observed_state = scenario
+            .pin_states
+            .iter()
+            .find(|state| state.component == component_id && state.pin == switch.control_pin);
+        let required_state = power_switch_state_name(&switch.enabled_state);
+        let enabled = observed_state
+            .and_then(|state| state.state.as_ref())
+            .is_some_and(|state| power_switch_pin_state_matches(state, &switch.enabled_state));
+        if !enabled {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Load switch {component_id} output rail {output_net_name} is declared powered but {component_id}.{} is not proven {required_state}.",
+                    switch.control_pin
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding.measured.insert(
+                "input_powered".to_string(),
+                json!(input_net.powered.unwrap_or(false)),
+            );
+            finding
+                .measured
+                .insert("output_powered".to_string(), json!(true));
+            finding.measured.insert(
+                "control_state".to_string(),
+                json!(
+                    observed_state
+                        .and_then(|state| state.state.as_ref())
+                        .map(pin_logic_state_name)
+                        .unwrap_or("missing")
+                ),
+            );
+            finding
+                .limit
+                .insert("control_pin".to_string(), json!(switch.control_pin));
+            finding
+                .limit
+                .insert("required_enabled_state".to_string(), json!(required_state));
+            finding.suggested_fixes = vec![
+                format!(
+                    "Prove {component_id}.{} is driven {required_state} in this power-tree scenario, or mark {output_net_name} unpowered for the disabled case.",
+                    switch.control_pin
+                ),
+                "Connect the enable pin to a deterministic rail, supervisor, MCU GPIO state, or strap that matches the intended power state.".to_string(),
+                "Use analog_transient when switch turn-on ramp, inrush, or load sequencing must be validated from waveforms.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+
+    if let Some(max_output_current_a) = switch.max_output_current_a {
+        let loads = loads_by_net
+            .get(output_net_name)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let mut total_a = 0.0;
+        let mut missing_loads = Vec::new();
+        for load in loads {
+            match load.max_current_a {
+                Some(current) if current.is_finite() && current >= 0.0 => total_a += current,
+                _ => missing_loads.push(format!("{}.{}", load.component, load.pin)),
+            }
+        }
+        if !missing_loads.is_empty() {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Load switch {component_id} output current limit requires load metadata for {}.",
+                    missing_loads.join(", ")
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding.measured.insert(
+                "missing_load_current_metadata".to_string(),
+                json!(missing_loads),
+            );
+            finding.limit.insert(
+                "load_switch_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Add max_supply_current_A to loads fed by the switched rail.".to_string(),
+                "Split the scenario if switched loads are not all enabled simultaneously."
+                    .to_string(),
+            ];
+            findings.push(finding);
+        } else if total_a > max_output_current_a {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Load switch {component_id} worst-case output load {:.6} A exceeds switch limit {:.6} A.",
+                    total_a, max_output_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding
+                .measured
+                .insert("declared_output_load_current_A".to_string(), json!(total_a));
+            finding.limit.insert(
+                "load_switch_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Select a load switch with sufficient current and thermal margin.".to_string(),
+                "Reduce or sequence loads on the switched rail, or split them across separate switches.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+}
+
 fn validate_power_conversion_metadata(
     component_id: &str,
     model: &ComponentModel,
@@ -371,6 +535,102 @@ fn validate_power_conversion_metadata(
             component_id,
             "startup_delay_us",
             "power_conversion startup_delay_us must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    valid
+}
+
+fn validate_power_switch_metadata(
+    component_id: &str,
+    model: &ComponentModel,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> bool {
+    let Some(switch) = &model.power_switch else {
+        return true;
+    };
+    let mut valid = true;
+    if switch.input_pin == switch.output_pin {
+        power_switch_metadata_finding(
+            component_id,
+            "input_pin",
+            "power_switch input_pin and output_pin must be distinct.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    for (role, pin) in [
+        ("input_pin", switch.input_pin.as_str()),
+        ("output_pin", switch.output_pin.as_str()),
+    ] {
+        match model.ports.get(pin) {
+            Some(port) if port.kind == PortKind::ElectricalPower => {}
+            Some(_) => {
+                power_switch_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("power_switch {role} {pin} is not an electrical_power port."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+            None => {
+                power_switch_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("power_switch {role} {pin} is not declared in model ports."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+        }
+    }
+    match model.ports.get(&switch.control_pin) {
+        Some(port)
+            if matches!(
+                port.kind,
+                PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
+            ) => {}
+        Some(_) => {
+            power_switch_metadata_finding(
+                component_id,
+                "control_pin",
+                &format!(
+                    "power_switch control_pin {} is not a digital input or IO port.",
+                    switch.control_pin
+                ),
+                scenario,
+                findings,
+            );
+            valid = false;
+        }
+        None => {
+            power_switch_metadata_finding(
+                component_id,
+                "control_pin",
+                &format!(
+                    "power_switch control_pin {} is not declared in model ports.",
+                    switch.control_pin
+                ),
+                scenario,
+                findings,
+            );
+            valid = false;
+        }
+    }
+    if let Some(max_output_current_a) = switch.max_output_current_a
+        && (!max_output_current_a.is_finite() || max_output_current_a < 0.0)
+    {
+        power_switch_metadata_finding(
+            component_id,
+            "max_output_current_A",
+            "power_switch max_output_current_A must be finite and non-negative.",
             scenario,
             findings,
         );
@@ -577,6 +837,48 @@ fn power_conversion_pin_finding(
     findings.push(finding);
 }
 
+fn power_switch_metadata_finding(
+    component_id: &str,
+    field: &str,
+    message: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(POWER_TREE_VALID, &scenario.name, message.to_string());
+    finding.component = Some(component_id.to_string());
+    finding
+        .limit
+        .insert("power_switch_field".to_string(), json!(field));
+    finding.suggested_fixes = vec![
+        "Correct the component model power_switch metadata before using it for power-tree validation.".to_string(),
+        "Use analog_transient with an explicit switch model when static switch metadata is insufficient.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn power_switch_pin_finding(
+    component_id: &str,
+    pin: &str,
+    role: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!("Load switch {component_id} power_switch {role}_pin {pin} is not connected."),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(format!("{role}_pin"), json!(pin));
+    finding.suggested_fixes = vec![
+        "Connect every declared power_switch input and output pin to explicit power rails."
+            .to_string(),
+        "Correct the component model power_switch pin names if they do not match the model ports."
+            .to_string(),
+    ];
+    findings.push(finding);
+}
+
 fn validate_power_net(
     component_id: &str,
     pin_name: &str,
@@ -748,8 +1050,30 @@ fn resolve_power_net<'a>(component: &'a ComponentSpec, pin_name: &str) -> Option
 fn is_supply_source(model: &ComponentModel) -> bool {
     matches!(
         model.category.as_str(),
-        "voltage_source" | "regulator" | "power_source"
+        "voltage_source" | "regulator" | "power_source" | "load_switch"
     )
+}
+
+fn power_switch_pin_state_matches(state: &PinLogicState, required: &PowerSwitchState) -> bool {
+    matches!(
+        (state, required),
+        (PinLogicState::High, PowerSwitchState::High) | (PinLogicState::Low, PowerSwitchState::Low)
+    )
+}
+
+fn power_switch_state_name(state: &PowerSwitchState) -> &'static str {
+    match state {
+        PowerSwitchState::High => "high",
+        PowerSwitchState::Low => "low",
+    }
+}
+
+fn pin_logic_state_name(state: &PinLogicState) -> &'static str {
+    match state {
+        PinLogicState::High => "high",
+        PinLogicState::Low => "low",
+        PinLogicState::Z => "z",
+    }
 }
 
 struct PowerLoad {

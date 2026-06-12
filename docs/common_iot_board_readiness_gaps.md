@@ -56,12 +56,15 @@ Executable slices now covered by `POWER_TREE_VALID`:
 - explicit regulator maximum output-current budget,
 - explicit regulator startup-delay sequencing against `power_valid_at_us` rail
   metadata,
+- explicit load-switch `power_switch` enable-state evidence and maximum
+  switched-output current budget,
 - reset release checked against target rail `power_valid_at_us` plus optional
   reset-supervisor or power-good delay metadata.
 
 The remaining gap is waveform-dependent power behavior: real ramp shape,
 load-dependent dropout under waveform load, inrush, soft-start,
-charger/power-mux behavior, thermal margin, and stability.
+load-switch turn-on/reverse-current behavior, charger/power-mux behavior,
+thermal margin, and stability.
 
 ## 3. Functional MCU And Peripheral Models
 

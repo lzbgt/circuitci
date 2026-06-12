@@ -107,6 +107,31 @@ current/startup timing margins are plausible. Invalid `power_conversion`
 metadata fails closed at validation time. Generic models may use conservative
 screening values; datasheet-backed packs should cite their source documents.
 
+Load-switch and high-side/low-side switch models can declare static switch
+metadata:
+
+```yaml
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: EN
+  enabled_state: high
+  max_output_current_A: 0.05
+```
+
+- `input_pin` and `output_pin` must name distinct `electrical_power` model
+  ports.
+- `control_pin` must name a `digital_electrical_input` or
+  `digital_electrical_io` model port.
+- `enabled_state` is `high` or `low` and must be proven by scenario
+  `pin_states` when the output rail is declared powered.
+- `max_output_current_A` checks the sum of declared `max_supply_current_A`
+  loads on the switched output rail.
+
+This is a static topology/evidence check. It does not sign off inrush,
+turn-on ramp, reverse current, switch SOA, or thermal behavior; those require
+SPICE or a datasheet-backed transient/power-path model.
+
 ## Signal Conditioning Metadata
 
 Interface, protection, and level-shifter models can declare explicit
