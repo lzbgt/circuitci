@@ -1,4 +1,4 @@
-use crate::board_ir::{BoardProject, NetKind};
+use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::library::{
     BoundBoard, ComponentModel, PortKind, SignalConditioningChannel, SignalConditioningKind,
 };
@@ -154,6 +154,14 @@ pub struct SuggestedBackdrivePath {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub net: Option<String>,
     pub series_resistance_ohm: f64,
+}
+
+#[derive(Debug)]
+struct ResetRcEvidence {
+    pullup_component: String,
+    capacitor_component: String,
+    reset_release_delay_us: f64,
+    reset_release_at_us: f64,
 }
 
 pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
@@ -617,7 +625,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
         if !component.pins.contains_key(&reset.pin) {
             continue;
         }
-        let Some((power_pin, power_valid_at_us)) =
+        let Some((power_pin, power_net, power_valid_at_us)) =
             model.ports.iter().find_map(|(pin_name, port)| {
                 if port.kind != PortKind::ElectricalPower {
                     return None;
@@ -630,7 +638,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 let net = bound.project.board.nets.get(net_name)?;
                 let power_valid_at_us = net.power_valid_at_us?;
                 if power_valid_at_us.is_finite() && power_valid_at_us >= 0.0 {
-                    Some((pin_name.clone(), power_valid_at_us))
+                    Some((pin_name.clone(), net_name.clone(), power_valid_at_us))
                 } else {
                     None
                 }
@@ -638,20 +646,60 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
         else {
             continue;
         };
+        let reset_net = component.pins.get(&reset.pin);
+        let rc_evidence = reset_net.and_then(|net| {
+            reset_rc_evidence(
+                bound,
+                component,
+                model,
+                &reset.pin,
+                net,
+                &power_net,
+                power_valid_at_us,
+            )
+        });
+        let reset_release_at_us = rc_evidence
+            .as_ref()
+            .map(|evidence| evidence.reset_release_at_us);
+        let reset_release_delay_us = rc_evidence
+            .as_ref()
+            .map(|evidence| evidence.reset_release_delay_us)
+            .unwrap_or(0.0);
         let boot_sample_at_us = model
             .behavior
             .boot
             .as_ref()
             .and_then(|boot| boot.sample_time_after_reset_release_us)
-            .map(|delay_us| power_valid_at_us + delay_us);
+            .map(|delay_us| reset_release_at_us.unwrap_or(power_valid_at_us) + delay_us);
+        let (runnable, reason, required_inputs) = match &rc_evidence {
+            Some(evidence) => (
+                true,
+                format!(
+                    "Component {component_id} has active-low reset behavior, target rail power_valid_at_us, and explicit RC reset evidence from {} and {}.",
+                    evidence.pullup_component, evidence.capacitor_component
+                ),
+                Vec::new(),
+            ),
+            None => (
+                false,
+                format!(
+                    "Component {component_id} has reset behavior and target rail power_valid_at_us, but no RESET_RELEASE_AFTER_POWER_VALID scenario."
+                ),
+                vec![
+                    "Fill timing.reset_release_at_us from reset supervisor, RC, control-line, or analog waveform evidence before validation.".to_string(),
+                    "Keep timing.power_valid_at_us equal to the target rail power_valid_at_us or remove duplicated stale timing.".to_string(),
+                ],
+            ),
+        };
         suggestions.push(ScenarioSuggestion {
-            id: format!("reset_release_after_power_valid_{}", sanitized_name(component_id)),
+            id: format!(
+                "reset_release_after_power_valid_{}",
+                sanitized_name(component_id)
+            ),
             kind: "reset_boot".to_string(),
             confidence: "medium".to_string(),
-            runnable: false,
-            reason: format!(
-                "Component {component_id} has reset behavior and target rail power_valid_at_us, but no RESET_RELEASE_AFTER_POWER_VALID scenario."
-            ),
+            runnable,
+            reason,
             scenario: SuggestedScenario {
                 name: format!("{}_reset_release_after_power", sanitized_name(component_id)),
                 scenario_type: "reset_boot".to_string(),
@@ -663,8 +711,8 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 }),
                 timing: Some(SuggestedTiming {
                     power_valid_at_us,
-                    reset_release_delay_us: Some(0.0),
-                    reset_release_at_us: None,
+                    reset_release_delay_us: Some(reset_release_delay_us),
+                    reset_release_at_us,
                     boot_sample_at_us,
                 }),
                 required_boot_mode: None,
@@ -675,13 +723,125 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 pin_states: Vec::new(),
                 paths: Vec::new(),
             },
-            required_inputs: vec![
-                "Fill timing.reset_release_at_us from reset supervisor, RC, control-line, or analog waveform evidence before validation.".to_string(),
-                "Keep timing.power_valid_at_us equal to the target rail power_valid_at_us or remove duplicated stale timing.".to_string(),
-            ],
+            required_inputs,
         });
     }
     suggestions
+}
+
+fn reset_rc_evidence(
+    bound: &BoundBoard<'_>,
+    target_component: &ComponentSpec,
+    target_model: &ComponentModel,
+    reset_pin: &str,
+    reset_net: &str,
+    power_net: &str,
+    power_valid_at_us: f64,
+) -> Option<ResetRcEvidence> {
+    let reset = target_model.behavior.reset.as_ref()?;
+    if !reset.active.trim().eq_ignore_ascii_case("low") {
+        return None;
+    }
+    let reset_port = target_model.ports.get(reset_pin)?;
+    let vih_min_v = finite_positive(reset_port.electrical.vih_min_v)?;
+    let rail_voltage_v = finite_positive(bound.project.board.nets.get(power_net)?.nominal_voltage)?;
+    if vih_min_v >= rail_voltage_v {
+        return None;
+    }
+    if !target_component.pins.values().any(|net| net == reset_net) {
+        return None;
+    }
+
+    let pullups: Vec<(String, f64)> = bound
+        .project
+        .board
+        .components
+        .iter()
+        .filter_map(|(component_id, component)| {
+            let spice = component.spice.as_ref()?;
+            if spice.primitive != SpicePrimitive::Resistor {
+                return None;
+            }
+            let value_ohm = finite_positive(spice.value_ohm)?;
+            if component_connects_nets(component, reset_net, power_net) {
+                Some((component_id.clone(), value_ohm))
+            } else {
+                None
+            }
+        })
+        .collect();
+    if pullups.len() != 1 {
+        return None;
+    }
+
+    let capacitors: Vec<(String, f64)> = bound
+        .project
+        .board
+        .components
+        .iter()
+        .filter_map(|(component_id, component)| {
+            let spice = component.spice.as_ref()?;
+            if spice.primitive != SpicePrimitive::Capacitor {
+                return None;
+            }
+            let value_f = finite_positive(spice.value_f)?;
+            if component_connects_reset_to_ground(bound.project, component, reset_net) {
+                Some((component_id.clone(), value_f))
+            } else {
+                None
+            }
+        })
+        .collect();
+    if capacitors.len() != 1 {
+        return None;
+    }
+
+    let (pullup_component, resistance_ohm) = &pullups[0];
+    let (capacitor_component, capacitance_f) = &capacitors[0];
+    let release_ratio = 1.0 - (vih_min_v / rail_voltage_v);
+    if !(0.0..1.0).contains(&release_ratio) {
+        return None;
+    }
+    let reset_release_delay_us = -resistance_ohm * capacitance_f * release_ratio.ln() * 1_000_000.0;
+    if !reset_release_delay_us.is_finite() || reset_release_delay_us < 0.0 {
+        return None;
+    }
+    let reset_release_at_us = power_valid_at_us + reset_release_delay_us;
+    if !reset_release_at_us.is_finite() {
+        return None;
+    }
+
+    Some(ResetRcEvidence {
+        pullup_component: pullup_component.clone(),
+        capacitor_component: capacitor_component.clone(),
+        reset_release_delay_us,
+        reset_release_at_us,
+    })
+}
+
+fn finite_positive(value: Option<f64>) -> Option<f64> {
+    value.filter(|value| value.is_finite() && *value > 0.0)
+}
+
+fn component_connects_nets(component: &ComponentSpec, net_a: &str, net_b: &str) -> bool {
+    component.pins.values().any(|net| net == net_a)
+        && component.pins.values().any(|net| net == net_b)
+}
+
+fn component_connects_reset_to_ground(
+    project: &BoardProject,
+    component: &ComponentSpec,
+    reset_net: &str,
+) -> bool {
+    component.pins.values().any(|net| net == reset_net)
+        && component.pins.values().any(|net| {
+            net != reset_net
+                && project
+                    .board
+                    .nets
+                    .get(net)
+                    .is_some_and(|spec| spec.kind == NetKind::Ground)
+        })
 }
 
 fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {

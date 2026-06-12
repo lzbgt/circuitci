@@ -22,9 +22,13 @@ The command is conservative:
   static rule will scan.
 - It emits reset templates when a component model declares reset behavior, the
   reset pin is connected, and the target power rail declares `power_valid_at_us`.
-- Reset suggestions are marked `runnable: false` until real
-  `timing.reset_release_at_us` evidence is filled from a reset supervisor, RC
-  model, control-line model, firmware/host trace, or analog waveform.
+- Reset suggestions are runnable when an active-low reset net has explicit RC
+  evidence: a mapped resistor from the reset net to the target power rail and a
+  mapped capacitor from reset to ground. In that case `reset_release_at_us` is
+  derived from `-R*C*ln(1 - VIH/Vrail)` plus the rail `power_valid_at_us`.
+- Other reset suggestions are marked `runnable: false` until real
+  `timing.reset_release_at_us` evidence is filled from a reset supervisor,
+  control-line model, firmware/host trace, or analog waveform.
 - It emits GPIO backdrive templates when a powered output-capable pin shares a
   net with an unpowered input-capable pin, model electrical metadata is present,
   and no existing `GPIO_BACKDRIVE` scenario covers that driver/victim path.
@@ -115,6 +119,25 @@ suggestions:
     required_inputs:
       - Fill timing.reset_release_at_us from reset supervisor, RC, control-line, or analog waveform evidence before validation.
       - Keep timing.power_valid_at_us equal to the target rail power_valid_at_us or remove duplicated stale timing.
+  - id: reset_release_after_power_valid_u4
+    kind: reset_boot
+    confidence: medium
+    runnable: true
+    reason: Component U4 has active-low reset behavior, target rail power_valid_at_us, and explicit RC reset evidence from R4 and C4.
+    scenario:
+      name: u4_reset_release_after_power
+      type: reset_boot
+      checks:
+        - RESET_RELEASE_AFTER_POWER_VALID
+      target:
+        component: U4
+        power_pin: VDD
+        reset_pin: NRST
+      timing:
+        power_valid_at_us: 1500
+        reset_release_delay_us: 931.558
+        reset_release_at_us: 2431.558
+        boot_sample_at_us: 2531.558
   - id: boot_strap_defined_u1_bootloader
     kind: reset_boot
     confidence: medium

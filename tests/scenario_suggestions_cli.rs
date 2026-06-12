@@ -266,3 +266,45 @@ fn suggest_scenarios_derives_boot_strap_bias_template() {
     assert_eq!(observed["runnable"], false);
     assert_eq!(observed["scenario"]["checks"][0], "BOOT_STRAP_DEFINED");
 }
+
+#[test]
+fn suggest_scenarios_derives_reset_release_from_rc_network() {
+    let suggestions = run_suggest_scenarios("examples/scenario_suggestions_reset_rc/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_reset_rc");
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "reset_release_after_power_valid_u1")
+        .expect("reset release suggestion");
+    assert_eq!(reset["kind"], "reset_boot");
+    assert_eq!(reset["runnable"], true);
+    assert_eq!(reset["scenario"]["type"], "reset_boot");
+    assert_eq!(
+        reset["scenario"]["checks"][0],
+        "RESET_RELEASE_AFTER_POWER_VALID"
+    );
+    assert_eq!(reset["scenario"]["target"]["component"], "U1");
+    assert_eq!(reset["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(reset["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(reset["scenario"]["timing"]["power_valid_at_us"], 1500.0);
+    let delay_us = reset["scenario"]["timing"]["reset_release_delay_us"]
+        .as_f64()
+        .unwrap();
+    assert!((delay_us - 931.558204).abs() < 0.001);
+    let release_at_us = reset["scenario"]["timing"]["reset_release_at_us"]
+        .as_f64()
+        .unwrap();
+    assert!((release_at_us - 2431.558204).abs() < 0.001);
+    let boot_sample_at_us = reset["scenario"]["timing"]["boot_sample_at_us"]
+        .as_f64()
+        .unwrap();
+    assert!((boot_sample_at_us - 2531.558204).abs() < 0.001);
+    assert!(reset.get("required_inputs").is_none());
+    assert!(
+        reset["reason"]
+            .as_str()
+            .unwrap()
+            .contains("explicit RC reset evidence from R1 and C1")
+    );
+}

@@ -282,6 +282,113 @@ fn import_kicad_schematic_suggests_bootstrap_bias_from_mapped_resistors() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_reset_release_from_mapped_rc() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("reset_rc_imported.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_reset_rc_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_reset_rc_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_reset_rc_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["NRST"],
+        "net_nrst"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["A"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["B"],
+        "net_nrst"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["pins"]["A"],
+        "net_nrst"
+    );
+    assert_eq!(imported["board"]["components"]["C1"]["pins"]["B"], "gnd");
+    assert_eq!(
+        imported["board"]["components"]["R1"]["spice"]["value_ohm"],
+        10000.0
+    );
+    assert!(
+        (imported["board"]["components"]["C1"]["spice"]["value_f"]
+            .as_f64()
+            .unwrap()
+            - 100e-9)
+            .abs()
+            < 1e-18
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_3v3"]["power_valid_at_us"],
+        1500.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "reset_release_after_power_valid_u1")
+        .expect("reset release suggestion");
+    assert_eq!(reset["runnable"], true);
+    assert_eq!(reset["scenario"]["type"], "reset_boot");
+    assert_eq!(
+        reset["scenario"]["checks"][0],
+        "RESET_RELEASE_AFTER_POWER_VALID"
+    );
+    assert_eq!(reset["scenario"]["target"]["component"], "U1");
+    assert_eq!(reset["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(reset["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(reset["scenario"]["timing"]["power_valid_at_us"], 1500.0);
+    let delay_us = reset["scenario"]["timing"]["reset_release_delay_us"]
+        .as_f64()
+        .unwrap();
+    assert!((delay_us - 931.558204).abs() < 0.001);
+    let release_at_us = reset["scenario"]["timing"]["reset_release_at_us"]
+        .as_f64()
+        .unwrap();
+    assert!((release_at_us - 2431.558204).abs() < 0.001);
+    assert!(reset.get("required_inputs").is_none());
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

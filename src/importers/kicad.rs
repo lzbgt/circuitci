@@ -143,6 +143,8 @@ struct NetMapping {
     nominal_voltage: Option<f64>,
     #[serde(default)]
     powered: Option<bool>,
+    #[serde(default)]
+    power_valid_at_us: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -324,6 +326,8 @@ struct NetYaml {
     nominal_voltage: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     powered: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    power_valid_at_us: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -797,6 +801,7 @@ fn build_project_yaml(
                     kind: mapped_net_kind(&net.name, net_mapping)?,
                     nominal_voltage: net_mapping.and_then(|item| item.nominal_voltage),
                     powered: net_mapping.and_then(|item| item.powered),
+                    power_valid_at_us: net_mapping.and_then(|item| item.power_valid_at_us),
                 },
             ))
         })
@@ -1197,6 +1202,7 @@ fn load_mapping(options: &KicadImportOptions) -> Result<LoadedKicadMapping> {
 
 fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) -> Result<()> {
     validate_pin_aliases(mapping)?;
+    validate_net_mappings(mapping)?;
     for refdes in mapping.components.keys() {
         if !parsed.components.contains_key(refdes) {
             bail!("KiCad mapping references unknown component {refdes}.");
@@ -1210,6 +1216,19 @@ fn validate_mapping_refs(parsed: &ParsedKicadNetlist, mapping: &KicadMapping) ->
     for net_name in mapping.nets.keys() {
         if !net_names.contains(net_name.as_str()) {
             bail!("KiCad mapping references unknown net {net_name}.");
+        }
+    }
+    Ok(())
+}
+
+fn validate_net_mappings(mapping: &KicadMapping) -> Result<()> {
+    for (net_name, net) in &mapping.nets {
+        if let Some(power_valid_at_us) = net.power_valid_at_us
+            && (!power_valid_at_us.is_finite() || power_valid_at_us < 0.0)
+        {
+            bail!(
+                "KiCad mapping net {net_name} power_valid_at_us must be finite and non-negative."
+            );
         }
     }
     Ok(())

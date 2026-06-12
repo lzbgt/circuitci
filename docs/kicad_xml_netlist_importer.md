@@ -81,6 +81,7 @@ nets:
     kind: power
     nominal_voltage: 3.3
     powered: true
+    power_valid_at_us: 1500
   GND:
     kind: ground
 ```
@@ -156,10 +157,11 @@ Net kind is inferred conservatively:
 - `0`, `gnd`, `ground`, and names containing `gnd` become `ground`.
 - all other nets become `digital_or_analog`.
 
-The importer does not infer `power`, nominal voltage, or powered state from
-names such as `+3V3`, `VDD`, or `VBUS`. Those semantics require an explicit
-user or design-rule mapping before checks that depend on power-domain behavior.
-Mapping-file net entries can set `kind`, `nominal_voltage`, and `powered`.
+The importer does not infer `power`, nominal voltage, powered state, or rail
+valid timing from names such as `+3V3`, `VDD`, or `VBUS`. Those semantics
+require an explicit user or design-rule mapping before checks that depend on
+power-domain behavior. Mapping-file net entries can set `kind`,
+`nominal_voltage`, `powered`, and `power_valid_at_us`.
 
 ## Pin Electrical Types
 
