@@ -180,6 +180,108 @@ fn import_kicad_schematic_grouped_bus_alias_runs_generated_spice() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_bootstrap_bias_from_mapped_resistors() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("bootstrap_bias_imported.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_bootstrap_bias_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_bootstrap_bias_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_bootstrap_bias_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["BOOT0"],
+        "net_boot0"
+    );
+    assert_eq!(
+        imported["board"]["components"]["RUP"]["pins"]["A"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["RUP"]["pins"]["B"],
+        "net_boot0"
+    );
+    assert_eq!(imported["board"]["components"]["RDN"]["pins"]["A"], "gnd");
+    assert_eq!(
+        imported["board"]["components"]["RDN"]["pins"]["B"],
+        "net_boot0"
+    );
+    assert_eq!(
+        imported["board"]["components"]["RUP"]["spice"]["value_ohm"],
+        100000.0
+    );
+    assert_eq!(
+        imported["board"]["components"]["RDN"]["spice"]["value_ohm"],
+        10000.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let bias = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_bias_valid_u1_application")
+        .expect("application boot strap bias suggestion");
+    assert_eq!(bias["runnable"], true);
+    assert_eq!(bias["scenario"]["type"], "reset_boot");
+    assert_eq!(bias["scenario"]["checks"][0], "BOOT_STRAP_BIAS_VALID");
+    assert_eq!(bias["scenario"]["target"]["component"], "U1");
+    assert_eq!(bias["scenario"]["required_boot_mode"], "application");
+    assert!(bias.get("required_inputs").is_none());
+    assert!(
+        bias["reason"]
+            .as_str()
+            .unwrap()
+            .contains("explicit resistor bias evidence")
+    );
+
+    let bootloader = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_defined_u1_bootloader")
+        .expect("bootloader observed strap suggestion");
+    assert_eq!(bootloader["runnable"], false);
+    assert_eq!(bootloader["scenario"]["checks"][0], "BOOT_STRAP_DEFINED");
+    assert_eq!(bootloader["scenario"]["straps"][0]["net"], "net_boot0");
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

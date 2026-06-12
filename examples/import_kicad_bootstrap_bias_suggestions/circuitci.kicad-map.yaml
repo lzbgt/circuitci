@@ -1,0 +1,28 @@
+libraries:
+  - ../../libs/generic
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_alias: two_terminal_ab
+    spice:
+      primitive: resistor
+      value_ohm_from: schematic_value
+components:
+  U1:
+    model: generic.mcu.basic
+    pin_map:
+      "1": VDD
+      "2": GND
+      "3": BOOT0
+nets:
+  RAIL_3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+  GND:
+    kind: ground

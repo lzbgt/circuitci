@@ -41,6 +41,9 @@ The command is conservative:
   and the strap pins are connected.
 - It emits runnable `BOOT_STRAP_BIAS_VALID` templates when required strap pins
   have explicit resistor bias evidence to declared power or ground nets.
+  Imported KiCad schematics can provide this automatically when pull resistors
+  are mapped as SPICE resistors with `value_ohm_from: schematic_value`; see
+  `examples/import_kicad_bootstrap_bias_suggestions/`.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
