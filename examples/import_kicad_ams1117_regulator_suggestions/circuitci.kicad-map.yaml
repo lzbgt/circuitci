@@ -1,0 +1,37 @@
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+components:
+  UREG:
+    model: vendor.ams.ams1117_3v3
+    part_number: AMS1117-3.3
+    pin_map:
+      "1": GND
+      "2": VOUT
+      "3": VIN
+  U1:
+    model: generic.mcu.basic
+    pin_map:
+      "1": VDD
+      "2": GND
+  COUT:
+    model: generic.analog.capacitor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
+nets:
+  USB_5V:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+    power_valid_at_us: 0
+  RAIL_3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    power_valid_at_us: 2000
+  GND:
+    kind: ground

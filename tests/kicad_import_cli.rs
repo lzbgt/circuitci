@@ -581,6 +581,102 @@ fn import_kicad_schematic_suggests_ap2112_regulator_evidence() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_ams1117_regulator_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("ams1117_regulator.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_ams1117_regulator_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_ams1117_regulator_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_ams1117_regulator_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["UREG"]["model"],
+        "vendor.ams.ams1117_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UREG"]["pins"]["VIN"],
+        "net_usb_5v"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UREG"]["pins"]["VOUT"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["VDD"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["COUT"]["spice"]["value_f"],
+        0.000022
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_usb_5v"]["nominal_voltage"],
+        5.0
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_3v3"]["power_valid_at_us"],
+        2000.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power-tree suggestion");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let regulator = &power_tree["scenario"]["regulators"][0];
+    assert_eq!(regulator["component"], "UREG");
+    assert_eq!(regulator["input_pin"], "VIN");
+    assert_eq!(regulator["input_net"], "net_usb_5v");
+    assert_eq!(regulator["output_pin"], "VOUT");
+    assert_eq!(regulator["output_net"], "net_rail_3v3");
+    assert_eq!(regulator["dropout_voltage_V"], 1.3);
+    assert_eq!(regulator["max_output_current_A"], 0.8);
+    assert_eq!(regulator["output_capacitance_min_F"], 0.000022);
+    assert_eq!(regulator["output_support_capacitance_F"], 0.000022);
+    assert_eq!(regulator["output_support_capacitors"][0], "COUT");
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
