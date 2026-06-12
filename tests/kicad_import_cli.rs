@@ -389,6 +389,91 @@ fn import_kicad_schematic_suggests_reset_release_from_mapped_rc() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_tlv803_reset_supervisor_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("tlv803_reset_supervisor.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_tlv803_reset_supervisor_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_tlv803_reset_supervisor_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_tlv803_reset_supervisor_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["NRST"],
+        "net_nrst"
+    );
+    assert_eq!(
+        imported["board"]["components"]["USUP"]["model"],
+        "vendor.ti.tlv803ea29"
+    );
+    assert_eq!(
+        imported["board"]["components"]["USUP"]["pins"]["VDD"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["USUP"]["pins"]["RESET"],
+        "net_nrst"
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_3v3"]["power_valid_at_us"],
+        1500.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power-tree suggestion");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let supervisor = &power_tree["scenario"]["reset_supervisors"][0];
+    assert_eq!(supervisor["component"], "USUP");
+    assert_eq!(supervisor["monitored_pin"], "VDD");
+    assert_eq!(supervisor["monitored_net"], "net_rail_3v3");
+    assert_eq!(supervisor["reset_output_pin"], "RESET");
+    assert_eq!(supervisor["reset_net"], "net_nrst");
+    assert_eq!(supervisor["threshold_min_V"], 2.8714);
+    assert_eq!(supervisor["threshold_max_V"], 2.9886);
+}
+
+#[test]
 fn import_kicad_schematic_root_hierarchical_label_runs_generated_spice() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

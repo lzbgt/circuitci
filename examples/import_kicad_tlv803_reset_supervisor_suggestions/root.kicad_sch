@@ -1,0 +1,32 @@
+(kicad_sch
+  (version 20240101)
+  (generator circuitci_fixture)
+  (uuid "f3000000-0000-0000-0000-000000000001")
+  (lib_symbols
+    (symbol "MCU:Generic"
+      (pin power_in line (at 0 -10 90) (length 2.54) (name "VDD") (number "1"))
+      (pin power_in line (at 0 10 270) (length 2.54) (name "GND") (number "2"))
+      (pin input line (at -10 0 0) (length 2.54) (name "NRST") (number "3")))
+    (symbol "Supervisor:TLV803EA29"
+      (pin power_in line (at 0 -10 90) (length 2.54) (name "VDD") (number "1"))
+      (pin power_in line (at 0 10 270) (length 2.54) (name "GND") (number "2"))
+      (pin output line (at -10 0 0) (length 2.54) (name "RESET") (number "3"))))
+
+  (symbol (lib_id "MCU:Generic") (at 70 20 0)
+    (property "Reference" "U1")
+    (property "Value" "GENERIC_MCU")
+    (pin "1") (pin "2") (pin "3"))
+  (symbol (lib_id "Supervisor:TLV803EA29") (at 30 20 0)
+    (property "Reference" "USUP")
+    (property "Value" "TLV803EA29DBZR")
+    (pin "1") (pin "2") (pin "3"))
+
+  (wire (pts (xy 30 10) (xy 70 10)))
+  (label "RAIL_3V3" (at 30 10 0))
+
+  (wire (pts (xy 20 20) (xy 60 20)))
+  (label "NRST" (at 40 20 0))
+
+  (wire (pts (xy 30 30) (xy 30 40) (xy 70 40) (xy 70 30)))
+  (label "GND" (at 30 40 0))
+)

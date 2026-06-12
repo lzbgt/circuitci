@@ -1,0 +1,25 @@
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+components:
+  U1:
+    model: generic.mcu.basic
+    pin_map:
+      "1": VDD
+      "2": GND
+      "3": NRST
+  USUP:
+    model: vendor.ti.tlv803ea29
+    part_number: TLV803EA29DBZR
+    pin_map:
+      "1": VDD
+      "2": GND
+      "3": RESET
+nets:
+  RAIL_3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    power_valid_at_us: 1500
+  GND:
+    kind: ground
