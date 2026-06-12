@@ -1,7 +1,7 @@
 use crate::board_ir::{
     ComponentPlacement, LayoutFootprintPolygon, LayoutFootprintSegment, LayoutPoint, Scenario,
 };
-use crate::library::BoundBoard;
+use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -83,7 +83,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
         ));
         return;
     };
-    if model.usb_connector.is_none() {
+    let Some(connector) = model.usb_connector.as_ref() else {
         findings.push(entry_metadata_finding(
             scenario,
             &target.component,
@@ -95,7 +95,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
             "missing",
         ));
         return;
-    }
+    };
     let Some(placement) = bound.project.board.layout.placements.get(&target.component) else {
         findings.push(entry_metadata_finding(
             scenario,
@@ -129,7 +129,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
     ) {
         Some(direction) => direction,
         None => {
-            let Some(rotation_deg) = placement.rotation_deg else {
+            let Some(entry_direction_deg) = model_entry_direction_deg(placement, connector) else {
                 findings.push(entry_metadata_finding(
                     scenario,
                     &target.component,
@@ -142,7 +142,7 @@ pub(super) fn validate_usb_connector_entry_clearance(
                 ));
                 return;
             };
-            rotation_deg
+            entry_direction_deg
         }
     };
     if !entry_direction_deg.is_finite() {
@@ -182,6 +182,18 @@ pub(super) fn validate_usb_connector_entry_clearance(
             width_mm,
         }));
     }
+}
+
+fn model_entry_direction_deg(
+    placement: &ComponentPlacement,
+    connector: &UsbConnector,
+) -> Option<f64> {
+    let rotation_deg = placement.rotation_deg?;
+    let entry_direction_deg =
+        (rotation_deg + connector.entry_direction_offset_deg.unwrap_or(0.0)).rem_euclid(360.0);
+    entry_direction_deg
+        .is_finite()
+        .then_some(entry_direction_deg)
 }
 
 struct EntryClearanceEvidence<'a> {

@@ -572,10 +572,15 @@
       "type": "object",
       "required": [
         "entry_direction_deg",
+        "entry_direction_source",
         "connector_front_projection_mm"
       ],
       "properties": {
         "entry_direction_deg": { "type": "number" },
+        "entry_direction_source": {
+          "enum": ["placement_rotation", "component_model_offset"]
+        },
+        "entry_direction_offset_deg": { "type": "number" },
         "connector_front_projection_mm": { "type": "number" },
         "nearest_obstruction": { "$ref": "#/$defs/entry_obstruction" }
       },

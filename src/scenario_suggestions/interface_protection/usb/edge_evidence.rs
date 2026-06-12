@@ -191,6 +191,8 @@ pub(super) fn entry_clearance_evidence(
     bound: &BoundBoard<'_>,
     connector_id: &str,
     entry_direction_deg: f64,
+    entry_direction_source: &str,
+    entry_direction_offset_deg: Option<f64>,
 ) -> Option<SuggestedUsbEntryClearance> {
     if !entry_direction_deg.is_finite() {
         return None;
@@ -237,6 +239,8 @@ pub(super) fn entry_clearance_evidence(
     }
     Some(SuggestedUsbEntryClearance {
         entry_direction_deg,
+        entry_direction_source: entry_direction_source.to_string(),
+        entry_direction_offset_deg,
         connector_front_projection_mm,
         nearest_obstruction: nearest.map(|candidate| SuggestedUsbEntryObstruction {
             component: candidate.component_id.to_string(),

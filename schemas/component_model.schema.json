@@ -136,7 +136,8 @@
         "dp_pin": { "type": "string", "minLength": 1 },
         "dm_pin": { "type": "string", "minLength": 1 },
         "gnd_pin": { "type": "string", "minLength": 1 },
-        "shield_pin": { "type": "string", "minLength": 1 }
+        "shield_pin": { "type": "string", "minLength": 1 },
+        "entry_direction_offset_deg": { "type": "number" }
       },
       "additionalProperties": false
     },

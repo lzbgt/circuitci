@@ -440,6 +440,11 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     let entry_evidence = &entry_clearance["scenario"]["usb_connectors"][0]["entry_clearance"];
     assert_eq!(entry_evidence["entry_direction_deg"], 0.0);
+    assert_eq!(
+        entry_evidence["entry_direction_source"],
+        "component_model_offset"
+    );
+    assert_eq!(entry_evidence["entry_direction_offset_deg"], 0.0);
     assert_eq!(entry_evidence["connector_front_projection_mm"], 0.4);
     assert_eq!(entry_evidence["nearest_obstruction"]["component"], "UESD");
     assert_eq!(

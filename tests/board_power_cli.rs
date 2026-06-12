@@ -506,6 +506,27 @@ fn usb_connector_entry_clearance_reports_obstruction() {
 }
 
 #[test]
+fn usb_connector_entry_clearance_uses_model_entry_direction_offset() {
+    let report =
+        run_validation("examples/bad_usb_connector_entry_clearance_model_offset/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|failure| failure["id"] == "USB_CONNECTOR_ENTRY_CLEARANCE_VALID")
+        .expect("USB connector entry-clearance finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["measured"]["obstructing_component"], "R1");
+    assert_eq!(failure["measured"]["entry_direction_deg"], 0.0);
+    assert_eq!(
+        failure["measured"]["obstruction_reference"],
+        "footprint_rectangle"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn usb_route_geometry_passes_for_short_data_routes() {
     let report = run_validation("examples/good_usb_connector_route_geometry/project.yaml");
     assert_eq!(report["result"], "pass");

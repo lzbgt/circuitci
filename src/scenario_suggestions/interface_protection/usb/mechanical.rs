@@ -4,7 +4,7 @@ use super::super::super::{
     USB_CONNECTOR_ENTRY_CLEARANCE_VALID, USB_CONNECTOR_ORIENTATION_VALID,
 };
 use super::super::{component_placement, sanitized_name};
-use super::suggested_usb_connector;
+use super::{suggested_usb_connector, usb_entry_direction};
 use crate::board_ir::{BoardProject, ComponentSpec};
 use crate::library::{BoundBoard, ComponentModel};
 use std::collections::{BTreeMap, BTreeSet};
@@ -274,7 +274,8 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
     let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
     suggested_connector.footprint.as_ref()?;
     let placement = component_placement(bound, component_id)?;
-    let entry_direction_deg = placement.rotation_deg?;
+    let entry_direction = usb_entry_direction(placement, connector)?;
+    let entry_direction_deg = entry_direction.deg;
     let obstruction_summary = suggested_connector
         .entry_clearance
         .as_ref()
@@ -362,7 +363,15 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
                     )
                 },
             ),
-            "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
+            entry_direction.offset_deg.map_or_else(
+                || "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
+                |offset_deg| {
+                    format!(
+                        "Review entry_direction_deg; it is computed from imported connector placement rotation plus usb_connector.entry_direction_offset_deg {:.3} from the component model.",
+                        offset_deg
+                    )
+                },
+            ),
             "Use 3D mechanical review for connector shell volume, plug body, cable bend radius, panel cutouts, and enclosure interference.".to_string(),
         ],
     })

@@ -1047,6 +1047,8 @@ pub(super) fn suggested_usb_connector(
         .as_deref()
         .and_then(|pin| connected_declared_net(bound, component, pin))
         .map(str::to_string);
+    let entry_direction = component_placement(bound, component_id)
+        .and_then(|placement| usb_entry_direction(placement, connector));
     Some(SuggestedUsbConnector {
         component: component_id.to_string(),
         standard: connector.standard.clone(),
@@ -1064,12 +1066,44 @@ pub(super) fn suggested_usb_connector(
         footprint: suggested_footprint(bound, component_id),
         nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
         nearest_component_clearance: nearest_component_clearance_evidence(bound, component_id),
-        entry_clearance: component_placement(bound, component_id)
-            .and_then(|placement| placement.rotation_deg)
-            .and_then(|entry_direction_deg| {
-                entry_clearance_evidence(bound, component_id, entry_direction_deg)
-            }),
+        entry_clearance: entry_direction.and_then(|entry_direction| {
+            entry_clearance_evidence(
+                bound,
+                component_id,
+                entry_direction.deg,
+                entry_direction.source,
+                entry_direction.offset_deg,
+            )
+        }),
     })
+}
+
+pub(super) struct UsbEntryDirection {
+    pub deg: f64,
+    pub source: &'static str,
+    pub offset_deg: Option<f64>,
+}
+
+pub(super) fn usb_entry_direction(
+    placement: &ComponentPlacement,
+    connector: &UsbConnector,
+) -> Option<UsbEntryDirection> {
+    let rotation_deg = placement.rotation_deg?;
+    let offset_deg = connector.entry_direction_offset_deg;
+    let deg = normalize_rotation_deg(rotation_deg + offset_deg.unwrap_or(0.0));
+    deg.is_finite().then_some(UsbEntryDirection {
+        deg,
+        source: if offset_deg.is_some() {
+            "component_model_offset"
+        } else {
+            "placement_rotation"
+        },
+        offset_deg,
+    })
+}
+
+fn normalize_rotation_deg(rotation_deg: f64) -> f64 {
+    rotation_deg.rem_euclid(360.0)
 }
 
 fn connected_declared_net<'a>(

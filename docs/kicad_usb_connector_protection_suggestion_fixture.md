@@ -72,9 +72,10 @@ fails against the fixture's
 `0.7 mm` minimum connector-to-component clearance limit.
 
 The same imported connector rotation and footprint evidence also emits a
-non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It copies
-`entry_direction_deg: 0.0` from the KiCad placement rotation and leaves cable
-entry corridor depth/width as explicit mechanical policy inputs. Its
+non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It computes
+`entry_direction_deg: 0.0` from the KiCad placement rotation plus the generic
+connector model's `entry_direction_offset_deg: 0.0`, then leaves cable entry
+corridor depth/width as explicit mechanical policy inputs. Its
 `scenario.usb_connectors[].entry_clearance` evidence reports the nearest
 forward obstruction candidate from imported footprint evidence, which is the
 `UESD` fabrication rectangle in this fixture.

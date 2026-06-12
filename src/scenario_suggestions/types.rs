@@ -297,6 +297,9 @@ pub struct SuggestedComponentClearance {
 #[derive(Debug, Serialize)]
 pub struct SuggestedUsbEntryClearance {
     pub entry_direction_deg: f64,
+    pub entry_direction_source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_direction_offset_deg: Option<f64>,
     pub connector_front_projection_mm: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_obstruction: Option<SuggestedUsbEntryObstruction>,

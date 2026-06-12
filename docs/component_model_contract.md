@@ -339,6 +339,7 @@ usb_connector:
   dm_pin: D-
   gnd_pin: GND
   shield_pin: SHIELD
+  entry_direction_offset_deg: 0.0
 ```
 
 `USB_CONNECTOR_PROTECTION_VALID` uses this metadata to locate the connector's
@@ -346,6 +347,16 @@ D+, D-, and optional VBUS nets, then searches connected clamp-only protection
 models for matching protection paths. This is connector-level schematic
 coverage; it does not prove placement, trace routing, differential impedance,
 ESD pulse energy handling, or USB signal integrity.
+
+`entry_direction_offset_deg` is optional mechanical metadata for cable-entry
+checks. When declared, `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` and
+`suggest-scenarios` compute the default cable insertion direction as imported
+placement `rotation_deg + entry_direction_offset_deg`, normalized into
+`[0, 360)`. Omit it only when the footprint's zero-degree convention already
+points in the cable insertion direction.
+See [usb_connector_entry_offset_fixture.md](usb_connector_entry_offset_fixture.md)
+for a validation fixture that proves a nonzero offset changes the checked entry
+direction.
 
 `circuitci suggest-scenarios` uses `signal_conditioning` metadata to emit
 non-runnable `interface_protection` review templates. It does not treat the

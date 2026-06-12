@@ -139,6 +139,8 @@ pub struct UsbConnector {
     pub gnd_pin: String,
     #[serde(default)]
     pub shield_pin: Option<String>,
+    #[serde(default)]
+    pub entry_direction_offset_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
