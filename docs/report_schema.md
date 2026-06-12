@@ -175,14 +175,19 @@ metadata, `board.layout.placements`, and `board.layout.routes`. Stable measured
 keys include `connector_signal`, `route_length_mm`, `via_count`,
 `protection_component`, `connector_to_protection_route_distance_mm`,
 `protection_components_without_placement`, and
-`protection_components_off_route`. Differential-pair findings also report
-`dp_net`, `dm_net`, `dp_route_length_mm`, `dm_route_length_mm`,
-`data_pair_length_mismatch_mm`, `dp_via_count`, `dm_via_count`, and
-`data_pair_via_count_delta`. Stable limit keys include
+`protection_components_off_route`. Width findings also report
+`segment_index`, `route_segment_width_mm`, and `route_width_delta_mm`.
+Differential-pair findings also report `dp_net`, `dm_net`,
+`dp_route_length_mm`, `dm_route_length_mm`, `data_pair_length_mismatch_mm`,
+`dp_via_count`, `dm_via_count`, `data_pair_via_count_delta`,
+`data_pair_centerline_distance_mm`, `data_pair_gap_mm`, and
+`data_pair_gap_delta_mm`. Stable limit keys include
 `max_data_line_route_length_mm`, `max_data_line_via_count`,
-`max_connector_to_protection_route_distance_mm`, and
-`max_component_to_route_distance_mm`, `max_data_pair_length_mismatch_mm`, and
-`max_data_pair_via_count_delta`.
+`expected_data_line_width_mm`, `max_data_line_width_delta_mm`,
+`max_connector_to_protection_route_distance_mm`,
+`max_component_to_route_distance_mm`, `max_data_pair_length_mismatch_mm`,
+`max_data_pair_via_count_delta`, `expected_data_pair_gap_mm`, and
+`max_data_pair_gap_delta_mm`.
 
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 

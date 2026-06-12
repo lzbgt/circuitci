@@ -92,8 +92,9 @@ The command is conservative:
   with computed D+/D- route lengths, length mismatch, via counts, and via-count
   delta. If KiCad PCB import found applicable custom DRC `length` or `skew`
   constraints, the template pre-fills `max_data_line_route_length_mm` and
-  `max_data_pair_length_mismatch_mm`; via-count and ESD placement limits remain
-  `null` until an agent supplies board-specific policy.
+  `max_data_pair_length_mismatch_mm`; via-count, width tolerance, gap
+  tolerance, and ESD placement limits remain `null` until an agent supplies
+  board-specific policy.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

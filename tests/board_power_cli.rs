@@ -296,18 +296,21 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
         .expect("D- via count finding");
     assert_eq!(dm_vias["measured"]["connector_signal"], "D-");
     assert_eq!(dm_vias["limit"]["max_data_line_via_count"], 0);
-    let dm_off_route = failures
+    let dp_width = failures
         .iter()
         .find(|failure| {
             failure["id"] == "USB_ROUTE_GEOMETRY_VALID"
-                && failure["net"] == "usb_dm"
-                && failure["measured"]["protection_components_off_route"][0] == "UESD"
+                && failure["net"] == "usb_dp"
+                && failure["measured"]["route_segment_width_mm"] == 0.20
         })
-        .expect("D- off-route protection finding");
-    assert_eq!(
-        dm_off_route["limit"]["max_component_to_route_distance_mm"],
-        0.1
-    );
+        .expect("D+ route width finding");
+    assert_eq!(dp_width["measured"]["connector_signal"], "D+");
+    let route_width_delta = dp_width["measured"]["route_width_delta_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((route_width_delta - 0.05).abs() < 1e-12);
+    assert_eq!(dp_width["limit"]["expected_data_line_width_mm"], 0.15);
+    assert_eq!(dp_width["limit"]["max_data_line_width_delta_mm"], 0.01);
     let pair_length = failures
         .iter()
         .find(|failure| {
@@ -334,6 +337,22 @@ fn usb_route_geometry_reports_length_vias_and_protection_order() {
     assert_eq!(pair_vias["measured"]["dp_via_count"], 0);
     assert_eq!(pair_vias["measured"]["dm_via_count"], 2);
     assert_eq!(pair_vias["limit"]["max_data_pair_via_count_delta"], 0);
+    let pair_gap = failures
+        .iter()
+        .find(|failure| failure["limit"]["max_data_pair_gap_delta_mm"] == 0.01)
+        .expect("D+/D- gap delta finding");
+    assert_eq!(
+        pair_gap["measured"]["data_pair_centerline_distance_mm"],
+        0.5
+    );
+    let measured_gap = pair_gap["measured"]["data_pair_gap_mm"].as_f64().unwrap();
+    assert!((measured_gap - 0.325).abs() < 1e-12);
+    let gap_delta = pair_gap["measured"]["data_pair_gap_delta_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((gap_delta - 0.175).abs() < 1e-12);
+    assert_eq!(pair_gap["limit"]["expected_data_pair_gap_mm"], 0.15);
+    assert_eq!(pair_gap["limit"]["max_data_pair_gap_delta_mm"], 0.01);
     assert_report_schema_valid(&report);
 }
 

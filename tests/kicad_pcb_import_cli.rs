@@ -147,6 +147,8 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"],
         0.5
     );
+    assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
+    assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
     assert!(
         route["scenario"]["usb_routes"]
             .as_array()
@@ -247,4 +249,6 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"],
         0.5
     );
+    assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
+    assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
 }

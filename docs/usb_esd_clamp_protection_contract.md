@@ -125,6 +125,11 @@ Route-geometry validation:
   geometry.
 - The rule also checks D+/D- length mismatch and via-count symmetry using the
   imported route evidence.
+- When `parameters.max_data_line_width_delta_mm` is present, it checks data-line
+  segment widths against imported `diff_pair_width_mm` or `track_width_mm`.
+- When `parameters.max_data_pair_gap_delta_mm` is present, it checks the
+  edge-to-edge gap of overlapping parallel D+/D- segments against imported
+  `diff_pair_gap_mm`.
 - Scenario suggestions expose the same pair evidence in
   `scenario.usb_route_pairs[]` so agents can inspect the measured mismatch and
   via-count delta before choosing board-specific limits.

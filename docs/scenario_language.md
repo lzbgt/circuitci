@@ -387,6 +387,8 @@ scenarios:
       max_component_to_route_distance_mm: 0.2
       max_data_pair_length_mismatch_mm: 0.5
       max_data_pair_via_count_delta: 0
+      max_data_line_width_delta_mm: 0.01      # optional
+      max_data_pair_gap_delta_mm: 0.01        # optional
 ```
 
 USB route geometry algorithm:
@@ -398,13 +400,20 @@ USB route geometry algorithm:
    `max_data_line_route_length_mm`.
 5. Count vias in each net route and require the count to stay within
    `max_data_line_via_count`.
-6. Require the D+/D- route length mismatch to stay within
+6. If `max_data_line_width_delta_mm` is declared, resolve
+   `board.layout.constraints.net_rules` for each data net and require every
+   segment width to match `diff_pair_width_mm` or `track_width_mm` within that
+   tolerance.
+7. Require the D+/D- route length mismatch to stay within
    `max_data_pair_length_mismatch_mm`.
-7. Require the D+/D- via-count delta to stay within
+8. Require the D+/D- via-count delta to stay within
    `max_data_pair_via_count_delta`.
-8. Project connector and protection component placements onto the routed net
+9. If `max_data_pair_gap_delta_mm` is declared, resolve
+   `diff_pair_gap_mm`, find overlapping parallel D+/D- routed segments, and
+   require edge-to-edge gap to match within that tolerance.
+10. Project connector and protection component placements onto the routed net
    within `max_component_to_route_distance_mm`.
-9. Compute graph distance along the routed segments and require the nearest
+11. Compute graph distance along the routed segments and require the nearest
    valid protection component to be within
    `max_connector_to_protection_route_distance_mm`.
 

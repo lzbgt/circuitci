@@ -435,6 +435,10 @@ fn usb_route_geometry_suggestion(
             serde_json::Value::Null,
         ),
         (
+            "max_data_line_width_delta_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
             "max_connector_to_protection_route_distance_mm".to_string(),
             serde_json::Value::Null,
         ),
@@ -448,6 +452,10 @@ fn usb_route_geometry_suggestion(
         ),
         (
             "max_data_pair_via_count_delta".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_data_pair_gap_delta_mm".to_string(),
             serde_json::Value::Null,
         ),
     ]);
@@ -492,12 +500,14 @@ fn usb_route_geometry_suggestion(
                 "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.",
             ),
             "Fill max_data_line_via_count from the board's USB routing policy; use zero when layer changes are not allowed.".to_string(),
+            "Fill max_data_line_width_delta_mm when imported route width constraints should be enforced.".to_string(),
             route_limit_required_input(
                 route_limits.max_data_pair_length_mismatch_mm,
                 "max_data_pair_length_mismatch_mm",
                 "Fill max_data_pair_length_mismatch_mm from the USB differential-pair matching rule.",
             ),
             "Fill max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
+            "Fill max_data_pair_gap_delta_mm when imported differential-pair gap constraints should be enforced.".to_string(),
             "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
         ],
     })

@@ -1,4 +1,6 @@
-use crate::board_ir::{ComponentPlacement, LayoutPoint, NetRoute, RouteSegment, Scenario};
+use crate::board_ir::{
+    ComponentPlacement, LayoutPoint, NetLayoutRule, NetRoute, RouteSegment, Scenario,
+};
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use serde_json::json;
@@ -46,6 +48,16 @@ pub(super) fn validate_usb_route_geometry(
     };
     let Some(max_pair_via_count_delta) =
         required_integer_parameter(scenario, "max_data_pair_via_count_delta", findings)
+    else {
+        return;
+    };
+    let Some(max_data_line_width_delta_mm) =
+        optional_nonnegative_parameter(scenario, "max_data_line_width_delta_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_data_pair_gap_delta_mm) =
+        optional_nonnegative_parameter(scenario, "max_data_pair_gap_delta_mm", findings)
     else {
         return;
     };
@@ -115,6 +127,7 @@ pub(super) fn validate_usb_route_geometry(
                 signal,
                 max_route_length_mm,
                 max_via_count,
+                max_data_line_width_delta_mm,
                 max_protection_route_distance_mm,
                 max_component_to_route_distance_mm,
             },
@@ -132,6 +145,7 @@ pub(super) fn validate_usb_route_geometry(
         UsbPairLimits {
             max_length_mismatch_mm: max_pair_length_mismatch_mm,
             max_via_count_delta: max_pair_via_count_delta,
+            max_gap_delta_mm: max_data_pair_gap_delta_mm,
         },
         findings,
     );
@@ -145,6 +159,7 @@ struct UsbRouteSignalCheck<'a> {
     signal: UsbConnectorSignal,
     max_route_length_mm: f64,
     max_via_count: usize,
+    max_data_line_width_delta_mm: Option<f64>,
     max_protection_route_distance_mm: f64,
     max_component_to_route_distance_mm: f64,
 }
@@ -230,6 +245,17 @@ fn validate_usb_route_for_signal(
             via_count,
             check.max_via_count,
         ));
+    }
+    if let Some(max_width_delta_mm) = check.max_data_line_width_delta_mm {
+        validate_route_width_against_rule(
+            bound,
+            scenario,
+            &check,
+            net_name,
+            route,
+            max_width_delta_mm,
+            findings,
+        );
     }
     validate_protection_route_distance(bound, scenario, &check, net_name, route, findings);
 }
@@ -318,6 +344,72 @@ fn validate_protection_route_distance(
     }
 }
 
+fn validate_route_width_against_rule(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    check: &UsbRouteSignalCheck<'_>,
+    net_name: &str,
+    route: &NetRoute,
+    max_width_delta_mm: f64,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(rule) = bound
+        .project
+        .board
+        .layout
+        .constraints
+        .net_rules
+        .get(net_name)
+    else {
+        findings.push(usb_route_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {connector_id} {} net {net_name} has no board.layout.constraints.net_rules entry for width validation.",
+                check.signal.label(),
+                connector_id = check.connector_id
+            ),
+            "missing_route_constraint",
+            net_name,
+        ));
+        return;
+    };
+    let Some(expected_width_mm) = expected_usb_data_width_mm(rule) else {
+        findings.push(usb_route_metadata_finding(
+            scenario,
+            check.connector_id,
+            format!(
+                "USB connector {connector_id} {} net {net_name} route rule has no diff_pair_width_mm or track_width_mm.",
+                check.signal.label(),
+                connector_id = check.connector_id
+            ),
+            "missing_route_width_constraint",
+            net_name,
+        ));
+        return;
+    };
+    let Some((segment_index, measured_width_mm, width_delta_mm)) =
+        worst_route_width_delta(route, expected_width_mm)
+    else {
+        return;
+    };
+    if width_delta_mm > max_width_delta_mm {
+        findings.push(usb_route_width_finding(
+            scenario,
+            check.connector_id,
+            check.signal,
+            net_name,
+            UsbRouteWidthEvidence {
+                segment_index,
+                measured_width_mm,
+                expected_width_mm,
+                width_delta_mm,
+                max_width_delta_mm,
+            },
+        ));
+    }
+}
+
 fn validate_usb_pair_consistency(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
@@ -379,6 +471,21 @@ fn validate_usb_pair_consistency(
             },
         ));
     }
+    if let Some(max_gap_delta_mm) = limits.max_gap_delta_mm {
+        validate_usb_pair_gap(
+            bound,
+            scenario,
+            connector_id,
+            UsbPairRoutes {
+                dp_net,
+                dp_route,
+                dm_net,
+                dm_route,
+            },
+            max_gap_delta_mm,
+            findings,
+        );
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -391,6 +498,7 @@ struct UsbPairRouteTarget<'a> {
 struct UsbPairLimits {
     max_length_mismatch_mm: f64,
     max_via_count_delta: usize,
+    max_gap_delta_mm: Option<f64>,
 }
 
 fn route_for_signal<'a>(
@@ -402,6 +510,176 @@ fn route_for_signal<'a>(
     let net_name = component.pins.get(signal.pin(connector))?;
     let route = bound.project.board.layout.routes.get(net_name)?;
     Some((net_name, route))
+}
+
+fn expected_usb_data_width_mm(rule: &NetLayoutRule) -> Option<f64> {
+    rule.diff_pair_width_mm.or(rule.track_width_mm)
+}
+
+fn worst_route_width_delta(route: &NetRoute, expected_width_mm: f64) -> Option<(usize, f64, f64)> {
+    route
+        .segments
+        .iter()
+        .enumerate()
+        .map(|(index, segment)| {
+            let delta = (segment.width_mm - expected_width_mm).abs();
+            (index, segment.width_mm, delta)
+        })
+        .max_by(|left, right| left.2.total_cmp(&right.2))
+}
+
+fn validate_usb_pair_gap(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    connector_id: &str,
+    routes: UsbPairRoutes<'_>,
+    max_gap_delta_mm: f64,
+    findings: &mut Vec<Finding>,
+) {
+    let expected_gap_mm = match (
+        route_rule_gap(bound, routes.dp_net),
+        route_rule_gap(bound, routes.dm_net),
+    ) {
+        (Some(dp_gap), Some(dm_gap)) => dp_gap.min(dm_gap),
+        (Some(gap), None) | (None, Some(gap)) => gap,
+        (None, None) => {
+            findings.push(usb_route_metadata_finding(
+                scenario,
+                connector_id,
+                format!(
+                    "USB connector {connector_id} D+/D- nets {}/{} have no diff_pair_gap_mm route constraint.",
+                    routes.dp_net, routes.dm_net
+                ),
+                "missing_diff_pair_gap_constraint",
+                routes.dp_net,
+            ));
+            return;
+        }
+    };
+    let Some(gap) = worst_pair_gap_delta(routes.dp_route, routes.dm_route, expected_gap_mm) else {
+        findings.push(usb_pair_gap_unmeasured_finding(
+            scenario,
+            connector_id,
+            routes.dp_net,
+            routes.dm_net,
+            expected_gap_mm,
+        ));
+        return;
+    };
+    if gap.gap_delta_mm > max_gap_delta_mm {
+        findings.push(usb_pair_gap_finding(
+            scenario,
+            connector_id,
+            routes.dp_net,
+            routes.dm_net,
+            gap,
+            max_gap_delta_mm,
+        ));
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairRoutes<'a> {
+    dp_net: &'a str,
+    dp_route: &'a NetRoute,
+    dm_net: &'a str,
+    dm_route: &'a NetRoute,
+}
+
+fn route_rule_gap(bound: &BoundBoard<'_>, net_name: &str) -> Option<f64> {
+    bound
+        .project
+        .board
+        .layout
+        .constraints
+        .net_rules
+        .get(net_name)
+        .and_then(|rule| rule.diff_pair_gap_mm)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbPairGapEvidence {
+    dp_segment_index: usize,
+    dm_segment_index: usize,
+    centerline_distance_mm: f64,
+    measured_gap_mm: f64,
+    expected_gap_mm: f64,
+    gap_delta_mm: f64,
+}
+
+fn worst_pair_gap_delta(
+    dp_route: &NetRoute,
+    dm_route: &NetRoute,
+    expected_gap_mm: f64,
+) -> Option<UsbPairGapEvidence> {
+    let mut worst = None;
+    for (dp_index, dp_segment) in dp_route.segments.iter().enumerate() {
+        for (dm_index, dm_segment) in dm_route.segments.iter().enumerate() {
+            let Some((centerline_distance_mm, measured_gap_mm)) =
+                parallel_overlap_gap_mm(dp_segment, dm_segment)
+            else {
+                continue;
+            };
+            let gap_delta_mm = (measured_gap_mm - expected_gap_mm).abs();
+            let evidence = UsbPairGapEvidence {
+                dp_segment_index: dp_index,
+                dm_segment_index: dm_index,
+                centerline_distance_mm,
+                measured_gap_mm,
+                expected_gap_mm,
+                gap_delta_mm,
+            };
+            if worst
+                .as_ref()
+                .is_none_or(|current: &UsbPairGapEvidence| gap_delta_mm > current.gap_delta_mm)
+            {
+                worst = Some(evidence);
+            }
+        }
+    }
+    worst
+}
+
+fn parallel_overlap_gap_mm(
+    dp_segment: &RouteSegment,
+    dm_segment: &RouteSegment,
+) -> Option<(f64, f64)> {
+    let dp_start = PlacementPoint::from(&dp_segment.start);
+    let dp_end = PlacementPoint::from(&dp_segment.end);
+    let dm_start = PlacementPoint::from(&dm_segment.start);
+    let dm_end = PlacementPoint::from(&dm_segment.end);
+    let dp_dx = dp_end.x_mm - dp_start.x_mm;
+    let dp_dy = dp_end.y_mm - dp_start.y_mm;
+    let dm_dx = dm_end.x_mm - dm_start.x_mm;
+    let dm_dy = dm_end.y_mm - dm_start.y_mm;
+    let dp_len = dp_dx.hypot(dp_dy);
+    let dm_len = dm_dx.hypot(dm_dy);
+    if dp_len <= EPSILON_MM || dm_len <= EPSILON_MM {
+        return None;
+    }
+    let dp_unit_x = dp_dx / dp_len;
+    let dp_unit_y = dp_dy / dp_len;
+    let dm_unit_x = dm_dx / dm_len;
+    let dm_unit_y = dm_dy / dm_len;
+    let cross = (dp_unit_x * dm_unit_y - dp_unit_y * dm_unit_x).abs();
+    if cross > 1.0e-6 {
+        return None;
+    }
+    let projection_a =
+        (dm_start.x_mm - dp_start.x_mm) * dp_unit_x + (dm_start.y_mm - dp_start.y_mm) * dp_unit_y;
+    let projection_b =
+        (dm_end.x_mm - dp_start.x_mm) * dp_unit_x + (dm_end.y_mm - dp_start.y_mm) * dp_unit_y;
+    let overlap_start = projection_a.min(projection_b).max(0.0);
+    let overlap_end = projection_a.max(projection_b).min(dp_len);
+    if overlap_end - overlap_start <= EPSILON_MM {
+        return None;
+    }
+    let centerline_distance_mm = ((dm_start.x_mm - dp_start.x_mm) * dp_unit_y
+        - (dm_start.y_mm - dp_start.y_mm) * dp_unit_x)
+        .abs();
+    let measured_gap_mm =
+        centerline_distance_mm - (dp_segment.width_mm + dm_segment.width_mm) / 2.0;
+    Some((centerline_distance_mm, measured_gap_mm))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -687,6 +965,33 @@ fn required_nonnegative_parameter(
     required_scenario_numeric_parameter(scenario, name, findings)
 }
 
+fn optional_nonnegative_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<f64>> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        return Some(None);
+    };
+    let Some(value) = raw.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be a number."),
+        );
+        return None;
+    };
+    if !value.is_finite() || value < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be non-negative."),
+        );
+        return None;
+    }
+    Some(Some(value))
+}
+
 fn required_integer_parameter(
     scenario: &Scenario,
     name: &str,
@@ -793,6 +1098,66 @@ fn usb_route_via_count_finding(
     finding
 }
 
+fn usb_route_width_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    signal: UsbConnectorSignal,
+    net: &str,
+    evidence: UsbRouteWidthEvidence,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} {} net {net} segment {} width {:.3} mm differs from route rule {:.3} mm by {:.3} mm, above tolerance {:.3} mm.",
+            signal.label(),
+            evidence.segment_index,
+            evidence.measured_width_mm,
+            evidence.expected_width_mm,
+            evidence.width_delta_mm,
+            evidence.max_width_delta_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.net = Some(net.to_string());
+    finding
+        .measured
+        .insert("connector_signal".to_string(), json!(signal.label()));
+    finding
+        .measured
+        .insert("segment_index".to_string(), json!(evidence.segment_index));
+    finding.measured.insert(
+        "route_segment_width_mm".to_string(),
+        json!(evidence.measured_width_mm),
+    );
+    finding.measured.insert(
+        "route_width_delta_mm".to_string(),
+        json!(evidence.width_delta_mm),
+    );
+    finding.limit.insert(
+        "expected_data_line_width_mm".to_string(),
+        json!(evidence.expected_width_mm),
+    );
+    finding.limit.insert(
+        "max_data_line_width_delta_mm".to_string(),
+        json!(evidence.max_width_delta_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Update the routed USB data-line width to match the imported PCB route rule.".to_string(),
+        "If the route intentionally necks down, encode that exception as a more specific board rule instead of relaxing the global USB route check.".to_string(),
+    ];
+    finding
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UsbRouteWidthEvidence {
+    segment_index: usize,
+    measured_width_mm: f64,
+    expected_width_mm: f64,
+    width_delta_mm: f64,
+    max_width_delta_mm: f64,
+}
+
 fn usb_route_no_protection_path_finding(
     scenario: &Scenario,
     connector_id: &str,
@@ -830,6 +1195,91 @@ fn usb_route_no_protection_path_finding(
     finding.suggested_fixes = vec![
         "Place the USB ESD component on the routed USB net near the connector and import updated PCB route geometry.".to_string(),
         "Check that component placement coordinates and route coordinates share the same PCB coordinate system.".to_string(),
+    ];
+    finding
+}
+
+fn usb_pair_gap_unmeasured_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    dp_net: &str,
+    dm_net: &str,
+    expected_gap_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} D+/D- nets {dp_net}/{dm_net} have no overlapping parallel routed segments for diff-pair gap validation."
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.measured.insert("dp_net".to_string(), json!(dp_net));
+    finding.measured.insert("dm_net".to_string(), json!(dm_net));
+    finding.limit.insert(
+        "expected_data_pair_gap_mm".to_string(),
+        json!(expected_gap_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Route USB D+ and D- as overlapping parallel segments where differential-pair gap can be measured.".to_string(),
+        "Import updated PCB route geometry after routing the data lines as a differential pair.".to_string(),
+    ];
+    finding
+}
+
+fn usb_pair_gap_finding(
+    scenario: &Scenario,
+    connector_id: &str,
+    dp_net: &str,
+    dm_net: &str,
+    evidence: UsbPairGapEvidence,
+    max_gap_delta_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_ROUTE_GEOMETRY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} D+/D- edge gap {:.3} mm differs from route rule {:.3} mm by {:.3} mm, above tolerance {:.3} mm.",
+            evidence.measured_gap_mm,
+            evidence.expected_gap_mm,
+            evidence.gap_delta_mm,
+            max_gap_delta_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding.measured.insert("dp_net".to_string(), json!(dp_net));
+    finding.measured.insert("dm_net".to_string(), json!(dm_net));
+    finding.measured.insert(
+        "dp_segment_index".to_string(),
+        json!(evidence.dp_segment_index),
+    );
+    finding.measured.insert(
+        "dm_segment_index".to_string(),
+        json!(evidence.dm_segment_index),
+    );
+    finding.measured.insert(
+        "data_pair_centerline_distance_mm".to_string(),
+        json!(evidence.centerline_distance_mm),
+    );
+    finding.measured.insert(
+        "data_pair_gap_mm".to_string(),
+        json!(evidence.measured_gap_mm),
+    );
+    finding.measured.insert(
+        "data_pair_gap_delta_mm".to_string(),
+        json!(evidence.gap_delta_mm),
+    );
+    finding.limit.insert(
+        "expected_data_pair_gap_mm".to_string(),
+        json!(evidence.expected_gap_mm),
+    );
+    finding.limit.insert(
+        "max_data_pair_gap_delta_mm".to_string(),
+        json!(max_gap_delta_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Route D+ and D- with the imported differential-pair gap or update the board rule if the impedance target changed.".to_string(),
+        "Avoid local spreading or necking of only one member of the USB data pair unless captured by a more specific layout rule.".to_string(),
     ];
     finding
 }

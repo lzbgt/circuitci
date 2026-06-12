@@ -48,12 +48,12 @@ board:
         segments:
           - start: { x_mm: 0.0, y_mm: 0.0 }
             end: { x_mm: 6.0, y_mm: 0.0 }
-            width_mm: 0.15
+            width_mm: 0.20
             layer: F.Cu
       usb_dm:
         segments:
-          - start: { x_mm: 0.0, y_mm: 0.0 }
-            end: { x_mm: 1.0, y_mm: 0.0 }
+          - start: { x_mm: 0.0, y_mm: 0.5 }
+            end: { x_mm: 1.0, y_mm: 0.5 }
             width_mm: 0.15
             layer: F.Cu
         vias:
@@ -65,6 +65,18 @@ board:
             size_mm: 0.6
             drill_mm: 0.3
             layers: [B.Cu, F.Cu]
+    constraints:
+      net_rules:
+        usb_dp:
+          net_class: USB_HS
+          track_width_mm: 0.15
+          diff_pair_width_mm: 0.15
+          diff_pair_gap_mm: 0.15
+        usb_dm:
+          net_class: USB_HS
+          track_width_mm: 0.15
+          diff_pair_width_mm: 0.15
+          diff_pair_gap_mm: 0.15
 
 scenarios:
   - name: usb_route_geometry_bad
@@ -77,6 +89,8 @@ scenarios:
       max_data_line_route_length_mm: 5.0
       max_data_line_via_count: 0
       max_connector_to_protection_route_distance_mm: 2.0
-      max_component_to_route_distance_mm: 0.1
+      max_component_to_route_distance_mm: 1.0
       max_data_pair_length_mismatch_mm: 0.5
       max_data_pair_via_count_delta: 0
+      max_data_line_width_delta_mm: 0.01
+      max_data_pair_gap_delta_mm: 0.01

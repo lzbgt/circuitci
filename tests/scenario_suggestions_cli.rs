@@ -528,12 +528,14 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
     assert_eq!(route["scenario"]["target"]["component"], "J1");
     assert!(route["scenario"]["parameters"]["max_data_line_route_length_mm"].is_null());
     assert!(route["scenario"]["parameters"]["max_data_line_via_count"].is_null());
+    assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
     assert!(
         route["scenario"]["parameters"]["max_connector_to_protection_route_distance_mm"].is_null()
     );
     assert!(route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
     assert!(route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"].is_null());
     assert!(route["scenario"]["parameters"]["max_data_pair_via_count_delta"].is_null());
+    assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
     let routes = route["scenario"]["usb_routes"].as_array().unwrap();
     assert!(routes.iter().any(|usb_route| {
         usb_route["signal"] == "D+"
