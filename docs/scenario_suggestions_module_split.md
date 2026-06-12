@@ -18,7 +18,10 @@ suggestions.
   signal-conditioning channels and clamp-only interface-protection templates.
 - `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector,
   protection-placement, route-geometry, VBUS-route, and return-path suggestion
-  generation from schematic and PCB layout evidence.
+  template construction from schematic and PCB layout evidence.
+- `src/scenario_suggestions/interface_protection/usb/route_evidence.rs` owns
+  measured USB route, pad-contact, return-path, filled-zone, and ground-contact
+  evidence helpers used by USB suggestion templates.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.
