@@ -393,6 +393,79 @@ fn suggest_scenarios_derives_prtr5v0u2x_rail_to_rail_usb_esd_templates() {
 }
 
 #[test]
+fn suggest_scenarios_derives_usb_connector_protection_template() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_usb_connector_protection/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_usb_connector_protection"
+    );
+    let connector = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_protection_j1")
+        .expect("USB connector protection suggestion");
+    assert_eq!(connector["kind"], "interface_protection");
+    assert_eq!(connector["runnable"], true);
+    assert_eq!(connector["scenario"]["type"], "interface_protection");
+    assert_eq!(
+        connector["scenario"]["checks"][0],
+        "USB_CONNECTOR_PROTECTION_VALID"
+    );
+    assert_eq!(connector["scenario"]["target"]["component"], "J1");
+    assert_eq!(
+        connector["scenario"]["parameters"]["require_vbus_protection"],
+        true
+    );
+    assert_eq!(
+        connector["scenario"]["parameters"]["data_working_voltage_min_V"],
+        3.3
+    );
+    assert_eq!(
+        connector["scenario"]["parameters"]["vbus_working_voltage_min_V"],
+        5.0
+    );
+    let usb = &connector["scenario"]["usb_connectors"][0];
+    assert_eq!(usb["component"], "J1");
+    assert_eq!(usb["standard"], "usb2");
+    assert_eq!(usb["vbus_pin"], "VBUS");
+    assert_eq!(usb["vbus_net"], "usb_vbus");
+    assert_eq!(usb["dp_pin"], "D+");
+    assert_eq!(usb["dp_net"], "usb_dp");
+    assert_eq!(usb["dm_pin"], "D-");
+    assert_eq!(usb["dm_net"], "usb_dm");
+    assert_eq!(usb["gnd_pin"], "GND");
+    assert_eq!(usb["gnd_net"], "gnd");
+    let clamps = connector["scenario"]["protection_clamps"]
+        .as_array()
+        .unwrap();
+    assert_eq!(clamps.len(), 3);
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["clamp"] == "d1_plus"
+            && clamp["protected_net"] == "usb_dp"
+    }));
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UESD"
+            && clamp["clamp"] == "d1_minus"
+            && clamp["protected_net"] == "usb_dm"
+    }));
+    assert!(clamps.iter().any(|clamp| {
+        clamp["component"] == "UVBUS"
+            && clamp["clamp"] == "vbus"
+            && clamp["protected_net"] == "usb_vbus"
+    }));
+    assert!(
+        connector["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("PCB/layout validation")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_boot_strap_bias_template() {
     let suggestions = run_suggest_scenarios("examples/good_bootstrap_bias_divider/project.yaml");
     assert_eq!(suggestions["project"], "good_bootstrap_bias_divider");

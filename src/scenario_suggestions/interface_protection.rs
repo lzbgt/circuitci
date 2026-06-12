@@ -1,17 +1,18 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
     SuggestedConditioningSide, SuggestedProtectionClamp, SuggestedScenario, SuggestedTarget,
-    sanitized_name,
+    SuggestedUsbConnector, USB_CONNECTOR_PROTECTION_VALID, sanitized_name,
 };
-use crate::board_ir::{BoardProject, ComponentSpec};
+use crate::board_ir::{BoardProject, ComponentSpec, NetKind};
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
-    SignalConditioningKind,
+    SignalConditioningKind, UsbConnector,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
     let existing = existing_interface_protection_checks(bound.project);
+    let existing_usb_connectors = existing_usb_connector_protection_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -66,6 +67,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     events: Vec::new(),
                     conditioning: Some(conditioning),
                     protection_clamps: Vec::new(),
+                    usb_connectors: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -129,6 +131,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     events: Vec::new(),
                     conditioning: None,
                     protection_clamps: vec![protection_clamp],
+                    usb_connectors: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -141,8 +144,187 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                 ],
             });
         }
+        if model.usb_connector.is_some()
+            && !existing_usb_connectors.contains(component_id)
+            && let Some(suggestion) =
+                usb_connector_protection_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
     }
     suggestions
+}
+
+fn usb_connector_protection_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let dp_protection =
+        suggested_valid_protection_clamp_for_net(bound, component_id, &suggested_connector.dp_net);
+    let dm_protection =
+        suggested_valid_protection_clamp_for_net(bound, component_id, &suggested_connector.dm_net);
+    let vbus_protection = suggested_connector
+        .vbus_net
+        .as_deref()
+        .and_then(|net| suggested_valid_protection_clamp_for_net(bound, component_id, net));
+    let mut protection_clamps = Vec::new();
+    if let Some(clamp) = dp_protection {
+        protection_clamps.push(clamp);
+    }
+    if let Some(clamp) = dm_protection {
+        protection_clamps.push(clamp);
+    }
+    if let Some(clamp) = vbus_protection {
+        protection_clamps.push(clamp);
+    }
+    let require_vbus_protection = suggested_connector
+        .vbus_net
+        .as_deref()
+        .and_then(|net| bound.project.board.nets.get(net))
+        .is_some_and(|net| net.kind == NetKind::Power);
+    let mut parameters = BTreeMap::new();
+    parameters.insert(
+        "require_vbus_protection".to_string(),
+        serde_json::Value::Bool(require_vbus_protection),
+    );
+    if let Some(data_voltage) = max_nominal_voltage(
+        bound,
+        [
+            suggested_connector.dp_net.as_str(),
+            suggested_connector.dm_net.as_str(),
+        ],
+    ) {
+        parameters.insert(
+            "data_working_voltage_min_V".to_string(),
+            serde_json::Value::from(data_voltage),
+        );
+    }
+    if let Some(vbus_net) = suggested_connector.vbus_net.as_deref()
+        && let Some(vbus_voltage) = max_nominal_voltage(bound, [vbus_net])
+    {
+        parameters.insert(
+            "vbus_working_voltage_min_V".to_string(),
+            serde_json::Value::from(vbus_voltage),
+        );
+    }
+    let mut required_inputs = vec![
+        "Use PCB/layout validation for USB connector placement, protection placement, return path, shield strategy, and differential routing.".to_string(),
+        "Use clamp-specific INTERFACE_PROTECTION_REVIEW scenarios when capacitance budget, standoff, or reference-net evidence needs independent sign-off.".to_string(),
+    ];
+    if protection_clamps.is_empty() {
+        required_inputs.insert(
+            0,
+            "Add datasheet-backed ESD/protection components on USB connector exposed nets; this runnable template will fail until coverage exists.".to_string(),
+        );
+    } else if protection_clamps.len() < 2 {
+        required_inputs.insert(
+            0,
+            "Review missing USB D+ or D- protection coverage; this runnable template will fail if either data line has no valid clamp.".to_string(),
+        );
+    } else if require_vbus_protection && suggested_connector.vbus_net.is_some() {
+        let has_vbus_clamp = protection_clamps.iter().any(|clamp| {
+            suggested_connector
+                .vbus_net
+                .as_ref()
+                .is_some_and(|net| clamp.protected_net == *net)
+        });
+        if !has_vbus_clamp {
+            required_inputs.insert(
+                0,
+                "Review missing USB VBUS protection coverage; require_vbus_protection is true because VBUS is connected to a declared power net.".to_string(),
+            );
+        }
+    }
+    Some(ScenarioSuggestion {
+        id: format!("usb_connector_protection_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: true,
+        reason: format!(
+            "USB connector {component_id} exposes D+/D-/VBUS nets; add a connector-level protection coverage scenario."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_connector_protection", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_CONNECTOR_PROTECTION_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps,
+            usb_connectors: vec![suggested_connector],
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs,
+    })
+}
+
+fn suggested_usb_connector(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    connector: &UsbConnector,
+) -> Option<SuggestedUsbConnector> {
+    let dp_net = connected_declared_net(bound, component, &connector.dp_pin)?.to_string();
+    let dm_net = connected_declared_net(bound, component, &connector.dm_pin)?.to_string();
+    let gnd_net = connected_declared_net(bound, component, &connector.gnd_pin)?.to_string();
+    let vbus_net =
+        connected_declared_net(bound, component, &connector.vbus_pin).map(str::to_string);
+    let shield_net = connector
+        .shield_pin
+        .as_deref()
+        .and_then(|pin| connected_declared_net(bound, component, pin))
+        .map(str::to_string);
+    Some(SuggestedUsbConnector {
+        component: component_id.to_string(),
+        standard: connector.standard.clone(),
+        vbus_pin: connector.vbus_pin.clone(),
+        vbus_net,
+        dp_pin: connector.dp_pin.clone(),
+        dp_net,
+        dm_pin: connector.dm_pin.clone(),
+        dm_net,
+        gnd_pin: connector.gnd_pin.clone(),
+        gnd_net,
+        shield_pin: connector.shield_pin.clone(),
+        shield_net,
+    })
+}
+
+fn connected_declared_net<'a>(
+    bound: &BoundBoard<'_>,
+    component: &'a ComponentSpec,
+    pin: &str,
+) -> Option<&'a str> {
+    let net = component.pins.get(pin)?;
+    bound.project.board.nets.get(net)?;
+    Some(net)
+}
+
+fn max_nominal_voltage<'a>(
+    bound: &BoundBoard<'_>,
+    nets: impl IntoIterator<Item = &'a str>,
+) -> Option<f64> {
+    nets.into_iter()
+        .filter_map(|net| bound.project.board.nets.get(net)?.nominal_voltage)
+        .filter(|voltage| voltage.is_finite())
+        .reduce(f64::max)
 }
 
 fn suggested_conditioning(
@@ -210,6 +392,43 @@ fn suggested_protection_clamp(
         working_voltage_max_v: clamp.working_voltage_max_v,
         line_capacitance_f: clamp.line_capacitance_f,
     })
+}
+
+fn suggested_valid_protection_clamp_for_net(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    net_name: &str,
+) -> Option<SuggestedProtectionClamp> {
+    for (component_id, component) in &bound.project.board.components {
+        if component_id == connector_id {
+            continue;
+        }
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        for clamp in &model.signal_conditioning.protection_clamps {
+            let Some(protected_net) = component.pins.get(&clamp.protected_pin) else {
+                continue;
+            };
+            if protected_net != net_name {
+                continue;
+            }
+            let Some(reference_net_name) = component.pins.get(&clamp.reference_pin) else {
+                continue;
+            };
+            let Some(reference_net) = bound.project.board.nets.get(reference_net_name) else {
+                continue;
+            };
+            let expected_kind = match clamp.reference {
+                ProtectionReference::Ground => NetKind::Ground,
+                ProtectionReference::Power => NetKind::Power,
+            };
+            if reference_net.kind == expected_kind {
+                return suggested_protection_clamp(bound, component_id, component, model, clamp);
+            }
+        }
+    }
+    None
 }
 
 fn signal_conditioning_kind_name(kind: &SignalConditioningKind) -> &'static str {
@@ -286,6 +505,26 @@ fn existing_interface_protection_checks(
                 ),
                 (),
             ))
+        })
+        .collect()
+}
+
+fn existing_usb_connector_protection_checks(project: &BoardProject) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == USB_CONNECTOR_PROTECTION_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
         })
         .collect()
 }

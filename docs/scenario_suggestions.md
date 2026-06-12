@@ -70,6 +70,13 @@ The command is conservative:
   rail-to-rail clamps such as PRTR5V0U2X are both represented. Agents should
   fill `parameters.max_line_capacitance_F` from the real interface budget when
   capacitance screening is required.
+- It emits runnable `USB_CONNECTOR_PROTECTION_VALID` templates for connector
+  models that declare `usb_connector` metadata. The template includes
+  `scenario.usb_connectors[]` with connector pins/nets and any connected
+  `scenario.protection_clamps[]` evidence found on D+, D-, and VBUS. If VBUS is
+  connected to a declared power net, the template sets
+  `parameters.require_vbus_protection: true` so validation fails closed when no
+  VBUS clamp is modeled.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The
@@ -172,6 +179,43 @@ suggestions:
             pin: RX
           net: uart_mcu_rx
           series_resistance_ohm: 0
+  - id: usb_connector_protection_j1
+    kind: interface_protection
+    confidence: medium
+    runnable: true
+    reason: USB connector J1 exposes D+/D-/VBUS nets; add a connector-level protection coverage scenario.
+    scenario:
+      name: j1_usb_connector_protection
+      type: interface_protection
+      checks:
+        - USB_CONNECTOR_PROTECTION_VALID
+      parameters:
+        require_vbus_protection: true
+        data_working_voltage_min_V: 3.3
+        vbus_working_voltage_min_V: 5
+      target:
+        component: J1
+      protection_clamps:
+        - component: UESD
+          clamp: d1_plus
+          protected_pin: D1+
+          protected_net: usb_dp
+          reference_pin: GND
+          reference_net: gnd
+          reference: ground
+          working_voltage_max_V: 5.5
+          line_capacitance_F: 0.0000000000007
+      usb_connectors:
+        - component: J1
+          standard: usb2
+          vbus_pin: VBUS
+          vbus_net: usb_vbus
+          dp_pin: D+
+          dp_net: usb_dp
+          dm_pin: D-
+          dm_net: usb_dm
+          gnd_pin: GND
+          gnd_net: gnd
   - id: reset_release_after_power_valid_u1
     kind: reset_boot
     confidence: medium

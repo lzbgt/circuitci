@@ -1,0 +1,45 @@
+project:
+  name: scenario_suggestions_usb_connector_protection
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor/ti/protection
+
+board:
+  components:
+    J1:
+      model: generic.connector.usb2
+      part_number: USB2_CONNECTOR
+      pins:
+        VBUS: usb_vbus
+        "D+": usb_dp
+        "D-": usb_dm
+        GND: gnd
+    UESD:
+      model: vendor.ti.tpd2eusb30
+      part_number: TPD2EUSB30
+      pins:
+        "D1+": usb_dp
+        "D1-": usb_dm
+        GND: gnd
+    UVBUS:
+      model: generic.protection.vbus_esd_basic
+      pins:
+        VBUS: usb_vbus
+        GND: gnd
+  nets:
+    usb_vbus:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    usb_dp:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    usb_dm:
+      kind: digital_or_analog
+      nominal_voltage: 3.3
+    gnd:
+      kind: ground
+
+scenarios: []

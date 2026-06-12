@@ -49,6 +49,14 @@ include `parameters.clamp` and `scenario.protection_clamps[]` evidence, but
 agents still need to fill `parameters.max_line_capacitance_F` from the actual
 interface budget when capacitance screening is part of the sign-off.
 
+`circuitci suggest-scenarios` also emits connector-level
+`USB_CONNECTOR_PROTECTION_VALID` templates for connector models that declare
+`usb_connector` metadata. Those suggestions include `scenario.usb_connectors[]`
+with exposed D+/D-/VBUS nets and any connected `scenario.protection_clamps[]`
+evidence. When VBUS is connected to a declared power net, the template sets
+`parameters.require_vbus_protection: true` so missing VBUS protection becomes an
+executable validation failure.
+
 Current fixtures:
 
 - `examples/good_usb_esd_protection`
@@ -58,6 +66,7 @@ Current fixtures:
 - `examples/good_usb_connector_protection`
 - `examples/bad_usb_connector_missing_data_protection`
 - `examples/bad_usb_connector_missing_vbus_protection`
+- `examples/scenario_suggestions_usb_connector_protection`
 
 Connector-level validation:
 

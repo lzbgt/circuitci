@@ -46,6 +46,8 @@ pub struct SuggestedScenario {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub protection_clamps: Vec<SuggestedProtectionClamp>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub usb_connectors: Vec<SuggestedUsbConnector>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub clocks: Vec<SuggestedClockSource>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reset_supervisors: Vec<SuggestedResetSupervisor>,
@@ -152,6 +154,25 @@ pub struct SuggestedProtectionClamp {
     pub working_voltage_max_v: Option<f64>,
     #[serde(rename = "line_capacitance_F", skip_serializing_if = "Option::is_none")]
     pub line_capacitance_f: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedUsbConnector {
+    pub component: String,
+    pub standard: String,
+    pub vbus_pin: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vbus_net: Option<String>,
+    pub dp_pin: String,
+    pub dp_net: String,
+    pub dm_pin: String,
+    pub dm_net: String,
+    pub gnd_pin: String,
+    pub gnd_net: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shield_pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shield_net: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

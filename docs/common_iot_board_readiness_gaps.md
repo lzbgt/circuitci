@@ -140,8 +140,10 @@ programmed-current, or power-mux selected-source evidence is missing.
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are
 declared. `USB_CONNECTOR_PROTECTION_VALID` adds connector-level schematic
-coverage for declared USB D+/D- and optional VBUS protection. These checks do
-not invent timing, observed strap
+coverage for declared USB D+/D- and optional VBUS protection.
+`suggest-scenarios` now emits this connector-level template automatically from
+`usb_connector` metadata and connected clamp evidence. These checks do not
+invent timing, observed strap
 states, protocol events, GPIO pin-state observations, protection-path
 resistance, datasheet isolation behavior, load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog

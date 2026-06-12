@@ -15,7 +15,8 @@ suggestions.
   backdrive, clocks, reset supervisors, regulators, and passive evidence
   collection.
 - `src/scenario_suggestions/interface_protection.rs` owns recognition for
-  signal-conditioning channels and clamp-only interface-protection templates.
+  signal-conditioning channels, clamp-only interface-protection templates, and
+  USB connector protection templates.
 - `src/scenario_suggestions/types.rs` owns the serializable suggestion report
   DTOs that must stay aligned with
   `schemas/scenario_suggestion_report.schema.json`.

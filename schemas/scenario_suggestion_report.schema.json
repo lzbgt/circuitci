@@ -162,6 +162,38 @@
                   "additionalProperties": false
                 }
               },
+              "usb_connectors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "component",
+                    "standard",
+                    "vbus_pin",
+                    "dp_pin",
+                    "dp_net",
+                    "dm_pin",
+                    "dm_net",
+                    "gnd_pin",
+                    "gnd_net"
+                  ],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "standard": { "type": "string", "minLength": 1 },
+                    "vbus_pin": { "type": "string", "minLength": 1 },
+                    "vbus_net": { "type": "string", "minLength": 1 },
+                    "dp_pin": { "type": "string", "minLength": 1 },
+                    "dp_net": { "type": "string", "minLength": 1 },
+                    "dm_pin": { "type": "string", "minLength": 1 },
+                    "dm_net": { "type": "string", "minLength": 1 },
+                    "gnd_pin": { "type": "string", "minLength": 1 },
+                    "gnd_net": { "type": "string", "minLength": 1 },
+                    "shield_pin": { "type": "string", "minLength": 1 },
+                    "shield_net": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "clocks": {
                 "type": "array",
                 "items": {
