@@ -643,8 +643,12 @@ fn import_kicad_schematic_rejects_bus_alias_reference_cycle() {
 }
 
 #[test]
-fn import_kicad_schematic_rejects_non_cardinal_symbol_rotation() {
-    assert_bad_kicad_schematic_contains(
+fn import_kicad_schematic_accepts_non_cardinal_symbol_rotation() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("non_cardinal_rotation.kicad_sch");
+    let output = dir.path().join("non_cardinal_rotation.project.yaml");
+    std::fs::write(
+        &schematic_path,
         r#"
 (kicad_sch
   (lib_symbols
@@ -652,25 +656,63 @@ fn import_kicad_schematic_rejects_non_cardinal_symbol_rotation() {
       (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
   (symbol (lib_id "Device:R") (at 10 10 45)
     (property "Reference" "R1") (property "Value" "10k") (pin "1"))
-  (label "NET_A" (at 8.203051 8.203051 0)))
+  (label "NET_A" (at 8.203949 8.203949 0)))
 "#,
-        "supports only cardinal symbol rotations",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
     );
 }
 
 #[test]
-fn import_kicad_schematic_rejects_wrapped_non_cardinal_symbol_rotation() {
-    assert_bad_kicad_schematic_contains(
+fn import_kicad_schematic_accepts_wrapped_non_cardinal_symbol_rotation() {
+    let dir = tempfile::tempdir().unwrap();
+    let schematic_path = dir.path().join("wrapped_non_cardinal_rotation.kicad_sch");
+    let output = dir
+        .path()
+        .join("wrapped_non_cardinal_rotation.project.yaml");
+    std::fs::write(
+        &schematic_path,
         r#"
 (kicad_sch
   (lib_symbols
     (symbol "Device:R"
       (pin passive line (at -2.54 0 0) (length 2.54) (number "1"))))
-  (symbol (lib_id "Device:R") (at 10 10 450.1)
+  (symbol (lib_id "Device:R") (at 10 10 405)
     (property "Reference" "R1") (property "Value" "10k") (pin "1"))
-  (label "NET_A" (at 10 7.46 0)))
+  (label "NET_A" (at 8.203949 8.203949 0)))
 "#,
-        "supports only cardinal symbol rotations",
+    )
+    .unwrap();
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            schematic_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["pins"]["1"],
+        "net_net_a"
     );
 }
 

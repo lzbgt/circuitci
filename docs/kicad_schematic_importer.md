@@ -35,8 +35,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
   are unambiguous,
 - property-only `lib_symbols` inheritance through `extends`,
 - omitted hidden `power_in` library pins with non-empty pin names,
-- cardinal symbol rotations at `0`, `90`, `180`, or `270` degrees, including
-  equivalent wrapped values,
+- finite symbol rotations in degrees, including cardinal and non-cardinal
+  angles with equivalent wrapped values,
 - `mirror x` and `mirror y` symbol transforms,
 - straight horizontal or vertical wires,
 - horizontal/vertical bus graphics and bus entries when scalar wire labels are
@@ -52,7 +52,7 @@ Unsupported constructs fail closed:
 
 - hierarchy cycles,
 - ambiguous bus expansion from labels placed only on bus graphics,
-- malformed, non-finite, or non-cardinal symbol rotations,
+- malformed or non-finite symbol rotations,
 - malformed or unsupported symbol mirror tokens,
 - malformed `in_bom` metadata,
 - malformed or mismatched symbol `instances` metadata,

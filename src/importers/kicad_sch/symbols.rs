@@ -503,9 +503,9 @@ fn split_lib_id(lib_id: &str) -> (Option<String>, Option<String>) {
         .unwrap_or((None, Some(lib_id.to_string())))
 }
 
-fn parse_symbol_rotation(at_list: &[Sexp], lib_id: &str) -> Result<u16> {
+fn parse_symbol_rotation(at_list: &[Sexp], lib_id: &str) -> Result<f64> {
     let Some(raw) = at_list.get(3) else {
-        return Ok(0);
+        return Ok(0.0);
     };
     let raw = match raw {
         Sexp::Atom(value) | Sexp::Str(value) => value,
@@ -517,11 +517,7 @@ fn parse_symbol_rotation(at_list: &[Sexp], lib_id: &str) -> Result<u16> {
     if !angle.is_finite() {
         bail!("KiCad schematic symbol {lib_id} has non-finite rotation angle.");
     }
-    parse_cardinal_rotation(angle).with_context(|| {
-        format!(
-            "Native KiCad schematic import supports only cardinal symbol rotations for {lib_id}."
-        )
-    })
+    Ok(angle.rem_euclid(360.0))
 }
 
 fn parse_symbol_mirror(symbol: &[Sexp], lib_id: &str) -> Result<MirrorAxis> {
@@ -540,20 +536,7 @@ fn parse_symbol_mirror(symbol: &[Sexp], lib_id: &str) -> Result<MirrorAxis> {
     }
 }
 
-fn parse_cardinal_rotation(angle_degrees: f64) -> Result<u16> {
-    if !angle_degrees.is_finite() {
-        bail!("rotation {angle_degrees} is not finite")
-    }
-    let normalized = angle_degrees.rem_euclid(360.0);
-    for candidate in [0_u16, 90, 180, 270] {
-        if (normalized - f64::from(candidate)).abs() < 1e-9 {
-            return Ok(candidate);
-        }
-    }
-    bail!("rotation {angle_degrees} is not a cardinal angle")
-}
-
-fn transform_pin_offset(point: Point, mirror: MirrorAxis, rotation: u16) -> Point {
+fn transform_pin_offset(point: Point, mirror: MirrorAxis, rotation: f64) -> Point {
     rotate_point(mirror_point(point, mirror), rotation)
 }
 
@@ -571,30 +554,45 @@ fn mirror_point(point: Point, mirror: MirrorAxis) -> Point {
     }
 }
 
-fn rotate_point(point: Point, rotation: u16) -> Point {
-    match rotation {
-        0 => point,
-        90 => Point {
+fn rotate_point(point: Point, rotation: f64) -> Point {
+    match cardinal_rotation(rotation) {
+        Some(0) => point,
+        Some(90) => Point {
             x: -point.y,
             y: point.x,
         },
-        180 => Point {
+        Some(180) => Point {
             x: -point.x,
             y: -point.y,
         },
-        270 => Point {
+        Some(270) => Point {
             x: point.y,
             y: -point.x,
         },
-        _ => unreachable!("rotation is validated by parse_cardinal_rotation"),
+        _ => {
+            let radians = rotation.to_radians();
+            let cos = radians.cos();
+            let sin = radians.sin();
+            Point {
+                x: ((point.x as f64) * cos - (point.y as f64) * sin).round() as i64,
+                y: ((point.x as f64) * sin + (point.y as f64) * cos).round() as i64,
+            }
+        }
     }
+}
+
+fn cardinal_rotation(rotation: f64) -> Option<u16> {
+    let normalized = rotation.rem_euclid(360.0);
+    [0_u16, 90, 180, 270]
+        .into_iter()
+        .find(|&candidate| (normalized - f64::from(candidate)).abs() < 1e-9)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        MirrorAxis, Point, Sexp, mirror_point, parse_cardinal_rotation, parse_symbol_mirror,
-        parse_symbol_rotation, rotate_point, transform_pin_offset,
+        MirrorAxis, Point, Sexp, mirror_point, parse_symbol_mirror, parse_symbol_rotation,
+        rotate_point, transform_pin_offset,
     };
 
     #[test]
@@ -603,35 +601,60 @@ mod tests {
             x: 10_000_000,
             y: -20_000_000,
         };
-        assert_eq!(rotate_point(point, 0), point);
+        assert_eq!(rotate_point(point, 0.0), point);
         assert_eq!(
-            rotate_point(point, 90),
+            rotate_point(point, 90.0),
             Point {
                 x: 20_000_000,
                 y: 10_000_000
             }
         );
         assert_eq!(
-            rotate_point(point, 180),
+            rotate_point(point, 180.0),
             Point {
                 x: -10_000_000,
                 y: 20_000_000
             }
         );
         assert_eq!(
-            rotate_point(point, 270),
+            rotate_point(point, 270.0),
             Point {
                 x: -20_000_000,
                 y: -10_000_000
             }
         );
-        assert_eq!(parse_cardinal_rotation(-90.0).unwrap(), 270);
-        assert_eq!(parse_cardinal_rotation(360.0).unwrap(), 0);
-        assert_eq!(parse_cardinal_rotation(450.0).unwrap(), 90);
-        assert!(parse_cardinal_rotation(45.0).is_err());
-        assert!(parse_cardinal_rotation(89.999).is_err());
-        assert!(parse_cardinal_rotation(90.1).is_err());
-        assert!(parse_cardinal_rotation(450.1).is_err());
+        assert_eq!(
+            rotate_point(
+                Point {
+                    x: 10_000_000,
+                    y: 0
+                },
+                45.0
+            ),
+            Point {
+                x: 7_071_068,
+                y: 7_071_068
+            }
+        );
+        assert_eq!(
+            parse_symbol_rotation(&at_with_angle(-90.0), "Device:R").unwrap(),
+            270.0
+        );
+        assert_eq!(
+            parse_symbol_rotation(&at_with_angle(360.0), "Device:R").unwrap(),
+            0.0
+        );
+        assert_eq!(
+            parse_symbol_rotation(&at_with_angle(450.0), "Device:R").unwrap(),
+            90.0
+        );
+        assert_eq!(
+            parse_symbol_rotation(&at_with_angle(45.0), "Device:R").unwrap(),
+            45.0
+        );
+        let wrapped_non_cardinal =
+            parse_symbol_rotation(&at_with_angle(450.1), "Device:R").unwrap();
+        assert!((wrapped_non_cardinal - 90.1).abs() < 1e-12);
     }
 
     #[test]
@@ -656,12 +679,21 @@ mod tests {
             }
         );
         assert_eq!(
-            transform_pin_offset(point, MirrorAxis::X, 90),
+            transform_pin_offset(point, MirrorAxis::X, 90.0),
             Point {
                 x: -20_000_000,
                 y: 10_000_000
             }
         );
+    }
+
+    fn at_with_angle(angle: f64) -> Vec<Sexp> {
+        vec![
+            Sexp::Atom("at".to_string()),
+            Sexp::Atom("0".to_string()),
+            Sexp::Atom("0".to_string()),
+            Sexp::Atom(angle.to_string()),
+        ]
     }
 
     #[test]

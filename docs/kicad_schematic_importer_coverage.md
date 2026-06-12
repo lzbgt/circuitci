@@ -22,10 +22,12 @@ Additional parser fail-closed cases are covered for duplicate references,
 missing library pin geometry, and floating labels. These cases close the main
 gaps called out during review of the first native schematic slice.
 
-Cardinal symbol rotation is now covered by
+Symbol rotation is now covered by
 `examples/import_kicad_schematic/rotated_rc.kicad_sch`. That fixture rotates the
-resistor by 90 degrees and validates the transformed pin coordinates through the
-same mapped generated-SPICE path used by the unrotated RC schematic.
+resistor by 90 degrees and validates the transformed pin coordinates through
+the same mapped generated-SPICE path used by the unrotated RC schematic.
+Parser-rule coverage also checks non-cardinal rotations by attaching labels at
+the rounded transformed pin coordinates.
 
 Mirrored symbol pin transforms are covered by native schematic parser-rule
 tests. The importer supports `(mirror x)` and `(mirror y)` and rejects malformed
@@ -33,8 +35,7 @@ or unsupported mirror tokens.
 
 ## Non-Goals
 
-This slice does not add non-cardinal symbol rotations. Passive value parsing is
-supported only when the mapping file explicitly requests strict
+Passive value parsing is supported only when the mapping file explicitly requests strict
 `schematic_value` parsing for resistor or capacitor SPICE primitive values; no
 other value-to-SPICE inference is performed. Later slices added conservative
 bus handling, multi-unit symbol pin selection, and hidden `power_in` pin import.
