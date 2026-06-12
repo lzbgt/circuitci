@@ -298,6 +298,153 @@ fn control_line_rejects_kicad_output_target_metadata() {
 }
 
 #[test]
+fn uart_sync_rejects_kicad_input_sender_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("bad_uart_kicad_sender_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        uart_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: input",
+            "RX: input",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "UART_BOOTLOADER_SYNC");
+    assert!(report["failures"][0]["message"].as_str().unwrap().contains(
+        "sender endpoint U2.TXD has KiCad electrical type input, which is not output-capable"
+    ));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn uart_sync_rejects_kicad_output_target_rx_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("bad_uart_kicad_target_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        uart_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: output",
+            "RX: output",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "UART_BOOTLOADER_SYNC");
+    assert!(
+        report["failures"][0]["message"].as_str().unwrap().contains(
+            "target RX U1.RX has KiCad electrical type output, which is not input-capable"
+        )
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn resident_protocol_rejects_kicad_input_sender_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("bad_resident_kicad_sender_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    let text = std::fs::read_to_string("examples/um_stm32l4_resident_update_activate/project.yaml")
+        .unwrap()
+        .replace(
+            "../../libs/vendor/um",
+            &repo.join("libs/vendor/um").display().to_string(),
+        )
+        .replace(
+            "../../libs/vendor/wch",
+            &repo.join("libs/vendor/wch").display().to_string(),
+        )
+        .replace(
+            "        RXD: usart1_tx\n",
+            "        RXD: usart1_tx\n      source:\n        board_pin_electrical_types:\n          TXD: input\n",
+        );
+    std::fs::write(&project, text).unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(
+        report["failures"][0]["id"],
+        "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE"
+    );
+    assert!(report["failures"][0]["message"].as_str().unwrap().contains(
+        "sender endpoint U5.TXD has KiCad electrical type input, which is not output-capable"
+    ));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn backdrive_rejects_kicad_input_driver_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("bad_backdrive_kicad_driver_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        backdrive_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: input",
+            "RX: input",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "GPIO_BACKDRIVE");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("driver U2.TXD has KiCad electrical type input, which is not output-capable")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn backdrive_rejects_kicad_output_victim_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir
+        .path()
+        .join("bad_backdrive_kicad_victim_direction.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &project,
+        backdrive_direction_project(
+            &repo.join("libs/generic").display().to_string(),
+            "TXD: output",
+            "RX: output",
+        ),
+    )
+    .unwrap();
+
+    let report = run_validation(project.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "GPIO_BACKDRIVE");
+    assert!(
+        report["failures"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("victim U1.RX has KiCad electrical type output, which is not input-capable")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn c51_control_line_release_uses_generic_reset_polarity() {
     let report = run_validation("examples/good_c51_control_line_app_release/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -1486,6 +1633,172 @@ scenarios:
         action: control_line
         line: reset
         asserted: false
+"#
+    )
+}
+
+fn uart_direction_project(
+    library_path: &str,
+    sender_direction: &str,
+    target_direction: &str,
+) -> String {
+    format!(
+        r#"project:
+  name: bad_uart_kicad_direction_metadata
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        BOOT0: boot0
+        RX: uart_mcu_rx
+        TX: uart_mcu_tx
+      source:
+        board_pin_electrical_types:
+          {target_direction}
+    U2:
+      model: generic.usb_uart.basic
+      power_domains:
+        VCC: usb_uart_3v3
+      pins:
+        VCC: usb_uart_3v3
+        GND: gnd
+        TXD: uart_mcu_rx
+        RXD: uart_mcu_tx
+      source:
+        board_pin_electrical_types:
+          {sender_direction}
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    usb_uart_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+    uart_mcu_tx:
+      kind: digital_or_analog
+scenarios:
+  - name: imported_uart_direction_metadata
+    type: serial_programming
+    target:
+      component: U1
+    checks:
+      - UART_BOOTLOADER_SYNC
+    required_boot_mode: bootloader
+    timing:
+      power_valid_at_us: 100
+      reset_release_at_us: 200
+      boot_sample_at_us: 300
+    bootloader:
+      component: U1
+      interface: uart
+      sync_byte: 127
+      expected_response: 121
+    straps:
+      - component: U1
+        pin: BOOT0
+        net: boot0
+        actual: high
+    events:
+      - at_us: 1000
+        action: uart_send
+        from:
+          component: U2
+          pin: TXD
+        to:
+          component: U1
+          pin: RX
+        bytes: [127]
+"#
+    )
+}
+
+fn backdrive_direction_project(
+    library_path: &str,
+    driver_direction: &str,
+    victim_direction: &str,
+) -> String {
+    format!(
+        r#"project:
+  name: bad_backdrive_kicad_direction_metadata
+  version: 0.1.0
+libraries:
+  - {library_path}
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      power_domains:
+        VDD: mcu_3v3
+      pins:
+        VDD: mcu_3v3
+        GND: gnd
+        RX: uart_rx
+      source:
+        board_pin_electrical_types:
+          {victim_direction}
+    U2:
+      model: generic.usb_uart.basic
+      power_domains:
+        VCC: usb_uart_3v3
+      pins:
+        VCC: usb_uart_3v3
+        GND: gnd
+        TXD: uart_rx
+      source:
+        board_pin_electrical_types:
+          {driver_direction}
+  nets:
+    mcu_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: false
+    usb_uart_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    uart_rx:
+      kind: digital_or_analog
+scenarios:
+  - name: imported_backdrive_direction_metadata
+    type: gpio_backdrive
+    checks:
+      - GPIO_BACKDRIVE
+    parameters:
+      diode_drop_V: 0.3
+    pin_states:
+      - component: U2
+        pin: TXD
+        mode: output
+        state: high
+      - component: U1
+        pin: RX
+        mode: input
+    paths:
+      - driver:
+          component: U2
+          pin: TXD
+        victim:
+          component: U1
+          pin: RX
+        series_resistance_ohm: 0
 "#
     )
 }

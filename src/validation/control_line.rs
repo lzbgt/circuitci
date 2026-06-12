@@ -6,7 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::CONTROL_LINE_RELEASE_SEQUENCE;
 use super::common::{
-    component_pin_connected, model_port, normalize_state, target_model, validation_input_missing,
+    PinDirection, component_pin_connected, model_port, normalize_state, target_model,
+    validate_kicad_pin_direction, validation_input_missing,
 };
 use super::target_contract::validate_reset_target_assertions;
 
@@ -274,7 +275,8 @@ fn validate_control_effect_endpoint(
             effect.name, effect.source.component, effect.source.pin
         ));
     }
-    if let Err(message) = validate_kicad_pin_direction(bound, &effect.source, PinDirection::Output)
+    if let Err(message) =
+        validate_kicad_pin_direction(bound, &effect.source, PinDirection::Output, "source")
     {
         return Err(format!("Control effect {} {message}", effect.name));
     }
@@ -307,69 +309,12 @@ fn validate_control_effect_endpoint(
             effect.name, effect.target.component, effect.target.pin
         ));
     }
-    if let Err(message) = validate_kicad_pin_direction(bound, &effect.target, PinDirection::Input) {
+    if let Err(message) =
+        validate_kicad_pin_direction(bound, &effect.target, PinDirection::Input, "target")
+    {
         return Err(format!("Control effect {} {message}", effect.name));
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-enum PinDirection {
-    Input,
-    Output,
-}
-
-fn validate_kicad_pin_direction(
-    bound: &BoundBoard<'_>,
-    endpoint: &crate::board_ir::Endpoint,
-    required: PinDirection,
-) -> Result<(), String> {
-    let Some(electrical_type) = bound
-        .project
-        .board
-        .components
-        .get(&endpoint.component)
-        .and_then(|component| component.source.as_ref())
-        .and_then(|source| source.board_pin_electrical_types.get(&endpoint.pin))
-    else {
-        return Ok(());
-    };
-    let normalized = normalize_kicad_pin_electrical_type(electrical_type);
-    let capable = match required {
-        PinDirection::Input => {
-            matches!(normalized.as_str(), "input" | "bidirectional" | "tri_state")
-        }
-        PinDirection::Output => matches!(
-            normalized.as_str(),
-            "output"
-                | "bidirectional"
-                | "tri_state"
-                | "power_out"
-                | "open_collector"
-                | "open_emitter"
-        ),
-    };
-    if capable {
-        return Ok(());
-    }
-    let required_text = match required {
-        PinDirection::Input => "input-capable",
-        PinDirection::Output => "output-capable",
-    };
-    Err(format!(
-        "{} {}.{} has KiCad electrical type {}, which is not {required_text}.",
-        match required {
-            PinDirection::Input => "target",
-            PinDirection::Output => "source",
-        },
-        endpoint.component,
-        endpoint.pin,
-        electrical_type
-    ))
-}
-
-fn normalize_kicad_pin_electrical_type(value: &str) -> String {
-    value.trim().to_ascii_lowercase().replace([' ', '-'], "_")
 }
 
 fn derive_control_state_at(

@@ -1,10 +1,13 @@
-use crate::board_ir::Scenario;
+use crate::board_ir::{Endpoint, Scenario};
 use crate::library::{BoundBoard, PortKind};
 use crate::reports::Finding;
 use serde_json::json;
 
 use super::UART_BOOTLOADER_SYNC;
-use super::common::{model_port, target_model, validate_sender_endpoint, validation_input_missing};
+use super::common::{
+    PinDirection, model_port, target_model, validate_kicad_pin_direction, validate_sender_endpoint,
+    validation_input_missing,
+};
 use super::target_contract::validate_boot_straps;
 
 pub(super) fn validate_uart_bootloader_sync(
@@ -97,6 +100,26 @@ pub(super) fn validate_uart_bootloader_sync(
         finding
             .limit
             .insert("rx_pin".to_string(), json!(interface.rx_pin));
+        findings.push(finding);
+        return;
+    }
+    let target_rx_endpoint = Endpoint {
+        component: target_component.clone(),
+        pin: interface.rx_pin.clone(),
+    };
+    if let Err(message) =
+        validate_kicad_pin_direction(bound, &target_rx_endpoint, PinDirection::Input, "target RX")
+    {
+        let mut finding = Finding::critical(UART_BOOTLOADER_SYNC, &scenario.name, message);
+        finding.component = Some(target_component.clone());
+        finding
+            .limit
+            .insert("rx_pin".to_string(), json!(interface.rx_pin));
+        finding.suggested_fixes = vec![
+            "Use a target receive pin whose KiCad electrical type is input-capable.".to_string(),
+            "Correct the KiCad symbol pin electrical type only when the symbol metadata is wrong."
+                .to_string(),
+        ];
         findings.push(finding);
         return;
     }

@@ -43,6 +43,19 @@ pub(super) fn validate_sender_endpoint(
             vec!["Use the USB-UART transmit pin as the event sender.".to_string()];
         return Err(Box::new(finding));
     }
+    if let Err(message) =
+        validate_kicad_pin_direction(bound, from, PinDirection::Output, "sender endpoint")
+    {
+        let mut finding = Finding::critical(rule_id, &scenario.name, message);
+        finding.component = Some(from.component.clone());
+        finding.suggested_fixes = vec![
+            "Use a schematic pin whose KiCad electrical type is output-capable for the sender."
+                .to_string(),
+            "Correct the KiCad symbol pin electrical type only when the symbol metadata is wrong."
+                .to_string(),
+        ];
+        return Err(Box::new(finding));
+    }
 
     let target_endpoint = Endpoint {
         component: target_component.to_string(),
@@ -73,6 +86,60 @@ pub(super) fn validate_sender_endpoint(
         return Err(Box::new(finding));
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) enum PinDirection {
+    Input,
+    Output,
+}
+
+pub(super) fn validate_kicad_pin_direction(
+    bound: &BoundBoard<'_>,
+    endpoint: &Endpoint,
+    required: PinDirection,
+    role: &str,
+) -> Result<(), String> {
+    let Some(electrical_type) = bound
+        .project
+        .board
+        .components
+        .get(&endpoint.component)
+        .and_then(|component| component.source.as_ref())
+        .and_then(|source| source.board_pin_electrical_types.get(&endpoint.pin))
+    else {
+        return Ok(());
+    };
+    let normalized = normalize_kicad_pin_electrical_type(electrical_type);
+    let capable = match required {
+        PinDirection::Input => {
+            matches!(normalized.as_str(), "input" | "bidirectional" | "tri_state")
+        }
+        PinDirection::Output => matches!(
+            normalized.as_str(),
+            "output"
+                | "bidirectional"
+                | "tri_state"
+                | "power_out"
+                | "open_collector"
+                | "open_emitter"
+        ),
+    };
+    if capable {
+        return Ok(());
+    }
+    let required_text = match required {
+        PinDirection::Input => "input-capable",
+        PinDirection::Output => "output-capable",
+    };
+    Err(format!(
+        "{role} {}.{} has KiCad electrical type {}, which is not {required_text}.",
+        endpoint.component, endpoint.pin, electrical_type
+    ))
+}
+
+fn normalize_kicad_pin_electrical_type(value: &str) -> String {
+    value.trim().to_ascii_lowercase().replace([' ', '-'], "_")
 }
 
 pub(super) fn shared_net<'a>(

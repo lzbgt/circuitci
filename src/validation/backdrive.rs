@@ -5,7 +5,9 @@ use serde_json::json;
 use std::collections::BTreeMap;
 
 use super::GPIO_BACKDRIVE;
-use super::common::{component_power_voltage, model_port, shared_net};
+use super::common::{
+    PinDirection, component_power_voltage, model_port, shared_net, validate_kicad_pin_direction,
+};
 
 pub(super) fn validate_backdrive(
     bound: &BoundBoard<'_>,
@@ -110,6 +112,16 @@ pub(super) fn validate_backdrive(
             ));
             continue;
         }
+        if let Err(message) =
+            validate_kicad_pin_direction(bound, &path.driver, PinDirection::Output, "driver")
+        {
+            findings.push(kicad_direction_finding(
+                &scenario.name,
+                &path.driver,
+                message,
+            ));
+            continue;
+        }
         if !matches!(
             victim_port.kind,
             PortKind::DigitalElectricalInput | PortKind::DigitalElectricalIo
@@ -121,6 +133,16 @@ pub(super) fn validate_backdrive(
                     "Victim {}.{} is not an input-capable port.",
                     path.victim.component, path.victim.pin
                 ),
+            ));
+            continue;
+        }
+        if let Err(message) =
+            validate_kicad_pin_direction(bound, &path.victim, PinDirection::Input, "victim")
+        {
+            findings.push(kicad_direction_finding(
+                &scenario.name,
+                &path.victim,
+                message,
             ));
             continue;
         }
@@ -230,6 +252,16 @@ pub(super) fn validate_backdrive(
             findings.push(finding);
         }
     }
+}
+
+fn kicad_direction_finding(scenario: &str, endpoint: &Endpoint, message: String) -> Finding {
+    let mut finding = Finding::critical(GPIO_BACKDRIVE, scenario, message);
+    finding.component = Some(endpoint.component.clone());
+    finding.suggested_fixes = vec![
+        "Use Board IR backdrive paths only for schematic pins whose KiCad electrical types match the declared driver/victim direction.".to_string(),
+        "Correct the KiCad symbol pin electrical type only when the symbol metadata is wrong.".to_string(),
+    ];
+    finding
 }
 
 fn missing_electrical(
