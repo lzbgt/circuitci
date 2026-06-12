@@ -41,6 +41,24 @@ board:
       pins:
         VCC: rail_3v3
         GND: gnd
+    CIN:
+      model: generic.analog.capacitor
+      part_number: 1uF
+      pins:
+        A: usb_5v
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+    COUT:
+      model: generic.analog.capacitor
+      part_number: 1uF
+      pins:
+        A: rail_3v3
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
   nets:
     usb_5v:
       kind: power

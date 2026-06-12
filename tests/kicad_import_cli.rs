@@ -520,6 +520,14 @@ fn import_kicad_schematic_suggests_ap2112_regulator_evidence() {
         "net_rail_3v3"
     );
     assert_eq!(
+        imported["board"]["components"]["C1"]["spice"]["value_f"],
+        0.000001
+    );
+    assert_eq!(
+        imported["board"]["components"]["C2"]["spice"]["value_f"],
+        0.000001
+    );
+    assert_eq!(
         imported["board"]["nets"]["net_usb_5v"]["nominal_voltage"],
         5.0
     );
@@ -564,6 +572,8 @@ fn import_kicad_schematic_suggests_ap2112_regulator_evidence() {
     assert_eq!(regulator["output_net"], "net_rail_3v3");
     assert_eq!(regulator["dropout_voltage_V"], 0.4);
     assert_eq!(regulator["max_output_current_A"], 0.6);
+    assert_eq!(regulator["input_capacitance_min_F"], 0.000001);
+    assert_eq!(regulator["output_capacitance_min_F"], 0.000001);
 }
 
 #[test]

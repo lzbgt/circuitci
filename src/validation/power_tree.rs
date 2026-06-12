@@ -1,4 +1,4 @@
-use crate::board_ir::{ComponentSpec, NetKind, NetSpec, PinLogicState, Scenario};
+use crate::board_ir::{ComponentSpec, NetKind, NetSpec, PinLogicState, Scenario, SpicePrimitive};
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use crate::reports::Finding;
 use serde_json::json;
@@ -521,6 +521,35 @@ fn validate_power_conversion(
             findings,
         );
     }
+
+    if let Some(min_input_capacitance_f) = conversion.input_capacitance_min_f {
+        validate_regulator_support_capacitance(
+            RegulatorCapacitanceContext {
+                component_id,
+                pin: &conversion.input_pin,
+                role: "input",
+                net_name: input_net_name,
+                min_capacitance_f: min_input_capacitance_f,
+            },
+            bound,
+            scenario,
+            findings,
+        );
+    }
+    if let Some(min_output_capacitance_f) = conversion.output_capacitance_min_f {
+        validate_regulator_support_capacitance(
+            RegulatorCapacitanceContext {
+                component_id,
+                pin: &conversion.output_pin,
+                role: "output",
+                net_name: output_net_name,
+                min_capacitance_f: min_output_capacitance_f,
+            },
+            bound,
+            scenario,
+            findings,
+        );
+    }
 }
 
 fn validate_power_switch(
@@ -757,6 +786,30 @@ fn validate_power_conversion_metadata(
             component_id,
             "startup_delay_us",
             "power_conversion startup_delay_us must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(input_capacitance_min_f) = conversion.input_capacitance_min_f
+        && (!input_capacitance_min_f.is_finite() || input_capacitance_min_f <= 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "input_capacitance_min_F",
+            "power_conversion input_capacitance_min_F must be finite and positive.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(output_capacitance_min_f) = conversion.output_capacitance_min_f
+        && (!output_capacitance_min_f.is_finite() || output_capacitance_min_f <= 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "output_capacitance_min_F",
+            "power_conversion output_capacitance_min_F must be finite and positive.",
             scenario,
             findings,
         );
@@ -1051,6 +1104,98 @@ fn validate_regulator_startup_timing(
     }
 }
 
+fn validate_regulator_support_capacitance(
+    context: RegulatorCapacitanceContext<'_>,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let (support_capacitance_f, support_capacitors) =
+        support_capacitance_to_ground(bound, context.net_name);
+    if support_capacitance_f >= context.min_capacitance_f {
+        return;
+    }
+
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!(
+            "Regulator {component_id} {role} rail {net_name} has {:.6e} F support capacitance to ground, below required {:.6e} F.",
+            support_capacitance_f,
+            context.min_capacitance_f,
+            component_id = context.component_id,
+            role = context.role,
+            net_name = context.net_name,
+        ),
+    );
+    finding.component = Some(context.component_id.to_string());
+    finding.net = Some(context.net_name.to_string());
+    finding.measured.insert(
+        "support_capacitance_F".to_string(),
+        json!(support_capacitance_f),
+    );
+    finding
+        .measured
+        .insert("support_capacitors".to_string(), json!(support_capacitors));
+    finding
+        .limit
+        .insert("power_conversion_pin".to_string(), json!(context.pin));
+    finding.limit.insert(
+        format!("regulator_{}_capacitance_min_F", context.role),
+        json!(context.min_capacitance_f),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Add at least {:.6e} F effective capacitance from {} rail {} to ground near regulator {}.{}.",
+            context.min_capacitance_f, context.role, context.net_name, context.component_id, context.pin
+        ),
+        "Map the schematic capacitor value into Board IR when the capacitor is present but not modeled.".to_string(),
+        "Use analog_transient or a regulator-specific stability model for ESR, ESL, DC bias, temperature, and layout-dependent stability sign-off.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn support_capacitance_to_ground(bound: &BoundBoard<'_>, net_name: &str) -> (f64, Vec<String>) {
+    let mut total_f = 0.0;
+    let mut capacitors = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        if spice.primitive != SpicePrimitive::Capacitor {
+            continue;
+        }
+        let Some(value_f) = spice.value_f else {
+            continue;
+        };
+        if !value_f.is_finite() || value_f <= 0.0 {
+            continue;
+        }
+        if component_connects_net_to_ground(bound, component, net_name) {
+            total_f += value_f;
+            capacitors.push(component_id.clone());
+        }
+    }
+    (total_f, capacitors)
+}
+
+fn component_connects_net_to_ground(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    net_name: &str,
+) -> bool {
+    component.pins.values().any(|net| net == net_name)
+        && component.pins.values().any(|net| {
+            net != net_name
+                && bound
+                    .project
+                    .board
+                    .nets
+                    .get(net)
+                    .is_some_and(|spec| spec.kind == NetKind::Ground)
+        })
+}
+
 struct RegulatorStartupContext<'a> {
     component_id: &'a str,
     input_net_name: &'a str,
@@ -1058,6 +1203,14 @@ struct RegulatorStartupContext<'a> {
     output_net_name: &'a str,
     output_net: &'a NetSpec,
     startup_delay_us: f64,
+}
+
+struct RegulatorCapacitanceContext<'a> {
+    component_id: &'a str,
+    pin: &'a str,
+    role: &'a str,
+    net_name: &'a str,
+    min_capacitance_f: f64,
 }
 
 fn regulator_startup_missing_timing_finding(

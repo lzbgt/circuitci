@@ -15,6 +15,22 @@ components:
     pin_map:
       "1": VDD
       "2": GND
+  C1:
+    model: generic.analog.capacitor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
+  C2:
+    model: generic.analog.capacitor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: capacitor
+      value_f_from: schematic_value
 nets:
   USB_5V:
     kind: power

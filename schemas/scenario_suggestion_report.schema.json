@@ -192,7 +192,9 @@
                     "output_net": { "type": "string", "minLength": 1 },
                     "dropout_voltage_V": { "type": "number", "minimum": 0 },
                     "max_output_current_A": { "type": "number", "minimum": 0 },
-                    "startup_delay_us": { "type": "number", "minimum": 0 }
+                    "startup_delay_us": { "type": "number", "minimum": 0 },
+                    "input_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 },
+                    "output_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 }
                   },
                   "additionalProperties": false
                 }

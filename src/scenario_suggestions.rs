@@ -187,6 +187,16 @@ pub struct SuggestedRegulator {
     pub max_output_current_a: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub startup_delay_us: Option<f64>,
+    #[serde(
+        rename = "input_capacitance_min_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub input_capacitance_min_f: Option<f64>,
+    #[serde(
+        rename = "output_capacitance_min_F",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub output_capacitance_min_f: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -429,6 +439,8 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                 dropout_voltage_v: conversion.dropout_voltage_v,
                 max_output_current_a: conversion.max_output_current_a,
                 startup_delay_us: conversion.startup_delay_us,
+                input_capacitance_min_f: conversion.input_capacitance_min_f,
+                output_capacitance_min_f: conversion.output_capacitance_min_f,
             })
         })
         .collect()

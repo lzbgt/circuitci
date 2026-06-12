@@ -1,14 +1,19 @@
 project:
-  name: bad_diodes_ap2112k_3v3_output_current
+  name: bad_diodes_ap2112k_3v3_output_capacitance
   version: 0.1.0
 
 libraries:
   - ../../libs/generic
   - ../../libs/vendor
-  - models
 
 board:
   components:
+    VUSB:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
     UREG:
       model: vendor.diodes.ap2112k_3v3
       part_number: AP2112K-3.3TRG1
@@ -20,9 +25,9 @@ board:
         VOUT: rail_3v3
         GND: gnd
         EN: regulator_en
-    ULOAD:
-      model: fixture.ap2112_high_current_load
-      part_number: HIGH_CURRENT_LOAD
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
       power_domains:
         VDD: rail_3v3
       pins:
@@ -39,29 +44,31 @@ board:
         value_f: 0.000001
     COUT:
       model: generic.analog.capacitor
-      part_number: 1uF
+      part_number: 470nF
       pins:
         A: rail_3v3
         B: gnd
       spice:
         primitive: capacitor
-        value_f: 0.000001
+        value_f: 0.00000047
   nets:
     usb_5v:
       kind: power
       nominal_voltage: 5.0
       powered: true
+      power_valid_at_us: 0
     rail_3v3:
       kind: power
       nominal_voltage: 3.3
       powered: true
+      power_valid_at_us: 1500
     regulator_en:
       kind: digital_or_analog
     gnd:
       kind: ground
 
 scenarios:
-  - name: ap2112k_output_current
+  - name: ap2112k_output_capacitance
     type: power_tree
     checks:
       - POWER_TREE_VALID

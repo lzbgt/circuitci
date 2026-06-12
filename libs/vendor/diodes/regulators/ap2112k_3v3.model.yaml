@@ -28,6 +28,8 @@ power_conversion:
   output_pin: VOUT
   dropout_voltage_V: 0.4
   max_output_current_A: 0.6
+  input_capacitance_min_F: 0.000001
+  output_capacitance_min_F: 0.000001
 datasheet:
   manufacturer: Diodes Incorporated
   part_number: AP2112K-3.3

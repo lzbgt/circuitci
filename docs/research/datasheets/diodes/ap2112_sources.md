@@ -38,7 +38,8 @@ Retrieved on 2026-06-12.
 ## Modeling Notes
 
 The model is a board-level static regulator screen. `POWER_TREE_VALID` can use
-it to catch wrong rail voltage, insufficient nominal dropout margin, and output
-load current above the 600 mA guarantee. It does not sign off load-dependent
-dropout curves, thermal derating, output capacitor ESR/stability, enable
-startup waveform, transient response, or short-circuit behavior.
+it to catch wrong rail voltage, insufficient nominal dropout margin, output
+load current above the 600 mA guarantee, and missing/undersized explicit input
+or output support capacitors. It does not sign off load-dependent dropout
+curves, thermal derating, output capacitor ESR/stability, enable startup
+waveform, transient response, or short-circuit behavior.

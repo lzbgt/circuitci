@@ -27,9 +27,12 @@ common fixed 3.3 V SOT25 LDO:
 - `VIN - VOUT` nominal margin must be at least `0.4 V`.
 - Every modeled load on the output rail must declare `max_supply_current_A`,
   and the summed load must not exceed `0.6 A`.
+- `VIN` and `VOUT` must each have at least `1 uF` explicit capacitance to
+  ground in Board IR.
 - `VOUT` rail nominal voltage must remain inside the modeled fixed-output
   tolerance range.
 
 This model is not a SPICE regulator macromodel. It is not valid for output
-capacitor stability, thermal derating, load-transient behavior, short-circuit
-foldback, startup waveform, or detailed load-dependent dropout sign-off.
+capacitor ESR/ESL/DC-bias stability, thermal derating, load-transient behavior,
+short-circuit foldback, startup waveform, or detailed load-dependent dropout
+sign-off.

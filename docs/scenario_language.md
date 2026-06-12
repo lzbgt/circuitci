@@ -383,11 +383,15 @@ scenarios:
 9. If `power_conversion.startup_delay_us` is declared, input and output rails
    must declare `power_valid_at_us`, and the output rail may not become valid
    before `input_power_valid_at_us + startup_delay_us`.
-10. If a component model declares `power_switch`, the declared input and output
+10. If `power_conversion.input_capacitance_min_F` or
+    `power_conversion.output_capacitance_min_F` is declared, the corresponding
+    regulator rail must have at least that much explicit Board IR capacitance
+    to ground.
+11. If a component model declares `power_switch`, the declared input and output
     pins must name distinct `electrical_power` ports, the control pin must be a
     digital input/IO port, and a powered output rail must have matching
     scenario `pin_states` evidence for the required enabled state.
-11. If `power_switch.max_output_current_A` is declared, every switched-output
+12. If `power_switch.max_output_current_A` is declared, every switched-output
     rail load must declare `max_supply_current_A`, and the summed worst-case
     output load must not exceed the switch limit.
 12. If a component model declares `reset_supervisor`, the monitored pin must be

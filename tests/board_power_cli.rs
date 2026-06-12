@@ -726,6 +726,33 @@ fn diodes_ap2112k_3v3_output_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn diodes_ap2112k_3v3_output_capacitance_uses_datasheet_requirement() {
+    let report = run_validation("examples/bad_diodes_ap2112k_3v3_output_capacitance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_output_capacitance_min_F")
+                .is_some()
+        })
+        .expect("expected AP2112 output capacitance finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["support_capacitance_F"], 0.00000047);
+    assert_eq!(failure["measured"]["support_capacitors"][0], "COUT");
+    assert_eq!(
+        failure["limit"]["regulator_output_capacitance_min_F"],
+        0.000001
+    );
+    assert_eq!(failure["limit"]["power_conversion_pin"], "VOUT");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn regulator_output_current_fails() {
     let report = run_validation("examples/bad_regulator_output_current/project.yaml");
     assert_eq!(report["result"], "fail");

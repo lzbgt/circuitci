@@ -26,8 +26,9 @@ The command is conservative:
   `runnable: false` and records the exact parameter plus allowed source names.
 - If a model declares `power_conversion`, the power-tree suggestion includes
   `scenario.regulators[]` with the regulator component, input/output pins,
-  input/output nets, and declared dropout/current/startup limits. This gives
-  agents the exact regulator evidence that `POWER_TREE_VALID` will execute.
+  input/output nets, and declared dropout/current/startup/capacitance limits.
+  This gives agents the exact regulator evidence that `POWER_TREE_VALID` will
+  execute.
 - If a model declares `reset_supervisor`, the power-tree suggestion includes
   `scenario.reset_supervisors[]` with the supervisor component, monitored
   pin/net, reset output pin/net, and threshold range. This points agents at the
@@ -111,6 +112,8 @@ suggestions:
           output_net: rail_3v3
           dropout_voltage_V: 0.4
           max_output_current_A: 0.6
+          input_capacitance_min_F: 0.000001
+          output_capacitance_min_F: 0.000001
       reset_supervisors:
         - component: USUP
           monitored_pin: VDD

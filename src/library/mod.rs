@@ -50,6 +50,10 @@ pub struct PowerConversion {
     pub max_output_current_a: Option<f64>,
     #[serde(default)]
     pub startup_delay_us: Option<f64>,
+    #[serde(default, rename = "input_capacitance_min_F")]
+    pub input_capacitance_min_f: Option<f64>,
+    #[serde(default, rename = "output_capacitance_min_F")]
+    pub output_capacitance_min_f: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

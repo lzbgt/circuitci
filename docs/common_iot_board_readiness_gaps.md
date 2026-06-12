@@ -61,6 +61,8 @@ Executable slices now covered by `POWER_TREE_VALID`:
 - explicit regulator maximum output-current budget,
 - explicit regulator startup-delay sequencing against `power_valid_at_us` rail
   metadata,
+- explicit regulator input/output support-capacitance requirements against
+  Board IR capacitors to ground,
 - explicit load-switch `power_switch` enable-state evidence and maximum
   switched-output current budget,
 - explicit battery-charger `battery_charger` programmed-current range and
@@ -123,8 +125,8 @@ first-slice GPIO backdrive hot-plug risks when model/connectivity evidence is
 present but observations still need real evidence. It also emits
 interface-protection review templates when component models declare explicit
 `signal_conditioning.channels`, and includes regulator input/output rail,
-dropout/current/startup evidence plus reset-supervisor monitored rail, reset
-output, and threshold evidence in power-tree suggestions. It marks
+dropout/current/startup/capacitance evidence plus reset-supervisor monitored
+rail, reset output, and threshold evidence in power-tree suggestions. It marks
 power-tree templates non-runnable when load-switch enable, charger
 programmed-current, or power-mux selected-source evidence is missing. It does
 not invent timing, observed strap
