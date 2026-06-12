@@ -42,6 +42,8 @@ struct PcbOutlineSegment {
 enum PcbOutlinePrimitive {
     #[serde(rename = "gr_line")]
     Line,
+    #[serde(rename = "gr_rect")]
+    Rect,
     #[serde(rename = "gr_circle")]
     Circle,
     #[serde(rename = "gr_arc")]
@@ -106,6 +108,29 @@ pub(super) fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutlin
         });
         source_primitive_index += 1;
     }
+    for rect in list_children(root_list, "gr_rect") {
+        let layer = non_empty_child_string(rect, "layer", path)?;
+        if layer != "Edge.Cuts" {
+            continue;
+        }
+        let start = route_point(rect, "start", path)?;
+        let end = route_point(rect, "end", path)?;
+        if (end.x_mm - start.x_mm).abs() <= f64::EPSILON
+            || (end.y_mm - start.y_mm).abs() <= f64::EPSILON
+        {
+            bail!(
+                "KiCad PCB Edge.Cuts gr_rect in {} has zero width or height.",
+                path.display()
+            );
+        }
+        segments.extend(sample_outline_rect(
+            start,
+            end,
+            layer,
+            source_primitive_index,
+        ));
+        source_primitive_index += 1;
+    }
     for circle in list_children(root_list, "gr_circle") {
         let layer = non_empty_child_string(circle, "layer", path)?;
         if layer != "Edge.Cuts" {
@@ -149,6 +174,44 @@ pub(super) fn parse_outline(root_list: &[Sexp], path: &Path) -> Result<PcbOutlin
     }
     classify_outline_contours(&mut segments);
     Ok(PcbOutline { segments })
+}
+
+fn sample_outline_rect(
+    start: PcbPoint,
+    end: PcbPoint,
+    layer: String,
+    source_primitive_index: usize,
+) -> Vec<PcbOutlineSegment> {
+    let corners = [
+        start,
+        PcbPoint {
+            x_mm: end.x_mm,
+            y_mm: start.y_mm,
+        },
+        end,
+        PcbPoint {
+            x_mm: start.x_mm,
+            y_mm: end.y_mm,
+        },
+    ];
+    corners
+        .iter()
+        .copied()
+        .zip(corners.iter().copied().cycle().skip(1))
+        .take(corners.len())
+        .enumerate()
+        .map(|(index, (segment_start, segment_end))| PcbOutlineSegment {
+            start: segment_start,
+            end: segment_end,
+            layer: layer.clone(),
+            source_primitive: PcbOutlinePrimitive::Rect,
+            source_primitive_index,
+            sample_index: index,
+            sample_count: corners.len(),
+            contour_index: None,
+            boundary_role: PcbOutlineBoundaryRole::Unknown,
+        })
+        .collect()
 }
 
 fn sample_outline_circle(

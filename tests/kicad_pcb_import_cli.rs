@@ -174,7 +174,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     let outline_segments = imported["board"]["layout"]["outline"]["segments"]
         .as_array()
         .unwrap();
-    assert_eq!(outline_segments.len(), 52);
+    assert_eq!(outline_segments.len(), 56);
     assert_eq!(outline_segments[0]["layer"], "Edge.Cuts");
     assert_eq!(outline_segments[0]["source_primitive"], "gr_line");
     assert_eq!(outline_segments[0]["source_primitive_index"], 0);
@@ -182,24 +182,37 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(outline_segments[0]["sample_count"], 1);
     assert_eq!(outline_segments[0]["start"]["x_mm"], -0.4);
     assert_eq!(outline_segments[0]["end"]["x_mm"], 2.0);
-    assert_eq!(outline_segments[4]["source_primitive"], "gr_circle");
+    assert_eq!(outline_segments[4]["source_primitive"], "gr_rect");
     assert_eq!(outline_segments[4]["source_primitive_index"], 4);
     assert_eq!(outline_segments[4]["sample_index"], 0);
-    assert_eq!(outline_segments[4]["sample_count"], 32);
-    assert_eq!(outline_segments[4]["start"]["x_mm"], 1.9);
-    assert_eq!(outline_segments[4]["start"]["y_mm"], 1.2);
-    assert_eq!(outline_segments[36]["source_primitive"], "gr_arc");
-    assert_eq!(outline_segments[36]["source_primitive_index"], 5);
-    assert_eq!(outline_segments[36]["sample_index"], 0);
-    assert_eq!(outline_segments[36]["sample_count"], 16);
-    assert_eq!(outline_segments[36]["start"]["x_mm"], 1.6);
-    assert_eq!(outline_segments[36]["start"]["y_mm"], 1.4);
-    assert_eq!(outline_segments[51]["source_primitive"], "gr_arc");
-    assert_eq!(outline_segments[51]["source_primitive_index"], 5);
-    assert_eq!(outline_segments[51]["sample_index"], 15);
-    assert_eq!(outline_segments[51]["sample_count"], 16);
-    assert!((outline_segments[51]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
-    assert!((outline_segments[51]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
+    assert_eq!(outline_segments[4]["sample_count"], 4);
+    assert_eq!(outline_segments[4]["boundary_role"], "cutout");
+    assert_eq!(outline_segments[4]["start"]["x_mm"], 1.55);
+    assert_eq!(outline_segments[4]["start"]["y_mm"], 1.05);
+    assert_eq!(outline_segments[7]["source_primitive"], "gr_rect");
+    assert_eq!(outline_segments[7]["source_primitive_index"], 4);
+    assert_eq!(outline_segments[7]["sample_index"], 3);
+    assert_eq!(outline_segments[7]["sample_count"], 4);
+    assert_eq!(outline_segments[7]["end"]["x_mm"], 1.55);
+    assert_eq!(outline_segments[7]["end"]["y_mm"], 1.05);
+    assert_eq!(outline_segments[8]["source_primitive"], "gr_circle");
+    assert_eq!(outline_segments[8]["source_primitive_index"], 5);
+    assert_eq!(outline_segments[8]["sample_index"], 0);
+    assert_eq!(outline_segments[8]["sample_count"], 32);
+    assert_eq!(outline_segments[8]["start"]["x_mm"], 1.9);
+    assert_eq!(outline_segments[8]["start"]["y_mm"], 1.2);
+    assert_eq!(outline_segments[40]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[40]["source_primitive_index"], 6);
+    assert_eq!(outline_segments[40]["sample_index"], 0);
+    assert_eq!(outline_segments[40]["sample_count"], 16);
+    assert_eq!(outline_segments[40]["start"]["x_mm"], 1.6);
+    assert_eq!(outline_segments[40]["start"]["y_mm"], 1.4);
+    assert_eq!(outline_segments[55]["source_primitive"], "gr_arc");
+    assert_eq!(outline_segments[55]["source_primitive_index"], 6);
+    assert_eq!(outline_segments[55]["sample_index"], 15);
+    assert_eq!(outline_segments[55]["sample_count"], 16);
+    assert!((outline_segments[55]["end"]["x_mm"].as_f64().unwrap() - 2.0).abs() < 1e-12);
+    assert!((outline_segments[55]["end"]["y_mm"].as_f64().unwrap() - 1.4).abs() < 1e-12);
     let ground_zones = imported["board"]["layout"]["zones"]["gnd"]
         .as_array()
         .unwrap();

@@ -91,9 +91,9 @@ evidence includes:
 - scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
-The importer also reads KiCad `gr_line`, `gr_circle`, `gr_arc`, `net`,
+The importer also reads KiCad `gr_line`, `gr_rect`, `gr_circle`, `gr_arc`, `net`,
 `segment`, `via`, and `zone` entries. Board-edge graphics on `Edge.Cuts` are
-written under `board.layout.outline.segments`; `gr_circle` and `gr_arc`
+written under `board.layout.outline.segments`; `gr_rect`, `gr_circle`, and `gr_arc`
 graphics are sampled into bounded straight segments. Routed geometry is written under
 `board.layout.routes`; copper-zone outlines and saved `filled_polygon` geometry
 are written under `board.layout.zones` only when the PCB net can be matched to
@@ -124,7 +124,7 @@ Imported outline evidence includes:
 - `Edge.Cuts` segment start/end points in millimeters, including sampled
   segments from curved KiCad outline graphics,
 - source layer, currently `Edge.Cuts`,
-- source primitive provenance (`gr_line`, `gr_circle`, or `gr_arc`), imported
+- source primitive provenance (`gr_line`, `gr_rect`, `gr_circle`, or `gr_arc`), imported
   primitive index, sample index, and sample count,
 - closed-contour provenance: `contour_index` plus `boundary_role` of
   `external`, `cutout`, or `unknown`.
@@ -157,7 +157,7 @@ Fixture coverage:
 
 The regression imports the matching native KiCad schematic, enriches it with
 PCB placements, footprint drawing evidence, connected pad geometry, sampled
-straight/curved board-outline evidence, routed USB net geometry, copper-zone
+straight/rectangular/curved board-outline evidence, routed USB net geometry, copper-zone
 outline/fill evidence, connector entry-aperture mapping metadata and footprint
 properties, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with

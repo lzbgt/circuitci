@@ -516,7 +516,7 @@
         "end": { "$ref": "#/$defs/layout_point" },
         "layer": { "type": "string", "minLength": 1 },
         "source_primitive": {
-          "enum": ["gr_line", "gr_circle", "gr_arc"]
+          "enum": ["gr_line", "gr_rect", "gr_circle", "gr_arc"]
         },
         "source_primitive_index": { "type": "integer", "minimum": 0 },
         "sample_index": { "type": "integer", "minimum": 0 },

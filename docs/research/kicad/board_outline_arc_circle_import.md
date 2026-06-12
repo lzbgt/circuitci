@@ -1,4 +1,4 @@
-# KiCad Board Outline Arc/Circle Import
+# KiCad Board Outline Rect/Arc/Circle Import
 
 CircuitCI imports KiCad board-outline graphics from `Edge.Cuts` into
 `board.layout.outline.segments`.
@@ -6,10 +6,13 @@ CircuitCI imports KiCad board-outline graphics from `Edge.Cuts` into
 Source reference:
 
 - Local copy: `docs/research/kicad/sexpr-intro.html`
-- Relevant sections: graphical `gr_circle` and `gr_arc`
+- Relevant sections: graphical `gr_rect`, `gr_circle`, and `gr_arc`
 
 Facts used from the KiCad S-expression reference:
 
+- `gr_rect` carries `(start X Y)`, `(end X Y)`, and
+  `(layer LAYER_DEFINITION)`. The start and end points define opposite
+  rectangle corners.
 - `gr_circle` carries `(center X Y)`, `(end X Y)`, and `(layer LAYER_DEFINITION)`.
   The `end` point defines the radius endpoint.
 - `gr_arc` carries `(start X Y)`, `(mid X Y)`, `(end X Y)`, and
@@ -21,6 +24,7 @@ Implementation decision:
 
 - Board IR continues to expose outline evidence as straight `segments`.
 - `gr_line` items are imported as one segment.
+- `gr_rect` items are sampled into 4 bounded segments.
 - `gr_circle` items are sampled into 32 bounded segments.
 - `gr_arc` items are sampled using at most 11.25 degrees per segment, capped at
   64 segments.
