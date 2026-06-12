@@ -438,6 +438,26 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         entry_clearance["scenario"]["parameters"]["entry_direction_deg"],
         0.0
     );
+    let entry_evidence = &entry_clearance["scenario"]["usb_connectors"][0]["entry_clearance"];
+    assert_eq!(entry_evidence["entry_direction_deg"], 0.0);
+    assert_eq!(entry_evidence["connector_front_projection_mm"], 0.4);
+    assert_eq!(entry_evidence["nearest_obstruction"]["component"], "UESD");
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_depth_mm"],
+        0.5
+    );
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_lateral_offset_mm"],
+        -0.1
+    );
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_reference"],
+        "footprint_rectangle"
+    );
+    assert_eq!(
+        entry_evidence["nearest_obstruction"]["obstruction_footprint_graphic_kind"],
+        "fabrication"
+    );
     assert!(
         entry_clearance["scenario"]["parameters"]["min_cable_entry_clearance_depth_mm"].is_null()
     );

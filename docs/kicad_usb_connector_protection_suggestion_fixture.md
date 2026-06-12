@@ -74,7 +74,10 @@ fails against the fixture's
 The same imported connector rotation and footprint evidence also emits a
 non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It copies
 `entry_direction_deg: 0.0` from the KiCad placement rotation and leaves cable
-entry corridor depth/width as explicit mechanical policy inputs.
+entry corridor depth/width as explicit mechanical policy inputs. Its
+`scenario.usb_connectors[].entry_clearance` evidence reports the nearest
+forward obstruction candidate from imported footprint evidence, which is the
+`UESD` fabrication rectangle in this fixture.
 `project_checks.yaml` also executes that rule with a `0.8 mm` deep by `1.0 mm`
 wide corridor, proving the imported `UESD` fabrication rectangle is reported as
 an entry-corridor obstruction.

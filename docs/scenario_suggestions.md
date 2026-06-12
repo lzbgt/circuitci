@@ -141,7 +141,13 @@ The command is conservative:
   the USB connector has imported placement rotation and supported
   `fabrication`/`courtyard` footprint evidence. The template copies
   `entry_direction_deg` from the imported placement rotation, includes the
-  connector placement and footprint evidence, and leaves
+  connector placement and footprint evidence, and includes
+  `scenario.usb_connectors[].entry_clearance` with connector-front projection
+  plus the nearest forward obstruction candidate when imported component
+  footprint or placement evidence is available. Obstruction evidence reports
+  depth in the entry direction, lateral offset from the connector centerline,
+  and whether the obstruction came from footprint or placement-center evidence.
+  The template leaves
   `min_cable_entry_clearance_depth_mm` and
   `cable_entry_clearance_width_mm` as `null` until an agent fills those values
   from connector, plug, panel, enclosure, or assembly mechanical drawings.

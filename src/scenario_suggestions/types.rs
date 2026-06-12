@@ -189,6 +189,8 @@ pub struct SuggestedUsbConnector {
     pub nearest_board_edge: Option<SuggestedBoardEdge>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nearest_component_clearance: Option<SuggestedComponentClearance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_clearance: Option<SuggestedUsbEntryClearance>,
 }
 
 #[derive(Debug, Serialize)]
@@ -290,6 +292,26 @@ pub struct SuggestedComponentClearance {
     pub component_footprint_graphic_layer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub component_footprint_graphic_kind: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedUsbEntryClearance {
+    pub entry_direction_deg: f64,
+    pub connector_front_projection_mm: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nearest_obstruction: Option<SuggestedUsbEntryObstruction>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedUsbEntryObstruction {
+    pub component: String,
+    pub obstruction_depth_mm: f64,
+    pub obstruction_lateral_offset_mm: f64,
+    pub obstruction_reference: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub obstruction_footprint_graphic_layer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub obstruction_footprint_graphic_kind: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

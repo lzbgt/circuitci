@@ -275,6 +275,17 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
     suggested_connector.footprint.as_ref()?;
     let placement = component_placement(bound, component_id)?;
     let entry_direction_deg = placement.rotation_deg?;
+    let obstruction_summary = suggested_connector
+        .entry_clearance
+        .as_ref()
+        .and_then(|entry| entry.nearest_obstruction.as_ref())
+        .map(|obstruction| {
+            (
+                obstruction.component.clone(),
+                obstruction.obstruction_depth_mm,
+                obstruction.obstruction_lateral_offset_mm,
+            )
+        });
     let parameters = BTreeMap::from([
         (
             "entry_direction_deg".to_string(),
@@ -297,8 +308,18 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
         runnable: false,
-        reason: format!(
-            "USB connector {component_id} has imported placement rotation and mechanical footprint evidence; add a cable-entry clearance corridor scenario."
+        reason: obstruction_summary.as_ref().map_or_else(
+            || format!(
+                "USB connector {component_id} has imported placement rotation and mechanical footprint evidence; add a cable-entry clearance corridor scenario."
+            ),
+            |(component, depth_mm, lateral_offset_mm)| {
+                format!(
+                    "USB connector {component_id} has imported placement rotation and mechanical footprint evidence; nearest forward entry obstruction candidate is {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                    component,
+                    depth_mm,
+                    lateral_offset_mm
+                )
+            },
         ),
         scenario: SuggestedScenario {
             name: format!(
@@ -330,7 +351,17 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
             paths: Vec::new(),
         },
         required_inputs: vec![
-            "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string(),
+            obstruction_summary.as_ref().map_or_else(
+                || "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string(),
+                |(component, depth_mm, lateral_offset_mm)| {
+                    format!(
+                        "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                        component,
+                        depth_mm,
+                        lateral_offset_mm
+                    )
+                },
+            ),
             "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
             "Use 3D mechanical review for connector shell volume, plug body, cable bend radius, panel cutouts, and enclosure interference.".to_string(),
         ],

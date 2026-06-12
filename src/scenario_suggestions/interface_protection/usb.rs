@@ -19,7 +19,8 @@ mod mechanical;
 mod route_evidence;
 
 use edge_evidence::{
-    nearest_board_edge_evidence, nearest_component_clearance_evidence, suggested_footprint,
+    entry_clearance_evidence, nearest_board_edge_evidence, nearest_component_clearance_evidence,
+    suggested_footprint,
 };
 pub(in crate::scenario_suggestions::interface_protection) use mechanical::{
     existing_usb_connector_body_overhang_checks, existing_usb_connector_component_clearance_checks,
@@ -1063,6 +1064,11 @@ pub(super) fn suggested_usb_connector(
         footprint: suggested_footprint(bound, component_id),
         nearest_board_edge: nearest_board_edge_evidence(bound, component_id),
         nearest_component_clearance: nearest_component_clearance_evidence(bound, component_id),
+        entry_clearance: component_placement(bound, component_id)
+            .and_then(|placement| placement.rotation_deg)
+            .and_then(|entry_direction_deg| {
+                entry_clearance_evidence(bound, component_id, entry_direction_deg)
+            }),
     })
 }
 

@@ -1,7 +1,8 @@
 use super::super::super::{
     SuggestedBoardEdge, SuggestedComponentClearance, SuggestedFootprint, SuggestedFootprintArc,
     SuggestedFootprintCircle, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
-    SuggestedFootprintSegment, SuggestedPoint,
+    SuggestedFootprintSegment, SuggestedPoint, SuggestedUsbEntryClearance,
+    SuggestedUsbEntryObstruction,
 };
 use super::super::component_placement;
 use crate::board_ir::{
@@ -186,6 +187,74 @@ pub(super) fn nearest_component_clearance_evidence(
     })
 }
 
+pub(super) fn entry_clearance_evidence(
+    bound: &BoundBoard<'_>,
+    connector_id: &str,
+    entry_direction_deg: f64,
+) -> Option<SuggestedUsbEntryClearance> {
+    if !entry_direction_deg.is_finite() {
+        return None;
+    }
+    let placement = component_placement(bound, connector_id)?;
+    let connector_primitives = mechanical_clearance_primitives(bound, connector_id, false);
+    if connector_primitives.is_empty() {
+        return None;
+    }
+    let connector_front_projection_mm = connector_primitives
+        .iter()
+        .flat_map(clearance_primitive_points)
+        .map(|point| direction_projection(&point, entry_direction_deg))
+        .max_by(|left, right| left.total_cmp(right))?;
+    let center_lateral_projection_mm = placement_lateral_projection(placement, entry_direction_deg);
+    let mut nearest: Option<EntryObstructionCandidate<'_>> = None;
+    for component_id in bound.project.board.components.keys() {
+        if component_id == connector_id {
+            continue;
+        }
+        for primitive in mechanical_clearance_primitives(bound, component_id, true) {
+            let Some((depth_mm, lateral_offset_mm, reference)) = entry_obstruction_candidate(
+                &primitive,
+                entry_direction_deg,
+                connector_front_projection_mm,
+                center_lateral_projection_mm,
+            ) else {
+                continue;
+            };
+            let candidate = EntryObstructionCandidate {
+                component_id,
+                depth_mm,
+                lateral_offset_mm,
+                reference,
+            };
+            if nearest.as_ref().is_none_or(|current| {
+                depth_mm < current.depth_mm
+                    || ((depth_mm - current.depth_mm).abs() <= f64::EPSILON
+                        && lateral_offset_mm.abs() < current.lateral_offset_mm.abs())
+            }) {
+                nearest = Some(candidate);
+            }
+        }
+    }
+    Some(SuggestedUsbEntryClearance {
+        entry_direction_deg,
+        connector_front_projection_mm,
+        nearest_obstruction: nearest.map(|candidate| SuggestedUsbEntryObstruction {
+            component: candidate.component_id.to_string(),
+            obstruction_depth_mm: candidate.depth_mm,
+            obstruction_lateral_offset_mm: candidate.lateral_offset_mm,
+            obstruction_reference: candidate.reference.label().to_string(),
+            obstruction_footprint_graphic_layer: candidate
+                .reference
+                .footprint_layer()
+                .map(str::to_string),
+            obstruction_footprint_graphic_kind: candidate
+                .reference
+                .footprint_kind()
+                .map(str::to_string),
+        }),
+    })
+}
+
 struct BoardEdgeConnectorDistance<'a> {
     distance_mm: f64,
     reference: BoardEdgeConnectorReference<'a>,
@@ -197,6 +266,13 @@ struct ComponentClearanceCandidate<'a> {
     clearance_mm: f64,
     connector_reference: ComponentClearanceReference<'a>,
     component_reference: ComponentClearanceReference<'a>,
+}
+
+struct EntryObstructionCandidate<'a> {
+    component_id: &'a str,
+    depth_mm: f64,
+    lateral_offset_mm: f64,
+    reference: ComponentClearanceReference<'a>,
 }
 
 #[derive(Clone, Copy)]
@@ -640,6 +716,98 @@ fn clearance_primitive_distance(
             },
         ) => segment_to_segment_distance_mm(a_start, a_end, b_start, b_end),
     }
+}
+
+fn clearance_primitive_points(primitive: &ClearancePrimitive<'_>) -> Vec<LayoutPoint> {
+    match primitive {
+        ClearancePrimitive::Point { point, .. } => vec![point.clone()],
+        ClearancePrimitive::Segment { start, end, .. } => vec![start.clone(), end.clone()],
+    }
+}
+
+fn entry_obstruction_candidate<'a>(
+    primitive: &ClearancePrimitive<'a>,
+    entry_direction_deg: f64,
+    connector_front_projection_mm: f64,
+    center_lateral_projection_mm: f64,
+) -> Option<(f64, f64, ComponentClearanceReference<'a>)> {
+    match primitive {
+        ClearancePrimitive::Point { point, reference } => {
+            let (forward, lateral) = entry_projection(point, entry_direction_deg);
+            (forward >= connector_front_projection_mm - f64::EPSILON).then_some((
+                (forward - connector_front_projection_mm).max(0.0),
+                lateral - center_lateral_projection_mm,
+                *reference,
+            ))
+        }
+        ClearancePrimitive::Segment {
+            start,
+            end,
+            reference,
+        } => {
+            let (start_forward, start_lateral) = entry_projection(start, entry_direction_deg);
+            let (end_forward, end_lateral) = entry_projection(end, entry_direction_deg);
+            let max_forward = start_forward.max(end_forward);
+            if max_forward < connector_front_projection_mm - f64::EPSILON {
+                return None;
+            }
+            if (start_forward - end_forward).abs() <= f64::EPSILON {
+                let lateral = if start_lateral.abs() <= end_lateral.abs() {
+                    start_lateral
+                } else {
+                    end_lateral
+                };
+                return Some((
+                    (start_forward - connector_front_projection_mm).max(0.0),
+                    lateral - center_lateral_projection_mm,
+                    *reference,
+                ));
+            }
+            if (start_forward <= connector_front_projection_mm
+                && end_forward >= connector_front_projection_mm)
+                || (end_forward <= connector_front_projection_mm
+                    && start_forward >= connector_front_projection_mm)
+            {
+                let t = ((connector_front_projection_mm - start_forward)
+                    / (end_forward - start_forward))
+                    .clamp(0.0, 1.0);
+                let lateral = start_lateral + (end_lateral - start_lateral) * t;
+                return Some((0.0, lateral - center_lateral_projection_mm, *reference));
+            }
+            let (forward, lateral) = if start_forward < end_forward {
+                (start_forward, start_lateral)
+            } else {
+                (end_forward, end_lateral)
+            };
+            Some((
+                (forward - connector_front_projection_mm).max(0.0),
+                lateral - center_lateral_projection_mm,
+                *reference,
+            ))
+        }
+    }
+}
+
+fn entry_projection(point: &LayoutPoint, entry_direction_deg: f64) -> (f64, f64) {
+    let radians = entry_direction_deg.to_radians();
+    let normal_x = -radians.sin();
+    let normal_y = radians.cos();
+    (
+        point.x_mm * radians.cos() + point.y_mm * radians.sin(),
+        point.x_mm * normal_x + point.y_mm * normal_y,
+    )
+}
+
+fn direction_projection(point: &LayoutPoint, entry_direction_deg: f64) -> f64 {
+    let radians = entry_direction_deg.to_radians();
+    point.x_mm * radians.cos() + point.y_mm * radians.sin()
+}
+
+fn placement_lateral_projection(placement: &ComponentPlacement, entry_direction_deg: f64) -> f64 {
+    let radians = entry_direction_deg.to_radians();
+    let normal_x = -radians.sin();
+    let normal_y = radians.cos();
+    placement.x_mm * normal_x + placement.y_mm * normal_y
 }
 
 fn mechanical_footprint_kind(kind: &str) -> bool {

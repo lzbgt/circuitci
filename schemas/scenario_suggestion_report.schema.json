@@ -195,7 +195,8 @@
                     "placement": { "$ref": "#/$defs/placement" },
                     "footprint": { "$ref": "#/$defs/footprint" },
                     "nearest_board_edge": { "$ref": "#/$defs/board_edge" },
-                    "nearest_component_clearance": { "$ref": "#/$defs/component_clearance" }
+                    "nearest_component_clearance": { "$ref": "#/$defs/component_clearance" },
+                    "entry_clearance": { "$ref": "#/$defs/entry_clearance" }
                   },
                   "additionalProperties": false
                 }
@@ -564,6 +565,37 @@
         },
         "component_footprint_graphic_layer": { "type": "string", "minLength": 1 },
         "component_footprint_graphic_kind": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "entry_clearance": {
+      "type": "object",
+      "required": [
+        "entry_direction_deg",
+        "connector_front_projection_mm"
+      ],
+      "properties": {
+        "entry_direction_deg": { "type": "number" },
+        "connector_front_projection_mm": { "type": "number" },
+        "nearest_obstruction": { "$ref": "#/$defs/entry_obstruction" }
+      },
+      "additionalProperties": false
+    },
+    "entry_obstruction": {
+      "type": "object",
+      "required": [
+        "component",
+        "obstruction_depth_mm",
+        "obstruction_lateral_offset_mm",
+        "obstruction_reference"
+      ],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "obstruction_depth_mm": { "type": "number", "minimum": 0 },
+        "obstruction_lateral_offset_mm": { "type": "number" },
+        "obstruction_reference": { "$ref": "#/$defs/clearance_reference" },
+        "obstruction_footprint_graphic_layer": { "type": "string", "minLength": 1 },
+        "obstruction_footprint_graphic_kind": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     },
