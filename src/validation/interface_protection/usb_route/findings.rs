@@ -3,7 +3,7 @@ use crate::board_ir::Scenario;
 use crate::reports::Finding;
 use crate::validation::{USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID};
 
-use super::GroundStitchViaCandidate;
+use super::return_path::GroundStitchViaCandidate;
 use serde::Serialize;
 use serde_json::json;
 
