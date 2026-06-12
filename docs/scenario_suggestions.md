@@ -92,7 +92,8 @@ The command is conservative:
 - Imported KiCad schematics can provide clamp-only USB ESD evidence when a
   protection symbol is mapped to a model with
   `signal_conditioning.protection_clamps`; see
-  `examples/import_kicad_tpd2eusb30_usb_esd_suggestions/`.
+  `examples/import_kicad_tpd2eusb30_usb_esd_suggestions/` and
+  `examples/import_kicad_prtr5v0u2x_usb_esd_suggestions/`.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing

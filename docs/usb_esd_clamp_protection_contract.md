@@ -68,3 +68,4 @@ Datasheet-backed model pack:
 - `examples/good_nexperia_prtr5v0u2x_usb_esd`
 - `examples/bad_nexperia_prtr5v0u2x_usb_esd_reference`
 - `examples/bad_nexperia_prtr5v0u2x_usb_esd_capacitance`
+- `examples/import_kicad_prtr5v0u2x_usb_esd_suggestions`
