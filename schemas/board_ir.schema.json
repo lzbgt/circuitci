@@ -144,6 +144,21 @@
                     "layers": {
                       "type": "array",
                       "items": { "type": "string", "minLength": 1 }
+                    },
+                    "kind": { "type": "string", "minLength": 1 },
+                    "shape": { "type": "string", "minLength": 1 },
+                    "size": {
+                      "type": "object",
+                      "required": ["x_mm", "y_mm"],
+                      "properties": {
+                        "x_mm": { "type": "number", "exclusiveMinimum": 0 },
+                        "y_mm": { "type": "number", "exclusiveMinimum": 0 }
+                      },
+                      "additionalProperties": false
+                    },
+                    "drill_mm": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
                     }
                   },
                   "additionalProperties": false

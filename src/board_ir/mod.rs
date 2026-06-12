@@ -90,6 +90,20 @@ pub struct LayoutPad {
     pub net: String,
     #[serde(default)]
     pub layers: Vec<String>,
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub shape: Option<String>,
+    #[serde(default)]
+    pub size: Option<LayoutPadSize>,
+    #[serde(default)]
+    pub drill_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutPadSize {
+    pub x_mm: f64,
+    pub y_mm: f64,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

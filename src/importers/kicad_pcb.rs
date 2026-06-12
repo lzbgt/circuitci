@@ -65,6 +65,10 @@ struct PcbPad {
     at: PcbPoint,
     net_name: String,
     layers: Vec<String>,
+    kind: Option<String>,
+    shape: Option<String>,
+    size: PcbPadSize,
+    drill_mm: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +110,12 @@ struct PcbPoint {
     y_mm: f64,
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+struct PcbPadSize {
+    x_mm: f64,
+    y_mm: f64,
+}
+
 #[derive(Debug, Serialize)]
 struct RouteYaml<'a> {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -120,6 +130,13 @@ struct PadYaml<'a> {
     net: &'a str,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     layers: Vec<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    shape: Option<&'a str>,
+    size: PcbPadSize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    drill_mm: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -272,6 +289,20 @@ fn parse_pads(
             })?;
             let at = transform_footprint_point(footprint_at, local_x_mm, local_y_mm);
             let layers = pad_layers(pad);
+            let kind = string_at(pad, 2)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string);
+            let shape = string_at(pad, 3)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string);
+            let size = pad_size(pad).with_context(|| {
+                format!("KiCad PCB footprint {reference} pad {pad_name} has invalid pad size.")
+            })?;
+            let drill_mm = pad_drill_mm(pad).with_context(|| {
+                format!("KiCad PCB footprint {reference} pad {pad_name} has invalid drill size.")
+            })?;
             let component_pads = pads.entry(reference.clone()).or_default();
             if component_pads.contains_key(&pad_name) {
                 bail!("KiCad PCB footprint {reference} contains duplicate pad {pad_name}.");
@@ -282,6 +313,10 @@ fn parse_pads(
                     at,
                     net_name,
                     layers,
+                    kind,
+                    shape,
+                    size,
+                    drill_mm,
                 },
             );
         }
@@ -942,6 +977,29 @@ fn pad_layers(pad: &[Sexp]) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn pad_size(pad: &[Sexp]) -> Result<PcbPadSize> {
+    let size = child_list(pad, "size").context("missing (size x y)")?;
+    let x_mm = numeric_at(size, 1).context("invalid x size")?;
+    let y_mm = numeric_at(size, 2).context("invalid y size")?;
+    if x_mm <= 0.0 || y_mm <= 0.0 {
+        bail!("pad size must be positive");
+    }
+    Ok(PcbPadSize { x_mm, y_mm })
+}
+
+fn pad_drill_mm(pad: &[Sexp]) -> Result<Option<f64>> {
+    let Some(drill) = child_list(pad, "drill") else {
+        return Ok(None);
+    };
+    let Some(value) = numeric_at(drill, 1) else {
+        return Ok(None);
+    };
+    if value <= 0.0 {
+        bail!("pad drill must be positive");
+    }
+    Ok(Some(value))
+}
+
 fn positive_child_number(item: &[Sexp], field: &str, path: &Path) -> Result<f64> {
     let child = child_list(item, field).with_context(|| {
         format!(
@@ -1142,6 +1200,10 @@ fn pad_yaml_value(pad: &PcbPad, board_net_name: &str) -> Result<Value> {
         at: pad.at,
         net: board_net_name,
         layers: pad.layers.iter().map(String::as_str).collect(),
+        kind: pad.kind.as_deref(),
+        shape: pad.shape.as_deref(),
+        size: pad.size,
+        drill_mm: pad.drill_mm,
     })
     .context("Failed to serialize KiCad PCB pad evidence into Board IR YAML.")
 }

@@ -254,6 +254,20 @@ pub struct SuggestedUsbRoutePad {
     pub x_mm: f64,
     pub y_mm: f64,
     pub layers: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shape: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<SuggestedUsbRoutePadSize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drill_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SuggestedUsbRoutePadSize {
+    pub x_mm: f64,
+    pub y_mm: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]

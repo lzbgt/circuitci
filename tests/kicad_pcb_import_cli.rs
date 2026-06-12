@@ -65,6 +65,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_dp_pad["at"]["y_mm"], 0.0);
     assert_eq!(connector_dp_pad["net"], "net_usb_dp");
     assert_eq!(connector_dp_pad["layers"][0], "F.Cu");
+    assert_eq!(connector_dp_pad["kind"], "smd");
+    assert_eq!(connector_dp_pad["shape"], "rect");
+    assert_eq!(connector_dp_pad["size"]["x_mm"], 0.3);
+    assert_eq!(connector_dp_pad["size"]["y_mm"], 0.3);
     assert_eq!(
         imported["board"]["layout"]["pads"]["J1"]["SHIELD"]["net"],
         "gnd"
@@ -80,6 +84,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(
         imported["board"]["layout"]["pads"]["UVBUS"]["IO"]["net"],
         "net_usb_vbus"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["UVBUS"]["IO"]["shape"],
+        "rect"
     );
     assert!(imported["board"]["layout"]["pads"]["H1"].is_null());
     let dp_route = &imported["board"]["layout"]["routes"]["net_usb_dp"];
@@ -220,11 +228,15 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
                     && usb_route["connector_pad"]["net"] == "net_usb_dp"
                     && usb_route["connector_pad"]["x_mm"] == 0.0
                     && usb_route["connector_pad"]["layers"][0] == "F.Cu"
+                    && usb_route["connector_pad"]["kind"] == "smd"
+                    && usb_route["connector_pad"]["shape"] == "rect"
+                    && usb_route["connector_pad"]["size"]["x_mm"] == 0.3
                     && usb_route["protection_pad"]["component"] == "UESD"
                     && usb_route["protection_pad"]["pin"] == "D1+"
                     && usb_route["protection_pad"]["net"] == "net_usb_dp"
                     && usb_route["protection_pad"]["x_mm"] == 1.0
                     && usb_route["protection_pad"]["layers"][0] == "F.Cu"
+                    && usb_route["protection_pad"]["shape"] == "rect"
                     && usb_route["connector_pad_to_route_distance_mm"] == 0.0
                     && usb_route["protection_pad_to_route_distance_mm"] == 0.0
                     && usb_route["connector_to_protection_pad_route_distance_mm"] == 1.0
@@ -259,9 +271,12 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     let vbus = &vbus_route["scenario"]["usb_routes"][0];
     assert_eq!(vbus["connector_pad"]["pin"], "VBUS");
     assert_eq!(vbus["connector_pad"]["net"], "net_usb_vbus");
+    assert_eq!(vbus["connector_pad"]["shape"], "rect");
+    assert_eq!(vbus["connector_pad"]["size"]["y_mm"], 0.3);
     assert_eq!(vbus["protection_pad"]["component"], "UVBUS");
     assert_eq!(vbus["protection_pad"]["pin"], "IO");
     assert_eq!(vbus["protection_pad"]["net"], "net_usb_vbus");
+    assert_eq!(vbus["protection_pad"]["kind"], "smd");
     assert_eq!(vbus["connector_to_protection_pad_route_distance_mm"], 1.5);
     let return_path = suggestions["suggestions"]
         .as_array()
@@ -523,9 +538,12 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(vbus["connector_pad"]["component"], "J1");
     assert_eq!(vbus["connector_pad"]["pin"], "VBUS");
     assert_eq!(vbus["connector_pad"]["net"], "usb_vbus");
+    assert_eq!(vbus["connector_pad"]["shape"], "rect");
+    assert_eq!(vbus["connector_pad"]["size"]["x_mm"], 0.3);
     assert_eq!(vbus["protection_pad"]["component"], "UVBUS");
     assert_eq!(vbus["protection_pad"]["pin"], "IO");
     assert_eq!(vbus["protection_pad"]["net"], "usb_vbus");
+    assert_eq!(vbus["protection_pad"]["kind"], "smd");
     assert_eq!(vbus["connector_pad_to_route_distance_mm"], 0.0);
     assert_eq!(vbus["protection_pad_to_route_distance_mm"], 0.0);
     assert_eq!(vbus["connector_to_protection_pad_route_distance_mm"], 1.5);

@@ -1,6 +1,7 @@
 use super::super::super::{
     SuggestedProtectionClamp, SuggestedUsbFilledZoneClearanceSegment,
-    SuggestedUsbGroundZoneContact, SuggestedUsbRoutePad, SuggestedUsbUnreferencedSegment,
+    SuggestedUsbGroundZoneContact, SuggestedUsbRoutePad, SuggestedUsbRoutePadSize,
+    SuggestedUsbUnreferencedSegment,
 };
 use crate::board_ir::{
     ComponentSpec, CopperZone, LayoutPad, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia,
@@ -228,6 +229,13 @@ pub(super) fn suggested_usb_route_pad(
         x_mm: pad.at.x_mm,
         y_mm: pad.at.y_mm,
         layers: pad.layers.clone(),
+        kind: pad.kind.clone(),
+        shape: pad.shape.clone(),
+        size: pad.size.as_ref().map(|size| SuggestedUsbRoutePadSize {
+            x_mm: size.x_mm,
+            y_mm: size.y_mm,
+        }),
+        drill_mm: pad.drill_mm,
     })
 }
 

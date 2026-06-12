@@ -148,7 +148,8 @@ Route-geometry validation:
   When same-net connector/protection pad centers are available, each
   `scenario.usb_routes[]` entry also reports the pad records and measured
   connector-to-protection pad route distance used by
-  `require_route_pad_contact_evidence`.
+  `require_route_pad_contact_evidence`. Pad records may include imported KiCad
+  kind, shape, size, and drill evidence in addition to center/layer data.
 - The rule projects connector/protection placements onto the imported routed
   segments and then computes distance along the route graph, not straight-line
   distance.
@@ -209,7 +210,8 @@ Route-geometry validation:
   width, measured minimum VBUS route width, and matching protection component.
   When imported pad evidence is available, suggestions also expose connector
   and protection pad records plus measured connector-to-protection pad route
-  distance.
+  distance. Pad records may include imported KiCad kind, shape, size, and drill
+  evidence in addition to center/layer data.
 - This check is still static layout evidence. It does not prove VBUS ampacity,
   fuse trip behavior, inrush current, voltage drop under load, temperature
   rise, or ESD pulse robustness.

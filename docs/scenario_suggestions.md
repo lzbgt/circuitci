@@ -112,7 +112,9 @@ The command is conservative:
   `connector_pad_to_route_distance_mm`,
   `protection_pad_to_route_distance_mm`, and
   `connector_to_protection_pad_route_distance_mm` when the imported pad centers
-  can be projected onto the routed net on compatible copper layers.
+  can be projected onto the routed net on compatible copper layers. Pad records
+  include center coordinates, layers, and optional imported KiCad
+  kind/shape/size/drill evidence.
 - It emits non-runnable `USB_VBUS_ROUTE_VALID` templates when the USB connector,
   VBUS protection component, placements, and `board.layout.routes` evidence are
   present. The template includes `scenario.usb_routes[]` with VBUS net, route
@@ -125,7 +127,8 @@ The command is conservative:
   When imported connector VBUS and protection pad evidence exists, the template
   sets `require_vbus_route_pad_contact_evidence: true`; the VBUS
   `scenario.usb_routes[]` entry then reports `connector_pad`, `protection_pad`,
-  pad-to-route distances, and `connector_to_protection_pad_route_distance_mm`.
+  pad geometry, pad-to-route distances, and
+  `connector_to_protection_pad_route_distance_mm`.
 - It emits non-runnable `USB_RETURN_PATH_VALID` templates when USB D+/D-
   `board.layout.routes` evidence and same-layer ground-zone outlines under
   `board.layout.zones` are present. The template includes each data net's

@@ -24,7 +24,7 @@ Only footprint references that match existing `board.components` are written to
 footprint references, missing references, invalid coordinates, files without
 footprints, and PCB files with no matching Board IR components fail closed.
 
-The importer also reads connected footprint `pad` entries and writes pad-center
+The importer also reads connected footprint `pad` entries and writes pad
 evidence under `board.layout.pads` when the footprint reference and pad net both
 map to existing Board IR objects. Unconnected pads are skipped. Imported pad
 evidence includes:
@@ -33,6 +33,9 @@ evidence includes:
 - pad name,
 - Board IR net,
 - pad center in millimeters after footprint translation/rotation,
+- KiCad pad kind and shape when present,
+- pad size in millimeters,
+- scalar pad drill diameter in millimeters when present,
 - pad layer list when present.
 
 The importer also reads KiCad `net`, `segment`, `via`, and `zone` entries.
@@ -69,10 +72,10 @@ extracts component center placements, routed `segment`/`via` geometry, net-class
 route/differential-pair defaults, simple custom DRC `length`/`skew`
 constraints whose conditions name a net class or explicit net, and copper-zone
 outlines plus saved filled polygons. It also extracts connected pad center,
-net, and layer evidence, but not full pad shape geometry. It does not solve
+kind, shape, size, scalar drill, net, and layer evidence. It does not solve
 filled-copper island connectivity, pad-to-zone connectivity, thermal relief
-behavior, shield bonding, return paths, impedance calculations, arbitrary DRC
-rule semantics, or pin-1/BOM/PNP alignment.
+behavior, solder-mask expansion, shield bonding, return paths, impedance
+calculations, arbitrary DRC rule semantics, or pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
@@ -80,7 +83,7 @@ Fixture coverage:
 - `tests/kicad_pcb_import_cli.rs`
 
 The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, connected pad centers, routed USB net geometry, copper-zone
+PCB placements, connected pad geometry, routed USB net geometry, copper-zone
 outline/fill evidence, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
