@@ -224,6 +224,7 @@ fn component_from_symbol(symbol: SymbolInstance) -> ParsedComponent {
         lib: symbol.lib,
         part: symbol.part,
         fields: symbol.fields,
+        pin_electrical_types: symbol.pin_electrical_types,
         in_bom: Some(symbol.in_bom),
         unit: Some(symbol.unit),
         units: Vec::new(),
@@ -251,6 +252,21 @@ fn merge_symbol_unit(component: &mut ParsedComponent, symbol: SymbolInstance) ->
             "KiCad schematic component {} has duplicate units with conflicting package metadata.",
             component.refdes
         );
+    }
+    for (pin, electrical_type) in symbol.pin_electrical_types {
+        if let Some(existing) = component.pin_electrical_types.get(&pin) {
+            if existing != &electrical_type {
+                bail!(
+                    "KiCad schematic component {} pin {} has conflicting electrical types {} and {} across units.",
+                    component.refdes,
+                    pin,
+                    existing,
+                    electrical_type
+                );
+            }
+            continue;
+        }
+        component.pin_electrical_types.insert(pin, electrical_type);
     }
 
     if component.units.is_empty() {
@@ -1194,6 +1210,7 @@ fn build_nets(
         nodes_by_key.entry(key).or_default().push(ParsedNode {
             refdes: refdes.clone(),
             pin: pin.clone(),
+            pintype: None,
         });
     }
 

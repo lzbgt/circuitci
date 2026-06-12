@@ -161,6 +161,20 @@ names such as `+3V3`, `VDD`, or `VBUS`. Those semantics require an explicit
 user or design-rule mapping before checks that depend on power-domain behavior.
 Mapping-file net entries can set `kind`, `nominal_voltage`, and `powered`.
 
+## Pin Electrical Types
+
+When KiCad XML netlist nodes include `pintype` attributes, CircuitCI preserves
+them as component source metadata:
+
+- `source.kicad_pin_electrical_types` maps raw KiCad pin numbers to KiCad
+  electrical types,
+- `source.board_pin_electrical_types` maps the final Board IR pin names after
+  `pin_map` or `pin_alias` resolution.
+
+Conflicting `pintype` declarations for the same component pin fail closed.
+These fields are provenance for later directionality checks; they are not a
+replacement for explicit component models.
+
 ## Scenario Contract
 
 The importer emits no scenarios by default. A scenario is emitted only when an

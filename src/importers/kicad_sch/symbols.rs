@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 struct PinGeometry {
     at: Point,
     name: Option<String>,
+    electrical_type: String,
     hidden: bool,
 }
 
@@ -29,6 +30,7 @@ pub(super) struct SymbolInstance {
     pub(super) at: Point,
     pub(super) lib_id: String,
     pub(super) pins: BTreeMap<String, Point>,
+    pub(super) pin_electrical_types: BTreeMap<String, String>,
     pub(super) is_power_symbol: bool,
 }
 
@@ -213,7 +215,15 @@ fn insert_pin_geometry(
         bail!("KiCad library symbol {context} hidden power pin {number} is missing a name.");
     }
     if pins
-        .insert(number.clone(), PinGeometry { at, name, hidden })
+        .insert(
+            number.clone(),
+            PinGeometry {
+                at,
+                name,
+                electrical_type,
+                hidden,
+            },
+        )
         .is_some()
     {
         bail!("KiCad library symbol {context} has duplicate pin geometry for pin {number}.");
@@ -276,6 +286,7 @@ pub(super) fn parse_symbol_instances(
         };
         let pin_geometry = select_lib_symbol_pins(pin_geometry, unit, &refdes, &lib_id)?;
         let mut pins = BTreeMap::new();
+        let mut pin_electrical_types = BTreeMap::new();
         let mut explicit_pin_numbers = BTreeSet::new();
         for pin in list_children(symbol, "pin") {
             let number = string_at(pin, 1)
@@ -291,12 +302,13 @@ pub(super) fn parse_symbol_instances(
             };
             let rotated = transform_pin_offset(geometry.at, mirror, rotation);
             pins.insert(
-                number,
+                number.clone(),
                 Point {
                     x: at.x + rotated.x,
                     y: at.y + rotated.y,
                 },
             );
+            pin_electrical_types.insert(number, geometry.electrical_type.clone());
         }
         for (number, geometry) in &pin_geometry {
             if !geometry.hidden || explicit_pin_numbers.contains(number) {
@@ -318,6 +330,7 @@ pub(super) fn parse_symbol_instances(
                 y: at.y + rotated.y,
             };
             pins.insert(number.clone(), point);
+            pin_electrical_types.insert(number.clone(), geometry.electrical_type.clone());
             power_labels.push((point, label));
         }
         if pins.is_empty() {
@@ -353,6 +366,7 @@ pub(super) fn parse_symbol_instances(
             at,
             lib_id,
             pins,
+            pin_electrical_types,
             is_power_symbol,
         });
     }

@@ -38,6 +38,7 @@ pub(super) struct ParsedComponent {
     pub(super) lib: Option<String>,
     pub(super) part: Option<String>,
     pub(super) fields: BTreeMap<String, String>,
+    pub(super) pin_electrical_types: BTreeMap<String, String>,
     pub(super) in_bom: Option<bool>,
     pub(super) unit: Option<u32>,
     pub(super) units: Vec<u32>,
@@ -63,6 +64,7 @@ pub(super) struct ParsedNet {
 pub(super) struct ParsedNode {
     pub(super) refdes: String,
     pub(super) pin: String,
+    pub(super) pintype: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -291,6 +293,10 @@ struct ComponentSourceYaml {
     lib: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     part: Option<String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    kicad_pin_electrical_types: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    board_pin_electrical_types: BTreeMap<String, String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     in_bom: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -524,6 +530,7 @@ pub(super) fn parse_kicad_netlist(path: &Path) -> Result<ParsedKicadNetlist> {
                             lib: None,
                             part: None,
                             fields: BTreeMap::new(),
+                            pin_electrical_types: BTreeMap::new(),
                             in_bom: None,
                             unit: None,
                             units: Vec::new(),
@@ -673,6 +680,8 @@ fn build_project_yaml(
                         value: component.value.clone(),
                         lib: component.lib.clone(),
                         part: component.part.clone(),
+                        kicad_pin_electrical_types: component.pin_electrical_types.clone(),
+                        board_pin_electrical_types: BTreeMap::new(),
                         in_bom: component.in_bom,
                         unit: component.unit,
                         units: component.units.clone(),
@@ -693,6 +702,7 @@ fn build_project_yaml(
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
     let mut assigned_pins = BTreeMap::new();
+    let mut observed_pin_types = BTreeMap::new();
     for (net_index, net) in parsed.nets.iter().enumerate() {
         let net_name = net_names[net_index].clone();
         for node in &net.nodes {
@@ -708,12 +718,61 @@ fn build_project_yaml(
                 .get(&node.refdes)
                 .expect("component existence was checked above");
             let component_mapping = mapping_for_component(parsed_component, mapping)?;
+            if let Some(pintype) = node.pintype.as_deref() {
+                let pin_type_key = format!("{}.{}", node.refdes, node.pin);
+                if let Some(existing) = observed_pin_types.get(&pin_type_key) {
+                    if existing != pintype {
+                        bail!(
+                            "KiCad component {} pin {} has conflicting electrical types {} and {}.",
+                            node.refdes,
+                            node.pin,
+                            existing,
+                            pintype
+                        );
+                    }
+                } else {
+                    observed_pin_types.insert(pin_type_key, pintype.to_string());
+                }
+                if let Some(existing) = parsed_component
+                    .pin_electrical_types
+                    .get(&node.pin)
+                    .map(String::as_str)
+                    && existing != pintype
+                {
+                    bail!(
+                        "KiCad component {} pin {} has conflicting electrical types {} and {}.",
+                        node.refdes,
+                        node.pin,
+                        existing,
+                        pintype
+                    );
+                }
+                component
+                    .source
+                    .as_mut()
+                    .expect("imported KiCad components carry source metadata")
+                    .kicad_pin_electrical_types
+                    .insert(node.pin.clone(), pintype.to_string());
+            }
             let target_pin = mapped_pin(
                 parsed_component,
                 component_mapping.as_ref(),
                 &options.default_model,
                 &node.pin,
             )?;
+            if let Some(pintype) = parsed_component
+                .pin_electrical_types
+                .get(&node.pin)
+                .map(String::as_str)
+                .or(node.pintype.as_deref())
+            {
+                component
+                    .source
+                    .as_mut()
+                    .expect("imported KiCad components carry source metadata")
+                    .board_pin_electrical_types
+                    .insert(target_pin.clone(), pintype.to_string());
+            }
             let key = format!("{}.{}", node.refdes, target_pin);
             if let Some(existing_net) = assigned_pins.get(&key) {
                 if existing_net != &net_name {
@@ -1475,6 +1534,7 @@ fn push_node(reader: &Reader<&[u8]>, event: &BytesStart<'_>, net: &mut ParsedNet
     net.nodes.push(ParsedNode {
         refdes: required_attr(reader, event, "ref")?,
         pin: required_attr(reader, event, "pin")?,
+        pintype: attr_value(reader, event, "pintype")?,
     });
     Ok(())
 }

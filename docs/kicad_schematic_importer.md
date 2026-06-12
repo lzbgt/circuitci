@@ -28,6 +28,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
   properties,
 - source metadata preservation for `in_bom`, selected `unit`, and validated
   KiCad `instances` path records,
+- source metadata preservation for KiCad pin electrical types, both by raw
+  KiCad pin number and mapped Board IR pin name,
 - `on_board no` filtering for non-power symbols,
 - root `lib_symbols` pin definitions for symbol pin coordinates, including
   selected unit geometry for KiCad multi-unit symbols,

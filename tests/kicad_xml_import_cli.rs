@@ -165,6 +165,114 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
 }
 
 #[test]
+fn import_kicad_netlist_preserves_pin_electrical_types() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("typed.net");
+    let mapping = dir.path().join("typed.kicad-map.yaml");
+    let output = dir.path().join("typed.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &input,
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<export version="E">
+  <components>
+    <comp ref="U1">
+      <value>LogicBuffer</value>
+      <libsource lib="Device" part="LogicBuffer"/>
+    </comp>
+  </components>
+  <nets>
+    <net code="1" name="IN">
+      <node ref="U1" pin="1" pintype="input"/>
+    </net>
+    <net code="2" name="OUT">
+      <node ref="U1" pin="2" pintype="output"/>
+    </net>
+  </nets>
+</export>
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &mapping,
+        format!(
+            r#"
+libraries:
+  - {}
+components:
+  U1:
+    model: generic.analog.resistor
+    pin_map:
+      "1": A
+      "2": B
+"#,
+            repo.join("libs/generic").display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            input.to_str().unwrap(),
+            "--mapping",
+            mapping.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["U1"]["source"]["kicad_pin_electrical_types"]["1"],
+        "input"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["source"]["kicad_pin_electrical_types"]["2"],
+        "output"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["source"]["board_pin_electrical_types"]["A"],
+        "input"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["source"]["board_pin_electrical_types"]["B"],
+        "output"
+    );
+}
+
+#[test]
+fn import_kicad_netlist_rejects_conflicting_pin_electrical_types() {
+    assert_bad_kicad_mapping_for_input_contains(
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<export version="E">
+  <components>
+    <comp ref="U1">
+      <value>LogicBuffer</value>
+      <libsource lib="Device" part="LogicBuffer"/>
+    </comp>
+  </components>
+  <nets>
+    <net code="1" name="IN">
+      <node ref="U1" pin="1" pintype="input"/>
+      <node ref="U1" pin="1" pintype="output"/>
+    </net>
+  </nets>
+</export>
+"#,
+        r#"
+components:
+  U1:
+    model: generic.schematic.imported_component
+"#,
+        "pin 1 has conflicting electrical types input and output",
+    );
+}
+
+#[test]
 fn import_kicad_netlist_applies_package_pin_alias() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

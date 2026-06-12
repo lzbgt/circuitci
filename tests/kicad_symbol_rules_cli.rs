@@ -142,6 +142,22 @@ fn import_kicad_schematic_preserves_in_bom_and_instance_metadata() {
         imported["board"]["components"]["R1"]["source"]["instances"][0]["unit"],
         1
     );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["kicad_pin_electrical_types"]["1"],
+        "passive"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["kicad_pin_electrical_types"]["2"],
+        "passive"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["board_pin_electrical_types"]["1"],
+        "passive"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["source"]["board_pin_electrical_types"]["2"],
+        "passive"
+    );
 }
 
 #[test]
