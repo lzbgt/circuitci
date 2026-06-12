@@ -208,8 +208,8 @@ board:
 
 KiCad PCB import currently populates this from straight `gr_line` items on
 `Edge.Cuts`. This evidence supports nearest-edge USB orientation suggestions;
-it is not a complete mechanical outline solver and does not yet model arcs,
-slots, cutouts, panel tabs, or connector body intrusion.
+it is not a complete mechanical outline solver and does not yet model board
+outline arcs, slots, cutouts, panel tabs, or connector body intrusion.
 
 ## Layout Pad Evidence
 
