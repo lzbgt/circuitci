@@ -72,6 +72,7 @@ scenarios:
 | components | ID map | Each component references one component model. |
 | component pins | pin-to-net map | Pin names must exist in the bound model. |
 | component power domains | power-port-to-net map | `power_domains` maps model power pins to rails. |
+| component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | scenarios | list | Scenario definitions select validation checks. |
 

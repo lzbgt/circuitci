@@ -24,6 +24,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub power_switch: Option<PowerSwitch>,
     #[serde(default)]
+    pub battery_charger: Option<BatteryCharger>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub datasheet: Option<Datasheet>,
@@ -57,6 +59,20 @@ pub struct PowerSwitch {
 pub enum PowerSwitchState {
     High,
     Low,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BatteryCharger {
+    pub input_pin: String,
+    pub battery_pin: String,
+    #[serde(default)]
+    pub charge_current_parameter: Option<String>,
+    #[serde(default, rename = "min_charge_current_A")]
+    pub min_charge_current_a: Option<f64>,
+    #[serde(default, rename = "max_charge_current_A")]
+    pub max_charge_current_a: Option<f64>,
+    #[serde(default, rename = "regulation_voltage_V")]
+    pub regulation_voltage_v: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

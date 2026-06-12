@@ -27,7 +27,7 @@ sign-off.
 Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C and Silicon Labs CP2102N board-level
 USB-UART metadata, TI TXS0108E interface-protection metadata, and TI TPS22918
-load-switch metadata. The gap
+load-switch metadata plus Microchip MCP73831 charger metadata. The gap
 remains broad library depth across other USB-UART bridges, debug probes,
 radios, sensors, regulators, and protection devices.
 
@@ -59,13 +59,16 @@ Executable slices now covered by `POWER_TREE_VALID`:
   metadata,
 - explicit load-switch `power_switch` enable-state evidence and maximum
   switched-output current budget,
+- explicit battery-charger `battery_charger` programmed-current range and
+  input-source current budget,
 - reset release checked against target rail `power_valid_at_us` plus optional
   reset-supervisor or power-good delay metadata.
 
 The remaining gap is waveform-dependent power behavior: real ramp shape,
 load-dependent dropout under waveform load, inrush, soft-start,
-load-switch turn-on/reverse-current behavior, charger/power-mux behavior,
-thermal margin, and stability.
+load-switch turn-on/reverse-current behavior, charger thermal foldback,
+charge termination, battery chemistry, power-mux behavior, thermal margin, and
+stability.
 
 ## 3. Functional MCU And Peripheral Models
 

@@ -73,6 +73,7 @@ pub(super) fn validate_power_tree(
             scenario,
             findings,
         );
+        validate_battery_charger(component_id, component, model, bound, scenario, findings);
     }
 
     for (net_name, loads) in &loads_by_net {
@@ -136,6 +137,205 @@ pub(super) fn validate_power_tree(
             ];
             findings.push(finding);
         }
+    }
+}
+
+fn validate_battery_charger(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(charger) = &model.battery_charger else {
+        return;
+    };
+    if !validate_battery_charger_metadata(component_id, model, scenario, findings) {
+        return;
+    }
+    let Some(input_net_name) = resolve_power_net(component, &charger.input_pin) else {
+        battery_charger_pin_finding(
+            component_id,
+            &charger.input_pin,
+            "input",
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(battery_net_name) = resolve_power_net(component, &charger.battery_pin) else {
+        battery_charger_pin_finding(
+            component_id,
+            &charger.battery_pin,
+            "battery",
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(input_net) = bound.project.board.nets.get(input_net_name) else {
+        return;
+    };
+    let Some(battery_net) = bound.project.board.nets.get(battery_net_name) else {
+        return;
+    };
+
+    let charge_current_a = charger
+        .charge_current_parameter
+        .as_deref()
+        .and_then(|parameter| {
+            component
+                .parameters
+                .get(parameter)
+                .and_then(serde_yaml_ng::Value::as_f64)
+                .map(|current| (parameter, current))
+        });
+    if let Some(parameter) = charger.charge_current_parameter.as_deref()
+        && charge_current_a.is_none()
+    {
+        let mut finding = Finding::critical(
+            POWER_TREE_VALID,
+            &scenario.name,
+            format!(
+                "Battery charger {component_id} requires component parameter {parameter} for programmed charge-current validation."
+            ),
+        );
+        finding.component = Some(component_id.to_string());
+        finding
+            .limit
+            .insert("required_component_parameter".to_string(), json!(parameter));
+        finding.suggested_fixes = vec![
+            format!("Add components.{component_id}.parameters.{parameter} from the charger PROG resistor or configured charge-current setting."),
+            "Use analog_transient or a charger-specific model when charge current is dynamic or firmware controlled.".to_string(),
+        ];
+        findings.push(finding);
+        return;
+    }
+
+    if let Some((parameter, charge_current_a)) = charge_current_a {
+        if !charge_current_a.is_finite() || charge_current_a < 0.0 {
+            battery_charger_metadata_finding(
+                component_id,
+                parameter,
+                "battery_charger programmed charge current must be finite and non-negative.",
+                scenario,
+                findings,
+            );
+            return;
+        }
+        if let Some(min_charge_current_a) = charger.min_charge_current_a
+            && charge_current_a < min_charge_current_a
+        {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Battery charger {component_id} programmed charge current {:.6} A is below model minimum {:.6} A.",
+                    charge_current_a, min_charge_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(battery_net_name.to_string());
+            finding.measured.insert(
+                "programmed_charge_current_A".to_string(),
+                json!(charge_current_a),
+            );
+            finding.limit.insert(
+                "battery_charger_min_charge_current_A".to_string(),
+                json!(min_charge_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Use a charge-current programming value inside the charger datasheet range.".to_string(),
+                "Select a charger whose programmable-current range covers the intended low-current cell or source.".to_string(),
+            ];
+            findings.push(finding);
+        }
+        if let Some(max_charge_current_a) = charger.max_charge_current_a
+            && charge_current_a > max_charge_current_a
+        {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Battery charger {component_id} programmed charge current {:.6} A exceeds model maximum {:.6} A.",
+                    charge_current_a, max_charge_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(battery_net_name.to_string());
+            finding.measured.insert(
+                "programmed_charge_current_A".to_string(),
+                json!(charge_current_a),
+            );
+            finding.limit.insert(
+                "battery_charger_max_charge_current_A".to_string(),
+                json!(max_charge_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Increase the PROG resistor or charger configuration so programmed current stays inside the datasheet range.".to_string(),
+                "Select a charger rated for the intended charge current and thermal dissipation.".to_string(),
+            ];
+            findings.push(finding);
+        }
+        if let Some(input_limit_a) = input_net.supply_current_limit_a
+            && charge_current_a > input_limit_a
+        {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Battery charger {component_id} programmed charge current {:.6} A exceeds input rail {input_net_name} current budget {:.6} A.",
+                    charge_current_a, input_limit_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(input_net_name.to_string());
+            finding.measured.insert(
+                "programmed_charge_current_A".to_string(),
+                json!(charge_current_a),
+            );
+            finding.limit.insert(
+                "input_supply_current_limit_A".to_string(),
+                json!(input_limit_a),
+            );
+            finding.suggested_fixes = vec![
+                "Reduce the charger programmed current to fit the USB/source current budget with margin for system load.".to_string(),
+                "Negotiate or provide a higher-current input source before allowing this charge current.".to_string(),
+                "Split battery charging and system-load budgets if they are not simultaneous in the validated scenario.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+
+    if let Some(regulation_voltage_v) = charger.regulation_voltage_v
+        && let Some(battery_voltage_v) = battery_net.nominal_voltage
+        && battery_voltage_v.is_finite()
+        && battery_voltage_v > regulation_voltage_v
+    {
+        let mut finding = Finding::critical(
+            POWER_TREE_VALID,
+            &scenario.name,
+            format!(
+                "Battery net {battery_net_name} nominal voltage {:.6} V exceeds charger {component_id} regulation voltage {:.6} V.",
+                battery_voltage_v, regulation_voltage_v
+            ),
+        );
+        finding.component = Some(component_id.to_string());
+        finding.net = Some(battery_net_name.to_string());
+        finding.measured.insert(
+            "battery_nominal_voltage_V".to_string(),
+            json!(battery_voltage_v),
+        );
+        finding.limit.insert(
+            "battery_charger_regulation_voltage_V".to_string(),
+            json!(regulation_voltage_v),
+        );
+        finding.suggested_fixes = vec![
+            "Use the charger option that matches the cell regulation voltage.".to_string(),
+            "Correct the battery rail nominal_voltage if it represents nominal cell voltage rather than charge regulation voltage.".to_string(),
+        ];
+        findings.push(finding);
     }
 }
 
@@ -543,6 +743,106 @@ fn validate_power_conversion_metadata(
     valid
 }
 
+fn validate_battery_charger_metadata(
+    component_id: &str,
+    model: &ComponentModel,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> bool {
+    let Some(charger) = &model.battery_charger else {
+        return true;
+    };
+    let mut valid = true;
+    if charger.input_pin == charger.battery_pin {
+        battery_charger_metadata_finding(
+            component_id,
+            "input_pin",
+            "battery_charger input_pin and battery_pin must be distinct.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    for (role, pin) in [
+        ("input_pin", charger.input_pin.as_str()),
+        ("battery_pin", charger.battery_pin.as_str()),
+    ] {
+        match model.ports.get(pin) {
+            Some(port) if port.kind == PortKind::ElectricalPower => {}
+            Some(_) => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("battery_charger {role} {pin} is not an electrical_power port."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+            None => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("battery_charger {role} {pin} is not declared in model ports."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+        }
+    }
+    if let Some(min_charge_current_a) = charger.min_charge_current_a
+        && (!min_charge_current_a.is_finite() || min_charge_current_a < 0.0)
+    {
+        battery_charger_metadata_finding(
+            component_id,
+            "min_charge_current_A",
+            "battery_charger min_charge_current_A must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(max_charge_current_a) = charger.max_charge_current_a
+        && (!max_charge_current_a.is_finite() || max_charge_current_a < 0.0)
+    {
+        battery_charger_metadata_finding(
+            component_id,
+            "max_charge_current_A",
+            "battery_charger max_charge_current_A must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let (Some(min_charge_current_a), Some(max_charge_current_a)) =
+        (charger.min_charge_current_a, charger.max_charge_current_a)
+        && min_charge_current_a > max_charge_current_a
+    {
+        battery_charger_metadata_finding(
+            component_id,
+            "min_charge_current_A",
+            "battery_charger min_charge_current_A must not exceed max_charge_current_A.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(regulation_voltage_v) = charger.regulation_voltage_v
+        && (!regulation_voltage_v.is_finite() || regulation_voltage_v <= 0.0)
+    {
+        battery_charger_metadata_finding(
+            component_id,
+            "regulation_voltage_V",
+            "battery_charger regulation_voltage_V must be finite and positive.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    valid
+}
+
 fn validate_power_switch_metadata(
     component_id: &str,
     model: &ComponentModel,
@@ -879,6 +1179,50 @@ fn power_switch_pin_finding(
     findings.push(finding);
 }
 
+fn battery_charger_metadata_finding(
+    component_id: &str,
+    field: &str,
+    message: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(POWER_TREE_VALID, &scenario.name, message.to_string());
+    finding.component = Some(component_id.to_string());
+    finding
+        .limit
+        .insert("battery_charger_field".to_string(), json!(field));
+    finding.suggested_fixes = vec![
+        "Correct the component model battery_charger metadata before using it for power-tree validation.".to_string(),
+        "Use analog_transient or a charger-specific model when static charger metadata is insufficient.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn battery_charger_pin_finding(
+    component_id: &str,
+    pin: &str,
+    role: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!(
+            "Battery charger {component_id} battery_charger {role}_pin {pin} is not connected."
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(format!("{role}_pin"), json!(pin));
+    finding.suggested_fixes = vec![
+        "Connect every declared battery_charger input and battery pin to explicit power rails."
+            .to_string(),
+        "Correct the component model battery_charger pin names if they do not match the model ports."
+            .to_string(),
+    ];
+    findings.push(finding);
+}
+
 fn validate_power_net(
     component_id: &str,
     pin_name: &str,
@@ -1050,7 +1394,7 @@ fn resolve_power_net<'a>(component: &'a ComponentSpec, pin_name: &str) -> Option
 fn is_supply_source(model: &ComponentModel) -> bool {
     matches!(
         model.category.as_str(),
-        "voltage_source" | "regulator" | "power_source" | "load_switch"
+        "voltage_source" | "regulator" | "power_source" | "load_switch" | "battery_charger"
     )
 }
 

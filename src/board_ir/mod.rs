@@ -43,6 +43,8 @@ pub struct ComponentSpec {
     #[serde(default)]
     pub pins: BTreeMap<String, String>,
     #[serde(default)]
+    pub parameters: BTreeMap<String, serde_yaml_ng::Value>,
+    #[serde(default)]
     pub spice: Option<ComponentSpiceSpec>,
     #[serde(default)]
     pub source: Option<ComponentSourceSpec>,

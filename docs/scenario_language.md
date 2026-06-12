@@ -351,6 +351,17 @@ scenarios:
 11. If `power_switch.max_output_current_A` is declared, every switched-output
     rail load must declare `max_supply_current_A`, and the summed worst-case
     output load must not exceed the switch limit.
+12. If a component model declares `battery_charger`, the declared input and
+    battery pins must name distinct `electrical_power` ports and be connected
+    to rails. Invalid charger metadata fails closed.
+13. If `battery_charger.charge_current_parameter` is declared, the component
+    instance must provide that numeric parameter. The programmed current must
+    fit `min_charge_current_A` / `max_charge_current_A` when present.
+14. If the charger input rail declares `supply_current_limit_A`, the programmed
+    charge current must fit that input-source budget.
+15. If `battery_charger.regulation_voltage_V` is declared and the battery net
+    has `nominal_voltage`, the battery net may not exceed the regulation
+    voltage.
 
 `IO_VOLTAGE_COMPATIBLE` can be declared on the same `power_tree` scenario. It
 checks same-net digital output/input pairs when both sides have enough

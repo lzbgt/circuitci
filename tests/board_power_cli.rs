@@ -219,6 +219,84 @@ fn ti_tps22918_output_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn microchip_mcp73831_usb_charger_passes_current_budget() {
+    let report = run_validation("examples/good_microchip_mcp73831_usb_charger/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_mcp73831_charge_current_must_fit_usb_budget() {
+    let report = run_validation("examples/bad_microchip_mcp73831_usb_budget/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("input_supply_current_limit_A")
+                .is_some()
+        })
+        .expect("expected charger input budget finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UCHG");
+    assert_eq!(failure["net"], "usb_5v");
+    assert_eq!(failure["measured"]["programmed_charge_current_A"], 0.5);
+    assert_eq!(failure["limit"]["input_supply_current_limit_A"], 0.1);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_mcp73831_charge_current_uses_datasheet_limit() {
+    let report = run_validation("examples/bad_microchip_mcp73831_charge_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("battery_charger_max_charge_current_A")
+                .is_some()
+        })
+        .expect("expected charger current limit finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UCHG");
+    assert_eq!(failure["net"], "battery");
+    assert_eq!(failure["measured"]["programmed_charge_current_A"], 0.6);
+    assert_eq!(
+        failure["limit"]["battery_charger_max_charge_current_A"],
+        0.5
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_mcp73831_requires_programmed_charge_current() {
+    let report = run_validation("examples/bad_microchip_mcp73831_missing_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("required_component_parameter")
+                .is_some()
+        })
+        .expect("expected missing charger current parameter finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UCHG");
+    assert_eq!(
+        failure["limit"]["required_component_parameter"],
+        "programmed_charge_current_A"
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_tree_overvoltage_fails() {
     let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
     assert_eq!(report["result"], "fail");

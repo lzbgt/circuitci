@@ -132,6 +132,42 @@ This is a static topology/evidence check. It does not sign off inrush,
 turn-on ramp, reverse current, switch SOA, or thermal behavior; those require
 SPICE or a datasheet-backed transient/power-path model.
 
+Battery charger models can declare static charge-current metadata:
+
+```yaml
+battery_charger:
+  input_pin: VDD
+  battery_pin: VBAT
+  charge_current_parameter: programmed_charge_current_A
+  min_charge_current_A: 0.015
+  max_charge_current_A: 0.5
+  regulation_voltage_V: 4.2
+```
+
+- `input_pin` and `battery_pin` must name distinct `electrical_power` model
+  ports.
+- `charge_current_parameter` names a Board IR component instance parameter.
+  For resistor-programmed chargers, agents should derive this value from the
+  schematic programming resistor or board configuration.
+- `min_charge_current_A` and `max_charge_current_A` bound the programmed charge
+  current.
+- `regulation_voltage_V` bounds the battery net nominal voltage for the modeled
+  charger option.
+
+Example component instance:
+
+```yaml
+components:
+  UCHG:
+    model: vendor.microchip.mcp73831_4v2
+    parameters:
+      programmed_charge_current_A: 0.1
+```
+
+This is a static input-budget/range check. It does not sign off battery
+chemistry, thermal foldback, charge termination, USB negotiation, or transient
+load sharing.
+
 ## Signal Conditioning Metadata
 
 Interface, protection, and level-shifter models can declare explicit

@@ -1,0 +1,104 @@
+component_id: vendor.microchip.mcp73831_4v2
+version: 0.1.0
+category: battery_charger
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.75
+      operating_voltage_max_V: 6.0
+  VBAT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 4.232
+  VSS:
+    kind: electrical_ground
+    required: true
+  PROG:
+    kind: passive
+    required: true
+  STAT:
+    kind: digital_electrical_output
+    required: false
+battery_charger:
+  input_pin: VDD
+  battery_pin: VBAT
+  charge_current_parameter: programmed_charge_current_A
+  min_charge_current_A: 0.015
+  max_charge_current_A: 0.5
+  regulation_voltage_V: 4.2
+datasheet:
+  manufacturer: Microchip Technology
+  part_number: MCP73831-2
+  package: SOT-23-5 / DFN-8
+  polarity: single_cell_li_ion_linear_charger_4v2
+  pinout:
+    VDD: VDD
+    VBAT: VBAT
+    VSS: VSS
+    PROG: PROG
+    STAT: STAT
+  absolute_maximum_ratings:
+    VDD:
+      conditions: VDD with respect to VSS.
+      value: 7
+      unit: V
+  electrical_characteristics:
+    supply_voltage:
+      conditions: Operating supply voltage.
+      min: 3.75
+      max: 6
+      unit: V
+    voltage_regulation:
+      conditions: MCP7383X-2 constant-voltage regulation option.
+      min: 4.168
+      typ: 4.2
+      max: 4.232
+      unit: V
+    fast_charge_current_min:
+      conditions: PROG = 67 kohm.
+      min: 0.0125
+      typ: 0.0145
+      max: 0.0165
+      unit: A
+    fast_charge_current_100ma:
+      conditions: PROG = 10 kohm.
+      min: 0.09
+      typ: 0.1
+      max: 0.11
+      unit: A
+    fast_charge_current_500ma:
+      conditions: PROG = 2 kohm.
+      min: 0.45
+      typ: 0.505
+      max: 0.55
+      unit: A
+  device_parameters:
+    charge_current_programming:
+      conditions: Fast charge current is programmed by a resistor from PROG to VSS; Board IR must declare programmed_charge_current_A from the schematic resistor or board configuration.
+      unit: note
+      simulation_relevance: Static power-tree validation compares programmed charge current against charger range and input-source current budget.
+    thermal_regulation:
+      conditions: Device limits charge current based on die temperature during high power or high ambient conditions.
+      unit: note
+      simulation_relevance: Static validation does not model thermal foldback; use a charger-specific transient or thermal model for sign-off.
+  documents:
+    - title: MCP73831/2 Miniature Single-Cell Li-Ion/Li-Polymer Charge Management Controllers
+      path: docs/research/datasheets/microchip/mcp73831-family-datasheet.pdf
+      source_url: https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf
+      sha256: 75297f2a5235599368381adfb63df2652cc22d757f171f388147b2ab3d32776f
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - battery_charger_static_screening
+    - usb_charge_current_budget_screening
+  not_valid_for:
+    - charger_thermal_signoff
+    - battery_safety_or_chemistry_signoff
+    - charge_termination_transient_signoff

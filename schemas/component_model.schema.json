@@ -67,6 +67,19 @@
       },
       "additionalProperties": false
     },
+    "battery_charger": {
+      "type": "object",
+      "required": ["input_pin", "battery_pin"],
+      "properties": {
+        "input_pin": { "type": "string", "minLength": 1 },
+        "battery_pin": { "type": "string", "minLength": 1 },
+        "charge_current_parameter": { "type": "string", "minLength": 1 },
+        "min_charge_current_A": { "type": "number", "minimum": 0 },
+        "max_charge_current_A": { "type": "number", "minimum": 0 },
+        "regulation_voltage_V": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "signal_conditioning": {
       "type": "object",
       "properties": {

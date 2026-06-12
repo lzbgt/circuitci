@@ -141,18 +141,23 @@ Interface-protection findings may include supply constraint detail:
 when active power pins are tied to non-power nets, rails are not declared
 powered, nominal rail voltages are missing/invalid/outside component-model
 operating ranges, declared rail current budgets are exceeded, or explicit
-regulator conversion or load-switch metadata is violated. Stable measured keys include
+regulator conversion, load-switch, or battery-charger metadata is violated.
+Stable measured keys include
 `nominal_voltage_V`, `powered`, `declared_load_current_A`,
 `declared_output_load_current_A`, `input_voltage_V`, `output_voltage_V`,
 `dropout_margin_V`, `input_power_valid_at_us`, `output_power_valid_at_us`,
-`startup_delay_us`, `input_powered`, `output_powered`, `control_state`, and
+`startup_delay_us`, `input_powered`, `output_powered`, `control_state`,
+`programmed_charge_current_A`, `battery_nominal_voltage_V`, and
 `missing_load_current_metadata` depending on the
 failure. Stable limit keys include `operating_voltage_minimum_V`,
 `operating_voltage_maximum_V`, `powered`, `supply_current_limit_A`,
 `dropout_voltage_V`, `regulator_max_output_current_A`,
 `earliest_output_power_valid_at_us`, `required_rail_timing_field`, and
 `power_conversion_field`, `control_pin`, `required_enabled_state`,
-`load_switch_max_output_current_A`, and `power_switch_field`.
+`load_switch_max_output_current_A`, `power_switch_field`,
+`required_component_parameter`, `battery_charger_min_charge_current_A`,
+`battery_charger_max_charge_current_A`, `input_supply_current_limit_A`,
+`battery_charger_regulation_voltage_V`, and `battery_charger_field`.
 
 `IO_VOLTAGE_COMPATIBLE` reports are emitted by `power_tree` scenarios that
 declare the check. They compare same-net digital output/input pairs when model
