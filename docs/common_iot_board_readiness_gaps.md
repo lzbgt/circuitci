@@ -40,11 +40,18 @@ states:
 Some of these can be SPICE scenarios. Others need first-class power-tree rules
 that derive required checks from regulator and load metadata.
 
-First executable slice: `POWER_TREE_VALID` now checks declared powered rails,
-nominal voltage against component model power-port ranges, and static
-`supply_current_limit_A` budget against declared `max_supply_current_A` loads.
-The remaining gap is dynamic power behavior: startup, dropout under waveform
-load, inrush, soft-start, charger/power-mux behavior, and stability.
+Executable slices now covered by `POWER_TREE_VALID`:
+
+- declared powered rails,
+- nominal voltage against component model power-port ranges,
+- static `supply_current_limit_A` budget against declared
+  `max_supply_current_A` loads,
+- explicit regulator `power_conversion` dropout margin,
+- explicit regulator maximum output-current budget.
+
+The remaining gap is dynamic power behavior: startup, load-dependent dropout
+under waveform load, inrush, soft-start, charger/power-mux behavior, thermal
+margin, and stability.
 
 ## 3. Functional MCU And Peripheral Models
 

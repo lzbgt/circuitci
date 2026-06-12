@@ -1,0 +1,43 @@
+project:
+  name: bad_regulator_conversion_pin
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ./models
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    UREG:
+      model: fixture.bad_regulator_conversion_pin
+      part_number: BAD_REGULATOR_MODEL
+      power_domains:
+        VIN: usb_5v
+        VOUT: rail_3v3
+      pins:
+        VIN: usb_5v
+        VOUT: rail_3v3
+        GND: gnd
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: regulator_conversion_metadata
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

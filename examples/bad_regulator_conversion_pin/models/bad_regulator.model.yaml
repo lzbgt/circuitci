@@ -1,0 +1,25 @@
+component_id: fixture.bad_regulator_conversion_pin
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+  VOUT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+power_conversion:
+  input_pin: VIN
+  output_pin: OUT
+  dropout_voltage_V: 0.3
+  max_output_current_A: 0.1
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_tree_validation
+  not_valid_for:
+    - regulator_transient_or_stability_signoff

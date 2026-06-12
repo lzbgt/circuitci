@@ -51,8 +51,23 @@ pub(super) fn validate_power_tree(
         }
     }
 
-    for (net_name, loads) in loads_by_net {
-        let Some(net) = bound.project.board.nets.get(&net_name) else {
+    for (component_id, component) in &bound.project.board.components {
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        validate_power_conversion(
+            component_id,
+            component,
+            model,
+            &loads_by_net,
+            bound,
+            scenario,
+            findings,
+        );
+    }
+
+    for (net_name, loads) in &loads_by_net {
+        let Some(net) = bound.project.board.nets.get(net_name) else {
             continue;
         };
         let Some(limit_a) = net.supply_current_limit_a else {
@@ -60,7 +75,7 @@ pub(super) fn validate_power_tree(
         };
         let mut total_a = 0.0;
         let mut missing_loads = Vec::new();
-        for load in &loads {
+        for load in loads {
             match load.max_current_a {
                 Some(current) if current.is_finite() && current >= 0.0 => total_a += current,
                 _ => missing_loads.push(format!("{}.{}", load.component, load.pin)),
@@ -75,7 +90,7 @@ pub(super) fn validate_power_tree(
                     missing_loads.join(", ")
                 ),
             );
-            finding.net = Some(net_name);
+            finding.net = Some(net_name.clone());
             finding.measured.insert(
                 "missing_load_current_metadata".to_string(),
                 json!(missing_loads),
@@ -99,7 +114,7 @@ pub(super) fn validate_power_tree(
                     total_a, limit_a
                 ),
             );
-            finding.net = Some(net_name);
+            finding.net = Some(net_name.clone());
             finding
                 .measured
                 .insert("declared_load_current_A".to_string(), json!(total_a));
@@ -113,6 +128,270 @@ pub(super) fn validate_power_tree(
             findings.push(finding);
         }
     }
+}
+
+fn validate_power_conversion(
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    loads_by_net: &BTreeMap<String, Vec<PowerLoad>>,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(conversion) = &model.power_conversion else {
+        return;
+    };
+    if !validate_power_conversion_metadata(component_id, model, scenario, findings) {
+        return;
+    }
+    let Some(input_net_name) = resolve_power_net(component, &conversion.input_pin) else {
+        power_conversion_pin_finding(
+            component_id,
+            &conversion.input_pin,
+            "input",
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(output_net_name) = resolve_power_net(component, &conversion.output_pin) else {
+        power_conversion_pin_finding(
+            component_id,
+            &conversion.output_pin,
+            "output",
+            scenario,
+            findings,
+        );
+        return;
+    };
+    let Some(input_net) = bound.project.board.nets.get(input_net_name) else {
+        return;
+    };
+    let Some(output_net) = bound.project.board.nets.get(output_net_name) else {
+        return;
+    };
+
+    if let Some(dropout_v) = conversion.dropout_voltage_v {
+        let (Some(input_v), Some(output_v)) =
+            (input_net.nominal_voltage, output_net.nominal_voltage)
+        else {
+            return;
+        };
+        if input_v.is_finite() && output_v.is_finite() {
+            let margin_v = input_v - output_v;
+            if margin_v < dropout_v {
+                let mut finding = Finding::critical(
+                    POWER_TREE_VALID,
+                    &scenario.name,
+                    format!(
+                        "Regulator {component_id} dropout margin {:.6} V is below required dropout {:.6} V.",
+                        margin_v, dropout_v
+                    ),
+                );
+                finding.component = Some(component_id.to_string());
+                finding.net = Some(output_net_name.to_string());
+                finding
+                    .measured
+                    .insert("input_voltage_V".to_string(), json!(input_v));
+                finding
+                    .measured
+                    .insert("output_voltage_V".to_string(), json!(output_v));
+                finding
+                    .measured
+                    .insert("dropout_margin_V".to_string(), json!(margin_v));
+                finding
+                    .limit
+                    .insert("dropout_voltage_V".to_string(), json!(dropout_v));
+                finding.suggested_fixes = vec![
+                    "Raise the regulator input rail, lower the output rail, or select a regulator with lower dropout at the required load current.".to_string(),
+                    "Use analog_transient or a regulator model with load-dependent dropout when startup/load waveform behavior matters.".to_string(),
+                ];
+                findings.push(finding);
+            }
+        }
+    }
+
+    if let Some(max_output_current_a) = conversion.max_output_current_a {
+        let loads = loads_by_net
+            .get(output_net_name)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let mut total_a = 0.0;
+        let mut missing_loads = Vec::new();
+        for load in loads {
+            match load.max_current_a {
+                Some(current) if current.is_finite() && current >= 0.0 => total_a += current,
+                _ => missing_loads.push(format!("{}.{}", load.component, load.pin)),
+            }
+        }
+        if !missing_loads.is_empty() {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Regulator {component_id} output current limit requires load metadata for {}.",
+                    missing_loads.join(", ")
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding.measured.insert(
+                "missing_load_current_metadata".to_string(),
+                json!(missing_loads),
+            );
+            finding.limit.insert(
+                "regulator_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Add max_supply_current_A to loads fed by the regulator output rail.".to_string(),
+                "Split the scenario if high-current loads are sequenced rather than simultaneous."
+                    .to_string(),
+            ];
+            findings.push(finding);
+        } else if total_a > max_output_current_a {
+            let mut finding = Finding::critical(
+                POWER_TREE_VALID,
+                &scenario.name,
+                format!(
+                    "Regulator {component_id} worst-case output load {:.6} A exceeds regulator limit {:.6} A.",
+                    total_a, max_output_current_a
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding.net = Some(output_net_name.to_string());
+            finding
+                .measured
+                .insert("declared_output_load_current_A".to_string(), json!(total_a));
+            finding.limit.insert(
+                "regulator_max_output_current_A".to_string(),
+                json!(max_output_current_a),
+            );
+            finding.suggested_fixes = vec![
+                "Select a regulator with sufficient output-current rating and thermal margin.".to_string(),
+                "Reduce or sequence loads, or split high-current consumers onto separate regulators.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+}
+
+fn validate_power_conversion_metadata(
+    component_id: &str,
+    model: &ComponentModel,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> bool {
+    let Some(conversion) = &model.power_conversion else {
+        return true;
+    };
+    let mut valid = true;
+    if conversion.input_pin == conversion.output_pin {
+        power_conversion_metadata_finding(
+            component_id,
+            "input_pin",
+            "power_conversion input_pin and output_pin must be distinct.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    for (role, pin) in [
+        ("input_pin", conversion.input_pin.as_str()),
+        ("output_pin", conversion.output_pin.as_str()),
+    ] {
+        match model.ports.get(pin) {
+            Some(port) if port.kind == PortKind::ElectricalPower => {}
+            Some(_) => {
+                power_conversion_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("power_conversion {role} {pin} is not an electrical_power port."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+            None => {
+                power_conversion_metadata_finding(
+                    component_id,
+                    role,
+                    &format!("power_conversion {role} {pin} is not declared in model ports."),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+        }
+    }
+    if let Some(dropout_v) = conversion.dropout_voltage_v
+        && (!dropout_v.is_finite() || dropout_v < 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "dropout_voltage_V",
+            "power_conversion dropout_voltage_V must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(max_output_current_a) = conversion.max_output_current_a
+        && (!max_output_current_a.is_finite() || max_output_current_a < 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "max_output_current_A",
+            "power_conversion max_output_current_A must be finite and non-negative.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    valid
+}
+
+fn power_conversion_metadata_finding(
+    component_id: &str,
+    field: &str,
+    message: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(POWER_TREE_VALID, &scenario.name, message.to_string());
+    finding.component = Some(component_id.to_string());
+    finding
+        .limit
+        .insert("power_conversion_field".to_string(), json!(field));
+    finding.suggested_fixes = vec![
+        "Correct the component model power_conversion metadata before using it for power-tree validation.".to_string(),
+        "Use analog_transient with an explicit regulator deck when static conversion metadata is insufficient.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn power_conversion_pin_finding(
+    component_id: &str,
+    pin: &str,
+    role: &str,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!("Regulator {component_id} power_conversion {role}_pin {pin} is not connected."),
+    );
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(format!("{role}_pin"), json!(pin));
+    finding.suggested_fixes = vec![
+        "Connect every declared power_conversion input and output pin to explicit power rails."
+            .to_string(),
+        "Correct the component model power_conversion pin names if they do not match the model ports."
+            .to_string(),
+    ];
+    findings.push(finding);
 }
 
 fn validate_power_net(

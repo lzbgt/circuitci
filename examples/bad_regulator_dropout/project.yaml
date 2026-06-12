@@ -1,0 +1,50 @@
+project:
+  name: bad_regulator_dropout
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      part_number: WEAK_INPUT_SOURCE
+      pins:
+        P: weak_input
+        N: gnd
+    UREG:
+      model: generic.analog.ldo_regulator
+      part_number: GENERIC_LDO
+      power_domains:
+        VIN: weak_input
+        VOUT: rail_3v3
+      pins:
+        VIN: weak_input
+        VOUT: rail_3v3
+        GND: gnd
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+  nets:
+    weak_input:
+      kind: power
+      nominal_voltage: 3.4
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: regulator_dropout_margin
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

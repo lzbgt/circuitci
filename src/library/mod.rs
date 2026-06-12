@@ -20,8 +20,20 @@ pub struct ComponentModel {
     #[serde(default)]
     pub behavior: Behavior,
     #[serde(default)]
+    pub power_conversion: Option<PowerConversion>,
+    #[serde(default)]
     pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PowerConversion {
+    pub input_pin: String,
+    pub output_pin: String,
+    #[serde(default, rename = "dropout_voltage_V")]
+    pub dropout_voltage_v: Option<f64>,
+    #[serde(default, rename = "max_output_current_A")]
+    pub max_output_current_a: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

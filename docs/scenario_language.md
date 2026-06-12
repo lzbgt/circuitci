@@ -186,9 +186,10 @@ Missing required model/scenario data for this declared check is a critical `VALI
 
 ## Power Tree Scenario Shape
 
-`power_tree` scenarios validate declared rail metadata and model power-port
-requirements. This is a deterministic board-rule check, not a full regulator or
-SMPS transient simulation.
+`power_tree` scenarios validate declared rail metadata, model power-port
+requirements, and explicit static regulator conversion metadata. This is a
+deterministic board-rule check, not a full regulator or SMPS transient
+simulation.
 
 ```yaml
 scenarios:
@@ -210,11 +211,20 @@ scenarios:
 5. If a rail declares `supply_current_limit_A`, every non-source component load
    on that rail must declare `max_supply_current_A`, and the summed worst-case
    current must not exceed the limit.
+6. If a component model declares `power_conversion`, the declared input and
+   output pins must name distinct `electrical_power` model ports and be
+   connected to rails. Invalid conversion metadata fails closed.
+7. If `power_conversion.dropout_voltage_V` is declared, the nominal input minus
+   output voltage must meet that dropout margin.
+8. If `power_conversion.max_output_current_A` is declared, every output-rail
+   load must declare `max_supply_current_A`, and the summed worst-case output
+   load must not exceed the regulator limit.
 
 This rule is intended to catch common IoT mistakes such as a 3.3 V MCU tied to
 5 V, an unpowered rail marked as valid for logic checks, or an undersized
-regulator budget. Load-transient stability, dropout, startup sequencing, and
-inrush still require explicit model metadata or `analog_transient` scenarios.
+regulator budget. Load-transient stability, startup sequencing, inrush,
+load-dependent dropout, loop stability, and thermal behavior still require
+datasheet-backed dynamic models or `analog_transient` scenarios.
 
 ## Firmware Update Scenario Shape
 

@@ -43,6 +43,17 @@
         "additionalProperties": true
       }
     },
+    "power_conversion": {
+      "type": "object",
+      "required": ["input_pin", "output_pin"],
+      "properties": {
+        "input_pin": { "type": "string", "minLength": 1 },
+        "output_pin": { "type": "string", "minLength": 1 },
+        "dropout_voltage_V": { "type": "number", "minimum": 0 },
+        "max_output_current_A": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "model_faces": { "type": "object" },
     "datasheet": {
       "type": "object",

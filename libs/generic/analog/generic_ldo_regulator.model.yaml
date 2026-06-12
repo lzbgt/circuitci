@@ -1,0 +1,34 @@
+component_id: generic.analog.ldo_regulator
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 6.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.0
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  dropout_voltage_V: 0.3
+  max_output_current_A: 0.1
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - power_tree_validation
+    - regulator_static_screening
+  not_valid_for:
+    - regulator_transient_or_stability_signoff
+    - regulator_thermal_signoff
+    - load_dependent_dropout_modeling

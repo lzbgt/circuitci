@@ -78,9 +78,29 @@ Power ports should declare when known:
 - `operating_voltage_max_V`
 - `max_supply_current_A`
 
+Regulator and power-converter models may also declare static conversion
+metadata:
+
+```yaml
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  dropout_voltage_V: 0.3
+  max_output_current_A: 0.1
+```
+
+- `input_pin` and `output_pin` must name model ports connected to Board IR power
+  rails. They must be distinct `electrical_power` ports.
+- `dropout_voltage_V` is a static nominal-voltage margin check:
+  `V(input) - V(output)` must be at least this value.
+- `max_output_current_A` checks the sum of declared `max_supply_current_A`
+  loads on the output rail.
+
 `POWER_TREE_VALID` uses these values to check that a component is connected to
-a powered rail inside its allowed operating range and that declared rail current
-budgets are not exceeded. Generic models may use conservative screening values;
+a powered rail inside its allowed operating range, that declared rail current
+budgets are not exceeded, and that explicitly modeled regulator dropout/output
+current margins are plausible. Invalid `power_conversion` metadata fails closed
+at validation time. Generic models may use conservative screening values;
 datasheet-backed packs should cite their source documents.
 
 The first back-drive approximation computes injection current as:

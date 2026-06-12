@@ -84,6 +84,71 @@ fn power_tree_current_budget_fails() {
 }
 
 #[test]
+fn good_regulator_power_tree_passes() {
+    let report = run_validation("examples/good_regulator_power_tree/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn regulator_dropout_fails() {
+    let report = run_validation("examples/bad_regulator_dropout/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("dropout_voltage_V").is_some())
+        .expect("expected regulator dropout finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["input_voltage_V"], 3.4);
+    assert_eq!(failure["measured"]["output_voltage_V"], 3.3);
+    assert_eq!(failure["limit"]["dropout_voltage_V"], 0.3);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn regulator_output_current_fails() {
+    let report = run_validation("examples/bad_regulator_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected regulator output current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 0.05);
+    assert_eq!(failure["limit"]["regulator_max_output_current_A"], 0.04);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn regulator_conversion_metadata_fails_closed() {
+    let report = run_validation("examples/bad_regulator_conversion_pin/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("power_conversion_field").is_some())
+        .expect("expected power_conversion metadata finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UREG");
+    assert_eq!(failure["limit"]["power_conversion_field"], "output_pin");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_bootloader_board_passes_reset_boot_and_sync() {
     let report = run_validation("examples/good_bootloader_board/project.yaml");
     assert_eq!(report["result"], "pass");

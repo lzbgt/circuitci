@@ -117,11 +117,15 @@ Stable rule detail keys:
 `POWER_TREE_VALID` reports are emitted by `power_tree` scenarios. They fail
 when active power pins are tied to non-power nets, rails are not declared
 powered, nominal rail voltages are missing/invalid/outside component-model
-operating ranges, or declared rail current budgets are exceeded. Stable measured
-keys include `nominal_voltage_V`, `powered`, `declared_load_current_A`, and
-`missing_load_current_metadata` depending on the failure. Stable limit keys
-include `operating_voltage_minimum_V`, `operating_voltage_maximum_V`,
-`powered`, and `supply_current_limit_A`.
+operating ranges, declared rail current budgets are exceeded, or explicit
+regulator conversion metadata is violated. Stable measured keys include
+`nominal_voltage_V`, `powered`, `declared_load_current_A`,
+`declared_output_load_current_A`, `input_voltage_V`, `output_voltage_V`,
+`dropout_margin_V`, and `missing_load_current_metadata` depending on the
+failure. Stable limit keys include `operating_voltage_minimum_V`,
+`operating_voltage_maximum_V`, `powered`, `supply_current_limit_A`,
+`dropout_voltage_V`, `regulator_max_output_current_A`, and
+`power_conversion_field`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus
