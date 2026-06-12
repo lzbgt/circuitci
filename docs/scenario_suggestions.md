@@ -51,6 +51,11 @@ The command is conservative:
 - Interface-protection templates are marked `runnable: false`; they are review
   prompts for datasheet direction, voltage-domain, enable/OE, and
   unpowered-isolation evidence.
+- It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
+  declares `clock_sources[]`, the oscillator input/output pins are connected to
+  distinct nets, and no existing clock scenario covers the component. The
+  template includes `scenario.clocks[]` with the oscillator pins, nets, and
+  identified crystal/resonator component when one is modeled between the nets.
 - It emits boot-strap templates when model boot modes declare required straps
   and the strap pins are connected.
 - It emits runnable `BOOT_STRAP_BIAS_VALID` templates when required strap pins
@@ -65,7 +70,8 @@ The command is conservative:
 - It never invents boot strap states, reset-release timestamps, power-good
   delays, GPIO pin-state observations, protection-path resistance, strap
   current budgets, load-switch enable evidence, charger programmed-current
-  evidence, power-mux selected-source evidence, or SPICE assertions.
+  evidence, power-mux selected-source evidence, oscillator startup margin, or
+  SPICE assertions.
 
 Example output shape:
 
@@ -226,6 +232,26 @@ suggestions:
       - Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.
       - Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.
       - Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.
+  - id: clock_source_valid_u1
+    kind: clock
+    confidence: medium
+    runnable: true
+    reason: Component U1 model declares external clock source metadata, but no CLOCK_SOURCE_VALID scenario covers it.
+    scenario:
+      name: u1_clock_source
+      type: clock
+      checks:
+        - CLOCK_SOURCE_VALID
+      target:
+        component: U1
+      clocks:
+        - component: U1
+          name: hse
+          input_pin: OSC_IN
+          input_net: osc_in
+          output_pin: OSC_OUT
+          output_net: osc_out
+          crystal_component: Y1
   - id: uart_bootloader_sync_u1_uart
     kind: serial_programming
     confidence: medium

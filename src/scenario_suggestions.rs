@@ -10,6 +10,7 @@ const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
+const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
 const BOOT_STRAP_DEFINED: &str = "BOOT_STRAP_DEFINED";
 const BOOT_STRAP_BIAS_VALID: &str = "BOOT_STRAP_BIAS_VALID";
@@ -54,6 +55,8 @@ pub struct SuggestedScenario {
     pub events: Vec<SuggestedEvent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conditioning: Option<SuggestedConditioning>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub clocks: Vec<SuggestedClockSource>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pin_states: Vec<SuggestedPinState>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -140,6 +143,18 @@ pub struct SuggestedConditioningSide {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SuggestedClockSource {
+    pub component: String,
+    pub name: String,
+    pub input_pin: String,
+    pub input_net: String,
+    pub output_pin: String,
+    pub output_net: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crystal_component: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SuggestedPinState {
     pub component: String,
     pub pin: String,
@@ -175,6 +190,7 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     }
     suggestions.extend(gpio_backdrive_suggestions(bound));
     suggestions.extend(interface_protection_suggestions(bound));
+    suggestions.extend(clock_source_suggestions(bound));
     suggestions.extend(reset_release_suggestions(bound));
     suggestions.extend(boot_strap_suggestions(bound));
     suggestions.extend(uart_bootloader_suggestions(bound));
@@ -228,6 +244,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            clocks: Vec::new(),
             pin_states,
             paths: Vec::new(),
         },
@@ -361,6 +378,7 @@ fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            clocks: Vec::new(),
             pin_states: Vec::new(),
             paths,
         },
@@ -551,6 +569,7 @@ fn backdrive_suggestion(
             bootloader: None,
             events: Vec::new(),
             conditioning: None,
+            clocks: Vec::new(),
             pin_states: vec![
                 SuggestedPinState {
                     component: driver_component.to_string(),
@@ -632,6 +651,7 @@ fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSugge
                     bootloader: None,
                     events: Vec::new(),
                     conditioning: Some(conditioning),
+                    clocks: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -711,6 +731,126 @@ fn suggested_conditioning_side(
         supply_pin: supply_pin.map(str::to_string),
         supply_net,
     })
+}
+
+fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
+    let existing = existing_clock_checks(bound.project);
+    let mut suggestions = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        if existing.contains_key(component_id) {
+            continue;
+        }
+        let Some(model) = bound.library.get(&component.model) else {
+            continue;
+        };
+        if model.clock_sources.is_empty() {
+            continue;
+        }
+        let clocks = model
+            .clock_sources
+            .iter()
+            .filter_map(|clock| {
+                suggested_clock_source(bound, component_id, component, model, clock)
+            })
+            .collect::<Vec<_>>();
+        if clocks.is_empty() {
+            continue;
+        }
+        let required_inputs = clocks
+            .iter()
+            .filter(|clock| clock.crystal_component.is_none())
+            .map(|clock| {
+                format!(
+                    "Connect or model a crystal/resonator between {}.{} net {} and {}.{} net {} before relying on this clock-source check.",
+                    clock.component,
+                    clock.input_pin,
+                    clock.input_net,
+                    clock.component,
+                    clock.output_pin,
+                    clock.output_net
+                )
+            })
+            .collect::<Vec<_>>();
+        let runnable = true;
+        suggestions.push(ScenarioSuggestion {
+            id: format!("clock_source_valid_{}", sanitized_name(component_id)),
+            kind: "clock".to_string(),
+            confidence: if required_inputs.is_empty() {
+                "medium"
+            } else {
+                "low"
+            }
+            .to_string(),
+            runnable,
+            reason: format!(
+                "Component {component_id} model declares external clock source metadata, but no CLOCK_SOURCE_VALID scenario covers it."
+            ),
+            scenario: SuggestedScenario {
+                name: format!("{}_clock_source", sanitized_name(component_id)),
+                scenario_type: "clock".to_string(),
+                checks: vec![CLOCK_SOURCE_VALID.to_string()],
+                target: Some(SuggestedTarget {
+                    component: component_id.clone(),
+                    power_pin: None,
+                    reset_pin: None,
+                }),
+                timing: None,
+                required_boot_mode: None,
+                straps: Vec::new(),
+                bootloader: None,
+                events: Vec::new(),
+                conditioning: None,
+                clocks,
+                pin_states: Vec::new(),
+                paths: Vec::new(),
+            },
+            required_inputs,
+        });
+    }
+    suggestions
+}
+
+fn suggested_clock_source(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    clock: &crate::library::ClockSource,
+) -> Option<SuggestedClockSource> {
+    if !model.ports.contains_key(&clock.input_pin) || !model.ports.contains_key(&clock.output_pin) {
+        return None;
+    }
+    let input_net = component.pins.get(&clock.input_pin)?;
+    let output_net = component.pins.get(&clock.output_pin)?;
+    if input_net == output_net {
+        return None;
+    }
+    Some(SuggestedClockSource {
+        component: component_id.to_string(),
+        name: clock.name.clone(),
+        input_pin: clock.input_pin.clone(),
+        input_net: input_net.clone(),
+        output_pin: clock.output_pin.clone(),
+        output_net: output_net.clone(),
+        crystal_component: find_crystal_between_nets(bound, input_net, output_net),
+    })
+}
+
+fn find_crystal_between_nets(bound: &BoundBoard<'_>, net_a: &str, net_b: &str) -> Option<String> {
+    bound
+        .project
+        .board
+        .components
+        .iter()
+        .find_map(|(component_id, component)| {
+            let model = bound.library.get(&component.model)?;
+            model.crystal.as_ref()?;
+            if component_connects_nets(component, net_a, net_b) {
+                Some(component_id.clone())
+            } else {
+                None
+            }
+        })
 }
 
 fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
@@ -824,6 +964,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 bootloader: None,
                 events: Vec::new(),
                 conditioning: None,
+                clocks: Vec::new(),
                 pin_states: Vec::new(),
                 paths: Vec::new(),
             },
@@ -1017,6 +1158,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                         bootloader: None,
                         events: Vec::new(),
                         conditioning: None,
+                        clocks: Vec::new(),
                         pin_states: Vec::new(),
                         paths: Vec::new(),
                     },
@@ -1071,6 +1213,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     bootloader: None,
                     events: Vec::new(),
                     conditioning: None,
+                    clocks: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -1155,6 +1298,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                         bytes: vec![interface.sync_byte],
                     }],
                     conditioning: None,
+                    clocks: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
@@ -1209,6 +1353,26 @@ fn existing_interface_protection_checks(project: &BoardProject) -> BTreeMap<(Str
                 .get("channel")
                 .and_then(serde_yaml_ng::Value::as_str)?;
             Some(((target.component.clone(), channel.to_string()), ()))
+        })
+        .collect()
+}
+
+fn existing_clock_checks(project: &BoardProject) -> BTreeMap<String, ()> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "clock"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == CLOCK_SOURCE_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| (target.component.clone(), ()))
         })
         .collect()
 }

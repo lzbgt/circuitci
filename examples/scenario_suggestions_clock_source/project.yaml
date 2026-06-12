@@ -1,0 +1,56 @@
+project:
+  name: scenario_suggestions_clock_source
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        OSC_IN: osc_in
+        OSC_OUT: osc_out
+    Y1:
+      model: generic.analog.crystal_8mhz_12p5pf
+      part_number: GENERIC_8MHZ_12P5PF
+      pins:
+        A: osc_in
+        B: osc_out
+    C1:
+      model: generic.analog.capacitor
+      part_number: 22pF
+      pins:
+        A: osc_in
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 22.0e-12
+    C2:
+      model: generic.analog.capacitor
+      part_number: 22pF
+      pins:
+        A: osc_out
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 22.0e-12
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    osc_in:
+      kind: digital_or_analog
+    osc_out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios: []

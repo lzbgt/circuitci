@@ -379,3 +379,31 @@ fn suggest_scenarios_derives_reset_release_from_rc_network() {
             .contains("explicit RC reset evidence from R1 and C1")
     );
 }
+
+#[test]
+fn suggest_scenarios_derives_clock_source_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_clock_source/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_clock_source");
+    let clock = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "clock_source_valid_u1")
+        .expect("clock source suggestion");
+    assert_eq!(clock["kind"], "clock");
+    assert_eq!(clock["runnable"], true);
+    assert_eq!(clock["confidence"], "medium");
+    assert_eq!(clock["scenario"]["type"], "clock");
+    assert_eq!(clock["scenario"]["checks"][0], "CLOCK_SOURCE_VALID");
+    assert_eq!(clock["scenario"]["target"]["component"], "U1");
+    let clock_evidence = &clock["scenario"]["clocks"][0];
+    assert_eq!(clock_evidence["component"], "U1");
+    assert_eq!(clock_evidence["name"], "hse");
+    assert_eq!(clock_evidence["input_pin"], "OSC_IN");
+    assert_eq!(clock_evidence["input_net"], "osc_in");
+    assert_eq!(clock_evidence["output_pin"], "OSC_OUT");
+    assert_eq!(clock_evidence["output_net"], "osc_out");
+    assert_eq!(clock_evidence["crystal_component"], "Y1");
+    assert!(clock.get("required_inputs").is_none());
+}

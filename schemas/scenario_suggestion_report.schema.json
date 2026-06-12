@@ -124,6 +124,30 @@
                 },
                 "additionalProperties": false
               },
+              "clocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "component",
+                    "name",
+                    "input_pin",
+                    "input_net",
+                    "output_pin",
+                    "output_net"
+                  ],
+                  "properties": {
+                    "component": { "type": "string", "minLength": 1 },
+                    "name": { "type": "string", "minLength": 1 },
+                    "input_pin": { "type": "string", "minLength": 1 },
+                    "input_net": { "type": "string", "minLength": 1 },
+                    "output_pin": { "type": "string", "minLength": 1 },
+                    "output_net": { "type": "string", "minLength": 1 },
+                    "crystal_component": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "pin_states": {
                 "type": "array",
                 "items": {
