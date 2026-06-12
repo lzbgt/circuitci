@@ -27,6 +27,7 @@ struct PcbPlacement {
 struct PcbFootprint {
     segments: Vec<PcbFootprintSegment>,
     rectangles: Vec<PcbFootprintRectangle>,
+    polygons: Vec<PcbFootprintPolygon>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +42,13 @@ struct PcbFootprintSegment {
 struct PcbFootprintRectangle {
     start: PcbPoint,
     end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Clone)]
+struct PcbFootprintPolygon {
+    points: Vec<PcbPoint>,
     layer: String,
     kind: String,
 }
@@ -75,6 +83,8 @@ struct FootprintYaml {
     segments: Vec<FootprintSegmentYaml>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     rectangles: Vec<FootprintRectangleYaml>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    polygons: Vec<FootprintPolygonYaml>,
 }
 
 #[derive(Debug, Serialize)]
@@ -89,6 +99,13 @@ struct FootprintSegmentYaml {
 struct FootprintRectangleYaml {
     start: PcbPoint,
     end: PcbPoint,
+    layer: String,
+    kind: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FootprintPolygonYaml {
+    points: Vec<PcbPoint>,
     layer: String,
     kind: String,
 }
@@ -480,7 +497,26 @@ fn parse_footprints(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, 
                 layer,
             });
         }
-        if !evidence.segments.is_empty() || !evidence.rectangles.is_empty() {
+        for polygon in list_children(footprint, "fp_poly") {
+            let pts = child_list(polygon, "pts").with_context(|| {
+                format!(
+                    "KiCad PCB footprint {reference} fp_poly in {} is missing pts list.",
+                    path.display()
+                )
+            })?;
+            let points =
+                transformed_coordinate_points(pts, "footprint fp_poly", footprint_at, path)?;
+            let layer = non_empty_child_string(polygon, "layer", path)?;
+            evidence.polygons.push(PcbFootprintPolygon {
+                points,
+                kind: footprint_graphic_kind(&layer).to_string(),
+                layer,
+            });
+        }
+        if !evidence.segments.is_empty()
+            || !evidence.rectangles.is_empty()
+            || !evidence.polygons.is_empty()
+        {
             footprints.insert(reference, evidence);
         }
     }
@@ -1041,6 +1077,20 @@ fn coordinate_points(pts: &[Sexp], item_kind: &str, path: &Path) -> Result<Vec<P
     Ok(points)
 }
 
+fn transformed_coordinate_points(
+    pts: &[Sexp],
+    item_kind: &str,
+    footprint_at: FootprintAt,
+    path: &Path,
+) -> Result<Vec<PcbPoint>> {
+    coordinate_points(pts, item_kind, path).map(|points| {
+        points
+            .into_iter()
+            .map(|point| transform_footprint_point(footprint_at, point.x_mm, point.y_mm))
+            .collect()
+    })
+}
+
 fn route_point(item: &[Sexp], field: &str, path: &Path) -> Result<PcbPoint> {
     let point = child_list(item, field).with_context(|| {
         format!(
@@ -1326,7 +1376,8 @@ fn merge_pcb_into_project(
         }
         let footprint_value = footprint_yaml_value(footprint)?;
         footprint_yaml.insert(Value::String(reference.clone()), footprint_value);
-        summary.footprint_graphics += footprint.segments.len() + footprint.rectangles.len();
+        summary.footprint_graphics +=
+            footprint.segments.len() + footprint.rectangles.len() + footprint.polygons.len();
     }
     let pad_yaml = ensure_mapping_field_mut(layout, "pads")?;
     for (reference, pads) in &parsed_pcb.pads {
@@ -1424,6 +1475,15 @@ fn footprint_yaml_value(footprint: &PcbFootprint) -> Result<Value> {
                 end: rectangle.end,
                 layer: rectangle.layer.clone(),
                 kind: rectangle.kind.clone(),
+            })
+            .collect(),
+        polygons: footprint
+            .polygons
+            .iter()
+            .map(|polygon| FootprintPolygonYaml {
+                points: polygon.points.clone(),
+                layer: polygon.layer.clone(),
+                kind: polygon.kind.clone(),
             })
             .collect(),
     })

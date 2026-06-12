@@ -27,12 +27,13 @@ Placement evidence includes component center coordinates, side when it can be
 derived from the footprint layer, and footprint `rotation_deg` from the KiCad
 `(at x y rotation)` tuple.
 
-The importer also reads footprint `fp_line` and `fp_rect` drawing items and
-writes transformed drawing evidence under `board.layout.footprints` for matching
-Board IR components. Imported footprint drawing evidence includes:
+The importer also reads footprint `fp_line`, `fp_rect`, and `fp_poly` drawing
+items and writes transformed drawing evidence under `board.layout.footprints`
+for matching Board IR components. Imported footprint drawing evidence includes:
 
 - component reference,
-- transformed start/end coordinates in millimeters,
+- transformed start/end coordinates for lines and rectangles or transformed
+  point lists for polygons, in millimeters,
 - source layer,
 - a bounded semantic kind derived from the layer: `fabrication`, `courtyard`,
   `silkscreen`, or `other`.

@@ -105,12 +105,12 @@ The command is conservative:
   The template includes `nearest_board_edge.distance_to_connector_mm` and
   `nearest_board_edge.connector_edge_reference` in
   `scenario.usb_connectors[]`. That distance uses supported
-  `fabrication`/`courtyard` footprint `fp_line`/`fp_rect` evidence when
-  available and falls back to placement-center distance otherwise. When
-  imported footprint drawing evidence exists,
+  `fabrication`/`courtyard` footprint `fp_line`, `fp_rect`, or `fp_poly`
+  evidence when available and falls back to placement-center distance
+  otherwise. When imported footprint drawing evidence exists,
   `scenario.usb_connectors[].footprint` also reports transformed
-  `fp_line`/`fp_rect` body, courtyard, or silkscreen evidence for mechanical
-  review. The template leaves
+  `fp_line`/`fp_rect`/`fp_poly` body, courtyard, or silkscreen evidence for
+  mechanical review. The template leaves
   `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
   connector/enclosure mechanical rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB

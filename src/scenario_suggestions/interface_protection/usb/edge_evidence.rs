@@ -1,11 +1,11 @@
 use super::super::super::{
-    SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintRectangle, SuggestedFootprintSegment,
-    SuggestedPoint,
+    SuggestedBoardEdge, SuggestedFootprint, SuggestedFootprintPolygon, SuggestedFootprintRectangle,
+    SuggestedFootprintSegment, SuggestedPoint,
 };
 use super::super::component_placement;
 use crate::board_ir::{
-    ComponentPlacement, LayoutFootprint, LayoutFootprintRectangle, LayoutFootprintSegment,
-    LayoutPoint, LayoutSegment,
+    ComponentPlacement, LayoutFootprint, LayoutFootprintPolygon, LayoutFootprintRectangle,
+    LayoutFootprintSegment, LayoutPoint, LayoutSegment,
 };
 use crate::library::BoundBoard;
 
@@ -38,10 +38,22 @@ fn suggested_footprint_from_layout(footprint: &LayoutFootprint) -> Option<Sugges
             kind: rectangle.kind.clone(),
         })
         .collect::<Vec<_>>();
-    (!segments.is_empty() || !rectangles.is_empty()).then_some(SuggestedFootprint {
-        segments,
-        rectangles,
-    })
+    let polygons = footprint
+        .polygons
+        .iter()
+        .map(|polygon| SuggestedFootprintPolygon {
+            points: polygon.points.iter().map(suggested_point).collect(),
+            layer: polygon.layer.clone(),
+            kind: polygon.kind.clone(),
+        })
+        .collect::<Vec<_>>();
+    (!segments.is_empty() || !rectangles.is_empty() || !polygons.is_empty()).then_some(
+        SuggestedFootprint {
+            segments,
+            rectangles,
+            polygons,
+        },
+    )
 }
 
 pub(super) fn nearest_board_edge_evidence(
@@ -91,6 +103,7 @@ enum BoardEdgeConnectorReference<'a> {
     PlacementCenter,
     FootprintSegment { layer: &'a str, kind: &'a str },
     FootprintRectangle { layer: &'a str, kind: &'a str },
+    FootprintPolygon { layer: &'a str, kind: &'a str },
 }
 
 impl BoardEdgeConnectorReference<'_> {
@@ -99,6 +112,7 @@ impl BoardEdgeConnectorReference<'_> {
             BoardEdgeConnectorReference::PlacementCenter => "placement_center",
             BoardEdgeConnectorReference::FootprintSegment { .. } => "footprint_segment",
             BoardEdgeConnectorReference::FootprintRectangle { .. } => "footprint_rectangle",
+            BoardEdgeConnectorReference::FootprintPolygon { .. } => "footprint_polygon",
         }
     }
 
@@ -106,7 +120,8 @@ impl BoardEdgeConnectorReference<'_> {
         match self {
             BoardEdgeConnectorReference::PlacementCenter => None,
             BoardEdgeConnectorReference::FootprintSegment { layer, .. }
-            | BoardEdgeConnectorReference::FootprintRectangle { layer, .. } => Some(layer),
+            | BoardEdgeConnectorReference::FootprintRectangle { layer, .. }
+            | BoardEdgeConnectorReference::FootprintPolygon { layer, .. } => Some(layer),
         }
     }
 
@@ -114,7 +129,8 @@ impl BoardEdgeConnectorReference<'_> {
         match self {
             BoardEdgeConnectorReference::PlacementCenter => None,
             BoardEdgeConnectorReference::FootprintSegment { kind, .. }
-            | BoardEdgeConnectorReference::FootprintRectangle { kind, .. } => Some(kind),
+            | BoardEdgeConnectorReference::FootprintRectangle { kind, .. }
+            | BoardEdgeConnectorReference::FootprintPolygon { kind, .. } => Some(kind),
         }
     }
 }
@@ -162,6 +178,23 @@ fn connector_to_board_edge_distance<'a>(
                 reference: BoardEdgeConnectorReference::FootprintRectangle {
                     layer: &rectangle.layer,
                     kind: &rectangle.kind,
+                },
+            };
+        }
+    }
+    for polygon in &footprint.polygons {
+        if !mechanical_footprint_kind(&polygon.kind) {
+            continue;
+        }
+        let Some(distance_mm) = footprint_polygon_to_edge_distance_mm(polygon, edge) else {
+            continue;
+        };
+        if distance_mm <= best.distance_mm {
+            best = BoardEdgeConnectorDistance {
+                distance_mm,
+                reference: BoardEdgeConnectorReference::FootprintPolygon {
+                    layer: &polygon.layer,
+                    kind: &polygon.kind,
                 },
             };
         }
@@ -269,6 +302,28 @@ fn footprint_rectangle_to_edge_distance_mm(
                 segment_to_segment_distance_mm(
                     &corners[index],
                     &corners[next_index],
+                    &edge.start,
+                    &edge.end,
+                )
+            })
+            .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn footprint_polygon_to_edge_distance_mm(
+    polygon: &LayoutFootprintPolygon,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    if polygon.points.len() < 3 || polygon.points.iter().any(|point| !point_is_finite(point)) {
+        return None;
+    }
+    Some(
+        (0..polygon.points.len())
+            .map(|index| {
+                let next_index = (index + 1) % polygon.points.len();
+                segment_to_segment_distance_mm(
+                    &polygon.points[index],
+                    &polygon.points[next_index],
                     &edge.start,
                     &edge.end,
                 )

@@ -1,6 +1,6 @@
 use crate::board_ir::{
-    ComponentPlacement, ComponentSpec, LayoutFootprintRectangle, LayoutFootprintSegment,
-    LayoutPoint, LayoutSegment, NetKind, Scenario,
+    ComponentPlacement, ComponentSpec, LayoutFootprintPolygon, LayoutFootprintRectangle,
+    LayoutFootprintSegment, LayoutPoint, LayoutSegment, NetKind, Scenario,
 };
 use crate::library::{BoundBoard, ProtectionClamp, ProtectionReference, UsbConnector};
 use crate::reports::Finding;
@@ -604,6 +604,7 @@ pub(super) enum UsbBoardEdgeConnectorReference<'a> {
     PlacementCenter,
     FootprintSegment { layer: &'a str, kind: &'a str },
     FootprintRectangle { layer: &'a str, kind: &'a str },
+    FootprintPolygon { layer: &'a str, kind: &'a str },
 }
 
 impl UsbBoardEdgeConnectorReference<'_> {
@@ -612,6 +613,7 @@ impl UsbBoardEdgeConnectorReference<'_> {
             UsbBoardEdgeConnectorReference::PlacementCenter => "placement_center",
             UsbBoardEdgeConnectorReference::FootprintSegment { .. } => "footprint_segment",
             UsbBoardEdgeConnectorReference::FootprintRectangle { .. } => "footprint_rectangle",
+            UsbBoardEdgeConnectorReference::FootprintPolygon { .. } => "footprint_polygon",
         }
     }
 
@@ -619,7 +621,8 @@ impl UsbBoardEdgeConnectorReference<'_> {
         match self {
             UsbBoardEdgeConnectorReference::PlacementCenter => None,
             UsbBoardEdgeConnectorReference::FootprintSegment { layer, .. }
-            | UsbBoardEdgeConnectorReference::FootprintRectangle { layer, .. } => Some(layer),
+            | UsbBoardEdgeConnectorReference::FootprintRectangle { layer, .. }
+            | UsbBoardEdgeConnectorReference::FootprintPolygon { layer, .. } => Some(layer),
         }
     }
 
@@ -627,7 +630,8 @@ impl UsbBoardEdgeConnectorReference<'_> {
         match self {
             UsbBoardEdgeConnectorReference::PlacementCenter => None,
             UsbBoardEdgeConnectorReference::FootprintSegment { kind, .. }
-            | UsbBoardEdgeConnectorReference::FootprintRectangle { kind, .. } => Some(kind),
+            | UsbBoardEdgeConnectorReference::FootprintRectangle { kind, .. }
+            | UsbBoardEdgeConnectorReference::FootprintPolygon { kind, .. } => Some(kind),
         }
     }
 }
@@ -904,6 +908,22 @@ fn connector_to_edge_distance<'a>(
         }
     }
 
+    for polygon in &footprint.polygons {
+        if !mechanical_footprint_kind(&polygon.kind) {
+            continue;
+        }
+        let Some(distance_mm) = footprint_polygon_to_edge_distance_mm(polygon, edge) else {
+            continue;
+        };
+        if distance_mm <= best_distance {
+            best_distance = distance_mm;
+            best_reference = UsbBoardEdgeConnectorReference::FootprintPolygon {
+                layer: &polygon.layer,
+                kind: &polygon.kind,
+            };
+        }
+    }
+
     (best_distance, best_reference)
 }
 
@@ -993,6 +1013,28 @@ fn footprint_rectangle_to_edge_distance_mm(
                 segment_to_segment_distance_mm(
                     &corners[index],
                     &corners[next_index],
+                    &edge.start,
+                    &edge.end,
+                )
+            })
+            .fold(f64::INFINITY, f64::min),
+    )
+}
+
+fn footprint_polygon_to_edge_distance_mm(
+    polygon: &LayoutFootprintPolygon,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    if polygon.points.len() < 3 || polygon.points.iter().any(|point| !point_is_finite(point)) {
+        return None;
+    }
+    Some(
+        (0..polygon.points.len())
+            .map(|index| {
+                let next_index = (index + 1) % polygon.points.len();
+                segment_to_segment_distance_mm(
+                    &polygon.points[index],
+                    &polygon.points[next_index],
                     &edge.start,
                     &edge.end,
                 )

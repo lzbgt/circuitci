@@ -430,8 +430,8 @@ Connector-to-board-edge algorithm:
 3. Require at least one usable straight segment under
    `board.layout.outline.segments`.
 4. If `board.layout.footprints.<component>` contains transformed
-   `fabrication` or `courtyard` `fp_line`/`fp_rect` evidence, measure the
-   nearest supported footprint graphic to each board-edge segment.
+   `fabrication` or `courtyard` `fp_line`, `fp_rect`, or `fp_poly` evidence,
+   measure the nearest supported footprint graphic to each board-edge segment.
 5. If no usable footprint drawing evidence is available, project the connector
    placement point to each segment and use that fallback distance.
 6. Require the nearest distance to be no greater than

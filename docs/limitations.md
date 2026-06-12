@@ -71,7 +71,8 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   alignment, shell clearance, cable insertion clearance, arcs, slots, cutout
   geometry, or full enclosure fit. Imported `fp_rect` evidence is treated as a
   rectangular extent from its transformed endpoints, not a full mechanical body
-  model.
+  model; imported `fp_poly` evidence is a 2D drawing outline, not a 3D connector
+  envelope.
 - `USB_ROUTE_GEOMETRY_VALID` and `USB_VBUS_ROUTE_VALID` check imported static
   route geometry for USB data nets and VBUS respectively. VBUS route checks are
   limited to route length, via count, optional minimum segment width, and

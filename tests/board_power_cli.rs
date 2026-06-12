@@ -360,7 +360,7 @@ fn usb_connector_edge_proximity_reports_footprint_reference() {
     assert!((distance - 1.2).abs() < 1e-12);
     assert_eq!(
         failure["measured"]["connector_edge_reference"],
-        "footprint_rectangle"
+        "footprint_polygon"
     );
     assert_eq!(failure["measured"]["footprint_graphic_layer"], "F.CrtYd");
     assert_eq!(failure["measured"]["footprint_graphic_kind"], "courtyard");

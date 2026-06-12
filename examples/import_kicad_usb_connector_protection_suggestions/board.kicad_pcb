@@ -31,6 +31,7 @@
     (property "Value" "USB2_CONNECTOR" (at 0 1 0) (layer "F.Fab"))
     (fp_rect (start -0.7 -0.8) (end 0.3 1.2) (stroke (width 0.05) (type solid)) (fill none) (layer "F.Fab"))
     (fp_line (start -0.8 -0.9) (end 0.4 -0.9) (stroke (width 0.05) (type solid)) (layer "F.CrtYd"))
+    (fp_poly (pts (xy -0.8 -0.9) (xy 0.4 -0.9) (xy 0.4 1.2) (xy -0.8 1.2)) (stroke (width 0.05) (type solid)) (fill none) (layer "F.Fab"))
     (pad "D+" smd rect (at 0 0.2) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (net 1 "USB_DP"))
     (pad "D-" smd rect (at 0 0.4) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (net 2 "USB_DM"))
     (pad "VBUS" smd rect (at 0 -0.5) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (net 3 "USB_VBUS"))

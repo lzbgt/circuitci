@@ -161,13 +161,21 @@ board:
             end: { x_mm: 0.4, y_mm: -0.9 }
             layer: F.CrtYd
             kind: courtyard
+        polygons:
+          - points:
+              - { x_mm: -0.8, y_mm: -0.9 }
+              - { x_mm: 0.4, y_mm: -0.9 }
+              - { x_mm: 0.4, y_mm: 1.2 }
+              - { x_mm: -0.8, y_mm: 1.2 }
+            layer: F.Fab
+            kind: fabrication
 ```
 
-KiCad PCB import currently populates this from footprint `fp_line` and
-`fp_rect` drawing items. The `kind` field is derived from the drawing layer and
-is intentionally conservative: `fabrication`, `courtyard`, `silkscreen`, or
+KiCad PCB import currently populates this from footprint `fp_line`, `fp_rect`,
+and `fp_poly` drawing items. The `kind` field is derived from the drawing layer
+and is intentionally conservative: `fabrication`, `courtyard`, `silkscreen`, or
 `other`. This is drawing evidence for follow-up layout rules; it is not a full
-3D body, exact rotated polygon, enclosure, or keepout model.
+3D body, enclosure, or keepout model.
 
 ## Layout Outline Evidence
 

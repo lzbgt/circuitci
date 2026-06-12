@@ -73,6 +73,13 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(connector_footprint["segments"][0]["layer"], "F.CrtYd");
     assert_eq!(connector_footprint["segments"][0]["start"]["x_mm"], -0.8);
     assert_eq!(connector_footprint["segments"][0]["end"]["x_mm"], 0.4);
+    assert_eq!(connector_footprint["polygons"][0]["kind"], "fabrication");
+    assert_eq!(connector_footprint["polygons"][0]["layer"], "F.Fab");
+    assert_eq!(
+        connector_footprint["polygons"][0]["points"][0]["x_mm"],
+        -0.8
+    );
+    assert_eq!(connector_footprint["polygons"][0]["points"][3]["y_mm"], 1.2);
     assert!(imported["board"]["layout"]["footprints"]["H1"].is_null());
     let connector_dp_pad = &imported["board"]["layout"]["pads"]["J1"]["D+"];
     assert_eq!(connector_dp_pad["at"]["x_mm"], 0.0);
@@ -240,10 +247,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(nearest_edge["distance_to_connector_mm"], 0.0);
     assert_eq!(
         nearest_edge["connector_edge_reference"],
-        "footprint_segment"
+        "footprint_polygon"
     );
-    assert_eq!(nearest_edge["footprint_graphic_layer"], "F.CrtYd");
-    assert_eq!(nearest_edge["footprint_graphic_kind"], "courtyard");
+    assert_eq!(nearest_edge["footprint_graphic_layer"], "F.Fab");
+    assert_eq!(nearest_edge["footprint_graphic_kind"], "fabrication");
     assert_eq!(nearest_edge["outward_normal_deg"], 180.0);
     assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
     let edge_proximity = suggestions["suggestions"]
@@ -266,7 +273,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["nearest_board_edge"]["connector_edge_reference"],
-        "footprint_segment"
+        "footprint_polygon"
     );
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["rectangles"][0]["kind"],
@@ -279,6 +286,10 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert_eq!(
         edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["segments"][0]["kind"],
         "courtyard"
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["footprint"]["polygons"][0]["kind"],
+        "fabrication"
     );
     let route = suggestions["suggestions"]
         .as_array()

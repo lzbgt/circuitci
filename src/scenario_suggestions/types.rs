@@ -195,6 +195,8 @@ pub struct SuggestedFootprint {
     pub segments: Vec<SuggestedFootprintSegment>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub rectangles: Vec<SuggestedFootprintRectangle>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub polygons: Vec<SuggestedFootprintPolygon>,
 }
 
 #[derive(Debug, Serialize)]
@@ -209,6 +211,13 @@ pub struct SuggestedFootprintSegment {
 pub struct SuggestedFootprintRectangle {
     pub start: SuggestedPoint,
     pub end: SuggestedPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedFootprintPolygon {
+    pub points: Vec<SuggestedPoint>,
     pub layer: String,
     pub kind: String,
 }

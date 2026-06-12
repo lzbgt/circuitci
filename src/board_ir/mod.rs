@@ -57,6 +57,8 @@ pub struct LayoutFootprint {
     pub segments: Vec<LayoutFootprintSegment>,
     #[serde(default)]
     pub rectangles: Vec<LayoutFootprintRectangle>,
+    #[serde(default)]
+    pub polygons: Vec<LayoutFootprintPolygon>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -71,6 +73,13 @@ pub struct LayoutFootprintSegment {
 pub struct LayoutFootprintRectangle {
     pub start: LayoutPoint,
     pub end: LayoutPoint,
+    pub layer: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutFootprintPolygon {
+    pub points: Vec<LayoutPoint>,
     pub layer: String,
     pub kind: String,
 }

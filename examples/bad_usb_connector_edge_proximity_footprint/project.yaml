@@ -41,6 +41,14 @@ board:
             end: { x_mm: 1.2, y_mm: 0.5 }
             layer: F.CrtYd
             kind: courtyard
+        polygons:
+          - points:
+              - { x_mm: 0.8, y_mm: -0.5 }
+              - { x_mm: 1.2, y_mm: -0.5 }
+              - { x_mm: 1.2, y_mm: 0.5 }
+              - { x_mm: 0.8, y_mm: 0.5 }
+            layer: F.CrtYd
+            kind: courtyard
     outline:
       segments:
         - start: { x_mm: -0.4, y_mm: -1.0 }

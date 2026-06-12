@@ -50,9 +50,9 @@ ESD/layout rule.
 
 Because the PCB fixture also imports straight `Edge.Cuts` board-outline
 segments, the orientation and edge-proximity suggestions include nearest-edge
-evidence. The fixture's imported `F.Fab` rectangle crosses the nearest straight
+evidence. The fixture's imported `F.Fab` polygon crosses the nearest straight
 board edge, so `nearest_board_edge.distance_to_connector_mm` is `0.0` with
-`connector_edge_reference: footprint_rectangle`. Placement-center distance is
+`connector_edge_reference: footprint_polygon`. Placement-center distance is
 still available as the fallback behavior when no supported footprint drawing
 evidence exists.
 
