@@ -148,6 +148,8 @@ from imported connector placement `rotation_deg` evidence and explicit
 mechanical/layout rotation limits. KiCad PCB import now preserves straight
 `Edge.Cuts` outline segments so scenario suggestions can prefill the expected
 rotation from nearest-edge outward-normal evidence when available.
+`USB_CONNECTOR_EDGE_PROXIMITY_VALID` adds the corresponding executable
+connector-to-board-edge distance guard from the same straight outline evidence.
 `USB_ROUTE_GEOMETRY_VALID` adds the first routed-geometry guard for USB data
 nets: imported route length, via count, and connector-to-protection route
 distance from `board.layout.routes`. It can now require imported

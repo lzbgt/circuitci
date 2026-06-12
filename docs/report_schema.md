@@ -204,6 +204,16 @@ include `connector_rotation_deg`, `connector_rotation_error_deg`,
 keys include `expected_connector_rotation_deg` and
 `max_connector_rotation_error_deg`.
 
+`USB_CONNECTOR_EDGE_PROXIMITY_VALID` reports are emitted by
+`interface_protection` scenarios that combine `usb_connector` metadata,
+`board.layout.placements`, and straight `board.layout.outline.segments`
+evidence. Stable measured keys include
+`connector_to_board_edge_distance_mm`, `connector_x_mm`, `connector_y_mm`,
+optional `connector_side`, `board_edge_start_x_mm`, `board_edge_start_y_mm`,
+`board_edge_end_x_mm`, `board_edge_end_y_mm`, and optional
+`board_edge_layer`. Stable limit keys include
+`max_connector_to_board_edge_distance_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

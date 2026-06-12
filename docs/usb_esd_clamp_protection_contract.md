@@ -130,6 +130,19 @@ Connector-orientation validation:
   enclosure clearance, cable insertion clearance, connector keepouts, or
   mechanical robustness.
 
+Connector edge-proximity validation:
+
+- `USB_CONNECTOR_EDGE_PROXIMITY_VALID` targets the same connector component and
+  uses `board.layout.placements` plus straight
+  `board.layout.outline.segments` evidence.
+- The scenario must declare
+  `parameters.max_connector_to_board_edge_distance_mm` from the connector,
+  enclosure, or panel-entry mechanical rule.
+- The rule measures the nearest connector-center to straight-board-edge
+  distance. It does not prove connector body overhang, keepout, insertion
+  clearance, panel alignment, or outline features not captured as straight
+  segments.
+
 Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses

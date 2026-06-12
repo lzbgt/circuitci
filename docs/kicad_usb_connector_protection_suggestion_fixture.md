@@ -35,7 +35,8 @@ The same fixture directory also includes `board.kicad_pcb`. A regression chains:
    `board.layout.routes`, plus ground copper-zone outline and saved
    filled-polygon evidence under `board.layout.zones`.
 3. `suggest-scenarios` for `USB_PROTECTION_PLACEMENT_VALID`,
-   `USB_CONNECTOR_ORIENTATION_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
+   `USB_CONNECTOR_ORIENTATION_VALID`,
+   `USB_CONNECTOR_EDGE_PROXIMITY_VALID`, `USB_ROUTE_GEOMETRY_VALID`,
    `USB_VBUS_ROUTE_VALID`, and `USB_RETURN_PATH_VALID`.
 
 That enriched flow emits connector-to-protection distance evidence:
@@ -46,6 +47,10 @@ That enriched flow emits connector-to-protection distance evidence:
 The placement suggestion remains non-runnable until an agent fills
 `parameters.max_connector_to_protection_distance_mm` from the board's actual
 ESD/layout rule.
+
+Because the PCB fixture also imports straight `Edge.Cuts` board-outline
+segments, the orientation and edge-proximity suggestions include nearest-edge
+evidence. `J1` is `0.4 mm` from the nearest imported board edge in this fixture.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under

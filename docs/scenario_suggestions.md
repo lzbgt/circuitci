@@ -99,6 +99,13 @@ The command is conservative:
   should be reviewed against the connector footprint convention before making
   the scenario runnable. Without outline evidence, both orientation parameters
   remain manual.
+- It emits non-runnable `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
+  USB connector has finite placement evidence and
+  `board.layout.outline.segments` contains usable straight board-edge evidence.
+  The template includes `nearest_board_edge.distance_to_connector_mm` in
+  `scenario.usb_connectors[]` and leaves
+  `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
+  connector/enclosure mechanical rule.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

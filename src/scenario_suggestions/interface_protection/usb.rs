@@ -1,9 +1,9 @@
 use super::super::{
     ScenarioSuggestion, SuggestedBoardEdge, SuggestedPoint, SuggestedProtectionClamp,
     SuggestedScenario, SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute,
-    SuggestedUsbRoutePair, USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID, USB_ROUTE_GEOMETRY_VALID,
-    USB_VBUS_ROUTE_VALID,
+    SuggestedUsbRoutePair, USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID, USB_RETURN_PATH_VALID,
+    USB_ROUTE_GEOMETRY_VALID, USB_VBUS_ROUTE_VALID,
 };
 use super::{
     component_placement, placement_distance_mm, sanitized_name, suggested_placement,
@@ -318,6 +318,60 @@ pub(super) fn usb_connector_orientation_suggestion(
             paths: Vec::new(),
         },
         required_inputs,
+    })
+}
+
+pub(super) fn usb_connector_edge_proximity_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    suggested_connector.nearest_board_edge.as_ref()?;
+    let parameters = BTreeMap::from([(
+        "max_connector_to_board_edge_distance_mm".to_string(),
+        serde_json::Value::Null,
+    )]);
+    Some(ScenarioSuggestion {
+        id: format!("usb_connector_edge_proximity_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has imported placement and board-edge outline evidence; add a connector-to-board-edge proximity scenario."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_connector_edge_proximity", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_CONNECTOR_EDGE_PROXIMITY_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: Vec::new(),
+            usb_connectors: vec![suggested_connector],
+            usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            "Fill max_connector_to_board_edge_distance_mm from the connector/enclosure mechanical rule before making this scenario runnable.".to_string(),
+            "Review the nearest_board_edge evidence; straight Edge.Cuts segments do not model arcs, cutouts, panel tabs, or connector body intrusion.".to_string(),
+        ],
     })
 }
 
@@ -1422,6 +1476,28 @@ pub(super) fn existing_usb_connector_orientation_checks(
                 .checks
                 .iter()
                 .any(|check| check == USB_CONNECTOR_ORIENTATION_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+pub(super) fn existing_usb_connector_edge_proximity_checks(
+    project: &BoardProject,
+) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| scenario.scenario_type == "interface_protection")
+        .filter(|scenario| {
+            scenario
+                .checks
+                .iter()
+                .any(|check| check == USB_CONNECTOR_EDGE_PROXIMITY_VALID)
         })
         .filter_map(|scenario| {
             scenario

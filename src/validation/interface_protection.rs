@@ -1,4 +1,6 @@
-use crate::board_ir::{ComponentPlacement, NetKind, PinLogicState, PlacementSide, Scenario};
+use crate::board_ir::{
+    ComponentPlacement, LayoutPoint, LayoutSegment, NetKind, PinLogicState, PlacementSide, Scenario,
+};
 use crate::library::{
     BoundBoard, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
     SignalSupplyConstraint, SignalSupplyRelation, UsbConnector,
@@ -139,6 +141,98 @@ pub(super) fn validate_usb_connector_orientation(
             expected_rotation_deg,
             rotation_error_deg,
             max_error_deg,
+        ));
+    }
+}
+
+pub(super) fn validate_usb_connector_edge_proximity(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(max_distance_mm) = required_scenario_numeric_parameter(
+        scenario,
+        "max_connector_to_board_edge_distance_mm",
+        findings,
+    ) else {
+        return;
+    };
+    if max_distance_mm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection parameters.max_connector_to_board_edge_distance_mm must be greater than zero.",
+        );
+        return;
+    }
+    let Some(target) = &scenario.target else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "interface_protection target.component is required for USB_CONNECTOR_EDGE_PROXIMITY_VALID.",
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        findings.push(usb_edge_proximity_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector edge-proximity target component {} is not declared.",
+                target.component
+            ),
+            "component",
+            &target.component,
+        ));
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        findings.push(usb_edge_proximity_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "USB connector edge-proximity target component {} model {} is not loaded.",
+                target.component, component.model
+            ),
+            "model",
+            &component.model,
+        ));
+        return;
+    };
+    if model.usb_connector.is_none() {
+        findings.push(usb_edge_proximity_metadata_finding(
+            scenario,
+            &target.component,
+            format!(
+                "Component {} model {} has no usb_connector metadata.",
+                target.component, component.model
+            ),
+            "usb_connector",
+            "missing",
+        ));
+        return;
+    }
+    let Some(placement) = valid_component_placement(bound, scenario, &target.component, findings)
+    else {
+        return;
+    };
+    let Some(edge) = nearest_board_edge(bound, placement) else {
+        findings.push(usb_edge_proximity_metadata_finding(
+            scenario,
+            &target.component,
+            "USB connector edge proximity requires at least one usable board.layout.outline.segments entry.".to_string(),
+            "outline",
+            "missing",
+        ));
+        return;
+    };
+    if edge.distance_mm > max_distance_mm {
+        findings.push(usb_edge_proximity_finding(
+            scenario,
+            &target.component,
+            placement,
+            &edge,
+            max_distance_mm,
         ));
     }
 }
@@ -661,6 +755,11 @@ struct UsbPlacementDistanceEvidence<'a> {
     max_distance_mm: f64,
 }
 
+struct UsbBoardEdgeDistanceEvidence<'a> {
+    distance_mm: f64,
+    edge: &'a LayoutSegment,
+}
+
 fn find_valid_clamp_for_net<'a>(
     bound: &'a BoundBoard<'_>,
     connector_id: &str,
@@ -1088,6 +1187,63 @@ fn placement_distance_mm(a: &ComponentPlacement, b: &ComponentPlacement) -> f64 
     let dx = a.x_mm - b.x_mm;
     let dy = a.y_mm - b.y_mm;
     dx.hypot(dy)
+}
+
+fn nearest_board_edge<'a>(
+    bound: &'a BoundBoard<'_>,
+    placement: &ComponentPlacement,
+) -> Option<UsbBoardEdgeDistanceEvidence<'a>> {
+    bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| outline_segment_is_usable(segment))
+        .map(|edge| UsbBoardEdgeDistanceEvidence {
+            distance_mm: placement_to_segment_distance_mm(placement, edge),
+            edge,
+        })
+        .min_by(|left, right| left.distance_mm.total_cmp(&right.distance_mm))
+}
+
+fn outline_segment_is_usable(segment: &LayoutSegment) -> bool {
+    point_is_finite(&segment.start)
+        && point_is_finite(&segment.end)
+        && (segment.end.x_mm - segment.start.x_mm).hypot(segment.end.y_mm - segment.start.y_mm)
+            > f64::EPSILON
+}
+
+fn point_is_finite(point: &LayoutPoint) -> bool {
+    point.x_mm.is_finite() && point.y_mm.is_finite()
+}
+
+fn placement_to_segment_distance_mm(
+    placement: &ComponentPlacement,
+    segment: &LayoutSegment,
+) -> f64 {
+    point_to_segment_distance_mm(
+        placement.x_mm,
+        placement.y_mm,
+        segment.start.x_mm,
+        segment.start.y_mm,
+        segment.end.x_mm,
+        segment.end.y_mm,
+    )
+}
+
+fn point_to_segment_distance_mm(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+    let dx = bx - ax;
+    let dy = by - ay;
+    let length_sq = dx * dx + dy * dy;
+    if length_sq <= f64::EPSILON {
+        return (px - ax).hypot(py - ay);
+    }
+    let t = (((px - ax) * dx + (py - ay) * dy) / length_sq).clamp(0.0, 1.0);
+    let nearest_x = ax + t * dx;
+    let nearest_y = ay + t * dy;
+    (px - nearest_x).hypot(py - nearest_y)
 }
 
 fn normalize_rotation_deg(rotation_deg: f64) -> f64 {

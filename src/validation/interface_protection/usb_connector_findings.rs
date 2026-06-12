@@ -3,11 +3,13 @@ use crate::reports::Finding;
 use serde_json::json;
 
 use super::{
-    ResolvedUsbProtection, UsbConnectorSignal, UsbPlacementDistanceEvidence, placement_side_name,
+    ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbConnectorSignal,
+    UsbPlacementDistanceEvidence, placement_side_name,
 };
 use crate::board_ir::ComponentPlacement;
 use crate::validation::{
-    USB_CONNECTOR_ORIENTATION_VALID, USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID,
+    USB_CONNECTOR_EDGE_PROXIMITY_VALID, USB_CONNECTOR_ORIENTATION_VALID,
+    USB_CONNECTOR_PROTECTION_VALID, USB_PROTECTION_PLACEMENT_VALID,
 };
 
 pub(super) fn usb_connector_metadata_finding(
@@ -391,6 +393,87 @@ pub(super) fn usb_orientation_finding(
             "Rotate or remap USB connector {connector_id} footprint so its imported placement rotation matches the intended board-edge orientation."
         ),
         "If the board intentionally uses a different connector entry direction, update expected_connector_rotation_deg from the mechanical/layout rule and rerun validation.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_edge_proximity_metadata_finding(
+    scenario: &crate::board_ir::Scenario,
+    component_id: &str,
+    message: String,
+    field: &str,
+    value: &str,
+) -> Finding {
+    let mut finding =
+        Finding::critical(USB_CONNECTOR_EDGE_PROXIMITY_VALID, &scenario.name, message);
+    finding.component = Some(component_id.to_string());
+    finding.limit.insert(field.to_string(), json!(value));
+    finding.suggested_fixes = vec![
+        "Import PCB board outline evidence with import-kicad-pcb before declaring USB_CONNECTOR_EDGE_PROXIMITY_VALID.".to_string(),
+        "Use straight Edge.Cuts board-edge evidence plus connector placement evidence to set max_connector_to_board_edge_distance_mm.".to_string(),
+    ];
+    finding
+}
+
+pub(super) fn usb_edge_proximity_finding(
+    scenario: &crate::board_ir::Scenario,
+    connector_id: &str,
+    placement: &ComponentPlacement,
+    edge: &UsbBoardEdgeDistanceEvidence<'_>,
+    max_distance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        USB_CONNECTOR_EDGE_PROXIMITY_VALID,
+        &scenario.name,
+        format!(
+            "USB connector {connector_id} is {:.3} mm from the nearest board edge, exceeding limit {:.3} mm.",
+            edge.distance_mm, max_distance_mm
+        ),
+    );
+    finding.component = Some(connector_id.to_string());
+    finding
+        .measured
+        .insert("connector_x_mm".to_string(), json!(placement.x_mm));
+    finding
+        .measured
+        .insert("connector_y_mm".to_string(), json!(placement.y_mm));
+    if let Some(side) = placement_side_name(&placement.side) {
+        finding
+            .measured
+            .insert("connector_side".to_string(), json!(side));
+    }
+    finding.measured.insert(
+        "connector_to_board_edge_distance_mm".to_string(),
+        json!(edge.distance_mm),
+    );
+    finding.measured.insert(
+        "board_edge_start_x_mm".to_string(),
+        json!(edge.edge.start.x_mm),
+    );
+    finding.measured.insert(
+        "board_edge_start_y_mm".to_string(),
+        json!(edge.edge.start.y_mm),
+    );
+    finding
+        .measured
+        .insert("board_edge_end_x_mm".to_string(), json!(edge.edge.end.x_mm));
+    finding
+        .measured
+        .insert("board_edge_end_y_mm".to_string(), json!(edge.edge.end.y_mm));
+    if let Some(layer) = &edge.edge.layer {
+        finding
+            .measured
+            .insert("board_edge_layer".to_string(), json!(layer));
+    }
+    finding.limit.insert(
+        "max_connector_to_board_edge_distance_mm".to_string(),
+        json!(max_distance_mm),
+    );
+    finding.suggested_fixes = vec![
+        format!(
+            "Move USB connector {connector_id} closer to the intended board edge or update the board-edge outline evidence."
+        ),
+        "If this connector is intentionally set back for an enclosure, cable, or panel strategy, increase max_connector_to_board_edge_distance_mm from that mechanical rule and rerun validation.".to_string(),
     ];
     finding
 }

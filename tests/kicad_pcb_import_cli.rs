@@ -230,6 +230,24 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     assert!((nearest_edge["distance_to_connector_mm"].as_f64().unwrap() - 0.4).abs() < 1.0e-9);
     assert_eq!(nearest_edge["outward_normal_deg"], 180.0);
     assert_eq!(nearest_edge["connector_rotation_error_deg"], 180.0);
+    let edge_proximity = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_edge_proximity_j1")
+        .expect("USB connector edge proximity suggestion");
+    assert_eq!(
+        edge_proximity["scenario"]["checks"][0],
+        "USB_CONNECTOR_EDGE_PROXIMITY_VALID"
+    );
+    assert!(
+        edge_proximity["scenario"]["parameters"]["max_connector_to_board_edge_distance_mm"]
+            .is_null()
+    );
+    assert_eq!(
+        edge_proximity["scenario"]["usb_connectors"][0]["nearest_board_edge"]["distance_to_connector_mm"],
+        0.4
+    );
     let route = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -474,7 +492,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 10);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 11);
     assert!(
         suggestions["suggestions"]
             .as_array()
@@ -495,6 +513,13 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_connector_edge_proximity_j1")
     );
     assert!(
         suggestions["suggestions"]

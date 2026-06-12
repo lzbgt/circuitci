@@ -407,6 +407,33 @@ edge and using its outward normal. That suggestion is still non-runnable until a
 layout-specific tolerance is supplied, and the inferred direction must be
 checked against the footprint's connector-entry rotation convention.
 
+USB connector edge proximity uses `USB_CONNECTOR_EDGE_PROXIMITY_VALID` when
+the Board IR includes connector placement evidence and straight board-edge
+outline segments.
+
+```yaml
+scenarios:
+  - name: usb_connector_edge_proximity
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_EDGE_PROXIMITY_VALID
+    target:
+      component: J1
+    parameters:
+      max_connector_to_board_edge_distance_mm: 0.5
+```
+
+Connector-to-board-edge algorithm:
+
+1. Resolve `target.component` and its `usb_connector` metadata.
+2. Require finite placement coordinates for the connector.
+3. Require at least one usable straight segment under
+   `board.layout.outline.segments`.
+4. Project the connector placement point to each segment and use the nearest
+   distance in millimeters.
+5. Require that distance to be no greater than
+   `parameters.max_connector_to_board_edge_distance_mm`.
+
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
 D- route length, via count, and the routed distance from the connector to the
