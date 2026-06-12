@@ -28,8 +28,10 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   when the QEMU run emits explicit `CIRCUITCI_PIN` observations. It does not
   infer pins from MCU internals. Renode remains fail-closed until a Renode
   adapter is integrated.
-- Behavioral power states are declared in Board IR rather than inferred from a
-  whole-board analog power-tree simulation.
+- `POWER_TREE_VALID` checks declared rail power state, nominal voltage ranges,
+  and static current budgets. It does not infer a whole-board analog power tree
+  or solve regulator startup, dropout, inrush, charger/power-mux behavior, or
+  load-transient stability.
 - `GPIO_BACKDRIVE` uses a simple diode/source-resistance approximation.
 - Quantitative waveform proof is available only through `analog_transient`
   scenarios with a SPICE-class backend and explicit assertions.

@@ -40,6 +40,12 @@ states:
 Some of these can be SPICE scenarios. Others need first-class power-tree rules
 that derive required checks from regulator and load metadata.
 
+First executable slice: `POWER_TREE_VALID` now checks declared powered rails,
+nominal voltage against component model power-port ranges, and static
+`supply_current_limit_A` budget against declared `max_supply_current_A` loads.
+The remaining gap is dynamic power behavior: startup, dropout under waveform
+load, inrush, soft-start, charger/power-mux behavior, and stability.
+
 ## 3. Functional MCU And Peripheral Models
 
 MCU internals should remain functional black boxes, not transistor-level
@@ -140,4 +146,3 @@ have:
 - no unallowed blocking limitations,
 - no critical findings,
 - repair evidence for each known-bad acceptance case.
-

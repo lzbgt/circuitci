@@ -1,0 +1,39 @@
+project:
+  name: bad_power_tree_current_budget
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+    U2:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: rail_3v3
+      pins:
+        VCC: rail_3v3
+        GND: gnd
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.04
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: rail_current_budget_exceeded
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

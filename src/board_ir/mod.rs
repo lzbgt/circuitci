@@ -94,6 +94,8 @@ pub struct NetSpec {
     pub nominal_voltage: Option<f64>,
     #[serde(default)]
     pub powered: Option<bool>,
+    #[serde(default, rename = "supply_current_limit_A")]
+    pub supply_current_limit_a: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

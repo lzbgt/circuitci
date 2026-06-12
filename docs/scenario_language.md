@@ -69,6 +69,7 @@ Executable scenario types:
 - `firmware_update`
 - `control_line_sequence`
 - `firmware_in_loop`
+- `power_tree`
 - `analog_transient`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
@@ -93,6 +94,7 @@ Canonical executable check IDs:
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
+- `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
@@ -181,6 +183,38 @@ scenarios:
 9. ACK is abstract in this slice: matching the sync event, sender connectivity, and model `ack_byte` is enough to report sync-capable pass. No firmware is executed.
 
 Missing required model/scenario data for this declared check is a critical `VALIDATION_INPUT_MISSING` finding.
+
+## Power Tree Scenario Shape
+
+`power_tree` scenarios validate declared rail metadata and model power-port
+requirements. This is a deterministic board-rule check, not a full regulator or
+SMPS transient simulation.
+
+```yaml
+scenarios:
+  - name: power_tree_nominal
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+```
+
+`POWER_TREE_VALID` checks:
+
+1. Component model ports with `kind: electrical_power` resolve to declared
+   `kind: power` nets.
+2. The rail is declared `powered: true` for this scenario.
+3. The rail has a finite positive `nominal_voltage`.
+4. If the model power port declares `operating_voltage_min_V` or
+   `operating_voltage_max_V`, the rail nominal voltage must be inside that
+   range.
+5. If a rail declares `supply_current_limit_A`, every non-source component load
+   on that rail must declare `max_supply_current_A`, and the summed worst-case
+   current must not exceed the limit.
+
+This rule is intended to catch common IoT mistakes such as a 3.3 V MCU tied to
+5 V, an unpowered rail marked as valid for logic checks, or an undersized
+regulator budget. Load-transient stability, dropout, startup sequencing, and
+inrush still require explicit model metadata or `analog_transient` scenarios.
 
 ## Firmware Update Scenario Shape
 

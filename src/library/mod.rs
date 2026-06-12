@@ -139,6 +139,12 @@ pub enum PortKind {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Electrical {
+    #[serde(default, rename = "operating_voltage_min_V")]
+    pub operating_voltage_min_v: Option<f64>,
+    #[serde(default, rename = "operating_voltage_max_V")]
+    pub operating_voltage_max_v: Option<f64>,
+    #[serde(default, rename = "max_supply_current_A")]
+    pub max_supply_current_a: Option<f64>,
     #[serde(default, rename = "vih_min_V")]
     pub vih_min_v: Option<f64>,
     #[serde(default, rename = "vil_max_V")]

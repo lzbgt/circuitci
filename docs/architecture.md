@@ -6,6 +6,9 @@ The engine backbone is Rust. C/C++ backends are acceptable for solver integratio
 
 ## Goals
 
+- Build an agent-facing board-validation system: findings must be deterministic,
+  machine-readable, linked to measured evidence and limits, and useful for
+  repair/rerun loops.
 - Keep the engine generic: STM32, ESP32, 555 timers, STM8, C51/STC-class MCUs, CH340/CP210x/FT232 bridges, passives, MOSFETs, sensors, and regulators are library data, not core engine assumptions.
 - Make validation deterministic enough for CI and AI-agent repair loops.
 - Prefer a small verified vertical slice over a broad unverified simulator skeleton.

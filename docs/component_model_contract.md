@@ -13,6 +13,10 @@ ports:
   VDD:
     kind: electrical_power
     required: true
+    electrical:
+      operating_voltage_min_V: 2.7
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.03
   GND:
     kind: electrical_ground
     required: true
@@ -67,6 +71,17 @@ Outputs should declare:
 - `drive_high_voltage_V`
 - `source_impedance_ohm`
 - optional `powered_behavior`
+
+Power ports should declare when known:
+
+- `operating_voltage_min_V`
+- `operating_voltage_max_V`
+- `max_supply_current_A`
+
+`POWER_TREE_VALID` uses these values to check that a component is connected to
+a powered rail inside its allowed operating range and that declared rail current
+budgets are not exceeded. Generic models may use conservative screening values;
+datasheet-backed packs should cite their source documents.
 
 The first back-drive approximation computes injection current as:
 

@@ -104,7 +104,8 @@
                 "enum": ["power", "ground", "digital_or_analog"]
               },
               "nominal_voltage": { "type": "number" },
-              "powered": { "type": "boolean" }
+              "powered": { "type": "boolean" },
+              "supply_current_limit_A": { "type": "number", "exclusiveMinimum": 0 }
             },
             "additionalProperties": true
           }

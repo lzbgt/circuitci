@@ -33,6 +33,7 @@ board:
       kind: power
       nominal_voltage: 3.3
       powered: false
+      supply_current_limit_A: 0.08
     gnd:
       kind: ground
     uart_rx:
@@ -75,7 +76,8 @@ scenarios:
 
 ## Net Kinds
 
-- `power`: rail with `nominal_voltage` and optional `powered` state.
+- `power`: rail with `nominal_voltage`, optional `powered` state, and optional
+  `supply_current_limit_A` budget.
 - `ground`: reference net.
 - `digital_or_analog`: mixed-signal net, such as reset, UART, GPIO, and I2C.
 
@@ -87,6 +89,9 @@ Power semantics:
 - `powered: true`: actual rail voltage equals `nominal_voltage`.
 - `powered: false`: actual rail voltage is `0.0 V`.
 - missing `powered`: rail state is unknown and rules that require actual voltage must emit an informational or warning finding instead of guessing.
+- `supply_current_limit_A`: optional worst-case current budget used by
+  `POWER_TREE_VALID` when component model power ports declare
+  `max_supply_current_A`.
 
 ## Consistency Rules
 

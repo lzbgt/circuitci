@@ -95,6 +95,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
+- `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -112,6 +113,15 @@ Stable rule detail keys:
 `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` reports must include a non-blocking `ABSTRACT_PROTOCOL_TRACE` limitation because the rule validates declared transaction traces rather than raw firmware execution, raw-frame CRC recomputation, flash emulation, or HIL behavior.
 
 `CONTROL_LINE_RELEASE_SEQUENCE` reports must include a non-blocking `ABSTRACT_CONTROL_LINE_MODEL` limitation because the rule validates declared line effects and release delays rather than transistor-level or RC waveform behavior.
+
+`POWER_TREE_VALID` reports are emitted by `power_tree` scenarios. They fail
+when active power pins are tied to non-power nets, rails are not declared
+powered, nominal rail voltages are missing/invalid/outside component-model
+operating ranges, or declared rail current budgets are exceeded. Stable measured
+keys include `nominal_voltage_V`, `powered`, `declared_load_current_A`, and
+`missing_load_current_metadata` depending on the failure. Stable limit keys
+include `operating_voltage_minimum_V`, `operating_voltage_maximum_V`,
+`powered`, and `supply_current_limit_A`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus

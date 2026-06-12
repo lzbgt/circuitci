@@ -9,6 +9,7 @@ profile: iot_basic_v0
 scenarios:
   - power_up
   - power_down
+  - power_tree
   - usb_hot_plug
   - reset_boot
   - serial_programming
@@ -41,6 +42,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE`
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
+- `POWER_TREE_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 
 ## Rule Completion Standard

@@ -5,6 +5,10 @@ ports:
   VCC:
     kind: electrical_power
     required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.03
   GND:
     kind: electrical_ground
     required: true
@@ -71,4 +75,3 @@ model_quality:
   not_valid_for:
     - transistor_level_mcu_behavior
     - exact_vendor_isp_protocol
-

@@ -5,6 +5,10 @@ ports:
   VCC:
     kind: electrical_power
     required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.02
   GND:
     kind: electrical_ground
     required: true
@@ -33,4 +37,3 @@ model_quality:
   not_valid_for:
     - full_usb_phy
     - transistor_level_behavior
-

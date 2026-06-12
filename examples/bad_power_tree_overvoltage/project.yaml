@@ -1,0 +1,31 @@
+project:
+  name: bad_power_tree_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_5v
+      pins:
+        VDD: rail_5v
+        GND: gnd
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 0.08
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: mcu_powered_from_5v
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

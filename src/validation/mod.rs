@@ -8,6 +8,7 @@ mod backdrive;
 mod common;
 mod control_line;
 mod firmware_functional;
+mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
 mod target_contract;
@@ -25,6 +26,7 @@ pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 pub(super) const RESIDENT_BOOTLOADER_UPDATE_SEQUENCE: &str = "RESIDENT_BOOTLOADER_UPDATE_SEQUENCE";
 pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQUENCE";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
+pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -33,6 +35,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "serial_programming",
     "firmware_update",
     "firmware_in_loop",
+    "power_tree",
     "control_line_sequence",
     "analog_transient",
 ];
@@ -151,6 +154,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         output,
                     )
                 }
+                POWER_TREE_VALID if scenario.scenario_type == "power_tree" => {
+                    power_tree::validate_power_tree(bound, scenario, &mut findings)
+                }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
                     analog_spice::validate_spice_transient(
                         bound,
@@ -168,6 +174,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | RESIDENT_BOOTLOADER_UPDATE_SEQUENCE
                 | CONTROL_LINE_RELEASE_SEQUENCE
                 | FUNCTIONAL_MCU_FIRMWARE
+                | POWER_TREE_VALID
                 | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

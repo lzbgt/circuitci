@@ -44,6 +44,46 @@ fn fixed_backdrive_board_passes() {
 }
 
 #[test]
+fn good_power_tree_board_passes() {
+    let report = run_validation("examples/good_power_tree_board/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn power_tree_overvoltage_fails() {
+    let report = run_validation("examples/bad_power_tree_overvoltage/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "POWER_TREE_VALID");
+    assert_eq!(report["failures"][0]["component"], "U1");
+    assert_eq!(report["failures"][0]["net"], "rail_5v");
+    assert_eq!(report["failures"][0]["measured"]["nominal_voltage_V"], 5.0);
+    assert_eq!(
+        report["failures"][0]["limit"]["operating_voltage_maximum_V"],
+        3.6
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn power_tree_current_budget_fails() {
+    let report = run_validation("examples/bad_power_tree_current_budget/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["failures"][0]["id"], "POWER_TREE_VALID");
+    assert_eq!(report["failures"][0]["net"], "rail_3v3");
+    assert_eq!(
+        report["failures"][0]["measured"]["declared_load_current_A"],
+        0.05
+    );
+    assert_eq!(
+        report["failures"][0]["limit"]["supply_current_limit_A"],
+        0.04
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_bootloader_board_passes_reset_boot_and_sync() {
     let report = run_validation("examples/good_bootloader_board/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -28,6 +28,9 @@
           "electrical": {
             "type": "object",
             "properties": {
+              "operating_voltage_min_V": { "type": "number" },
+              "operating_voltage_max_V": { "type": "number" },
+              "max_supply_current_A": { "type": "number", "minimum": 0 },
               "vih_min_V": { "type": "number" },
               "vil_max_V": { "type": "number" },
               "injection_current_limit_A": { "type": "number", "exclusiveMinimum": 0 },
