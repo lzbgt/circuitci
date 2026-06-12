@@ -197,6 +197,26 @@
                   "additionalProperties": false
                 }
               },
+              "usb_routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "signal",
+                    "net",
+                    "route_length_mm",
+                    "via_count"
+                  ],
+                  "properties": {
+                    "signal": { "enum": ["D+", "D-"] },
+                    "net": { "type": "string", "minLength": 1 },
+                    "route_length_mm": { "type": "number", "minimum": 0 },
+                    "via_count": { "type": "integer", "minimum": 0 },
+                    "protection_component": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "clocks": {
                 "type": "array",
                 "items": {

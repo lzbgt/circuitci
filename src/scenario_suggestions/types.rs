@@ -48,6 +48,8 @@ pub struct SuggestedScenario {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub usb_connectors: Vec<SuggestedUsbConnector>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub usb_routes: Vec<SuggestedUsbRoute>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub clocks: Vec<SuggestedClockSource>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reset_supervisors: Vec<SuggestedResetSupervisor>,
@@ -179,6 +181,16 @@ pub struct SuggestedUsbConnector {
     pub shield_net: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub placement: Option<SuggestedPlacement>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedUsbRoute {
+    pub signal: String,
+    pub net: String,
+    pub route_length_mm: f64,
+    pub via_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protection_component: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

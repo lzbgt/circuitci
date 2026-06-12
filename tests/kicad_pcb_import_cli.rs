@@ -121,6 +121,26 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
             && clamp["protected_net"] == "net_usb_vbus"
             && clamp["distance_to_target_mm"] == 1.5
     }));
+    let route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
+        .expect("USB route geometry suggestion");
+    assert_eq!(route["scenario"]["checks"][0], "USB_ROUTE_GEOMETRY_VALID");
+    assert!(route["scenario"]["parameters"]["max_data_line_route_length_mm"].is_null());
+    assert!(
+        route["scenario"]["usb_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|usb_route| {
+                usb_route["signal"] == "D+"
+                    && usb_route["net"] == "net_usb_dp"
+                    && usb_route["route_length_mm"] == 1.0
+                    && usb_route["via_count"] == 1
+            })
+    );
 }
 
 #[test]
@@ -172,12 +192,19 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert!(suggest_status.success());
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
-    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 6);
+    assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 7);
     assert!(
         suggestions["suggestions"]
             .as_array()
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_protection_placement_j1")
+    );
+    assert!(
+        suggestions["suggestions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
     );
 }

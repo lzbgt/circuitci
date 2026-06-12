@@ -12,6 +12,7 @@ const GPIO_BACKDRIVE: &str = "GPIO_BACKDRIVE";
 const INTERFACE_PROTECTION_REVIEW: &str = "INTERFACE_PROTECTION_REVIEW";
 const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
 const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
+const USB_ROUTE_GEOMETRY_VALID: &str = "USB_ROUTE_GEOMETRY_VALID";
 const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 const RESET_RELEASE_AFTER_POWER_VALID: &str = "RESET_RELEASE_AFTER_POWER_VALID";
@@ -98,6 +99,7 @@ fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {
             conditioning: None,
             protection_clamps: Vec::new(),
             usb_connectors: Vec::new(),
+            usb_routes: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors,
             regulators,
@@ -343,7 +345,8 @@ fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {
             events: Vec::new(),
             conditioning: None,
             protection_clamps: Vec::new(),
-                    usb_connectors: Vec::new(),
+            usb_connectors: Vec::new(),
+            usb_routes: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -539,7 +542,8 @@ fn backdrive_suggestion(
             events: Vec::new(),
             conditioning: None,
             protection_clamps: Vec::new(),
-                    usb_connectors: Vec::new(),
+            usb_connectors: Vec::new(),
+            usb_routes: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -646,7 +650,8 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                 events: Vec::new(),
                 conditioning: None,
                 protection_clamps: Vec::new(),
-                    usb_connectors: Vec::new(),
+                usb_connectors: Vec::new(),
+                usb_routes: Vec::new(),
                 clocks,
                 reset_supervisors: Vec::new(),
                 regulators: Vec::new(),
@@ -816,6 +821,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 conditioning: None,
                 protection_clamps: Vec::new(),
                 usb_connectors: Vec::new(),
+                usb_routes: Vec::new(),
                 clocks: Vec::new(),
                 reset_supervisors: Vec::new(),
                 regulators: Vec::new(),
@@ -1014,7 +1020,8 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                         events: Vec::new(),
                         conditioning: None,
                         protection_clamps: Vec::new(),
-                    usb_connectors: Vec::new(),
+                        usb_connectors: Vec::new(),
+                        usb_routes: Vec::new(),
                         clocks: Vec::new(),
                         reset_supervisors: Vec::new(),
                         regulators: Vec::new(),
@@ -1075,6 +1082,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     conditioning: None,
                     protection_clamps: Vec::new(),
                     usb_connectors: Vec::new(),
+                    usb_routes: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -1165,6 +1173,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     conditioning: None,
                     protection_clamps: Vec::new(),
                     usb_connectors: Vec::new(),
+                    usb_routes: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),

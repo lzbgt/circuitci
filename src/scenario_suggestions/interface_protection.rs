@@ -1,10 +1,12 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
     SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
-    SuggestedTarget, SuggestedUsbConnector, USB_CONNECTOR_PROTECTION_VALID,
-    USB_PROTECTION_PLACEMENT_VALID, sanitized_name,
+    SuggestedTarget, SuggestedUsbConnector, SuggestedUsbRoute, USB_CONNECTOR_PROTECTION_VALID,
+    USB_PROTECTION_PLACEMENT_VALID, USB_ROUTE_GEOMETRY_VALID, sanitized_name,
 };
-use crate::board_ir::{BoardProject, ComponentPlacement, ComponentSpec, NetKind, PlacementSide};
+use crate::board_ir::{
+    BoardProject, ComponentPlacement, ComponentSpec, NetKind, NetRoute, PlacementSide,
+};
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
     SignalConditioningKind, UsbConnector,
@@ -15,6 +17,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
     let existing = existing_interface_protection_checks(bound.project);
     let existing_usb_connectors = existing_usb_connector_protection_checks(bound.project);
     let existing_usb_placements = existing_usb_protection_placement_checks(bound.project);
+    let existing_usb_routes = existing_usb_route_geometry_checks(bound.project);
     let mut suggestions = Vec::new();
     for (component_id, component) in &bound.project.board.components {
         let Some(model) = bound.library.get(&component.model) else {
@@ -70,6 +73,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     conditioning: Some(conditioning),
                     protection_clamps: Vec::new(),
                     usb_connectors: Vec::new(),
+                    usb_routes: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -134,6 +138,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     conditioning: None,
                     protection_clamps: vec![protection_clamp],
                     usb_connectors: Vec::new(),
+                    usb_routes: Vec::new(),
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
@@ -157,6 +162,13 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
             && !existing_usb_placements.contains(component_id)
             && let Some(suggestion) =
                 usb_protection_placement_suggestion(bound, component_id, component, model)
+        {
+            suggestions.push(suggestion);
+        }
+        if model.usb_connector.is_some()
+            && !existing_usb_routes.contains(component_id)
+            && let Some(suggestion) =
+                usb_route_geometry_suggestion(bound, component_id, component, model)
         {
             suggestions.push(suggestion);
         }
@@ -274,6 +286,7 @@ fn usb_connector_protection_suggestion(
             conditioning: None,
             protection_clamps,
             usb_connectors: vec![suggested_connector],
+            usb_routes: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -357,6 +370,7 @@ fn usb_protection_placement_suggestion(
             conditioning: None,
             protection_clamps,
             usb_connectors: vec![suggested_connector],
+            usb_routes: Vec::new(),
             clocks: Vec::new(),
             reset_supervisors: Vec::new(),
             regulators: Vec::new(),
@@ -368,6 +382,129 @@ fn usb_protection_placement_suggestion(
             "Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.".to_string(),
         ],
     })
+}
+
+fn usb_route_geometry_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<ScenarioSuggestion> {
+    let connector = model.usb_connector.as_ref()?;
+    let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
+    let connector_placement = component_placement(bound, component_id)?;
+    let dp_clamp = nearest_placed_protection_clamp_for_net(
+        bound,
+        component_id,
+        &suggested_connector.dp_net,
+        connector_placement,
+    )?;
+    let dm_clamp = nearest_placed_protection_clamp_for_net(
+        bound,
+        component_id,
+        &suggested_connector.dm_net,
+        connector_placement,
+    )?;
+    let dp_route = suggested_usb_route(
+        bound,
+        "D+",
+        &suggested_connector.dp_net,
+        Some(dp_clamp.component.clone()),
+    )?;
+    let dm_route = suggested_usb_route(
+        bound,
+        "D-",
+        &suggested_connector.dm_net,
+        Some(dm_clamp.component.clone()),
+    )?;
+    let parameters = BTreeMap::from([
+        (
+            "max_data_line_route_length_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_data_line_via_count".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_connector_to_protection_route_distance_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+        (
+            "max_component_to_route_distance_mm".to_string(),
+            serde_json::Value::Null,
+        ),
+    ]);
+    Some(ScenarioSuggestion {
+        id: format!("usb_route_geometry_{}", sanitized_name(component_id)),
+        kind: "interface_protection".to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!(
+            "USB connector {component_id} has placed protection components and imported D+/D- route geometry; add route-length, via-count, and connector-to-protection route checks."
+        ),
+        scenario: SuggestedScenario {
+            name: format!("{}_usb_route_geometry", sanitized_name(component_id)),
+            scenario_type: "interface_protection".to_string(),
+            checks: vec![USB_ROUTE_GEOMETRY_VALID.to_string()],
+            parameters: Some(parameters),
+            target: Some(SuggestedTarget {
+                component: component_id.to_string(),
+                power_pin: None,
+                reset_pin: None,
+            }),
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: vec![dp_clamp, dm_clamp],
+            usb_connectors: vec![suggested_connector],
+            usb_routes: vec![dp_route, dm_route],
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        },
+        required_inputs: vec![
+            "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.".to_string(),
+            "Fill max_data_line_via_count from the board's USB routing policy; use zero when layer changes are not allowed.".to_string(),
+            "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
+        ],
+    })
+}
+
+fn suggested_usb_route(
+    bound: &BoundBoard<'_>,
+    signal: &str,
+    net_name: &str,
+    protection_component: Option<String>,
+) -> Option<SuggestedUsbRoute> {
+    let route = bound.project.board.layout.routes.get(net_name)?;
+    if route.segments.is_empty() {
+        return None;
+    }
+    Some(SuggestedUsbRoute {
+        signal: signal.to_string(),
+        net: net_name.to_string(),
+        route_length_mm: route_length_mm(route),
+        via_count: route.vias.len(),
+        protection_component,
+    })
+}
+
+fn route_length_mm(route: &NetRoute) -> f64 {
+    route
+        .segments
+        .iter()
+        .map(|segment| {
+            let dx = segment.end.x_mm - segment.start.x_mm;
+            let dy = segment.end.y_mm - segment.start.y_mm;
+            dx.hypot(dy)
+        })
+        .sum()
 }
 
 fn suggested_usb_connector(
@@ -727,6 +864,26 @@ fn existing_usb_protection_placement_checks(project: &BoardProject) -> BTreeSet<
                     .checks
                     .iter()
                     .any(|check| check == USB_PROTECTION_PLACEMENT_VALID)
+        })
+        .filter_map(|scenario| {
+            scenario
+                .target
+                .as_ref()
+                .map(|target| target.component.clone())
+        })
+        .collect()
+}
+
+fn existing_usb_route_geometry_checks(project: &BoardProject) -> BTreeSet<String> {
+    project
+        .scenarios
+        .iter()
+        .filter(|scenario| {
+            scenario.scenario_type == "interface_protection"
+                && scenario
+                    .checks
+                    .iter()
+                    .any(|check| check == USB_ROUTE_GEOMETRY_VALID)
         })
         .filter_map(|scenario| {
             scenario

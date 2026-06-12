@@ -515,6 +515,44 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             .unwrap()
             .contains("max_connector_to_protection_distance_mm")
     );
+    let route = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
+        .expect("USB route geometry suggestion");
+    assert_eq!(route["kind"], "interface_protection");
+    assert_eq!(route["runnable"], false);
+    assert_eq!(route["scenario"]["type"], "interface_protection");
+    assert_eq!(route["scenario"]["checks"][0], "USB_ROUTE_GEOMETRY_VALID");
+    assert_eq!(route["scenario"]["target"]["component"], "J1");
+    assert!(route["scenario"]["parameters"]["max_data_line_route_length_mm"].is_null());
+    assert!(route["scenario"]["parameters"]["max_data_line_via_count"].is_null());
+    assert!(
+        route["scenario"]["parameters"]["max_connector_to_protection_route_distance_mm"].is_null()
+    );
+    assert!(route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
+    let routes = route["scenario"]["usb_routes"].as_array().unwrap();
+    assert!(routes.iter().any(|usb_route| {
+        usb_route["signal"] == "D+"
+            && usb_route["net"] == "usb_dp"
+            && usb_route["route_length_mm"] == 1.0
+            && usb_route["via_count"] == 0
+            && usb_route["protection_component"] == "UESD"
+    }));
+    assert!(routes.iter().any(|usb_route| {
+        usb_route["signal"] == "D-"
+            && usb_route["net"] == "usb_dm"
+            && usb_route["route_length_mm"] == 1.0
+            && usb_route["via_count"] == 1
+            && usb_route["protection_component"] == "UESD"
+    }));
+    assert!(
+        route["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("max_data_line_route_length_mm")
+    );
 }
 
 #[test]

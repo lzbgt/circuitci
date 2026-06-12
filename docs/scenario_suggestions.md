@@ -84,6 +84,12 @@ The command is conservative:
   `parameters.max_connector_to_protection_distance_mm` as `null` until an agent
   fills the board-specific ESD/layout rule. CircuitCI does not invent placement
   limits from component coordinates.
+- It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
+  connector, D+/D- protection components, placements, and
+  `board.layout.routes` evidence are present. The template includes
+  `scenario.usb_routes[]` with data-line net, route length, via count, and the
+  matching protection component, but leaves all board-specific USB route limits
+  as `null`.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The
