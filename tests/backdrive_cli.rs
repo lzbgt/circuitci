@@ -65,6 +65,26 @@ fn interface_protection_unisolated_power_domains_fail() {
 }
 
 #[test]
+fn ti_txs0108e_unpowered_side_requires_isolation_or_oe_evidence() {
+    let report = run_validation("examples/bad_ti_txs0108e_unpowered_side/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "INTERFACE_PROTECTION_REVIEW");
+    assert_eq!(failure["component"], "U3");
+    assert_eq!(failure["measured"]["side_a_supply_net"], "rail_a");
+    assert_eq!(failure["measured"]["side_a_powered"], false);
+    assert_eq!(failure["measured"]["side_b_supply_net"], "rail_b");
+    assert_eq!(failure["measured"]["side_b_powered"], true);
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("unpowered_isolation is false")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_power_tree_board_passes() {
     let report = run_validation("examples/good_power_tree_board/project.yaml");
     assert_eq!(report["result"], "pass");

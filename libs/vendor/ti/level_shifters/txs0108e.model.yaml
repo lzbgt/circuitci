@@ -1,0 +1,207 @@
+component_id: vendor.ti.txs0108e
+version: 0.1.0
+category: interface
+ports:
+  VCCA:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.4
+      operating_voltage_max_V: 3.6
+  VCCB:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.65
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+  OE:
+    kind: digital_electrical_input
+    required: true
+  A1:
+    kind: digital_electrical_io
+    required: false
+  A2:
+    kind: digital_electrical_io
+    required: false
+  A3:
+    kind: digital_electrical_io
+    required: false
+  A4:
+    kind: digital_electrical_io
+    required: false
+  A5:
+    kind: digital_electrical_io
+    required: false
+  A6:
+    kind: digital_electrical_io
+    required: false
+  A7:
+    kind: digital_electrical_io
+    required: false
+  A8:
+    kind: digital_electrical_io
+    required: false
+  B1:
+    kind: digital_electrical_io
+    required: false
+  B2:
+    kind: digital_electrical_io
+    required: false
+  B3:
+    kind: digital_electrical_io
+    required: false
+  B4:
+    kind: digital_electrical_io
+    required: false
+  B5:
+    kind: digital_electrical_io
+    required: false
+  B6:
+    kind: digital_electrical_io
+    required: false
+  B7:
+    kind: digital_electrical_io
+    required: false
+  B8:
+    kind: digital_electrical_io
+    required: false
+signal_conditioning:
+  channels:
+    - name: ch1
+      kind: level_shifter
+      side_a_pin: A1
+      side_b_pin: B1
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch2
+      kind: level_shifter
+      side_a_pin: A2
+      side_b_pin: B2
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch3
+      kind: level_shifter
+      side_a_pin: A3
+      side_b_pin: B3
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch4
+      kind: level_shifter
+      side_a_pin: A4
+      side_b_pin: B4
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch5
+      kind: level_shifter
+      side_a_pin: A5
+      side_b_pin: B5
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch6
+      kind: level_shifter
+      side_a_pin: A6
+      side_b_pin: B6
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch7
+      kind: level_shifter
+      side_a_pin: A7
+      side_b_pin: B7
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+    - name: ch8
+      kind: level_shifter
+      side_a_pin: A8
+      side_b_pin: B8
+      side_a_supply_pin: VCCA
+      side_b_supply_pin: VCCB
+      direction: bidirectional
+      unpowered_isolation: false
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TXS0108E
+  package: TSSOP/VQFN/UFBGA
+  polarity: bidirectional_level_translator
+  pinout:
+    VCCA: VCCA
+    VCCB: VCCB
+    GND: GND
+    OE: OE
+    A1: A1
+    A2: A2
+    A3: A3
+    A4: A4
+    A5: A5
+    A6: A6
+    A7: A7
+    A8: A8
+    B1: B1
+    B2: B2
+    B3: B3
+    B4: B4
+    B5: B5
+    B6: B6
+    B7: B7
+    B8: B8
+  electrical_characteristics:
+    VCCA_operating:
+      conditions: A-port supply operating range, VCCA <= VCCB
+      min: 1.4
+      max: 3.6
+      unit: V
+    VCCB_operating:
+      conditions: B-port supply operating range, VCCA <= VCCB
+      min: 1.65
+      max: 5.5
+      unit: V
+    max_data_rate_push_pull:
+      conditions: Push-pull applications
+      max: 110
+      unit: Mbps
+    max_data_rate_open_drain:
+      conditions: Open-drain applications
+      max: 1.2
+      unit: Mbps
+  device_parameters:
+    power_supply_sequence:
+      conditions: Either VCCA or VCCB can be ramped first; ensure VCCA <= VCCB during operation.
+      unit: note
+      simulation_relevance: Static interface-protection review needs explicit rail states and OE behavior.
+    oe_power_up_down_guidance:
+      conditions: OE low places outputs in high impedance; OE should be tied to GND through a pull-down and not enabled until VCCA and VCCB are fully ramped and stable.
+      unit: note
+      simulation_relevance: Prevents assuming unconditional powered-to-unpowered isolation from channel metadata alone.
+  documents:
+    - title: TXS0108E 8-Bit Bidirectional Voltage-Level Translator
+      path: docs/research/datasheets/ti/txs0108e.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/txs0108e.pdf
+      sha256: 90d330e0340a76d71856b2dc2b85a7b824b37adb5419c77f0533a20d1fc9ceb8
+      retrieved: "2026-06-12"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - interface_protection_review
+    - level_translation_connectivity
+    - preliminary_power_domain_screening
+  not_valid_for:
+    - high_speed_signal_integrity
+    - analog_transient_without_datasheet_or_vendor_spice_model
+    - unconditional_powered_to_unpowered_isolation
