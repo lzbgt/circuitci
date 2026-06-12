@@ -690,6 +690,10 @@ fn usb_return_path_suggestion(
                     "max_data_via_to_ground_stitch_distance_mm".to_string(),
                     serde_json::Value::Null,
                 ),
+                (
+                    "require_filled_zone_coverage".to_string(),
+                    serde_json::Value::Null,
+                ),
             ])),
             target: Some(SuggestedTarget {
                 component: component_id.to_string(),
@@ -717,6 +721,7 @@ fn usb_return_path_suggestion(
                 "Fill max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule after reviewing measured uncovered length {measured_unreferenced_length_mm:.3} mm."
             ),
             "Fill max_data_via_to_ground_stitch_distance_mm when USB data layer changes require nearby ground stitching vias.".to_string(),
+            "Set require_filled_zone_coverage to true when imported filled_polygons should be used instead of intended zone outlines for return-path coverage.".to_string(),
             "Treat this as a same-layer ground-zone outline screen only; adjacent planes, stitching vias, filled-zone continuity, impedance, and EMI need more specific evidence.".to_string(),
         ],
     })

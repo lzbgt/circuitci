@@ -408,6 +408,7 @@ fn usb_return_path_reports_unreferenced_data_route_length() {
         0.0
     );
     assert_eq!(failure["limit"]["reference_net_kind"], "ground");
+    assert_eq!(failure["limit"]["reference_zone_geometry"], "outline");
     assert_eq!(
         failure["limit"]["reference_zone_layer_policy"],
         "same_layer"
@@ -420,6 +421,34 @@ fn usb_return_path_reports_unreferenced_data_route_length() {
     assert_eq!(segments[0]["midpoint_x_mm"], 0.5);
     assert_eq!(segments[0]["midpoint_y_mm"], 0.0);
     assert_eq!(segments[0]["layer"], "F.Cu");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn usb_return_path_reports_filled_zone_gap_when_required() {
+    let report = run_validation("examples/bad_usb_return_path_filled_zone_gap/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failures = report["failures"].as_array().unwrap();
+    let failure = failures
+        .iter()
+        .find(|failure| failure["id"] == "USB_RETURN_PATH_VALID")
+        .expect("USB return-path filled-zone finding");
+    assert_eq!(failure["component"], "J1");
+    assert_eq!(failure["net"], "usb_dp");
+    assert_eq!(failure["measured"]["connector_signal"], "D+");
+    assert_eq!(failure["measured"]["unreferenced_route_length_mm"], 1.0);
+    assert_eq!(
+        failure["limit"]["max_data_line_unreferenced_length_mm"],
+        0.0
+    );
+    assert_eq!(
+        failure["limit"]["reference_zone_geometry"],
+        "filled_polygon"
+    );
+    assert_eq!(
+        failure["limit"]["reference_zone_layer_policy"],
+        "same_layer"
+    );
     assert_report_schema_valid(&report);
 }
 

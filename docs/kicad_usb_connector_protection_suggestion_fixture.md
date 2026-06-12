@@ -58,7 +58,9 @@ the USB D+/D- route segment midpoints, the return-path suggestion reports
 `max_data_line_unreferenced_length_mm: null` for the board-specific
 return-path rule. It also leaves
 `max_data_via_to_ground_stitch_distance_mm: null` so an agent can enable
-nearby ground-stitch checks when data vias cross layers. This is outline and
-via-proximity evidence only; filled-zone connectivity, controlled plane
+nearby ground-stitch checks when data vias cross layers, and
+`require_filled_zone_coverage: null` so an agent can choose saved
+`filled_polygons` over the intended zone outline. This is geometry and
+via-proximity evidence only; filled-zone island connectivity, controlled plane
 transitions, stitching-via inductance, and impedance still require richer
 layout evidence.

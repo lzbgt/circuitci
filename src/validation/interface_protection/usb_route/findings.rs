@@ -461,9 +461,14 @@ pub(super) fn usb_return_path_unreferenced_finding(
         USB_RETURN_PATH_VALID,
         &scenario.name,
         format!(
-            "USB connector {connector_id} {} net {net} has {:.3} mm of routed data-line length without same-layer ground-zone outline coverage, above limit {:.3} mm.",
+            "USB connector {connector_id} {} net {net} has {:.3} mm of routed data-line length without same-layer ground-zone {} coverage, above limit {:.3} mm.",
             signal.label(),
             evidence.unreferenced_length_mm,
+            if evidence.require_filled_zone_coverage {
+                "filled-polygon"
+            } else {
+                "outline"
+            },
             evidence.max_unreferenced_length_mm
         ),
     );
@@ -487,6 +492,14 @@ pub(super) fn usb_return_path_unreferenced_finding(
     finding
         .limit
         .insert("reference_net_kind".to_string(), json!("ground"));
+    finding.limit.insert(
+        "reference_zone_geometry".to_string(),
+        json!(if evidence.require_filled_zone_coverage {
+            "filled_polygon"
+        } else {
+            "outline"
+        }),
+    );
     finding.limit.insert(
         "reference_zone_layer_policy".to_string(),
         json!("same_layer"),
@@ -601,4 +614,5 @@ pub(super) struct UsbReturnPathEvidence<'a> {
     pub(super) unreferenced_length_mm: f64,
     pub(super) max_unreferenced_length_mm: f64,
     pub(super) unreferenced_segments: &'a [UsbReturnPathSegmentEvidence],
+    pub(super) require_filled_zone_coverage: bool,
 }

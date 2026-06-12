@@ -83,26 +83,55 @@ pub(super) fn validate_zone_outline(zone: &CopperZone) -> Result<(), String> {
     if zone.layer.trim().is_empty() {
         return Err("USB return-path zone layer must be non-empty.".to_string());
     }
-    if zone.polygon.len() < 3 {
-        return Err("USB return-path zone polygon must include at least three points.".to_string());
-    }
-    if zone
-        .polygon
-        .iter()
-        .any(|point| !point.x_mm.is_finite() || !point.y_mm.is_finite())
-    {
-        return Err("USB return-path zone polygon points must be finite.".to_string());
+    validate_polygon_points(
+        &zone.polygon,
+        "USB return-path zone polygon must include at least three points.",
+        "USB return-path zone polygon points must be finite.",
+    )?;
+    for filled_polygon in &zone.filled_polygons {
+        validate_polygon_points(
+            filled_polygon,
+            "USB return-path filled zone polygon must include at least three points.",
+            "USB return-path filled zone polygon points must be finite.",
+        )?;
     }
     Ok(())
 }
 
 pub(super) fn point_inside_zone_outline(point: PlacementPoint, zone: &CopperZone) -> bool {
-    if zone.polygon.len() < 3 {
+    point_inside_polygon(point, &zone.polygon)
+}
+
+pub(super) fn point_inside_filled_zone(point: PlacementPoint, zone: &CopperZone) -> bool {
+    zone.filled_polygons
+        .iter()
+        .any(|polygon| point_inside_polygon(point, polygon))
+}
+
+fn validate_polygon_points(
+    polygon: &[LayoutPoint],
+    short_message: &str,
+    invalid_message: &str,
+) -> Result<(), String> {
+    if polygon.len() < 3 {
+        return Err(short_message.to_string());
+    }
+    if polygon
+        .iter()
+        .any(|point| !point.x_mm.is_finite() || !point.y_mm.is_finite())
+    {
+        return Err(invalid_message.to_string());
+    }
+    Ok(())
+}
+
+fn point_inside_polygon(point: PlacementPoint, polygon: &[LayoutPoint]) -> bool {
+    if polygon.len() < 3 {
         return false;
     }
     let mut inside = false;
-    let mut previous = PlacementPoint::from(zone.polygon.last().expect("polygon has points"));
-    for current_point in &zone.polygon {
+    let mut previous = PlacementPoint::from(polygon.last().expect("polygon has points"));
+    for current_point in polygon {
         let current = PlacementPoint::from(current_point);
         if point_on_segment(point, previous, current) {
             return true;

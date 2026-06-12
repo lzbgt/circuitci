@@ -120,7 +120,9 @@ The command is conservative:
   evidence, but leaves `max_data_line_unreferenced_length_mm` as `null` until
   an agent supplies the board-specific USB return-path rule. It also includes
   `max_data_via_to_ground_stitch_distance_mm: null` so agents can enable
-  stitching-via checks when USB data layer changes need nearby ground vias.
+  stitching-via checks when USB data layer changes need nearby ground vias, and
+  `require_filled_zone_coverage: null` so agents can choose whether saved
+  filled-zone geometry must be used instead of intended zone outlines.
 - It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
   declares `clock_sources[]`, the oscillator input/output pins are connected to
   distinct nets, and no existing clock scenario covers the component. The

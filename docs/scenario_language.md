@@ -479,6 +479,7 @@ scenarios:
     parameters:
       max_data_line_unreferenced_length_mm: 0.0
       max_data_via_to_ground_stitch_distance_mm: 0.5
+      require_filled_zone_coverage: true
 ```
 
 USB return-path algorithm:
@@ -488,16 +489,18 @@ USB return-path algorithm:
 3. Require `board.layout.routes` entries for both data nets.
 4. Find `board.layout.zones` entries whose net is declared `kind: ground`.
 5. For each D+/D- route segment, require the segment midpoint to fall inside a
-   same-layer ground-zone polygon. Segments that do not meet this static
-   outline test are counted as unreferenced.
+   same-layer ground-zone polygon. By default this uses the zone outline. When
+   `require_filled_zone_coverage` is `true`, this uses saved
+   `filled_polygons` evidence instead.
 6. Sum unreferenced segment length and require each data net to stay within
    `max_data_line_unreferenced_length_mm`.
 7. If `max_data_via_to_ground_stitch_distance_mm` is declared, require each
    USB data route via to have a ground-net via within that distance whose
    layer list covers the data-via layer transition.
-8. Treat this as an early layout screen only. Filled-zone continuity,
-   adjacent-plane return paths, stitching-via inductance, impedance, and USB
-   eye margin require more specific layout or signal-integrity evidence.
+8. Treat this as an early layout screen only. Filled-polygon containment is
+   stronger than outline containment but still does not prove zone island
+   connectivity, adjacent-plane return paths, stitching-via inductance,
+   impedance, or USB eye margin.
 
 For controlled level shifters, declare the disabled control state in the
 component model and prove it in the scenario:

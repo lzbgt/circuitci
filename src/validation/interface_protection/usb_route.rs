@@ -17,9 +17,9 @@ mod geometry;
 
 use findings::*;
 use geometry::{
-    PlacementPoint, point_inside_zone_outline, route_distance_between_placements, route_length_mm,
-    segment_length_mm, segment_midpoint, validate_route_shape, validate_zone_outline,
-    worst_pair_gap_delta, worst_route_width_delta,
+    PlacementPoint, point_inside_filled_zone, point_inside_zone_outline,
+    route_distance_between_placements, route_length_mm, segment_length_mm, segment_midpoint,
+    validate_route_shape, validate_zone_outline, worst_pair_gap_delta, worst_route_width_delta,
 };
 
 pub(super) fn validate_usb_route_geometry(
@@ -359,6 +359,11 @@ pub(super) fn validate_usb_return_path(
     ) else {
         return;
     };
+    let Some(require_filled_zone_coverage) =
+        optional_bool_parameter(scenario, "require_filled_zone_coverage", findings)
+    else {
+        return;
+    };
 
     let Some(target) = &scenario.target else {
         validation_input_missing(
@@ -424,6 +429,7 @@ pub(super) fn validate_usb_return_path(
                 ground_zones: &ground_zones,
                 max_unreferenced_length_mm,
                 max_data_via_to_ground_stitch_distance_mm,
+                require_filled_zone_coverage,
             },
             findings,
         );
@@ -460,6 +466,7 @@ struct UsbReturnPathSignalCheck<'a> {
     ground_zones: &'a [GroundZoneRef<'a>],
     max_unreferenced_length_mm: f64,
     max_data_via_to_ground_stitch_distance_mm: Option<f64>,
+    require_filled_zone_coverage: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -628,7 +635,11 @@ fn validate_usb_return_path_for_signal(
         let midpoint = segment_midpoint(segment);
         let referenced = check.ground_zones.iter().any(|ground_zone| {
             ground_zone.zone.layer == segment.layer
-                && point_inside_zone_outline(midpoint, ground_zone.zone)
+                && point_inside_ground_reference(
+                    midpoint,
+                    ground_zone.zone,
+                    check.require_filled_zone_coverage,
+                )
         });
         if referenced {
             continue;
@@ -653,6 +664,7 @@ fn validate_usb_return_path_for_signal(
                 unreferenced_length_mm,
                 max_unreferenced_length_mm: check.max_unreferenced_length_mm,
                 unreferenced_segments: &unreferenced_segments,
+                require_filled_zone_coverage: check.require_filled_zone_coverage,
             },
         ));
     }
@@ -666,6 +678,18 @@ fn validate_usb_return_path_for_signal(
             max_distance_mm,
             findings,
         );
+    }
+}
+
+fn point_inside_ground_reference(
+    midpoint: PlacementPoint,
+    zone: &CopperZone,
+    require_filled_zone_coverage: bool,
+) -> bool {
+    if require_filled_zone_coverage {
+        point_inside_filled_zone(midpoint, zone)
+    } else {
+        point_inside_zone_outline(midpoint, zone)
     }
 }
 
@@ -1474,6 +1498,25 @@ fn optional_nonnegative_parameter(
         return None;
     }
     Some(Some(value))
+}
+
+fn optional_bool_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<bool> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        return Some(false);
+    };
+    let Some(value) = raw.as_bool() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be a boolean."),
+        );
+        return None;
+    };
+    Some(value)
 }
 
 fn required_integer_parameter(

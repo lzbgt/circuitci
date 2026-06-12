@@ -216,8 +216,9 @@ measured keys also include `data_via_index`, `data_via_x_mm`, `data_via_y_mm`,
 `data_via_layers`, and, when a candidate exists,
 `nearest_ground_stitch_net`, `nearest_ground_stitch_via_index`, and
 `nearest_ground_stitch_distance_mm`. Stable limit keys include
-`max_data_line_unreferenced_length_mm`, `reference_net_kind`, and
-`reference_zone_layer_policy`; stitching findings additionally include
+`max_data_line_unreferenced_length_mm`, `reference_net_kind`,
+`reference_zone_geometry`, and `reference_zone_layer_policy`; stitching
+findings additionally include
 `max_data_via_to_ground_stitch_distance_mm` and
 `required_ground_stitch_layer_policy`.
 

@@ -67,10 +67,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - `USB_RETURN_PATH_VALID` checks whether USB D+/D- route segment midpoints are
   inside same-layer ground-zone outlines, and can optionally check that USB
   data vias have nearby ground stitching vias spanning the same layer
-  transition. Imported `filled_polygons` can record saved KiCad fill geometry,
-  but the rule still does not prove filled-zone continuity, adjacent-plane
-  coupling, impedance, eye margin, stitching-via inductance, common-mode
-  radiation, or return-current behavior under signal transitions.
+  transition. It can use imported `filled_polygons` when
+  `require_filled_zone_coverage` is true, but still does not prove filled-zone
+  island connectivity, adjacent-plane coupling, impedance, eye margin,
+  stitching-via inductance, common-mode radiation, or return-current behavior
+  under signal transitions.
 - `CLOCK_SOURCE_VALID` checks declared external crystal support-network
   connectivity and load capacitance. It does not prove oscillator startup,
   negative resistance, ESR margin, drive level, ppm accuracy, temperature
