@@ -22,7 +22,9 @@ use self::geometry::{
     validate_copper_region_geometry, validate_copper_segment_geometry, validate_drill_geometry,
     validate_slot_geometry,
 };
-use self::process::{optional_numeric_parameter, required_numeric_parameter};
+use self::process::{
+    explicit_numeric_parameter, optional_numeric_parameter, required_numeric_parameter,
+};
 use super::CASTELLATED_HOLE_VALID;
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;

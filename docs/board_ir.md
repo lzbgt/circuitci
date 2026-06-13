@@ -78,6 +78,7 @@ scenarios:
 | component spice | optional primitive evidence | `spice.primitive` supports `resistor`/`value_ohm`, `capacitor`/`value_f`, `inductor`/`value_h`, and voltage-source primitives for analog or static support-network checks. |
 | component source | optional metadata map | Importers preserve source traceability such as KiCad pin electrical types or JLC/EasyEDA BOM/CPL assembly fields. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
+| manufacturing | optional board map | Board-level fabrication or assembly metadata that is true for the whole board, such as stencil thickness from an order record. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
 | layout footprints | optional component map | Imported footprint drawing evidence for body/courtyard-aware layout checks. |
 | layout outline | optional board-edge segment list | Imported board outline segments used as mechanical/layout orientation evidence. |
@@ -94,6 +95,27 @@ scenarios:
 
 Behavioral rules use declared `powered` states. Physical voltage/current
 waveforms require an `analog_transient` scenario and a SPICE-class backend.
+
+## Manufacturing Metadata
+
+Board-level manufacturing metadata lives under `board.manufacturing`. It is
+for process facts that are not encoded by schematic nets, component models, or
+Gerber primitives, but that are still required to make a manufacturing check
+executable.
+
+```yaml
+board:
+  manufacturing:
+    stencil_thickness_mm: 0.10
+    source: jlc_stencil_order
+```
+
+`SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` consumes
+`board.manufacturing.stencil_thickness_mm` when the scenario does not provide
+`parameters.stencil_thickness_mm`. Scenario parameters still take precedence so
+a user can run what-if checks against another stencil thickness. The field is
+not inferred from Gerbers because paste Gerbers describe aperture openings, not
+the physical stencil foil thickness.
 
 Power semantics:
 

@@ -17,8 +17,9 @@ use super::geometry::{
     validate_copper_segment_geometry,
 };
 use super::{
-    insert_copper_feature_edge_measurements, insert_optional_copper_feature_owner_measurements,
-    optional_numeric_parameter, required_numeric_parameter,
+    explicit_numeric_parameter, insert_copper_feature_edge_measurements,
+    insert_optional_copper_feature_owner_measurements, optional_numeric_parameter,
+    required_numeric_parameter,
 };
 
 pub(in crate::validation) fn validate_solder_mask_opening(
@@ -645,19 +646,10 @@ pub(in crate::validation) fn validate_solder_paste_aperture_area_ratio(
         );
         return;
     }
-    let Some(stencil_thickness_mm) =
-        required_numeric_parameter(scenario, "stencil_thickness_mm", findings)
+    let Some(stencil_thickness_mm) = required_stencil_thickness_mm(bound, scenario, findings)
     else {
         return;
     };
-    if stencil_thickness_mm <= 0.0 {
-        validation_input_missing(
-            findings,
-            scenario,
-            "manufacturing parameters.stencil_thickness_mm must be greater than zero.",
-        );
-        return;
-    }
     let paste = &bound.project.board.layout.solder_paste;
     if paste.features.is_empty() && paste.segments.is_empty() && paste.regions.is_empty() {
         validation_input_missing(
@@ -719,6 +711,52 @@ pub(in crate::validation) fn validate_solder_paste_aperture_area_ratio(
             min_area_ratio,
         );
     }
+}
+
+fn required_stencil_thickness_mm(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if scenario.parameters.contains_key("stencil_thickness_mm") {
+        let value = explicit_numeric_parameter(scenario, "stencil_thickness_mm", findings)?;
+        if value <= 0.0 {
+            validation_input_missing(
+                findings,
+                scenario,
+                "manufacturing parameters.stencil_thickness_mm must be greater than zero.",
+            );
+            return None;
+        }
+        return Some(value);
+    }
+
+    if let Some(value) = bound.project.board.manufacturing.stencil_thickness_mm {
+        if !value.is_finite() {
+            validation_input_missing(
+                findings,
+                scenario,
+                "board.manufacturing.stencil_thickness_mm must be finite.",
+            );
+            return None;
+        }
+        if value <= 0.0 {
+            validation_input_missing(
+                findings,
+                scenario,
+                "board.manufacturing.stencil_thickness_mm must be greater than zero.",
+            );
+            return None;
+        }
+        return Some(value);
+    }
+
+    validation_input_missing(
+        findings,
+        scenario,
+        "manufacturing parameters.stencil_thickness_mm or board.manufacturing.stencil_thickness_mm is required.",
+    );
+    None
 }
 
 fn check_solder_paste_aperture_area_ratio(

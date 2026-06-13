@@ -261,9 +261,10 @@ without explicit imported mechanical evidence.
   flash, circular-aperture draw, and single-contour region evidence for a
   static stencil release area-ratio screen. Source-backed process presets can
   provide the selected minimum, currently `jlcpcb_stencil_area_ratio_2026_06`
-  for the JLCPCB/IPC-7525 `0.66` aperture area-ratio floor. The scenario must
-  still provide `stencil_thickness_mm`; CircuitCI does not infer stencil
-  thickness from Gerbers or reuse this metric as paste-to-copper coverage.
+  for the JLCPCB/IPC-7525 `0.66` aperture area-ratio floor. The scenario or
+  board manufacturing metadata must still provide `stencil_thickness_mm`;
+  CircuitCI does not infer stencil thickness from Gerbers or reuse this metric
+  as paste-to-copper coverage.
 - `SOLDER_PASTE_IC_PIN_APERTURE_VALID` uses pad-owned Gerber solder-paste
   feature, draw, and region evidence for an opt-in IC pin aperture screen
   against the saved JLCPCB stencil opening table. It only runs for an explicit

@@ -67,8 +67,9 @@ does not approximate polygon neck width.
 circular-aperture draw segments, and single-contour regions. With
 `fabrication_process: jlcpcb_stencil_area_ratio_2026_06`, apertures must meet
 the source-backed `0.66` JLCPCB/IPC-7525 area-ratio floor; scenarios must also
-provide `stencil_thickness_mm` because area ratio is aperture opening area
-divided by aperture wall area.
+provide `stencil_thickness_mm`, or the Board IR must provide
+`board.manufacturing.stencil_thickness_mm`, because area ratio is aperture
+opening area divided by aperture wall area.
 
 `SOLDER_PASTE_IC_PIN_APERTURE_VALID` and `SOLDER_PASTE_BGA_APERTURE_VALID`
 consume pad-owned solder-paste evidence for package-specific JLCPCB stencil

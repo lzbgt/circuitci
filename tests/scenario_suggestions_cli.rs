@@ -434,7 +434,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         .iter()
         .find(|suggestion| suggestion["id"] == "solder_paste_aperture_area_ratio_valid")
         .expect("paste aperture area ratio suggestion");
-    assert_eq!(paste_area_ratio["runnable"], false);
+    assert_eq!(paste_area_ratio["runnable"], true);
     assert_eq!(
         paste_area_ratio["scenario"]["checks"][0],
         "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID"
@@ -443,12 +443,11 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         paste_area_ratio["scenario"]["parameters"]["fabrication_process"],
         "jlcpcb_stencil_area_ratio_2026_06"
     );
-    assert!(
-        paste_area_ratio["required_inputs"][0]
-            .as_str()
-            .unwrap()
-            .contains("stencil_thickness_mm")
+    assert_eq!(
+        paste_area_ratio["scenario"]["parameters"]["stencil_thickness_mm"],
+        0.10
     );
+    assert!(paste_area_ratio.get("required_inputs").is_none());
 
     let paste_ic_pin = suggested
         .iter()

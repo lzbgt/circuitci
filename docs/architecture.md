@@ -1,153 +1,146 @@
 # CircuitCI Architecture
 
-CircuitCI is a headless-first validation runtime for embedded board designs. It imports board artifacts, binds component models, runs scenario-driven checks, and emits machine-readable and human-readable reports. The core product boundary is validation before PCB fabrication, not schematic capture or PCB layout.
+CircuitCI is a headless board-assessment runtime for embedded electronics. It
+normalizes design and fabrication artifacts into Board IR, binds component
+models, runs explicit scenarios, and emits deterministic JSON/Markdown reports
+with measured evidence and limits. The product boundary is pre-fabrication and
+release-artifact validation; CircuitCI is not a schematic editor, PCB router, or
+replacement for RF/SI/thermal solvers.
 
-The engine backbone is Rust. C/C++ backends are acceptable for solver integrations, but the in-repository runtime, CLI, schemas, validation rules, and reports should be Rust-first. Python is allowed only for investigation scripts, data conversion experiments, or disposable research tooling.
-
-## Goals
-
-- Build an agent-facing board-validation system: findings must be deterministic,
-  machine-readable, linked to measured evidence and limits, and useful for
-  repair/rerun loops.
-- Keep the engine generic: STM32, ESP32, 555 timers, STM8, C51/STC-class MCUs, CH340/CP210x/FT232 bridges, passives, MOSFETs, sensors, and regulators are library data, not core engine assumptions.
-- Make validation deterministic enough for CI and AI-agent repair loops.
-- Prefer a small verified vertical slice over a broad unverified simulator skeleton.
-- Keep every result traceable to board IR, component model metadata, scenario inputs, and rule IDs.
-
-## Runtime Pipeline
+## Runtime Flow
 
 ```text
-project.yaml, imported KiCad schematic/netlist, or imported SPICE deck
-  -> Board Graph IR
-  -> component model binding
-  -> scenario execution
-  -> validation rules and optional SPICE-class analog solver
-  -> report.json + report.md + waveform artifacts
+source artifacts
+  -> importers append Board IR evidence
+  -> component libraries bind exact model IDs
+  -> scenario suggestions propose missing checks
+  -> validation dispatch runs selected rules
+  -> reports serialize findings, measurements, limits, and fixes
 ```
 
-The current runtime accepts hand-authored Board IR YAML, SPICE decks through
-`import-spice`, KiCad generic XML netlists through `import-kicad-netlist`, and
-native `.kicad_sch` schematics through `import-kicad-schematic`. It can also
-enrich an imported Board IR project with KiCad `.kicad_pcb` layout evidence,
-including component placements, board-outline segment evidence, routed
-segment/via geometry, and copper-zone outlines, through
-`import-kicad-pcb`. Importers are adapters into the same Board IR shape;
-validation and reporting do not branch on the original EDA source after import.
-EasyEDA, Altium, and JITX remain future adapter layers.
+Supported source paths include hand-authored Board IR YAML, SPICE decks, KiCad
+XML/schematic/PCB artifacts, JLC/EasyEDA BOM+CPL assembly files, EasyEDA
+flying-probe pad evidence, Gerber outline/copper/solder-mask/solder-paste
+layers, Excellon drill and routed-slot files, and EasyEDA Pro `.eprj2` envelope
+inspection. Importers are adapters into the same Board IR shape. Validation
+rules do not branch on the original EDA source after import; they consume only
+normalized board, layout, library, scenario, and process evidence.
 
-## Core Modules
+## Module Map
 
 | Module | Responsibility |
 | --- | --- |
-| `board_ir` | Parse and validate board projects, components, nets, power domains, and declared scenarios. |
-| `library` | Load component model YAML files and expose pin/model metadata to validation. |
-| `scenarios` | Normalize scenario definitions into events and selected validation checks. |
-| `validation` | Run deterministic rules and produce typed findings. |
-| `reports` | Serialize stable JSON and Markdown reports. |
-| `cli` | Provide agent-friendly commands. |
+| `board_ir` | Deserialize project YAML into components, nets, layout evidence, manufacturing metadata, and scenarios. |
+| `library` | Load component model packs, bind board components to exact `component_id` values, and emit binding findings. |
+| `importers` | Convert external artifacts into Board IR while preserving provenance and failing closed on unsupported constructs. |
+| `scenario_suggestions` | Inspect bound board evidence and propose runnable or non-runnable scenario YAML templates. |
+| `validation` | Dispatch scenario checks and collect deterministic findings. |
+| `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
+| `reports` | Convert findings into stable `report.json` and readable `report.md`. |
+| `suite` | Run acceptance/public fixture suites against a built CLI. |
+| `main` | Own the command-line interface and import/validate/suggest command wiring. |
 
-## Internal Contracts
-
-The first Rust implementation uses these data handoffs:
+## Core Contracts
 
 | Type | Owner | Purpose |
 | --- | --- | --- |
-| `BoardProject` | `board_ir` | Parsed YAML project with components, nets, libraries, and scenarios. |
-| `ComponentLibrary` | `library` | Deterministic map from exact `component_id` to one loaded model. |
-| `BoundBoard` | `library` | Board plus resolved component models and binding diagnostics. |
-| `ScenarioPlan` | `scenarios` | Normalized scenario checks and pin-state assumptions. |
-| `Finding` | `validation` | Typed diagnostic with rule ID, severity, scenario, endpoints, measurements, limits, and fixes. |
-| `ValidationReport` | `reports` | Stable JSON/Markdown report assembled from findings and limitations. |
+| `BoardProject` | `board_ir` | Project metadata, library paths, normalized board evidence, scenarios, and source directory. |
+| `Board` | `board_ir` | Component/net graph plus layout and board-level manufacturing facts such as stencil thickness. |
+| `ComponentLibrary` | `library` | Deterministic model map loaded from `*.model.yaml` files. |
+| `BoundBoard` | `library` | Board plus resolved component models and model binding diagnostics. |
+| `Scenario` | `board_ir` | User-authored validation intent: scenario type, checks, targets, parameters, events, and paths. |
+| `ScenarioSuggestion` | `scenario_suggestions` | Agent-facing scenario template with confidence, runnability, and required inputs. |
+| `Finding` | `reports` | Stable diagnostic payload containing rule ID, severity, measured evidence, limits, and suggested fixes. |
+| `ValidationReport` | `reports` | Final pass/fail result and serialized finding set. |
 
-Binding diagnostics are findings with IDs such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED`. Validation rules should not repeat binding checks.
+Binding diagnostics such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED` are report
+findings. Rule implementations should rely on `BoundBoard` rather than
+duplicating library binding checks.
 
-## Rust Workspace Shape
+## Importer Design
 
-The first implementation uses one Rust package with clear internal modules. When module boundaries stabilize, it can split into crates without changing CLI behavior:
+Importers append evidence instead of guessing missing intent. Examples:
 
-```text
-circuitci/
-  src/
-    board_ir/
-    library/
-    scenarios/
-    validation/
-    reports/
-    cli/
-```
+- JLC/EasyEDA BOM+CPL import adds components and placements, but does not infer
+  nets or pins from assembly files.
+- Gerber copper import records flashes, circular-aperture draw segments, and
+  single-contour regions. Copper is anonymous until existing pad, route, zone,
+  or flying-probe evidence uniquely proves net/island/owner metadata.
+- Gerber solder-mask and solder-paste importers use the same artwork evidence
+  shape, with layer mapping to corresponding copper layers for owner matching.
+- Excellon import records circular drill hits and `G85` routed slots, then adds
+  pad/via owner metadata only when layout or copper evidence uniquely matches.
+- EasyEDA Pro `.eprj2` inspection documents the SQLite envelope and encoded
+  payload status; it does not fabricate pad/net geometry from encoded history.
 
-Future crate split:
+Unsupported source constructs fail closed or are counted as ignored when they
+cannot be represented without losing the engineering meaning. The importer
+contract is evidence preservation, not optimistic reconstruction.
 
-```text
-crates/
-  circuitci-core
-  circuitci-validation
-  circuitci-report
-  circuitci-cli
-  circuitci-sim
-  circuitci-gui
-```
+## Validation Design
 
-## Execution Model
+Validation is scenario-driven. A scenario selects one or more check IDs, and
+`validation::mod` dispatches each ID to a rule implementation. Rules must:
 
-CircuitCI combines deterministic board-rule validation with solver-backed
-analog validation. Behavioral rules use declared board/model metadata and
-scenario events. For example, `GPIO_BACKDRIVE` uses declared power-domain state
-and electrical pin metadata to validate:
+- require every measurement source they consume,
+- emit `VALIDATION_INPUT_MISSING` when a required source or parameter is absent,
+- report measured values and limit values with stable keys,
+- preserve provenance fields such as source primitive indices, component pins,
+  route/via indices, Gerber apertures, and Excellon tools,
+- avoid changing thresholds to make examples pass.
 
-```text
-powered output pin drives an unpowered input pin above injection-current limit
-```
+Manufacturing rules are static geometry and process screens. They currently
+cover circular drills, routed slots, annular rings, castellated holes, copper
+edge/spacing, solder-mask openings/dams, solder-paste openings/size/area ratio,
+IC/BGA stencil aperture rows, and paste spacing. Shared geometry lives in
+`validation::manufacturing::geometry`; larger rule families are split into
+focused modules so source files stay below the 2000-line guard.
 
-`analog_transient` scenarios provide the physical waveform path. They can run
-file-backed imported SPICE decks or generated Board IR netlists through a
-SPICE-class backend. The supported mature backend path is ngspice, either via
-the external `ngspice` binary or dynamically loaded `libngspice`; unavailable
-or misconfigured backends fail closed with report findings instead of fabricated
-passes. Generated semiconductor scenarios can also emit datasheet operating
-limit findings for MOSFET, BJT, and diode ratings, including derating, qualified
-pulse current, and digitized MOSFET SOA evidence when metadata is present.
+## Process Presets
 
-## Library Contract
+`parameters.fabrication_process` is a named source-backed default set for
+numeric manufacturing limits. Scenario numeric parameters always override
+process defaults. Presets may be combined as a list, but validation fails closed
+if two presets provide conflicting defaults for the same parameter.
 
-Library paths in a project are package roots. The loader recursively discovers `*.model.yaml` files under each root. Every file must contain one component model.
+Presets are deliberately narrow. JLCPCB castellated-hole values are only exposed
+through `CASTELLATED_HOLE_VALID`; they are not reused as generic drill-edge
+clearance. JLC stencil table rows are package/pitch-scoped rules rather than
+global paste-spacing or paste-area presets. Board-level process facts that are
+not present in Gerbers, such as `board.manufacturing.stencil_thickness_mm`, are
+stored as Board IR metadata and remain explicit evidence.
 
-Rules:
+## Scenario Suggestions
 
-- `board.components.*.model` is an exact `component_id` match.
-- duplicate `component_id` values are binding errors.
-- version selection is not implicit; a future schema can add semver-qualified model references.
-- unreadable or malformed model files produce report findings.
+`suggest-scenarios` converts evidence into candidate scenario YAML:
 
-Chip and IC support must arrive as library packs. For example, STM32L4 support for the acceptance demo should be a vendor model pack plus fixtures; it must not add STM32L4-specific branches to the validation engine. The same engine path must be able to load future packs for ESP32, STM32F1/F4/L1/L4, STM8, C51/STC, 555 timers, USB-UART bridges, regulators, and other common embedded parts.
+- runnable suggestions include enough parameters or process presets to execute
+  immediately;
+- non-runnable suggestions identify exactly which source-backed threshold or
+  board fact is still missing;
+- package-scoped stencil suggestions are inferred only from conservative
+  owner-backed geometry patterns and discrete source-backed pitch rows.
 
-## Simulation Kernel
+The suggestion engine is not a hidden validator. It never silently adds
+thresholds that are missing from the project, source documents, or Board IR.
 
-The mixed-domain kernel uses replaceable adapters:
+## Solver Boundary
 
-- analog solver adapter: external `ngspice`, embedded `libngspice`, and a
-  fail-closed Xyce placeholder,
-- digital event solver: scheduled state changes, protocol events, and pin
-  modes encoded in scenarios,
-- analog/digital bridge: explicit generated stimuli and probes; threshold
-  crossing automation remains future work,
-- firmware adapter: QEMU-backed functional firmware-in-loop validation with
-  explicit board-facing pin observations; Renode remains a fail-closed future
-  adapter. Firmware models should expose firmware-visible peripherals and
-  package pin behavior, not internal MCU transistor implementation.
+Most mature checks are deterministic static rules. `analog_transient` scenarios
+can run file-backed or generated SPICE-class simulations through ngspice when
+configured. Missing or unavailable simulation backends fail closed. MCU support
+is modeled as externally observable pin behavior, reset/boot state, electrical
+limits, and firmware-visible behavior; internal MCU transistor simulation is a
+non-goal.
 
-The CLI and JSON report schema must remain stable as solver fidelity increases.
+## Verification Strategy
 
-The gap between this architecture and broad "verify any common IoT board"
-coverage is tracked in
-[common_iot_board_readiness_gaps.md](common_iot_board_readiness_gaps.md).
+The repo uses focused fixture tests for each rule/importer, schema sweeps for
+example projects and reports, public fixture suites for release binaries,
+behavioral/physical acceptance suites, clippy, formatting, diff checks, and a
+source line-count guard. Real peer-board research notes under `docs/research/`
+record imported `urine_monitor` evidence and distinguish runnable checks from
+threshold-gated checks.
 
-## Design Constraints
-
-- A validation rule must never silently change pass criteria to make examples pass.
-- A component model must declare model quality and unsupported use cases.
-- Reports must include low-confidence or unmodeled areas.
-- Backends must fail with actionable diagnostics instead of silent crashes.
-- MCU internals should be modeled as functional black boxes. CircuitCI cares
-  about the externally observable pin behavior, firmware-visible peripheral
-  state, reset/boot sequencing, and electrical limits that affect the board.
+See [internal_design.md](internal_design.md) for implementation-level contracts
+and rule/module ownership.

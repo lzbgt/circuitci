@@ -65,6 +65,12 @@ Supported aliases for the JLCPCB stencil aperture-size preset:
 - `jlcpcb_stencil_aperture_min_2026_06`
 - `jlcpcb_stencil_aperture_min`
 
+Supported aliases for the JLCPCB stencil area-ratio preset:
+
+- `jlcpcb_stencil_area_ratio_2026_06`
+- `jlcpcb_stencil_area_ratio`
+- `jlcpcb_ipc_7525_area_ratio_2026_06`
+
 Current preset defaults:
 
 | Parameter | Value | Source |
@@ -83,6 +89,7 @@ Current preset defaults:
 | `min_copper_spacing_mm` | `0.10` | JLCPCB PCB capability page: 1 oz minimum track width and spacing is 0.10 / 0.10 mm, and pad-to-track clearance is 0.1 mm. |
 | `min_copper_edge_clearance_mm` | `0.20` | JLCPCB PCB capability page: copper clearance from routed board edges and routed slots is at least 0.2 mm. |
 | `min_solder_paste_aperture_size_mm` | `0.08` | JLCPCB stencil capability page: minimum aperture size is greater than 0.08 mm. |
+| `min_solder_paste_aperture_area_ratio` | `0.66` | JLCPCB stencil opening standard references the IPC-7525 aperture area-ratio floor of at least 0.66. |
 
 Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.
@@ -98,6 +105,9 @@ a package paste-reduction rule.
 Package-specific SMD pad spacing, stencil aperture spacing, paste area ratio,
 drill/slot-to-board-edge clearance, V-cut panel clearance, and special-order
 constraints still need narrower presets or explicit scenario parameters.
+The stencil area-ratio preset supplies only the source-backed ratio floor;
+`stencil_thickness_mm` remains explicit scenario or board manufacturing
+metadata.
 
 JLCPCB castellated-hole source material is intentionally exposed only through
 the castellated-specific `jlcpcb_castellated_hole_2026_06` preset and

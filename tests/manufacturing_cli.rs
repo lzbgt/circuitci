@@ -796,7 +796,7 @@ fn solder_paste_aperture_size_fails_with_jlc_process_default() {
 }
 
 #[test]
-fn solder_paste_aperture_area_ratio_passes_with_jlc_process_default() {
+fn solder_paste_aperture_area_ratio_passes_with_board_stencil_thickness() {
     let report = run_validation("examples/good_solder_paste_aperture_area_ratio_jlc/project.yaml");
     assert_eq!(report["result"], "pass");
     assert_eq!(report["summary"]["critical"], 0);

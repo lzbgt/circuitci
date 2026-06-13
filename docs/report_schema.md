@@ -581,7 +581,8 @@ optional `solder_paste_segment_component`, optional
 
 `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` reports are emitted by
 `manufacturing` scenarios that compare supported Gerber solder-paste openings
-with a stencil release area-ratio floor. Stable measured keys include
+with a stencil release area-ratio floor. `stencil_thickness_mm` may come from
+the scenario parameters or from `board.manufacturing` metadata. Stable measured keys include
 `solder_paste_kind`, `solder_paste_aperture_area_mm2`,
 `solder_paste_aperture_perimeter_mm`, `stencil_thickness_mm`, and
 `solder_paste_aperture_area_ratio`. Feature, segment, and region findings

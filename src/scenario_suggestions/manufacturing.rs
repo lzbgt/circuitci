@@ -292,20 +292,35 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     }
 
     if paste_objects > 0 {
+        let stencil_thickness_mm = bound
+            .project
+            .board
+            .manufacturing
+            .stencil_thickness_mm
+            .filter(|value| value.is_finite() && *value > 0.0);
+        let runnable = stencil_thickness_mm.is_some();
         push_if_not_declared(
             bound,
             &mut suggestions,
             SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
             manufacturing_suggestion(
                 "solder_paste_aperture_area_ratio_valid",
-                false,
-                "Imported Gerber solder-paste opening evidence can be screened against the source-backed JLCPCB/IPC stencil aperture area-ratio floor once stencil thickness is supplied.",
+                runnable,
+                if runnable {
+                    "Imported Gerber solder-paste opening evidence can be screened against the source-backed JLCPCB/IPC stencil aperture area-ratio floor using board-level stencil thickness metadata."
+                } else {
+                    "Imported Gerber solder-paste opening evidence can be screened against the source-backed JLCPCB/IPC stencil aperture area-ratio floor once stencil thickness is supplied."
+                },
                 &format!("{project_name}_solder_paste_aperture_area_ratio"),
                 SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
-                Some(fabrication_process("jlcpcb_stencil_area_ratio_2026_06")),
-                vec![
-                    "Set manufacturing parameters.stencil_thickness_mm for the stencil used to fabricate this paste layer.".to_string(),
-                ],
+                Some(stencil_area_ratio_parameters(stencil_thickness_mm)),
+                if runnable {
+                    Vec::new()
+                } else {
+                    vec![
+                        "Set manufacturing parameters.stencil_thickness_mm or board.manufacturing.stencil_thickness_mm for the stencil used to fabricate this paste layer.".to_string(),
+                    ]
+                },
             ),
         );
     }
@@ -474,6 +489,14 @@ fn fabrication_process(process: &str) -> BTreeMap<String, Value> {
 
 fn pin_pitch_parameter(pin_pitch_mm: f64) -> BTreeMap<String, Value> {
     BTreeMap::from([("pin_pitch_mm".to_string(), json!(pin_pitch_mm))])
+}
+
+fn stencil_area_ratio_parameters(stencil_thickness_mm: Option<f64>) -> BTreeMap<String, Value> {
+    let mut parameters = fabrication_process("jlcpcb_stencil_area_ratio_2026_06");
+    if let Some(value) = stencil_thickness_mm {
+        parameters.insert("stencil_thickness_mm".to_string(), json!(value));
+    }
+    parameters
 }
 
 fn copper_object_count(copper: &LayoutCopper) -> usize {

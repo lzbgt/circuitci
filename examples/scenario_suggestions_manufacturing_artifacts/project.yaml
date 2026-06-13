@@ -6,6 +6,9 @@ libraries:
 board:
   components: {}
   nets: {}
+  manufacturing:
+    stencil_thickness_mm: 0.10
+    source: example_stencil_order
   layout:
     outline:
       segments:

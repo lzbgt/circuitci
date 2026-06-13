@@ -30,7 +30,17 @@ pub struct Board {
     #[serde(default)]
     pub nets: BTreeMap<String, NetSpec>,
     #[serde(default)]
+    pub manufacturing: BoardManufacturing,
+    #[serde(default)]
     pub layout: BoardLayout,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BoardManufacturing {
+    #[serde(default)]
+    pub stencil_thickness_mm: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

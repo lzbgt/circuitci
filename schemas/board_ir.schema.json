@@ -117,6 +117,14 @@
             "additionalProperties": true
           }
         },
+        "manufacturing": {
+          "type": "object",
+          "properties": {
+            "stencil_thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
+            "source": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
         "layout": {
           "type": "object",
           "properties": {

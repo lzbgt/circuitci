@@ -6,6 +6,9 @@ libraries:
 board:
   components: {}
   nets: {}
+  manufacturing:
+    stencil_thickness_mm: 0.10
+    source: example_stencil_order
   layout:
     solder_paste:
       features:
@@ -27,4 +30,3 @@ scenarios:
       - SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
     parameters:
       fabrication_process: jlcpcb_stencil_area_ratio_2026_06
-      stencil_thickness_mm: 0.10

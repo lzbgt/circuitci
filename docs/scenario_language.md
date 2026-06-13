@@ -589,11 +589,11 @@ Manufacturing scenarios may use `parameters.fabrication_process` to fill
 source-backed defaults for supported numeric limits. Explicit numeric
 parameters always override the preset. `fabrication_process` may be one
 preset string or a list of preset strings. The supported presets are documented
-in `docs/fabrication_process_presets.md`; they currently supply
-`min_mask_expansion_mm: 0.05`, `min_solder_mask_dam_mm: 0.10`, and a dedicated
-JLCPCB double-sided/multilayer via minimum `min_annular_ring_mm: 0.05`, plus
-JLCPCB routed-slot minimums for metallized and non-metallized slots and a
-dedicated JLCPCB circular drill diameter range.
+in `docs/fabrication_process_presets.md`. Current JLCPCB presets cover selected
+mask expansion/dam, via annular ring, slot width/aspect ratio, drill diameter,
+castellated-hole, copper spacing, routed-edge copper clearance, stencil
+aperture size, and stencil aperture area-ratio limits where the source
+condition is narrow enough to encode.
 
 Drill-diameter validation uses `DRILL_DIAMETER_VALID` when the Board IR
 includes circular fabrication drill evidence under `board.layout.drills`.
@@ -1084,8 +1084,10 @@ It checks stencil release area ratio as
 `opening_area_mm2 / (opening_perimeter_mm * stencil_thickness_mm)`. With
 `fabrication_process: jlcpcb_stencil_area_ratio_2026_06`, the minimum area
 ratio defaults to `0.66` from the saved JLCPCB/IPC-7525 source. Stencil
-thickness remains explicit because Gerber paste layers do not encode the
-physical stencil thickness.
+thickness may be supplied as `parameters.stencil_thickness_mm` or as
+`board.manufacturing.stencil_thickness_mm`. The scenario parameter takes
+precedence. Stencil thickness remains explicit board/order metadata because
+Gerber paste layers do not encode the physical stencil thickness.
 
 ```yaml
 scenarios:

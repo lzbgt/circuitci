@@ -148,7 +148,7 @@ pub(super) fn optional_numeric_parameter(
     Some(default)
 }
 
-fn explicit_numeric_parameter(
+pub(super) fn explicit_numeric_parameter(
     scenario: &Scenario,
     name: &str,
     findings: &mut Vec<Finding>,
