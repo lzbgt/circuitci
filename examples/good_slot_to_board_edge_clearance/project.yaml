@@ -1,0 +1,56 @@
+project:
+  name: good_slot_to_board_edge_clearance
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    outline:
+      segments:
+        - start: { x_mm: 0.0, y_mm: 0.0 }
+          end: { x_mm: 10.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 0
+          contour_index: 0
+          boundary_role: external
+        - start: { x_mm: 10.0, y_mm: 0.0 }
+          end: { x_mm: 10.0, y_mm: -10.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 1
+          contour_index: 0
+          boundary_role: external
+        - start: { x_mm: 10.0, y_mm: -10.0 }
+          end: { x_mm: 0.0, y_mm: -10.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 2
+          contour_index: 0
+          boundary_role: external
+        - start: { x_mm: 0.0, y_mm: -10.0 }
+          end: { x_mm: 0.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 3
+          contour_index: 0
+          boundary_role: external
+    slots:
+      - start: { x_mm: 2.0, y_mm: -4.0 }
+        end: { x_mm: 4.0, y_mm: -4.0 }
+        width_mm: 1.0
+        plating: plated
+        layer: PTH_Through
+        tool: T08
+        source_slot_index: 0
+
+scenarios:
+  - name: slot_to_board_edge_clearance
+    type: manufacturing
+    checks:
+      - SLOT_TO_BOARD_EDGE_CLEARANCE_VALID
+    parameters:
+      min_slot_edge_clearance_mm: 0.5

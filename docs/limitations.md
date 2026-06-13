@@ -180,9 +180,11 @@ without explicit imported mechanical evidence.
   mask expansion, return paths, or signal-integrity constraints.
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported drill centers, drill
   diameters, and board-outline centerline segments for a static 2D
-  edge-clearance screen. It does not model drill wander, routed-slot width,
-  plating tolerances, panel tabs, fab-specific stackup rules, or copper-to-hole
-  clearance.
+  edge-clearance screen. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` similarly uses
+  imported Excellon `G85` routed-slot centerlines and widths under
+  `board.layout.slots[]`. These rules do not model drill wander, route-tool
+  runout/overcut, plating tolerances, panel tabs, fab-specific stackup rules,
+  copper-to-hole clearance, or 3D mechanical fit.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   Gerber flash copper geometry for a static 2D annular-ring screen. It checks
   circle, rectangle, and axis-aligned oval flashes, skips non-plated drills,

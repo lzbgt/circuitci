@@ -602,9 +602,39 @@ Drill-to-board-edge algorithm:
 
 External board-outline segments, cutout segments, and unknown outline segments
 all count as board edges for this check. This is a static 2D centerline
-fabrication screen; it does not model drill wander, routed-slot width, plating
+fabrication screen; it does not model drill wander, plating
 barrel tolerances, panel tabs, fab-specific minimums, or copper-to-hole
 clearance.
+
+Slot-to-board-edge clearance uses `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` when the
+Board IR includes routed-slot evidence under `board.layout.slots` and
+board-outline segment evidence under `board.layout.outline.segments`.
+
+```yaml
+scenarios:
+  - name: slot_to_board_edge_clearance
+    type: manufacturing
+    checks:
+      - SLOT_TO_BOARD_EDGE_CLEARANCE_VALID
+    parameters:
+      min_slot_edge_clearance_mm: 0.5
+```
+
+Slot-to-board-edge algorithm:
+
+1. Require `parameters.min_slot_edge_clearance_mm`.
+2. Require finite `board.layout.slots[]` entries with positive `width_mm` and
+   non-zero start/end centerline length.
+3. Require finite `board.layout.outline.segments[]` entries.
+4. Measure each slot centerline to the nearest outline segment and subtract
+   half the routed slot width.
+5. Fail when any slot edge-to-outline clearance is below
+   `min_slot_edge_clearance_mm`.
+
+External board-outline segments, cutout segments, and unknown outline segments
+all count as board edges for this check. This is a static 2D routed-slot
+capsule screen; it does not model tool runout, route overcut, plating
+tolerances, panel tabs, fab-specific minimums, or 3D mechanical fit.
 
 Drill annular-ring screening uses `DRILL_ANNULAR_RING_VALID` when the Board IR
 includes fabrication drill evidence under `board.layout.drills` and Gerber

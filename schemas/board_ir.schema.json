@@ -299,6 +299,25 @@
                 "additionalProperties": false
               }
             },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["start", "end", "width_mm", "plating"],
+                "properties": {
+                  "start": { "$ref": "#/$defs/layout_point" },
+                  "end": { "$ref": "#/$defs/layout_point" },
+                  "width_mm": { "type": "number", "exclusiveMinimum": 0 },
+                  "plating": {
+                    "enum": ["plated", "non_plated", "unknown"]
+                  },
+                  "layer": { "type": "string", "minLength": 1 },
+                  "tool": { "type": "string", "minLength": 1 },
+                  "source_slot_index": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
             "copper": {
               "type": "object",
               "properties": {

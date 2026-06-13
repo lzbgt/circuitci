@@ -36,6 +36,7 @@ pub(super) const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
 pub(super) const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
+pub(super) const SLOT_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
     "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
@@ -287,6 +288,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         &mut findings,
                     )
                 }
+                SLOT_TO_BOARD_EDGE_CLEARANCE_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_slot_to_board_edge_clearance(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 DRILL_ANNULAR_RING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_drill_annular_ring(bound, scenario, &mut findings)
                 }
@@ -339,6 +347,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | FUNCTIONAL_MCU_FIRMWARE
                 | POWER_TREE_VALID
                 | DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
+                | SLOT_TO_BOARD_EDGE_CLEARANCE_VALID
                 | DRILL_ANNULAR_RING_VALID
                 | COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
                 | COPPER_SPACING_VALID

@@ -291,6 +291,17 @@ optional `board_edge_contour_index`, and optional
 `board_edge_boundary_role`. Stable limit keys include
 `min_drill_edge_clearance_mm`.
 
+`SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by `manufacturing`
+scenarios that combine `board.layout.slots` evidence with
+`board.layout.outline.segments`. Stable measured keys include `slot_index`,
+`slot_start`, `slot_end`, `slot_width_mm`, `slot_radius_mm`, `clearance_mm`,
+`slot_centerline_to_board_edge_distance_mm`, `slot_plating`, optional
+`slot_layer`, optional `slot_tool`, optional `source_slot_index`,
+`board_edge_start`, `board_edge_end`, optional `board_edge_layer`, optional
+`board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
+optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
+Stable limit keys include `min_slot_edge_clearance_mm`.
+
 `DRILL_ANNULAR_RING_VALID` reports are emitted by `manufacturing` scenarios
 that combine `board.layout.drills` evidence with
 `board.layout.copper.features` Gerber flash evidence. Stable measured keys

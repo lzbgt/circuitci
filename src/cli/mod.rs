@@ -587,8 +587,9 @@ fn run_import_excellon_drill(drill: PathBuf, project: PathBuf, output: PathBuf) 
         },
     )?;
     println!(
-        "CircuitCI imported Excellon/NC drill evidence: {} hits, {} tools ({} plated, {} non-plated, {} unknown plating, {} pad-associated, {} via-associated) {} + {} -> {}",
+        "CircuitCI imported Excellon/NC drill evidence: {} hits, {} routed slots, {} tools ({} plated, {} non-plated, {} unknown plating, {} pad-associated, {} via-associated) {} + {} -> {}",
         summary.drill_hits,
+        summary.slots,
         summary.tools,
         summary.plated_hits,
         summary.non_plated_hits,

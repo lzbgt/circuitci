@@ -25,6 +25,10 @@ drill file such as `Drill_PTH_Through_Via.DRL` or `Drill_NPTH_Through.DRL`.
 - source drill layer comment,
 - selected tool such as `T01`,
 - source hit index within the imported drill file.
+- `board.layout.slots[]` for Excellon `G85` routed-slot commands,
+- slot `start` / `end` centerline coordinates,
+- `width_mm` from the selected tool diameter,
+- slot plating, layer, tool, and source slot index.
 
 ## Supported Drill Subset
 
@@ -36,12 +40,15 @@ JLC/EasyEDA Pro drill subset:
 - tool definitions such as `T01C0.30500`,
 - `G90` absolute coordinates,
 - selected-tool hits such as `X29.3Y-8.64001`,
+- selected-tool routed slots such as
+  `X6.72504Y-9.22507G85X5.82504Y-9.22507`,
 - plating comments `;TYPE=PLATED` and `;TYPE=NON_PLATED`,
 - layer comments such as `;Layer: PTH_Through`.
 
 It fails closed for inches, incremental coordinates, undefined tools, missing
 tool selections, missing units, non-positive tool diameters, and unsupported
-commands.
+commands. `G85` slots must have finite, non-zero centerline length and use the
+currently selected tool as slot width.
 
 ## Limits
 
@@ -51,8 +58,9 @@ matching drilled pad or route via at the same center and diameter. For
 via-labeled drill layers, it can also conservatively annotate a drill as a via
 when previously imported Gerber copper flash evidence at the same coordinate has
 exactly one net owner. It does not infer pad copper, annular rings, plated
-barrel connectivity, slots, routed cutouts, or electrical scenarios from drill
-files alone. It is intended to be
+barrel connectivity, routed-cutout semantics, or electrical scenarios from
+drill files alone. Imported routed slots remain anonymous fabrication geometry
+unless future layout evidence proves ownership. It is intended to be
 combined with schematic import, PCB import, JLC/EasyEDA assembly import, Gerber
 outline import, or explicit Board IR before electrical validation.
 
@@ -66,6 +74,10 @@ fabricator's intended drill package semantics.
 `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported `board.layout.drills`
 plus `board.layout.outline.segments` to screen each drill edge against the
 nearest external, cutout, or unknown board-edge segment.
+
+`SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported `board.layout.slots`
+plus `board.layout.outline.segments` to screen each routed slot capsule against
+the nearest external, cutout, or unknown board-edge segment.
 
 `DRILL_ANNULAR_RING_VALID` reports optional drill ownership fields when present,
 which makes undersized annular-ring findings traceable to the affected pad or

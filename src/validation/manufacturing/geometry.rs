@@ -1,6 +1,6 @@
 use crate::board_ir::{
     LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, LayoutPoint,
-    LayoutSegment,
+    LayoutSegment, LayoutSlot,
 };
 
 pub(super) fn validate_drill_geometry(
@@ -15,6 +15,25 @@ pub(super) fn validate_drill_geometry(
     if !drill.drill_mm.is_finite() || drill.drill_mm <= 0.0 {
         return Err(format!(
             "board.layout.drills[{drill_index}].drill_mm must be finite and positive."
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn validate_slot_geometry(slot: &LayoutSlot, slot_index: usize) -> Result<(), String> {
+    if !finite_point(&slot.start) || !finite_point(&slot.end) {
+        return Err(format!(
+            "board.layout.slots[{slot_index}] start/end must contain finite coordinates."
+        ));
+    }
+    if point_distance_mm(&slot.start, &slot.end) <= f64::EPSILON {
+        return Err(format!(
+            "board.layout.slots[{slot_index}] must have non-zero length."
+        ));
+    }
+    if !slot.width_mm.is_finite() || slot.width_mm <= 0.0 {
+        return Err(format!(
+            "board.layout.slots[{slot_index}].width_mm must be finite and positive."
         ));
     }
     Ok(())
@@ -103,6 +122,13 @@ pub(super) struct DrillEdgeClearance<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub(super) struct SlotEdgeClearance<'a> {
+    pub(super) edge: &'a LayoutSegment,
+    pub(super) centerline_distance_mm: f64,
+    pub(super) clearance_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub(super) struct CopperFeatureEdgeClearance<'a> {
     pub(super) edge: &'a LayoutSegment,
     pub(super) clearance_mm: f64,
@@ -187,6 +213,27 @@ pub(super) fn nearest_drill_edge_clearance<'a>(
                     edge,
                     center_distance_mm,
                     clearance_mm: center_distance_mm - radius_mm,
+                })
+        })
+        .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
+}
+
+pub(super) fn nearest_slot_edge_clearance<'a>(
+    slot: &LayoutSlot,
+    board_edges: &'a [&LayoutSegment],
+) -> Option<SlotEdgeClearance<'a>> {
+    let radius_mm = slot.width_mm / 2.0;
+    board_edges
+        .iter()
+        .filter_map(|edge| {
+            let centerline_distance_mm =
+                segment_to_segment_distance_mm(&slot.start, &slot.end, &edge.start, &edge.end);
+            centerline_distance_mm
+                .is_finite()
+                .then_some(SlotEdgeClearance {
+                    edge,
+                    centerline_distance_mm,
+                    clearance_mm: centerline_distance_mm - radius_mm,
                 })
         })
         .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))

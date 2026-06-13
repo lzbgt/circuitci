@@ -315,6 +315,27 @@ layout evidence uniquely matches a drill center and diameter,
 `component`/`pin`/`net`, or `owner_kind: via` plus `net`/`via_index`. Ambiguous
 or missing matches remain anonymous.
 
+Board IR can also carry Excellon routed-slot evidence under
+`board.layout.slots`. Slot coordinates describe the routed slot centerline and
+tool width in millimeters:
+
+```yaml
+board:
+  layout:
+    slots:
+      - start: { x_mm: 6.72504, y_mm: -9.22507 }
+        end: { x_mm: 5.82504, y_mm: -9.22507 }
+        width_mm: 3.2004
+        plating: plated
+        layer: PTH_Through
+        tool: T08
+        source_slot_index: 0
+```
+
+Slot evidence is fabrication geometry only. It does not imply pad ownership,
+plating quality, routed-slot tolerance, or mechanical fit unless separate
+scenario checks and fabricator rules are declared.
+
 ## Layout Fabrication Copper Evidence
 
 Board IR can carry imported copper features under

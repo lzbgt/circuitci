@@ -36,16 +36,29 @@ T01C0.40000
 Coordinates are absolute metric hits after tool selection, for example
 `X29.3Y-8.64001`.
 
+The peer plated-through file also contains routed slots encoded as Excellon
+`G85` records after tool selection, for example:
+
+```text
+T08
+X6.72504Y-9.22507G85X5.82504Y-9.22507
+```
+
+Tool `T08C3.20040` supplies the routed-slot width for those records.
+
 ## CircuitCI Import Contract
 
-CircuitCI imports this subset into `board.layout.drills[]` with hole center,
-diameter, plating class, source layer, selected tool, and source hit index.
-Unsupported NC constructs fail closed instead of being approximated.
+CircuitCI imports round hits into `board.layout.drills[]` with hole center,
+diameter, plating class, source layer, selected tool, and source hit index. It
+imports `G85` routed slots into `board.layout.slots[]` with start/end
+centerline coordinates, tool width, plating class, source layer, selected tool,
+and source slot index. Unsupported NC constructs fail closed instead of being
+approximated.
 
 Observed peer import counts for the aggregate drill files:
 
 ```text
-Drill_PTH_Through.DRL: 1275 hits, 8 tools, plated
+Drill_PTH_Through.DRL: 1267 hits, 8 routed slots, 8 tools, plated
 Drill_NPTH_Through.DRL: 31 hits, 4 tools, non-plated
 ```
 

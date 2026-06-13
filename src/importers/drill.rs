@@ -18,6 +18,7 @@ pub struct ExcellonDrillImportOptions {
 #[derive(Debug, Clone, Default)]
 pub struct ExcellonDrillImportSummary {
     pub drill_hits: usize,
+    pub slots: usize,
     pub tools: usize,
     pub plated_hits: usize,
     pub non_plated_hits: usize,
@@ -38,6 +39,7 @@ struct ParsedDrillFile {
     plating: DrillPlating,
     tools: BTreeMap<String, f64>,
     hits: Vec<DrillHit>,
+    slots: Vec<DrillSlot>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +49,15 @@ struct DrillHit {
     tool: String,
     source_hit_index: usize,
     owner: Option<DrillOwner>,
+}
+
+#[derive(Debug, Clone)]
+struct DrillSlot {
+    start: DrillPoint,
+    end: DrillPoint,
+    width_mm: f64,
+    tool: String,
+    source_slot_index: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +101,17 @@ struct DrillYaml {
     layer: String,
     tool: String,
     source_hit_index: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct SlotYaml {
+    start: DrillPoint,
+    end: DrillPoint,
+    width_mm: f64,
+    plating: DrillPlating,
+    layer: String,
+    tool: String,
+    source_slot_index: usize,
 }
 
 const DRILL_OWNER_CENTER_TOLERANCE_MM: f64 = 0.05;
@@ -167,6 +189,7 @@ fn parse_excellon_drill(text: &str, path: &Path) -> Result<ParsedDrillFile> {
     let mut tools = BTreeMap::new();
     let mut current_tool: Option<String> = None;
     let mut hits = Vec::new();
+    let mut slots = Vec::new();
     for (line_index, raw_line) in text.lines().enumerate() {
         let line = raw_line.trim();
         if line.is_empty() {
@@ -259,6 +282,24 @@ fn parse_excellon_drill(text: &str, path: &Path) -> Result<ParsedDrillFile> {
                     tool
                 )
             })?;
+            if line.contains("G85") {
+                let (start, end) = parse_slot_points(line, state.decimals, path)?;
+                if drill_point_distance_mm(start, end) <= f64::EPSILON {
+                    bail!(
+                        "Drill file {} has zero-length G85 slot at line {}.",
+                        path.display(),
+                        line_index + 1
+                    );
+                }
+                slots.push(DrillSlot {
+                    start,
+                    end,
+                    width_mm: drill_mm,
+                    tool,
+                    source_slot_index: slots.len(),
+                });
+                continue;
+            }
             let at = parse_hit_point(line, state.decimals, path)?;
             hits.push(DrillHit {
                 at,
@@ -279,14 +320,18 @@ fn parse_excellon_drill(text: &str, path: &Path) -> Result<ParsedDrillFile> {
     if tools.is_empty() {
         bail!("Drill file {} defines no drill tools.", path.display());
     }
-    if hits.is_empty() {
-        bail!("Drill file {} contains no drill hits.", path.display());
+    if hits.is_empty() && slots.is_empty() {
+        bail!(
+            "Drill file {} contains no drill hits or routed slots.",
+            path.display()
+        );
     }
     Ok(ParsedDrillFile {
         layer,
         plating,
         tools,
         hits,
+        slots,
     })
 }
 
@@ -363,6 +408,23 @@ fn parse_hit_point(line: &str, decimals: Option<u32>, path: &Path) -> Result<Dri
     Ok(DrillPoint { x_mm, y_mm })
 }
 
+fn parse_slot_points(
+    line: &str,
+    decimals: Option<u32>,
+    path: &Path,
+) -> Result<(DrillPoint, DrillPoint)> {
+    let Some((start_text, end_text)) = line.split_once("G85") else {
+        bail!(
+            "Drill file {} has malformed G85 slot command: {}.",
+            path.display(),
+            line
+        );
+    };
+    let start = parse_hit_point(start_text, decimals, path)?;
+    let end = parse_hit_point(end_text, decimals, path)?;
+    Ok((start, end))
+}
+
 fn coordinate_field(line: &str, axis: char) -> Option<&str> {
     let start = line.find(axis)? + axis.len_utf8();
     let bytes = line.as_bytes();
@@ -430,6 +492,29 @@ fn merge_drills_into_project(project_yaml: &mut Value, parsed: &ParsedDrillFile)
                 source_hit_index: hit.source_hit_index,
             })
             .context("Failed to serialize drill evidence into Board IR YAML.")?,
+        );
+    }
+    let slots_key = Value::String("slots".to_string());
+    if !layout.contains_key(&slots_key) {
+        layout.insert(slots_key.clone(), Value::Sequence(Vec::new()));
+    }
+    let slots = layout
+        .get_mut(&slots_key)
+        .expect("slots field was inserted when absent")
+        .as_sequence_mut()
+        .context("Board IR field board.layout.slots must be a list.")?;
+    for slot in &parsed.slots {
+        slots.push(
+            serde_yaml_ng::to_value(SlotYaml {
+                start: slot.start,
+                end: slot.end,
+                width_mm: slot.width_mm,
+                plating: parsed.plating,
+                layer: parsed.layer.clone(),
+                tool: slot.tool.clone(),
+                source_slot_index: slot.source_slot_index,
+            })
+            .context("Failed to serialize slot evidence into Board IR YAML.")?,
         );
     }
     Ok(())
@@ -648,11 +733,15 @@ fn drill_point_from_layout(point: &LayoutPoint) -> Option<DrillPoint> {
 }
 
 fn drill_points_match(first: DrillPoint, second: DrillPoint) -> bool {
-    (first.x_mm - second.x_mm).hypot(first.y_mm - second.y_mm) <= DRILL_OWNER_CENTER_TOLERANCE_MM
+    drill_point_distance_mm(first, second) <= DRILL_OWNER_CENTER_TOLERANCE_MM
 }
 
 fn drill_diameters_match(first_mm: f64, second_mm: f64) -> bool {
     (first_mm - second_mm).abs() <= DRILL_OWNER_DIAMETER_TOLERANCE_MM
+}
+
+fn drill_point_distance_mm(first: DrillPoint, second: DrillPoint) -> f64 {
+    (first.x_mm - second.x_mm).hypot(first.y_mm - second.y_mm)
 }
 
 fn finite_positive(value: f64) -> bool {
@@ -684,6 +773,7 @@ fn mapping_field_in_mapping_mut<'a>(
 fn summary_for_drill_file(parsed: &ParsedDrillFile) -> ExcellonDrillImportSummary {
     ExcellonDrillImportSummary {
         drill_hits: parsed.hits.len(),
+        slots: parsed.slots.len(),
         tools: parsed.tools.len(),
         plated_hits: usize::from(parsed.plating == DrillPlating::Plated) * parsed.hits.len(),
         non_plated_hits: usize::from(parsed.plating == DrillPlating::NonPlated) * parsed.hits.len(),

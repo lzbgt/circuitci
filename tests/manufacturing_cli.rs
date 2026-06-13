@@ -44,6 +44,37 @@ fn drill_to_board_edge_clearance_treats_cutouts_as_board_edges() {
 }
 
 #[test]
+fn slot_to_board_edge_clearance_passes_when_slot_is_far_enough() {
+    let report = run_validation("examples/good_slot_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn slot_to_board_edge_clearance_fails_external_edge_violation() {
+    let report = run_validation("examples/bad_slot_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["slot_index"], 0);
+    assert_eq!(failure["measured"]["slot_start"]["x_mm"], 0.8);
+    assert_eq!(failure["measured"]["slot_width_mm"], 1.0);
+    assert_eq!(failure["measured"]["slot_radius_mm"], 0.5);
+    assert_eq!(failure["measured"]["clearance_mm"], 0.30000000000000004);
+    assert_eq!(
+        failure["measured"]["slot_centerline_to_board_edge_distance_mm"],
+        0.8
+    );
+    assert_eq!(failure["measured"]["slot_plating"], "plated");
+    assert_eq!(failure["measured"]["slot_tool"], "T08");
+    assert_eq!(failure["measured"]["source_slot_index"], 0);
+    assert_eq!(failure["measured"]["board_edge_boundary_role"], "external");
+    assert_eq!(failure["limit"]["min_slot_edge_clearance_mm"], 0.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_annular_ring_passes_when_copper_flash_is_large_enough() {
     let report = run_validation("examples/good_drill_annular_ring/project.yaml");
     assert_eq!(report["result"], "pass");

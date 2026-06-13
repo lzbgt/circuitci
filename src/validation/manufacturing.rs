@@ -4,7 +4,7 @@ mod solder_mask;
 
 use crate::board_ir::{
     LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, LayoutSegment,
-    Scenario,
+    LayoutSlot, Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
@@ -12,15 +12,17 @@ use serde_json::json;
 
 use self::geometry::{
     CopperFeatureEdgeClearance, CopperObjectRef, CopperRegionEdgeClearance,
-    CopperSegmentEdgeClearance, DrillEdgeClearance, copper_object_spacing_mm,
+    CopperSegmentEdgeClearance, DrillEdgeClearance, SlotEdgeClearance, copper_object_spacing_mm,
     nearest_copper_feature_edge_clearance, nearest_copper_region_edge_clearance,
-    nearest_copper_segment_edge_clearance, nearest_drill_edge_clearance, usable_outline_segment,
-    validate_copper_feature_geometry, validate_copper_region_geometry,
-    validate_copper_segment_geometry, validate_drill_geometry,
+    nearest_copper_segment_edge_clearance, nearest_drill_edge_clearance,
+    nearest_slot_edge_clearance, usable_outline_segment, validate_copper_feature_geometry,
+    validate_copper_region_geometry, validate_copper_segment_geometry, validate_drill_geometry,
+    validate_slot_geometry,
 };
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::SLOT_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::common::validation_input_missing;
 
 pub(super) use annular_ring::validate_drill_annular_ring;
@@ -91,6 +93,75 @@ pub(super) fn validate_drill_to_board_edge_clearance(
                 scenario,
                 drill,
                 drill_index,
+                nearest,
+                min_clearance_mm,
+            ));
+        }
+    }
+}
+
+pub(super) fn validate_slot_to_board_edge_clearance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_clearance_mm) =
+        required_numeric_parameter(scenario, "min_slot_edge_clearance_mm", findings)
+    else {
+        return;
+    };
+    if min_clearance_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_slot_edge_clearance_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let slots = &bound.project.board.layout.slots;
+    if slots.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID requires board.layout.slots evidence.",
+        );
+        return;
+    }
+    let board_edges = bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| usable_outline_segment(segment))
+        .collect::<Vec<_>>();
+    if board_edges.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID requires usable board.layout.outline.segments evidence.",
+        );
+        return;
+    }
+    for (slot_index, slot) in slots.iter().enumerate() {
+        if let Err(message) = validate_slot_geometry(slot, slot_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(nearest) = nearest_slot_edge_clearance(slot, &board_edges) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID could not compute finite slot-to-board-edge clearance.",
+            );
+            continue;
+        };
+        if nearest.clearance_mm + f64::EPSILON < min_clearance_mm {
+            findings.push(slot_edge_clearance_finding(
+                scenario,
+                slot,
+                slot_index,
                 nearest,
                 min_clearance_mm,
             ));
@@ -549,6 +620,44 @@ fn drill_edge_clearance_finding(
     finding
 }
 
+fn slot_edge_clearance_finding(
+    scenario: &Scenario,
+    slot: &LayoutSlot,
+    slot_index: usize,
+    nearest: SlotEdgeClearance<'_>,
+    min_clearance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SLOT_TO_BOARD_EDGE_CLEARANCE_VALID,
+        &scenario.name,
+        format!(
+            "Routed slot {} has {:.3} mm edge-to-board clearance, below {:.3} mm minimum.",
+            slot_index, nearest.clearance_mm, min_clearance_mm
+        ),
+    );
+    insert_slot_measurements(&mut finding, slot, slot_index);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(nearest.clearance_mm));
+    finding.measured.insert(
+        "slot_centerline_to_board_edge_distance_mm".to_string(),
+        json!(nearest.centerline_distance_mm),
+    );
+    insert_board_edge_measurements(&mut finding, nearest.edge);
+    finding.limit.insert(
+        "min_slot_edge_clearance_mm".to_string(),
+        json!(min_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move the routed slot farther from the nearest board outline or cutout edge.".to_string(),
+        "Reduce slot width only if the mechanical requirement and fabricator minimums allow it."
+            .to_string(),
+        "Adjust the board outline or slot geometry if the fabrication drawing is incorrect."
+            .to_string(),
+    ];
+    finding
+}
+
 fn copper_feature_edge_clearance_finding(
     scenario: &Scenario,
     feature: &LayoutCopperFeature,
@@ -766,6 +875,50 @@ fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_i
         finding
             .measured
             .insert("source_hit_index".to_string(), json!(source_hit_index));
+    }
+}
+
+fn insert_slot_measurements(finding: &mut Finding, slot: &LayoutSlot, slot_index: usize) {
+    finding
+        .measured
+        .insert("slot_index".to_string(), json!(slot_index));
+    finding.measured.insert(
+        "slot_start".to_string(),
+        json!({
+            "x_mm": slot.start.x_mm,
+            "y_mm": slot.start.y_mm,
+        }),
+    );
+    finding.measured.insert(
+        "slot_end".to_string(),
+        json!({
+            "x_mm": slot.end.x_mm,
+            "y_mm": slot.end.y_mm,
+        }),
+    );
+    finding
+        .measured
+        .insert("slot_width_mm".to_string(), json!(slot.width_mm));
+    finding
+        .measured
+        .insert("slot_radius_mm".to_string(), json!(slot.width_mm / 2.0));
+    finding
+        .measured
+        .insert("slot_plating".to_string(), json!(slot.plating));
+    if let Some(layer) = &slot.layer {
+        finding
+            .measured
+            .insert("slot_layer".to_string(), json!(layer));
+    }
+    if let Some(tool) = &slot.tool {
+        finding
+            .measured
+            .insert("slot_tool".to_string(), json!(tool));
+    }
+    if let Some(source_slot_index) = slot.source_slot_index {
+        finding
+            .measured
+            .insert("source_slot_index".to_string(), json!(source_slot_index));
     }
 }
 

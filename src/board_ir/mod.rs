@@ -44,6 +44,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub drills: Vec<LayoutDrill>,
     #[serde(default)]
+    pub slots: Vec<LayoutSlot>,
+    #[serde(default)]
     pub copper: LayoutCopper,
     #[serde(default)]
     pub solder_mask: LayoutCopper,
@@ -233,6 +235,20 @@ pub struct LayoutDrill {
     pub tool: Option<String>,
     #[serde(default)]
     pub source_hit_index: Option<usize>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutSlot {
+    pub start: LayoutPoint,
+    pub end: LayoutPoint,
+    pub width_mm: f64,
+    pub plating: String,
+    #[serde(default)]
+    pub layer: Option<String>,
+    #[serde(default)]
+    pub tool: Option<String>,
+    #[serde(default)]
+    pub source_slot_index: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

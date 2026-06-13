@@ -53,7 +53,8 @@ pads imported first:
   after applying JLC placement side evidence to flying-probe pad layers.
 - Top solder paste: `1111` flash openings, `354` region openings, `103`
   owner-associated flash openings, and `9` owner-associated region openings.
-- PTH drills: `1275` hits with `9` pad-associated hits.
+- PTH drills: `1267` hits with `9` pad-associated hits, plus `8` imported
+  `G85` routed slots.
 - PTH via drills: `1179` hits with `472` via-associated hits from co-located
   Gerber copper net evidence.
 - NPTH drills: `31` non-plated hits with no pad/via owners.
