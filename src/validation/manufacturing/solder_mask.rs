@@ -8,7 +8,7 @@ use serde_json::json;
 use super::super::common::validation_input_missing;
 use super::super::{
     SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_APERTURE_SIZE_VALID,
-    SOLDER_PASTE_IC_PIN_APERTURE_VALID, SOLDER_PASTE_OPENING_VALID, SOLDER_PASTE_SPACING_VALID,
+    SOLDER_PASTE_OPENING_VALID, SOLDER_PASTE_SPACING_VALID,
 };
 use super::geometry::{
     CopperObjectRef, copper_object_spacing_mm, feature_boundary_points, point_distance_mm,
@@ -627,147 +627,6 @@ pub(in crate::validation) fn validate_solder_paste_aperture_size(
     }
 }
 
-pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
-    bound: &BoundBoard<'_>,
-    scenario: &Scenario,
-    findings: &mut Vec<Finding>,
-) {
-    let Some(pin_pitch_mm) = required_numeric_parameter(scenario, "pin_pitch_mm", findings) else {
-        return;
-    };
-    if pin_pitch_mm <= 0.0 {
-        validation_input_missing(
-            findings,
-            scenario,
-            "manufacturing parameters.pin_pitch_mm must be greater than zero.",
-        );
-        return;
-    }
-    let Some(width_range) = jlc_ic_pin_aperture_width_range(pin_pitch_mm) else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!(
-                "SOLDER_PASTE_IC_PIN_APERTURE_VALID has no source-backed JLCPCB IC aperture width range for pin_pitch_mm={pin_pitch_mm:.6}."
-            ),
-        );
-        return;
-    };
-    let paste = &bound.project.board.layout.solder_paste;
-    if paste.features.is_empty() && paste.segments.is_empty() && paste.regions.is_empty() {
-        validation_input_missing(
-            findings,
-            scenario,
-            "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires board.layout.solder_paste evidence.",
-        );
-        return;
-    }
-
-    let mut checked_pad_owned_openings = 0usize;
-    for (feature_index, feature) in paste.features.iter().enumerate() {
-        if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
-            validation_input_missing(findings, scenario, message);
-            continue;
-        }
-        let object = CopperObjectRef::Feature {
-            feature,
-            index: feature_index,
-        };
-        if !paste_object_is_pad_owned(object) {
-            continue;
-        }
-        if !paste_object_matches_target(object, scenario) {
-            continue;
-        }
-        checked_pad_owned_openings += 1;
-        let aperture_width_mm = feature.size.x_mm.min(feature.size.y_mm);
-        if aperture_width_out_of_range(aperture_width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
-                scenario,
-                object,
-                aperture_width_mm,
-                pin_pitch_mm,
-                width_range,
-            ));
-        }
-    }
-    for (segment_index, segment) in paste.segments.iter().enumerate() {
-        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
-            validation_input_missing(findings, scenario, message);
-            continue;
-        }
-        let object = CopperObjectRef::Segment {
-            segment,
-            index: segment_index,
-        };
-        if !paste_object_is_pad_owned(object) {
-            continue;
-        }
-        if !paste_object_matches_target(object, scenario) {
-            continue;
-        }
-        checked_pad_owned_openings += 1;
-        if aperture_width_out_of_range(segment.width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
-                scenario,
-                object,
-                segment.width_mm,
-                pin_pitch_mm,
-                width_range,
-            ));
-        }
-    }
-    for (region_index, region) in paste.regions.iter().enumerate() {
-        if let Err(message) = validate_copper_region_geometry(region, region_index) {
-            validation_input_missing(findings, scenario, message);
-            continue;
-        }
-        let object = CopperObjectRef::Region {
-            region,
-            index: region_index,
-        };
-        if !paste_object_is_pad_owned(object) {
-            continue;
-        }
-        if !paste_object_matches_target(object, scenario) {
-            continue;
-        }
-        let Some(aperture_width_mm) = region_bounding_box_min_dimension_mm(region) else {
-            validation_input_missing(
-                findings,
-                scenario,
-                "SOLDER_PASTE_IC_PIN_APERTURE_VALID could not compute finite solder-paste region aperture width.",
-            );
-            continue;
-        };
-        checked_pad_owned_openings += 1;
-        if aperture_width_out_of_range(aperture_width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
-                scenario,
-                object,
-                aperture_width_mm,
-                pin_pitch_mm,
-                width_range,
-            ));
-        }
-    }
-
-    if checked_pad_owned_openings == 0 {
-        let message = scenario.target.as_ref().map_or_else(
-            || {
-                "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires pad-owned board.layout.solder_paste feature, segment, or region evidence.".to_string()
-            },
-            |target| {
-                format!(
-                    "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires pad-owned board.layout.solder_paste feature, segment, or region evidence for target component {}.",
-                    target.component
-                )
-            },
-        );
-        validation_input_missing(findings, scenario, message);
-    }
-}
-
 #[derive(Clone, Copy)]
 struct SolderMaskOpeningCandidate<'a> {
     mask_object: CopperObjectRef<'a>,
@@ -785,13 +644,6 @@ struct SolderPasteOpeningCandidate<'a> {
     paste_area_mm2: f64,
     paste_opening_count: usize,
     area_ratio: f64,
-}
-
-#[derive(Clone, Copy)]
-struct IcPinApertureWidthRange {
-    min_mm: f64,
-    max_mm: f64,
-    source_condition: &'static str,
 }
 
 fn solder_mask_layer_for_copper_layer(copper_layer: &str) -> Option<&'static str> {
@@ -914,87 +766,6 @@ fn paste_object_area_mm2(object: CopperObjectRef<'_>) -> Option<f64> {
         CopperObjectRef::Region { region, .. } => Some(polygon_area_mm2(&region.points).abs()),
     }
     .filter(|area| area.is_finite() && *area > 0.0)
-}
-
-fn jlc_ic_pin_aperture_width_range(pin_pitch_mm: f64) -> Option<IcPinApertureWidthRange> {
-    if (0.8..=1.27).contains(&pin_pitch_mm) {
-        return Some(IcPinApertureWidthRange {
-            min_mm: pin_pitch_mm * 0.45,
-            max_mm: pin_pitch_mm * 0.60,
-            source_condition: "JLCPCB IC stencil pitch 0.8-1.27 mm: width 45%-60% of pitch",
-        });
-    }
-    if (0.635..=0.65).contains(&pin_pitch_mm) {
-        return Some(IcPinApertureWidthRange {
-            min_mm: 0.30,
-            max_mm: 0.33,
-            source_condition: "JLCPCB IC stencil pitch 0.635-0.65 mm: W=0.30-0.33 mm",
-        });
-    }
-    let exact = [
-        (0.50, 0.24, "JLCPCB IC stencil pitch 0.5 mm: W=0.24 mm"),
-        (0.40, 0.19, "JLCPCB IC stencil pitch 0.4 mm: W=0.19 mm"),
-        (0.35, 0.17, "JLCPCB IC stencil pitch 0.35 mm: W=0.17 mm"),
-        (0.30, 0.16, "JLCPCB IC stencil pitch 0.3 mm: W=0.16 mm"),
-    ];
-    exact
-        .iter()
-        .find(|(pitch, _, _)| (pin_pitch_mm - *pitch).abs() <= 1.0e-9)
-        .map(|(_, width, source_condition)| IcPinApertureWidthRange {
-            min_mm: *width,
-            max_mm: *width,
-            source_condition,
-        })
-}
-
-fn aperture_width_out_of_range(aperture_width_mm: f64, range: IcPinApertureWidthRange) -> bool {
-    aperture_width_mm + f64::EPSILON < range.min_mm
-        || aperture_width_mm > range.max_mm + f64::EPSILON
-}
-
-fn paste_object_is_pad_owned(object: CopperObjectRef<'_>) -> bool {
-    match object {
-        CopperObjectRef::Feature { feature, .. } => feature.owner_kind.as_deref() == Some("pad"),
-        CopperObjectRef::Segment { segment, .. } => segment.owner_kind.as_deref() == Some("pad"),
-        CopperObjectRef::Region { region, .. } => region.owner_kind.as_deref() == Some("pad"),
-    }
-}
-
-fn paste_object_matches_target(object: CopperObjectRef<'_>, scenario: &Scenario) -> bool {
-    let Some(target) = &scenario.target else {
-        return true;
-    };
-    match object {
-        CopperObjectRef::Feature { feature, .. } => {
-            feature.component.as_deref() == Some(target.component.as_str())
-        }
-        CopperObjectRef::Segment { segment, .. } => {
-            segment.component.as_deref() == Some(target.component.as_str())
-        }
-        CopperObjectRef::Region { region, .. } => {
-            region.component.as_deref() == Some(target.component.as_str())
-        }
-    }
-}
-
-fn region_bounding_box_min_dimension_mm(region: &LayoutCopperRegion) -> Option<f64> {
-    let first = region.points.first()?;
-    let mut min_x = first.x_mm;
-    let mut max_x = first.x_mm;
-    let mut min_y = first.y_mm;
-    let mut max_y = first.y_mm;
-    for point in &region.points {
-        if !point.x_mm.is_finite() || !point.y_mm.is_finite() {
-            return None;
-        }
-        min_x = min_x.min(point.x_mm);
-        max_x = max_x.max(point.x_mm);
-        min_y = min_y.min(point.y_mm);
-        max_y = max_y.max(point.y_mm);
-    }
-    let width_mm = max_x - min_x;
-    let height_mm = max_y - min_y;
-    (width_mm > 0.0 && height_mm > 0.0).then_some(width_mm.min(height_mm))
 }
 
 fn polygon_area_mm2(points: &[LayoutPoint]) -> f64 {
@@ -1304,54 +1075,6 @@ fn solder_paste_aperture_size_finding(
     finding.limit.insert(
         "min_solder_paste_aperture_size_mm".to_string(),
         json!(min_aperture_size_mm),
-    );
-    finding
-}
-
-fn solder_paste_ic_pin_aperture_finding(
-    scenario: &Scenario,
-    paste_object: CopperObjectRef<'_>,
-    aperture_width_mm: f64,
-    pin_pitch_mm: f64,
-    width_range: IcPinApertureWidthRange,
-) -> Finding {
-    let mut finding = Finding::critical(
-        SOLDER_PASTE_IC_PIN_APERTURE_VALID,
-        scenario.name.clone(),
-        format!(
-            "Solder-paste {} opening on {} has IC pin aperture width {:.6} mm; JLCPCB pitch-conditioned range for {:.3} mm pitch is {:.6}..={:.6} mm.",
-            paste_object.kind(),
-            paste_object.layer(),
-            aperture_width_mm,
-            pin_pitch_mm,
-            width_range.min_mm,
-            width_range.max_mm
-        ),
-    );
-    finding.suggested_fixes = vec![
-        "Adjust the IC pin stencil aperture width to match the selected JLCPCB pitch-conditioned stencil opening standard.".to_string(),
-        "Use a package-specific scenario with the correct pin_pitch_mm instead of applying this IC rule to unrelated pads.".to_string(),
-        "If the paste layer must remain as exported, document the order remark or assembly-process override and do not use this JLC default optimization check.".to_string(),
-    ];
-    insert_solder_paste_object_measurements(&mut finding, paste_object);
-    finding.measured.insert(
-        "solder_paste_ic_pin_aperture_width_mm".to_string(),
-        json!(aperture_width_mm),
-    );
-    finding
-        .measured
-        .insert("pin_pitch_mm".to_string(), json!(pin_pitch_mm));
-    finding.measured.insert(
-        "source_condition".to_string(),
-        json!(width_range.source_condition),
-    );
-    finding.limit.insert(
-        "min_solder_paste_ic_pin_aperture_width_mm".to_string(),
-        json!(width_range.min_mm),
-    );
-    finding.limit.insert(
-        "max_solder_paste_ic_pin_aperture_width_mm".to_string(),
-        json!(width_range.max_mm),
     );
     finding
 }

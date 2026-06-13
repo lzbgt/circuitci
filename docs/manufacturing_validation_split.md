@@ -17,6 +17,11 @@ solder-paste opening/aperture/spacing parameter parsing, supported mask/paste
 object validation,
 opening-selection logic, and stable mask/paste report construction.
 
+`src/validation/manufacturing/solder_paste_ic.rs` owns
+`SOLDER_PASTE_IC_PIN_APERTURE_VALID`, including the JLCPCB pitch-conditioned IC
+stencil table, optional target-component filtering, and stable IC aperture
+report construction.
+
 `src/validation/manufacturing/geometry.rs` owns shared 2D geometry and evidence
 selection for imported fabrication data:
 
