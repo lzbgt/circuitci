@@ -311,6 +311,23 @@ fn copper_to_board_edge_clearance_fails_for_near_trace_segment() {
 }
 
 #[test]
+fn copper_to_board_edge_clearance_uses_jlc_routed_edge_process_default() {
+    let report =
+        run_validation("examples/bad_copper_to_board_edge_jlc_routed_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["copper_kind"], "segment");
+    assert_eq!(
+        failure["measured"]["trace_centerline_to_board_edge_distance_mm"],
+        0.35
+    );
+    assert_eq!(failure["measured"]["clearance_mm"], 0.14999999999999997);
+    assert_eq!(failure["limit"]["min_copper_edge_clearance_mm"], 0.2);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_to_board_edge_clearance_fails_for_near_region() {
     let report = run_validation("examples/bad_copper_region_to_board_edge_clearance/project.yaml");
     assert_eq!(report["result"], "fail");

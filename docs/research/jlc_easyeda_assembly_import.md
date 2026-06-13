@@ -204,7 +204,7 @@ CircuitCI suggested 11 scenarios for urine_monitor_jlc_assembly -> out/peer-manu
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
 ```
 
-Current split: 6 runnable preset-backed suggestions and 5 non-runnable
+Current split: 7 runnable preset-backed suggestions and 4 non-runnable
 threshold-gated suggestions.
 
 Runnable manufacturing suggestions generated from named source-backed presets:
@@ -214,6 +214,7 @@ Runnable manufacturing suggestions generated from named source-backed presets:
 | `drill_diameter_valid` | `DRILL_DIAMETER_VALID` | `jlcpcb_drill_diameter_range_2026_06` |
 | `slot_width_valid` | `SLOT_WIDTH_VALID` | `jlcpcb_slot_min_2026_06` |
 | `drill_annular_ring_valid` | `DRILL_ANNULAR_RING_VALID` | `jlcpcb_double_sided_via_min_2026_06` |
+| `copper_to_board_edge_clearance` | `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` | `jlcpcb_routed_edge_copper_clearance_2026_06` |
 | `copper_spacing_valid` | `COPPER_SPACING_VALID` | `jlcpcb_1oz_copper_spacing_2026_06` |
 | `solder_mask_opening_valid` | `SOLDER_MASK_OPENING_VALID` | `jlcpcb_standard_2026_06` |
 | `solder_mask_dam_valid` | `SOLDER_MASK_DAM_VALID` | `jlcpcb_standard_2026_06` |
@@ -226,12 +227,11 @@ named preset:
 | --- | --- | --- |
 | `drill_to_board_edge_clearance` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_drill_edge_clearance_mm` |
 | `slot_to_board_edge_clearance` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_slot_edge_clearance_mm` |
-| `copper_to_board_edge_clearance` | `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_copper_edge_clearance_mm` |
 | `solder_paste_opening_valid` | `SOLDER_PASTE_OPENING_VALID` | `min_paste_area_ratio`, `max_paste_area_ratio` |
 | `solder_paste_spacing_valid` | `SOLDER_PASTE_SPACING_VALID` | `min_solder_paste_spacing_mm` |
 
 This confirms the fabricated-release ingestion is now strong enough to produce
 a concrete manufacturing checklist automatically. The remaining gap is process
-evidence, not detection plumbing: those five non-runnable checks need exact,
+evidence, not detection plumbing: those four non-runnable checks need exact,
 condition-scoped JLCPCB or package/stencil source values before CircuitCI should
 turn them into preset-backed runnable scenarios.

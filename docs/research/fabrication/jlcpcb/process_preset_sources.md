@@ -20,6 +20,7 @@ Implemented preset:
 - `jlcpcb_slot_min_2026_06`
 - `jlcpcb_drill_diameter_range_2026_06`
 - `jlcpcb_1oz_copper_spacing_2026_06`
+- `jlcpcb_routed_edge_copper_clearance_2026_06`
 
 Implemented default:
 
@@ -31,6 +32,7 @@ Implemented default:
 - `min_drill_diameter_mm: 0.15`
 - `max_drill_diameter_mm: 6.30`
 - `min_copper_spacing_mm: 0.10`
+- `min_copper_edge_clearance_mm: 0.20`
 
 Rationale:
 
@@ -68,20 +70,27 @@ Rationale:
   CircuitCI encodes `min_copper_spacing_mm: 0.10` as a narrowly named 1 oz
   copper-spacing preset. It is intentionally not used as a package-specific SMD
   pad-spacing or stencil-spacing rule.
+- The saved JLCPCB PCB capability page bundle also resolves the outline table:
+  `i18n_web_app_274` is "Routed", `i18n_web_app_274_a` gives capability
+  `0.2mm`, and `i18n_web_app_277` says copper clearance from routed board
+  edges and routed slots is at least 0.2 mm. CircuitCI encodes
+  `min_copper_edge_clearance_mm: 0.20` as a routed-edge copper clearance preset.
+  `i18n_web_app_279` separately states the same 0.2 mm copper clearance from
+  non-mouse-bite board edges. V-cut copper clearance is not encoded in this
+  preset because V-cut panelization has different edge semantics.
 
 Observed but not yet encoded as process defaults:
 
 - The JLCPCB capability page bundle references drilling, trace, solder-mask,
   outline, and stencil capability tables. Some values, including the 1 oz trace
-  spacing row, are available through runtime i18n keys in the saved JavaScript;
-  other current table values still need exact extraction or separate source
-  evidence before encoding.
+  spacing and routed-edge copper clearance rows, are available through runtime
+  i18n keys in the saved JavaScript; other current table values still need
+  exact extraction or separate source evidence before encoding.
 
 Next source work before expanding presets:
 
-- Pin exact text values for drill-to-edge, slot-to-edge,
-  copper-to-board-edge, paste-area-ratio, and stencil-spacing thresholds from
-  official JLCPCB material, package stencil guidance, or an exported process
-  capability document.
+- Pin exact text values for drill-to-edge, slot-to-edge, paste-area-ratio, and
+  stencil-spacing thresholds from official JLCPCB material, package stencil
+  guidance, or an exported process capability document.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

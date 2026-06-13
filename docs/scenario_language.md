@@ -775,12 +775,13 @@ scenarios:
     checks:
       - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
     parameters:
-      min_copper_edge_clearance_mm: 0.25
+      fabrication_process: jlcpcb_routed_edge_copper_clearance_2026_06
 ```
 
 Copper-to-board-edge algorithm:
 
-1. Require `parameters.min_copper_edge_clearance_mm`.
+1. Require `parameters.min_copper_edge_clearance_mm` or a fabrication process
+   preset that provides it.
 2. Require finite `board.layout.outline.segments[]` entries.
 3. Require at least one finite copper feature, copper segment, or copper
    region.
@@ -798,6 +799,14 @@ all count as board edges for this check. This is a static 2D fabrication
 screen; it does not model solder mask, copper etch compensation, fab-specific
 clearance compensation, panelization tabs, copper island connectivity, or net
 ownership.
+
+For JLCPCB routed board-edge and routed-slot copper clearance, the raw
+`min_copper_edge_clearance_mm` parameter may be replaced by:
+
+```yaml
+parameters:
+  fabrication_process: jlcpcb_routed_edge_copper_clearance_2026_06
+```
 
 Copper spacing uses `COPPER_SPACING_VALID` when the Board IR includes at least
 two anonymous Gerber copper objects under `board.layout.copper.features`,

@@ -90,9 +90,12 @@ full electrical continuity.
 
 `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported dark flash,
 circular-aperture draw, and region evidence together with board-outline
-evidence for a static copper-to-board-edge screen. That rule still operates on
-anonymous 2D fabrication geometry; it does not prove net ownership, copper
-island connectivity, solder-mask margin, or fab-specific etch compensation.
+evidence for a static copper-to-board-edge screen. It can use the
+`jlcpcb_routed_edge_copper_clearance_2026_06` fabrication preset when the board
+outline represents routed board edges or routed slots. The rule still operates
+on anonymous 2D fabrication geometry; it does not prove net ownership, copper
+island connectivity, solder-mask margin, V-cut panel clearance, or fab-specific
+etch compensation.
 
 `COPPER_SPACING_VALID` can consume the same imported dark flash,
 circular-aperture draw, and region evidence for a static same-layer

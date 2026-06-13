@@ -319,6 +319,20 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "jlcpcb_double_sided_via_min_2026_06"
     );
 
+    let copper_edge = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "copper_to_board_edge_clearance")
+        .expect("copper edge suggestion");
+    assert_eq!(copper_edge["runnable"], true);
+    assert_eq!(
+        copper_edge["scenario"]["checks"][0],
+        "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID"
+    );
+    assert_eq!(
+        copper_edge["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_routed_edge_copper_clearance_2026_06"
+    );
+
     let mask_opening = suggested
         .iter()
         .find(|suggestion| suggestion["id"] == "solder_mask_opening_valid")

@@ -56,12 +56,23 @@ const JLCPCB_1OZ_COPPER_SPACING_2026_06: FabricationProcessPreset = FabricationP
     numeric_defaults: &[("min_copper_spacing_mm", 0.10)],
 };
 
+const JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06: FabricationProcessPreset =
+    FabricationProcessPreset {
+        id: "jlcpcb_routed_edge_copper_clearance_2026_06",
+        aliases: &[
+            "jlcpcb_routed_edge_copper_clearance",
+            "jlcpcb_routed_outline_copper_clearance_2026_06",
+        ],
+        numeric_defaults: &[("min_copper_edge_clearance_mm", 0.20)],
+    };
+
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_STANDARD_2026_06,
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
     JLCPCB_SLOT_MIN_2026_06,
     JLCPCB_DRILL_DIAMETER_RANGE_2026_06,
     JLCPCB_1OZ_COPPER_SPACING_2026_06,
+    JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06,
 ];
 
 pub(super) fn required_numeric_parameter(

@@ -119,14 +119,14 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
             COPPER_TO_BOARD_EDGE_CLEARANCE_VALID,
             manufacturing_suggestion(
                 "copper_to_board_edge_clearance",
-                false,
-                "Imported Gerber copper and board-outline evidence can be screened for copper-to-board-edge clearance once the process limit is supplied.",
+                true,
+                "Imported Gerber copper and routed board-outline evidence can be screened with the source-backed JLCPCB routed-edge copper clearance preset.",
                 &format!("{project_name}_copper_to_board_edge_clearance"),
                 COPPER_TO_BOARD_EDGE_CLEARANCE_VALID,
-                None,
-                vec![
-                    "Set manufacturing parameters.min_copper_edge_clearance_mm from the selected fabrication process or board specification.".to_string(),
-                ],
+                Some(fabrication_process(
+                    "jlcpcb_routed_edge_copper_clearance_2026_06",
+                )),
+                Vec::new(),
             ),
         );
     }

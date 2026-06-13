@@ -282,8 +282,11 @@ The command is conservative:
   `board.layout.slots[]` is present, it emits runnable `SLOT_WIDTH_VALID` using
   `fabrication_process: jlcpcb_slot_min_2026_06`. When drills and copper
   flashes are present, it emits runnable `DRILL_ANNULAR_RING_VALID` using
-  `fabrication_process: jlcpcb_double_sided_via_min_2026_06`. When copper
-  evidence has at least two same-layer objects, it emits runnable
+  `fabrication_process: jlcpcb_double_sided_via_min_2026_06`. When copper and
+  routed board-outline evidence are present, it emits runnable
+  `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` using
+  `fabrication_process: jlcpcb_routed_edge_copper_clearance_2026_06`. When
+  copper evidence has at least two same-layer objects, it emits runnable
   `COPPER_SPACING_VALID` using
   `fabrication_process: jlcpcb_1oz_copper_spacing_2026_06`. When copper
   flashes and solder-mask openings are present, it emits runnable
@@ -292,8 +295,8 @@ The command is conservative:
   `fabrication_process: jlcpcb_standard_2026_06`.
 - Manufacturing checks whose thresholds are not yet pinned to a named process
   preset are suggested as `runnable: false` with explicit required inputs:
-  drill-to-edge clearance, slot-to-edge clearance, copper-to-edge clearance,
-  solder-paste area ratio, and solder-paste spacing.
+  drill-to-edge clearance, slot-to-edge clearance, solder-paste area ratio, and
+  solder-paste spacing.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing
