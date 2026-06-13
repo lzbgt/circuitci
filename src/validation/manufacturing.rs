@@ -317,6 +317,13 @@ pub(super) fn validate_castellated_hole(
     else {
         return;
     };
+    let Some(min_hole_spacing_mm) = required_numeric_parameter(
+        scenario,
+        "min_castellated_hole_to_hole_spacing_mm",
+        findings,
+    ) else {
+        return;
+    };
     if min_diameter_mm < 0.0 {
         validation_input_missing(
             findings,
@@ -330,6 +337,14 @@ pub(super) fn validate_castellated_hole(
             findings,
             scenario,
             "manufacturing parameters.min_castellated_hole_edge_clearance_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    if min_hole_spacing_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_castellated_hole_to_hole_spacing_mm must be greater than or equal to zero.",
         );
         return;
     }
@@ -360,7 +375,7 @@ pub(super) fn validate_castellated_hole(
         return;
     }
 
-    let mut checked_castellated_drills = 0usize;
+    let mut castellated_drills = Vec::new();
     for (drill_index, drill) in drills.iter().enumerate() {
         if let Err(message) = validate_drill_geometry(drill, drill_index) {
             validation_input_missing(findings, scenario, message);
@@ -369,7 +384,7 @@ pub(super) fn validate_castellated_hole(
         if !drill.castellated {
             continue;
         }
-        checked_castellated_drills += 1;
+        castellated_drills.push((drill_index, drill));
         if drill.drill_mm + f64::EPSILON < min_diameter_mm {
             findings.push(castellated_hole_diameter_finding(
                 scenario,
@@ -396,13 +411,38 @@ pub(super) fn validate_castellated_hole(
             ));
         }
     }
-    if checked_castellated_drills == 0 {
+    for first_index in 0..castellated_drills.len() {
+        for second_index in (first_index + 1)..castellated_drills.len() {
+            let (first_drill_index, first) = castellated_drills[first_index];
+            let (second_drill_index, second) = castellated_drills[second_index];
+            let spacing_mm = castellated_hole_spacing_mm(first, second);
+            if spacing_mm + f64::EPSILON < min_hole_spacing_mm {
+                findings.push(castellated_hole_spacing_finding(
+                    scenario,
+                    first,
+                    first_drill_index,
+                    second,
+                    second_drill_index,
+                    spacing_mm,
+                    min_hole_spacing_mm,
+                ));
+            }
+        }
+    }
+    if castellated_drills.is_empty() {
         validation_input_missing(
             findings,
             scenario,
             "CASTELLATED_HOLE_VALID requires at least one board.layout.drills[] entry with castellated: true.",
         );
     }
+}
+
+fn castellated_hole_spacing_mm(first: &LayoutDrill, second: &LayoutDrill) -> f64 {
+    let center_distance_mm = ((first.at.x_mm - second.at.x_mm).powi(2)
+        + (first.at.y_mm - second.at.y_mm).powi(2))
+    .sqrt();
+    center_distance_mm - first.drill_mm / 2.0 - second.drill_mm / 2.0
 }
 
 pub(super) fn validate_copper_to_board_edge_clearance(
@@ -959,6 +999,65 @@ fn castellated_hole_edge_finding(
         "Move the castellated hole farther from the board edge or revise the castellated board outline.".to_string(),
         "Use a non-castellated drill-edge scenario if this is an ordinary circular drill hit.".to_string(),
         "Document a fabricator-approved castellated-hole exception if the board is intentionally below the default JLCPCB source condition.".to_string(),
+    ];
+    finding
+}
+
+fn castellated_hole_spacing_finding(
+    scenario: &Scenario,
+    first: &LayoutDrill,
+    first_index: usize,
+    second: &LayoutDrill,
+    second_index: usize,
+    spacing_mm: f64,
+    min_spacing_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CASTELLATED_HOLE_VALID,
+        &scenario.name,
+        format!(
+            "Castellated drill hits {} and {} have {:.3} mm hole-to-hole spacing, below {:.3} mm minimum.",
+            first_index, second_index, spacing_mm, min_spacing_mm
+        ),
+    );
+    finding
+        .measured
+        .insert("first_drill_index".to_string(), json!(first_index));
+    finding.measured.insert(
+        "first_drill_at".to_string(),
+        json!({
+            "x_mm": first.at.x_mm,
+            "y_mm": first.at.y_mm,
+        }),
+    );
+    finding
+        .measured
+        .insert("first_drill_mm".to_string(), json!(first.drill_mm));
+    finding
+        .measured
+        .insert("second_drill_index".to_string(), json!(second_index));
+    finding.measured.insert(
+        "second_drill_at".to_string(),
+        json!({
+            "x_mm": second.at.x_mm,
+            "y_mm": second.at.y_mm,
+        }),
+    );
+    finding
+        .measured
+        .insert("second_drill_mm".to_string(), json!(second.drill_mm));
+    finding.measured.insert(
+        "castellated_hole_to_hole_spacing_mm".to_string(),
+        json!(spacing_mm),
+    );
+    finding.limit.insert(
+        "min_castellated_hole_to_hole_spacing_mm".to_string(),
+        json!(min_spacing_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Increase spacing between adjacent castellated holes to meet the selected fabrication rule.".to_string(),
+        "Reduce castellated hole diameter only if the plated-edge requirement still permits it.".to_string(),
+        "Document a fabricator-approved castellated-hole spacing exception if the board is intentionally below the default JLCPCB source condition.".to_string(),
     ];
     finding
 }

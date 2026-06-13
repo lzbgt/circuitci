@@ -78,6 +78,7 @@ Current preset defaults:
 | `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `min_castellated_hole_diameter_mm` | `0.30` | JLCPCB castellated-hole diagram: castellated hole diameter is at least 0.3 mm. |
 | `min_castellated_hole_edge_clearance_mm` | `1.00` | JLCPCB castellated-hole capability text: hole to board edge is at least 1 mm. |
+| `min_castellated_hole_to_hole_spacing_mm` | `0.40` | JLCPCB castellated-hole diagram: castellated hole-to-hole spacing is at least 0.4 mm. |
 | `min_copper_spacing_mm` | `0.10` | JLCPCB PCB capability page: 1 oz minimum track width and spacing is 0.10 / 0.10 mm, and pad-to-track clearance is 0.1 mm. |
 | `min_copper_edge_clearance_mm` | `0.20` | JLCPCB PCB capability page: copper clearance from routed board edges and routed slots is at least 0.2 mm. |
 | `min_solder_paste_aperture_size_mm` | `0.08` | JLCPCB stencil capability page: minimum aperture size is greater than 0.08 mm. |

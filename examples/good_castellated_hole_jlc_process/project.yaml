@@ -34,12 +34,19 @@ board:
         layer: PTH_Through
         tool: T01
         source_hit_index: 0
+      - at: { x_mm: 1.95, y_mm: -2.0 }
+        drill_mm: 0.30
+        plating: plated
+        castellated: true
+        layer: PTH_Through
+        tool: T02
+        source_hit_index: 1
       - at: { x_mm: 0.2, y_mm: -4.0 }
         drill_mm: 0.10
         plating: plated
         layer: PTH_Through
-        tool: T02
-        source_hit_index: 1
+        tool: T03
+        source_hit_index: 2
 
 scenarios:
   - name: castellated_hole

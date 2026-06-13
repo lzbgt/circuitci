@@ -115,12 +115,15 @@ Observed but not yet encoded as process defaults:
   0.4 mm`. CircuitCI encodes only the directly applicable drill evidence values
   as the dedicated `jlcpcb_castellated_hole_2026_06` preset:
   `min_castellated_hole_diameter_mm: 0.30` and
-  `min_castellated_hole_edge_clearance_mm: 1.00`. It still does not encode
-  those values as generic `min_drill_edge_clearance_mm`, because the generic
-  rule measures ordinary circular drill edge-to-outline clearance while the
-  source evidence is specifically castellated-hole geometry. The castellated
-  pad-to-board-edge and hole-to-hole diagram values remain unencoded until
-  Board IR carries explicit pad-edge and castellated hole-pair semantics.
+  `min_castellated_hole_edge_clearance_mm: 1.00`. The diagram's adjacent-hole
+  arrow is encoded as `min_castellated_hole_to_hole_spacing_mm: 0.40` by
+  measuring edge-to-edge spacing between drill pairs marked `castellated: true`.
+  CircuitCI still does not encode those values as generic
+  `min_drill_edge_clearance_mm`, because the generic rule measures ordinary
+  circular drill edge-to-outline clearance while the source evidence is
+  specifically castellated-hole geometry. The castellated pad-to-board-edge
+  diagram value remains unencoded until Board IR carries explicit pad-edge
+  semantics.
 - The saved JLCPCB stencil opening-process article gives package- and
   pitch-specific aperture optimization examples for IC, BGA, connector,
   high-power transistor, through-hole, and red-glue stencil cases. It does not
@@ -161,8 +164,8 @@ Next source work before expanding presets:
 - Pin exact text values for generic drill-to-edge, slot-to-edge,
   paste-area-ratio, and stencil-spacing thresholds from official JLCPCB
   material, package stencil guidance, or an exported process capability
-  document. Extend castellated validation beyond hole diameter and
-  hole-to-board-edge only after Board IR can identify castellated pad edges or
-  unambiguous castellated hole-pair spacing.
+  document. Extend castellated validation beyond hole diameter,
+  hole-to-board-edge, and hole-pair spacing only after Board IR can identify
+  castellated pad edges or other unambiguous castellated-specific semantics.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

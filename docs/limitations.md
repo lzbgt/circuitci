@@ -188,8 +188,9 @@ without explicit imported mechanical evidence.
   against process thresholds and can use the dedicated JLCPCB
   metallized/non-metallized slot preset. `CASTELLATED_HOLE_VALID` is a
   separate opt-in rule for drill evidence explicitly marked `castellated: true`;
-  it can use the dedicated JLCPCB castellated-hole diameter and
-  hole-to-board-edge preset without changing the generic drill-edge rule.
+  it can use the dedicated JLCPCB castellated-hole diameter,
+  hole-to-board-edge, and hole-to-hole spacing preset without changing the
+  generic drill-edge rule.
   These rules do not model drill
   wander, route-tool runout/overcut, plating tolerances, panel tabs,
   fab-specific stackup rules, copper-to-hole clearance, minimum slot length, or

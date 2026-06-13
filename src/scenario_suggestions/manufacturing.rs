@@ -108,7 +108,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
             manufacturing_suggestion(
                 "castellated_hole_valid",
                 true,
-                "Explicit castellated drill evidence can be screened with the source-backed JLCPCB castellated-hole diameter and hole-to-board-edge limits.",
+                "Explicit castellated drill evidence can be screened with the source-backed JLCPCB castellated-hole diameter, hole-to-board-edge, and hole-to-hole spacing limits.",
                 &format!("{project_name}_castellated_hole"),
                 CASTELLATED_HOLE_VALID,
                 Some(fabrication_process("jlcpcb_castellated_hole_2026_06")),

@@ -149,7 +149,7 @@ fn castellated_hole_passes_with_jlc_process_defaults() {
 fn castellated_hole_fails_with_jlc_process_defaults() {
     let report = run_validation("examples/bad_castellated_hole_jlc_process/project.yaml");
     assert_eq!(report["result"], "fail");
-    assert_eq!(report["summary"]["critical"], 2);
+    assert_eq!(report["summary"]["critical"], 3);
     let failures = report["failures"].as_array().unwrap();
     assert!(
         failures
@@ -169,6 +169,16 @@ fn castellated_hole_fails_with_jlc_process_defaults() {
     assert_eq!(
         failures[1]["limit"]["min_castellated_hole_edge_clearance_mm"],
         1.00
+    );
+    assert_eq!(failures[2]["measured"]["first_drill_index"], 2);
+    assert_eq!(failures[2]["measured"]["second_drill_index"], 3);
+    assert_eq!(
+        failures[2]["measured"]["castellated_hole_to_hole_spacing_mm"],
+        0.2
+    );
+    assert_eq!(
+        failures[2]["limit"]["min_castellated_hole_to_hole_spacing_mm"],
+        0.40
     );
     assert_report_schema_valid(&report);
 }

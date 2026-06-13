@@ -727,7 +727,8 @@ scenarios:
 Castellated-hole algorithm:
 
 1. Require `parameters.min_castellated_hole_diameter_mm` and
-   `parameters.min_castellated_hole_edge_clearance_mm`, either explicitly or
+   `parameters.min_castellated_hole_edge_clearance_mm`, and
+   `parameters.min_castellated_hole_to_hole_spacing_mm`, either explicitly or
    from a fabrication process preset.
 2. Require at least one finite `board.layout.drills[]` entry with
    `castellated: true`.
@@ -738,6 +739,9 @@ Castellated-hole algorithm:
 6. Measure each castellated drill center to the nearest outline segment,
    subtract drill radius, and fail when the hole-edge-to-board-edge clearance is
    below `min_castellated_hole_edge_clearance_mm`.
+7. Measure every pair of castellated drill centers and subtract both drill
+   radii. Fail when adjacent hole-edge spacing is below
+   `min_castellated_hole_to_hole_spacing_mm`.
 
 This is a condition-specific static 2D screen for castellated-hole evidence. It
 does not change generic `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` behavior and does

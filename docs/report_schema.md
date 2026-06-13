@@ -326,9 +326,13 @@ from `DRILL_DIAMETER_VALID` and `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`,
 including `drill_index`, `drill_x_mm`, `drill_y_mm`, `drill_mm`,
 `drill_radius_mm`, `drill_plating`, optional `drill_castellated`,
 `clearance_mm`, `center_to_board_edge_distance_mm`, and board-edge provenance
-keys when an edge-clearance finding is emitted. Stable limit keys include
-`min_castellated_hole_diameter_mm` and
-`min_castellated_hole_edge_clearance_mm`.
+keys when an edge-clearance finding is emitted. Hole-pair spacing findings
+report `first_drill_index`, `first_drill_at`, `first_drill_mm`,
+`second_drill_index`, `second_drill_at`, `second_drill_mm`, and
+`castellated_hole_to_hole_spacing_mm`. Stable limit keys include
+`min_castellated_hole_diameter_mm`,
+`min_castellated_hole_edge_clearance_mm`, and
+`min_castellated_hole_to_hole_spacing_mm`.
 
 `DRILL_ANNULAR_RING_VALID` reports are emitted by `manufacturing` scenarios
 that combine `board.layout.drills` evidence with

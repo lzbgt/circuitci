@@ -53,6 +53,7 @@ const JLCPCB_CASTELLATED_HOLE_2026_06: FabricationProcessPreset = FabricationPro
     numeric_defaults: &[
         ("min_castellated_hole_diameter_mm", 0.30),
         ("min_castellated_hole_edge_clearance_mm", 1.00),
+        ("min_castellated_hole_to_hole_spacing_mm", 0.40),
     ],
 };
 
