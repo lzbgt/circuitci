@@ -441,28 +441,34 @@ pub(super) fn usb_vbus_route_suggestion(
         .net_rules
         .get(vbus_net)
         .and_then(|rule| rule.length_max_mm);
-    let min_width = vbus_route.expected_vbus_route_width_mm;
+    let vbus_policy = &bound.project.board.layout.constraints.usb_vbus_route;
+    let min_width = vbus_policy
+        .min_vbus_route_width_mm
+        .or(vbus_route.expected_vbus_route_width_mm);
     let parameters = BTreeMap::from([
         (
             "max_vbus_route_length_mm".to_string(),
             optional_number_value(route_limit),
         ),
-        ("max_vbus_via_count".to_string(), serde_json::Value::Null),
+        (
+            "max_vbus_via_count".to_string(),
+            optional_usize_value(vbus_policy.max_vbus_via_count),
+        ),
         (
             "min_vbus_route_width_mm".to_string(),
             optional_number_value(min_width),
         ),
         (
             "max_connector_to_vbus_protection_route_distance_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(vbus_policy.max_connector_to_vbus_protection_route_distance_mm),
         ),
         (
             "max_component_to_route_distance_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(vbus_policy.max_component_to_route_distance_mm),
         ),
         (
             "require_vbus_route_pad_contact_evidence".to_string(),
-            serde_json::Value::Null,
+            optional_bool_value(vbus_policy.require_vbus_route_pad_contact_evidence),
         ),
     ]);
     let runnable = route_limit.is_some();

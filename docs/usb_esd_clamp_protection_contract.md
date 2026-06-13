@@ -306,6 +306,10 @@ Route-geometry validation:
   stay within that limit.
 - When `parameters.min_vbus_route_width_mm` is present, every imported VBUS
   route segment must be at least that wide.
+- Optional VBUS route policy can come from
+  `board.layout.constraints.usb_vbus_route` when the scenario omits the matching
+  parameter. This keeps power-entry route policy separate from differential-pair
+  `usb_route` policy.
 - When `parameters.max_connector_to_vbus_protection_route_distance_mm` and
   `parameters.max_component_to_route_distance_mm` are both present, the rule
   projects connector/protection placements onto the VBUS route graph and checks

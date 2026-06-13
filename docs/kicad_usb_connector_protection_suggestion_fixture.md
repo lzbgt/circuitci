@@ -134,10 +134,12 @@ policy is absent.
 The same imported net-rule evidence makes the VBUS route suggestion runnable
 when `length_max_mm` is present on the VBUS net. The template pre-fills
 `max_vbus_route_length_mm` from that rule and pre-fills optional
-`min_vbus_route_width_mm` from `track_width_mm` when available. It still leaves
-VBUS via-count, route-order distance, and
-`require_vbus_route_pad_contact_evidence` as `null` until a board-specific
-power-entry layout policy supplies those limits.
+`min_vbus_route_width_mm` from `track_width_mm` when no explicit VBUS minimum
+width policy is present. VBUS via-count, route-order distance, component-to-route
+distance, and pad-contact requirements come from explicit
+`board.layout.constraints.usb_vbus_route` policy when present. They remain
+optional `null` policy knobs when the board-specific power-entry route policy is
+absent.
 
 Because the PCB fixture also imports a same-layer GND copper-zone outline over
 the USB D+/D- route segment midpoints, the return-path suggestion reports

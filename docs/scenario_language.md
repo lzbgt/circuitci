@@ -1325,6 +1325,13 @@ USB VBUS route geometry uses `USB_VBUS_ROUTE_VALID` when the Board IR includes
 separate from D+/D- route geometry because VBUS route policy is power-entry and
 protection-order focused rather than differential-pair focused.
 
+For optional VBUS route parameters, explicit scenario values take precedence.
+When a field is omitted or null, the validator uses matching
+`board.layout.constraints.usb_vbus_route` metadata if present. Net-class
+`track_width_mm` can still prefill route-width evidence in suggestions, but
+`usb_vbus_route.min_vbus_route_width_mm` is the explicit sign-off threshold
+when a board/order rule supplies one.
+
 ```yaml
 scenarios:
   - name: usb_vbus_route

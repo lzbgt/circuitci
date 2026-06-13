@@ -668,6 +668,29 @@ These values are policy/tolerance limits. Expected data-line width and pair gap
 still come from `board.layout.constraints.net_rules` entries such as
 `diff_pair_width_mm`, `track_width_mm`, and `diff_pair_gap_mm`.
 
+`board.layout.constraints.usb_vbus_route` is explicit board/layout policy for
+the optional parts of `USB_VBUS_ROUTE_VALID`. Scenario parameters still take
+precedence, but when a scenario omits one of these fields the validator and
+suggestion engine can use this object:
+
+```yaml
+board:
+  layout:
+    constraints:
+      usb_vbus_route:
+        max_vbus_via_count: 0
+        min_vbus_route_width_mm: 0.25
+        max_connector_to_vbus_protection_route_distance_mm: 2.0
+        max_component_to_route_distance_mm: 0.05
+        require_vbus_route_pad_contact_evidence: true
+        source: board_usb_vbus_route_rule
+```
+
+These values are power-entry route policy limits. `net_rules.<vbus>.track_width_mm`
+can still provide measured/expected route-width evidence for suggestions, but
+`usb_vbus_route.min_vbus_route_width_mm` is the explicit sign-off threshold
+when the board has a separate VBUS power-entry rule.
+
 `board.layout.constraints.usb_return_path` is explicit board/layout policy for
 `USB_RETURN_PATH_VALID`. Scenario parameters still take precedence, but when a
 scenario omits one of these fields the validator and suggestion engine can use

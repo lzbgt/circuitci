@@ -219,12 +219,14 @@ The command is conservative:
   `measured_vbus_route_width_min_mm`, and the matching protection component.
   If imported net rules include a VBUS `length` constraint, the template
   pre-fills `max_vbus_route_length_mm` and becomes runnable. If imported net
-  rules also include `track_width_mm`, the template pre-fills optional
-  `min_vbus_route_width_mm`. Via-count and connector-to-protection route
-  distance limits remain `null` until an agent supplies board-specific policy.
-  `require_vbus_route_pad_contact_evidence` also remains `null` until route
-  distance limits are supplied. When imported connector VBUS and protection pad
-  evidence exists, the VBUS `scenario.usb_routes[]` entry reports
+  rules also include `track_width_mm`, the template can pre-fill optional
+  `min_vbus_route_width_mm` when no explicit VBUS route-width policy is present.
+  Explicit `board.layout.constraints.usb_vbus_route` metadata can pre-fill
+  VBUS via-count, minimum width, connector-to-protection route distance,
+  component-to-route distance, and pad-contact policy. Without that metadata,
+  those optional checks remain `null` until an agent supplies board-specific
+  policy. When imported connector VBUS and protection pad evidence exists, the
+  VBUS `scenario.usb_routes[]` entry reports
   `connector_pad`, `protection_pad`, pad geometry, pad-to-route distances, and
   `connector_to_protection_pad_route_distance_mm`.
 - It emits non-runnable `USB_RETURN_PATH_VALID` templates when USB D+/D-

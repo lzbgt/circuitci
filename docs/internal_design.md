@@ -17,8 +17,9 @@ enrich these evidence families:
   limits when those are supplied by board/order evidence;
 - board-level layout policy: `board.layout.constraints`, currently including
   imported per-net route rules, explicit USB connector mechanical/layout policy
-  under `usb_connector`, explicit USB data-route policy under `usb_route`, and
-  explicit USB return-path policy under `usb_return_path`;
+  under `usb_connector`, explicit USB data-route policy under `usb_route`,
+  explicit VBUS power-entry route policy under `usb_vbus_route`, and explicit
+  USB return-path policy under `usb_return_path`;
 - placement/layout evidence: `placements`, `footprints`, `pads`, `routes`,
   `zones`, and `outline`;
 - fabrication evidence: `drills`, `slots`, `copper`, `solder_mask`, and

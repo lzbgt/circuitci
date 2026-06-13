@@ -1,5 +1,6 @@
 use crate::board_ir::{
     ComponentPlacement, LayoutPad, NetLayoutRule, NetRoute, Scenario, UsbRouteLayoutRule,
+    UsbVbusRouteLayoutRule,
 };
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
@@ -212,30 +213,48 @@ pub(super) fn validate_usb_vbus_route(
     else {
         return;
     };
-    let Some(max_via_count) = optional_integer_parameter(scenario, "max_vbus_via_count", findings)
-    else {
-        return;
-    };
-    let Some(max_protection_route_distance_mm) = optional_positive_parameter(
+    let vbus_rule = &bound.project.board.layout.constraints.usb_vbus_route;
+    let Some(max_via_count) = optional_vbus_integer_parameter_or_rule(
         scenario,
-        "max_connector_to_vbus_protection_route_distance_mm",
+        vbus_rule,
+        "max_vbus_via_count",
+        vbus_rule.max_vbus_via_count,
         findings,
     ) else {
         return;
     };
-    let Some(max_component_to_route_distance_mm) =
-        optional_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
-    else {
+    let Some(max_protection_route_distance_mm) = optional_vbus_positive_parameter_or_rule(
+        scenario,
+        vbus_rule,
+        "max_connector_to_vbus_protection_route_distance_mm",
+        vbus_rule.max_connector_to_vbus_protection_route_distance_mm,
+        findings,
+    ) else {
         return;
     };
-    let Some(min_vbus_route_width_mm) =
-        optional_nonnegative_parameter(scenario, "min_vbus_route_width_mm", findings)
-    else {
+    let Some(max_component_to_route_distance_mm) = optional_vbus_positive_parameter_or_rule(
+        scenario,
+        vbus_rule,
+        "max_component_to_route_distance_mm",
+        vbus_rule.max_component_to_route_distance_mm,
+        findings,
+    ) else {
         return;
     };
-    let Some(require_vbus_route_pad_contact_evidence) = optional_bool_parameter(
+    let Some(min_vbus_route_width_mm) = optional_vbus_nonnegative_parameter_or_rule(
+        scenario,
+        vbus_rule,
+        "min_vbus_route_width_mm",
+        vbus_rule.min_vbus_route_width_mm,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(require_vbus_route_pad_contact_evidence) = optional_vbus_bool_parameter_or_rule(
         scenario,
         "require_vbus_route_pad_contact_evidence",
+        vbus_rule,
+        vbus_rule.require_vbus_route_pad_contact_evidence,
         findings,
     ) else {
         return;
@@ -1357,9 +1376,34 @@ fn optional_nonnegative_parameter_or_rule(
 ) -> Option<Option<f64>> {
     match optional_nonnegative_parameter(scenario, name, findings)? {
         Some(value) => Some(Some(value)),
-        None => {
-            validate_optional_usb_route_nonnegative_rule(scenario, rule, name, rule_value, findings)
-        }
+        None => validate_optional_constraint_nonnegative_rule(
+            scenario,
+            "board.layout.constraints.usb_route",
+            rule.source.as_deref(),
+            name,
+            rule_value,
+            findings,
+        ),
+    }
+}
+
+fn optional_vbus_nonnegative_parameter_or_rule(
+    scenario: &Scenario,
+    rule: &UsbVbusRouteLayoutRule,
+    name: &str,
+    rule_value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<f64>> {
+    match optional_nonnegative_parameter(scenario, name, findings)? {
+        Some(value) => Some(Some(value)),
+        None => validate_optional_constraint_nonnegative_rule(
+            scenario,
+            "board.layout.constraints.usb_vbus_route",
+            rule.source.as_deref(),
+            name,
+            rule_value,
+            findings,
+        ),
     }
 }
 
@@ -1402,9 +1446,34 @@ fn optional_positive_parameter_or_rule(
 ) -> Option<Option<f64>> {
     match optional_positive_parameter(scenario, name, findings)? {
         Some(value) => Some(Some(value)),
-        None => {
-            validate_optional_usb_route_positive_rule(scenario, rule, name, rule_value, findings)
-        }
+        None => validate_optional_constraint_positive_rule(
+            scenario,
+            "board.layout.constraints.usb_route",
+            rule.source.as_deref(),
+            name,
+            rule_value,
+            findings,
+        ),
+    }
+}
+
+fn optional_vbus_positive_parameter_or_rule(
+    scenario: &Scenario,
+    rule: &UsbVbusRouteLayoutRule,
+    name: &str,
+    rule_value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<f64>> {
+    match optional_positive_parameter(scenario, name, findings)? {
+        Some(value) => Some(Some(value)),
+        None => validate_optional_constraint_positive_rule(
+            scenario,
+            "board.layout.constraints.usb_vbus_route",
+            rule.source.as_deref(),
+            name,
+            rule_value,
+            findings,
+        ),
     }
 }
 
@@ -1447,9 +1516,32 @@ fn optional_integer_parameter_or_rule(
 ) -> Option<Option<usize>> {
     match optional_integer_parameter(scenario, name, findings)? {
         Some(value) => Some(Some(value)),
-        None => {
-            validate_optional_usb_route_integer_rule(scenario, rule, name, rule_value, findings)
-        }
+        None => validate_optional_constraint_integer_rule(
+            scenario,
+            "board.layout.constraints.usb_route",
+            rule.source.as_deref(),
+            rule_value,
+            findings,
+        ),
+    }
+}
+
+fn optional_vbus_integer_parameter_or_rule(
+    scenario: &Scenario,
+    rule: &UsbVbusRouteLayoutRule,
+    name: &str,
+    rule_value: Option<usize>,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<usize>> {
+    match optional_integer_parameter(scenario, name, findings)? {
+        Some(value) => Some(Some(value)),
+        None => validate_optional_constraint_integer_rule(
+            scenario,
+            "board.layout.constraints.usb_vbus_route",
+            rule.source.as_deref(),
+            rule_value,
+            findings,
+        ),
     }
 }
 
@@ -1490,20 +1582,63 @@ fn optional_bool_parameter_or_rule(
     {
         return Some(scenario_value);
     }
-    if rule_value.is_some() && rule.source.as_deref().is_some_and(str::is_empty) {
-        validation_input_missing(
-            findings,
-            scenario,
-            "board.layout.constraints.usb_route.source must not be empty when declared.",
-        );
-        return None;
-    }
+    validate_optional_constraint_source(
+        scenario,
+        "board.layout.constraints.usb_route",
+        rule.source.as_deref(),
+        rule_value.is_some(),
+        findings,
+    )?;
     Some(rule_value.unwrap_or(scenario_value))
 }
 
-fn validate_optional_usb_route_nonnegative_rule(
+fn optional_vbus_bool_parameter_or_rule(
     scenario: &Scenario,
-    rule: &UsbRouteLayoutRule,
+    name: &str,
+    rule: &UsbVbusRouteLayoutRule,
+    rule_value: Option<bool>,
+    findings: &mut Vec<Finding>,
+) -> Option<bool> {
+    let scenario_value = optional_bool_parameter(scenario, name, findings)?;
+    if scenario
+        .parameters
+        .get(name)
+        .is_some_and(|raw| !raw.is_null())
+    {
+        return Some(scenario_value);
+    }
+    validate_optional_constraint_source(
+        scenario,
+        "board.layout.constraints.usb_vbus_route",
+        rule.source.as_deref(),
+        rule_value.is_some(),
+        findings,
+    )?;
+    Some(rule_value.unwrap_or(scenario_value))
+}
+
+fn validate_optional_constraint_source(
+    scenario: &Scenario,
+    constraint_path: &str,
+    source: Option<&str>,
+    declared: bool,
+    findings: &mut Vec<Finding>,
+) -> Option<()> {
+    if declared && source.is_some_and(str::is_empty) {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("{constraint_path}.source must not be empty when declared."),
+        );
+        return None;
+    }
+    Some(())
+}
+
+fn validate_optional_constraint_nonnegative_rule(
+    scenario: &Scenario,
+    constraint_path: &str,
+    source: Option<&str>,
     name: &str,
     rule_value: Option<f64>,
     findings: &mut Vec<Finding>,
@@ -1515,30 +1650,30 @@ fn validate_optional_usb_route_nonnegative_rule(
         validation_input_missing(
             findings,
             scenario,
-            format!("board.layout.constraints.usb_route.{name} must be finite and non-negative."),
+            format!("{constraint_path}.{name} must be finite and non-negative."),
         );
         return None;
     }
-    if rule.source.as_deref().is_some_and(str::is_empty) {
-        validation_input_missing(
-            findings,
-            scenario,
-            "board.layout.constraints.usb_route.source must not be empty when declared.",
-        );
-        return None;
-    }
+    validate_optional_constraint_source(scenario, constraint_path, source, true, findings)?;
     Some(Some(value))
 }
 
-fn validate_optional_usb_route_positive_rule(
+fn validate_optional_constraint_positive_rule(
     scenario: &Scenario,
-    rule: &UsbRouteLayoutRule,
+    constraint_path: &str,
+    source: Option<&str>,
     name: &str,
     rule_value: Option<f64>,
     findings: &mut Vec<Finding>,
 ) -> Option<Option<f64>> {
-    let Some(value) =
-        validate_optional_usb_route_nonnegative_rule(scenario, rule, name, rule_value, findings)?
+    let Some(value) = validate_optional_constraint_nonnegative_rule(
+        scenario,
+        constraint_path,
+        source,
+        name,
+        rule_value,
+        findings,
+    )?
     else {
         return Some(None);
     };
@@ -1546,30 +1681,23 @@ fn validate_optional_usb_route_positive_rule(
         validation_input_missing(
             findings,
             scenario,
-            format!("board.layout.constraints.usb_route.{name} must be greater than zero."),
+            format!("{constraint_path}.{name} must be greater than zero."),
         );
         return None;
     }
     Some(Some(value))
 }
 
-fn validate_optional_usb_route_integer_rule(
+fn validate_optional_constraint_integer_rule(
     scenario: &Scenario,
-    rule: &UsbRouteLayoutRule,
-    _name: &str,
+    constraint_path: &str,
+    source: Option<&str>,
     rule_value: Option<usize>,
     findings: &mut Vec<Finding>,
 ) -> Option<Option<usize>> {
     let Some(value) = rule_value else {
         return Some(None);
     };
-    if rule.source.as_deref().is_some_and(str::is_empty) {
-        validation_input_missing(
-            findings,
-            scenario,
-            "board.layout.constraints.usb_route.source must not be empty when declared.",
-        );
-        return None;
-    }
+    validate_optional_constraint_source(scenario, constraint_path, source, true, findings)?;
     Some(Some(value))
 }

@@ -1569,6 +1569,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         0.12
     );
     assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_vbus_route"]["max_vbus_via_count"],
+        0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_vbus_route"]["min_vbus_route_width_mm"],
+        0.25
+    );
+    assert_eq!(
         imported["board"]["layout"]["constraints"]["usb_return_path"]["max_data_line_unreferenced_length_mm"],
         0.0
     );
@@ -1796,14 +1804,25 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         vbus_route["scenario"]["parameters"]["max_vbus_route_length_mm"],
         20.0
     );
-    assert!(vbus_route["scenario"]["parameters"]["max_vbus_via_count"].is_null());
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_vbus_via_count"],
+        0
+    );
     assert_eq!(
         vbus_route["scenario"]["parameters"]["min_vbus_route_width_mm"],
-        0.3
+        0.25
+    );
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_connector_to_vbus_protection_route_distance_mm"],
+        2.0
+    );
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_component_to_route_distance_mm"],
+        0.05
     );
     assert_eq!(
         vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
-        serde_json::Value::Null
+        true
     );
     let vbus = &vbus_route["scenario"]["usb_routes"][0];
     assert_eq!(vbus["signal"], "VBUS");

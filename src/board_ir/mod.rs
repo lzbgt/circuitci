@@ -186,6 +186,8 @@ pub struct LayoutConstraints {
     #[serde(default)]
     pub usb_route: UsbRouteLayoutRule,
     #[serde(default)]
+    pub usb_vbus_route: UsbVbusRouteLayoutRule,
+    #[serde(default)]
     pub usb_return_path: UsbReturnPathLayoutRule,
 }
 
@@ -221,6 +223,22 @@ pub struct UsbRouteLayoutRule {
     pub max_data_pair_gap_delta_mm: Option<f64>,
     #[serde(default)]
     pub require_route_pad_contact_evidence: Option<bool>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct UsbVbusRouteLayoutRule {
+    #[serde(default)]
+    pub max_vbus_via_count: Option<usize>,
+    #[serde(default)]
+    pub min_vbus_route_width_mm: Option<f64>,
+    #[serde(default)]
+    pub max_connector_to_vbus_protection_route_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub max_component_to_route_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub require_vbus_route_pad_contact_evidence: Option<bool>,
     #[serde(default)]
     pub source: Option<String>,
 }

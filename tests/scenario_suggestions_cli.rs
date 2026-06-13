@@ -1081,18 +1081,25 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         vbus_route["scenario"]["parameters"]["max_vbus_route_length_mm"],
         20.0
     );
-    assert!(vbus_route["scenario"]["parameters"]["max_vbus_via_count"].is_null());
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_vbus_via_count"],
+        0
+    );
     assert_eq!(
         vbus_route["scenario"]["parameters"]["min_vbus_route_width_mm"],
-        0.30
+        0.25
     );
-    assert!(
-        vbus_route["scenario"]["parameters"]["max_connector_to_vbus_protection_route_distance_mm"]
-            .is_null()
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_connector_to_vbus_protection_route_distance_mm"],
+        2.0
     );
-    assert!(vbus_route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
-    assert!(
-        vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"].is_null()
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["max_component_to_route_distance_mm"],
+        0.05
+    );
+    assert_eq!(
+        vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
+        true
     );
     let vbus_routes = vbus_route["scenario"]["usb_routes"].as_array().unwrap();
     assert_eq!(vbus_routes.len(), 1);
