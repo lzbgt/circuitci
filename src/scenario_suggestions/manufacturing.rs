@@ -1,5 +1,5 @@
 use super::{ScenarioSuggestion, SuggestedScenario, sanitized_name};
-use crate::board_ir::LayoutCopper;
+use crate::board_ir::{LayoutCopper, LayoutCopperFeature};
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -15,7 +15,10 @@ const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
 const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
+const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
+const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
+const JLC_DISCRETE_IC_PIN_PITCHES_MM: &[f64] = &[0.3, 0.35, 0.4, 0.5, 0.65];
 
 pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
     let layout = &bound.project.board.layout;
@@ -219,6 +222,26 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         );
     }
 
+    if let Some(evidence) = infer_ic_pin_pitch_from_paste(&layout.solder_paste) {
+        push_if_not_declared(
+            bound,
+            &mut suggestions,
+            SOLDER_PASTE_IC_PIN_APERTURE_VALID,
+            manufacturing_suggestion(
+                "solder_paste_ic_pin_aperture_valid",
+                true,
+                &format!(
+                    "Imported pad-owned solder-paste evidence for {} on {} has {} repeated {:.3} mm pin-pitch gaps matching the source-backed JLCPCB IC stencil table.",
+                    evidence.component, evidence.layer, evidence.matched_gaps, evidence.pitch_mm
+                ),
+                &format!("{project_name}_solder_paste_ic_pin_aperture"),
+                SOLDER_PASTE_IC_PIN_APERTURE_VALID,
+                Some(pin_pitch_parameter(evidence.pitch_mm)),
+                Vec::new(),
+            ),
+        );
+    }
+
     if paste_objects >= 2 {
         push_if_not_declared(
             bound,
@@ -304,6 +327,82 @@ fn fabrication_process(process: &str) -> BTreeMap<String, Value> {
     BTreeMap::from([("fabrication_process".to_string(), json!(process))])
 }
 
+fn pin_pitch_parameter(pin_pitch_mm: f64) -> BTreeMap<String, Value> {
+    BTreeMap::from([("pin_pitch_mm".to_string(), json!(pin_pitch_mm))])
+}
+
 fn copper_object_count(copper: &LayoutCopper) -> usize {
     copper.features.len() + copper.segments.len() + copper.regions.len()
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct IcPinPitchEvidence {
+    component: String,
+    layer: String,
+    pitch_mm: f64,
+    matched_gaps: usize,
+}
+
+fn infer_ic_pin_pitch_from_paste(paste: &LayoutCopper) -> Option<IcPinPitchEvidence> {
+    let mut features_by_component_layer: BTreeMap<(String, String), Vec<&LayoutCopperFeature>> =
+        BTreeMap::new();
+    for feature in &paste.features {
+        if feature.owner_kind.as_deref() != Some("pad") || feature.polarity != "dark" {
+            continue;
+        }
+        let Some(component) = &feature.component else {
+            continue;
+        };
+        features_by_component_layer
+            .entry((component.clone(), feature.layer.clone()))
+            .or_default()
+            .push(feature);
+    }
+
+    let mut best: Option<IcPinPitchEvidence> = None;
+    for ((component, layer), features) in features_by_component_layer {
+        if features.len() < 3 {
+            continue;
+        }
+        for &pitch_mm in JLC_DISCRETE_IC_PIN_PITCHES_MM {
+            let mut matched_gaps = 0;
+            for (index, first) in features.iter().enumerate() {
+                for second in features.iter().skip(index + 1) {
+                    let dx = first.at.x_mm - second.at.x_mm;
+                    let dy = first.at.y_mm - second.at.y_mm;
+                    let distance_mm = (dx * dx + dy * dy).sqrt();
+                    if (distance_mm - pitch_mm).abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM {
+                        matched_gaps += 1;
+                    }
+                }
+            }
+            if matched_gaps < 2 {
+                continue;
+            }
+            let candidate = IcPinPitchEvidence {
+                component: component.clone(),
+                layer: layer.clone(),
+                pitch_mm,
+                matched_gaps,
+            };
+            if best
+                .as_ref()
+                .is_none_or(|current| is_better_pitch_evidence(&candidate, current))
+            {
+                best = Some(candidate);
+            }
+        }
+    }
+
+    best
+}
+
+fn is_better_pitch_evidence(candidate: &IcPinPitchEvidence, current: &IcPinPitchEvidence) -> bool {
+    candidate
+        .matched_gaps
+        .cmp(&current.matched_gaps)
+        .then_with(|| current.pitch_mm.total_cmp(&candidate.pitch_mm))
+        .then_with(|| current.component.cmp(&candidate.component))
+        .then_with(|| current.layer.cmp(&candidate.layer))
+        .is_gt()
 }

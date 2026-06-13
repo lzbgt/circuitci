@@ -131,6 +131,12 @@ Observed but not yet encoded as process defaults:
   uses 0.19 mm; 0.35 mm uses 0.17 mm; and 0.3 mm uses 0.16 mm. This is not a
   fabrication-process preset because the condition is package-class and pitch
   specific.
+- `suggest-scenarios` may infer `pin_pitch_mm` only when imported pad-owned
+  solder-paste flashes for one component show at least two repeated gaps
+  matching the discrete 0.3, 0.35, 0.4, 0.5, or 0.65 mm source rows. It does
+  not infer the broad 0.8-1.27 mm table row because that range is too broad to
+  distinguish package pitch from unrelated same-component paste spacing without
+  stronger package evidence.
 
 Next source work before expanding presets:
 

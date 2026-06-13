@@ -276,7 +276,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "scenario_suggestions_manufacturing_artifacts"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 12);
+    assert_eq!(suggested.len(), 13);
 
     let drill_diameter = suggested
         .iter()
@@ -400,6 +400,23 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     assert_eq!(
         paste_aperture["scenario"]["parameters"]["fabrication_process"],
         "jlcpcb_stencil_aperture_min_2026_06"
+    );
+
+    let paste_ic_pin = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_ic_pin_aperture_valid")
+        .expect("IC pin paste aperture suggestion");
+    assert_eq!(paste_ic_pin["runnable"], true);
+    assert_eq!(
+        paste_ic_pin["scenario"]["checks"][0],
+        "SOLDER_PASTE_IC_PIN_APERTURE_VALID"
+    );
+    assert_eq!(paste_ic_pin["scenario"]["parameters"]["pin_pitch_mm"], 0.5);
+    assert!(
+        paste_ic_pin["reason"]
+            .as_str()
+            .unwrap()
+            .contains("U1 on F.Paste")
     );
 }
 

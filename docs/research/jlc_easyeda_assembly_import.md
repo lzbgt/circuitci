@@ -200,11 +200,11 @@ flying-probe pads, outline, top/bottom copper, top/bottom solder mask, top
 paste, aggregate PTH drills, and NPTH drills:
 
 ```text
-CircuitCI suggested 12 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions-current
+CircuitCI suggested 13 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions-current
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
 ```
 
-Current split: 8 runnable preset-backed suggestions and 4 non-runnable
+Current split: 9 runnable source-backed suggestions and 4 non-runnable
 threshold-gated suggestions.
 
 Runnable manufacturing suggestions generated from named source-backed presets:
@@ -219,6 +219,12 @@ Runnable manufacturing suggestions generated from named source-backed presets:
 | `solder_mask_opening_valid` | `SOLDER_MASK_OPENING_VALID` | `jlcpcb_standard_2026_06` |
 | `solder_mask_dam_valid` | `SOLDER_MASK_DAM_VALID` | `jlcpcb_standard_2026_06` |
 | `solder_paste_aperture_size_valid` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | `jlcpcb_stencil_aperture_min_2026_06` |
+
+Runnable manufacturing suggestions generated from source-backed package evidence:
+
+| Suggestion | Check | Inferred evidence |
+| --- | --- | --- |
+| `solder_paste_ic_pin_aperture_valid` | `SOLDER_PASTE_IC_PIN_APERTURE_VALID` | repeated pad-owned `0.5 mm` paste pitch |
 
 Non-runnable suggestions generated because the imported evidence proves the
 geometry exists but the process threshold is not yet pinned to an authoritative
