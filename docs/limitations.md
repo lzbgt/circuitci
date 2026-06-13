@@ -182,9 +182,11 @@ without explicit imported mechanical evidence.
   diameters, and board-outline centerline segments for a static 2D
   edge-clearance screen. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` similarly uses
   imported Excellon `G85` routed-slot centerlines and widths under
-  `board.layout.slots[]`. These rules do not model drill wander, route-tool
-  runout/overcut, plating tolerances, panel tabs, fab-specific stackup rules,
-  copper-to-hole clearance, or 3D mechanical fit.
+  `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width against
+  process thresholds and can use the dedicated JLCPCB metallized/non-metallized
+  slot preset. These rules do not model drill wander, route-tool runout/
+  overcut, plating tolerances, panel tabs, fab-specific stackup rules,
+  copper-to-hole clearance, minimum slot length, or 3D mechanical fit.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   Gerber flash copper geometry for a static 2D annular-ring screen. It checks
   circle, rectangle, and axis-aligned oval flashes, skips non-plated drills,

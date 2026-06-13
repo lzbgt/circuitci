@@ -17,12 +17,15 @@ Implemented preset:
 
 - `jlcpcb_standard_2026_06`
 - `jlcpcb_double_sided_via_min_2026_06`
+- `jlcpcb_slot_min_2026_06`
 
 Implemented default:
 
 - `min_mask_expansion_mm: 0.05`
 - `min_solder_mask_dam_mm: 0.10`
 - `min_annular_ring_mm: 0.05`
+- `min_plated_slot_width_mm: 0.65`
+- `min_non_plated_slot_width_mm: 1.00`
 
 Rationale:
 
@@ -46,12 +49,14 @@ Rationale:
   dedicated double-sided/multilayer via minimum preset. This is not folded into
   the standard preset because component holes, slots, via-in-pad, and special
   HDI processes have different constraints.
+- The same via article says the smallest slot drill size is 0.65 mm for
+  metallized slots and the smallest non-metallized slot routing bit is 1.0 mm.
+  CircuitCI encodes those as a dedicated routed-slot minimum preset.
 
 Observed but not yet encoded as process defaults:
 
 - The JLCPCB via article says mechanical drilling uses 0.15-6.30 mm circular
-  drills, metallized slots use a smallest 0.65 mm drill, and non-metallized
-  slot routing uses a smallest 1.0 mm bit.
+  drills.
 - The JLCPCB capability page bundle references drilling, trace, solder-mask,
   outline, and stencil capability tables, but many visible table values are
   resolved through runtime i18n keys rather than plaintext in the saved HTML.

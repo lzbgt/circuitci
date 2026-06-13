@@ -25,6 +25,7 @@ use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::SLOT_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::SLOT_WIDTH_VALID;
 use super::common::validation_input_missing;
 
 pub(super) use annular_ring::validate_drill_annular_ring;
@@ -166,6 +167,71 @@ pub(super) fn validate_slot_to_board_edge_clearance(
                 slot_index,
                 nearest,
                 min_clearance_mm,
+            ));
+        }
+    }
+}
+
+pub(super) fn validate_slot_width(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_plated_width_mm) =
+        required_numeric_parameter(scenario, "min_plated_slot_width_mm", findings)
+    else {
+        return;
+    };
+    let Some(min_non_plated_width_mm) =
+        required_numeric_parameter(scenario, "min_non_plated_slot_width_mm", findings)
+    else {
+        return;
+    };
+    if min_plated_width_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_plated_slot_width_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    if min_non_plated_width_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_non_plated_slot_width_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let slots = &bound.project.board.layout.slots;
+    if slots.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SLOT_WIDTH_VALID requires board.layout.slots evidence.",
+        );
+        return;
+    }
+    for (slot_index, slot) in slots.iter().enumerate() {
+        if let Err(message) = validate_slot_geometry(slot, slot_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let (required_width_mm, slot_process) = match slot.plating.as_str() {
+            "plated" => (min_plated_width_mm, "plated"),
+            "non_plated" => (min_non_plated_width_mm, "non_plated"),
+            _ => (
+                min_plated_width_mm.max(min_non_plated_width_mm),
+                "unknown_plating",
+            ),
+        };
+        if slot.width_mm + f64::EPSILON < required_width_mm {
+            findings.push(slot_width_finding(
+                scenario,
+                slot,
+                slot_index,
+                slot_process,
+                required_width_mm,
             ));
         }
     }
@@ -587,6 +653,39 @@ fn slot_edge_clearance_finding(
         "Reduce slot width only if the mechanical requirement and fabricator minimums allow it."
             .to_string(),
         "Adjust the board outline or slot geometry if the fabrication drawing is incorrect."
+            .to_string(),
+    ];
+    finding
+}
+
+fn slot_width_finding(
+    scenario: &Scenario,
+    slot: &LayoutSlot,
+    slot_index: usize,
+    slot_process: &str,
+    min_width_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SLOT_WIDTH_VALID,
+        &scenario.name,
+        format!(
+            "Routed slot {} is {:.3} mm wide for {} process evidence; required at least {:.3} mm.",
+            slot_index, slot.width_mm, slot_process, min_width_mm
+        ),
+    );
+    insert_slot_measurements(&mut finding, slot, slot_index);
+    finding
+        .measured
+        .insert("slot_process".to_string(), json!(slot_process));
+    finding
+        .limit
+        .insert("min_slot_width_mm".to_string(), json!(min_width_mm));
+    finding.suggested_fixes = vec![
+        "Increase the routed slot width to meet the selected fabrication process minimum."
+            .to_string(),
+        "Use the correct plated/non-plated slot export if the drill file plating class is wrong."
+            .to_string(),
+        "Move this feature to a process option that explicitly supports the smaller slot width."
             .to_string(),
     ];
     finding

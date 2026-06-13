@@ -582,7 +582,8 @@ parameters always override the preset. `fabrication_process` may be one
 preset string or a list of preset strings. The supported presets are documented
 in `docs/fabrication_process_presets.md`; they currently supply
 `min_mask_expansion_mm: 0.05`, `min_solder_mask_dam_mm: 0.10`, and a dedicated
-JLCPCB double-sided/multilayer via minimum `min_annular_ring_mm: 0.05`.
+JLCPCB double-sided/multilayer via minimum `min_annular_ring_mm: 0.05`, plus
+JLCPCB routed-slot minimums for metallized and non-metallized slots.
 
 Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
 the Board IR includes fabrication drill evidence under `board.layout.drills`
@@ -643,6 +644,37 @@ External board-outline segments, cutout segments, and unknown outline segments
 all count as board edges for this check. This is a static 2D routed-slot
 capsule screen; it does not model tool runout, route overcut, plating
 tolerances, panel tabs, fab-specific minimums, or 3D mechanical fit.
+
+Slot-width validation uses `SLOT_WIDTH_VALID` when the Board IR includes routed
+slot evidence under `board.layout.slots`.
+
+```yaml
+scenarios:
+  - name: slot_width
+    type: manufacturing
+    checks:
+      - SLOT_WIDTH_VALID
+    parameters:
+      fabrication_process: jlcpcb_slot_min_2026_06
+```
+
+Slot-width algorithm:
+
+1. Require `parameters.min_plated_slot_width_mm` and
+   `parameters.min_non_plated_slot_width_mm`, either explicitly or from a
+   fabrication process preset.
+2. Require finite `board.layout.slots[]` entries with positive `width_mm` and
+   non-zero start/end centerline length.
+3. Check `plated` slots against `min_plated_slot_width_mm`.
+4. Check `non_plated` slots against `min_non_plated_slot_width_mm`.
+5. Check `unknown` plating slots against the stricter of the plated and
+   non-plated limits because the imported drill file did not prove which
+   process applies.
+6. Fail when any slot width is below the selected process limit.
+
+This is a static routed-slot process screen. It does not model route-tool
+runout, plating thickness, slot end-shape tolerance, milling compensation,
+minimum slot length, or mechanical fit.
 
 Drill annular-ring screening uses `DRILL_ANNULAR_RING_VALID` when the Board IR
 includes fabrication drill evidence under `board.layout.drills` and Gerber

@@ -75,6 +75,37 @@ fn slot_to_board_edge_clearance_fails_external_edge_violation() {
 }
 
 #[test]
+fn slot_width_passes_with_jlc_process_defaults() {
+    let report = run_validation("examples/good_slot_width_jlc_process/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn slot_width_fails_with_jlc_process_defaults() {
+    let report = run_validation("examples/bad_slot_width_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 3);
+    let failures = report["failures"].as_array().unwrap();
+    assert!(
+        failures
+            .iter()
+            .all(|failure| failure["id"] == "SLOT_WIDTH_VALID")
+    );
+    assert_eq!(failures[0]["measured"]["slot_process"], "plated");
+    assert_eq!(failures[0]["measured"]["slot_width_mm"], 0.6);
+    assert_eq!(failures[0]["limit"]["min_slot_width_mm"], 0.65);
+    assert_eq!(failures[1]["measured"]["slot_process"], "non_plated");
+    assert_eq!(failures[1]["measured"]["slot_width_mm"], 0.9);
+    assert_eq!(failures[1]["limit"]["min_slot_width_mm"], 1.0);
+    assert_eq!(failures[2]["measured"]["slot_process"], "unknown_plating");
+    assert_eq!(failures[2]["measured"]["slot_width_mm"], 0.9);
+    assert_eq!(failures[2]["limit"]["min_slot_width_mm"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_annular_ring_passes_when_copper_flash_is_large_enough() {
     let report = run_validation("examples/good_drill_annular_ring/project.yaml");
     assert_eq!(report["result"], "pass");

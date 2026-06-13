@@ -302,6 +302,13 @@ scenarios that combine `board.layout.slots` evidence with
 optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
 Stable limit keys include `min_slot_edge_clearance_mm`.
 
+`SLOT_WIDTH_VALID` reports are emitted by `manufacturing` scenarios that check
+`board.layout.slots` routed-slot process width. Stable measured keys include
+`slot_index`, `slot_start`, `slot_end`, `slot_width_mm`, `slot_radius_mm`,
+`slot_plating`, `slot_process`, optional `slot_layer`, optional `slot_tool`,
+and optional `source_slot_index`. Stable limit keys include
+`min_slot_width_mm`.
+
 `DRILL_ANNULAR_RING_VALID` reports are emitted by `manufacturing` scenarios
 that combine `board.layout.drills` evidence with
 `board.layout.copper.features` Gerber flash evidence. Stable measured keys

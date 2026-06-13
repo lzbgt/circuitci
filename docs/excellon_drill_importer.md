@@ -79,6 +79,12 @@ nearest external, cutout, or unknown board-edge segment.
 plus `board.layout.outline.segments` to screen each routed slot capsule against
 the nearest external, cutout, or unknown board-edge segment.
 
+`SLOT_WIDTH_VALID` can consume imported `board.layout.slots` to screen routed
+slot width against process limits. With `fabrication_process:
+jlcpcb_slot_min_2026_06`, plated slots use the source-backed 0.65 mm minimum
+metallized slot drill size and non-plated slots use the source-backed 1.0 mm
+minimum routing bit.
+
 `DRILL_ANNULAR_RING_VALID` reports optional drill ownership fields when present,
 which makes undersized annular-ring findings traceable to the affected pad or
 via instead of only a raw drill hit. When imported Gerber copper flashes also

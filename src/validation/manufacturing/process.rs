@@ -29,8 +29,20 @@ const JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06: FabricationProcessPreset = Fabricatio
     numeric_defaults: &[("min_annular_ring_mm", 0.05)],
 };
 
-const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] =
-    &[JLCPCB_STANDARD_2026_06, JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06];
+const JLCPCB_SLOT_MIN_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_slot_min_2026_06",
+    aliases: &["jlcpcb_slot_min"],
+    numeric_defaults: &[
+        ("min_plated_slot_width_mm", 0.65),
+        ("min_non_plated_slot_width_mm", 1.0),
+    ],
+};
+
+const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
+    JLCPCB_STANDARD_2026_06,
+    JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
+    JLCPCB_SLOT_MIN_2026_06,
+];
 
 pub(super) fn required_numeric_parameter(
     scenario: &Scenario,

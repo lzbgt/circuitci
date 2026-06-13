@@ -1,0 +1,38 @@
+project:
+  name: bad_slot_width_jlc_process
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    slots:
+      - start: { x_mm: 1.0, y_mm: 1.0 }
+        end: { x_mm: 3.0, y_mm: 1.0 }
+        width_mm: 0.6
+        plating: plated
+        layer: PTH_Through
+        tool: T01
+        source_slot_index: 0
+      - start: { x_mm: 1.0, y_mm: 3.0 }
+        end: { x_mm: 3.0, y_mm: 3.0 }
+        width_mm: 0.9
+        plating: non_plated
+        layer: NPTH_Through
+        tool: T02
+        source_slot_index: 1
+      - start: { x_mm: 1.0, y_mm: 5.0 }
+        end: { x_mm: 3.0, y_mm: 5.0 }
+        width_mm: 0.9
+        plating: unknown
+        layer: Unknown_Slot
+        tool: T03
+        source_slot_index: 2
+scenarios:
+  - name: slot_width
+    type: manufacturing
+    checks:
+      - SLOT_WIDTH_VALID
+    parameters:
+      fabrication_process: jlcpcb_slot_min_2026_06
