@@ -12,8 +12,10 @@ suggestions.
 
 - `src/scenario_suggestions.rs` owns suggestion orchestration and recognition
   logic over bound Board IR: power-tree checks, reset/boot templates, UART,
-  backdrive, clocks, reset supervisors, regulators, and passive evidence
-  collection.
+  clocks, reset supervisors, regulators, and passive evidence collection.
+- `src/scenario_suggestions/backdrive.rs` owns GPIO backdrive risk recognition,
+  runtime-evidence gating, duplicate detection, and `GPIO_BACKDRIVE` template
+  construction.
 - `src/scenario_suggestions/interface_protection.rs` owns recognition for
   signal-conditioning channels and clamp-only interface-protection templates.
 - `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector
