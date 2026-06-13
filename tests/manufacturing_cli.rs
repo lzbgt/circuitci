@@ -113,6 +113,18 @@ fn drill_annular_ring_fails_when_copper_flash_is_too_small() {
 }
 
 #[test]
+fn drill_annular_ring_uses_fabrication_process_list_default() {
+    let report = run_validation("examples/bad_drill_annular_ring_jlc_via_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    let annular_ring_mm = failure["measured"]["annular_ring_mm"].as_f64().unwrap();
+    assert!((annular_ring_mm - 0.045).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_annular_ring_mm"], 0.05);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_annular_ring_fails_when_plated_drill_has_no_matching_copper_flash() {
     let report = run_validation("examples/bad_drill_annular_ring_missing_copper/project.yaml");
     assert_eq!(report["result"], "fail");

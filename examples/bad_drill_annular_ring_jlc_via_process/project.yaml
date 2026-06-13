@@ -1,0 +1,38 @@
+project:
+  name: bad_drill_annular_ring_jlc_via_process
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    drills:
+      - at: { x_mm: 2.0, y_mm: -2.0 }
+        drill_mm: 0.15
+        plating: plated
+        layer: PTH_Through_Via
+        tool: T01
+        source_hit_index: 0
+    copper:
+      features:
+        - at: { x_mm: 2.0, y_mm: -2.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.24, y_mm: 0.24 }
+
+scenarios:
+  - name: drill_annular_ring
+    type: manufacturing
+    checks:
+      - DRILL_ANNULAR_RING_VALID
+    parameters:
+      fabrication_process:
+        - jlcpcb_standard_2026_06
+        - jlcpcb_double_sided_via_min_2026_06

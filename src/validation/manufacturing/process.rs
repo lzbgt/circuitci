@@ -20,7 +20,17 @@ const JLCPCB_STANDARD_2026_06: FabricationProcessPreset = FabricationProcessPres
     ],
 };
 
-const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[JLCPCB_STANDARD_2026_06];
+const JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_double_sided_via_min_2026_06",
+    aliases: &[
+        "jlcpcb_double_sided_via_min",
+        "jlcpcb_multilayer_via_min_2026_06",
+    ],
+    numeric_defaults: &[("min_annular_ring_mm", 0.05)],
+};
+
+const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] =
+    &[JLCPCB_STANDARD_2026_06, JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06];
 
 pub(super) fn required_numeric_parameter(
     scenario: &Scenario,
@@ -112,15 +122,88 @@ fn fabrication_process_numeric_default(
     let Some(process_value) = scenario.parameters.get(FABRICATION_PROCESS_PARAMETER) else {
         return ProcessDefaultLookup::NoProcess;
     };
-    let process_id = process_value.as_str();
-    let Some(process_id) = process_id else {
+    let Some(presets) = fabrication_process_presets(scenario, process_value, findings) else {
+        return ProcessDefaultLookup::InvalidProcess;
+    };
+    let mut matched_value = None;
+    let mut matched_preset = None;
+    for preset in presets {
+        let Some(value) = preset
+            .numeric_defaults
+            .iter()
+            .find_map(|(default_name, value)| (*default_name == name).then_some(*value))
+        else {
+            continue;
+        };
+        if let Some(existing) = matched_value {
+            if existing != value {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "manufacturing parameters.fabrication_process presets '{}' and '{}' provide conflicting defaults for parameters.{name}.",
+                        matched_preset.unwrap_or("<unknown>"),
+                        preset.id
+                    ),
+                );
+                return ProcessDefaultLookup::InvalidProcess;
+            }
+        } else {
+            matched_value = Some(value);
+            matched_preset = Some(preset.id);
+        }
+    }
+    matched_value
+        .map(ProcessDefaultLookup::Default)
+        .unwrap_or(ProcessDefaultLookup::NoDefault)
+}
+
+fn fabrication_process_presets(
+    scenario: &Scenario,
+    process_value: &serde_yaml_ng::Value,
+    findings: &mut Vec<Finding>,
+) -> Option<Vec<&'static FabricationProcessPreset>> {
+    if let Some(process_id) = process_value.as_str() {
+        return find_single_fabrication_process_preset(scenario, process_id, findings)
+            .map(|preset| vec![preset]);
+    }
+    let Some(process_ids) = process_value.as_sequence() else {
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.fabrication_process must be a string when provided.",
+            "manufacturing parameters.fabrication_process must be a string or list of strings when provided.",
         );
-        return ProcessDefaultLookup::InvalidProcess;
+        return None;
     };
+    if process_ids.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.fabrication_process list must not be empty.",
+        );
+        return None;
+    }
+    let mut presets = Vec::with_capacity(process_ids.len());
+    for process_id in process_ids {
+        let Some(process_id) = process_id.as_str() else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "manufacturing parameters.fabrication_process list entries must be strings.",
+            );
+            return None;
+        };
+        let preset = find_single_fabrication_process_preset(scenario, process_id, findings)?;
+        presets.push(preset);
+    }
+    Some(presets)
+}
+
+fn find_single_fabrication_process_preset(
+    scenario: &Scenario,
+    process_id: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<&'static FabricationProcessPreset> {
     let Some(preset) = find_fabrication_process_preset(process_id) else {
         validation_input_missing(
             findings,
@@ -129,14 +212,9 @@ fn fabrication_process_numeric_default(
                 "manufacturing parameters.fabrication_process references unsupported process preset '{process_id}'."
             ),
         );
-        return ProcessDefaultLookup::InvalidProcess;
+        return None;
     };
-    preset
-        .numeric_defaults
-        .iter()
-        .find_map(|(default_name, value)| (*default_name == name).then_some(*value))
-        .map(ProcessDefaultLookup::Default)
-        .unwrap_or(ProcessDefaultLookup::NoDefault)
+    Some(preset)
 }
 
 fn find_fabrication_process_preset(process_id: &str) -> Option<&'static FabricationProcessPreset> {

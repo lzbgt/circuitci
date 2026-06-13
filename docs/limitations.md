@@ -192,9 +192,12 @@ without explicit imported mechanical evidence.
   conflicting net or pad/via owner evidence, and can require explicit copper
   flash evidence on scenario-listed layers such as `F.Cu` and `B.Cu`. Drill
   hits may carry pad or via ownership when an importer can correlate them with
-  existing layout evidence. It does not use copper draw traces, thermal reliefs,
+  existing layout evidence. Source-backed process presets can provide selected
+  defaults, currently a dedicated JLCPCB double-sided/multilayer via minimum
+  annular ring. It does not use copper draw traces, thermal reliefs,
   plated-barrel thickness, drill wander distributions, solder mask, fab
-  compensation, or solve full electrical continuity.
+  compensation, component-hole annular requirements, or solve full electrical
+  continuity.
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported Gerber copper
   flashes, trace segments, and region polygons with board-outline centerline
   segments for a static 2D copper-edge screen. It does not model solder mask,

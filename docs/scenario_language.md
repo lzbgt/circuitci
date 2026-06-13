@@ -578,11 +578,11 @@ assembly stack-up tolerances.
 
 Manufacturing scenarios may use `parameters.fabrication_process` to fill
 source-backed defaults for supported numeric limits. Explicit numeric
-parameters always override the preset. The first supported preset is
-`jlcpcb_standard_2026_06`, documented in
-`docs/fabrication_process_presets.md`; it currently supplies
-`min_mask_expansion_mm: 0.05` for solder-mask opening checks and
-`min_solder_mask_dam_mm: 0.10` for solder-mask dam checks.
+parameters always override the preset. `fabrication_process` may be one
+preset string or a list of preset strings. The supported presets are documented
+in `docs/fabrication_process_presets.md`; they currently supply
+`min_mask_expansion_mm: 0.05`, `min_solder_mask_dam_mm: 0.10`, and a dedicated
+JLCPCB double-sided/multilayer via minimum `min_annular_ring_mm: 0.05`.
 
 Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
 the Board IR includes fabrication drill evidence under `board.layout.drills`
@@ -682,6 +682,16 @@ Drill annular-ring algorithm:
 10. Fail when no matching same/unknown-owner copper flash exists on the
     required layer, when only owner-mismatched copper exists, or when the best
     ring is below `min_annular_ring_mm`.
+
+For JLCPCB double-sided or multilayer via minimum annular ring, the raw
+`min_annular_ring_mm` parameter may be replaced by:
+
+```yaml
+parameters:
+  fabrication_process:
+    - jlcpcb_standard_2026_06
+    - jlcpcb_double_sided_via_min_2026_06
+```
 
 This is a static 2D fabrication screen. It does not model copper draws,
 thermal reliefs, plating tolerance, drill wander distributions, solder mask,

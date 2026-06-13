@@ -16,11 +16,13 @@ Saved source artifacts:
 Implemented preset:
 
 - `jlcpcb_standard_2026_06`
+- `jlcpcb_double_sided_via_min_2026_06`
 
 Implemented default:
 
 - `min_mask_expansion_mm: 0.05`
 - `min_solder_mask_dam_mm: 0.10`
+- `min_annular_ring_mm: 0.05`
 
 Rationale:
 
@@ -38,13 +40,18 @@ Rationale:
   width for reliable curing in high-density designs. CircuitCI does not encode
   0.075 mm into the standard JLCPCB preset because the 0.1 mm statement is the
   clearer JLCPCB process capability floor.
+- The JLCPCB via article says double-sided and multilayer boards have
+  0.15 mm minimum via inner diameter and 0.25 mm minimum via outer diameter.
+  CircuitCI derives `min_annular_ring_mm = (0.25 - 0.15) / 2 = 0.05` for the
+  dedicated double-sided/multilayer via minimum preset. This is not folded into
+  the standard preset because component holes, slots, via-in-pad, and special
+  HDI processes have different constraints.
 
 Observed but not yet encoded as process defaults:
 
 - The JLCPCB via article says mechanical drilling uses 0.15-6.30 mm circular
-  drills, metallized slots use a smallest 0.65 mm drill, non-metallized slot
-  routing uses a smallest 1.0 mm bit, and double-sided/multilayer vias have
-  0.15 mm minimum inner diameter and 0.25 mm minimum outer diameter.
+  drills, metallized slots use a smallest 0.65 mm drill, and non-metallized
+  slot routing uses a smallest 1.0 mm bit.
 - The JLCPCB capability page bundle references drilling, trace, solder-mask,
   outline, and stencil capability tables, but many visible table values are
   resolved through runtime i18n keys rather than plaintext in the saved HTML.
