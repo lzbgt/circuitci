@@ -32,6 +32,9 @@ to millimeters. The importer also accepts `lengthUnit: "mm"`.
 Connected rows become `board.layout.pads.<component>.<pin>` evidence. `PIN_NAME`
 is split at the last underscore, so `C1_1` becomes component `C1`, pin `1`.
 `T` maps to `F.Cu`, and `B` maps to `B.Cu`.
+Pad shape, size, and rotation are preserved so later Gerber imports can perform
+owner association against rotated rectangular, oval, and polygon-style pad
+bounding geometry.
 
 The importer creates `board.nets` entries for observed net names. Because the
 flying-probe file proves connectivity but not rail semantics, imported nets are

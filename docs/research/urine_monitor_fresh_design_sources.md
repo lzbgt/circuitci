@@ -41,16 +41,16 @@ pads imported first:
   `183` duplicate pin rows, `17` multipart pin rows, `1432` pad-only
   placeholder components, and `440` imported nets.
 - Top copper: `2725` flash features, `2567` trace segments, `22` regions,
-  `1937` net-associated features, `1255` net-associated segments, and `22`
+  `2018` net-associated features, `1255` net-associated segments, and `22`
   net-associated regions.
 - Bottom copper: `1275` flash features, `854` trace segments, `3` regions,
   `0` net-associated objects because the observed flying-probe file reports
   all pads on top-side layer `T`.
-- Top solder mask: `1546` flash openings, `7` region openings, `103`
+- Top solder mask: `1546` flash openings, `7` region openings, `121`
   owner-associated flash openings.
 - Bottom solder mask: `96` flash openings and `0` owner-associated openings
   for the same top-side-only flying-probe reason.
-- Top solder paste: `1111` flash openings, `354` region openings, `89`
+- Top solder paste: `1111` flash openings, `354` region openings, `103`
   owner-associated flash openings, and `9` owner-associated region openings.
 - PTH drills: `1275` hits with `9` pad-associated hits.
 - NPTH drills: `31` non-plated hits with no pad/via owners.

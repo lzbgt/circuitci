@@ -60,6 +60,7 @@ struct CopperOwnerPad {
     shape: Option<String>,
     size_x_mm: Option<f64>,
     size_y_mm: Option<f64>,
+    rotation_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -494,6 +495,7 @@ fn owner_pad_from_layout_pad(
         shape: pad.shape.clone(),
         size_x_mm: pad.size.as_ref().map(|size| size.x_mm),
         size_y_mm: pad.size.as_ref().map(|size| size.y_mm),
+        rotation_deg: pad.rotation_deg,
     })
 }
 
@@ -671,16 +673,35 @@ fn point_inside_feature_pad(point: GerberPoint, pad: &CopperOwnerPad) -> bool {
     if !size_x_mm.is_finite() || !size_y_mm.is_finite() || size_x_mm <= 0.0 || size_y_mm <= 0.0 {
         return false;
     }
-    let dx = (point.x_mm - pad.at.x_mm).abs();
-    let dy = (point.y_mm - pad.at.y_mm).abs();
+    let (dx, dy) = local_pad_offset(point, pad);
+    let dx = dx.abs();
+    let dy = dy.abs();
     match pad.shape.as_deref() {
         Some("circle") => dx.hypot(dy) <= size_x_mm.min(size_y_mm) / 2.0 + POINT_EPSILON_MM,
         Some("oval") => point_inside_axis_aligned_oval(dx, dy, size_x_mm, size_y_mm),
         Some("rect") | None => {
             dx <= size_x_mm / 2.0 + POINT_EPSILON_MM && dy <= size_y_mm / 2.0 + POINT_EPSILON_MM
         }
+        Some("polygon") => {
+            dx <= size_x_mm / 2.0 + POINT_EPSILON_MM && dy <= size_y_mm / 2.0 + POINT_EPSILON_MM
+        }
         Some(_) => point_distance_mm(point, pad.at) <= 0.05,
     }
+}
+
+fn local_pad_offset(point: GerberPoint, pad: &CopperOwnerPad) -> (f64, f64) {
+    let dx = point.x_mm - pad.at.x_mm;
+    let dy = point.y_mm - pad.at.y_mm;
+    let Some(rotation_deg) = pad.rotation_deg else {
+        return (dx, dy);
+    };
+    if !rotation_deg.is_finite() {
+        return (dx, dy);
+    }
+    let radians = -rotation_deg.to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    (dx * cos - dy * sin, dx * sin + dy * cos)
 }
 
 fn point_inside_feature_via(feature: &GerberCopperFeature, via: &CopperOwnerVia) -> bool {

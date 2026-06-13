@@ -35,6 +35,8 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 
 For ownership matching, EasyEDA layer names `TopLayer` and `BottomLayer` are
 treated as aliases of Board IR copper layers `F.Cu` and `B.Cu`.
+Pad ownership matching honors imported pad `rotation_deg` for rectangular,
+oval, and polygon-style bounding geometry.
 
 ## Supported Gerber Subset
 

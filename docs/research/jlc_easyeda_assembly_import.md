@@ -157,11 +157,11 @@ aliases (`TopLayer`, `TopSolderMaskLayer`, and `TopPasteMaskLayer`), observed
 owner association becomes:
 
 ```text
-Top copper: 1937 net-associated features, 1255 net-associated segments, 22 net-associated regions
+Top copper: 2018 net-associated features, 1255 net-associated segments, 22 net-associated regions
 Bottom copper: 0 net-associated objects because the flying-probe file reports layer T only
-Top solder mask: 103 owner-associated flash openings
+Top solder mask: 121 owner-associated flash openings
 Bottom solder mask: 0 owner-associated openings because the flying-probe file reports layer T only
-Top solder paste: 89 owner-associated flash openings, 9 owner-associated region openings
+Top solder paste: 103 owner-associated flash openings, 9 owner-associated region openings
 PTH drills: 9 pad-associated hits
 ```
 

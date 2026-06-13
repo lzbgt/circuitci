@@ -199,6 +199,93 @@ fn import_gerber_copper_associates_easyeda_toplayer_with_front_copper_pads() {
 }
 
 #[test]
+fn import_gerber_copper_associates_rotated_rect_and_polygon_pads() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let project = dir.path().join("rotated_pad.project.yaml");
+    let gerber = dir.path().join("rotated_pad_copper.gtl");
+    let output = dir.path().join("with_rotated_pad_copper.project.yaml");
+    std::fs::write(
+        &project,
+        concat!(
+            "project:\n",
+            "  name: rotated_pad_ownership\n",
+            "  version: 0.1.0\n",
+            "libraries:\n",
+            "  - ../../libs/generic/schematic\n",
+            "board:\n",
+            "  components:\n",
+            "    J1:\n",
+            "      model: generic.schematic.imported_component\n",
+            "      pins: {}\n",
+            "  nets:\n",
+            "    GND: { kind: ground }\n",
+            "    SIG: { kind: digital_or_analog }\n",
+            "  layout:\n",
+            "    pads:\n",
+            "      J1:\n",
+            "        1:\n",
+            "          at: { x_mm: 10.0, y_mm: 10.0 }\n",
+            "          net: GND\n",
+            "          layers: [F.Cu]\n",
+            "          shape: rect\n",
+            "          size: { x_mm: 2.0, y_mm: 1.0 }\n",
+            "          rotation_deg: 45.0\n",
+            "        2:\n",
+            "          at: { x_mm: 20.0, y_mm: 10.0 }\n",
+            "          net: SIG\n",
+            "          layers: [F.Cu]\n",
+            "          shape: polygon\n",
+            "          size: { x_mm: 2.0, y_mm: 1.0 }\n",
+            "          rotation_deg: 45.0\n",
+            "scenarios: []\n",
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: F.Cu*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "%ADD10C,0.200*%\n",
+            "D10*\n",
+            "X01063640Y01063640D03*\n",
+            "X02063640Y01063640D03*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-copper",
+            gerber.to_str().unwrap(),
+            "--project",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("2 net-associated features"));
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let features = imported["board"]["layout"]["copper"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(features[0]["net"], "GND");
+    assert_eq!(features[0]["component"], "J1");
+    assert_eq!(features[0]["pin"], "1");
+    assert_eq!(features[1]["net"], "SIG");
+    assert_eq!(features[1]["component"], "J1");
+    assert_eq!(features[1]["pin"], "2");
+}
+
+#[test]
 fn import_gerber_copper_rejects_undefined_aperture_selection() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
