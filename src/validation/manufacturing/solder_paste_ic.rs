@@ -27,12 +27,12 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
         );
         return;
     }
-    let Some(width_range) = jlc_ic_pin_aperture_width_range(pin_pitch_mm) else {
+    let Some(aperture_spec) = jlc_ic_pin_aperture_spec(pin_pitch_mm) else {
         validation_input_missing(
             findings,
             scenario,
             format!(
-                "SOLDER_PASTE_IC_PIN_APERTURE_VALID has no source-backed JLCPCB IC aperture width range for pin_pitch_mm={pin_pitch_mm:.6}."
+                "SOLDER_PASTE_IC_PIN_APERTURE_VALID has no source-backed JLCPCB IC aperture guidance for pin_pitch_mm={pin_pitch_mm:.6}."
             ),
         );
         return;
@@ -65,13 +65,23 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
         }
         checked_pad_owned_openings += 1;
         let aperture_width_mm = feature.size.x_mm.min(feature.size.y_mm);
-        if aperture_width_out_of_range(aperture_width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
+        let aperture_length_mm = feature.size.x_mm.max(feature.size.y_mm);
+        if aperture_width_out_of_range(aperture_width_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_width_finding(
                 scenario,
                 object,
                 aperture_width_mm,
                 pin_pitch_mm,
-                width_range,
+                aperture_spec,
+            ));
+        }
+        if aperture_length_out_of_range(aperture_length_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_length_finding(
+                scenario,
+                object,
+                aperture_length_mm,
+                pin_pitch_mm,
+                aperture_spec,
             ));
         }
     }
@@ -91,13 +101,23 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
             continue;
         }
         checked_pad_owned_openings += 1;
-        if aperture_width_out_of_range(segment.width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
+        if aperture_width_out_of_range(segment.width_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_width_finding(
                 scenario,
                 object,
                 segment.width_mm,
                 pin_pitch_mm,
-                width_range,
+                aperture_spec,
+            ));
+        }
+        let aperture_length_mm = segment_aperture_length_mm(segment);
+        if aperture_length_out_of_range(aperture_length_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_length_finding(
+                scenario,
+                object,
+                aperture_length_mm,
+                pin_pitch_mm,
+                aperture_spec,
             ));
         }
     }
@@ -124,14 +144,31 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
             );
             continue;
         };
+        let Some(aperture_length_mm) = region_bounding_box_max_dimension_mm(region) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "SOLDER_PASTE_IC_PIN_APERTURE_VALID could not compute finite solder-paste region aperture length.",
+            );
+            continue;
+        };
         checked_pad_owned_openings += 1;
-        if aperture_width_out_of_range(aperture_width_mm, width_range) {
-            findings.push(solder_paste_ic_pin_aperture_finding(
+        if aperture_width_out_of_range(aperture_width_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_width_finding(
                 scenario,
                 object,
                 aperture_width_mm,
                 pin_pitch_mm,
-                width_range,
+                aperture_spec,
+            ));
+        }
+        if aperture_length_out_of_range(aperture_length_mm, aperture_spec) {
+            findings.push(solder_paste_ic_pin_aperture_length_finding(
+                scenario,
+                object,
+                aperture_length_mm,
+                pin_pitch_mm,
+                aperture_spec,
             ));
         }
     }
@@ -153,25 +190,28 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
 }
 
 #[derive(Clone, Copy)]
-struct IcPinApertureWidthRange {
+struct IcPinApertureSpec {
     min_mm: f64,
     max_mm: f64,
+    length_mm: Option<f64>,
     source_condition: &'static str,
 }
 
-fn jlc_ic_pin_aperture_width_range(pin_pitch_mm: f64) -> Option<IcPinApertureWidthRange> {
+fn jlc_ic_pin_aperture_spec(pin_pitch_mm: f64) -> Option<IcPinApertureSpec> {
     if (0.8..=1.27).contains(&pin_pitch_mm) {
-        return Some(IcPinApertureWidthRange {
+        return Some(IcPinApertureSpec {
             min_mm: pin_pitch_mm * 0.45,
             max_mm: pin_pitch_mm * 0.60,
+            length_mm: None,
             source_condition: "JLCPCB IC stencil pitch 0.8-1.27 mm: width 45%-60% of pitch",
         });
     }
     if (0.635..=0.65).contains(&pin_pitch_mm) {
-        return Some(IcPinApertureWidthRange {
+        return Some(IcPinApertureSpec {
             min_mm: 0.30,
             max_mm: 0.33,
-            source_condition: "JLCPCB IC stencil pitch 0.635-0.65 mm: W=0.30-0.33 mm",
+            length_mm: Some(1.00),
+            source_condition: "JLCPCB IC stencil pitch 0.635-0.65 mm: W=0.30-0.33 mm, L=1.00 mm",
         });
     }
     let exact = [
@@ -183,16 +223,30 @@ fn jlc_ic_pin_aperture_width_range(pin_pitch_mm: f64) -> Option<IcPinApertureWid
     exact
         .iter()
         .find(|(pitch, _, _)| (pin_pitch_mm - *pitch).abs() <= 1.0e-9)
-        .map(|(_, width, source_condition)| IcPinApertureWidthRange {
+        .map(|(_, width, source_condition)| IcPinApertureSpec {
             min_mm: *width,
             max_mm: *width,
+            length_mm: None,
             source_condition,
         })
 }
 
-fn aperture_width_out_of_range(aperture_width_mm: f64, range: IcPinApertureWidthRange) -> bool {
+fn aperture_width_out_of_range(aperture_width_mm: f64, range: IcPinApertureSpec) -> bool {
     aperture_width_mm + f64::EPSILON < range.min_mm
         || aperture_width_mm > range.max_mm + f64::EPSILON
+}
+
+fn aperture_length_out_of_range(aperture_length_mm: f64, spec: IcPinApertureSpec) -> bool {
+    let Some(expected_length_mm) = spec.length_mm else {
+        return false;
+    };
+    (aperture_length_mm - expected_length_mm).abs() > f64::EPSILON
+}
+
+fn segment_aperture_length_mm(segment: &LayoutCopperSegment) -> f64 {
+    let dx_mm = segment.end.x_mm - segment.start.x_mm;
+    let dy_mm = segment.end.y_mm - segment.start.y_mm;
+    dx_mm.hypot(dy_mm) + segment.width_mm
 }
 
 fn paste_object_is_pad_owned(object: CopperObjectRef<'_>) -> bool {
@@ -221,6 +275,14 @@ fn paste_object_matches_target(object: CopperObjectRef<'_>, scenario: &Scenario)
 }
 
 fn region_bounding_box_min_dimension_mm(region: &LayoutCopperRegion) -> Option<f64> {
+    region_bounding_box_dimensions_mm(region).map(|(width_mm, height_mm)| width_mm.min(height_mm))
+}
+
+fn region_bounding_box_max_dimension_mm(region: &LayoutCopperRegion) -> Option<f64> {
+    region_bounding_box_dimensions_mm(region).map(|(width_mm, height_mm)| width_mm.max(height_mm))
+}
+
+fn region_bounding_box_dimensions_mm(region: &LayoutCopperRegion) -> Option<(f64, f64)> {
     let first = region.points.first()?;
     let mut min_x = first.x_mm;
     let mut max_x = first.x_mm;
@@ -237,15 +299,15 @@ fn region_bounding_box_min_dimension_mm(region: &LayoutCopperRegion) -> Option<f
     }
     let width_mm = max_x - min_x;
     let height_mm = max_y - min_y;
-    (width_mm > 0.0 && height_mm > 0.0).then_some(width_mm.min(height_mm))
+    (width_mm > 0.0 && height_mm > 0.0).then_some((width_mm, height_mm))
 }
 
-fn solder_paste_ic_pin_aperture_finding(
+fn solder_paste_ic_pin_aperture_width_finding(
     scenario: &Scenario,
     paste_object: CopperObjectRef<'_>,
     aperture_width_mm: f64,
     pin_pitch_mm: f64,
-    width_range: IcPinApertureWidthRange,
+    aperture_spec: IcPinApertureSpec,
 ) -> Finding {
     let mut finding = Finding::critical(
         SOLDER_PASTE_IC_PIN_APERTURE_VALID,
@@ -256,8 +318,8 @@ fn solder_paste_ic_pin_aperture_finding(
             paste_object.layer(),
             aperture_width_mm,
             pin_pitch_mm,
-            width_range.min_mm,
-            width_range.max_mm
+            aperture_spec.min_mm,
+            aperture_spec.max_mm
         ),
     );
     finding.suggested_fixes = vec![
@@ -275,15 +337,61 @@ fn solder_paste_ic_pin_aperture_finding(
         .insert("pin_pitch_mm".to_string(), json!(pin_pitch_mm));
     finding.measured.insert(
         "source_condition".to_string(),
-        json!(width_range.source_condition),
+        json!(aperture_spec.source_condition),
     );
     finding.limit.insert(
         "min_solder_paste_ic_pin_aperture_width_mm".to_string(),
-        json!(width_range.min_mm),
+        json!(aperture_spec.min_mm),
     );
     finding.limit.insert(
         "max_solder_paste_ic_pin_aperture_width_mm".to_string(),
-        json!(width_range.max_mm),
+        json!(aperture_spec.max_mm),
+    );
+    finding
+}
+
+fn solder_paste_ic_pin_aperture_length_finding(
+    scenario: &Scenario,
+    paste_object: CopperObjectRef<'_>,
+    aperture_length_mm: f64,
+    pin_pitch_mm: f64,
+    aperture_spec: IcPinApertureSpec,
+) -> Finding {
+    let expected_length_mm = aperture_spec
+        .length_mm
+        .expect("length finding requires length-constrained IC aperture spec");
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_IC_PIN_APERTURE_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-paste {} opening on {} has IC pin aperture length {:.6} mm; JLCPCB pitch-conditioned length for {:.3} mm pitch is {:.6} mm.",
+            paste_object.kind(),
+            paste_object.layer(),
+            aperture_length_mm,
+            pin_pitch_mm,
+            expected_length_mm
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Adjust the IC pin stencil aperture length to match the selected JLCPCB pitch-conditioned stencil opening standard.".to_string(),
+        "Use a package-specific scenario with the correct pin_pitch_mm instead of applying this IC rule to unrelated pads.".to_string(),
+        "If the paste layer must remain as exported, document the order remark or assembly-process override and do not use this JLC default optimization check.".to_string(),
+    ];
+    insert_solder_paste_object_measurements(&mut finding, paste_object);
+    finding.measured.insert(
+        "solder_paste_ic_pin_aperture_length_mm".to_string(),
+        json!(aperture_length_mm),
+    );
+    finding
+        .measured
+        .insert("pin_pitch_mm".to_string(), json!(pin_pitch_mm));
+    finding.measured.insert(
+        "source_condition".to_string(),
+        json!(aperture_spec.source_condition),
+    );
+    finding.limit.insert(
+        "solder_paste_ic_pin_aperture_length_mm".to_string(),
+        json!(expected_length_mm),
     );
     finding
 }

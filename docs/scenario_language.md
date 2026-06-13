@@ -1032,9 +1032,9 @@ IC pin solder-paste aperture algorithm:
 1. Require `parameters.pin_pitch_mm`.
 2. Map the pitch to the saved JLCPCB stencil opening standard:
    0.8-1.27 mm pitch uses aperture width 45%-60% of pitch;
-   0.635-0.65 mm pitch uses 0.30-0.33 mm; 0.5 mm uses 0.24 mm;
-   0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm; and 0.3 mm uses
-   0.16 mm.
+   0.635-0.65 mm pitch uses 0.30-0.33 mm width and 1.00 mm length;
+   0.5 mm uses 0.24 mm; 0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm;
+   and 0.3 mm uses 0.16 mm.
 3. If `target.component` is present, check only pad-owned solder-paste evidence
    for that component. Without a target, check all pad-owned paste evidence.
 4. Require matching pad-owned solder-paste feature, segment, or region evidence.
@@ -1043,6 +1043,8 @@ IC pin solder-paste aperture algorithm:
 7. For single-contour regions, measure the smaller bounding-box dimension.
 8. Fail when a pad-owned paste opening is outside the pitch-conditioned width
    range.
+9. For source rows with an explicit length, fail when the measured aperture
+   length does not match the pitch-conditioned length.
 
 This is not a generic stencil capability preset. It represents JLCPCB's
 package-specific IC stencil optimization table and should only be used for the

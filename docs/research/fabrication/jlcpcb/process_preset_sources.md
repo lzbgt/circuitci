@@ -127,10 +127,10 @@ Observed but not yet encoded as process defaults:
   article as the opt-in `SOLDER_PASTE_IC_PIN_APERTURE_VALID` check. The rule
   requires explicit `pin_pitch_mm` and pad-owned paste evidence, then applies
   only the source-backed IC pitch rows: 0.8-1.27 mm pitch uses width 45%-60% of
-  pitch; 0.635-0.65 mm pitch uses 0.30-0.33 mm; 0.5 mm uses 0.24 mm; 0.4 mm
-  uses 0.19 mm; 0.35 mm uses 0.17 mm; and 0.3 mm uses 0.16 mm. This is not a
-  fabrication-process preset because the condition is package-class and pitch
-  specific.
+  pitch; 0.635-0.65 mm pitch uses 0.30-0.33 mm width and 1.00 mm length;
+  0.5 mm uses 0.24 mm; 0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm; and
+  0.3 mm uses 0.16 mm. This is not a fabrication-process preset because the
+  condition is package-class and pitch specific.
 - `suggest-scenarios` may infer `pin_pitch_mm` only when imported pad-owned
   solder-paste flashes for one component show at least two repeated gaps
   matching the discrete 0.3, 0.35, 0.4, 0.5, or 0.65 mm source rows. It may

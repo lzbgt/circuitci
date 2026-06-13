@@ -254,9 +254,10 @@ without explicit imported mechanical evidence.
   0.08 mm minimum aperture size. It does not evaluate arbitrary region minimum
   width, stencil thickness, paste release, or package-specific paste reductions.
 - `SOLDER_PASTE_IC_PIN_APERTURE_VALID` uses pad-owned Gerber solder-paste
-  feature, draw, and region evidence for an opt-in IC pin aperture-width screen
+  feature, draw, and region evidence for an opt-in IC pin aperture screen
   against the saved JLCPCB stencil opening table. It only runs for an explicit
-  `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance, and honors
+  `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance, checks the exact
+  1.00 mm length requirement for the 0.635-0.65 mm IC pitch row, and honors
   `target.component` when present. `suggest-scenarios` can infer selected
   target-scoped discrete pitch rows from repeated pad-owned paste flashes, but
   CircuitCI does not infer arbitrary package pitch or package class

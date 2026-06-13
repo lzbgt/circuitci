@@ -1,0 +1,41 @@
+project:
+  name: good_solder_paste_ic_pin_aperture_length_jlc
+  version: 0.1.0
+libraries: []
+board:
+  components: {}
+  nets: {}
+  layout:
+    solder_paste:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "1"
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.31, y_mm: 1.00 }
+        - at: { x_mm: 10.65, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "2"
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.31, y_mm: 1.00 }
+scenarios:
+  - name: solder_paste_ic_pin_aperture_length
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+    target:
+      component: U1
+    parameters:
+      pin_pitch_mm: 0.65

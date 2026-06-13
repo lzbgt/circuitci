@@ -560,12 +560,14 @@ optional `solder_paste_segment_component`, optional
 scenarios that compare pad-owned Gerber solder-paste opening evidence with the
 saved JLCPCB IC pin pitch aperture-width table. Stable measured keys include
 `solder_paste_kind`, `solder_paste_ic_pin_aperture_width_mm`,
-`pin_pitch_mm`, and `source_condition`. Feature, segment, and region findings
-reuse the same `solder_paste_feature_*`, `solder_paste_segment_*`, and
-`solder_paste_region_*` keys documented for solder-paste opening reports.
-Stable limit keys include
+optional `solder_paste_ic_pin_aperture_length_mm`, `pin_pitch_mm`, and
+`source_condition`. Feature, segment, and region findings reuse the same
+`solder_paste_feature_*`, `solder_paste_segment_*`, and `solder_paste_region_*`
+keys documented for solder-paste opening reports. Stable limit keys include
 `min_solder_paste_ic_pin_aperture_width_mm` and
-`max_solder_paste_ic_pin_aperture_width_mm`.
+`max_solder_paste_ic_pin_aperture_width_mm`, plus optional
+`solder_paste_ic_pin_aperture_length_mm` for source rows with an explicit
+length.
 
 `SOLDER_PASTE_BGA_APERTURE_VALID` reports are emitted by `manufacturing`
 scenarios that compare pad-owned Gerber solder-paste flash evidence with the

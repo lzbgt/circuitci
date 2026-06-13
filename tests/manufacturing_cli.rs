@@ -771,6 +771,44 @@ fn solder_paste_ic_pin_aperture_fails_for_jlc_pitch_width() {
 }
 
 #[test]
+fn solder_paste_ic_pin_aperture_passes_for_jlc_pitch_length() {
+    let report =
+        run_validation("examples/good_solder_paste_ic_pin_aperture_length_jlc/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_ic_pin_aperture_fails_for_jlc_pitch_length() {
+    let report =
+        run_validation("examples/bad_solder_paste_ic_pin_aperture_length_jlc/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_IC_PIN_APERTURE_VALID");
+    assert_eq!(failure["measured"]["solder_paste_kind"], "feature");
+    assert_eq!(failure["measured"]["solder_paste_feature_component"], "U1");
+    assert_eq!(failure["measured"]["solder_paste_feature_pin"], "1");
+    assert_eq!(
+        failure["measured"]["solder_paste_ic_pin_aperture_length_mm"],
+        0.80
+    );
+    assert_eq!(failure["measured"]["pin_pitch_mm"], 0.65);
+    assert_eq!(
+        failure["limit"]["solder_paste_ic_pin_aperture_length_mm"],
+        1.00
+    );
+    assert!(
+        failure["measured"]["source_condition"]
+            .as_str()
+            .unwrap()
+            .contains("L=1.00 mm")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_bga_aperture_passes_for_jlc_pitch_size() {
     let report = run_validation("examples/good_solder_paste_bga_aperture_jlc/project.yaml");
     assert_eq!(report["result"], "pass");
