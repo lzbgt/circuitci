@@ -420,6 +420,10 @@
                     },
                     "switch_pin": { "type": "string", "minLength": 1 },
                     "switch_net": { "type": "string", "minLength": 1 },
+                    "switch_inductor_pin_a": { "type": "string", "minLength": 1 },
+                    "switch_inductor_net_a": { "type": "string", "minLength": 1 },
+                    "switch_inductor_pin_b": { "type": "string", "minLength": 1 },
+                    "switch_inductor_net_b": { "type": "string", "minLength": 1 },
                     "input_inductance_min_H": { "type": "number", "exclusiveMinimum": 0 },
                     "input_inductance_max_H": { "type": "number", "exclusiveMinimum": 0 },
                     "input_support_inductance_H": { "type": "number", "minimum": 0 },
@@ -431,6 +435,13 @@
                     "output_inductance_max_H": { "type": "number", "exclusiveMinimum": 0 },
                     "output_support_inductance_H": { "type": "number", "minimum": 0 },
                     "output_support_inductors": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    },
+                    "switch_inductance_min_H": { "type": "number", "exclusiveMinimum": 0 },
+                    "switch_inductance_max_H": { "type": "number", "exclusiveMinimum": 0 },
+                    "switch_support_inductance_H": { "type": "number", "minimum": 0 },
+                    "switch_support_inductors": {
                       "type": "array",
                       "items": { "type": "string", "minLength": 1 }
                     }

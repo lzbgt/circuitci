@@ -43,7 +43,10 @@ TPS62162-3.3 now covers a common 3 V to 17 V, 1 A fixed 3.3 V synchronous buck
 regulator for static input-range, output-current, support-capacitance, and
 direct output-inductance screening. TI TPS61023 now covers the peer-board 5 V
 boost regulator path for static input/output range, support capacitance, and
-direct input-inductance screening. Espressif ESP32-WROOM-32E and
+direct input-inductance screening. TI TPS63802 now covers the peer-board
+3.3 V buck-boost path for static input/output range, support capacitance,
+output-current budget, and direct L1-L2 switch-inductor screening. Espressif
+ESP32-WROOM-32E and
 ESP32-S3-WROOM-1U-N16R8 now cover common Wi-Fi/Bluetooth MCU-module packs for
 3.3 V rail budgeting and boot-strap screening. The gap remains broad library
 depth across other MCU/wireless modules, USB-UART bridges, debug probes,
@@ -81,6 +84,8 @@ Executable slices now covered by `POWER_TREE_VALID`:
   Board IR capacitors to ground,
 - explicit regulator direct input/output inductance requirements against Board
   IR inductors between input/switch or switch/output nets,
+- explicit regulator direct switch-pin inductance requirements against Board IR
+  inductors between two declared converter switch-pin nets,
 - explicit load-switch `power_switch` enable-state evidence and maximum
   switched-output current budget,
 - explicit battery-charger `battery_charger` programmed-current range and

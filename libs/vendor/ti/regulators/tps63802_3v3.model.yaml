@@ -1,0 +1,121 @@
+component_id: vendor.ti.tps63802_3v3
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.3
+      operating_voltage_max_V: 5.5
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.201
+      operating_voltage_max_V: 3.399
+  GND:
+    kind: electrical_ground
+    required: true
+  L1:
+    kind: passive
+    required: true
+  L2:
+    kind: passive
+    required: true
+  FB:
+    kind: passive
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: true
+  MODE:
+    kind: digital_electrical_input
+    required: false
+  PG:
+    kind: digital_electrical_output
+    required: false
+  AGND:
+    kind: electrical_ground
+    required: false
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  switch_inductor_pin_a: L1
+  switch_inductor_pin_b: L2
+  max_output_current_A: 2.0
+  input_capacitance_min_F: 0.000004
+  output_capacitance_min_F: 0.000007
+  switch_inductance_min_H: 0.00000037
+  switch_inductance_max_H: 0.00000057
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS63802DLAR
+  package: VSON-10 DLA
+  polarity: adjustable_synchronous_buck_boost_3v3_reference_fixture
+  pinout:
+    VIN: VIN
+    VOUT: VOUT
+    GND: GND
+    L1: L1
+    L2: L2
+    FB: FB
+    EN: EN
+    MODE: MODE
+    PG: PG
+    AGND: AGND
+  electrical_characteristics:
+    input_voltage_operating:
+      conditions: Recommended input voltage range.
+      min: 1.3
+      max: 5.5
+      unit: V
+    startup_input_voltage:
+      conditions: Device input voltage for start-up.
+      min: 1.8
+      unit: V
+    output_voltage_setting:
+      conditions: Adjustable output-voltage setting range.
+      min: 1.8
+      max: 5.2
+      unit: V
+    output_current:
+      conditions: VI >= 2.3 V and VO = 3.3 V.
+      max: 2.0
+      unit: A
+    input_capacitance:
+      conditions: Effective capacitance connected to VIN.
+      min: 0.000004
+      typ: 0.000005
+      unit: F
+    output_capacitance:
+      conditions: Effective capacitance connected to VOUT for VO > 2.3 V.
+      min: 0.000007
+      typ: 0.0000082
+      unit: F
+    switch_inductor:
+      conditions: Effective inductance between L1 and L2.
+      min: 0.00000037
+      typ: 0.00000047
+      max: 0.00000057
+      unit: H
+  documents:
+    - title: TPS63802 2-A, High-efficient, Low IQ Buck-boost Converter in DFN Package
+      path: docs/research/datasheets/ti/tps63802.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps63802.pdf
+      sha256: be07deca1231c5493957bc64c2dc1cad5543bff330e49ae41caf3286fd80dca6
+      retrieved: "2026-06-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - buck_boost_regulator_static_screening
+    - peer_board_3v3_screening
+  not_valid_for:
+    - startup_from_deep_discharge_signoff
+    - inductor_saturation_current_signoff
+    - ripple_current_signoff
+    - dcr_efficiency_signoff
+    - loop_stability_signoff
+    - thermal_signoff

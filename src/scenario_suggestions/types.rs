@@ -617,6 +617,14 @@ pub struct SuggestedRegulator {
     pub switch_pin: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub switch_net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switch_inductor_pin_a: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switch_inductor_net_a: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switch_inductor_pin_b: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switch_inductor_net_b: Option<String>,
     #[serde(
         rename = "input_inductance_min_H",
         skip_serializing_if = "Option::is_none"
@@ -651,6 +659,23 @@ pub struct SuggestedRegulator {
     pub output_support_inductance_h: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_support_inductors: Option<Vec<String>>,
+    #[serde(
+        rename = "switch_inductance_min_H",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub switch_inductance_min_h: Option<f64>,
+    #[serde(
+        rename = "switch_inductance_max_H",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub switch_inductance_max_h: Option<f64>,
+    #[serde(
+        rename = "switch_support_inductance_H",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub switch_support_inductance_h: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switch_support_inductors: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize)]

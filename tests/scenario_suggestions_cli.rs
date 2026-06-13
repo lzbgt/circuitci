@@ -232,6 +232,42 @@ fn suggest_scenarios_reports_boost_input_inductance_evidence() {
 }
 
 #[test]
+fn suggest_scenarios_reports_buck_boost_switch_inductance_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_tps63802_buck_boost/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_tps63802_buck_boost"
+    );
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power_tree suggestion");
+    assert_eq!(power_tree["kind"], "power_tree");
+    assert_eq!(power_tree["runnable"], true);
+    let regulator = power_tree["scenario"]["regulators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|regulator| regulator["component"] == "UBUCKBOOST")
+        .expect("TPS63802 regulator evidence");
+    assert_eq!(regulator["input_pin"], "VIN");
+    assert_eq!(regulator["input_net"], "battery");
+    assert_eq!(regulator["output_pin"], "VOUT");
+    assert_eq!(regulator["output_net"], "rail_3v3");
+    assert_eq!(regulator["switch_inductor_pin_a"], "L1");
+    assert_eq!(regulator["switch_inductor_net_a"], "bb_l1");
+    assert_eq!(regulator["switch_inductor_pin_b"], "L2");
+    assert_eq!(regulator["switch_inductor_net_b"], "bb_l2");
+    assert_eq!(regulator["switch_inductance_min_H"], 0.00000037);
+    assert_eq!(regulator["switch_inductance_max_H"], 0.00000057);
+    assert_eq!(regulator["switch_support_inductance_H"], 0.00000047);
+    assert_eq!(regulator["switch_support_inductors"][0], "L1");
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");

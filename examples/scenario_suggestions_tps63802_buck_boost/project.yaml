@@ -1,0 +1,94 @@
+project:
+  name: scenario_suggestions_tps63802_buck_boost
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    VBAT:
+      model: generic.analog.dc_voltage_source
+      part_number: LIION_SOURCE
+      pins:
+        P: battery
+        N: gnd
+    UBUCKBOOST:
+      model: vendor.ti.tps63802_3v3
+      part_number: TPS63802DLAR
+      power_domains:
+        VIN: battery
+        VOUT: rail_3v3
+      pins:
+        VIN: battery
+        VOUT: rail_3v3
+        GND: gnd
+        AGND: gnd
+        L1: bb_l1
+        L2: bb_l2
+        FB: bb_fb
+        EN: bb_en
+        MODE: bb_mode
+        PG: bb_pg
+    L1:
+      model: generic.analog.inductor
+      part_number: 0.47uH
+      pins:
+        A: bb_l1
+        B: bb_l2
+      spice:
+        primitive: inductor
+        value_h: 0.00000047
+    CIN:
+      model: generic.analog.capacitor
+      part_number: 10uF
+      pins:
+        A: battery
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000010
+    COUT:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: rail_3v3
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+    ULOAD:
+      model: fixture.tps63802_nominal_3v3_load
+      part_number: NOMINAL_3V3_LOAD
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+  nets:
+    battery:
+      kind: power
+      nominal_voltage: 3.7
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    bb_l1:
+      kind: digital_or_analog
+    bb_l2:
+      kind: digital_or_analog
+    bb_fb:
+      kind: digital_or_analog
+    bb_en:
+      kind: digital_or_analog
+    bb_mode:
+      kind: digital_or_analog
+    bb_pg:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios: []

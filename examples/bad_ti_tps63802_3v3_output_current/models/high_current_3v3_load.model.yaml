@@ -1,0 +1,21 @@
+component_id: fixture.tps63802_high_current_3v3_load
+version: 0.1.0
+category: load
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 2.5
+  GND:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - buck_boost_output_current_fixture
+  not_valid_for:
+    - real_component_signoff

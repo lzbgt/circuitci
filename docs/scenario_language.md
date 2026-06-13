@@ -855,39 +855,44 @@ scenarios:
     declare `switch_pin`, the board must connect it to a switch net, and the
     board must have direct modeled Board IR inductance between that switch net
     and the regulator output rail within the declared range.
-14. If a component model declares `power_switch`, the declared input and output
+14. If `power_conversion.switch_inductance_min_H` or
+    `power_conversion.switch_inductance_max_H` is declared, the model must also
+    declare `switch_inductor_pin_a` and `switch_inductor_pin_b`, the board must
+    connect both pins, and the board must have direct modeled Board IR
+    inductance between those two switch-pin nets within the declared range.
+15. If a component model declares `power_switch`, the declared input and output
     pins must name distinct `electrical_power` ports, the control pin must be a
     digital input/IO port, and a powered output rail must have matching
     scenario `pin_states` evidence for the required enabled state.
-14. If `power_switch.max_output_current_A` is declared, every switched-output
+16. If `power_switch.max_output_current_A` is declared, every switched-output
     rail load must declare `max_supply_current_A`, and the summed worst-case
     output load must not exceed the switch limit.
-15. If a component model declares `reset_supervisor`, the monitored pin must be
+17. If a component model declares `reset_supervisor`, the monitored pin must be
     an `electrical_power` port connected to a power rail, and the reset output
     must be a digital output/IO port connected to a net.
-16. The monitored rail nominal voltage must be above the supervisor
+18. The monitored rail nominal voltage must be above the supervisor
     `threshold_max_V`, and `threshold_min_V` must not be below the highest
     powered-load `operating_voltage_min_V` on that rail.
-17. If a component model declares `battery_charger`, the declared input and
+19. If a component model declares `battery_charger`, the declared input and
     battery pins must name distinct `electrical_power` ports and be connected
     to rails. Invalid charger metadata fails closed.
-18. If `battery_charger.charge_current_parameter` is declared, the component
+20. If `battery_charger.charge_current_parameter` is declared, the component
     instance must provide that numeric parameter. The programmed current must
     fit `min_charge_current_A` / `max_charge_current_A` when present.
-19. If the charger input rail declares `supply_current_limit_A`, the programmed
+21. If the charger input rail declares `supply_current_limit_A`, the programmed
     charge current must fit that input-source budget.
-20. If `battery_charger.regulation_voltage_V` is declared and the battery net
+22. If `battery_charger.regulation_voltage_V` is declared and the battery net
     has `nominal_voltage`, the battery net may not exceed the regulation
     voltage.
-21. If a component model declares `power_mux`, the output and all input pins
+23. If a component model declares `power_mux`, the output and all input pins
     must name `electrical_power` ports and be connected to rails.
-22. If `power_mux.selected_input_parameter` is declared, the component instance
+24. If `power_mux.selected_input_parameter` is declared, the component instance
     must provide that string parameter, and the selected input must match one
     of the model input names.
-23. If the mux output rail is powered, the selected input rail must be powered.
-24. If the mux output rail is powered and an inactive input rail is unpowered,
+25. If the mux output rail is powered, the selected input rail must be powered.
+26. If the mux output rail is powered and an inactive input rail is unpowered,
     that inactive input must declare `reverse_blocking: true`.
-25. If `power_mux.max_output_current_A` is declared, every load on the mux
+27. If `power_mux.max_output_current_A` is declared, every load on the mux
     output rail must declare `max_supply_current_A`, and the summed load must
     not exceed the mux output-current limit.
 

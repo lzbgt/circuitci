@@ -328,6 +328,15 @@ suggestions:
           output_support_inductance_H: 0.0000022
           output_support_inductors:
             - L1
+          switch_inductor_pin_a: L1
+          switch_inductor_net_a: buck_boost_l1
+          switch_inductor_pin_b: L2
+          switch_inductor_net_b: buck_boost_l2
+          switch_inductance_min_H: 0.00000037
+          switch_inductance_max_H: 0.00000057
+          switch_support_inductance_H: 0.00000047
+          switch_support_inductors:
+            - LBB
       reset_supervisors:
         - component: USUP
           monitored_pin: VDD

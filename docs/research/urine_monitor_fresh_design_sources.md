@@ -62,7 +62,9 @@ existing CircuitCI checks:
   `TPS2121RUXT`, `TPS2113A*`, `TP4056`. CircuitCI now has a first
   `BQ24075RGTR` static charger model and a `TPS2121RUXT` static power-mux
   model for peer power paths. CircuitCI now also has a first `TPS61023DRLT`
-  static 5 V boost model with input-inductor screening.
+  static 5 V boost model with input-inductor screening, and a first
+  `TPS63802DLAR` static 3.3 V buck-boost model with direct L1-L2
+  switch-inductor screening.
 - Protection: `USBLC6-2SC6`, `TPD4E05U06DQAR`, `SMF5.0A`, `SM6T6V8CA`,
   resettable fuses.
 - Memory/security/I/O expanders: `W25Q32JVSSIQ`, `AT24C02C-SSHM-T`,
@@ -79,8 +81,8 @@ existing CircuitCI checks:
    Gerber/outline, and eventually `.eprj2` schematic/layout import.
 2. Add the remaining ESP32-S3-WROOM and STM32L431 component packs using the
    peer datasheets and public vendor datasheets as authoritative sources.
-3. Add the remaining power-path pack for `TPS63802`, then expand `TPS61023`
-   and `TPS2121` beyond static screening with current-limit resistor,
+3. Expand `TPS63802`, `TPS61023`, and `TPS2121` beyond static screening with
+   current-limit resistor,
    operating-point, switchover, and inductor saturation evidence.
 4. Add memory/security/sensor packs for the fitted STM32L4 peripherals so
    scenario suggestions can recognize common pull-up, rail, and bus checks.

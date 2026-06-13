@@ -275,6 +275,23 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                     None
                 }
             });
+            let switch_inductor_net_a = conversion
+                .switch_inductor_pin_a
+                .as_deref()
+                .and_then(|pin| component.pins.get(pin).map(String::as_str));
+            let switch_inductor_net_b = conversion
+                .switch_inductor_pin_b
+                .as_deref()
+                .and_then(|pin| component.pins.get(pin).map(String::as_str));
+            let switch_inductor_support = match (switch_inductor_net_a, switch_inductor_net_b) {
+                (Some(net_a), Some(net_b))
+                    if conversion.switch_inductance_min_h.is_some()
+                        || conversion.switch_inductance_max_h.is_some() =>
+                {
+                    Some(direct_inductance_between_nets(bound, net_a, net_b))
+                }
+                _ => None,
+            };
             Some(SuggestedRegulator {
                 component: component_id.clone(),
                 input_pin: conversion.input_pin.clone(),
@@ -297,6 +314,10 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                 output_support_capacitors: output_support.map(|(_, capacitors)| capacitors),
                 switch_pin: conversion.switch_pin.clone(),
                 switch_net: switch_net.map(str::to_string),
+                switch_inductor_pin_a: conversion.switch_inductor_pin_a.clone(),
+                switch_inductor_net_a: switch_inductor_net_a.map(str::to_string),
+                switch_inductor_pin_b: conversion.switch_inductor_pin_b.clone(),
+                switch_inductor_net_b: switch_inductor_net_b.map(str::to_string),
                 input_inductance_min_h: conversion.input_inductance_min_h,
                 input_inductance_max_h: conversion.input_inductance_max_h,
                 input_support_inductance_h: input_inductor_support
@@ -309,6 +330,12 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                     .as_ref()
                     .map(|(inductance_h, _)| *inductance_h),
                 output_support_inductors: output_inductor_support.map(|(_, inductors)| inductors),
+                switch_inductance_min_h: conversion.switch_inductance_min_h,
+                switch_inductance_max_h: conversion.switch_inductance_max_h,
+                switch_support_inductance_h: switch_inductor_support
+                    .as_ref()
+                    .map(|(inductance_h, _)| *inductance_h),
+                switch_support_inductors: switch_inductor_support.map(|(_, inductors)| inductors),
             })
         })
         .collect()

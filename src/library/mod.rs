@@ -48,6 +48,10 @@ pub struct PowerConversion {
     pub output_pin: String,
     #[serde(default)]
     pub switch_pin: Option<String>,
+    #[serde(default)]
+    pub switch_inductor_pin_a: Option<String>,
+    #[serde(default)]
+    pub switch_inductor_pin_b: Option<String>,
     #[serde(default, rename = "dropout_voltage_V")]
     pub dropout_voltage_v: Option<f64>,
     #[serde(default, rename = "min_output_current_A")]
@@ -68,6 +72,10 @@ pub struct PowerConversion {
     pub output_inductance_min_h: Option<f64>,
     #[serde(default, rename = "output_inductance_max_H")]
     pub output_inductance_max_h: Option<f64>,
+    #[serde(default, rename = "switch_inductance_min_H")]
+    pub switch_inductance_min_h: Option<f64>,
+    #[serde(default, rename = "switch_inductance_max_H")]
+    pub switch_inductance_max_h: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

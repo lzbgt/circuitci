@@ -120,6 +120,10 @@ power_conversion:
   output_capacitance_min_F: 0.000001
   input_inductance_min_H: 0.00000037
   output_inductance_min_H: 0.0000022
+  switch_inductor_pin_a: L1
+  switch_inductor_pin_b: L2
+  switch_inductance_min_H: 0.00000037
+  switch_inductance_max_H: 0.00000057
 ```
 
 - `input_pin` and `output_pin` must name model ports connected to Board IR power
@@ -148,6 +152,12 @@ power_conversion:
   This models buck-style output inductors. The validator sums direct inductors
   on each declared path. This is a static support-component screen, not
   saturation-current, DCR, ripple, or loop stability sign-off.
+- `switch_inductor_pin_a`, `switch_inductor_pin_b`,
+  `switch_inductance_min_H`, and `switch_inductance_max_H` require explicit
+  Board IR inductor primitives directly between the two declared converter
+  switch pins. This models buck-boost topologies such as TPS63802, where the
+  energy-storage inductor is between two converter switch pins rather than
+  input-to-switch or switch-to-output.
 
 `POWER_TREE_VALID` uses these values to check that a component is connected to
 a powered rail inside its allowed operating range, that declared rail current

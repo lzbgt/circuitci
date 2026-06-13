@@ -1914,6 +1914,70 @@ fn tps61023_5v_input_inductance_uses_datasheet_requirement() {
 }
 
 #[test]
+fn tps63802_3v3_buck_boost_passes_static_power_tree() {
+    let report = run_validation("examples/good_ti_tps63802_3v3_buck_boost/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn tps63802_3v3_switch_inductance_uses_datasheet_requirement() {
+    let report = run_validation("examples/bad_ti_tps63802_3v3_switch_inductance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_switch_inductance_min_H")
+                .is_some()
+        })
+        .expect("expected TPS63802 switch-inductance finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UBUCKBOOST");
+    assert_eq!(failure["net"], "bb_l1");
+    assert_eq!(failure["measured"]["switch_inductance_H"], 0.00000022);
+    assert_eq!(failure["measured"]["switch_inductors"][0], "L1");
+    assert_eq!(failure["measured"]["switch_inductor_net_a"], "bb_l1");
+    assert_eq!(failure["measured"]["switch_inductor_net_b"], "bb_l2");
+    assert_eq!(failure["limit"]["switch_inductor_pin_a"], "L1");
+    assert_eq!(failure["limit"]["switch_inductor_pin_b"], "L2");
+    assert_eq!(
+        failure["limit"]["regulator_switch_inductance_min_H"],
+        0.00000037
+    );
+    assert_eq!(
+        failure["limit"]["regulator_switch_inductance_max_H"],
+        0.00000057
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn tps63802_3v3_output_current_uses_datasheet_requirement() {
+    let report = run_validation("examples/bad_ti_tps63802_3v3_output_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_max_output_current_A")
+                .is_some()
+        })
+        .expect("expected TPS63802 output-current finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UBUCKBOOST");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["declared_output_load_current_A"], 2.5);
+    assert_eq!(failure["limit"]["regulator_max_output_current_A"], 2.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn esp32_wroom_32e_application_board_passes_static_checks() {
     let report = run_validation("examples/good_espressif_esp32_wroom_32e_application/project.yaml");
     assert_eq!(report["result"], "pass");

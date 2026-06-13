@@ -117,6 +117,24 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_tps63802_typical_3v3_buck_boost_passes
+    project: ../examples/good_ti_tps63802_3v3_buck_boost/project.yaml
+    expect: pass
+
+  - id: ti_tps63802_switch_inductance_detected
+    project: ../examples/bad_ti_tps63802_3v3_switch_inductance/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tps63802_output_overcurrent_detected
+    project: ../examples/bad_ti_tps63802_3v3_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_wroom_32e_application_passes
     project: ../examples/good_espressif_esp32_wroom_32e_application/project.yaml
     expect: pass
@@ -217,6 +235,18 @@ repairs:
   - id: fix_tps61023_input_inductance
     detects_case: ti_tps61023_input_inductance_detected
     fixed_case: ti_tps61023_typical_5v_boost_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps63802_switch_inductance
+    detects_case: ti_tps63802_switch_inductance_detected
+    fixed_case: ti_tps63802_typical_3v3_buck_boost_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps63802_output_current
+    detects_case: ti_tps63802_output_overcurrent_detected
+    fixed_case: ti_tps63802_typical_3v3_buck_boost_passes
     fixes_findings:
       - POWER_TREE_VALID
 
