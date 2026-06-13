@@ -299,6 +299,7 @@ board:
       - at: { x_mm: 29.3, y_mm: -8.64001 }
         drill_mm: 0.305
         plating: plated
+        castellated: true
         owner_kind: pad
         net: GND
         component: J1
@@ -313,7 +314,9 @@ fabrication evidence only by default. When existing Board IR pad or route-via
 layout evidence uniquely matches a drill center and diameter,
 `import-excellon-drill` can annotate the hit with `owner_kind: pad` plus
 `component`/`pin`/`net`, or `owner_kind: via` plus `net`/`via_index`. Ambiguous
-or missing matches remain anonymous.
+or missing matches remain anonymous. `castellated: true` is an explicit
+condition marker for castellated-hole checks; Excellon import does not infer it
+from anonymous drill geometry.
 
 Board IR can also carry Excellon routed-slot evidence under
 `board.layout.slots`. Slot coordinates describe the routed slot centerline and

@@ -109,14 +109,18 @@ Observed but not yet encoded as process defaults:
 - The saved JLCPCB capability page JavaScript contains castellated-hole text
   with "Hole to board edge" requirements, including
   `i18n_web_app_211_1` with `Hole to board edge (L): >= 1 mm`. The referenced
-  saved diagram, `Hole_to_board_edge.892a998.png`, labels a different
-  castellated-pad condition: `Castellated pad to board edge >= 0.5 mm`,
+  saved diagram, `Hole_to_board_edge.892a998.png`, labels related
+  castellated-pad conditions: `Castellated pad to board edge >= 0.5 mm`,
   `Castellated hole diameter >= 0.3 mm`, and `Castellated hole to hole >=
-  0.4 mm`. CircuitCI does not encode either value as
-  `min_drill_edge_clearance_mm` because the current rule measures generic
-  circular drill edge-to-outline clearance, while the source evidence is
-  specifically castellated-pad/castellated-hole geometry and the text/image
-  conditions are not the same.
+  0.4 mm`. CircuitCI encodes only the directly applicable drill evidence values
+  as the dedicated `jlcpcb_castellated_hole_2026_06` preset:
+  `min_castellated_hole_diameter_mm: 0.30` and
+  `min_castellated_hole_edge_clearance_mm: 1.00`. It still does not encode
+  those values as generic `min_drill_edge_clearance_mm`, because the generic
+  rule measures ordinary circular drill edge-to-outline clearance while the
+  source evidence is specifically castellated-hole geometry. The castellated
+  pad-to-board-edge and hole-to-hole diagram values remain unencoded until
+  Board IR carries explicit pad-edge and castellated hole-pair semantics.
 - The saved JLCPCB stencil opening-process article gives package- and
   pitch-specific aperture optimization examples for IC, BGA, connector,
   high-power transistor, through-hole, and red-glue stencil cases. It does not
@@ -157,8 +161,8 @@ Next source work before expanding presets:
 - Pin exact text values for generic drill-to-edge, slot-to-edge,
   paste-area-ratio, and stencil-spacing thresholds from official JLCPCB
   material, package stencil guidance, or an exported process capability
-  document. Castellated-pad edge values should become a separate
-  castellated-specific rule or preset only after the Board IR can identify that
-  condition explicitly.
+  document. Extend castellated validation beyond hole diameter and
+  hole-to-board-edge only after Board IR can identify castellated pad edges or
+  unambiguous castellated hole-pair spacing.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

@@ -710,6 +710,39 @@ This is a static routed-slot process screen. It does not model route-tool
 runout, plating thickness, slot end-shape tolerance, milling compensation,
 minimum slot length, or mechanical fit.
 
+Castellated-hole validation uses `CASTELLATED_HOLE_VALID` when the Board IR
+includes explicit castellated drill evidence under `board.layout.drills` and
+board-outline segment evidence under `board.layout.outline.segments`.
+
+```yaml
+scenarios:
+  - name: castellated_hole
+    type: manufacturing
+    checks:
+      - CASTELLATED_HOLE_VALID
+    parameters:
+      fabrication_process: jlcpcb_castellated_hole_2026_06
+```
+
+Castellated-hole algorithm:
+
+1. Require `parameters.min_castellated_hole_diameter_mm` and
+   `parameters.min_castellated_hole_edge_clearance_mm`, either explicitly or
+   from a fabrication process preset.
+2. Require at least one finite `board.layout.drills[]` entry with
+   `castellated: true`.
+3. Require finite `board.layout.outline.segments[]` entries.
+4. Check only the explicitly castellated drill entries.
+5. Fail when a castellated drill diameter is smaller than
+   `min_castellated_hole_diameter_mm`.
+6. Measure each castellated drill center to the nearest outline segment,
+   subtract drill radius, and fail when the hole-edge-to-board-edge clearance is
+   below `min_castellated_hole_edge_clearance_mm`.
+
+This is a condition-specific static 2D screen for castellated-hole evidence. It
+does not change generic `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` behavior and does
+not infer castellated holes from anonymous Excellon drill geometry.
+
 Drill annular-ring screening uses `DRILL_ANNULAR_RING_VALID` when the Board IR
 includes fabrication drill evidence under `board.layout.drills` and Gerber
 copper flash evidence under `board.layout.copper.features`.

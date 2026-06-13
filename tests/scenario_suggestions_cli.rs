@@ -276,7 +276,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "scenario_suggestions_manufacturing_artifacts"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 13);
+    assert_eq!(suggested.len(), 14);
 
     let drill_diameter = suggested
         .iter()
@@ -303,6 +303,20 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     assert_eq!(
         slot_width["scenario"]["parameters"]["fabrication_process"],
         "jlcpcb_slot_min_2026_06"
+    );
+
+    let castellated_hole = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "castellated_hole_valid")
+        .expect("castellated hole suggestion");
+    assert_eq!(castellated_hole["runnable"], true);
+    assert_eq!(
+        castellated_hole["scenario"]["checks"][0],
+        "CASTELLATED_HOLE_VALID"
+    );
+    assert_eq!(
+        castellated_hole["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_castellated_hole_2026_06"
     );
 
     let annular_ring = suggested

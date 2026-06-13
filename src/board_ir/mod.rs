@@ -220,6 +220,8 @@ pub struct LayoutDrill {
     pub drill_mm: f64,
     pub plating: String,
     #[serde(default)]
+    pub castellated: bool,
+    #[serde(default)]
     pub owner_kind: Option<String>,
     #[serde(default)]
     pub net: Option<String>,

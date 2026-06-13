@@ -43,6 +43,11 @@ Supported aliases for the JLCPCB circular drill diameter range preset:
 - `jlcpcb_drill_diameter_range_2026_06`
 - `jlcpcb_drill_diameter_range`
 
+Supported aliases for the JLCPCB castellated-hole preset:
+
+- `jlcpcb_castellated_hole_2026_06`
+- `jlcpcb_castellated_hole`
+
 Supported aliases for the JLCPCB 1 oz copper spacing preset:
 
 - `jlcpcb_1oz_copper_spacing_2026_06`
@@ -71,6 +76,8 @@ Current preset defaults:
 | `min_non_plated_slot_width_mm` | `1.00` | JLCPCB via article: smallest non-metallized slot routing bit is 1.0 mm. |
 | `min_drill_diameter_mm` | `0.15` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
+| `min_castellated_hole_diameter_mm` | `0.30` | JLCPCB castellated-hole diagram: castellated hole diameter is at least 0.3 mm. |
+| `min_castellated_hole_edge_clearance_mm` | `1.00` | JLCPCB castellated-hole capability text: hole to board edge is at least 1 mm. |
 | `min_copper_spacing_mm` | `0.10` | JLCPCB PCB capability page: 1 oz minimum track width and spacing is 0.10 / 0.10 mm, and pad-to-track clearance is 0.1 mm. |
 | `min_copper_edge_clearance_mm` | `0.20` | JLCPCB PCB capability page: copper clearance from routed board edges and routed slots is at least 0.2 mm. |
 | `min_solder_paste_aperture_size_mm` | `0.08` | JLCPCB stencil capability page: minimum aperture size is greater than 0.08 mm. |
@@ -88,9 +95,8 @@ Package-specific SMD pad spacing, stencil aperture spacing, paste area ratio,
 drill/slot-to-board-edge clearance, V-cut panel clearance, and special-order
 constraints still need narrower presets or explicit scenario parameters.
 
-JLCPCB castellated-hole source material is intentionally not exposed as a
-generic drill-to-board-edge preset. The saved capability text and diagram are
-castellated-pad/castellated-hole specific, while
-`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` measures generic circular drill
-edge-to-outline clearance. CircuitCI should add a castellated-specific
-evidence path before using those values automatically.
+JLCPCB castellated-hole source material is intentionally exposed only through
+the castellated-specific `jlcpcb_castellated_hole_2026_06` preset and
+`CASTELLATED_HOLE_VALID`. It is not a generic drill-to-board-edge preset:
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` still measures ordinary circular drill
+edge-to-outline clearance and does not consume those castellated defaults.

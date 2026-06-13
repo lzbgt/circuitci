@@ -285,7 +285,10 @@ The command is conservative:
   `fabrication_process: jlcpcb_double_sided_via_min_2026_06`. When copper and
   routed board-outline evidence are present, it emits runnable
   `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` using
-  `fabrication_process: jlcpcb_routed_edge_copper_clearance_2026_06`. When
+  `fabrication_process: jlcpcb_routed_edge_copper_clearance_2026_06`. When at
+  least one drill is explicitly marked `castellated: true` and board-outline
+  evidence exists, it emits runnable `CASTELLATED_HOLE_VALID` using
+  `fabrication_process: jlcpcb_castellated_hole_2026_06`. When
   copper evidence has at least two same-layer objects, it emits runnable
   `COPPER_SPACING_VALID` using
   `fabrication_process: jlcpcb_1oz_copper_spacing_2026_06`. When copper

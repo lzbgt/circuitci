@@ -266,3 +266,10 @@ conditions. Those values are not used for the peer release's generic
 suggestions because the imported release evidence does not classify
 castellated pads/holes, and the current drill-edge rule measures generic
 circular hole edge clearance.
+
+CircuitCI now has an explicit `castellated: true` drill evidence marker plus
+`CASTELLATED_HOLE_VALID`, which can use the dedicated
+`jlcpcb_castellated_hole_2026_06` preset. The real peer release does not
+generate that suggestion automatically because the current Excellon/JLC
+artifacts remain anonymous drill evidence and do not prove which holes are
+castellated.

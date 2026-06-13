@@ -47,6 +47,15 @@ const JLCPCB_DRILL_DIAMETER_RANGE_2026_06: FabricationProcessPreset = Fabricatio
     ],
 };
 
+const JLCPCB_CASTELLATED_HOLE_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_castellated_hole_2026_06",
+    aliases: &["jlcpcb_castellated_hole"],
+    numeric_defaults: &[
+        ("min_castellated_hole_diameter_mm", 0.30),
+        ("min_castellated_hole_edge_clearance_mm", 1.00),
+    ],
+};
+
 const JLCPCB_1OZ_COPPER_SPACING_2026_06: FabricationProcessPreset = FabricationProcessPreset {
     id: "jlcpcb_1oz_copper_spacing_2026_06",
     aliases: &[
@@ -77,6 +86,7 @@ const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
     JLCPCB_SLOT_MIN_2026_06,
     JLCPCB_DRILL_DIAMETER_RANGE_2026_06,
+    JLCPCB_CASTELLATED_HOLE_2026_06,
     JLCPCB_1OZ_COPPER_SPACING_2026_06,
     JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06,
     JLCPCB_STENCIL_APERTURE_MIN_2026_06,

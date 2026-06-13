@@ -37,6 +37,7 @@ board:
       - at: { x_mm: 5.0, y_mm: 5.0 }
         drill_mm: 0.3
         plating: plated
+        castellated: true
         layer: PTH_Through
         tool: T01
         source_hit_index: 0

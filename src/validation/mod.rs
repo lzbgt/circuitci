@@ -39,6 +39,7 @@ pub(super) const DRILL_DIAMETER_VALID: &str = "DRILL_DIAMETER_VALID";
 pub(super) const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const SLOT_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const SLOT_WIDTH_VALID: &str = "SLOT_WIDTH_VALID";
+pub(super) const CASTELLATED_HOLE_VALID: &str = "CASTELLATED_HOLE_VALID";
 pub(super) const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
     "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
@@ -306,6 +307,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 SLOT_WIDTH_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_slot_width(bound, scenario, &mut findings)
                 }
+                CASTELLATED_HOLE_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_castellated_hole(bound, scenario, &mut findings)
+                }
                 DRILL_ANNULAR_RING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_drill_annular_ring(bound, scenario, &mut findings)
                 }
@@ -382,6 +386,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
                 | SLOT_TO_BOARD_EDGE_CLEARANCE_VALID
                 | SLOT_WIDTH_VALID
+                | CASTELLATED_HOLE_VALID
                 | DRILL_ANNULAR_RING_VALID
                 | COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
                 | COPPER_SPACING_VALID

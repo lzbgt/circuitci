@@ -8,6 +8,7 @@ const DRILL_DIAMETER_VALID: &str = "DRILL_DIAMETER_VALID";
 const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
 const SLOT_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID";
 const SLOT_WIDTH_VALID: &str = "SLOT_WIDTH_VALID";
+const CASTELLATED_HOLE_VALID: &str = "CASTELLATED_HOLE_VALID";
 const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
 const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
@@ -62,6 +63,7 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     let copper_objects = copper_object_count(&layout.copper);
     let mask_objects = copper_object_count(&layout.solder_mask);
     let paste_objects = copper_object_count(&layout.solder_paste);
+    let has_castellated_drill = layout.drills.iter().any(|drill| drill.castellated);
 
     if !layout.drills.is_empty() {
         push_if_not_declared(
@@ -96,6 +98,23 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
                 ),
             );
         }
+    }
+
+    if has_castellated_drill && has_outline {
+        push_if_not_declared(
+            bound,
+            &mut suggestions,
+            CASTELLATED_HOLE_VALID,
+            manufacturing_suggestion(
+                "castellated_hole_valid",
+                true,
+                "Explicit castellated drill evidence can be screened with the source-backed JLCPCB castellated-hole diameter and hole-to-board-edge limits.",
+                &format!("{project_name}_castellated_hole"),
+                CASTELLATED_HOLE_VALID,
+                Some(fabrication_process("jlcpcb_castellated_hole_2026_06")),
+                Vec::new(),
+            ),
+        );
     }
 
     if !layout.slots.is_empty() {

@@ -1,0 +1,50 @@
+project:
+  name: good_castellated_hole_jlc_process
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    outline:
+      segments:
+        - start: { x_mm: 0.0, y_mm: 0.0 }
+          end: { x_mm: 10.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          boundary_role: external
+        - start: { x_mm: 10.0, y_mm: 0.0 }
+          end: { x_mm: 10.0, y_mm: -10.0 }
+          layer: BoardOutlineLayer
+          boundary_role: external
+        - start: { x_mm: 10.0, y_mm: -10.0 }
+          end: { x_mm: 0.0, y_mm: -10.0 }
+          layer: BoardOutlineLayer
+          boundary_role: external
+        - start: { x_mm: 0.0, y_mm: -10.0 }
+          end: { x_mm: 0.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          boundary_role: external
+    drills:
+      - at: { x_mm: 1.2, y_mm: -2.0 }
+        drill_mm: 0.30
+        plating: plated
+        castellated: true
+        layer: PTH_Through
+        tool: T01
+        source_hit_index: 0
+      - at: { x_mm: 0.2, y_mm: -4.0 }
+        drill_mm: 0.10
+        plating: plated
+        layer: PTH_Through
+        tool: T02
+        source_hit_index: 1
+
+scenarios:
+  - name: castellated_hole
+    type: manufacturing
+    checks:
+      - CASTELLATED_HOLE_VALID
+    parameters:
+      fabrication_process: jlcpcb_castellated_hole_2026_06

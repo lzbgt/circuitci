@@ -138,6 +138,42 @@ fn slot_width_fails_with_jlc_process_defaults() {
 }
 
 #[test]
+fn castellated_hole_passes_with_jlc_process_defaults() {
+    let report = run_validation("examples/good_castellated_hole_jlc_process/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn castellated_hole_fails_with_jlc_process_defaults() {
+    let report = run_validation("examples/bad_castellated_hole_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 2);
+    let failures = report["failures"].as_array().unwrap();
+    assert!(
+        failures
+            .iter()
+            .all(|failure| failure["id"] == "CASTELLATED_HOLE_VALID")
+    );
+    assert_eq!(failures[0]["measured"]["drill_index"], 0);
+    assert_eq!(failures[0]["measured"]["drill_castellated"], true);
+    assert_eq!(failures[0]["measured"]["drill_mm"], 0.25);
+    assert_eq!(
+        failures[0]["limit"]["min_castellated_hole_diameter_mm"],
+        0.30
+    );
+    assert_eq!(failures[1]["measured"]["drill_index"], 1);
+    assert_eq!(failures[1]["measured"]["drill_castellated"], true);
+    assert_eq!(failures[1]["measured"]["clearance_mm"], 0.75);
+    assert_eq!(
+        failures[1]["limit"]["min_castellated_hole_edge_clearance_mm"],
+        1.00
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_annular_ring_passes_when_copper_flash_is_large_enough() {
     let report = run_validation("examples/good_drill_annular_ring/project.yaml");
     assert_eq!(report["result"], "pass");

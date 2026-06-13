@@ -281,20 +281,21 @@ optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 check `board.layout.drills` circular drill evidence against selected process
 diameter limits. Stable measured keys include `drill_index`, `drill_x_mm`,
 `drill_y_mm`, `drill_mm`, `drill_radius_mm`, `drill_plating`, optional
-`drill_layer`, optional `drill_tool`, optional `source_hit_index`, optional
-`drill_owner_kind`, optional `drill_net`, optional `drill_component`, optional
-`drill_pin`, and optional `drill_via_index`. Stable limit keys include
-`min_drill_diameter_mm` and `max_drill_diameter_mm`.
+`drill_castellated`, optional `drill_layer`, optional `drill_tool`, optional
+`source_hit_index`, optional `drill_owner_kind`, optional `drill_net`,
+optional `drill_component`, optional `drill_pin`, and optional
+`drill_via_index`. Stable limit keys include `min_drill_diameter_mm` and
+`max_drill_diameter_mm`.
 
 `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by `manufacturing`
 scenarios that combine `board.layout.drills` evidence with
 `board.layout.outline.segments`. Stable measured keys include `drill_index`,
 `drill_x_mm`, `drill_y_mm`, `drill_mm`, `drill_radius_mm`, `clearance_mm`,
 `center_to_board_edge_distance_mm`, `drill_plating`, optional `drill_layer`,
-optional `drill_tool`, optional `source_hit_index`, optional
-`drill_owner_kind`, optional `drill_net`, optional `drill_component`, optional
-`drill_pin`, optional `drill_via_index`, `board_edge_start`, `board_edge_end`,
-optional `board_edge_layer`, optional
+optional `drill_castellated`, optional `drill_tool`, optional
+`source_hit_index`, optional `drill_owner_kind`, optional `drill_net`,
+optional `drill_component`, optional `drill_pin`, optional `drill_via_index`,
+`board_edge_start`, `board_edge_end`, optional `board_edge_layer`, optional
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
 optional `board_edge_contour_index`, and optional
 `board_edge_boundary_role`. Stable limit keys include
@@ -317,6 +318,17 @@ Stable limit keys include `min_slot_edge_clearance_mm`.
 `slot_plating`, `slot_process`, optional `slot_layer`, optional `slot_tool`,
 and optional `source_slot_index`. Stable limit keys include
 `min_slot_width_mm`.
+
+`CASTELLATED_HOLE_VALID` reports are emitted by `manufacturing` scenarios that
+compare explicitly marked `board.layout.drills[].castellated` evidence with a
+castellated-hole process rule. Stable measured keys reuse drill evidence fields
+from `DRILL_DIAMETER_VALID` and `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`,
+including `drill_index`, `drill_x_mm`, `drill_y_mm`, `drill_mm`,
+`drill_radius_mm`, `drill_plating`, optional `drill_castellated`,
+`clearance_mm`, `center_to_board_edge_distance_mm`, and board-edge provenance
+keys when an edge-clearance finding is emitted. Stable limit keys include
+`min_castellated_hole_diameter_mm` and
+`min_castellated_hole_edge_clearance_mm`.
 
 `DRILL_ANNULAR_RING_VALID` reports are emitted by `manufacturing` scenarios
 that combine `board.layout.drills` evidence with

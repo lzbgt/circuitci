@@ -23,6 +23,7 @@ use self::geometry::{
     validate_slot_geometry,
 };
 use self::process::{optional_numeric_parameter, required_numeric_parameter};
+use super::CASTELLATED_HOLE_VALID;
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_DIAMETER_VALID;
@@ -298,6 +299,109 @@ pub(super) fn validate_slot_width(
                 required_width_mm,
             ));
         }
+    }
+}
+
+pub(super) fn validate_castellated_hole(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_diameter_mm) =
+        required_numeric_parameter(scenario, "min_castellated_hole_diameter_mm", findings)
+    else {
+        return;
+    };
+    let Some(min_edge_clearance_mm) =
+        required_numeric_parameter(scenario, "min_castellated_hole_edge_clearance_mm", findings)
+    else {
+        return;
+    };
+    if min_diameter_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_castellated_hole_diameter_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    if min_edge_clearance_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_castellated_hole_edge_clearance_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let drills = &bound.project.board.layout.drills;
+    if drills.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CASTELLATED_HOLE_VALID requires board.layout.drills evidence.",
+        );
+        return;
+    }
+    let board_edges = bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| usable_outline_segment(segment))
+        .collect::<Vec<_>>();
+    if board_edges.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CASTELLATED_HOLE_VALID requires usable board.layout.outline.segments evidence.",
+        );
+        return;
+    }
+
+    let mut checked_castellated_drills = 0usize;
+    for (drill_index, drill) in drills.iter().enumerate() {
+        if let Err(message) = validate_drill_geometry(drill, drill_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        if !drill.castellated {
+            continue;
+        }
+        checked_castellated_drills += 1;
+        if drill.drill_mm + f64::EPSILON < min_diameter_mm {
+            findings.push(castellated_hole_diameter_finding(
+                scenario,
+                drill,
+                drill_index,
+                min_diameter_mm,
+            ));
+        }
+        let Some(nearest) = nearest_drill_edge_clearance(drill, &board_edges) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "CASTELLATED_HOLE_VALID could not compute finite castellated-hole-to-board-edge clearance.",
+            );
+            continue;
+        };
+        if nearest.clearance_mm + f64::EPSILON < min_edge_clearance_mm {
+            findings.push(castellated_hole_edge_finding(
+                scenario,
+                drill,
+                drill_index,
+                nearest,
+                min_edge_clearance_mm,
+            ));
+        }
+    }
+    if checked_castellated_drills == 0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "CASTELLATED_HOLE_VALID requires at least one board.layout.drills[] entry with castellated: true.",
+        );
     }
 }
 
@@ -627,6 +731,11 @@ fn drill_edge_clearance_finding(
     finding
         .measured
         .insert("drill_plating".to_string(), json!(drill.plating));
+    if drill.castellated {
+        finding
+            .measured
+            .insert("drill_castellated".to_string(), json!(true));
+    }
     if let Some(owner_kind) = &drill.owner_kind {
         finding
             .measured
@@ -785,6 +894,71 @@ fn slot_width_finding(
             .to_string(),
         "Move this feature to a process option that explicitly supports the smaller slot width."
             .to_string(),
+    ];
+    finding
+}
+
+fn castellated_hole_diameter_finding(
+    scenario: &Scenario,
+    drill: &LayoutDrill,
+    drill_index: usize,
+    min_diameter_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CASTELLATED_HOLE_VALID,
+        &scenario.name,
+        format!(
+            "Castellated drill hit {} is {:.3} mm; selected castellated-hole process requires at least {:.3} mm.",
+            drill_index, drill.drill_mm, min_diameter_mm
+        ),
+    );
+    insert_drill_measurements(&mut finding, drill, drill_index);
+    finding.limit.insert(
+        "min_castellated_hole_diameter_mm".to_string(),
+        json!(min_diameter_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Increase the castellated hole diameter to meet the selected fabrication rule."
+            .to_string(),
+        "Remove the castellated marker if this drill hit is not actually a castellated hole."
+            .to_string(),
+        "Move this feature to a fabrication process option that explicitly supports the smaller castellated hole diameter.".to_string(),
+    ];
+    finding
+}
+
+fn castellated_hole_edge_finding(
+    scenario: &Scenario,
+    drill: &LayoutDrill,
+    drill_index: usize,
+    nearest: DrillEdgeClearance<'_>,
+    min_edge_clearance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        CASTELLATED_HOLE_VALID,
+        &scenario.name,
+        format!(
+            "Castellated drill hit {} has {:.3} mm hole-edge-to-board-edge clearance, below {:.3} mm minimum.",
+            drill_index, nearest.clearance_mm, min_edge_clearance_mm
+        ),
+    );
+    insert_drill_measurements(&mut finding, drill, drill_index);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(nearest.clearance_mm));
+    finding.measured.insert(
+        "center_to_board_edge_distance_mm".to_string(),
+        json!(nearest.center_distance_mm),
+    );
+    insert_board_edge_measurements(&mut finding, nearest.edge);
+    finding.limit.insert(
+        "min_castellated_hole_edge_clearance_mm".to_string(),
+        json!(min_edge_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move the castellated hole farther from the board edge or revise the castellated board outline.".to_string(),
+        "Use a non-castellated drill-edge scenario if this is an ordinary circular drill hit.".to_string(),
+        "Document a fabricator-approved castellated-hole exception if the board is intentionally below the default JLCPCB source condition.".to_string(),
     ];
     finding
 }
@@ -971,6 +1145,11 @@ fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_i
     finding
         .measured
         .insert("drill_plating".to_string(), json!(drill.plating));
+    if drill.castellated {
+        finding
+            .measured
+            .insert("drill_castellated".to_string(), json!(true));
+    }
     if let Some(owner_kind) = &drill.owner_kind {
         finding
             .measured
