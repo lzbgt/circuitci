@@ -678,6 +678,128 @@ fn import_kicad_schematic_suggests_ams1117_regulator_evidence() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("tps62162_regulator.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_tps62162_regulator_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_tps62162_regulator_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_tps62162_regulator_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["UBUCK"]["model"],
+        "vendor.ti.tps62162_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UBUCK"]["pins"]["VIN"],
+        "net_rail_12v"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UBUCK"]["pins"]["VOS"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UBUCK"]["pins"]["EN"],
+        "net_rail_12v"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UBUCK"]["pins"]["PG"],
+        "net_buck_pg"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["VDD"],
+        "net_rail_3v3"
+    );
+    assert!(
+        (imported["board"]["components"]["CIN"]["spice"]["value_f"]
+            .as_f64()
+            .unwrap()
+            - 0.000010)
+            .abs()
+            < 1.0e-15
+    );
+    assert!(
+        (imported["board"]["components"]["COUT"]["spice"]["value_f"]
+            .as_f64()
+            .unwrap()
+            - 0.000022)
+            .abs()
+            < 1.0e-15
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_12v"]["nominal_voltage"],
+        12.0
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_3v3"]["power_valid_at_us"],
+        1000.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power-tree suggestion");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let regulator = &power_tree["scenario"]["regulators"][0];
+    assert_eq!(regulator["component"], "UBUCK");
+    assert_eq!(regulator["input_pin"], "VIN");
+    assert_eq!(regulator["input_net"], "net_rail_12v");
+    assert_eq!(regulator["output_pin"], "VOS");
+    assert_eq!(regulator["output_net"], "net_rail_3v3");
+    assert_eq!(regulator["max_output_current_A"], 1.0);
+    assert!((regulator["input_capacitance_min_F"].as_f64().unwrap() - 0.000010).abs() < 1.0e-15);
+    assert!((regulator["output_capacitance_min_F"].as_f64().unwrap() - 0.000022).abs() < 1.0e-15);
+    assert!(
+        (regulator["input_support_capacitance_F"].as_f64().unwrap() - 0.000010).abs() < 1.0e-15
+    );
+    assert_eq!(regulator["input_support_capacitors"][0], "CIN");
+    assert!(
+        (regulator["output_support_capacitance_F"].as_f64().unwrap() - 0.000022).abs() < 1.0e-15
+    );
+    assert_eq!(regulator["output_support_capacitors"][0], "COUT");
+}
+
+#[test]
 fn import_kicad_schematic_suggests_tpd2eusb30_usb_esd_clamps() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

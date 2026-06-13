@@ -255,8 +255,9 @@ The command is conservative:
   `examples/import_kicad_tlv803_reset_supervisor_suggestions/`.
 - Imported KiCad schematics can provide regulator evidence when a regulator
   symbol is mapped to a model with `power_conversion` metadata; see
-  `examples/import_kicad_ap2112_regulator_suggestions/` and
-  `examples/import_kicad_ams1117_regulator_suggestions/`.
+  `examples/import_kicad_ap2112_regulator_suggestions/`,
+  `examples/import_kicad_ams1117_regulator_suggestions/`, and
+  `examples/import_kicad_tps62162_regulator_suggestions/`.
 - Imported KiCad schematics can provide clamp-only USB ESD evidence when a
   protection symbol is mapped to a model with
   `signal_conditioning.protection_clamps`; see
