@@ -1,3 +1,4 @@
+pub mod gerber;
 pub mod jlc;
 pub mod kicad;
 pub mod kicad_pcb;

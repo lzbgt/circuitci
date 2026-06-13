@@ -11,6 +11,11 @@ Relevant assembly files:
 - `assembly/bom_STM32_ESP32_V01_2026-04-28.csv`
 - `assembly/placement_STM32_ESP32_V01_2026-04-28.csv`
 
+Relevant fabrication file:
+
+- `fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip`, member
+  `Gerber_BoardOutlineLayer.GKO`
+
 Observed BOM header:
 
 ```text
@@ -42,6 +47,10 @@ Board IR assembly evidence:
 No nets or pins are inferred from assembly data. This avoids false electrical
 confidence and leaves connectivity to schematic/layout importers.
 
+The companion `import-gerber-outline` command can add board-outline segment
+evidence from the release's Gerber outline layer. It imports linear outline
+draw records only and does not infer copper, pads, drills, routes, or nets.
+
 ## Manual Peer Verification
 
 The full peer release can be imported with:
@@ -56,6 +65,16 @@ circuitci import-jlc-assembly \
 
 This is an assembly-traceability import, not a board sign-off.
 
+The peer release's Gerber outline member can then be extracted and merged:
+
+```bash
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_BoardOutlineLayer.GKO > out/urine-monitor-board-outline.gko
+circuitci import-gerber-outline out/urine-monitor-board-outline.gko \
+  --project out/urine-monitor-jlc-assembly.project.yaml \
+  --output out/urine-monitor-jlc-assembly-outline.project.yaml
+```
+
 Observed on 2026-06-13:
 
 ```text
@@ -67,4 +86,10 @@ validation:
 
 ```text
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
+```
+
+Observed Gerber outline enrichment:
+
+```text
+CircuitCI imported Gerber outline: 16 segments (4 external, 12 cutout, 0 unknown)
 ```

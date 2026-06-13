@@ -93,6 +93,13 @@ enum Command {
         #[arg(long, default_value = "generic.schematic.imported_component")]
         default_model: String,
     },
+    ImportGerberOutline {
+        gerber: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -166,6 +173,11 @@ pub fn run() -> Result<()> {
             name,
             default_model,
         }) => run_import_jlc_assembly(bom, placement, output, name, default_model),
+        Some(Command::ImportGerberOutline {
+            gerber,
+            project,
+            output,
+        }) => run_import_gerber_outline(gerber, project, output),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -323,6 +335,27 @@ fn run_import_jlc_assembly(
         summary.components_with_placement,
         bom.display(),
         placement.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_gerber_outline(gerber: PathBuf, project: PathBuf, output: PathBuf) -> Result<()> {
+    let summary = crate::importers::gerber::import_gerber_outline(
+        &crate::importers::gerber::GerberOutlineImportOptions {
+            gerber: gerber.clone(),
+            project: project.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI imported Gerber outline: {} segments ({} external, {} cutout, {} unknown) {} + {} -> {}",
+        summary.outline_segments,
+        summary.external_segments,
+        summary.cutout_segments,
+        summary.unknown_segments,
+        gerber.display(),
+        project.display(),
         output.display()
     );
     Ok(())

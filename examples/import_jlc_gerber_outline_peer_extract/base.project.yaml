@@ -1,0 +1,10 @@
+project:
+  name: import_jlc_gerber_outline_peer_extract
+  version: 0.1.0
+  import_source: jlc_assembly
+libraries: []
+board:
+  components: {}
+  nets: {}
+  layout: {}
+scenarios: []

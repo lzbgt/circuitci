@@ -20,10 +20,12 @@ datasheets, so it is a better next benchmark source than synthetic fixtures.
   `review/schematic_UM-STM32L4_V1.extracted.txt`,
   `review/pcb_layout_UM-STM32L4_V1.pdf`
 
-This release is now the first peer-board import target for assembly evidence:
+This release is now the first peer-board import target for fabricated evidence:
 `import-jlc-assembly` reads the JLC/EasyEDA BOM and placement CSV files into
-Board IR component source metadata plus `board.layout.placements`. The
-remaining import gap is Gerber/outline and `.eprj2` schematic/layout ingestion
+Board IR component source metadata plus `board.layout.placements`, and
+`import-gerber-outline` reads the observed `Gerber_BoardOutlineLayer.GKO`
+subset into `board.layout.outline.segments`. The remaining import gap is
+Gerber copper/pad/drill/route geometry and `.eprj2` schematic/layout ingestion
 or a richer adapter that converts those release files into electrical Board IR
 plus scenario suggestions.
 
@@ -79,8 +81,8 @@ existing CircuitCI checks:
 
 ## Recommended Work Queue
 
-1. Extend direct support for JLC/EasyEDA release evidence beyond BOM/CPL:
-   Gerber/outline, pad/route geometry, and eventually `.eprj2`
+1. Extend direct support for JLC/EasyEDA release evidence beyond BOM/CPL and
+   Gerber outline: pad/drill/route geometry and eventually `.eprj2`
    schematic/layout import.
 2. Add the remaining ESP32-S3-WROOM and STM32L431 component packs using the
    peer datasheets and public vendor datasheets as authoritative sources.
