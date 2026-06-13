@@ -396,9 +396,10 @@ direction.
 `entry_clearance_depth_mm` and `entry_clearance_width_mm` are optional 2D
 cable-entry corridor policy hints. When present, `suggest-scenarios` uses them
 to prefill `parameters.min_cable_entry_clearance_depth_mm` and
-`parameters.cable_entry_clearance_width_mm` while still leaving the
-entry-clearance suggestion non-runnable until the mechanical policy inputs are
-reviewed. KiCad schematic mapping `layout.entry_clearance_depth_mm` and
+`parameters.cable_entry_clearance_width_mm`. When both values are present, the
+entry-clearance suggestion is runnable; when either value is missing, the
+template remains non-runnable and records the missing mechanical policy input.
+KiCad schematic mapping `layout.entry_clearance_depth_mm` and
 `layout.entry_clearance_width_mm` are reported as `kicad_mapping_depth` and
 `kicad_mapping_width`. Explicit KiCad PCB footprint properties
 `CircuitCI_EntryClearanceDepthMM` and `CircuitCI_EntryClearanceWidthMM` are
