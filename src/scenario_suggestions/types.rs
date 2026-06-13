@@ -9,6 +9,23 @@ pub struct ScenarioSuggestionReport {
     pub suggestions: Vec<ScenarioSuggestion>,
 }
 
+impl ScenarioSuggestionReport {
+    pub fn new(
+        schema_version: String,
+        project: String,
+        suggestions: Vec<ScenarioSuggestion>,
+    ) -> Self {
+        for suggestion in &suggestions {
+            suggestion.assert_contract();
+        }
+        Self {
+            schema_version,
+            project,
+            suggestions,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct ScenarioSuggestion {
     pub id: String,
@@ -19,6 +36,31 @@ pub struct ScenarioSuggestion {
     pub scenario: SuggestedScenario,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub required_inputs: Vec<String>,
+}
+
+impl ScenarioSuggestion {
+    fn assert_contract(&self) {
+        if self.runnable {
+            assert!(
+                self.required_inputs.is_empty(),
+                "runnable suggestion {} must not include required_inputs",
+                self.id
+            );
+        } else {
+            assert!(
+                !self.required_inputs.is_empty(),
+                "non-runnable suggestion {} must include required_inputs",
+                self.id
+            );
+        }
+        assert!(
+            self.required_inputs
+                .iter()
+                .all(|input| !input.trim().is_empty()),
+            "suggestion {} has an empty required_inputs entry",
+            self.id
+        );
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -63,6 +105,89 @@ pub struct SuggestedScenario {
     pub pin_states: Vec<SuggestedPinState>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub paths: Vec<SuggestedBackdrivePath>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty_scenario() -> SuggestedScenario {
+        SuggestedScenario {
+            name: "contract_test".to_string(),
+            scenario_type: "power_tree".to_string(),
+            checks: vec!["POWER_TREE_VALID".to_string()],
+            parameters: None,
+            target: None,
+            timing: None,
+            required_boot_mode: None,
+            straps: Vec::new(),
+            bootloader: None,
+            control_effects: Vec::new(),
+            events: Vec::new(),
+            conditioning: None,
+            protection_clamps: Vec::new(),
+            usb_connectors: Vec::new(),
+            usb_routes: Vec::new(),
+            usb_route_pairs: Vec::new(),
+            clocks: Vec::new(),
+            reset_supervisors: Vec::new(),
+            regulators: Vec::new(),
+            pin_states: Vec::new(),
+            paths: Vec::new(),
+        }
+    }
+
+    fn suggestion(runnable: bool, required_inputs: Vec<String>) -> ScenarioSuggestion {
+        ScenarioSuggestion {
+            id: "contract_test".to_string(),
+            kind: "power_tree".to_string(),
+            confidence: "low".to_string(),
+            runnable,
+            reason: "contract test".to_string(),
+            scenario: empty_scenario(),
+            required_inputs,
+        }
+    }
+
+    #[test]
+    fn report_accepts_runnable_suggestion_without_required_inputs() {
+        let report = ScenarioSuggestionReport::new(
+            "0.1.0".to_string(),
+            "contract_test".to_string(),
+            vec![suggestion(true, Vec::new())],
+        );
+        assert_eq!(report.suggestions.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "runnable suggestion contract_test must not include required_inputs")]
+    fn report_rejects_runnable_suggestion_with_required_inputs() {
+        let _ = ScenarioSuggestionReport::new(
+            "0.1.0".to_string(),
+            "contract_test".to_string(),
+            vec![suggestion(true, vec!["missing evidence".to_string()])],
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "non-runnable suggestion contract_test must include required_inputs")]
+    fn report_rejects_non_runnable_suggestion_without_required_inputs() {
+        let _ = ScenarioSuggestionReport::new(
+            "0.1.0".to_string(),
+            "contract_test".to_string(),
+            vec![suggestion(false, Vec::new())],
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "suggestion contract_test has an empty required_inputs entry")]
+    fn report_rejects_empty_required_input_text() {
+        let _ = ScenarioSuggestionReport::new(
+            "0.1.0".to_string(),
+            "contract_test".to_string(),
+            vec![suggestion(false, vec![" ".to_string()])],
+        );
+    }
 }
 
 #[derive(Debug, Serialize)]

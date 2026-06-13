@@ -136,8 +136,10 @@ limits and USB return-path budgets.
   immediately;
 - non-runnable suggestions identify exactly which source-backed threshold or
   board fact is still missing;
-- the report schema rejects `required_inputs` on runnable suggestions, so
-  optional review notes cannot masquerade as missing executable inputs;
+- the report constructor and schema reject runnable suggestions with
+  `required_inputs` and non-runnable suggestions without concrete
+  `required_inputs`, so optional review notes cannot masquerade as missing
+  executable inputs;
 - package-scoped stencil suggestions are inferred only from conservative
   owner-backed geometry patterns and discrete source-backed pitch rows.
 - reset-release timing suggestions become runnable only from explicit

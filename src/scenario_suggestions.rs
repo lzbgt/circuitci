@@ -61,11 +61,11 @@ pub fn suggest_scenarios_for_profile(
     suggestions.extend(reset_boot::uart_bootloader_suggestions(bound));
     suggestions.extend(manufacturing::manufacturing_suggestions(bound));
     extend_profile_remediation_suggestions(bound, profile, &mut suggestions);
-    ScenarioSuggestionReport {
-        schema_version: "0.1.0".to_string(),
-        project: bound.project.project.name.clone(),
+    ScenarioSuggestionReport::new(
+        "0.1.0".to_string(),
+        bound.project.project.name.clone(),
         suggestions,
-    }
+    )
 }
 
 fn should_suggest_power_tree(project: &BoardProject) -> bool {

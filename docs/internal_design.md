@@ -129,9 +129,10 @@ Scenario suggestions are generated from available evidence, not from desired
 coverage. A runnable suggestion must include all required rule parameters,
 either directly or through process presets and board metadata. A non-runnable
 suggestion must list the missing inputs in `required_inputs`.
-`schemas/scenario_suggestion_report.schema.json` enforces that split: runnable
-suggestions must omit `required_inputs`, and serialized `required_inputs` must
-contain at least one concrete missing input.
+`ScenarioSuggestionReport::new` and
+`schemas/scenario_suggestion_report.schema.json` enforce that split: runnable
+suggestions must omit `required_inputs`, non-runnable suggestions must include
+at least one concrete missing input, and required-input text must not be blank.
 
 Profile-aware suggestion remediation is opt-in. `suggest-scenarios --profile
 iot_basic_v0` first emits the normal evidence-driven suggestions, then compares
