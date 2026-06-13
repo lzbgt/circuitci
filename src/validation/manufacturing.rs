@@ -126,6 +126,11 @@ pub(super) fn validate_drill_annular_ring(
         );
         return;
     }
+    let Some(required_copper_layers) =
+        optional_string_list_parameter(scenario, "required_copper_layers", findings)
+    else {
+        return;
+    };
     let drills = &bound.project.board.layout.drills;
     if drills.is_empty() {
         validation_input_missing(
@@ -152,8 +157,8 @@ pub(super) fn validate_drill_annular_ring(
             validation_input_missing(findings, scenario, message);
             continue;
         }
-        let mut best_candidate = None;
-        let mut best_mismatched_candidate = None;
+        let mut candidates = Vec::new();
+        let mut mismatched_candidates = Vec::new();
         for (feature_index, feature) in copper_features.iter().enumerate() {
             if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
                 validation_input_missing(findings, scenario, message);
@@ -173,52 +178,49 @@ pub(super) fn validate_drill_annular_ring(
                 annular_ring_mm,
             };
             if drill_and_copper_owners_conflict(drill, feature) {
-                if best_mismatched_candidate.as_ref().is_none_or(
-                    |best: &DrillAnnularRingCandidate<'_>| {
-                        candidate.annular_ring_mm > best.annular_ring_mm
-                    },
-                ) {
-                    best_mismatched_candidate = Some(candidate);
-                }
-            } else if best_candidate
-                .as_ref()
-                .is_none_or(|best: &DrillAnnularRingCandidate<'_>| {
-                    candidate.annular_ring_mm > best.annular_ring_mm
-                })
-            {
-                best_candidate = Some(candidate);
+                mismatched_candidates.push(candidate);
+            } else {
+                candidates.push(candidate);
             }
         }
-        let Some(best_candidate) = best_candidate else {
-            if let Some(mismatched_candidate) = best_mismatched_candidate {
-                findings.push(drill_annular_ring_owner_mismatch_finding(
+        if required_copper_layers.is_empty() {
+            let evidence = DrillAnnularRingEvidence {
+                candidates: &candidates,
+                mismatched_candidates: &mismatched_candidates,
+            };
+            let limits = DrillAnnularRingLimits {
+                min_annular_ring_mm,
+                max_center_offset_mm,
+            };
+            report_annular_ring_candidate(
+                scenario,
+                findings,
+                drill,
+                drill_index,
+                evidence,
+                None,
+                limits,
+            );
+        } else {
+            let evidence = DrillAnnularRingEvidence {
+                candidates: &candidates,
+                mismatched_candidates: &mismatched_candidates,
+            };
+            let limits = DrillAnnularRingLimits {
+                min_annular_ring_mm,
+                max_center_offset_mm,
+            };
+            for required_layer in &required_copper_layers {
+                report_annular_ring_candidate(
                     scenario,
+                    findings,
                     drill,
                     drill_index,
-                    mismatched_candidate,
-                    min_annular_ring_mm,
-                    max_center_offset_mm,
-                ));
-                continue;
+                    evidence,
+                    Some(required_layer),
+                    limits,
+                );
             }
-            findings.push(drill_annular_ring_missing_finding(
-                scenario,
-                drill,
-                drill_index,
-                min_annular_ring_mm,
-                max_center_offset_mm,
-            ));
-            continue;
-        };
-        if best_candidate.annular_ring_mm + f64::EPSILON < min_annular_ring_mm {
-            findings.push(drill_annular_ring_finding(
-                scenario,
-                drill,
-                drill_index,
-                best_candidate,
-                min_annular_ring_mm,
-                max_center_offset_mm,
-            ));
         }
     }
 }
@@ -228,6 +230,67 @@ fn drill_and_copper_owners_conflict(drill: &LayoutDrill, feature: &LayoutCopperF
         (drill.net.as_deref(), feature.net.as_deref()),
         (Some(drill_net), Some(feature_net)) if drill_net != feature_net
     )
+}
+
+fn report_annular_ring_candidate(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    drill: &LayoutDrill,
+    drill_index: usize,
+    evidence: DrillAnnularRingEvidence<'_, '_>,
+    required_layer: Option<&str>,
+    limits: DrillAnnularRingLimits,
+) {
+    let Some(best_candidate) = best_annular_ring_candidate(evidence.candidates, required_layer)
+    else {
+        if let Some(mismatched_candidate) =
+            best_annular_ring_candidate(evidence.mismatched_candidates, required_layer)
+        {
+            findings.push(drill_annular_ring_owner_mismatch_finding(
+                scenario,
+                drill,
+                drill_index,
+                mismatched_candidate,
+                required_layer,
+                limits.min_annular_ring_mm,
+                limits.max_center_offset_mm,
+            ));
+            return;
+        }
+        findings.push(drill_annular_ring_missing_finding(
+            scenario,
+            drill,
+            drill_index,
+            required_layer,
+            limits.min_annular_ring_mm,
+            limits.max_center_offset_mm,
+        ));
+        return;
+    };
+    if best_candidate.annular_ring_mm + f64::EPSILON < limits.min_annular_ring_mm {
+        findings.push(drill_annular_ring_finding(
+            scenario,
+            drill,
+            drill_index,
+            best_candidate,
+            required_layer,
+            limits.min_annular_ring_mm,
+            limits.max_center_offset_mm,
+        ));
+    }
+}
+
+fn best_annular_ring_candidate<'a>(
+    candidates: &[DrillAnnularRingCandidate<'a>],
+    required_layer: Option<&str>,
+) -> Option<DrillAnnularRingCandidate<'a>> {
+    candidates
+        .iter()
+        .filter(|candidate| {
+            required_layer.is_none_or(|required_layer| candidate.feature.layer == required_layer)
+        })
+        .copied()
+        .max_by(|left, right| left.annular_ring_mm.total_cmp(&right.annular_ring_mm))
 }
 
 pub(super) fn validate_copper_to_board_edge_clearance(
@@ -484,12 +547,80 @@ fn optional_numeric_parameter(
     Some(value)
 }
 
+fn optional_string_list_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<Vec<String>> {
+    let Some(value) = scenario.parameters.get(name) else {
+        return Some(Vec::new());
+    };
+    let Some(sequence) = value.as_sequence() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("manufacturing parameters.{name} must be a list of strings."),
+        );
+        return None;
+    };
+    if sequence.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("manufacturing parameters.{name} must not be empty when provided."),
+        );
+        return None;
+    }
+    let mut strings = Vec::new();
+    for (index, item) in sequence.iter().enumerate() {
+        let Some(item) = item.as_str() else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("manufacturing parameters.{name}[{index}] must be a string."),
+            );
+            return None;
+        };
+        let item = item.trim();
+        if item.is_empty() {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("manufacturing parameters.{name}[{index}] must not be empty."),
+            );
+            return None;
+        }
+        if strings.iter().any(|existing| existing == item) {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("manufacturing parameters.{name} contains duplicate layer {item}."),
+            );
+            return None;
+        }
+        strings.push(item.to_string());
+    }
+    Some(strings)
+}
+
 #[derive(Debug, Clone, Copy)]
 struct DrillAnnularRingCandidate<'a> {
     feature: &'a LayoutCopperFeature,
     feature_index: usize,
     center_offset_mm: f64,
     annular_ring_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DrillAnnularRingEvidence<'a, 'b> {
+    candidates: &'b [DrillAnnularRingCandidate<'a>],
+    mismatched_candidates: &'b [DrillAnnularRingCandidate<'a>],
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DrillAnnularRingLimits {
+    min_annular_ring_mm: f64,
+    max_center_offset_mm: f64,
 }
 
 fn maybe_report_copper_spacing(
@@ -693,18 +824,27 @@ fn drill_annular_ring_missing_finding(
     scenario: &Scenario,
     drill: &LayoutDrill,
     drill_index: usize,
+    required_layer: Option<&str>,
     min_annular_ring_mm: f64,
     max_center_offset_mm: f64,
 ) -> Finding {
     let mut finding = Finding::critical(
         DRILL_ANNULAR_RING_VALID,
         &scenario.name,
-        format!(
-            "Plated/unknown drill hit {} has no co-located Gerber copper flash evidence within {:.3} mm.",
-            drill_index, max_center_offset_mm
-        ),
+        if let Some(required_layer) = required_layer {
+            format!(
+                "Plated/unknown drill hit {} has no co-located Gerber copper flash evidence on required layer {} within {:.3} mm.",
+                drill_index, required_layer, max_center_offset_mm
+            )
+        } else {
+            format!(
+                "Plated/unknown drill hit {} has no co-located Gerber copper flash evidence within {:.3} mm.",
+                drill_index, max_center_offset_mm
+            )
+        },
     );
     insert_drill_measurements(&mut finding, drill, drill_index);
+    insert_required_copper_layer_measurement(&mut finding, required_layer);
     finding.limit.insert(
         "min_annular_ring_mm".to_string(),
         json!(min_annular_ring_mm),
@@ -727,6 +867,7 @@ fn drill_annular_ring_owner_mismatch_finding(
     drill: &LayoutDrill,
     drill_index: usize,
     candidate: DrillAnnularRingCandidate<'_>,
+    required_layer: Option<&str>,
     min_annular_ring_mm: f64,
     max_center_offset_mm: f64,
 ) -> Finding {
@@ -741,6 +882,7 @@ fn drill_annular_ring_owner_mismatch_finding(
         ),
     );
     insert_drill_measurements(&mut finding, drill, drill_index);
+    insert_required_copper_layer_measurement(&mut finding, required_layer);
     finding.measured.insert(
         "annular_ring_mm".to_string(),
         json!(candidate.annular_ring_mm),
@@ -776,18 +918,27 @@ fn drill_annular_ring_finding(
     drill: &LayoutDrill,
     drill_index: usize,
     candidate: DrillAnnularRingCandidate<'_>,
+    required_layer: Option<&str>,
     min_annular_ring_mm: f64,
     max_center_offset_mm: f64,
 ) -> Finding {
     let mut finding = Finding::critical(
         DRILL_ANNULAR_RING_VALID,
         &scenario.name,
-        format!(
-            "Drill hit {} has {:.3} mm annular ring, below {:.3} mm minimum.",
-            drill_index, candidate.annular_ring_mm, min_annular_ring_mm
-        ),
+        if let Some(required_layer) = required_layer {
+            format!(
+                "Drill hit {} has {:.3} mm annular ring on required layer {}, below {:.3} mm minimum.",
+                drill_index, candidate.annular_ring_mm, required_layer, min_annular_ring_mm
+            )
+        } else {
+            format!(
+                "Drill hit {} has {:.3} mm annular ring, below {:.3} mm minimum.",
+                drill_index, candidate.annular_ring_mm, min_annular_ring_mm
+            )
+        },
     );
     insert_drill_measurements(&mut finding, drill, drill_index);
+    insert_required_copper_layer_measurement(&mut finding, required_layer);
     finding.measured.insert(
         "annular_ring_mm".to_string(),
         json!(candidate.annular_ring_mm),
@@ -1353,6 +1504,14 @@ fn insert_copper_feature_measurements(
         "copper_feature_source_primitive_index".to_string(),
         json!(candidate.feature.source_primitive_index),
     );
+}
+
+fn insert_required_copper_layer_measurement(finding: &mut Finding, required_layer: Option<&str>) {
+    if let Some(required_layer) = required_layer {
+        finding
+            .measured
+            .insert("required_copper_layer".to_string(), json!(required_layer));
+    }
 }
 
 fn insert_board_edge_measurements(finding: &mut Finding, edge: &LayoutSegment) {

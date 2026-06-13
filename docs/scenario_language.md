@@ -615,6 +615,7 @@ scenarios:
     parameters:
       min_annular_ring_mm: 0.2
       max_drill_to_copper_center_offset_mm: 0.05
+      required_copper_layers: [F.Cu, B.Cu]
 ```
 
 Drill annular-ring algorithm:
@@ -622,18 +623,22 @@ Drill annular-ring algorithm:
 1. Require `parameters.min_annular_ring_mm`.
 2. Optionally accept `parameters.max_drill_to_copper_center_offset_mm`;
    default is `0.1` mm.
-3. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
-4. Require finite `board.layout.copper.features[]` entries with positive
+3. Optionally accept `parameters.required_copper_layers` as a non-empty list
+   of copper-layer names. When omitted, the rule requires one matching flash
+   on any copper layer. When provided, every listed layer must have its own
+   matching flash.
+4. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
+5. Require finite `board.layout.copper.features[]` entries with positive
    aperture sizes.
-5. Skip `non_plated` drills. Check `plated` and `unknown` drills.
-6. Match co-located copper flashes within the center-offset limit.
-7. Reject a co-located flash as annular-ring evidence when both drill and
+6. Skip `non_plated` drills. Check `plated` and `unknown` drills.
+7. Match co-located copper flashes within the center-offset limit.
+8. Reject a co-located flash as annular-ring evidence when both drill and
    copper carry `net` ownership and those owners differ.
-8. Compute the best annular ring from supported `circle`, `rect`, or
+9. Compute the best annular ring from supported `circle`, `rect`, or
    axis-aligned `oval` copper flash geometry.
-9. Fail when no matching same/unknown-owner copper flash exists, when only
-   owner-mismatched copper exists, or when the best ring is below
-   `min_annular_ring_mm`.
+10. Fail when no matching same/unknown-owner copper flash exists on the
+    required layer, when only owner-mismatched copper exists, or when the best
+    ring is below `min_annular_ring_mm`.
 
 This is a static 2D fabrication screen. It does not model copper draws,
 thermal reliefs, plating tolerance, drill wander distributions, solder mask,

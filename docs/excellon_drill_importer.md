@@ -64,4 +64,6 @@ nearest external, cutout, or unknown board-edge segment.
 
 `DRILL_ANNULAR_RING_VALID` reports optional drill ownership fields when present,
 which makes undersized annular-ring findings traceable to the affected pad or
-via instead of only a raw drill hit.
+via instead of only a raw drill hit. When imported Gerber copper flashes also
+carry ownership, the rule rejects conflicting drill/copper owner nets; scenarios
+can also require matching annular-ring flash evidence on listed copper layers.

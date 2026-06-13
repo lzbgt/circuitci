@@ -1,0 +1,43 @@
+project:
+  name: bad_drill_annular_ring_missing_required_layer
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets:
+    GND:
+      kind: ground
+  layout:
+    drills:
+      - at: { x_mm: 2.0, y_mm: -2.0 }
+        drill_mm: 0.6
+        plating: plated
+        owner_kind: via
+        net: GND
+        via_index: 0
+        layer: PTH_Through
+        tool: T01
+        source_hit_index: 0
+    copper:
+      features:
+        - at: { x_mm: 2.0, y_mm: -2.0 }
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 1.2, y_mm: 1.2 }
+
+scenarios:
+  - name: drill_annular_ring
+    type: manufacturing
+    checks:
+      - DRILL_ANNULAR_RING_VALID
+    parameters:
+      min_annular_ring_mm: 0.2
+      max_drill_to_copper_center_offset_mm: 0.05
+      required_copper_layers: [F.Cu, B.Cu]

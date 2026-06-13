@@ -52,6 +52,14 @@ fn drill_annular_ring_passes_when_copper_flash_is_large_enough() {
 }
 
 #[test]
+fn drill_annular_ring_passes_when_required_layers_have_copper_flashes() {
+    let report = run_validation("examples/good_drill_annular_ring_required_layers/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_annular_ring_fails_when_copper_flash_is_too_small() {
     let report = run_validation("examples/bad_drill_annular_ring/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -91,6 +99,25 @@ fn drill_annular_ring_fails_when_plated_drill_has_no_matching_copper_flash() {
             .as_str()
             .unwrap()
             .contains("no co-located")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn drill_annular_ring_fails_when_required_layer_has_no_copper_flash() {
+    let report =
+        run_validation("examples/bad_drill_annular_ring_missing_required_layer/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    assert_eq!(failure["measured"]["drill_net"], "GND");
+    assert_eq!(failure["measured"]["required_copper_layer"], "B.Cu");
+    assert_eq!(failure["limit"]["min_annular_ring_mm"], 0.2);
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("required layer B.Cu")
     );
     assert_report_schema_valid(&report);
 }

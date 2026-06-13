@@ -68,9 +68,11 @@ leaves the imported copper anonymous. Combine it with schematic, PCB, assembly,
 outline, and drill imports before using electrical or manufacturability checks.
 
 `DRILL_ANNULAR_RING_VALID` can consume imported dark flash evidence together
-with Excellon drill hits for a static annular-ring screen. That rule still
-operates on anonymous fabrication geometry; it does not prove net ownership,
-thermal relief connectivity, or electrical continuity.
+with Excellon drill hits for a static annular-ring screen. When drill and
+copper ownership is available, the rule rejects conflicting owner nets, and
+scenarios can require matching flash evidence on explicit copper layers such
+as `F.Cu` and `B.Cu`. It still does not prove thermal relief connectivity or
+full electrical continuity.
 
 `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported dark flash,
 circular-aperture draw, and region evidence together with board-outline
