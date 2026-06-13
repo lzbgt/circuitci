@@ -123,6 +123,12 @@ coverage. A runnable suggestion must include all required rule parameters,
 either directly or through process presets and board metadata. A non-runnable
 suggestion must list the missing inputs in `required_inputs`.
 
+Power-tree load-switch suggestions may infer the control pin state only from a
+direct rail/ground tie or exactly one positive-valued pull resistor to a direct
+rail/ground state matching the model's `power_switch.enabled_state`. Dividers,
+multiple pulls, opposite-state pulls, and MCU/digital control nets must remain
+non-runnable until explicit pin-state evidence is supplied.
+
 When adding a new manufacturing rule, update suggestions only when the Board IR
 evidence can identify the applicable source condition. For package-scoped
 stencil checks, require owner-backed repeated pitch/grid evidence before

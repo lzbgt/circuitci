@@ -1571,6 +1571,9 @@ scenarios:
     pins must name distinct `electrical_power` ports, the control pin must be a
     digital input/IO port, and a powered output rail must have matching
     scenario `pin_states` evidence for the required enabled state.
+    `suggest-scenarios` may generate that evidence from a direct rail/ground tie
+    or exactly one positive-valued pull resistor to the matching direct
+    rail/ground state; ambiguous pulls remain manual.
 16. If `power_switch.max_output_current_A` is declared, every switched-output
     rail load must declare `max_supply_current_A`, and the summed worst-case
     output load must not exceed the switch limit.

@@ -184,7 +184,11 @@ power_switch:
 - `control_pin` must name a `digital_electrical_input` or
   `digital_electrical_io` model port.
 - `enabled_state` is `high` or `low` and must be proven by scenario
-  `pin_states` when the output rail is declared powered.
+  `pin_states` when the output rail is declared powered. Scenario suggestions
+  can fill that pin state from a direct rail/ground tie, or from exactly one
+  positive-valued pull resistor from the control net to a direct rail/ground
+  state matching `enabled_state`. Ambiguous dividers and active control nets
+  remain explicit evidence inputs.
 - `max_output_current_A` checks the sum of declared `max_supply_current_A`
   loads on the switched output rail.
 

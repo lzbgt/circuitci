@@ -174,7 +174,9 @@ fn load_switch_power_tree_inputs(bound: &BoundBoard<'_>) -> (Vec<SuggestedPinSta
         let control_state = component
             .pins
             .get(&power_switch.control_pin)
-            .and_then(|control_net| inferred_logic_state_from_net(bound.project, control_net));
+            .and_then(|control_net| {
+                inferred_load_switch_control_state(bound.project, control_net, enabled_state)
+            });
         pin_states.push(SuggestedPinState {
             component: component_id.clone(),
             pin: power_switch.control_pin.clone(),
@@ -200,6 +202,55 @@ pub(super) fn inferred_logic_state_from_net(
         NetKind::Ground => Some("low"),
         NetKind::Power if net.powered == Some(true) => Some("high"),
         _ => None,
+    }
+}
+
+fn inferred_load_switch_control_state(
+    project: &BoardProject,
+    control_net: &str,
+    enabled_state: &str,
+) -> Option<&'static str> {
+    let state = inferred_logic_state_from_net(project, control_net)
+        .or_else(|| unique_resistor_bias_logic_state(project, control_net))?;
+    if state == enabled_state {
+        Some(state)
+    } else {
+        None
+    }
+}
+
+fn unique_resistor_bias_logic_state(
+    project: &BoardProject,
+    net_name: &str,
+) -> Option<&'static str> {
+    let mut states = Vec::new();
+    for component in project.board.components.values() {
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        if spice.primitive != SpicePrimitive::Resistor || finite_positive(spice.value_ohm).is_none()
+        {
+            continue;
+        }
+        if !component.pins.values().any(|net| net == net_name) {
+            continue;
+        }
+        let mut component_states = component
+            .pins
+            .values()
+            .filter(|net| *net != net_name)
+            .filter_map(|net| inferred_logic_state_from_net(project, net))
+            .collect::<Vec<_>>();
+        component_states.sort_unstable();
+        component_states.dedup();
+        if component_states.len() == 1 {
+            states.push(component_states[0]);
+        }
+    }
+    if states.len() == 1 {
+        Some(states[0])
+    } else {
+        None
     }
 }
 

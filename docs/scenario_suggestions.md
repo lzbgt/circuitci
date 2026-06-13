@@ -17,7 +17,9 @@ The command is conservative:
 - If a powered rail is fed by a model with `power_switch`, the power-tree
   suggestion includes the switch control pin and required enabled state. It is
   runnable when the control pin is hard-tied to a declared powered rail for a
-  high state or to ground for a low state. Other control nets remain
+  high state or to ground for a low state, or when exactly one positive-valued
+  resistor pulls the control net to that direct rail/ground state. Dividers,
+  multiple pulls, opposite-state pulls, and digital control nets remain
   `runnable: false` until enable-state evidence is confirmed.
 - If a board includes a model with `battery_charger`, the power-tree suggestion
   is runnable when programmed charge current is already a component parameter or
@@ -378,9 +380,9 @@ The command is conservative:
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
 delays, GPIO pin-state observations, protection-path resistance, strap
-current budgets, untied load-switch enable evidence, charger programmed-current
-evidence, power-mux selected-source evidence, oscillator startup margin, or
-SPICE assertions.
+current budgets, ambiguous or actively driven load-switch enable evidence,
+charger programmed-current evidence, power-mux selected-source evidence,
+oscillator startup margin, or SPICE assertions.
 
 Example output shape:
 

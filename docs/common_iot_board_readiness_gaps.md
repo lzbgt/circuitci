@@ -169,10 +169,10 @@ dropout/current/startup/capacitance requirements plus measured support-capacitor
 evidence, reset-supervisor monitored rail, reset output, and threshold evidence
 in power-tree suggestions. It marks
 power-tree templates non-runnable when load-switch enable evidence is missing
-and not hard-tied to a declared powered rail or ground, when charger
-programmed-current evidence is missing, or when power-mux selected-source
-evidence is missing and cannot be derived from an explicit board state with
-exactly one powered mux input.
+and not proven by a direct rail/ground tie or one matching pull resistor, when
+charger programmed-current evidence is missing, or when power-mux
+selected-source evidence is missing and cannot be derived from an explicit
+board state with exactly one powered mux input.
 `INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are
@@ -238,9 +238,10 @@ These
 checks do not invent placement or unreferenced-return-path limits, timing,
 observed strap
 states, protocol events, GPIO pin-state observations, protection-path
-resistance, datasheet isolation behavior, untied load-switch enable evidence,
-power-mux selected-source evidence, oscillator startup margin, or analog
-assertions. Broader automatic recognition for device-specific protection
+resistance, datasheet isolation behavior, actively driven or ambiguous
+load-switch enable evidence, power-mux selected-source evidence, oscillator
+startup margin, or analog assertions. Broader automatic recognition for
+device-specific protection
 behavior, VBUS current capacity and transient fuse behavior, trace-order proof,
 additional datasheet-backed USB ESD arrays, ESD pulse behavior, and USB signal
 integrity remain component-pack and physics gaps.
