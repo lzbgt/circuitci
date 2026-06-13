@@ -141,18 +141,33 @@ fn load_switch_power_tree_inputs(bound: &BoundBoard<'_>) -> (Vec<SuggestedPinSta
             continue;
         }
         let enabled_state = power_switch_state_name(&power_switch.enabled_state);
+        let control_state = component
+            .pins
+            .get(&power_switch.control_pin)
+            .and_then(|control_net| inferred_logic_state_from_net(bound.project, control_net));
         pin_states.push(SuggestedPinState {
             component: component_id.clone(),
             pin: power_switch.control_pin.clone(),
             mode: "input".to_string(),
-            state: Some(enabled_state.to_string()),
+            state: Some(control_state.unwrap_or(enabled_state).to_string()),
         });
-        required_inputs.push(format!(
-            "Prove {component_id}.{} is {enabled_state} whenever switched rail {output_net_name} is declared powered.",
-            power_switch.control_pin
-        ));
+        if control_state.is_none() {
+            required_inputs.push(format!(
+                "Prove {component_id}.{} is {enabled_state} whenever switched rail {output_net_name} is declared powered.",
+                power_switch.control_pin
+            ));
+        }
     }
     (pin_states, required_inputs)
+}
+
+fn inferred_logic_state_from_net(project: &BoardProject, net_name: &str) -> Option<&'static str> {
+    let net = project.board.nets.get(net_name)?;
+    match net.kind {
+        NetKind::Ground => Some("low"),
+        NetKind::Power if net.powered == Some(true) => Some("high"),
+        _ => None,
+    }
 }
 
 fn battery_charger_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {

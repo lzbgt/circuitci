@@ -151,8 +151,9 @@ interface-protection review templates when component models declare explicit
 dropout/current/startup/capacitance requirements plus measured support-capacitor
 evidence, reset-supervisor monitored rail, reset output, and threshold evidence
 in power-tree suggestions. It marks
-power-tree templates non-runnable when load-switch enable, charger
-programmed-current, or power-mux selected-source evidence is missing.
+power-tree templates non-runnable when load-switch enable evidence is missing
+and not hard-tied to a declared powered rail or ground, or when charger
+programmed-current or power-mux selected-source evidence is missing.
 `INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are
@@ -218,7 +219,7 @@ These
 checks do not invent placement or unreferenced-return-path limits, timing,
 observed strap
 states, protocol events, GPIO pin-state observations, protection-path
-resistance, datasheet isolation behavior, load-switch enable evidence,
+resistance, datasheet isolation behavior, untied load-switch enable evidence,
 power-mux selected-source evidence, oscillator startup margin, or analog
 assertions. Broader automatic recognition for device-specific protection
 behavior, VBUS current capacity and transient fuse behavior, trace-order proof,

@@ -15,8 +15,10 @@ The command is conservative:
 - It emits runnable `power_tree` suggestions when a project declares power nets
   but has no `POWER_TREE_VALID` scenario.
 - If a powered rail is fed by a model with `power_switch`, the power-tree
-  suggestion includes the switch control pin and required enabled state, and is
-  marked `runnable: false` until that enable-state evidence is confirmed.
+  suggestion includes the switch control pin and required enabled state. It is
+  runnable when the control pin is hard-tied to a declared powered rail for a
+  high state or to ground for a low state. Other control nets remain
+  `runnable: false` until enable-state evidence is confirmed.
 - If a board includes a model with `battery_charger` and the required
   programmed charge-current component parameter is missing, the power-tree
   suggestion is marked `runnable: false` and records the parameter the agent
@@ -349,10 +351,10 @@ The command is conservative:
   RX net, the template includes that sender; otherwise it records the missing
   sender as required input.
 - It never invents boot strap states, reset-release timestamps, power-good
-  delays, GPIO pin-state observations, protection-path resistance, strap
-  current budgets, load-switch enable evidence, charger programmed-current
-  evidence, power-mux selected-source evidence, oscillator startup margin, or
-  SPICE assertions.
+delays, GPIO pin-state observations, protection-path resistance, strap
+current budgets, untied load-switch enable evidence, charger programmed-current
+evidence, power-mux selected-source evidence, oscillator startup margin, or
+SPICE assertions.
 
 Example output shape:
 
