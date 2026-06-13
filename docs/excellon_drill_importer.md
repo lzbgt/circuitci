@@ -88,7 +88,12 @@ the nearest external, cutout, or unknown board-edge segment.
 slot width against process limits. With `fabrication_process:
 jlcpcb_slot_min_2026_06`, plated slots use the source-backed 0.65 mm minimum
 metallized slot drill size and non-plated slots use the source-backed 1.0 mm
-minimum routing bit.
+non-metallized routing bit.
+
+`SLOT_ASPECT_RATIO_VALID` can consume imported `board.layout.slots` to screen
+routed slot length-to-width ratio. With `fabrication_process:
+jlcpcb_slot_min_2026_06`, routed slots use the source-backed JLC recommended
+minimum aspect ratio of 2.5.
 
 `DRILL_ANNULAR_RING_VALID` reports optional drill ownership fields when present,
 which makes undersized annular-ring findings traceable to the affected pad or

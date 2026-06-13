@@ -74,6 +74,7 @@ Current preset defaults:
 | `min_annular_ring_mm` | `0.05` | JLCPCB via article: double-sided/multilayer vias have 0.15 mm minimum inner diameter and 0.25 mm minimum outer diameter; `(0.25 - 0.15) / 2 = 0.05`. |
 | `min_plated_slot_width_mm` | `0.65` | JLCPCB via article: smallest slot drill size is 0.65 mm for metallized slots. |
 | `min_non_plated_slot_width_mm` | `1.00` | JLCPCB via article: smallest non-metallized slot routing bit is 1.0 mm. |
+| `min_slot_aspect_ratio` | `2.50` | JLCPCB via article: recommended slot length-to-width ratio is at least 2.5. |
 | `min_drill_diameter_mm` | `0.15` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `min_castellated_hole_diameter_mm` | `0.30` | JLCPCB castellated-hole diagram: castellated hole diameter is at least 0.3 mm. |
@@ -87,11 +88,13 @@ Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.
 
 Other manufacturing thresholds still require explicit scenario parameters until
-the repo has pinned source evidence for the exact process condition. The 1 oz
-copper spacing preset is a general fabrication floor for `COPPER_SPACING_VALID`;
-the routed-edge copper clearance preset applies to routed board-edge and routed
-slot copper clearance only. The stencil aperture-size preset is a laser-cut
-stencil capability floor and is not a package paste-reduction rule.
+the repo has pinned source evidence for the exact process condition. The slot
+preset covers routed-slot width and length-to-width ratio; it is not a
+slot-to-board-edge clearance preset. The 1 oz copper spacing preset is a general
+fabrication floor for `COPPER_SPACING_VALID`; the routed-edge copper clearance
+preset applies to routed board-edge and routed slot copper clearance only. The
+stencil aperture-size preset is a laser-cut stencil capability floor and is not
+a package paste-reduction rule.
 Package-specific SMD pad spacing, stencil aperture spacing, paste area ratio,
 drill/slot-to-board-edge clearance, V-cut panel clearance, and special-order
 constraints still need narrower presets or explicit scenario parameters.

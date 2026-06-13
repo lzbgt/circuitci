@@ -319,6 +319,13 @@ Stable limit keys include `min_slot_edge_clearance_mm`.
 and optional `source_slot_index`. Stable limit keys include
 `min_slot_width_mm`.
 
+`SLOT_ASPECT_RATIO_VALID` reports are emitted by `manufacturing` scenarios that
+check `board.layout.slots` routed-slot length-to-width process evidence. Stable
+measured keys include `slot_index`, `slot_start`, `slot_end`, `slot_width_mm`,
+`slot_radius_mm`, `slot_plating`, `slot_length_mm`, `slot_aspect_ratio`,
+optional `slot_layer`, optional `slot_tool`, and optional `source_slot_index`.
+Stable limit keys include `min_slot_aspect_ratio`.
+
 `CASTELLATED_HOLE_VALID` reports are emitted by `manufacturing` scenarios that
 compare explicitly marked `board.layout.drills[].castellated` evidence with a
 castellated-hole process rule. Stable measured keys reuse drill evidence fields

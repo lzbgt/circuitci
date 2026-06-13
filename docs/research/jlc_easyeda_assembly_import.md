@@ -200,11 +200,11 @@ flying-probe pads, outline, top/bottom copper, top/bottom solder mask, top
 paste, aggregate PTH drills, and NPTH drills:
 
 ```text
-CircuitCI suggested 13 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions-current
+CircuitCI suggested 14 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions-current
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
 ```
 
-Current split: 9 runnable source-backed suggestions and 4 non-runnable
+Current split: 10 runnable source-backed suggestions and 4 non-runnable
 threshold-gated suggestions.
 
 Runnable manufacturing suggestions generated from named source-backed presets:
@@ -213,6 +213,7 @@ Runnable manufacturing suggestions generated from named source-backed presets:
 | --- | --- | --- |
 | `drill_diameter_valid` | `DRILL_DIAMETER_VALID` | `jlcpcb_drill_diameter_range_2026_06` |
 | `slot_width_valid` | `SLOT_WIDTH_VALID` | `jlcpcb_slot_min_2026_06` |
+| `slot_aspect_ratio_valid` | `SLOT_ASPECT_RATIO_VALID` | `jlcpcb_slot_min_2026_06` |
 | `drill_annular_ring_valid` | `DRILL_ANNULAR_RING_VALID` | `jlcpcb_double_sided_via_min_2026_06` |
 | `copper_to_board_edge_clearance` | `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` | `jlcpcb_routed_edge_copper_clearance_2026_06` |
 | `copper_spacing_valid` | `COPPER_SPACING_VALID` | `jlcpcb_1oz_copper_spacing_2026_06` |

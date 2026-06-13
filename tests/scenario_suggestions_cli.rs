@@ -276,7 +276,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "scenario_suggestions_manufacturing_artifacts"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 14);
+    assert_eq!(suggested.len(), 15);
 
     let drill_diameter = suggested
         .iter()
@@ -302,6 +302,20 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
     assert_eq!(slot_width["scenario"]["checks"][0], "SLOT_WIDTH_VALID");
     assert_eq!(
         slot_width["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_slot_min_2026_06"
+    );
+
+    let slot_aspect_ratio = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "slot_aspect_ratio_valid")
+        .expect("slot aspect ratio suggestion");
+    assert_eq!(slot_aspect_ratio["runnable"], true);
+    assert_eq!(
+        slot_aspect_ratio["scenario"]["checks"][0],
+        "SLOT_ASPECT_RATIO_VALID"
+    );
+    assert_eq!(
+        slot_aspect_ratio["scenario"]["parameters"]["fabrication_process"],
         "jlcpcb_slot_min_2026_06"
     );
 

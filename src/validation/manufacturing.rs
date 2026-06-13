@@ -28,6 +28,7 @@ use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_DIAMETER_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::SLOT_ASPECT_RATIO_VALID;
 use super::SLOT_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::SLOT_WIDTH_VALID;
 use super::common::validation_input_missing;
@@ -297,6 +298,53 @@ pub(super) fn validate_slot_width(
                 slot_index,
                 slot_process,
                 required_width_mm,
+            ));
+        }
+    }
+}
+
+pub(super) fn validate_slot_aspect_ratio(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_aspect_ratio) =
+        required_numeric_parameter(scenario, "min_slot_aspect_ratio", findings)
+    else {
+        return;
+    };
+    if min_aspect_ratio < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_slot_aspect_ratio must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let slots = &bound.project.board.layout.slots;
+    if slots.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SLOT_ASPECT_RATIO_VALID requires board.layout.slots evidence.",
+        );
+        return;
+    }
+    for (slot_index, slot) in slots.iter().enumerate() {
+        if let Err(message) = validate_slot_geometry(slot, slot_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let length_mm = slot_centerline_length_mm(slot);
+        let aspect_ratio = length_mm / slot.width_mm;
+        if aspect_ratio + f64::EPSILON < min_aspect_ratio {
+            findings.push(slot_aspect_ratio_finding(
+                scenario,
+                slot,
+                slot_index,
+                length_mm,
+                aspect_ratio,
+                min_aspect_ratio,
             ));
         }
     }
@@ -938,6 +986,40 @@ fn slot_width_finding(
     finding
 }
 
+fn slot_aspect_ratio_finding(
+    scenario: &Scenario,
+    slot: &LayoutSlot,
+    slot_index: usize,
+    length_mm: f64,
+    aspect_ratio: f64,
+    min_aspect_ratio: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SLOT_ASPECT_RATIO_VALID,
+        &scenario.name,
+        format!(
+            "Routed slot {} has length-to-width ratio {:.3}; selected process requires at least {:.3}.",
+            slot_index, aspect_ratio, min_aspect_ratio
+        ),
+    );
+    insert_slot_measurements(&mut finding, slot, slot_index);
+    finding
+        .measured
+        .insert("slot_length_mm".to_string(), json!(length_mm));
+    finding
+        .measured
+        .insert("slot_aspect_ratio".to_string(), json!(aspect_ratio));
+    finding
+        .limit
+        .insert("min_slot_aspect_ratio".to_string(), json!(min_aspect_ratio));
+    finding.suggested_fixes = vec![
+        "Increase the routed slot length or reduce slot width until the length-to-width ratio meets the selected process rule.".to_string(),
+        "Replace very short routed slots with circular drill hits when the mechanical requirement allows it.".to_string(),
+        "Move this feature to a fabrication process option that explicitly supports shorter routed slots.".to_string(),
+    ];
+    finding
+}
+
 fn castellated_hole_diameter_finding(
     scenario: &Scenario,
     drill: &LayoutDrill,
@@ -1329,6 +1411,12 @@ fn insert_slot_measurements(finding: &mut Finding, slot: &LayoutSlot, slot_index
             .measured
             .insert("source_slot_index".to_string(), json!(source_slot_index));
     }
+}
+
+fn slot_centerline_length_mm(slot: &LayoutSlot) -> f64 {
+    let dx = slot.end.x_mm - slot.start.x_mm;
+    let dy = slot.end.y_mm - slot.start.y_mm;
+    (dx * dx + dy * dy).sqrt()
 }
 
 fn insert_copper_feature_edge_measurements(finding: &mut Finding, feature: &LayoutCopperFeature) {

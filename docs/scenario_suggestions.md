@@ -280,7 +280,8 @@ The command is conservative:
   `DRILL_DIAMETER_VALID` using
   `fabrication_process: jlcpcb_drill_diameter_range_2026_06`. When
   `board.layout.slots[]` is present, it emits runnable `SLOT_WIDTH_VALID` using
-  `fabrication_process: jlcpcb_slot_min_2026_06`. When drills and copper
+  `fabrication_process: jlcpcb_slot_min_2026_06` and runnable
+  `SLOT_ASPECT_RATIO_VALID` using the same slot preset. When drills and copper
   flashes are present, it emits runnable `DRILL_ANNULAR_RING_VALID` using
   `fabrication_process: jlcpcb_double_sided_via_min_2026_06`. When copper and
   routed board-outline evidence are present, it emits runnable

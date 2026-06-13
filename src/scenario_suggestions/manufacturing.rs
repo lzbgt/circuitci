@@ -8,6 +8,7 @@ const DRILL_DIAMETER_VALID: &str = "DRILL_DIAMETER_VALID";
 const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
 const SLOT_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID";
 const SLOT_WIDTH_VALID: &str = "SLOT_WIDTH_VALID";
+const SLOT_ASPECT_RATIO_VALID: &str = "SLOT_ASPECT_RATIO_VALID";
 const CASTELLATED_HOLE_VALID: &str = "CASTELLATED_HOLE_VALID";
 const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
@@ -128,6 +129,20 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
                 "Imported routed-slot evidence can be screened against source-backed JLCPCB plated and non-plated slot width limits.",
                 &format!("{project_name}_slot_width"),
                 SLOT_WIDTH_VALID,
+                Some(fabrication_process("jlcpcb_slot_min_2026_06")),
+                Vec::new(),
+            ),
+        );
+        push_if_not_declared(
+            bound,
+            &mut suggestions,
+            SLOT_ASPECT_RATIO_VALID,
+            manufacturing_suggestion(
+                "slot_aspect_ratio_valid",
+                true,
+                "Imported routed-slot evidence can be screened against the source-backed JLCPCB minimum slot length-to-width ratio.",
+                &format!("{project_name}_slot_aspect_ratio"),
+                SLOT_ASPECT_RATIO_VALID,
                 Some(fabrication_process("jlcpcb_slot_min_2026_06")),
                 Vec::new(),
             ),

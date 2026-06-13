@@ -105,6 +105,7 @@ Canonical executable check IDs:
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_WIDTH_VALID`
+- `SLOT_ASPECT_RATIO_VALID`
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`
@@ -707,8 +708,35 @@ Slot-width algorithm:
 6. Fail when any slot width is below the selected process limit.
 
 This is a static routed-slot process screen. It does not model route-tool
-runout, plating thickness, slot end-shape tolerance, milling compensation,
-minimum slot length, or mechanical fit.
+runout, plating thickness, slot end-shape tolerance, milling compensation, or
+mechanical fit.
+
+Slot aspect-ratio validation uses `SLOT_ASPECT_RATIO_VALID` when the Board IR
+includes routed slot evidence under `board.layout.slots`.
+
+```yaml
+scenarios:
+  - name: slot_aspect_ratio
+    type: manufacturing
+    checks:
+      - SLOT_ASPECT_RATIO_VALID
+    parameters:
+      fabrication_process: jlcpcb_slot_min_2026_06
+```
+
+Slot aspect-ratio algorithm:
+
+1. Require `parameters.min_slot_aspect_ratio`, either explicitly or from a
+   fabrication process preset.
+2. Require finite `board.layout.slots[]` entries with positive `width_mm` and
+   non-zero start/end centerline length.
+3. Compute each slot's centerline length divided by `width_mm`.
+4. Fail when any routed slot aspect ratio is below `min_slot_aspect_ratio`.
+
+The JLCPCB slot preset currently supplies `min_slot_aspect_ratio: 2.5` from the
+saved via-design source. This check does not replace slot-width or slot-edge
+clearance screening; it catches very short routed slots that are difficult to
+process even when their width is otherwise supported.
 
 Castellated-hole validation uses `CASTELLATED_HOLE_VALID` when the Board IR
 includes explicit castellated drill evidence under `board.layout.drills` and

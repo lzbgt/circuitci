@@ -35,6 +35,7 @@ const JLCPCB_SLOT_MIN_2026_06: FabricationProcessPreset = FabricationProcessPres
     numeric_defaults: &[
         ("min_plated_slot_width_mm", 0.65),
         ("min_non_plated_slot_width_mm", 1.0),
+        ("min_slot_aspect_ratio", 2.5),
     ],
 };
 

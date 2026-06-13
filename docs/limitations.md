@@ -186,7 +186,9 @@ without explicit imported mechanical evidence.
   similarly uses imported Excellon `G85` routed-slot centerlines and widths
   under `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width
   against process thresholds and can use the dedicated JLCPCB
-  metallized/non-metallized slot preset. `CASTELLATED_HOLE_VALID` is a
+  metallized/non-metallized slot preset. `SLOT_ASPECT_RATIO_VALID` checks
+  routed-slot length-to-width ratio and can use the same JLCPCB slot preset.
+  `CASTELLATED_HOLE_VALID` is a
   separate opt-in rule for drill evidence explicitly marked `castellated: true`;
   it can use the dedicated JLCPCB castellated-hole diameter,
   hole-to-board-edge, and hole-to-hole spacing preset without changing the

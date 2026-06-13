@@ -36,6 +36,7 @@ Implemented default:
 - `min_annular_ring_mm: 0.05`
 - `min_plated_slot_width_mm: 0.65`
 - `min_non_plated_slot_width_mm: 1.00`
+- `min_slot_aspect_ratio: 2.50`
 - `min_drill_diameter_mm: 0.15`
 - `max_drill_diameter_mm: 6.30`
 - `min_copper_spacing_mm: 0.10`
@@ -66,7 +67,9 @@ Rationale:
   HDI processes have different constraints.
 - The same via article says the smallest slot drill size is 0.65 mm for
   metallized slots and the smallest non-metallized slot routing bit is 1.0 mm.
-  CircuitCI encodes those as a dedicated routed-slot minimum preset.
+  It also says short slots are difficult to process and recommends a
+  length-to-width ratio of at least 2.5. CircuitCI encodes those values as a
+  dedicated routed-slot preset for width and aspect-ratio validation.
 - The same via article says mechanical drilling uses circular drill bits from
   0.15 mm to 6.30 mm in diameter. CircuitCI encodes those as a dedicated
   circular drill diameter range preset because routed slots and special-order

@@ -138,6 +138,29 @@ fn slot_width_fails_with_jlc_process_defaults() {
 }
 
 #[test]
+fn slot_aspect_ratio_passes_with_jlc_process_defaults() {
+    let report = run_validation("examples/good_slot_aspect_ratio_jlc_process/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn slot_aspect_ratio_fails_with_jlc_process_defaults() {
+    let report = run_validation("examples/bad_slot_aspect_ratio_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SLOT_ASPECT_RATIO_VALID");
+    assert_eq!(failure["measured"]["slot_index"], 0);
+    assert_eq!(failure["measured"]["slot_length_mm"], 2.0);
+    assert_eq!(failure["measured"]["slot_width_mm"], 1.0);
+    assert_eq!(failure["measured"]["slot_aspect_ratio"], 2.0);
+    assert_eq!(failure["limit"]["min_slot_aspect_ratio"], 2.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn castellated_hole_passes_with_jlc_process_defaults() {
     let report = run_validation("examples/good_castellated_hole_jlc_process/project.yaml");
     assert_eq!(report["result"], "pass");
