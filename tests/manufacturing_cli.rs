@@ -920,6 +920,56 @@ fn solder_paste_ic_pin_aperture_fails_for_jlc_pitch_length() {
 }
 
 #[test]
+fn solder_paste_ic_pin_aperture_passes_for_jlc_pitch_length_extension() {
+    let report =
+        run_validation("examples/good_solder_paste_ic_pin_aperture_extension_jlc/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_ic_pin_aperture_fails_for_jlc_pitch_length_extension() {
+    let report =
+        run_validation("examples/bad_solder_paste_ic_pin_aperture_extension_jlc/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_IC_PIN_APERTURE_VALID");
+    assert_eq!(failure["measured"]["solder_paste_kind"], "feature");
+    assert_eq!(failure["measured"]["solder_paste_feature_component"], "U1");
+    assert_eq!(failure["measured"]["solder_paste_feature_pin"], "1");
+    assert_eq!(
+        failure["measured"]["solder_paste_ic_pin_aperture_length_mm"],
+        1.30
+    );
+    assert_eq!(
+        failure["measured"]["owner_matched_copper_pad_length_mm"],
+        1.20
+    );
+    assert_eq!(failure["measured"]["pin_pitch_mm"], 0.5);
+    assert_eq!(
+        failure["limit"]["min_solder_paste_ic_pin_aperture_length_mm"],
+        1.40
+    );
+    assert_eq!(
+        failure["limit"]["max_owner_matched_copper_pad_length_for_extension_mm"],
+        1.50
+    );
+    assert_eq!(
+        failure["limit"]["solder_paste_ic_pin_aperture_extension_per_end_mm"],
+        0.10
+    );
+    assert!(
+        failure["measured"]["source_condition"]
+            .as_str()
+            .unwrap()
+            .contains("if copper pad length is less than 1.5 mm")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_bga_aperture_passes_for_jlc_pitch_size() {
     let report = run_validation("examples/good_solder_paste_bga_aperture_jlc/project.yaml");
     assert_eq!(report["result"], "pass");

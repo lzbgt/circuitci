@@ -1124,7 +1124,9 @@ IC pin solder-paste aperture algorithm:
    0.8-1.27 mm pitch uses aperture width 45%-60% of pitch;
    0.635-0.65 mm pitch uses 0.30-0.33 mm width and 1.00 mm length;
    0.5 mm uses 0.24 mm; 0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm;
-   and 0.3 mm uses 0.16 mm.
+   and 0.3 mm uses 0.16 mm. For the 0.5 mm row, owner-matched copper pad
+   evidence shorter than 1.5 mm additionally requires paste length at least the
+   copper pad length plus 0.1 mm extension at each end.
 3. If `target.component` is present, check only pad-owned solder-paste evidence
    for that component. Without a target, check all pad-owned paste evidence.
 4. Require matching pad-owned solder-paste feature, segment, or region evidence.
@@ -1135,10 +1137,16 @@ IC pin solder-paste aperture algorithm:
    range.
 9. For source rows with an explicit length, fail when the measured aperture
    length does not match the pitch-conditioned length.
+10. For source rows with a condition-scoped extension and unique owner-matched
+    copper pad evidence, fail when the measured paste aperture length does not
+    satisfy the copper-pad-length-derived minimum.
 
 This is not a generic stencil capability preset. It represents JLCPCB's
 package-specific IC stencil optimization table and should only be used for the
-IC pin group whose pitch is declared by the scenario. `suggest-scenarios` can
+IC pin group whose pitch is declared by the scenario. The 0.5 mm row's
+length-extension text is interpreted only with unique owner-matched copper pad
+geometry, so it is not applied to anonymous paste evidence or unrelated pads.
+`suggest-scenarios` can
 infer a target-scoped `pin_pitch_mm` from repeated pad-owned paste flashes for
 selected discrete source rows. Representative exact pitches inside the broad
 0.8-1.27 mm source row require stronger repeated-gap evidence than the narrow

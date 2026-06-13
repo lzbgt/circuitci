@@ -148,8 +148,12 @@ Observed but not yet encoded as process defaults:
   only the source-backed IC pitch rows: 0.8-1.27 mm pitch uses width 45%-60% of
   pitch; 0.635-0.65 mm pitch uses 0.30-0.33 mm width and 1.00 mm length;
   0.5 mm uses 0.24 mm; 0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm; and
-  0.3 mm uses 0.16 mm. This is not a fabrication-process preset because the
-  condition is package-class and pitch specific.
+  0.3 mm uses 0.16 mm. The 0.5 mm row also includes length guidance: if the
+  source copper pad length is less than 1.5 mm, extend the stencil aperture
+  length outward by 0.1 mm at each end. CircuitCI enforces that clause only when
+  unique owner-matched copper pad geometry proves the copper pad length. This is
+  not a fabrication-process preset because the condition is package-class, pitch,
+  and pad-geometry specific.
 - `suggest-scenarios` may infer `pin_pitch_mm` only when imported pad-owned
   solder-paste flashes for one component show at least two repeated gaps
   matching the discrete 0.3, 0.35, 0.4, 0.5, or 0.65 mm source rows. It may

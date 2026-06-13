@@ -1,4 +1,4 @@
-use crate::board_ir::{LayoutCopperRegion, LayoutCopperSegment, Scenario};
+use crate::board_ir::{LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -84,6 +84,15 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
                 aperture_spec,
             ));
         }
+        check_source_backed_length_extension(
+            bound,
+            scenario,
+            findings,
+            object,
+            aperture_length_mm,
+            pin_pitch_mm,
+            aperture_spec,
+        );
     }
     for (segment_index, segment) in paste.segments.iter().enumerate() {
         if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
@@ -120,6 +129,15 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
                 aperture_spec,
             ));
         }
+        check_source_backed_length_extension(
+            bound,
+            scenario,
+            findings,
+            object,
+            aperture_length_mm,
+            pin_pitch_mm,
+            aperture_spec,
+        );
     }
     for (region_index, region) in paste.regions.iter().enumerate() {
         if let Err(message) = validate_copper_region_geometry(region, region_index) {
@@ -171,6 +189,15 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
                 aperture_spec,
             ));
         }
+        check_source_backed_length_extension(
+            bound,
+            scenario,
+            findings,
+            object,
+            aperture_length_mm,
+            pin_pitch_mm,
+            aperture_spec,
+        );
     }
 
     if checked_pad_owned_openings == 0 {
@@ -194,6 +221,14 @@ struct IcPinApertureSpec {
     min_mm: f64,
     max_mm: f64,
     length_mm: Option<f64>,
+    length_extension: Option<IcPinLengthExtensionSpec>,
+    source_condition: &'static str,
+}
+
+#[derive(Clone, Copy)]
+struct IcPinLengthExtensionSpec {
+    copper_length_less_than_mm: f64,
+    extension_per_end_mm: f64,
     source_condition: &'static str,
 }
 
@@ -203,6 +238,7 @@ fn jlc_ic_pin_aperture_spec(pin_pitch_mm: f64) -> Option<IcPinApertureSpec> {
             min_mm: pin_pitch_mm * 0.45,
             max_mm: pin_pitch_mm * 0.60,
             length_mm: None,
+            length_extension: None,
             source_condition: "JLCPCB IC stencil pitch 0.8-1.27 mm: width 45%-60% of pitch",
         });
     }
@@ -211,24 +247,52 @@ fn jlc_ic_pin_aperture_spec(pin_pitch_mm: f64) -> Option<IcPinApertureSpec> {
             min_mm: 0.30,
             max_mm: 0.33,
             length_mm: Some(1.00),
+            length_extension: None,
             source_condition: "JLCPCB IC stencil pitch 0.635-0.65 mm: W=0.30-0.33 mm, L=1.00 mm",
         });
     }
     let exact = [
-        (0.50, 0.24, "JLCPCB IC stencil pitch 0.5 mm: W=0.24 mm"),
-        (0.40, 0.19, "JLCPCB IC stencil pitch 0.4 mm: W=0.19 mm"),
-        (0.35, 0.17, "JLCPCB IC stencil pitch 0.35 mm: W=0.17 mm"),
-        (0.30, 0.16, "JLCPCB IC stencil pitch 0.3 mm: W=0.16 mm"),
+        (
+            0.50,
+            0.24,
+            Some(IcPinLengthExtensionSpec {
+                copper_length_less_than_mm: 1.50,
+                extension_per_end_mm: 0.10,
+                source_condition: "JLCPCB IC stencil pitch 0.5 mm: if copper pad length is less than 1.5 mm, extend length outward by 0.1 mm per end",
+            }),
+            "JLCPCB IC stencil pitch 0.5 mm: W=0.24 mm",
+        ),
+        (
+            0.40,
+            0.19,
+            None,
+            "JLCPCB IC stencil pitch 0.4 mm: W=0.19 mm",
+        ),
+        (
+            0.35,
+            0.17,
+            None,
+            "JLCPCB IC stencil pitch 0.35 mm: W=0.17 mm",
+        ),
+        (
+            0.30,
+            0.16,
+            None,
+            "JLCPCB IC stencil pitch 0.3 mm: W=0.16 mm",
+        ),
     ];
     exact
         .iter()
-        .find(|(pitch, _, _)| (pin_pitch_mm - *pitch).abs() <= 1.0e-9)
-        .map(|(_, width, source_condition)| IcPinApertureSpec {
-            min_mm: *width,
-            max_mm: *width,
-            length_mm: None,
-            source_condition,
-        })
+        .find(|(pitch, _, _, _)| (pin_pitch_mm - *pitch).abs() <= 1.0e-9)
+        .map(
+            |(_, width, length_extension, source_condition)| IcPinApertureSpec {
+                min_mm: *width,
+                max_mm: *width,
+                length_mm: None,
+                length_extension: *length_extension,
+                source_condition,
+            },
+        )
 }
 
 fn aperture_width_out_of_range(aperture_width_mm: f64, range: IcPinApertureSpec) -> bool {
@@ -247,6 +311,82 @@ fn segment_aperture_length_mm(segment: &LayoutCopperSegment) -> f64 {
     let dx_mm = segment.end.x_mm - segment.start.x_mm;
     let dy_mm = segment.end.y_mm - segment.start.y_mm;
     dx_mm.hypot(dy_mm) + segment.width_mm
+}
+
+fn check_source_backed_length_extension(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    paste_object: CopperObjectRef<'_>,
+    aperture_length_mm: f64,
+    pin_pitch_mm: f64,
+    aperture_spec: IcPinApertureSpec,
+) {
+    let Some(extension) = aperture_spec.length_extension else {
+        return;
+    };
+    let Some(copper_feature) = unique_owner_matched_copper_feature(bound, paste_object) else {
+        return;
+    };
+    let copper_length_mm = copper_feature.size.x_mm.max(copper_feature.size.y_mm);
+    if !copper_length_mm.is_finite() || copper_length_mm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_IC_PIN_APERTURE_VALID could not compute finite positive owner-matched copper pad length.",
+        );
+        return;
+    }
+    if copper_length_mm + f64::EPSILON >= extension.copper_length_less_than_mm {
+        return;
+    }
+    let min_aperture_length_mm = copper_length_mm + 2.0 * extension.extension_per_end_mm;
+    if aperture_length_mm + f64::EPSILON < min_aperture_length_mm {
+        findings.push(solder_paste_ic_pin_aperture_length_extension_finding(
+            scenario,
+            IcPinLengthExtensionFinding {
+                paste_object,
+                aperture_length_mm,
+                copper_feature,
+                copper_length_mm,
+                min_aperture_length_mm,
+                pin_pitch_mm,
+                extension,
+            },
+        ));
+    }
+}
+
+fn unique_owner_matched_copper_feature<'a>(
+    bound: &'a BoundBoard<'_>,
+    paste_object: CopperObjectRef<'_>,
+) -> Option<&'a LayoutCopperFeature> {
+    let component = paste_object.component()?;
+    let pin = paste_object.pin()?;
+    let copper_layer = copper_layer_for_paste_layer(paste_object.layer())?;
+    let mut matches = bound
+        .project
+        .board
+        .layout
+        .copper
+        .features
+        .iter()
+        .filter(|feature| {
+            feature.owner_kind.as_deref() == Some("pad")
+                && feature.component.as_deref() == Some(component)
+                && feature.pin.as_deref() == Some(pin)
+                && feature.layer == copper_layer
+        });
+    let first = matches.next()?;
+    matches.next().is_none().then_some(first)
+}
+
+fn copper_layer_for_paste_layer(layer: &str) -> Option<&'static str> {
+    match layer {
+        "F.Paste" | "TopPasteMaskLayer" => Some("F.Cu"),
+        "B.Paste" | "BottomPasteMaskLayer" => Some("B.Cu"),
+        _ => None,
+    }
 }
 
 fn paste_object_is_pad_owned(object: CopperObjectRef<'_>) -> bool {
@@ -270,6 +410,29 @@ fn paste_object_matches_target(object: CopperObjectRef<'_>, scenario: &Scenario)
         }
         CopperObjectRef::Region { region, .. } => {
             region.component.as_deref() == Some(target.component.as_str())
+        }
+    }
+}
+
+trait IcPasteOwner {
+    fn component(&self) -> Option<&str>;
+    fn pin(&self) -> Option<&str>;
+}
+
+impl IcPasteOwner for CopperObjectRef<'_> {
+    fn component(&self) -> Option<&str> {
+        match self {
+            CopperObjectRef::Feature { feature, .. } => feature.component.as_deref(),
+            CopperObjectRef::Segment { segment, .. } => segment.component.as_deref(),
+            CopperObjectRef::Region { region, .. } => region.component.as_deref(),
+        }
+    }
+
+    fn pin(&self) -> Option<&str> {
+        match self {
+            CopperObjectRef::Feature { feature, .. } => feature.pin.as_deref(),
+            CopperObjectRef::Segment { segment, .. } => segment.pin.as_deref(),
+            CopperObjectRef::Region { region, .. } => region.pin.as_deref(),
         }
     }
 }
@@ -396,6 +559,70 @@ fn solder_paste_ic_pin_aperture_length_finding(
     finding
 }
 
+struct IcPinLengthExtensionFinding<'a> {
+    paste_object: CopperObjectRef<'a>,
+    aperture_length_mm: f64,
+    copper_feature: &'a LayoutCopperFeature,
+    copper_length_mm: f64,
+    min_aperture_length_mm: f64,
+    pin_pitch_mm: f64,
+    extension: IcPinLengthExtensionSpec,
+}
+
+fn solder_paste_ic_pin_aperture_length_extension_finding(
+    scenario: &Scenario,
+    ctx: IcPinLengthExtensionFinding<'_>,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_IC_PIN_APERTURE_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-paste {} opening on {} has IC pin aperture length {:.6} mm; JLCPCB pitch-conditioned length extension for {:.3} mm pitch requires at least {:.6} mm from owner-matched copper pad length {:.6} mm.",
+            ctx.paste_object.kind(),
+            ctx.paste_object.layer(),
+            ctx.aperture_length_mm,
+            ctx.pin_pitch_mm,
+            ctx.min_aperture_length_mm,
+            ctx.copper_length_mm
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Extend the IC pin stencil aperture length to satisfy the JLCPCB pitch-conditioned stencil opening standard for the owner-matched copper pad.".to_string(),
+        "Use a package-specific scenario with the correct pin_pitch_mm and owner-backed copper pad geometry.".to_string(),
+        "If the paste layer must remain as exported, document the order remark or assembly-process override and do not use this JLC default optimization check.".to_string(),
+    ];
+    insert_solder_paste_object_measurements(&mut finding, ctx.paste_object);
+    insert_owner_matched_copper_feature_measurements(&mut finding, ctx.copper_feature);
+    finding.measured.insert(
+        "solder_paste_ic_pin_aperture_length_mm".to_string(),
+        json!(ctx.aperture_length_mm),
+    );
+    finding.measured.insert(
+        "owner_matched_copper_pad_length_mm".to_string(),
+        json!(ctx.copper_length_mm),
+    );
+    finding
+        .measured
+        .insert("pin_pitch_mm".to_string(), json!(ctx.pin_pitch_mm));
+    finding.measured.insert(
+        "source_condition".to_string(),
+        json!(ctx.extension.source_condition),
+    );
+    finding.limit.insert(
+        "min_solder_paste_ic_pin_aperture_length_mm".to_string(),
+        json!(ctx.min_aperture_length_mm),
+    );
+    finding.limit.insert(
+        "max_owner_matched_copper_pad_length_for_extension_mm".to_string(),
+        json!(ctx.extension.copper_length_less_than_mm),
+    );
+    finding.limit.insert(
+        "solder_paste_ic_pin_aperture_extension_per_end_mm".to_string(),
+        json!(ctx.extension.extension_per_end_mm),
+    );
+    finding
+}
+
 fn insert_solder_paste_object_measurements(finding: &mut Finding, object: CopperObjectRef<'_>) {
     finding
         .measured
@@ -517,6 +744,41 @@ fn insert_solder_paste_object_measurements(finding: &mut Finding, object: Copper
             );
         }
     }
+}
+
+fn insert_owner_matched_copper_feature_measurements(
+    finding: &mut Finding,
+    feature: &LayoutCopperFeature,
+) {
+    finding.measured.insert(
+        "owner_matched_copper_feature_x_mm".to_string(),
+        json!(feature.at.x_mm),
+    );
+    finding.measured.insert(
+        "owner_matched_copper_feature_y_mm".to_string(),
+        json!(feature.at.y_mm),
+    );
+    finding.measured.insert(
+        "owner_matched_copper_feature_layer".to_string(),
+        json!(feature.layer),
+    );
+    insert_optional_copper_feature_owner_measurements(
+        finding,
+        "owner_matched_copper_feature",
+        feature,
+    );
+    finding.measured.insert(
+        "owner_matched_copper_feature_shape".to_string(),
+        json!(feature.shape),
+    );
+    finding.measured.insert(
+        "owner_matched_copper_feature_size_x_mm".to_string(),
+        json!(feature.size.x_mm),
+    );
+    finding.measured.insert(
+        "owner_matched_copper_feature_size_y_mm".to_string(),
+        json!(feature.size.y_mm),
+    );
 }
 
 fn insert_optional_artwork_segment_owner_measurements(

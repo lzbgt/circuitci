@@ -269,8 +269,10 @@ without explicit imported mechanical evidence.
   feature, draw, and region evidence for an opt-in IC pin aperture screen
   against the saved JLCPCB stencil opening table. It only runs for an explicit
   `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance, checks the exact
-  1.00 mm length requirement for the 0.635-0.65 mm IC pitch row, and honors
-  `target.component` when present. `suggest-scenarios` can infer selected
+  1.00 mm length requirement for the 0.635-0.65 mm IC pitch row, applies the
+  0.5 mm row length-extension text only when unique owner-matched copper pad
+  geometry proves the pad-length condition, and honors `target.component` when
+  present. `suggest-scenarios` can infer selected
   target-scoped discrete pitch rows from repeated pad-owned paste flashes, but
   CircuitCI does not infer arbitrary package pitch or package class
   automatically. This is not a generic paste area-ratio, paste spacing,
