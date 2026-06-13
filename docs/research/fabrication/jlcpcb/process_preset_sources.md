@@ -6,6 +6,10 @@ Saved source artifacts:
 - Nuxt page assets from the same page under this directory.
 - `basic_design_of_solder_mask.html` from
   <https://jlcpcb.com/blog/basic-design-of-solder-mask>
+- `pcb_solder_mask_colors_performance.html` from
+  <https://jlcpcb.com/blog/pcb-solder-mask-colors-performance>
+- `pcb_solder_mask_expansion_guide.html` from
+  <https://jlcpcb.com/blog/pcb-solder-mask-expansion-guide>
 - `pcb_via_design_best_practices.html` from
   <https://jlcpcb.com/blog/pcb-via-design-best-practices>
 
@@ -16,6 +20,7 @@ Implemented preset:
 Implemented default:
 
 - `min_mask_expansion_mm: 0.05`
+- `min_solder_mask_dam_mm: 0.10`
 
 Rationale:
 
@@ -26,6 +31,13 @@ Rationale:
   Therefore explicit scenario parameters remain authoritative and can override
   the process preset for package-specific, layer-specific, or order-specific
   fabrication instructions.
+- The JLCPCB solder-mask color article says JLCPCB precision LPI supports
+  minimum solder-mask dams as small as 0.1 mm between pads. CircuitCI uses
+  that value for `min_solder_mask_dam_mm`.
+- The JLCPCB solder-mask expansion guide also mentions 0.075 mm minimum dam
+  width for reliable curing in high-density designs. CircuitCI does not encode
+  0.075 mm into the standard JLCPCB preset because the 0.1 mm statement is the
+  clearer JLCPCB process capability floor.
 
 Observed but not yet encoded as process defaults:
 
@@ -40,7 +52,7 @@ Observed but not yet encoded as process defaults:
 Next source work before expanding presets:
 
 - Pin exact text values for drill-to-edge, slot-to-edge, annular ring,
-  copper-spacing, solder-mask dam, and stencil-spacing thresholds from official
-  JLCPCB material or from an exported process capability document.
+  copper-spacing, and stencil-spacing thresholds from official JLCPCB material
+  or from an exported process capability document.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

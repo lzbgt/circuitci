@@ -581,7 +581,8 @@ source-backed defaults for supported numeric limits. Explicit numeric
 parameters always override the preset. The first supported preset is
 `jlcpcb_standard_2026_06`, documented in
 `docs/fabrication_process_presets.md`; it currently supplies
-`min_mask_expansion_mm: 0.05` for solder-mask opening checks.
+`min_mask_expansion_mm: 0.05` for solder-mask opening checks and
+`min_solder_mask_dam_mm: 0.10` for solder-mask dam checks.
 
 Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
 the Board IR includes fabrication drill evidence under `board.layout.drills`
@@ -836,6 +837,14 @@ Solder-mask dam algorithm:
 4. Ignore different-layer opening pairs.
 5. Fail when the measured opening-to-opening gap is below
    `min_solder_mask_dam_mm`.
+
+For JLCPCB-style default mask dam width, the raw
+`min_solder_mask_dam_mm` parameter may be replaced by:
+
+```yaml
+parameters:
+  fabrication_process: jlcpcb_standard_2026_06
+```
 
 This is a static 2D mask web screen. It can detect thin or missing mask dams
 between imported flash, linear/arc draw, and region openings, but it does not

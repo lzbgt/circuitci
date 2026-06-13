@@ -14,7 +14,10 @@ struct FabricationProcessPreset {
 const JLCPCB_STANDARD_2026_06: FabricationProcessPreset = FabricationProcessPreset {
     id: "jlcpcb_standard_2026_06",
     aliases: &["jlcpcb_standard", "jlcpcb_2layer_standard_2026_06"],
-    numeric_defaults: &[("min_mask_expansion_mm", 0.05)],
+    numeric_defaults: &[
+        ("min_mask_expansion_mm", 0.05),
+        ("min_solder_mask_dam_mm", 0.1),
+    ],
 };
 
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[JLCPCB_STANDARD_2026_06];

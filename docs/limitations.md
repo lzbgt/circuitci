@@ -222,7 +222,9 @@ without explicit imported mechanical evidence.
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,
   observed EasyEDA `RoundRect`, circular-aperture linear/arc draw, and
-  single-contour region openings. It does not yet evaluate multi-contour
+  single-contour region openings. Source-backed process presets can provide
+  selected defaults, currently `jlcpcb_standard_2026_06` for minimum
+  solder-mask dam width. It does not yet evaluate multi-contour
   solder-mask regions, package-specific no-dam exceptions, manufacturer-specific
   bridge rules, paste stencil behavior, or 3D solderability effects.
 - `SOLDER_PASTE_OPENING_VALID` uses imported Gerber copper flashes and Gerber

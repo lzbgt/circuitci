@@ -25,6 +25,7 @@ Current preset defaults:
 | Parameter | Value | Source |
 | --- | ---: | --- |
 | `min_mask_expansion_mm` | `0.05` | JLCPCB solder-mask design article: solder-mask windows are generally 0.1-0.2 mm larger overall, equivalent to 0.05-0.1 mm per side. |
+| `min_solder_mask_dam_mm` | `0.10` | JLCPCB solder-mask color article: precision LPI supports minimum solder-mask dams as small as 0.1 mm between pads. |
 
 Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.

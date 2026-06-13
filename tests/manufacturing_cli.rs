@@ -419,6 +419,20 @@ fn solder_mask_dam_fails_when_openings_leave_thin_web() {
 }
 
 #[test]
+fn solder_mask_dam_uses_fabrication_process_default() {
+    let report = run_validation("examples/bad_solder_mask_dam_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_DAM_VALID");
+    let dam_width = failure["measured"]["solder_mask_dam_width_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((dam_width - 0.08).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_mask_dam_mm"], 0.1);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_mask_dam_fails_for_non_flash_openings() {
     let report = run_validation("examples/bad_solder_mask_dam_segment_region/project.yaml");
     assert_eq!(report["result"], "fail");
