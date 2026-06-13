@@ -152,8 +152,10 @@ dropout/current/startup/capacitance requirements plus measured support-capacitor
 evidence, reset-supervisor monitored rail, reset output, and threshold evidence
 in power-tree suggestions. It marks
 power-tree templates non-runnable when load-switch enable evidence is missing
-and not hard-tied to a declared powered rail or ground, or when charger
-programmed-current or power-mux selected-source evidence is missing.
+and not hard-tied to a declared powered rail or ground, when charger
+programmed-current evidence is missing, or when power-mux selected-source
+evidence is missing and cannot be derived from an explicit board state with
+exactly one powered mux input.
 `INTERFACE_PROTECTION_REVIEW` now also has an executable clamp-only path for
 USB ESD/protection arrays, covering reference-net kind, standoff-voltage limits,
 and line-capacitance budgets when component metadata and scenario limits are

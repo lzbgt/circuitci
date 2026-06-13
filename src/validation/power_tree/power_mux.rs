@@ -1,5 +1,6 @@
 use crate::board_ir::{ComponentSpec, NetSpec, Scenario};
 use crate::library::{BoundBoard, ComponentModel, PortKind};
+use crate::power_mux_selection::derive_selected_power_mux_input_from_powered_nets;
 use crate::reports::Finding;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -30,6 +31,8 @@ pub(super) fn validate_power_mux(
         return;
     };
 
+    let derived_selected_input =
+        derive_selected_power_mux_input_from_powered_nets(bound.project, component, mux);
     let selected_input = match mux.selected_input_parameter.as_deref() {
         Some(parameter) => match component.parameters.get(parameter) {
             Some(value) => match value.as_str() {
@@ -57,7 +60,7 @@ pub(super) fn validate_power_mux(
                     None
                 }
             },
-            None => {
+            None if derived_selected_input.is_none() => {
                 let mut finding = Finding::critical(
                     POWER_TREE_VALID,
                     &scenario.name,
@@ -78,6 +81,9 @@ pub(super) fn validate_power_mux(
                 findings.push(finding);
                 None
             }
+            None => derived_selected_input
+                .as_ref()
+                .map(|selection| selection.input_name.as_str()),
         },
         None => None,
     };
@@ -260,6 +266,7 @@ pub(super) fn validate_power_mux(
 }
 
 pub(super) fn is_inactive_power_mux_input(
+    project: &crate::board_ir::BoardProject,
     component: &ComponentSpec,
     model: &ComponentModel,
     pin_name: &str,
@@ -274,17 +281,19 @@ pub(super) fn is_inactive_power_mux_input(
     let Some(input) = mux.inputs.iter().find(|input| input.input_pin == pin_name) else {
         return false;
     };
-    let Some(parameter) = mux.selected_input_parameter.as_deref() else {
-        return false;
-    };
-    let Some(selected) = component
-        .parameters
-        .get(parameter)
+    let selected = mux
+        .selected_input_parameter
+        .as_deref()
+        .and_then(|parameter| component.parameters.get(parameter))
         .and_then(serde_yaml_ng::Value::as_str)
-    else {
-        return false;
-    };
-    selected != input.name
+        .map(str::to_string)
+        .or_else(|| {
+            derive_selected_power_mux_input_from_powered_nets(project, component, mux)
+                .map(|selection| selection.input_name)
+        });
+    selected
+        .as_deref()
+        .is_some_and(|selected| selected != input.name)
 }
 
 fn validate_power_mux_metadata(

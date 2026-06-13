@@ -70,6 +70,14 @@ the model-declared programming and reference pins and computes
 `current_A = current_gain_V / resistor_ohm`; ambiguous evidence returns no value
 so callers preserve fail-closed behavior.
 
+Power-mux selected-input inference is centralized in
+`src/power_mux_selection.rs`. It is intentionally narrower than control-pin
+truth-table simulation: it only derives a selected input when the mux output is
+declared powered and every declared input rail has explicit powered/unpowered
+metadata with exactly one powered input. Ambiguous or incomplete source-state
+evidence returns no value so validation still requires the explicit
+`selected_input_parameter`.
+
 ## Manufacturing Geometry
 
 Manufacturing validation uses shared geometry helpers for points, line

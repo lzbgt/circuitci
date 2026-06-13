@@ -35,7 +35,13 @@ pub(super) fn validate_power_tree(
                 continue;
             };
 
-            if !power_mux::is_inactive_power_mux_input(component, model, pin_name, net) {
+            if !power_mux::is_inactive_power_mux_input(
+                bound.project,
+                component,
+                model,
+                pin_name,
+                net,
+            ) {
                 validate_power_net(
                     component_id,
                     pin_name,

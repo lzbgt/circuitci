@@ -3,6 +3,7 @@ pub mod charger_programming;
 pub mod cli;
 pub mod importers;
 pub mod library;
+pub mod power_mux_selection;
 pub mod reports;
 pub mod scenario_suggestions;
 pub mod suite;

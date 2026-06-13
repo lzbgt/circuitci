@@ -26,7 +26,9 @@ The command is conservative:
   records the parameter the agent must derive from charger evidence or board
   configuration.
 - If a powered output rail is fed by a model with `power_mux` and the selected
-  input component parameter is missing, the power-tree suggestion is marked
+  input component parameter is missing, the power-tree suggestion stays runnable
+  only when the board state proves exactly one declared mux input rail is
+  powered while the output rail is powered. Otherwise it is marked
   `runnable: false` and records the exact parameter plus allowed source names.
 - If a model declares `power_conversion`, the power-tree suggestion includes
   `scenario.regulators[]` with the regulator component, input/output pins,

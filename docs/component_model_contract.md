@@ -286,7 +286,10 @@ power_mux:
 - `output_pin` and each `input_pin` must name distinct `electrical_power`
   model ports.
 - `selected_input_parameter` names a Board IR component instance parameter that
-  identifies the active source in this scenario.
+  identifies the active source in this scenario. When that parameter is absent,
+  CircuitCI may derive the selected source only for a static board state where
+  the mux output rail is declared powered and every declared mux input rail has
+  explicit powered/unpowered metadata with exactly one powered input.
 - `inputs[].name` values are the allowed source-selection strings.
 - `reverse_blocking: true` means the model claims that a powered output rail
   will not backfeed that input when the input is inactive and unpowered.

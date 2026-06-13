@@ -1,5 +1,5 @@
 project:
-  name: bad_power_mux_missing_selection
+  name: good_power_mux_derived_selection
   version: 0.1.0
 
 libraries:
@@ -9,40 +9,48 @@ board:
   components:
     VUSB:
       model: generic.analog.dc_voltage_source
-      part_number: USB_5V_SOURCE
+      part_number: USB_3V3_SOURCE
       pins:
-        P: usb_5v
+        P: usb_3v3
         N: gnd
     UMUX:
       model: generic.analog.power_mux_basic
       part_number: GENERIC_POWER_MUX
       power_domains:
-        USB_IN: usb_5v
+        USB_IN: usb_3v3
         BAT_IN: battery
         SYS: sys
       pins:
-        USB_IN: usb_5v
+        USB_IN: usb_3v3
         BAT_IN: battery
         SYS: sys
         GND: gnd
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: sys
+      pins:
+        VDD: sys
+        GND: gnd
   nets:
-    usb_5v:
+    usb_3v3:
       kind: power
-      nominal_voltage: 5.0
+      nominal_voltage: 3.3
       powered: true
     battery:
       kind: power
       nominal_voltage: 4.0
-      powered: true
+      powered: false
     sys:
       kind: power
-      nominal_voltage: 5.0
+      nominal_voltage: 3.3
       powered: true
     gnd:
       kind: ground
 
 scenarios:
-  - name: mux_missing_selected_source
+  - name: power_mux_derived_selected_input
     type: power_tree
     checks:
       - POWER_TREE_VALID

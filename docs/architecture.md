@@ -57,10 +57,11 @@ Binding diagnostics such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED` are report
 findings. Rule implementations should rely on `BoundBoard` rather than
 duplicating library binding checks.
 
-Source-backed model equations, such as charger PROG/ISET resistor current
-programming, live in component model metadata. Shared helpers resolve those
-equations from Board IR evidence before validators or scenario suggestions
-treat the check as runnable.
+Source-backed model equations and conservative board-state derivations, such as
+charger PROG/ISET resistor current programming or exact-one-powered power-mux
+source selection, live behind shared helpers. Validators and scenario
+suggestions use those helpers before treating the check as runnable, and the
+helpers return no value for ambiguous evidence.
 
 ## Importer Design
 

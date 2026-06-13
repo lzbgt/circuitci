@@ -1,6 +1,7 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::charger_programming::derive_charge_current_from_programming_resistor;
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
+use crate::power_mux_selection::derive_selected_power_mux_input_from_powered_nets;
 use std::collections::BTreeMap;
 
 mod interface_protection;
@@ -208,7 +209,10 @@ fn power_mux_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {
         let Some(parameter) = mux.selected_input_parameter.as_deref() else {
             continue;
         };
-        if component.parameters.contains_key(parameter) {
+        if component.parameters.contains_key(parameter)
+            || derive_selected_power_mux_input_from_powered_nets(bound.project, component, mux)
+                .is_some()
+        {
             continue;
         }
         let Some(output_net_name) = resolve_power_pin_net(component, &mux.output_pin) else {

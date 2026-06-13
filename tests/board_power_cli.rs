@@ -1295,6 +1295,14 @@ fn good_power_mux_usb_selected_passes_with_reverse_blocking() {
 }
 
 #[test]
+fn good_power_mux_derives_selected_input_from_only_powered_source() {
+    let report = run_validation("examples/good_power_mux_derived_selection/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn power_mux_requires_selected_input_parameter() {
     let report = run_validation("examples/bad_power_mux_missing_selection/project.yaml");
     assert_eq!(report["result"], "fail");
