@@ -191,8 +191,9 @@ Connector entry-clearance validation:
   `layout.entry_clearance_depth_mm` / `layout.entry_clearance_width_mm`, or
   component-model `usb_connector.entry_clearance_depth_mm` /
   `usb_connector.entry_clearance_width_mm` can prefill the suggested depth and
-  width, but the executable rule still uses the scenario parameters as the
-  reviewed limits.
+  width. `suggest-scenarios` marks the entry-clearance template runnable only
+  when both values are present, because those metadata values become the
+  scenario parameters consumed by the executable rule.
 - The rule projects a 2D rectangular cable-entry corridor forward from the
   connector body and fails when any other component footprint or placement
   evidence intersects that corridor. Optional imported footprint properties,

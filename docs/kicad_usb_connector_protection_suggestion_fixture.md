@@ -72,7 +72,8 @@ fails against the fixture's
 `0.7 mm` minimum connector-to-component clearance limit.
 
 The same imported connector rotation and footprint evidence also emits a
-non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template. It computes
+runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` template because the fixture
+provides explicit connector entry-depth and entry-width metadata. It computes
 `entry_direction_deg: 0.0` from the KiCad placement rotation plus the J1
 footprint's `CircuitCI_EntryDirectionOffsetDeg: 0.0` property. The template
 prefills `min_cable_entry_clearance_depth_mm: 2.5` from the J1 footprint's

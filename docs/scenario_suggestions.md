@@ -144,8 +144,8 @@ The command is conservative:
   footprint or placement-center evidence. It leaves
   `min_connector_to_component_clearance_mm` as `null` until an agent fills the
   connector keepout, cable insertion, enclosure, or assembly clearance rule.
-- It emits non-runnable `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` templates when
-  the USB connector has imported placement rotation and supported
+- It emits `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` templates when the USB
+  connector has imported placement rotation and supported
   `fabrication`/`courtyard` footprint evidence. The template copies
   `entry_direction_deg` from imported placement rotation plus optional KiCad
   footprint-property, KiCad mapping, or component-model entry-direction offset
@@ -163,11 +163,11 @@ The command is conservative:
   evidence is available. Obstruction evidence reports depth in the entry
   direction, lateral offset from the aperture centerline, and whether the
   obstruction came from footprint or placement-center evidence.
-  The template prefills `min_cable_entry_clearance_depth_mm` and
-  `cable_entry_clearance_width_mm` when explicit connector metadata provides
-  those policy hints; otherwise it leaves missing values as `null` until an
-  agent fills them from connector, plug, panel, enclosure, or assembly
-  mechanical drawings.
+  The template is runnable when explicit connector metadata provides both
+  `min_cable_entry_clearance_depth_mm` and `cable_entry_clearance_width_mm`.
+  Otherwise it stays non-runnable, preserves any available metadata-derived
+  value, and leaves missing values as `null` until an agent fills them from
+  connector, plug, panel, enclosure, or assembly mechanical drawings.
 - It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
   connector, D+/D- protection components, placements, and
   `board.layout.routes` evidence are present. The template includes

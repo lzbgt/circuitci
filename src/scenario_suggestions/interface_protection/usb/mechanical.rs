@@ -314,6 +314,7 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         .entry_clearance
         .as_ref()
         .and_then(|entry| entry.suggested_cable_entry_clearance_width_mm);
+    let runnable = suggested_depth_mm.is_some() && suggested_width_mm.is_some();
     let parameters = BTreeMap::from([
         (
             "entry_direction_deg".to_string(),
@@ -339,7 +340,7 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
         ),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: obstruction_summary.as_ref().map_or_else(
             || format!(
                 "USB connector {component_id} has imported placement rotation and mechanical footprint evidence; add a cable-entry clearance corridor scenario."
@@ -382,72 +383,62 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_entry
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            obstruction_summary.as_ref().map_or_else(
-                || {
-                    if let (Some(depth_mm), Some(width_mm)) =
-                        (suggested_depth_mm, suggested_width_mm)
-                    {
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                obstruction_summary.as_ref().map_or_else(
+                    || {
+                        if let Some(depth_mm) = suggested_depth_mm {
+                            format!(
+                                "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.",
+                                depth_mm
+                            )
+                        } else if let Some(width_mm) = suggested_width_mm {
+                            format!(
+                                "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata before making this scenario runnable.",
+                                width_mm
+                            )
+                        } else {
+                            "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string()
+                        }
+                    },
+                    |(component, depth_mm, lateral_offset_mm)| {
+                        if let Some(suggested_depth_mm) = suggested_depth_mm {
+                            format!(
+                                "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                                suggested_depth_mm, component, depth_mm, lateral_offset_mm
+                            )
+                        } else if let Some(suggested_width_mm) = suggested_width_mm {
+                            format!(
+                                "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                                suggested_width_mm, component, depth_mm, lateral_offset_mm
+                            )
+                        } else {
+                            format!(
+                                "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
+                                component, depth_mm, lateral_offset_mm
+                            )
+                        }
+                    },
+                ),
+                entry_direction.offset_deg.map_or_else(
+                    || "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
+                    |offset_deg| {
+                        let source = match entry_direction.source {
+                            "footprint_property_offset" => "the KiCad footprint property",
+                            "kicad_mapping_offset" => "the KiCad mapping",
+                            _ => "the component model",
+                        };
                         format!(
-                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} and cable_entry_clearance_width_mm {:.3} from connector metadata before making this scenario runnable.",
-                            depth_mm, width_mm
+                            "Review entry_direction_deg; it is computed from imported connector placement rotation plus entry-direction offset {:.3} from {}.",
+                            offset_deg, source
                         )
-                    } else if let Some(depth_mm) = suggested_depth_mm {
-                        format!(
-                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.",
-                            depth_mm
-                        )
-                    } else if let Some(width_mm) = suggested_width_mm {
-                        format!(
-                            "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata before making this scenario runnable.",
-                            width_mm
-                        )
-                    } else {
-                        "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings before making this scenario runnable.".to_string()
-                    }
-                },
-                |(component, depth_mm, lateral_offset_mm)| {
-                    if let (Some(suggested_depth_mm), Some(suggested_width_mm)) =
-                        (suggested_depth_mm, suggested_width_mm)
-                    {
-                        format!(
-                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} and cable_entry_clearance_width_mm {:.3} from connector metadata after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
-                            suggested_depth_mm, suggested_width_mm, component, depth_mm, lateral_offset_mm
-                        )
-                    } else if let Some(suggested_depth_mm) = suggested_depth_mm {
-                        format!(
-                            "Review suggested min_cable_entry_clearance_depth_mm {:.3} from connector metadata and fill cable_entry_clearance_width_mm after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
-                            suggested_depth_mm, component, depth_mm, lateral_offset_mm
-                        )
-                    } else if let Some(suggested_width_mm) = suggested_width_mm {
-                        format!(
-                            "Fill min_cable_entry_clearance_depth_mm and review suggested cable_entry_clearance_width_mm {:.3} from connector metadata after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
-                            suggested_width_mm, component, depth_mm, lateral_offset_mm
-                        )
-                    } else {
-                        format!(
-                            "Fill min_cable_entry_clearance_depth_mm and cable_entry_clearance_width_mm from connector, plug, panel, enclosure, and assembly mechanical drawings after reviewing nearest forward obstruction candidate {} at {:.3} mm depth and {:.3} mm lateral offset.",
-                            component, depth_mm, lateral_offset_mm
-                        )
-                    }
-                },
-            ),
-            entry_direction.offset_deg.map_or_else(
-                || "Review entry_direction_deg; by default it is copied from imported connector placement rotation and may need override for footprints whose zero-degree orientation is not the cable insertion direction.".to_string(),
-                |offset_deg| {
-                    let source = match entry_direction.source {
-                        "footprint_property_offset" => "the KiCad footprint property",
-                        "kicad_mapping_offset" => "the KiCad mapping",
-                        _ => "the component model",
-                    };
-                    format!(
-                        "Review entry_direction_deg; it is computed from imported connector placement rotation plus entry-direction offset {:.3} from {}.",
-                        offset_deg, source
-                    )
-                },
-            ),
-            "Use 3D mechanical review for connector shell volume, plug body, cable bend radius, panel cutouts, and enclosure interference.".to_string(),
-        ],
+                    },
+                ),
+                "Use 3D mechanical review for connector shell volume, plug body, cable bend radius, panel cutouts, and enclosure interference.".to_string(),
+            ]
+        },
     })
 }
 

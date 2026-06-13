@@ -1055,6 +1055,7 @@ fn suggest_scenarios_uses_usb_connector_entry_direction_offset() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
         .expect("USB connector entry-clearance suggestion");
+    assert_eq!(entry["runnable"], false);
     assert_eq!(
         entry["scenario"]["checks"][0],
         "USB_CONNECTOR_ENTRY_CLEARANCE_VALID"
@@ -1108,6 +1109,8 @@ fn suggest_scenarios_reports_usb_connector_entry_aperture() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
         .expect("USB connector entry-clearance suggestion");
+    assert_eq!(entry["runnable"], true);
+    assert!(entry.get("required_inputs").is_none());
     let entry_evidence = &entry["scenario"]["usb_connectors"][0]["entry_clearance"];
     assert_eq!(
         entry_evidence["entry_aperture_source"],

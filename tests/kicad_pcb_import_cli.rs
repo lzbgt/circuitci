@@ -472,6 +472,8 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
         .expect("USB connector entry-clearance suggestion");
+    assert_eq!(entry_clearance["runnable"], true);
+    assert!(entry_clearance.get("required_inputs").is_none());
     assert_eq!(
         entry_clearance["scenario"]["checks"][0],
         "USB_CONNECTOR_ENTRY_CLEARANCE_VALID"
@@ -784,6 +786,8 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_connector_entry_clearance_j1")
         .expect("USB connector entry-clearance suggestion from mapping aperture");
+    assert_eq!(mapped_entry_clearance["runnable"], true);
+    assert!(mapped_entry_clearance.get("required_inputs").is_none());
     let mapped_entry_evidence =
         &mapped_entry_clearance["scenario"]["usb_connectors"][0]["entry_clearance"];
     assert_eq!(
