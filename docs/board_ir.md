@@ -154,6 +154,11 @@ Gerber board-outline layer. This is fabrication outline evidence only: a Gerber
 outline layer does not prove nets, pads, schematic intent, routing, or
 electrical correctness by itself.
 
+`import-gerber-copper` can append anonymous flashed copper features under
+`board.layout.copper.features` from a copper Gerber layer. This is fabrication
+copper geometry only: a Gerber copper layer does not prove component ownership,
+pad names, nets, schematic intent, or electrical connectivity by itself.
+
 `import-excellon-drill` can append fabrication drill-hit evidence under
 `board.layout.drills`. This is drill evidence only: an NC drill file does not
 prove pad copper, annular rings, nets, component ownership, or electrical
@@ -298,6 +303,36 @@ board:
 `plating` is `plated`, `non_plated`, or `unknown`. Drill evidence is
 fabrication evidence only and does not assign holes to pads, vias, components,
 or nets.
+
+## Layout Fabrication Copper Evidence
+
+Board IR can carry imported anonymous copper features under
+`board.layout.copper.features`. Coordinates are feature centers in millimeters
+in the same coordinate system as placements, outlines, drills, pads, routes,
+and zones.
+
+```yaml
+board:
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 29.3, y_mm: -8.64 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.6, y_mm: 0.6 }
+```
+
+`import-gerber-copper` currently imports dark `D03` flashes for Gerber circle,
+rectangle, and oval apertures from millimeter absolute RS-274X files. Linear
+draw records are counted in the import summary but are not converted into
+Board IR copper geometry yet. Clear-polarity flashes are skipped because they
+represent copper voids rather than conductive copper. Imported copper features
+are fabrication evidence only and do not assign nets, components, pad names, or
+electrical connectivity.
 
 ## Layout Pad Evidence
 

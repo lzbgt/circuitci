@@ -100,6 +100,13 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ImportGerberCopper {
+        gerber: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     ImportExcellonDrill {
         drill: PathBuf,
         #[arg(long)]
@@ -185,6 +192,11 @@ pub fn run() -> Result<()> {
             project,
             output,
         }) => run_import_gerber_outline(gerber, project, output),
+        Some(Command::ImportGerberCopper {
+            gerber,
+            project,
+            output,
+        }) => run_import_gerber_copper(gerber, project, output),
         Some(Command::ImportExcellonDrill {
             drill,
             project,
@@ -366,6 +378,27 @@ fn run_import_gerber_outline(gerber: PathBuf, project: PathBuf, output: PathBuf)
         summary.external_segments,
         summary.cutout_segments,
         summary.unknown_segments,
+        gerber.display(),
+        project.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_gerber_copper(gerber: PathBuf, project: PathBuf, output: PathBuf) -> Result<()> {
+    let summary = crate::importers::gerber::import_gerber_copper(
+        &crate::importers::gerber::GerberCopperImportOptions {
+            gerber: gerber.clone(),
+            project: project.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI imported Gerber copper: {} flash features, {} apertures, {} ignored draw records, {} skipped clear flashes {} + {} -> {}",
+        summary.flash_features,
+        summary.apertures,
+        summary.ignored_draws,
+        summary.skipped_clear_flashes,
         gerber.display(),
         project.display(),
         output.display()

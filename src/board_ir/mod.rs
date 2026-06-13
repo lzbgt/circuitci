@@ -44,6 +44,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub drills: Vec<LayoutDrill>,
     #[serde(default)]
+    pub copper: LayoutCopper,
+    #[serde(default)]
     pub pads: BTreeMap<String, BTreeMap<String, LayoutPad>>,
     #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,
@@ -217,6 +219,24 @@ pub struct LayoutDrill {
     pub tool: Option<String>,
     #[serde(default)]
     pub source_hit_index: Option<usize>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct LayoutCopper {
+    #[serde(default)]
+    pub features: Vec<LayoutCopperFeature>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutCopperFeature {
+    pub at: LayoutPoint,
+    pub layer: String,
+    pub polarity: String,
+    pub source_primitive: String,
+    pub source_primitive_index: usize,
+    pub aperture: String,
+    pub shape: String,
+    pub size: LayoutPadSize,
 }
 
 #[derive(Debug, Clone, Deserialize)]

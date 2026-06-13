@@ -154,6 +154,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   edge-clearance screen. It does not model drill wander, routed-slot width,
   plating tolerances, panel tabs, fab-specific stackup rules, or copper-to-hole
   clearance.
+- Gerber copper import currently records anonymous dark `D03` flash features
+  for circle, rectangle, and oval apertures. It counts but does not yet convert
+  linear draw traces, and it does not infer nets, component ownership, pad
+  names, annular rings, copper islands, mask expansion, or electrical
+  connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

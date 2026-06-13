@@ -1,0 +1,10 @@
+project:
+  name: import_jlc_gerber_copper_peer_extract
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout: {}
+scenarios: []

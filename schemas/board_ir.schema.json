@@ -294,6 +294,53 @@
                 "additionalProperties": false
               }
             },
+            "copper": {
+              "type": "object",
+              "properties": {
+                "features": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "at",
+                      "layer",
+                      "polarity",
+                      "source_primitive",
+                      "source_primitive_index",
+                      "aperture",
+                      "shape",
+                      "size"
+                    ],
+                    "properties": {
+                      "at": { "$ref": "#/$defs/layout_point" },
+                      "layer": { "type": "string", "minLength": 1 },
+                      "polarity": { "enum": ["dark"] },
+                      "source_primitive": { "enum": ["gerber_flash"] },
+                      "source_primitive_index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "aperture": {
+                        "type": "string",
+                        "pattern": "^D[0-9]+$"
+                      },
+                      "shape": { "enum": ["circle", "rect", "oval"] },
+                      "size": {
+                        "type": "object",
+                        "required": ["x_mm", "y_mm"],
+                        "properties": {
+                          "x_mm": { "type": "number", "exclusiveMinimum": 0 },
+                          "y_mm": { "type": "number", "exclusiveMinimum": 0 }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
             "pads": {
               "type": "object",
               "additionalProperties": {

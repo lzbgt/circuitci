@@ -29,13 +29,15 @@ coordinates, invalid rotations, and malformed boolean/integer fields.
 This importer does not infer nets, electrical pins, power rails, routes, pads,
 or schematic intent. It intentionally emits low-confidence imported components
 with empty pin maps and no scenarios. Use schematic import, PCB import, Gerber
-import, or explicit Board IR mapping before treating the board as electrically
-validated.
+outline/copper import, drill import, or explicit Board IR mapping before
+treating the board as electrically validated.
 
 For fabricated JLC/EasyEDA releases, `import-gerber-outline` can be run after
 assembly import to add board-outline segment evidence from the release's
-`Gerber_BoardOutlineLayer.GKO` file. `import-excellon-drill` can then append
-PTH/NPTH drill-hit evidence from files such as `Drill_PTH_Through.DRL` and
+`Gerber_BoardOutlineLayer.GKO` file. `import-gerber-copper` can append
+anonymous dark flashed copper evidence from top/bottom copper Gerbers when
+those files are available. `import-excellon-drill` can then append PTH/NPTH
+drill-hit evidence from files such as `Drill_PTH_Through.DRL` and
 `Drill_NPTH_Through.DRL`.
 
 The first regression fixture is a small committed extract shaped like the peer
@@ -44,5 +46,6 @@ The first regression fixture is a small committed extract shaped like the peer
 - `examples/import_jlc_assembly_peer_extract/bom.csv`
 - `examples/import_jlc_assembly_peer_extract/placement.csv`
 - `examples/import_jlc_gerber_outline_peer_extract/board_outline.gko`
+- `examples/import_jlc_gerber_copper_peer_extract/front_copper.gtl`
 - `examples/import_jlc_excellon_drill_peer_extract/pth.drl`
 - `examples/import_jlc_excellon_drill_peer_extract/npth.drl`
