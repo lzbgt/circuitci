@@ -165,6 +165,10 @@ Append Excellon/NC drill evidence:
 circuitci import-excellon-drill path/to/Drill_PTH_Through.DRL \
   --project out/imported_with_paste.project.yaml \
   --output out/imported_with_drills.project.yaml
+
+circuitci import-excellon-drill path/to/Drill_PTH_Through_Via.DRL \
+  --project out/imported_with_drills.project.yaml \
+  --output out/imported_with_drills_and_vias.project.yaml
 ```
 
 Run an acceptance suite:

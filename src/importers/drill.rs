@@ -1,4 +1,6 @@
-use crate::board_ir::{BoardLayout, BoardProject, LayoutPad, LayoutPoint, RouteVia};
+use crate::board_ir::{
+    BoardLayout, BoardProject, LayoutCopperFeature, LayoutPad, LayoutPoint, RouteVia,
+};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_yaml_ng::{Mapping, Value};
@@ -435,8 +437,9 @@ fn merge_drills_into_project(project_yaml: &mut Value, parsed: &ParsedDrillFile)
 
 fn associate_drill_owners(parsed: &mut ParsedDrillFile, layout: &BoardLayout) {
     let ownership = DrillOwnershipIndex::from_layout(layout);
+    let via_layer = is_via_drill_layer(&parsed.layer);
     for hit in &mut parsed.hits {
-        hit.owner = ownership.owner_for_hit(hit);
+        hit.owner = ownership.owner_for_hit(hit, via_layer);
     }
 }
 
@@ -444,6 +447,7 @@ fn associate_drill_owners(parsed: &mut ParsedDrillFile, layout: &BoardLayout) {
 struct DrillOwnershipIndex {
     pads: Vec<DrillOwnerPad>,
     vias: Vec<DrillOwnerVia>,
+    copper_features: Vec<DrillOwnerCopperFeature>,
 }
 
 #[derive(Debug, Clone)]
@@ -457,6 +461,12 @@ struct DrillOwnerPad {
 struct DrillOwnerVia {
     at: DrillPoint,
     drill_mm: f64,
+    owner: DrillOwner,
+}
+
+#[derive(Debug, Clone)]
+struct DrillOwnerCopperFeature {
+    at: DrillPoint,
     owner: DrillOwner,
 }
 
@@ -481,10 +491,20 @@ impl DrillOwnershipIndex {
                     .filter_map(|(via_index, via)| owner_via_from_route_via(net, via_index, via))
             })
             .collect();
-        Self { pads, vias }
+        let copper_features = layout
+            .copper
+            .features
+            .iter()
+            .filter_map(owner_via_from_copper_feature)
+            .collect();
+        Self {
+            pads,
+            vias,
+            copper_features,
+        }
     }
 
-    fn owner_for_hit(&self, hit: &DrillHit) -> Option<DrillOwner> {
+    fn owner_for_hit(&self, hit: &DrillHit, via_layer: bool) -> Option<DrillOwner> {
         let mut candidates = Vec::new();
         for pad in &self.pads {
             if drill_points_match(hit.at, pad.at)
@@ -500,7 +520,19 @@ impl DrillOwnershipIndex {
                 candidates.push(via.owner.clone());
             }
         }
-        unique_drill_owner(candidates)
+        if let Some(owner) = unique_drill_owner(candidates) {
+            return Some(owner);
+        }
+        if !via_layer {
+            return None;
+        }
+        let copper_candidates = self
+            .copper_features
+            .iter()
+            .filter(|feature| drill_points_match(hit.at, feature.at))
+            .map(|feature| feature.owner.clone())
+            .collect();
+        unique_drill_owner(copper_candidates)
     }
 }
 
@@ -539,6 +571,38 @@ fn owner_via_from_route_via(net: &str, via_index: usize, via: &RouteVia) -> Opti
             via_index: Some(via_index),
         },
     })
+}
+
+fn owner_via_from_copper_feature(feature: &LayoutCopperFeature) -> Option<DrillOwnerCopperFeature> {
+    if !is_copper_layer(&feature.layer) || feature.polarity != "dark" {
+        return None;
+    }
+    let net = feature.net.as_deref()?.trim();
+    if net.is_empty() {
+        return None;
+    }
+    let at = drill_point_from_layout(&feature.at)?;
+    Some(DrillOwnerCopperFeature {
+        at,
+        owner: DrillOwner {
+            kind: DrillOwnerKind::Via,
+            net: net.to_string(),
+            component: None,
+            pin: None,
+            via_index: feature.via_index,
+        },
+    })
+}
+
+fn is_via_drill_layer(layer: &str) -> bool {
+    layer.to_ascii_lowercase().contains("via")
+}
+
+fn is_copper_layer(layer: &str) -> bool {
+    matches!(
+        layer,
+        "F.Cu" | "B.Cu" | "TopLayer" | "BottomLayer" | "Top" | "Bottom"
+    )
 }
 
 fn unique_drill_owner(candidates: Vec<DrillOwner>) -> Option<DrillOwner> {

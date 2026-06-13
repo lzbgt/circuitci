@@ -30,9 +30,10 @@ observed `Gerber_BoardOutlineLayer.GKO` subset into
 top/bottom copper Gerbers, including EasyEDA `RoundRect` apertures and sampled
 `G02`/`G03` circular-arc draws; `import-gerber-solder-mask` and
 `import-gerber-solder-paste` read real solder-mask and paste stencil evidence;
-and `import-excellon-drill` reads the observed PTH/NPTH NC drill subset into
-`board.layout.drills`. The remaining import gap is schematic-grade electrical
-intent and route/via/zone evidence beyond what the flying-probe artifact proves.
+and `import-excellon-drill` reads the observed PTH, PTH-via, and NPTH NC drill
+subsets into `board.layout.drills`. The remaining import gap is schematic-grade
+electrical intent and route/via/zone evidence beyond what the flying-probe
+artifact proves.
 
 Observed owner-association evidence from the release flow with flying-probe
 pads imported first:
@@ -53,6 +54,8 @@ pads imported first:
 - Top solder paste: `1111` flash openings, `354` region openings, `103`
   owner-associated flash openings, and `9` owner-associated region openings.
 - PTH drills: `1275` hits with `9` pad-associated hits.
+- PTH via drills: `1179` hits with `472` via-associated hits from co-located
+  Gerber copper net evidence.
 - NPTH drills: `31` non-plated hits with no pad/via owners.
 
 The baseline peer validation still passes with no findings:

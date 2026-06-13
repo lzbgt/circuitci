@@ -48,6 +48,15 @@ board:
           aperture: D11
           shape: circle
           size: { x_mm: 0.7, y_mm: 0.7 }
+        - at: { x_mm: 3.0, y_mm: 3.0 }
+          layer: F.Cu
+          polarity: dark
+          net: USB_DP
+          source_primitive: gerber_flash
+          source_primitive_index: 2
+          aperture: D12
+          shape: circle
+          size: { x_mm: 0.7, y_mm: 0.7 }
 
 scenarios:
   - name: drill_annular_ring

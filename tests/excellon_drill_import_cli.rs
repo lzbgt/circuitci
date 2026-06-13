@@ -118,6 +118,48 @@ fn import_excellon_drill_associates_pad_and_via_owners() {
 }
 
 #[test]
+fn import_excellon_drill_associates_via_layer_hits_from_copper_net_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let drill = dir.path().join("vias.drl");
+    let output = dir.path().join("with_copper_owned_vias.project.yaml");
+    std::fs::write(
+        &drill,
+        "M48\n;TYPE=PLATED\n;Layer: PTH_Through_Via\nMETRIC,LZ,3.3\nT01C0.30000\n%\nG90\nT01\nX3.0Y3.0\nM30\n",
+    )
+    .unwrap();
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-excellon-drill",
+            drill.to_str().unwrap(),
+            "--project",
+            "examples/import_excellon_drill_ownership/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("0 pad-associated"));
+    assert!(stdout.contains("1 via-associated"));
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let drills = imported["board"]["layout"]["drills"].as_array().unwrap();
+    assert_eq!(drills.len(), 1);
+    assert_eq!(drills[0]["owner_kind"], "via");
+    assert_eq!(drills[0]["net"], "USB_DP");
+    assert_eq!(drills[0]["layer"], "PTH_Through_Via");
+    assert!(drills[0].get("via_index").is_none());
+}
+
+#[test]
 fn import_excellon_drill_rejects_inch_units() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

@@ -10,7 +10,7 @@ circuitci import-excellon-drill fabrication/Drill_PTH_Through.DRL \
 ```
 
 Run the command again with the previous output as `--project` to append another
-drill file such as `Drill_NPTH_Through.DRL`.
+drill file such as `Drill_PTH_Through_Via.DRL` or `Drill_NPTH_Through.DRL`.
 
 ## Imported Evidence
 
@@ -19,7 +19,9 @@ drill file such as `Drill_NPTH_Through.DRL`.
 - `drill_mm`,
 - `plating`: `plated`, `non_plated`, or `unknown`,
 - optional `owner_kind`, `net`, `component`, `pin`, and `via_index` when
-  existing Board IR layout evidence gives exactly one pad or via owner,
+  existing Board IR layout evidence gives exactly one pad or via owner; via
+  drill layers can also inherit `owner_kind: via` plus `net` from unique
+  co-located Gerber copper flash evidence,
 - source drill layer comment,
 - selected tool such as `T01`,
 - source hit index within the imported drill file.
@@ -45,9 +47,12 @@ commands.
 
 Drill import is fabrication evidence only. It can annotate drill hits with
 existing pad or via ownership when the input Board IR already contains a unique
-matching drilled pad or route via at the same center and diameter. It does not
-infer pad copper, annular rings, plated barrel connectivity, slots, routed
-cutouts, or electrical scenarios from drill files alone. It is intended to be
+matching drilled pad or route via at the same center and diameter. For
+via-labeled drill layers, it can also conservatively annotate a drill as a via
+when previously imported Gerber copper flash evidence at the same coordinate has
+exactly one net owner. It does not infer pad copper, annular rings, plated
+barrel connectivity, slots, routed cutouts, or electrical scenarios from drill
+files alone. It is intended to be
 combined with schematic import, PCB import, JLC/EasyEDA assembly import, Gerber
 outline import, or explicit Board IR before electrical validation.
 
