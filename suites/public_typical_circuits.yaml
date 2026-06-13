@@ -52,6 +52,17 @@ cases:
       - id: INTERFACE_PROTECTION_REVIEW
         severity: critical
 
+  - id: ti_tps62162_typical_buck_passes
+    project: ../examples/good_ti_tps62162_3v3_buck/project.yaml
+    expect: pass
+
+  - id: ti_tps62162_output_overcurrent_detected
+    project: ../examples/bad_ti_tps62162_3v3_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
 repairs:
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
@@ -76,3 +87,9 @@ repairs:
     fixed_case: ti_tpd2eusb30_typical_usb_esd_passes
     fixes_findings:
       - INTERFACE_PROTECTION_REVIEW
+
+  - id: fix_tps62162_output_current
+    detects_case: ti_tps62162_output_overcurrent_detected
+    fixed_case: ti_tps62162_typical_buck_passes
+    fixes_findings:
+      - POWER_TREE_VALID

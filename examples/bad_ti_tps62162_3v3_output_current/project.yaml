@@ -1,0 +1,76 @@
+project:
+  name: bad_ti_tps62162_3v3_output_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    VIN:
+      model: generic.analog.dc_voltage_source
+      part_number: 12V_SOURCE
+      pins:
+        P: rail_12v
+        N: gnd
+    UBUCK:
+      model: vendor.ti.tps62162_3v3
+      part_number: TPS62162DSG
+      power_domains:
+        VIN: rail_12v
+        VOS: rail_3v3
+      pins:
+        VIN: rail_12v
+        VOS: rail_3v3
+        GND: gnd
+        EN: buck_en
+        PG: buck_pg
+    ULOAD:
+      model: fixture.tps62162_high_current_load
+      part_number: HIGH_CURRENT_LOAD
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+    CIN:
+      model: generic.analog.capacitor
+      part_number: 10uF
+      pins:
+        A: rail_12v
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000010
+    COUT:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: rail_3v3
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+  nets:
+    rail_12v:
+      kind: power
+      nominal_voltage: 12.0
+      powered: true
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    buck_en:
+      kind: digital_or_analog
+    buck_pg:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps62162_3v3_output_overcurrent
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

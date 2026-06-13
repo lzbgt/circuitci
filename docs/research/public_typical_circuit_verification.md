@@ -14,6 +14,7 @@ audit the modeled facts without relying on chat history.
 | Microchip MCP73831 USB Li-Ion charger typical application | <https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf> | `docs/research/datasheets/microchip/mcp73831-family-datasheet.pdf` |
 | TI TPS2115A autoswitching power mux typical application | <https://www.ti.com/lit/ds/symlink/tps2115a.pdf> | `docs/research/datasheets/ti/tps2115a.pdf` |
 | TI TPD2EUSB30 USB ESD protection typical use | <https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf> | `docs/research/datasheets/ti/tpd2eusb30.pdf` |
+| TI TPS62162 3.3 V synchronous buck typical use | <https://www.ti.com/lit/ds/symlink/tps62160.pdf> | `docs/research/datasheets/ti/tps62160.pdf` |
 
 The source URLs were re-checked with web search on 2026-06-13. The local PDF
 copies and SHA-256 hashes are also listed in the part-specific research notes
@@ -21,8 +22,8 @@ under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines four public-reference passing
-cases and four paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines five public-reference passing
+cases and five paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -34,6 +35,8 @@ cases and four paired injected-error cases:
 | `ti_tps2115a_output_overcurrent_detected` | `examples/bad_ti_tps2115a_output_current/project.yaml` | fail | Detects output load above modeled mux current limit. |
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml` | fail | Detects clamp capacitance above a stricter interface budget. |
+| `ti_tps62162_typical_buck_passes` | `examples/good_ti_tps62162_3v3_buck/project.yaml` | pass | TPS62162 fixed 3.3 V synchronous buck with 12 V input, 10 uF input capacitance, and 22 uF output capacitance. |
+| `ti_tps62162_output_overcurrent_detected` | `examples/bad_ti_tps62162_3v3_output_current/project.yaml` | fail | Detects output load above modeled buck current limit. |
 
 Run command:
 
@@ -46,10 +49,10 @@ cargo run -- validate-suite suites/public_typical_circuits.yaml --output out/pub
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=8, passed=8, failed=0)
-real 11.88
-user 0.12
-sys 0.20
+CircuitCI suite public_typical_circuits: pass (cases=10, passed=10, failed=0)
+real 11.62
+user 0.14
+sys 0.21
 ```
 
 The measured `real` time includes a clean debug rebuild before running the
@@ -64,10 +67,11 @@ Observed detection details:
 | `microchip_mcp73831_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.500000 A` exceeds input rail `usb_5v` current budget `0.100000 A`. |
 | `ti_tps2115a_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `1.200000 A` exceeds mux limit `1.000000 A`. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` has `7.000e-13 F` line capacitance, above the `5.000e-13 F` interface limit. |
+| `ti_tps62162_output_overcurrent_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` worst-case output load `1.200000 A` exceeds regulator limit `1.000000 A`. |
 
-All four public-reference pass cases produced zero critical findings. All four
+All five public-reference pass cases produced zero critical findings. All five
 paired injected-error cases failed with the expected critical finding ID, and
-all four repair-pair checks passed.
+all five repair-pair checks passed.
 
 ## Interpretation Limits
 

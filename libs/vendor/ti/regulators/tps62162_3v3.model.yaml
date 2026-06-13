@@ -1,0 +1,94 @@
+component_id: vendor.ti.tps62162_3v3
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 17.0
+  VOS:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.201
+      operating_voltage_max_V: 3.399
+  GND:
+    kind: electrical_ground
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: false
+  PG:
+    kind: digital_electrical_output
+    required: false
+power_conversion:
+  input_pin: VIN
+  output_pin: VOS
+  max_output_current_A: 1.0
+  input_capacitance_min_F: 0.000010
+  output_capacitance_min_F: 0.000022
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS62162
+  package: WSON-8
+  polarity: fixed_3v3_synchronous_step_down_converter
+  pinout:
+    VIN: VIN
+    VOS: VOS
+    GND: GND
+    EN: EN
+    PG: PG
+  electrical_characteristics:
+    input_voltage:
+      conditions: Recommended operating input voltage range.
+      min: 3
+      max: 17
+      unit: V
+    output_voltage:
+      conditions: TPS62162 fixed output product page range.
+      min: 3.3
+      typ: 3.3
+      max: 3.3
+      unit: V
+    output_current:
+      conditions: TPS6216x family maximum output current.
+      max: 1
+      unit: A
+    quiescent_current:
+      conditions: Product page typical IQ.
+      typ: 17
+      unit: uA
+    switching_frequency:
+      conditions: Datasheet family description.
+      typ: 2.25
+      unit: MHz
+    input_capacitor:
+      conditions: Typical application support capacitor screen.
+      min: 10
+      unit: uF
+    output_capacitor:
+      conditions: Typical application support capacitor screen.
+      min: 22
+      unit: uF
+  documents:
+    - title: TPS6216x 3-V to 17-V, 1-A Step-Down Converters with DCS-Control
+      path: docs/research/datasheets/ti/tps62160.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps62160.pdf
+      sha256: 6c26eb5b607f7af543c24ed99b8ed942e4819326352ae9fb87e8396686d06659
+      retrieved: "2026-06-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - buck_regulator_static_screening
+    - common_iot_3v3_rail_screening
+  not_valid_for:
+    - buck_transient_or_stability_signoff
+    - inductor_selection_signoff
+    - output_ripple_or_control_loop_signoff
+    - regulator_thermal_signoff
+    - switch_node_absolute_maximum_signoff
+    - pcb_layout_or_emi_signoff
