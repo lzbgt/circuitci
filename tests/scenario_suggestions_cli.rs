@@ -136,6 +136,28 @@ fn suggest_scenarios_makes_uart_bootloader_sync_runnable_from_rc_and_direct_stra
         suggestions["project"],
         "scenario_suggestions_uart_bootloader_rc"
     );
+    let bootloader_strap = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_defined_u1_bootloader")
+        .expect("bootloader strap suggestion");
+    assert_eq!(bootloader_strap["runnable"], true);
+    assert_eq!(bootloader_strap["confidence"], "high");
+    assert!(bootloader_strap["required_inputs"].is_null());
+    assert_eq!(
+        bootloader_strap["scenario"]["required_boot_mode"],
+        "bootloader"
+    );
+    assert_eq!(
+        bootloader_strap["scenario"]["checks"][0],
+        "BOOT_STRAP_DEFINED"
+    );
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["component"], "U1");
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["pin"], "BOOT0");
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["net"], "rail_3v3");
+    assert_eq!(bootloader_strap["scenario"]["straps"][0]["actual"], "high");
+
     let uart = suggestions["suggestions"]
         .as_array()
         .unwrap()

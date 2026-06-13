@@ -56,6 +56,11 @@ The command is conservative:
   evidence: a mapped resistor from the reset net to the target power rail and a
   mapped capacitor from reset to ground. In that case `reset_release_at_us` is
   derived from `-R*C*ln(1 - VIH/Vrail)` plus the rail `power_valid_at_us`.
+- `BOOT_STRAP_DEFINED` suggestions become runnable when every required strap
+  pin is connected and the connected net is directly proven high by a declared
+  powered rail or low by ground. Digital nets, resistor-bias-only evidence, and
+  other observed states still keep the template non-runnable until explicit
+  strap-state evidence is supplied.
 - Other reset suggestions are marked `runnable: false` until real
   `timing.reset_release_at_us` evidence is filled from a reset supervisor,
   control-line model, firmware/host trace, or analog waveform.
@@ -576,8 +581,8 @@ suggestions:
         boot_sample_at_us: 2531.558
   - id: boot_strap_defined_u1_bootloader
     kind: reset_boot
-    confidence: medium
-    runnable: false
+    confidence: high
+    runnable: true
     reason: Component U1 model declares boot mode bootloader, but no BOOT_STRAP_DEFINED scenario covers it.
     scenario:
       name: u1_boot_straps_bootloader
@@ -590,9 +595,8 @@ suggestions:
       straps:
         - component: U1
           pin: BOOT0
-          net: boot0
-    required_inputs:
-      - Fill strap actual states for boot mode bootloader: U1.BOOT0=high.
+          net: rail_3v3
+          actual: high
   - id: gpio_backdrive_u2_txd_to_u1_rx
     kind: gpio_backdrive
     confidence: high
@@ -740,8 +744,9 @@ series resistance.
 UART bootloader suggestions stay non-runnable unless the target has a proven
 output-capable sender, explicit reset/boot timing evidence, and, when the model
 declares boot modes, exactly one boot mode proven by direct rail/ground strap
-state. Other observed strap evidence should still be entered explicitly by the
-user before validation.
+state. Standalone boot-strap suggestions use the same direct rail/ground proof
+to fill `straps[].actual`; other observed strap evidence should still be
+entered explicitly by the user before validation.
 
 This is a planning aid, not validation sign-off. Agents should add runnable
 scenarios directly and complete non-runnable templates with measured or modeled

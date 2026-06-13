@@ -964,20 +964,29 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
             let mut straps = Vec::new();
             let mut missing_pins = Vec::new();
             let mut all_straps_have_bias = true;
+            let mut all_defined_straps_match_direct_state = true;
             for requirement in &mode.straps {
                 match component.pins.get(&requirement.pin) {
                     Some(net) => {
                         if !strap_net_has_bias(bound.project, net) {
                             all_straps_have_bias = false;
                         }
+                        let required_state = requirement.required_state.trim().to_ascii_lowercase();
+                        let actual = direct_net_logic_state(bound.project, net);
+                        if actual.as_deref() != Some(required_state.as_str()) {
+                            all_defined_straps_match_direct_state = false;
+                        }
                         straps.push(SuggestedStrap {
                             component: component_id.clone(),
                             pin: requirement.pin.clone(),
                             net: Some(net.clone()),
-                            actual: None,
+                            actual,
                         });
                     }
-                    None => missing_pins.push(requirement.pin.clone()),
+                    None => {
+                        missing_pins.push(requirement.pin.clone());
+                        all_defined_straps_match_direct_state = false;
+                    }
                 }
             }
             if straps.is_empty() {
@@ -1035,14 +1044,22 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
             if existing.contains_key(&(component_id.clone(), mode_name.clone())) {
                 continue;
             }
-            let mut required_inputs = vec![format!(
-                "Fill strap actual states for boot mode {mode_name}: {}.",
-                mode.straps
-                    .iter()
-                    .map(|strap| format!("{}.{}={}", component_id, strap.pin, strap.required_state))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )];
+            let runnable = missing_pins.is_empty() && all_defined_straps_match_direct_state;
+            let mut required_inputs = if runnable {
+                Vec::new()
+            } else {
+                vec![format!(
+                    "Fill strap actual states for boot mode {mode_name}: {}.",
+                    mode.straps
+                        .iter()
+                        .map(|strap| format!(
+                            "{}.{}={}",
+                            component_id, strap.pin, strap.required_state
+                        ))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )]
+            };
             if !missing_pins.is_empty() {
                 required_inputs.push(format!(
                     "Connect missing boot strap pins before this template can validate: {}.",
@@ -1056,8 +1073,8 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     sanitized_name(mode_name)
                 ),
                 kind: "reset_boot".to_string(),
-                confidence: "medium".to_string(),
-                runnable: false,
+                confidence: if runnable { "high" } else { "medium" }.to_string(),
+                runnable,
                 reason: format!(
                     "Component {component_id} model declares boot mode {mode_name}, but no BOOT_STRAP_DEFINED scenario covers it."
                 ),

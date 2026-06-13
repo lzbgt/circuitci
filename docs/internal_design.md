@@ -131,7 +131,11 @@ suggesting the rule.
 Reset/boot suggestions use the same discipline: UART bootloader sync templates
 become runnable only when the sender endpoint is proven output-capable, reset
 timing is derived from explicit evidence, and any required boot mode is proven
-by direct strap state rather than assumed firmware behavior.
+by direct strap state rather than assumed firmware behavior. Standalone
+`BOOT_STRAP_DEFINED` suggestions may fill `straps[].actual` and become runnable
+only when every required strap is directly tied to a declared powered rail or
+ground; resistor bias and digital nets remain explicit evidence-gathering
+templates.
 
 GPIO backdrive suggestions likewise require explicit runtime evidence before
 they become runnable. Connectivity and power-state metadata can identify a risk,
