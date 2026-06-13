@@ -112,6 +112,7 @@ Canonical executable check IDs:
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
 - `SOLDER_PASTE_APERTURE_SIZE_VALID`
+- `SOLDER_PASTE_IC_PIN_APERTURE_VALID`
 - `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
@@ -1008,6 +1009,41 @@ Solder-paste aperture-size algorithm:
 This is a static 2D stencil manufacturability screen. It intentionally does not
 apply package-specific paste reductions, paste volume rules, or arbitrary region
 minimum-width approximations.
+
+IC pin solder-paste aperture validation uses
+`SOLDER_PASTE_IC_PIN_APERTURE_VALID` when the Board IR includes pad-owned Gerber
+solder-paste opening evidence and the scenario declares a source-backed IC pin
+pitch.
+
+```yaml
+scenarios:
+  - name: solder_paste_ic_pin_aperture
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+    parameters:
+      pin_pitch_mm: 0.5
+```
+
+IC pin solder-paste aperture algorithm:
+
+1. Require `parameters.pin_pitch_mm`.
+2. Map the pitch to the saved JLCPCB stencil opening standard:
+   0.8-1.27 mm pitch uses aperture width 45%-60% of pitch;
+   0.635-0.65 mm pitch uses 0.30-0.33 mm; 0.5 mm uses 0.24 mm;
+   0.4 mm uses 0.19 mm; 0.35 mm uses 0.17 mm; and 0.3 mm uses
+   0.16 mm.
+3. Require pad-owned solder-paste feature, segment, or region evidence.
+4. For flash openings, measure the smaller of `size.x_mm` and `size.y_mm`.
+5. For draw openings, measure the circular aperture draw width.
+6. For single-contour regions, measure the smaller bounding-box dimension.
+7. Fail when a pad-owned paste opening is outside the pitch-conditioned width
+   range.
+
+This is not a generic stencil capability preset. It represents JLCPCB's
+package-specific IC stencil optimization table and should only be used for the
+IC pin group whose pitch is declared by the scenario. It does not infer package
+pitch, package class, step-stencil thickness, or order remarks automatically.
 
 Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
 Board IR includes at least two Gerber solder-paste opening objects under

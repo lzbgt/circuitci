@@ -253,6 +253,12 @@ without explicit imported mechanical evidence.
   currently `jlcpcb_stencil_aperture_min_2026_06` for JLCPCB's greater-than
   0.08 mm minimum aperture size. It does not evaluate arbitrary region minimum
   width, stencil thickness, paste release, or package-specific paste reductions.
+- `SOLDER_PASTE_IC_PIN_APERTURE_VALID` uses pad-owned Gerber solder-paste
+  feature, draw, and region evidence for an opt-in IC pin aperture-width screen
+  against the saved JLCPCB stencil opening table. It only runs for an explicit
+  `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance. It does not
+  infer package pitch or package class automatically, and it is not a generic
+  paste area-ratio, paste spacing, paste-volume, or stencil-thickness rule.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close
