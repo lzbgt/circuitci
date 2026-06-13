@@ -128,6 +128,11 @@ evidence can identify the applicable source condition. For package-scoped
 stencil checks, require owner-backed repeated pitch/grid evidence before
 suggesting the rule.
 
+Reset/boot suggestions use the same discipline: UART bootloader sync templates
+become runnable only when the sender endpoint is proven output-capable, reset
+timing is derived from explicit evidence, and any required boot mode is proven
+by direct strap state rather than assumed firmware behavior.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

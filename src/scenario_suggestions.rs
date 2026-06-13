@@ -38,6 +38,22 @@ struct ResetRcEvidence {
     reset_release_at_us: f64,
 }
 
+#[derive(Debug)]
+struct BootloaderTimingEvidence {
+    power_pin: String,
+    power_valid_at_us: f64,
+    reset_pin: String,
+    reset_release_delay_us: f64,
+    reset_release_at_us: f64,
+    boot_sample_at_us: f64,
+}
+
+#[derive(Debug)]
+struct BootModeSuggestion {
+    mode_name: String,
+    straps: Vec<SuggestedStrap>,
+}
+
 pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     let mut suggestions = Vec::new();
     if should_suggest_power_tree(bound.project) {
@@ -1253,6 +1269,13 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                 continue;
             };
             let sender = find_output_sender(bound, component_id, rx_net);
+            let timing = uart_bootloader_timing_evidence(bound, component, model);
+            let boot_mode = direct_boot_mode_suggestion(bound, component_id, component, model);
+            let boot_modes_required = model
+                .behavior
+                .boot
+                .as_ref()
+                .is_some_and(|boot| !boot.modes.is_empty());
             let mut required_inputs = Vec::new();
             if sender.is_none() {
                 required_inputs.push(format!(
@@ -1260,10 +1283,19 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     component_id, interface.rx_pin
                 ));
             }
-            required_inputs.push(
-                "Fill event at_us after reset release and boot strap sampling evidence."
-                    .to_string(),
-            );
+            if timing.is_none() {
+                required_inputs.push(
+                    "Provide reset release and boot strap sampling timing from explicit RC, supervisor, control-line, or waveform evidence.".to_string(),
+                );
+            }
+            if boot_modes_required && boot_mode.is_none() {
+                required_inputs.push(
+                    "Provide observed boot strap states or direct rail/ground strap evidence proving exactly one boot mode.".to_string(),
+                );
+            }
+            let runnable = sender.is_some()
+                && timing.is_some()
+                && (!boot_modes_required || boot_mode.is_some());
             suggestions.push(ScenarioSuggestion {
                 id: format!(
                     "uart_bootloader_sync_{}_{}",
@@ -1271,8 +1303,15 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     sanitized_name(interface_name)
                 ),
                 kind: "serial_programming".to_string(),
-                confidence: if sender.is_some() { "medium" } else { "low" }.to_string(),
-                runnable: false,
+                confidence: if runnable {
+                    "high"
+                } else if sender.is_some() {
+                    "medium"
+                } else {
+                    "low"
+                }
+                .to_string(),
+                runnable,
                 reason: format!(
                     "Component {component_id} model declares bootloader interface {interface_name}, but no UART_BOOTLOADER_SYNC scenario covers it."
                 ),
@@ -1287,12 +1326,22 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     parameters: None,
                     target: Some(SuggestedTarget {
                         component: component_id.clone(),
-                        power_pin: None,
-                        reset_pin: None,
+                        power_pin: timing.as_ref().map(|evidence| evidence.power_pin.clone()),
+                        reset_pin: timing.as_ref().map(|evidence| evidence.reset_pin.clone()),
                     }),
-                    timing: None,
-                    required_boot_mode: None,
-                    straps: Vec::new(),
+                    timing: timing.as_ref().map(|evidence| SuggestedTiming {
+                        power_valid_at_us: evidence.power_valid_at_us,
+                        reset_release_delay_us: Some(evidence.reset_release_delay_us),
+                        reset_release_at_us: Some(evidence.reset_release_at_us),
+                        boot_sample_at_us: Some(evidence.boot_sample_at_us),
+                    }),
+                    required_boot_mode: boot_mode
+                        .as_ref()
+                        .map(|evidence| evidence.mode_name.clone()),
+                    straps: boot_mode
+                        .as_ref()
+                        .map(|evidence| evidence.straps.clone())
+                        .unwrap_or_default(),
                     bootloader: Some(SuggestedBootloader {
                         component: component_id.clone(),
                         interface: interface_name.to_string(),
@@ -1300,7 +1349,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                         expected_response: interface.ack_byte,
                     }),
                     events: vec![SuggestedEvent {
-                        at_us: None,
+                        at_us: timing.as_ref().map(|evidence| evidence.boot_sample_at_us),
                         action: "uart_send".to_string(),
                         from: sender,
                         to: Some(SuggestedEndpoint {
@@ -1521,6 +1570,115 @@ fn find_output_sender(
         }
     }
     None
+}
+
+fn uart_bootloader_timing_evidence(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<BootloaderTimingEvidence> {
+    let reset = model.behavior.reset.as_ref()?;
+    let (power_pin, power_net, power_valid_at_us) =
+        model.ports.iter().find_map(|(pin_name, port)| {
+            if port.kind != PortKind::ElectricalPower {
+                return None;
+            }
+            let net_name = resolve_power_pin_net(component, pin_name)?;
+            let net = bound.project.board.nets.get(net_name)?;
+            let power_valid_at_us = net.power_valid_at_us?;
+            if power_valid_at_us.is_finite() && power_valid_at_us >= 0.0 {
+                Some((pin_name.clone(), net_name.to_string(), power_valid_at_us))
+            } else {
+                None
+            }
+        })?;
+    let reset_net = component.pins.get(&reset.pin)?;
+    let rc_evidence = reset_rc_evidence(
+        bound,
+        component,
+        model,
+        &reset.pin,
+        reset_net,
+        &power_net,
+        power_valid_at_us,
+    )?;
+    let boot_sample_delay_us = model
+        .behavior
+        .boot
+        .as_ref()
+        .and_then(|boot| boot.sample_time_after_reset_release_us)?;
+    if !boot_sample_delay_us.is_finite() || boot_sample_delay_us < 0.0 {
+        return None;
+    }
+    let boot_sample_at_us = rc_evidence.reset_release_at_us + boot_sample_delay_us;
+    if !boot_sample_at_us.is_finite() {
+        return None;
+    }
+    Some(BootloaderTimingEvidence {
+        power_pin,
+        power_valid_at_us,
+        reset_pin: reset.pin.clone(),
+        reset_release_delay_us: rc_evidence.reset_release_delay_us,
+        reset_release_at_us: rc_evidence.reset_release_at_us,
+        boot_sample_at_us,
+    })
+}
+
+fn direct_boot_mode_suggestion(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> Option<BootModeSuggestion> {
+    let boot = model.behavior.boot.as_ref()?;
+    if boot.modes.is_empty() {
+        return None;
+    }
+    let mut matches = Vec::new();
+    for (mode_name, mode) in &boot.modes {
+        let mut straps = Vec::new();
+        let mut mode_matches = true;
+        for requirement in &mode.straps {
+            let Some(net_name) = component.pins.get(&requirement.pin) else {
+                mode_matches = false;
+                break;
+            };
+            let Some(actual) = direct_net_logic_state(bound.project, net_name) else {
+                mode_matches = false;
+                break;
+            };
+            if actual != requirement.required_state.trim().to_ascii_lowercase() {
+                mode_matches = false;
+                break;
+            }
+            straps.push(SuggestedStrap {
+                component: component_id.to_string(),
+                pin: requirement.pin.clone(),
+                net: Some(net_name.clone()),
+                actual: Some(actual),
+            });
+        }
+        if mode_matches && !straps.is_empty() {
+            matches.push(BootModeSuggestion {
+                mode_name: mode_name.clone(),
+                straps,
+            });
+        }
+    }
+    if matches.len() == 1 {
+        matches.pop()
+    } else {
+        None
+    }
+}
+
+fn direct_net_logic_state(project: &BoardProject, net_name: &str) -> Option<String> {
+    let net = project.board.nets.get(net_name)?;
+    match net.kind {
+        NetKind::Power if net.powered == Some(true) => Some("high".to_string()),
+        NetKind::Ground => Some("low".to_string()),
+        _ => None,
+    }
 }
 
 fn component_power_state(

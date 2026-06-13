@@ -699,8 +699,8 @@ suggestions:
           crystal_component: Y1
   - id: uart_bootloader_sync_u1_uart
     kind: serial_programming
-    confidence: medium
-    runnable: false
+    confidence: high
+    runnable: true
     reason: Component U1 model declares bootloader interface uart, but no UART_BOOTLOADER_SYNC scenario covers it.
     scenario:
       name: u1_uart_bootloader_sync
@@ -709,19 +709,37 @@ suggestions:
         - UART_BOOTLOADER_SYNC
       target:
         component: U1
+        power_pin: VDD
+        reset_pin: NRST
+      timing:
+        power_valid_at_us: 1500.0
+        reset_release_delay_us: 931.5582043707448
+        reset_release_at_us: 2431.558204370745
+        boot_sample_at_us: 2531.558204370745
+      required_boot_mode: bootloader
+      straps:
+        - component: U1
+          pin: BOOT0
+          net: rail_3v3
+          actual: high
       bootloader:
         component: U1
         interface: uart
         sync_byte: 127
         expected_response: 121
       events:
-        - action: uart_send
+        - at_us: 2531.558204370745
+          action: uart_send
           from: { component: U2, pin: TXD }
           to: { component: U1, pin: RX }
           bytes: [127]
-    required_inputs:
-      - Fill event at_us after reset release and boot strap sampling evidence.
 ```
+
+UART bootloader suggestions stay non-runnable unless the target has a proven
+output-capable sender, explicit reset/boot timing evidence, and, when the model
+declares boot modes, exactly one boot mode proven by direct rail/ground strap
+state. Other observed strap evidence should still be entered explicitly by the
+user before validation.
 
 This is a planning aid, not validation sign-off. Agents should add runnable
 scenarios directly and complete non-runnable templates with measured or modeled

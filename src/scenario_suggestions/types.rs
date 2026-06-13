@@ -83,7 +83,7 @@ pub struct SuggestedTiming {
     pub boot_sample_at_us: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SuggestedStrap {
     pub component: String,
     pub pin: String,

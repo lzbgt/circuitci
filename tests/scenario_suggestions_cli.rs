@@ -129,6 +129,53 @@ fn suggest_scenarios_derives_power_boot_reset_and_uart_templates() {
 }
 
 #[test]
+fn suggest_scenarios_makes_uart_bootloader_sync_runnable_from_rc_and_direct_strap() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_uart_bootloader_rc/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_uart_bootloader_rc"
+    );
+    let uart = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "uart_bootloader_sync_u1_uart")
+        .expect("uart bootloader suggestion");
+    assert_eq!(uart["runnable"], true);
+    assert_eq!(uart["confidence"], "high");
+    assert!(uart["required_inputs"].is_null());
+    assert_eq!(uart["scenario"]["required_boot_mode"], "bootloader");
+    assert_eq!(uart["scenario"]["target"]["component"], "U1");
+    assert_eq!(uart["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(uart["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(
+        uart["scenario"]["timing"]["power_valid_at_us"]
+            .as_f64()
+            .unwrap(),
+        1500.0
+    );
+    let reset_release_at_us = uart["scenario"]["timing"]["reset_release_at_us"]
+        .as_f64()
+        .unwrap();
+    assert!((reset_release_at_us - 2431.558204370745).abs() < 0.000001);
+    let boot_sample_at_us = uart["scenario"]["timing"]["boot_sample_at_us"]
+        .as_f64()
+        .unwrap();
+    assert!((boot_sample_at_us - 2531.558204370745).abs() < 0.000001);
+    assert_eq!(uart["scenario"]["straps"][0]["component"], "U1");
+    assert_eq!(uart["scenario"]["straps"][0]["pin"], "BOOT0");
+    assert_eq!(uart["scenario"]["straps"][0]["net"], "rail_3v3");
+    assert_eq!(uart["scenario"]["straps"][0]["actual"], "high");
+    assert_eq!(uart["scenario"]["events"][0]["at_us"], boot_sample_at_us);
+    assert_eq!(uart["scenario"]["events"][0]["from"]["component"], "U2");
+    assert_eq!(uart["scenario"]["events"][0]["from"]["pin"], "TXD");
+    assert_eq!(uart["scenario"]["events"][0]["to"]["component"], "U1");
+    assert_eq!(uart["scenario"]["events"][0]["to"]["pin"], "RX");
+    assert_eq!(uart["scenario"]["events"][0]["bytes"][0], 127);
+}
+
+#[test]
 fn suggest_scenarios_marks_load_switch_power_tree_template_non_runnable() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_load_switch/project.yaml");
