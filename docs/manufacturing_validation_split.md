@@ -18,6 +18,12 @@ solder-paste opening/aperture/spacing parameter parsing, supported mask/paste
 object validation,
 opening-selection logic, and stable mask/paste report construction.
 
+`src/validation/manufacturing/artwork_measurements.rs` owns repeated
+solder-mask and solder-paste artwork measurement serialization for report
+payloads. Rule modules keep the finding decisions and suggested fixes; this
+helper module keeps shared feature/segment/region field names consistent without
+growing the rule modules.
+
 `src/validation/manufacturing/solder_paste_ic.rs` owns
 `SOLDER_PASTE_IC_PIN_APERTURE_VALID`, including the JLCPCB pitch-conditioned IC
 stencil table, optional target-component filtering, and stable IC aperture
