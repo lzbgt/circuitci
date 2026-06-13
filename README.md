@@ -196,6 +196,7 @@ Important contracts:
 - [docs/board_ir.md](docs/board_ir.md)
 - [docs/component_model_contract.md](docs/component_model_contract.md)
 - [docs/scenario_language.md](docs/scenario_language.md)
+- [docs/fabrication_process_presets.md](docs/fabrication_process_presets.md)
 - [docs/report_schema.md](docs/report_schema.md)
 - [docs/scenario_suggestions.md](docs/scenario_suggestions.md)
 

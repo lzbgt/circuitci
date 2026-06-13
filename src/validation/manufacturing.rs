@@ -1,5 +1,6 @@
 mod annular_ring;
 mod geometry;
+mod process;
 mod solder_mask;
 
 use crate::board_ir::{
@@ -19,6 +20,7 @@ use self::geometry::{
     validate_copper_region_geometry, validate_copper_segment_geometry, validate_drill_geometry,
     validate_slot_geometry,
 };
+use self::process::{optional_numeric_parameter, required_numeric_parameter};
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
@@ -353,74 +355,6 @@ pub(super) fn validate_copper_spacing(
             );
         }
     }
-}
-
-fn required_numeric_parameter(
-    scenario: &Scenario,
-    name: &str,
-    findings: &mut Vec<Finding>,
-) -> Option<f64> {
-    if !scenario.parameters.contains_key(name) {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("manufacturing parameters.{name} is required."),
-        );
-        return None;
-    }
-    let Some(value) = scenario
-        .parameters
-        .get(name)
-        .and_then(serde_yaml_ng::Value::as_f64)
-    else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("manufacturing parameters.{name} must be numeric."),
-        );
-        return None;
-    };
-    if !value.is_finite() {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("manufacturing parameters.{name} must be finite."),
-        );
-        return None;
-    }
-    Some(value)
-}
-
-fn optional_numeric_parameter(
-    scenario: &Scenario,
-    name: &str,
-    default: f64,
-    findings: &mut Vec<Finding>,
-) -> Option<f64> {
-    if !scenario.parameters.contains_key(name) {
-        return Some(default);
-    }
-    let Some(value) = scenario
-        .parameters
-        .get(name)
-        .and_then(serde_yaml_ng::Value::as_f64)
-    else {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("manufacturing parameters.{name} must be numeric."),
-        );
-        return None;
-    };
-    if !value.is_finite() {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("manufacturing parameters.{name} must be finite."),
-        );
-        return None;
-    }
-    Some(value)
 }
 
 fn maybe_report_copper_spacing(

@@ -25,6 +25,11 @@ selection for imported fabrication data:
 - annular-ring geometry,
 - copper-to-copper spacing geometry.
 
+`src/validation/manufacturing/process.rs` owns named fabrication process
+preset lookup and shared manufacturing parameter parsing. Rule modules should
+call its required/optional numeric helpers so explicit scenario parameters keep
+overriding process defaults consistently.
+
 Keep stable report keys and suggested fixes in the module that owns the rule.
 Add pure distance, overlap, sampling, and nearest-evidence helpers to
 `geometry.rs` so new fabrication checks do not push the rule modules toward the

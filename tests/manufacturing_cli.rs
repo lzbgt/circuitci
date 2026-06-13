@@ -323,6 +323,40 @@ fn solder_mask_opening_fails_when_opening_is_undersized() {
 }
 
 #[test]
+fn solder_mask_opening_uses_fabrication_process_default() {
+    let report = run_validation("examples/bad_solder_mask_opening_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_OPENING_VALID");
+    assert_eq!(failure["limit"]["min_mask_expansion_mm"], 0.05);
+    assert_eq!(failure["limit"]["max_copper_to_mask_center_offset_mm"], 0.1);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn explicit_manufacturing_parameter_overrides_fabrication_process_default() {
+    let report = run_validation("examples/good_solder_mask_opening_explicit_override/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn unknown_fabrication_process_fails_closed_when_needed_for_required_parameter() {
+    let report = run_validation("examples/bad_unknown_fabrication_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "VALIDATION_INPUT_MISSING");
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("unsupported process preset 'unknown_fab_process'")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_mask_opening_fails_for_region_opening_expansion() {
     let report = run_validation("examples/bad_solder_mask_opening_region_undersized/project.yaml");
     assert_eq!(report["result"], "fail");

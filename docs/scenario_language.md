@@ -576,6 +576,13 @@ assembly stack-up tolerances.
 
 ## Manufacturing Scenario Shape
 
+Manufacturing scenarios may use `parameters.fabrication_process` to fill
+source-backed defaults for supported numeric limits. Explicit numeric
+parameters always override the preset. The first supported preset is
+`jlcpcb_standard_2026_06`, documented in
+`docs/fabrication_process_presets.md`; it currently supplies
+`min_mask_expansion_mm: 0.05` for solder-mask opening checks.
+
 Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
 the Board IR includes fabrication drill evidence under `board.layout.drills`
 and board-outline segment evidence under `board.layout.outline.segments`.
@@ -774,6 +781,14 @@ scenarios:
     parameters:
       min_mask_expansion_mm: 0.05
       max_copper_to_mask_center_offset_mm: 0.05 # optional, defaults to 0.1
+```
+
+For JLCPCB-style default mask expansion, the raw `min_mask_expansion_mm`
+parameter may be replaced by:
+
+```yaml
+parameters:
+  fabrication_process: jlcpcb_standard_2026_06
 ```
 
 Solder-mask opening algorithm:

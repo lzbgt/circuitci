@@ -1,0 +1,38 @@
+project:
+  name: good_solder_mask_opening_explicit_override
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: B.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: oval
+          size: { x_mm: 1.2, y_mm: 0.8 }
+    solder_mask:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: B.Mask
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D11
+          shape: oval
+          size: { x_mm: 1.26, y_mm: 0.86 }
+scenarios:
+  - name: solder_mask_opening_explicit_override
+    type: manufacturing
+    checks:
+      - SOLDER_MASK_OPENING_VALID
+    parameters:
+      fabrication_process: jlcpcb_standard_2026_06
+      min_mask_expansion_mm: 0.03
+      max_copper_to_mask_center_offset_mm: 0.05

@@ -213,8 +213,10 @@ without explicit imported mechanical evidence.
 - `SOLDER_MASK_OPENING_VALID` uses imported Gerber copper flashes and Gerber
   solder-mask flash, circular-aperture draw, and single-contour region openings
   for a static 2D mask-aperture screen. It checks same-side `F.Cu` -> `F.Mask`
-  and `B.Cu` -> `B.Mask` co-located openings and minimum mask expansion. It
-  does not yet evaluate multi-contour mask regions, fab-specific mask swell,
+  and `B.Cu` -> `B.Mask` co-located openings and minimum mask expansion.
+  Source-backed process presets can provide selected defaults, currently
+  `jlcpcb_standard_2026_06` for minimum mask expansion. It does not yet
+  evaluate multi-contour mask regions, full fab-specific mask swell,
   package-specific solder-mask-defined pad rules, or 3D solderability effects.
 - `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect

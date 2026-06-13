@@ -1,0 +1,36 @@
+project:
+  name: bad_unknown_fabrication_process
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.8 }
+    solder_mask:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Mask
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.14, y_mm: 0.94 }
+scenarios:
+  - name: unknown_fabrication_process
+    type: manufacturing
+    checks:
+      - SOLDER_MASK_OPENING_VALID
+    parameters:
+      fabrication_process: unknown_fab_process
