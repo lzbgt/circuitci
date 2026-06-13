@@ -698,9 +698,16 @@ Copper spacing algorithm:
    circular-aperture trace segment width and single-contour region polygon
    boundaries.
 5. Ignore different-layer pairs.
-6. Ignore overlapping or touching pairs because anonymous Gerber copper has no
-   net ownership or island connectivity evidence.
-7. Fail when separated same-layer copper spacing is below
+6. If both copper objects declare the same `net`, or no net and the same
+   `island_id`, treat touching or close copper as intentional ownership and
+   skip the spacing pair.
+7. If both copper objects declare different `net` values, or no net and
+   different `island_id` values, report overlapping/touching copper as a
+   zero-clearance spacing failure.
+8. If ownership is unknown, ignore overlapping or touching anonymous copper
+   because Gerber copper alone has no net ownership or island connectivity
+   evidence.
+9. Fail when separated same-layer copper spacing is below
    `min_copper_spacing_mm`.
 
 This is a static 2D fabrication screen. It can find too-tight same-layer copper

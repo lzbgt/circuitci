@@ -196,9 +196,11 @@ without explicit imported mechanical evidence.
   copper island connectivity, or net ownership.
 - `COPPER_SPACING_VALID` uses imported anonymous Gerber copper flashes, trace
   segments, and region polygons for a static same-layer 2D copper-spacing
-  screen. It ignores different-layer copper and overlapping/touching anonymous
-  copper because current Gerber evidence has no net or island ownership. It
-  does not prove same-net intent, shorts, solder-mask behavior, etch
+  screen. If copper objects carry explicit `net` or `island_id` ownership
+  evidence, the rule can skip same-owner copper and report touching
+  conflicting-owner copper. It still ignores different-layer copper and
+  overlapping/touching anonymous copper because plain Gerber evidence has no
+  net or island ownership. It does not prove solder-mask behavior, etch
   compensation, fab-specific spacing expansion, or copper connectivity.
 - Gerber copper import currently records anonymous dark `D03` flash features
   for circle, rectangle, and oval apertures, dark linear `D01` traces for

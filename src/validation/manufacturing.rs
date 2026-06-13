@@ -475,6 +475,9 @@ fn maybe_report_copper_spacing(
     if first.layer() != second.layer() {
         return;
     }
+    if copper_objects_share_owner(first, second) {
+        return;
+    }
     let Some(clearance_mm) = copper_object_spacing_mm(first, second) else {
         validation_input_missing(
             findings,
@@ -484,6 +487,15 @@ fn maybe_report_copper_spacing(
         return;
     };
     if clearance_mm <= f64::EPSILON {
+        if copper_objects_conflict(first, second) {
+            findings.push(copper_spacing_finding(
+                scenario,
+                first,
+                second,
+                0.0,
+                min_spacing_mm,
+            ));
+        }
         return;
     }
     if clearance_mm + f64::EPSILON < min_spacing_mm {
@@ -494,6 +506,28 @@ fn maybe_report_copper_spacing(
             clearance_mm,
             min_spacing_mm,
         ));
+    }
+}
+
+fn copper_objects_share_owner(first: CopperObjectRef<'_>, second: CopperObjectRef<'_>) -> bool {
+    match (first.net(), second.net()) {
+        (Some(first_net), Some(second_net)) => first_net == second_net,
+        (Some(_), None) | (None, Some(_)) => false,
+        (None, None) => match (first.island_id(), second.island_id()) {
+            (Some(first_island), Some(second_island)) => first_island == second_island,
+            _ => false,
+        },
+    }
+}
+
+fn copper_objects_conflict(first: CopperObjectRef<'_>, second: CopperObjectRef<'_>) -> bool {
+    match (first.net(), second.net()) {
+        (Some(first_net), Some(second_net)) => first_net != second_net,
+        (Some(_), None) | (None, Some(_)) => false,
+        (None, None) => match (first.island_id(), second.island_id()) {
+            (Some(first_island), Some(second_island)) => first_island != second_island,
+            _ => false,
+        },
     }
 }
 
@@ -893,6 +927,12 @@ fn insert_copper_feature_edge_measurements(finding: &mut Finding, feature: &Layo
     finding
         .measured
         .insert("copper_feature_layer".to_string(), json!(feature.layer));
+    insert_optional_copper_owner_measurements(
+        finding,
+        "copper_feature",
+        feature.net.as_deref(),
+        feature.island_id.as_deref(),
+    );
     finding.measured.insert(
         "copper_feature_aperture".to_string(),
         json!(feature.aperture),
@@ -936,6 +976,12 @@ fn insert_copper_segment_measurements(finding: &mut Finding, segment: &LayoutCop
     finding
         .measured
         .insert("copper_segment_layer".to_string(), json!(segment.layer));
+    insert_optional_copper_owner_measurements(
+        finding,
+        "copper_segment",
+        segment.net.as_deref(),
+        segment.island_id.as_deref(),
+    );
     finding.measured.insert(
         "copper_segment_aperture".to_string(),
         json!(segment.aperture),
@@ -978,6 +1024,12 @@ fn insert_copper_object_measurements(
             finding.measured.insert(
                 format!("{prefix}_copper_feature_layer"),
                 json!(feature.layer),
+            );
+            insert_optional_copper_owner_measurements(
+                finding,
+                &format!("{prefix}_copper_feature"),
+                feature.net.as_deref(),
+                feature.island_id.as_deref(),
             );
             finding.measured.insert(
                 format!("{prefix}_copper_feature_aperture"),
@@ -1026,6 +1078,12 @@ fn insert_copper_object_measurements(
                 format!("{prefix}_copper_segment_layer"),
                 json!(segment.layer),
             );
+            insert_optional_copper_owner_measurements(
+                finding,
+                &format!("{prefix}_copper_segment"),
+                segment.net.as_deref(),
+                segment.island_id.as_deref(),
+            );
             finding.measured.insert(
                 format!("{prefix}_copper_segment_aperture"),
                 json!(segment.aperture),
@@ -1052,10 +1110,32 @@ fn insert_copper_object_measurements(
     }
 }
 
+fn insert_optional_copper_owner_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    net: Option<&str>,
+    island_id: Option<&str>,
+) {
+    if let Some(net) = net {
+        finding.measured.insert(format!("{prefix}_net"), json!(net));
+    }
+    if let Some(island_id) = island_id {
+        finding
+            .measured
+            .insert(format!("{prefix}_island_id"), json!(island_id));
+    }
+}
+
 fn insert_copper_region_measurements(finding: &mut Finding, region: &LayoutCopperRegion) {
     finding
         .measured
         .insert("copper_region_layer".to_string(), json!(region.layer));
+    insert_optional_copper_owner_measurements(
+        finding,
+        "copper_region",
+        region.net.as_deref(),
+        region.island_id.as_deref(),
+    );
     finding
         .measured
         .insert("copper_region_polarity".to_string(), json!(region.polarity));
@@ -1081,6 +1161,12 @@ fn insert_prefixed_copper_region_measurements(
     finding
         .measured
         .insert(format!("{prefix}_copper_region_layer"), json!(region.layer));
+    insert_optional_copper_owner_measurements(
+        finding,
+        &format!("{prefix}_copper_region"),
+        region.net.as_deref(),
+        region.island_id.as_deref(),
+    );
     finding.measured.insert(
         format!("{prefix}_copper_region_polarity"),
         json!(region.polarity),
@@ -1118,6 +1204,12 @@ fn insert_copper_feature_measurements(
     finding.measured.insert(
         "copper_feature_layer".to_string(),
         json!(candidate.feature.layer),
+    );
+    insert_optional_copper_owner_measurements(
+        finding,
+        "copper_feature",
+        candidate.feature.net.as_deref(),
+        candidate.feature.island_id.as_deref(),
     );
     finding.measured.insert(
         "copper_feature_aperture".to_string(),

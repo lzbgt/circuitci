@@ -307,11 +307,15 @@ or nets.
 
 ## Layout Fabrication Copper Evidence
 
-Board IR can carry imported anonymous copper features under
-`board.layout.copper.features`, imported anonymous copper traces under
-`board.layout.copper.segments`, and imported anonymous copper regions under
+Board IR can carry imported copper features under
+`board.layout.copper.features`, imported copper traces under
+`board.layout.copper.segments`, and imported copper regions under
 `board.layout.copper.regions`. Coordinates are in millimeters in the same
 coordinate system as placements, outlines, drills, pads, routes, and zones.
+Gerber-imported copper is anonymous by default, but any copper feature,
+segment, or region may carry optional `net` and `island_id` evidence when a
+separate importer or hand-authored project can associate fabrication copper
+with PCB/net ownership.
 
 ```yaml
 board:
@@ -321,6 +325,8 @@ board:
         - at: { x_mm: 29.3, y_mm: -8.64 }
           layer: F.Cu
           polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
           source_primitive: gerber_flash
           source_primitive_index: 0
           aperture: D10
@@ -331,6 +337,8 @@ board:
           end: { x_mm: 20.0, y_mm: -10.0 }
           layer: F.Cu
           polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
           source_primitive: gerber_linear_draw
           source_primitive_index: 1
           aperture: D10
@@ -343,6 +351,8 @@ board:
             - { x_mm: 5.0, y_mm: -3.0 }
           layer: F.Cu
           polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
           source_primitive: gerber_region
           source_primitive_index: 2
 ```
@@ -354,9 +364,9 @@ segments and dark single-contour linear `G36`/`G37` regions as copper region
 polygons. Linear draws with non-circular apertures are counted as ignored
 records because their exact swept geometry is not a simple trace-width segment.
 Clear-polarity flashes, draws, and regions are skipped/ignored because they
-represent copper voids rather than conductive copper. Imported copper evidence
-is fabrication evidence only and does not assign nets, components, pad names,
-copper islands, or electrical connectivity.
+represent copper voids rather than conductive copper. Gerber copper evidence is
+fabrication evidence only and does not by itself assign nets, components, pad
+names, copper islands, or electrical connectivity.
 
 ## Layout Pad Evidence
 

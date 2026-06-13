@@ -1,0 +1,40 @@
+project:
+  name: good_copper_same_net_touching
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 1.0, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+        - at: { x_mm: 1.8, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          island_id: F_Cu_GND_0
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+
+scenarios:
+  - name: copper_spacing
+    type: manufacturing
+    checks:
+      - COPPER_SPACING_VALID
+    parameters:
+      min_copper_spacing_mm: 0.25

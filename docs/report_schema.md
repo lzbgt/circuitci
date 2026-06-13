@@ -313,16 +313,19 @@ Stable measured keys include `copper_kind`, `clearance_mm`,
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
 optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
 Feature findings also report `copper_feature_index`, `copper_feature_x_mm`,
-`copper_feature_y_mm`, `copper_feature_layer`, `copper_feature_aperture`,
-`copper_feature_shape`, `copper_feature_size_x_mm`,
+`copper_feature_y_mm`, `copper_feature_layer`, optional
+`copper_feature_net`, optional `copper_feature_island_id`,
+`copper_feature_aperture`, `copper_feature_shape`, `copper_feature_size_x_mm`,
 `copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index`. Segment findings report
 `copper_segment_index`, `copper_segment_start`, `copper_segment_end`,
-`copper_segment_layer`, `copper_segment_aperture`,
+`copper_segment_layer`, optional `copper_segment_net`, optional
+`copper_segment_island_id`, `copper_segment_aperture`,
 `copper_segment_width_mm`, `copper_segment_source_primitive`,
 `copper_segment_source_primitive_index`, and
 `trace_centerline_to_board_edge_distance_mm`. Region findings report
-`copper_region_index`, `copper_region_layer`, `copper_region_polarity`,
+`copper_region_index`, `copper_region_layer`, optional `copper_region_net`,
+optional `copper_region_island_id`, `copper_region_polarity`,
 `copper_region_source_primitive`,
 `copper_region_source_primitive_index`, and
 `copper_region_point_count`. Stable limit keys include
@@ -336,19 +339,24 @@ Stable measured keys include
 `second_copper_kind`. Feature operands report prefixed keys such as
 `first_copper_feature_index`, `first_copper_feature_x_mm`,
 `first_copper_feature_y_mm`, `first_copper_feature_layer`,
-`first_copper_feature_aperture`, `first_copper_feature_shape`,
-`first_copper_feature_size_x_mm`, `first_copper_feature_size_y_mm`,
+optional `first_copper_feature_net`, optional
+`first_copper_feature_island_id`, `first_copper_feature_aperture`,
+`first_copper_feature_shape`, `first_copper_feature_size_x_mm`,
+`first_copper_feature_size_y_mm`,
 `first_copper_feature_source_primitive`, and
 `first_copper_feature_source_primitive_index`; the same keys may appear with
 the `second_` prefix. Segment operands report prefixed keys such as
 `first_copper_segment_index`, `first_copper_segment_start`,
 `first_copper_segment_end`, `first_copper_segment_layer`,
-`first_copper_segment_aperture`, `first_copper_segment_width_mm`,
-`first_copper_segment_source_primitive`, and
+optional `first_copper_segment_net`, optional
+`first_copper_segment_island_id`, `first_copper_segment_aperture`,
+`first_copper_segment_width_mm`, `first_copper_segment_source_primitive`, and
 `first_copper_segment_source_primitive_index`; the same keys may appear with
 the `second_` prefix. Region operands report prefixed keys such as
 `first_copper_region_index`, `first_copper_region_layer`,
-`first_copper_region_polarity`, `first_copper_region_source_primitive`,
+optional `first_copper_region_net`, optional
+`first_copper_region_island_id`, `first_copper_region_polarity`,
+`first_copper_region_source_primitive`,
 `first_copper_region_source_primitive_index`, and
 `first_copper_region_point_count`; the same keys may appear with the
 `second_` prefix. Stable limit keys include `min_copper_spacing_mm`.

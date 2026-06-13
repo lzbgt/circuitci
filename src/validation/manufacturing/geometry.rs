@@ -153,6 +153,22 @@ impl CopperObjectRef<'_> {
             Self::Region { .. } => "region",
         }
     }
+
+    pub(super) fn net(&self) -> Option<&str> {
+        match self {
+            Self::Feature { feature, .. } => feature.net.as_deref(),
+            Self::Segment { segment, .. } => segment.net.as_deref(),
+            Self::Region { region, .. } => region.net.as_deref(),
+        }
+    }
+
+    pub(super) fn island_id(&self) -> Option<&str> {
+        match self {
+            Self::Feature { feature, .. } => feature.island_id.as_deref(),
+            Self::Segment { segment, .. } => segment.island_id.as_deref(),
+            Self::Region { region, .. } => region.island_id.as_deref(),
+        }
+    }
 }
 
 pub(super) fn nearest_drill_edge_clearance<'a>(

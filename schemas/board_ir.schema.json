@@ -315,6 +315,8 @@
                       "at": { "$ref": "#/$defs/layout_point" },
                       "layer": { "type": "string", "minLength": 1 },
                       "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
                       "source_primitive": { "enum": ["gerber_flash"] },
                       "source_primitive_index": {
                         "type": "integer",
@@ -357,6 +359,8 @@
                       "end": { "$ref": "#/$defs/layout_point" },
                       "layer": { "type": "string", "minLength": 1 },
                       "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
                       "source_primitive": { "enum": ["gerber_linear_draw"] },
                       "source_primitive_index": {
                         "type": "integer",
@@ -393,6 +397,8 @@
                       },
                       "layer": { "type": "string", "minLength": 1 },
                       "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
                       "source_primitive": { "enum": ["gerber_region"] },
                       "source_primitive_index": {
                         "type": "integer",

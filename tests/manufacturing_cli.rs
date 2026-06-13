@@ -164,6 +164,14 @@ fn copper_spacing_passes_for_far_or_different_layer_copper() {
 }
 
 #[test]
+fn copper_spacing_passes_for_touching_same_net_copper() {
+    let report = run_validation("examples/good_copper_same_net_touching/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_near_flashes() {
     let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -176,6 +184,47 @@ fn copper_spacing_fails_for_near_flashes() {
     assert_eq!(failure["measured"]["copper_layer"], "F.Cu");
     assert_eq!(failure["measured"]["clearance_mm"], 0.19999999999999996);
     assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_overlapping_different_net_copper() {
+    let report = run_validation("examples/bad_copper_different_net_overlap/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["first_copper_feature_net"], "VBUS");
+    assert_eq!(
+        failure["measured"]["first_copper_feature_island_id"],
+        "F_Cu_VBUS_0"
+    );
+    assert_eq!(failure["measured"]["second_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["second_copper_feature_net"], "GND");
+    assert_eq!(
+        failure["measured"]["second_copper_feature_island_id"],
+        "F_Cu_GND_0"
+    );
+    assert_eq!(failure["measured"]["clearance_mm"], 0.0);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_overlapping_different_island_copper() {
+    let report = run_validation("examples/bad_copper_different_island_overlap/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(
+        failure["measured"]["first_copper_feature_island_id"],
+        "F_Cu_island_0"
+    );
+    assert_eq!(
+        failure["measured"]["second_copper_feature_island_id"],
+        "F_Cu_island_1"
+    );
+    assert_eq!(failure["measured"]["clearance_mm"], 0.0);
     assert_report_schema_valid(&report);
 }
 
