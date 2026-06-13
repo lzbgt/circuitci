@@ -1,0 +1,5 @@
+Designator,Device,Footprint,Mid X,Mid Y,Ref X,Ref Y,Pad X,Pad Y,Pins,Layer,Rotation,SMD,Comment,Name
+C3,CL21A106KOQNNNE,C0805,20.7mm,-10.13mm,20.7mm,-10.13mm,20.7mm,-9.13mm,2,T,270,Yes,10uF,10uF
+C1,CL21A106KOQNNNE,C0805,36.6mm,-3.9mm,36.6mm,-3.9mm,36.6mm,-4.9mm,2,T,90,Yes,10uF,10uF
+C2,CL05B104KO5NNNC,C0402,38.4mm,-4.8mm,38.4mm,-4.8mm,38.4mm,-5.22mm,2,T,90,Yes,100nF,100nF
+U1,TPS63802DLAR,VSON-10,41.2mm,-8.4mm,41.2mm,-8.4mm,42.1mm,-8.4mm,10,T,180,Yes,TPS63802DLAR,3V3_BB

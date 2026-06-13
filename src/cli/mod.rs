@@ -81,6 +81,18 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ImportJlcAssembly {
+        #[arg(long)]
+        bom: PathBuf,
+        #[arg(long)]
+        placement: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long, default_value = "generic.schematic.imported_component")]
+        default_model: String,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -147,6 +159,13 @@ pub fn run() -> Result<()> {
             project,
             output,
         }) => run_import_kicad_pcb(pcb, project, output),
+        Some(Command::ImportJlcAssembly {
+            bom,
+            placement,
+            output,
+            name,
+            default_model,
+        }) => run_import_jlc_assembly(bom, placement, output, name, default_model),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -273,6 +292,37 @@ fn run_import_kicad_pcb(pcb: PathBuf, project: PathBuf, output: PathBuf) -> Resu
         summary.routing_constraints,
         pcb.display(),
         project.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_jlc_assembly(
+    bom: PathBuf,
+    placement: PathBuf,
+    output: PathBuf,
+    name: Option<String>,
+    default_model: String,
+) -> Result<()> {
+    let name = name.unwrap_or_else(|| sanitized_project_name(&bom, "imported_jlc_assembly"));
+    let summary = crate::importers::jlc::import_jlc_assembly(
+        &crate::importers::jlc::JlcAssemblyImportOptions {
+            bom: bom.clone(),
+            placement: placement.clone(),
+            output: output.clone(),
+            name,
+            default_model,
+        },
+    )?;
+    println!(
+        "CircuitCI imported JLC/EasyEDA assembly: {} components, {} BOM rows, {} placements, {} BOM-matched components, {} placement-matched components {} + {} -> {}",
+        summary.components,
+        summary.bom_rows,
+        summary.placements,
+        summary.components_with_bom,
+        summary.components_with_placement,
+        bom.display(),
+        placement.display(),
         output.display()
     );
     Ok(())

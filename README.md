@@ -15,8 +15,8 @@ engineer can fix the design and rerun validation.
 ## What It Does
 
 - Parses Board IR YAML projects and component model libraries.
-- Imports SPICE decks, KiCad XML netlists, native KiCad schematics, and KiCad PCB
-  placement/route evidence.
+- Imports SPICE decks, KiCad XML netlists, native KiCad schematics, KiCad PCB
+  placement/route evidence, and JLC/EasyEDA BOM/CPL assembly evidence.
 - Suggests missing validation scenarios from board/model evidence.
 - Validates power trees, regulator constraints, reset supervisors, boot straps,
   GPIO backdrive paths, I/O voltage compatibility, USB protection, USB route
@@ -99,6 +99,15 @@ Enrich an imported project with KiCad PCB placement and route evidence:
 circuitci import-kicad-pcb path/to/board.kicad_pcb \
   --project out/imported.project.yaml \
   --output out/imported_with_layout.project.yaml
+```
+
+Import JLC/EasyEDA assembly BOM and placement evidence:
+
+```bash
+circuitci import-jlc-assembly \
+  --bom path/to/bom.csv \
+  --placement path/to/placement.csv \
+  --output out/imported_assembly.project.yaml
 ```
 
 Run an acceptance suite:
