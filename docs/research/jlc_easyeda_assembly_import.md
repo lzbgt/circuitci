@@ -204,8 +204,15 @@ CircuitCI suggested 15 scenarios for urine_monitor_jlc_assembly -> out/peer-manu
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
 ```
 
-Current split: 10 runnable source-backed suggestions and 5 non-runnable
-threshold-gated suggestions.
+Re-run on 2026-06-14 with the current importer and suggestion engine produced
+the same no-overlay split:
+
+```text
+out/peer-overlay-current/suggestions-no-overlay.yaml: total=15 runnable=10 non_runnable=5 non_ids=drill_to_board_edge_clearance,slot_to_board_edge_clearance,solder_paste_opening_valid,solder_paste_aperture_area_ratio_valid,solder_paste_spacing_valid
+```
+
+Current no-overlay split: 10 runnable source-backed suggestions and 5
+non-runnable threshold-gated suggestions.
 
 Runnable manufacturing suggestions generated from named source-backed presets:
 
@@ -252,6 +259,41 @@ intentionally separate from process presets; it records board-specific facts
 such as stencil thickness, drill/slot edge-clearance limits, paste coverage
 ratio bounds, and paste-spacing limits without claiming those values are global
 JLCPCB defaults.
+
+The same 2026-06-14 re-run checked the peer release directory for quote/order
+metadata carrying those board-specific values. The committed release contains
+BOM/CPL, Gerber/Excellon, EasyEDA Pro, schematic/layout review PDFs, and
+extracted schematic text, but no saved JLC quote/order metadata file with
+stencil thickness, drill/slot edge limits, paste coverage limits, or paste
+spacing limits. CircuitCI therefore correctly keeps the imported peer release
+at 10 runnable and 5 non-runnable suggestions until a reviewed order/process
+metadata source is supplied.
+
+As an executable overlay smoke, the current release binary was run with
+explicit example metadata values:
+
+```bash
+circuitci set-manufacturing-metadata out/peer-overlay-current/10-drills.project.yaml \
+  --output out/peer-overlay-current/11-metadata-example.project.yaml \
+  --stencil-thickness-mm 0.10 \
+  --min-drill-edge-clearance-mm 0.50 \
+  --min-slot-edge-clearance-mm 0.50 \
+  --min-paste-area-ratio 0.70 \
+  --max-paste-area-ratio 1.00 \
+  --min-solder-paste-spacing-mm 0.15 \
+  --source example_reviewed_order_metadata
+circuitci suggest-scenarios out/peer-overlay-current/11-metadata-example.project.yaml \
+  --output out/peer-overlay-current/suggestions-with-overlay.yaml
+```
+
+That smoke is not evidence that the peer order used those values; it proves the
+Board IR overlay path closes the gating when reviewed board/order facts are
+present:
+
+```text
+CircuitCI applied 7 board manufacturing metadata fields out/peer-overlay-current/10-drills.project.yaml -> out/peer-overlay-current/11-metadata-example.project.yaml
+out/peer-overlay-current/suggestions-with-overlay.yaml: total=15 runnable=15 non_runnable=0 non_ids=
+```
 
 The JLCPCB stencil capability source is pinned for one generic stencil
 manufacturability floor: minimum aperture size `>0.08mm`. CircuitCI therefore
