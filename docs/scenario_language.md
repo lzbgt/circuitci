@@ -81,12 +81,16 @@ Unsupported scenario types must produce an explicit low-confidence limitation or
 
 For the first Rust implementation:
 
-1. The CLI loads the requested profile name for report metadata.
+1. The CLI loads the requested profile name for report metadata and profile
+   coverage annotation.
 2. Project-declared scenarios are the executable source of truth.
 3. A scenario runs each check in its `checks` list once, preserving file order.
 4. Duplicate checks in one scenario are de-duplicated with first occurrence winning.
 5. Unsupported checks produce `UNSUPPORTED_CHECK` limitations.
 6. Unsupported scenario types produce `UNSUPPORTED_SCENARIO` limitations.
+7. `iot_basic_v0` reports a non-blocking `PROFILE_COVERAGE_PARTIAL`
+   limitation when the project does not declare the core executable checks
+   needed for full-profile sign-off.
 
 Canonical executable check IDs:
 

@@ -19,6 +19,7 @@ mod strap_bias;
 mod target_contract;
 mod uart_bootloader;
 
+use crate::board_ir::BoardProject;
 use crate::library::BoundBoard;
 use crate::reports::{Finding, Limitation};
 use std::collections::BTreeSet;
@@ -88,6 +89,54 @@ pub struct ValidationOutcome {
     pub limitations: Vec<Limitation>,
     pub artifacts: Vec<String>,
     pub waveforms: Vec<String>,
+}
+
+const IOT_BASIC_CORE_PROFILE_CHECKS: &[&str] = &[
+    POWER_TREE_VALID,
+    RESET_RELEASE_AFTER_POWER_VALID,
+    BOOT_STRAP_DEFINED,
+    GPIO_BACKDRIVE,
+    UART_BOOTLOADER_SYNC,
+];
+
+pub fn profile_coverage_limitations(profile: &str, project: &BoardProject) -> Vec<Limitation> {
+    if profile != "iot_basic_v0" {
+        return Vec::new();
+    }
+
+    let declared_checks: BTreeSet<&str> = project
+        .scenarios
+        .iter()
+        .flat_map(|scenario| scenario.checks.iter().map(String::as_str))
+        .collect();
+    let missing_checks: Vec<_> = IOT_BASIC_CORE_PROFILE_CHECKS
+        .iter()
+        .copied()
+        .filter(|check| !declared_checks.contains(check))
+        .collect();
+    if missing_checks.is_empty() {
+        return Vec::new();
+    }
+
+    let declared_summary = if declared_checks.is_empty() {
+        "none".to_string()
+    } else {
+        declared_checks
+            .iter()
+            .copied()
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    vec![Limitation {
+        id: "PROFILE_COVERAGE_PARTIAL".to_string(),
+        scope: "profile:iot_basic_v0".to_string(),
+        confidence: "high".to_string(),
+        blocking: false,
+        message: format!(
+            "iot_basic_v0 validation is scenario-declaration driven. Declared checks: {declared_summary}. Missing core profile coverage: {}. Add scenarios or run suggest-scenarios/import evidence before treating this report as full-profile sign-off.",
+            missing_checks.join(", ")
+        ),
+    }]
 }
 
 pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {

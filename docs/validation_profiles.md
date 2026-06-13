@@ -30,11 +30,26 @@ pass_criteria:
   programming_interface_valid_if_declared: true
 ```
 
-## MVP Behavior
+## Runtime Behavior
 
-The CLI accepts `--profile iot_basic_v0` and runs checks declared by the project scenario list. The profile is report metadata plus future policy until profile expansion is implemented. Missing future-profile checks are reported as limitations only when the project declares them.
+The CLI accepts `--profile iot_basic_v0` and runs checks declared by the
+project scenario list. Scenario declarations remain the executable source of
+truth: the profile does not synthesize scenarios, import missing evidence, or
+turn scenario suggestions into validation evidence.
 
-For this stage, `iot_basic_v0` recognizes these executable checks when project scenarios declare them:
+When `iot_basic_v0` is requested, reports also include a non-blocking
+`PROFILE_COVERAGE_PARTIAL` limitation if core profile checks are not declared.
+This preserves the schema `pass`/`fail` contract while making incomplete
+profile coverage explicit for sign-off review. The core coverage set is:
+
+- `POWER_TREE_VALID`
+- `RESET_RELEASE_AFTER_POWER_VALID`
+- `BOOT_STRAP_DEFINED`
+- `GPIO_BACKDRIVE`
+- `UART_BOOTLOADER_SYNC`
+
+`iot_basic_v0` recognizes these executable checks when project scenarios
+declare them:
 
 - `GPIO_BACKDRIVE`
 - `RESET_RELEASE_AFTER_POWER_VALID`

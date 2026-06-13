@@ -64,6 +64,13 @@ Input handling follows this order:
 
 Explicit scenario parameters override defaults so users can run what-if checks.
 
+Profile coverage is intentionally handled as a report-stage limitation, not as
+hidden validation dispatch. `profile_coverage_limitations()` compares
+project-declared checks with the core `iot_basic_v0` executable coverage set
+and emits one non-blocking `PROFILE_COVERAGE_PARTIAL` limitation when coverage
+is incomplete. Do not make profiles auto-add scenarios; use
+`suggest-scenarios` or importer metadata to produce explicit scenario inputs.
+
 Resistor-programmed charger current inference is centralized in
 `src/charger_programming.rs`. It requires exactly one positive resistor between
 the model-declared programming and reference pins and computes

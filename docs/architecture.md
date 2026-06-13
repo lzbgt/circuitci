@@ -95,6 +95,12 @@ Validation is scenario-driven. A scenario selects one or more check IDs, and
   route/via indices, Gerber apertures, and Excellon tools,
 - avoid changing thresholds to make examples pass.
 
+Validation profiles annotate coverage but do not synthesize hidden scenarios.
+For `iot_basic_v0`, report assembly adds a non-blocking
+`PROFILE_COVERAGE_PARTIAL` limitation when the project does not declare the
+core executable checks needed for full-profile sign-off. This keeps
+`report.result` tied to critical findings while making partial coverage visible.
+
 Manufacturing rules are static geometry and process screens. They currently
 cover circular drills, routed slots, annular rings, castellated holes, copper
 edge/spacing, solder-mask openings/dams, solder-paste openings/size/area ratio,

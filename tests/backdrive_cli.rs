@@ -44,6 +44,24 @@ fn fixed_backdrive_board_passes() {
 }
 
 #[test]
+fn iot_basic_profile_reports_partial_coverage_without_failing() {
+    let report = run_validation("examples/good_backdrive_fixed_board/project.yaml");
+    assert_eq!(report["result"], "pass");
+    let limitation = report["limitations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|limitation| limitation["id"] == "PROFILE_COVERAGE_PARTIAL")
+        .expect("expected partial profile coverage limitation");
+    assert_eq!(limitation["scope"], "profile:iot_basic_v0");
+    assert_eq!(limitation["blocking"], false);
+    let message = limitation["message"].as_str().unwrap();
+    assert!(message.contains("POWER_TREE_VALID"));
+    assert!(message.contains("RESET_RELEASE_AFTER_POWER_VALID"));
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn good_bootloader_board_passes_reset_boot_and_sync() {
     let report = run_validation("examples/good_bootloader_board/project.yaml");
     assert_eq!(report["result"], "pass");

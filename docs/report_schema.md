@@ -83,6 +83,12 @@ Warnings and limitations remain visible in the report but do not change `result`
 
 Unsupported `iot_basic_v0` checks are blocking for fabrication readiness even when the executable subset has no critical finding.
 
+`iot_basic_v0` reports must include a non-blocking
+`PROFILE_COVERAGE_PARTIAL` limitation when declared project scenarios do not
+cover the core executable profile checks. This limitation does not change
+`result`; it prevents partial scenario declarations from being mistaken for
+full-profile sign-off.
+
 Projects using `generic`, `estimated`, or `low` confidence component models must include non-blocking `LOW_CONFIDENCE_MODEL` limitations scoped to the component and model.
 
 ## Additional Rule Findings
