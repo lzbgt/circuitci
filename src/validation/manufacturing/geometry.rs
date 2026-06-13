@@ -483,7 +483,7 @@ fn polygon_to_segment_clearance_mm(
         .fold(f64::INFINITY, f64::min)
 }
 
-fn feature_boundary_points(feature: &LayoutCopperFeature) -> Vec<LayoutPoint> {
+pub(super) fn feature_boundary_points(feature: &LayoutCopperFeature) -> Vec<LayoutPoint> {
     match feature.shape.as_str() {
         "circle" => (0..32)
             .map(|index| {
@@ -569,7 +569,10 @@ fn closed_edges(points: &[LayoutPoint]) -> impl Iterator<Item = (&LayoutPoint, &
         .take(points.len())
 }
 
-fn point_inside_copper_feature(point: &LayoutPoint, feature: &LayoutCopperFeature) -> bool {
+pub(super) fn point_inside_copper_feature(
+    point: &LayoutPoint,
+    feature: &LayoutCopperFeature,
+) -> bool {
     let dx = point.x_mm - feature.at.x_mm;
     let dy = point.y_mm - feature.at.y_mm;
     match feature.shape.as_str() {
@@ -588,7 +591,7 @@ fn point_inside_copper_feature(point: &LayoutPoint, feature: &LayoutCopperFeatur
     }
 }
 
-fn point_inside_polygon(point: &LayoutPoint, polygon: &[LayoutPoint]) -> bool {
+pub(super) fn point_inside_polygon(point: &LayoutPoint, polygon: &[LayoutPoint]) -> bool {
     if polygon
         .iter()
         .any(|vertex| point_distance_mm(point, vertex) <= f64::EPSILON)
@@ -756,7 +759,7 @@ fn point_to_rect_distance_mm(
     dx.hypot(dy)
 }
 
-fn point_to_segment_distance_mm(
+pub(super) fn point_to_segment_distance_mm(
     point: &LayoutPoint,
     start: &LayoutPoint,
     end: &LayoutPoint,

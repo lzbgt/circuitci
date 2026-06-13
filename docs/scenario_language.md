@@ -731,8 +731,9 @@ fab-specific spacing rules without richer PCB/net evidence.
 
 Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`
-and Gerber solder-mask flash-opening evidence under
-`board.layout.solder_mask.features`.
+and Gerber solder-mask opening evidence under `board.layout.solder_mask`.
+Supported mask openings include flash features, circular-aperture draw
+segments, and single-contour regions.
 
 ```yaml
 scenarios:
@@ -748,15 +749,16 @@ scenarios:
 Solder-mask opening algorithm:
 
 1. Require `parameters.min_mask_expansion_mm`.
-2. Require finite Gerber copper flash features and solder-mask flash features.
+2. Require finite Gerber copper flash features and solder-mask features,
+   segments, or regions.
 3. Map `F.Cu` copper to `F.Mask` openings and `B.Cu` copper to `B.Mask`
    openings.
 4. For each copper flash, find the same-layer mask opening within
-   `max_copper_to_mask_center_offset_mm` that gives the largest minimum X/Y
-   expansion.
+   `max_copper_to_mask_center_offset_mm` that gives the largest minimum
+   boundary expansion.
 5. Fail when no co-located opening exists.
 6. Fail when the opening expands the copper flash by less than
-   `min_mask_expansion_mm` on either axis.
+   `min_mask_expansion_mm`.
 
 This is a static 2D solder-mask aperture screen. It checks flash-to-flash
 opening evidence and does not yet solve mask regions, mask dams between pads,

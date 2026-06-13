@@ -377,8 +377,9 @@ optional `first_copper_region_net`, optional
 
 `SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
 that compare Gerber copper flash evidence under `board.layout.copper.features`
-with Gerber solder-mask flash-opening evidence under
-`board.layout.solder_mask.features`. Stable measured keys include
+with Gerber solder-mask opening evidence under `board.layout.solder_mask`.
+Supported mask openings include flash features, circular-aperture draw
+segments, and single-contour regions. Stable measured keys include
 `copper_feature_index`, `copper_feature_x_mm`, `copper_feature_y_mm`,
 `copper_feature_layer`, optional `copper_feature_net`, optional
 `copper_feature_island_id`, optional `copper_feature_owner_kind`, optional
@@ -388,6 +389,7 @@ with Gerber solder-mask flash-opening evidence under
 `copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index`. Missing-opening findings also report
 `expected_solder_mask_layer`. Undersized-opening findings also report
+`solder_mask_kind`. Feature-opening findings report
 `solder_mask_feature_index`, `solder_mask_feature_x_mm`,
 `solder_mask_feature_y_mm`, `solder_mask_feature_layer`,
 optional `solder_mask_feature_net`, optional
@@ -398,7 +400,21 @@ optional `solder_mask_feature_pin`, optional
 `solder_mask_feature_size_x_mm`, `solder_mask_feature_size_y_mm`,
 `solder_mask_feature_source_primitive`,
 `solder_mask_feature_source_primitive_index`,
-`measured_mask_expansion_x_mm`, `measured_mask_expansion_y_mm`,
+`measured_mask_expansion_x_mm`, and `measured_mask_expansion_y_mm`.
+Segment-opening findings report `solder_mask_segment_index`,
+`solder_mask_segment_start`, `solder_mask_segment_end`,
+`solder_mask_segment_layer`, optional `solder_mask_segment_net`, optional
+`solder_mask_segment_owner_kind`, optional `solder_mask_segment_component`,
+optional `solder_mask_segment_pin`, optional
+`solder_mask_segment_via_index`, `solder_mask_segment_aperture`,
+`solder_mask_segment_width_mm`, `solder_mask_segment_source_primitive`, and
+`solder_mask_segment_source_primitive_index`. Region-opening findings report
+`solder_mask_region_index`, `solder_mask_region_layer`, optional
+`solder_mask_region_net`, optional `solder_mask_region_owner_kind`, optional
+`solder_mask_region_component`, optional `solder_mask_region_pin`, optional
+`solder_mask_region_via_index`, `solder_mask_region_source_primitive`,
+`solder_mask_region_source_primitive_index`, and
+`solder_mask_region_point_count`. All undersized-opening findings report
 `measured_min_mask_expansion_mm`, and `copper_to_mask_center_offset_mm`.
 Stable limit keys include `min_mask_expansion_mm` and
 `max_copper_to_mask_center_offset_mm`.

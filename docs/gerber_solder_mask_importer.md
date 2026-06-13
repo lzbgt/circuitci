@@ -42,11 +42,11 @@ circuitci import-gerber-solder-mask fabrication/F_Mask.gts \
   --output with_mask.project.yaml
 ```
 
-`SOLDER_MASK_OPENING_VALID` currently consumes flash-opening evidence from
-`board.layout.solder_mask.features` together with Gerber copper flashes under
-`board.layout.copper.features`. It fails when a copper flash has no co-located
-same-side mask opening or when the opening expansion is below
-`parameters.min_mask_expansion_mm`.
+`SOLDER_MASK_OPENING_VALID` consumes flash, circular-aperture draw, and
+single-contour region opening evidence from `board.layout.solder_mask`
+together with Gerber copper flashes under `board.layout.copper.features`. It
+fails when a copper flash has no co-located same-side mask opening or when the
+opening expansion is below `parameters.min_mask_expansion_mm`.
 
 `SOLDER_MASK_DAM_VALID` consumes same-layer flash, circular-aperture draw, and
 region opening evidence from `board.layout.solder_mask`. It fails when adjacent

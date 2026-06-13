@@ -248,6 +248,14 @@ fn solder_mask_opening_passes_when_opening_expands_copper_flash() {
 }
 
 #[test]
+fn solder_mask_opening_passes_for_segment_opening() {
+    let report = run_validation("examples/good_solder_mask_opening_segment/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_mask_opening_fails_when_opening_is_missing() {
     let report = run_validation("examples/bad_solder_mask_opening_missing/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -279,6 +287,23 @@ fn solder_mask_opening_fails_when_opening_is_undersized() {
         .as_f64()
         .unwrap();
     assert!((measured_min_expansion - 0.03).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_mask_expansion_mm"], 0.05);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_mask_opening_fails_for_region_opening_expansion() {
+    let report = run_validation("examples/bad_solder_mask_opening_region_undersized/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_OPENING_VALID");
+    assert_eq!(failure["measured"]["solder_mask_kind"], "region");
+    assert_eq!(failure["measured"]["solder_mask_region_layer"], "F.Mask");
+    assert_eq!(failure["measured"]["solder_mask_region_point_count"], 4);
+    let measured_min_expansion = failure["measured"]["measured_min_mask_expansion_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((measured_min_expansion + 0.04_f64.hypot(0.04)).abs() < 1.0e-12);
     assert_eq!(failure["limit"]["min_mask_expansion_mm"], 0.05);
     assert_report_schema_valid(&report);
 }
