@@ -289,6 +289,21 @@ optional `board_edge_contour_index`, and optional
 `board_edge_boundary_role`. Stable limit keys include
 `min_drill_edge_clearance_mm`.
 
+`DRILL_ANNULAR_RING_VALID` reports are emitted by `manufacturing` scenarios
+that combine `board.layout.drills` evidence with
+`board.layout.copper.features` Gerber flash evidence. Stable measured keys
+include `drill_index`, `drill_x_mm`, `drill_y_mm`, `drill_mm`,
+`drill_radius_mm`, `drill_plating`, optional `drill_layer`, optional
+`drill_tool`, optional `source_hit_index`, `annular_ring_mm`,
+`drill_to_copper_center_offset_mm`, `copper_feature_index`,
+`copper_feature_x_mm`, `copper_feature_y_mm`, `copper_feature_layer`,
+`copper_feature_aperture`, `copper_feature_shape`,
+`copper_feature_size_x_mm`, `copper_feature_size_y_mm`,
+`copper_feature_source_primitive`, and
+`copper_feature_source_primitive_index` when a matching flash exists. Stable
+limit keys include `min_annular_ring_mm` and
+`max_drill_to_copper_center_offset_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

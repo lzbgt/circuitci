@@ -154,10 +154,16 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   edge-clearance screen. It does not model drill wander, routed-slot width,
   plating tolerances, panel tabs, fab-specific stackup rules, or copper-to-hole
   clearance.
+- `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
+  anonymous Gerber flash copper geometry for a static 2D annular-ring screen.
+  It checks circle, rectangle, and axis-aligned oval flashes, and skips
+  non-plated drills. It does not model copper draw traces, thermal reliefs,
+  plated-barrel thickness, drill wander distributions, solder mask, fab
+  compensation, copper-to-copper clearance, or net ownership.
 - Gerber copper import currently records anonymous dark `D03` flash features
   for circle, rectangle, and oval apertures. It counts but does not yet convert
   linear draw traces, and it does not infer nets, component ownership, pad
-  names, annular rings, copper islands, mask expansion, or electrical
+  names, copper islands, mask expansion, or electrical
   connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.

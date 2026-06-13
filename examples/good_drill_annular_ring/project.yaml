@@ -1,0 +1,42 @@
+project:
+  name: good_drill_annular_ring
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    drills:
+      - at: { x_mm: 2.0, y_mm: -2.0 }
+        drill_mm: 0.6
+        plating: plated
+        layer: PTH_Through
+        tool: T01
+        source_hit_index: 0
+      - at: { x_mm: 4.0, y_mm: -2.0 }
+        drill_mm: 1.0
+        plating: non_plated
+        layer: NPTH_Through
+        tool: T02
+        source_hit_index: 1
+    copper:
+      features:
+        - at: { x_mm: 2.0, y_mm: -2.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 1.2, y_mm: 1.2 }
+
+scenarios:
+  - name: drill_annular_ring
+    type: manufacturing
+    checks:
+      - DRILL_ANNULAR_RING_VALID
+    parameters:
+      min_annular_ring_mm: 0.2
+      max_drill_to_copper_center_offset_mm: 0.05

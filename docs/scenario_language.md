@@ -101,6 +101,7 @@ Canonical executable check IDs:
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
+- `DRILL_ANNULAR_RING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -598,6 +599,40 @@ all count as board edges for this check. This is a static 2D centerline
 fabrication screen; it does not model drill wander, routed-slot width, plating
 barrel tolerances, panel tabs, fab-specific minimums, or copper-to-hole
 clearance.
+
+Drill annular-ring screening uses `DRILL_ANNULAR_RING_VALID` when the Board IR
+includes fabrication drill evidence under `board.layout.drills` and anonymous
+Gerber copper flash evidence under `board.layout.copper.features`.
+
+```yaml
+scenarios:
+  - name: drill_annular_ring
+    type: manufacturing
+    checks:
+      - DRILL_ANNULAR_RING_VALID
+    parameters:
+      min_annular_ring_mm: 0.2
+      max_drill_to_copper_center_offset_mm: 0.05
+```
+
+Drill annular-ring algorithm:
+
+1. Require `parameters.min_annular_ring_mm`.
+2. Optionally accept `parameters.max_drill_to_copper_center_offset_mm`;
+   default is `0.1` mm.
+3. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
+4. Require finite `board.layout.copper.features[]` entries with positive
+   aperture sizes.
+5. Skip `non_plated` drills. Check `plated` and `unknown` drills.
+6. Match co-located copper flashes within the center-offset limit.
+7. Compute the best annular ring from supported `circle`, `rect`, or
+   axis-aligned `oval` copper flash geometry.
+8. Fail when no matching copper flash exists or when the best ring is below
+   `min_annular_ring_mm`.
+
+This is a static 2D fabrication screen. It does not model copper draws,
+thermal reliefs, plating tolerance, drill wander distributions, solder mask,
+fab-specific compensation, or net ownership.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

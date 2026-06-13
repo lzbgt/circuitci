@@ -43,3 +43,8 @@ Gerber copper import is fabrication geometry evidence only. It does not infer
 nets, components, pad names, annular rings, zones, schematic intent, or
 electrical connectivity. Combine it with schematic, PCB, assembly, outline, and
 drill imports before using electrical or manufacturability checks.
+
+`DRILL_ANNULAR_RING_VALID` can consume imported dark flash evidence together
+with Excellon drill hits for a static annular-ring screen. That rule still
+operates on anonymous fabrication geometry; it does not prove net ownership,
+thermal relief connectivity, or electrical continuity.

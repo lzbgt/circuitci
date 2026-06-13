@@ -42,3 +42,55 @@ fn drill_to_board_edge_clearance_treats_cutouts_as_board_edges() {
     assert_eq!(failure["limit"]["min_drill_edge_clearance_mm"], 0.4);
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn drill_annular_ring_passes_when_copper_flash_is_large_enough() {
+    let report = run_validation("examples/good_drill_annular_ring/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn drill_annular_ring_fails_when_copper_flash_is_too_small() {
+    let report = run_validation("examples/bad_drill_annular_ring/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    assert_eq!(failure["measured"]["drill_index"], 0);
+    assert_eq!(failure["measured"]["drill_mm"], 0.6);
+    assert_eq!(failure["measured"]["annular_ring_mm"], 0.10000000000000003);
+    assert_eq!(failure["measured"]["copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["copper_feature_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["copper_feature_aperture"], "D10");
+    assert_eq!(failure["measured"]["copper_feature_shape"], "circle");
+    assert_eq!(failure["measured"]["copper_feature_size_x_mm"], 0.8);
+    assert_eq!(failure["limit"]["min_annular_ring_mm"], 0.2);
+    assert_eq!(
+        failure["limit"]["max_drill_to_copper_center_offset_mm"],
+        0.05
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn drill_annular_ring_fails_when_plated_drill_has_no_matching_copper_flash() {
+    let report = run_validation("examples/bad_drill_annular_ring_missing_copper/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    assert_eq!(failure["measured"]["drill_index"], 0);
+    assert_eq!(failure["measured"]["drill_plating"], "unknown");
+    assert_eq!(failure["limit"]["min_annular_ring_mm"], 0.2);
+    assert_eq!(
+        failure["limit"]["max_drill_to_copper_center_offset_mm"],
+        0.05
+    );
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("no co-located")
+    );
+    assert_report_schema_valid(&report);
+}
