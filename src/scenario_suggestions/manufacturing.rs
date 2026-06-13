@@ -525,6 +525,7 @@ fn manufacturing_suggestion(
             required_boot_mode: None,
             straps: Vec::new(),
             bootloader: None,
+            control_effects: Vec::new(),
             events: Vec::new(),
             conditioning: None,
             protection_clamps: Vec::new(),

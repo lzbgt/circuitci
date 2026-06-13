@@ -135,10 +135,13 @@ timing is derived from explicit RC evidence or exactly one matching
 direct strap state rather than assumed firmware behavior. Standalone
 `RESET_RELEASE_AFTER_POWER_VALID` suggestions use the same runtime timing
 evidence when the record matches the target component/reset pin and optional
-power pin. Standalone `BOOT_STRAP_DEFINED` suggestions may fill
-`straps[].actual` and become runnable only when every required strap is directly
-tied to a declared powered rail or ground; resistor bias and digital nets remain
-explicit evidence-gathering templates.
+power pin. `CONTROL_LINE_RELEASE_SEQUENCE` suggestions are generated only from
+complete `board.runtime.control_line_sequences[]` records; the record is already
+the reviewed reduced semantic model of host-line effects and events.
+Standalone `BOOT_STRAP_DEFINED` suggestions may fill `straps[].actual` and
+become runnable only when every required strap is directly tied to a declared
+powered rail or ground; resistor bias and digital nets remain explicit
+evidence-gathering templates.
 
 GPIO backdrive suggestions likewise require explicit runtime evidence before
 they become runnable. Connectivity and power-state metadata can identify a risk,

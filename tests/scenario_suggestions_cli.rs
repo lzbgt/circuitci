@@ -1458,6 +1458,64 @@ fn suggest_scenarios_uses_runtime_reset_release_evidence() {
 }
 
 #[test]
+fn suggest_scenarios_uses_runtime_control_line_sequence_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_control_line_runtime/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_control_line_runtime"
+    );
+    let control_line = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "control_line_release_sequence_u1_application")
+        .expect("control line suggestion");
+    assert_eq!(control_line["kind"], "reset_boot");
+    assert_eq!(control_line["runnable"], true);
+    assert_eq!(
+        control_line["scenario"]["checks"][0],
+        "CONTROL_LINE_RELEASE_SEQUENCE"
+    );
+    assert_eq!(control_line["scenario"]["type"], "control_line_sequence");
+    assert_eq!(
+        control_line["scenario"]["name"],
+        "runtime_control_lines_release_to_application"
+    );
+    assert_eq!(
+        control_line["scenario"]["required_boot_mode"],
+        "application"
+    );
+    assert_eq!(control_line["scenario"]["target"]["component"], "U1");
+    assert_eq!(control_line["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(control_line["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(
+        control_line["scenario"]["control_effects"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        control_line["scenario"]["control_effects"][0]["source"]["component"],
+        "U2"
+    );
+    assert_eq!(
+        control_line["scenario"]["events"][0]["action"],
+        "control_line"
+    );
+    assert_eq!(control_line["scenario"]["events"][0]["line"], "boot_select");
+    assert_eq!(control_line["scenario"]["events"][0]["asserted"], true);
+    assert!(control_line.get("required_inputs").is_none());
+    assert!(
+        control_line["reason"]
+            .as_str()
+            .unwrap()
+            .contains("reviewed_host_control_trace")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_clock_source_template() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_clock_source/project.yaml");

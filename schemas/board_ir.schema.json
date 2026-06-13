@@ -170,6 +170,93 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "control_line_sequences": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "target",
+                  "required_boot_mode",
+                  "timing",
+                  "control_effects",
+                  "events"
+                ],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "target": {
+                    "type": "object",
+                    "required": ["component"],
+                    "properties": {
+                      "component": { "type": "string", "minLength": 1 },
+                      "power_pin": { "type": "string", "minLength": 1 },
+                      "reset_pin": { "type": "string", "minLength": 1 }
+                    },
+                    "additionalProperties": false
+                  },
+                  "required_boot_mode": { "type": "string", "minLength": 1 },
+                  "timing": {
+                    "type": "object",
+                    "required": [
+                      "power_valid_at_us",
+                      "reset_release_at_us",
+                      "boot_sample_at_us"
+                    ],
+                    "properties": {
+                      "power_valid_at_us": { "type": "number", "minimum": 0 },
+                      "reset_release_at_us": { "type": "number", "minimum": 0 },
+                      "boot_sample_at_us": { "type": "number", "minimum": 0 },
+                      "reset_release_delay_us": { "type": "number", "minimum": 0 }
+                    },
+                    "additionalProperties": false
+                  },
+                  "control_effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "source",
+                        "target",
+                        "asserted_state",
+                        "released_state",
+                        "release_delay_us"
+                      ],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "source": { "$ref": "#/$defs/endpoint" },
+                        "target": { "$ref": "#/$defs/endpoint" },
+                        "asserted_state": { "enum": ["high", "low", "z"] },
+                        "released_state": { "enum": ["high", "low", "z"] },
+                        "release_delay_us": { "type": "number", "minimum": 0 }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["at_us", "action"],
+                      "properties": {
+                        "at_us": { "type": "number", "minimum": 0 },
+                        "action": { "type": "string", "minLength": 1 },
+                        "from": { "$ref": "#/$defs/endpoint" },
+                        "to": { "$ref": "#/$defs/endpoint" },
+                        "bytes": {
+                          "type": "array",
+                          "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+                        },
+                        "line": { "type": "string", "minLength": 1 },
+                        "asserted": { "type": "boolean" }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "source": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

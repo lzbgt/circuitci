@@ -757,6 +757,43 @@ one record matches the target component and reset pin, and the optional
 `power_pin` matches the target power pin. Ambiguous, negative, or non-finite
 timing evidence is ignored so the template remains evidence-gathering.
 
+`board.runtime.control_line_sequences[]` stores reviewed host-control traces
+and reduced line-effect evidence for `CONTROL_LINE_RELEASE_SEQUENCE`
+suggestions:
+
+```yaml
+board:
+  runtime:
+    control_line_sequences:
+      - name: runtime_control_lines_release_to_application
+        target:
+          component: U1
+          power_pin: VDD
+          reset_pin: NRST
+        required_boot_mode: application
+        timing:
+          power_valid_at_us: 1500
+          reset_release_at_us: 5000
+          boot_sample_at_us: 5100
+        control_effects:
+          - name: boot_select
+            source: { component: U2, pin: TXD }
+            target: { component: U1, pin: BOOT0 }
+            asserted_state: high
+            released_state: low
+            release_delay_us: 50
+        events:
+          - at_us: 4900
+            action: control_line
+            line: boot_select
+            asserted: false
+        source: reviewed_host_control_trace
+```
+
+The runtime evidence is already the reduced semantic model. CircuitCI does not
+derive inversion, storage, diode, transistor, or RC behavior from this section;
+it only turns complete explicit evidence into a runnable scenario suggestion.
+
 `board.runtime.gpio_backdrive[]` stores explicit backdrive operating-state
 evidence:
 

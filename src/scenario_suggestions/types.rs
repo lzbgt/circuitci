@@ -40,6 +40,8 @@ pub struct SuggestedScenario {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bootloader: Option<SuggestedBootloader>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub control_effects: Vec<SuggestedControlEffect>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<SuggestedEvent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conditioning: Option<SuggestedConditioning>,
@@ -110,13 +112,28 @@ pub struct SuggestedEvent {
     pub from: Option<SuggestedEndpoint>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<SuggestedEndpoint>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub bytes: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asserted: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct SuggestedEndpoint {
     pub component: String,
     pub pin: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedControlEffect {
+    pub name: String,
+    pub source: SuggestedEndpoint,
+    pub target: SuggestedEndpoint,
+    pub asserted_state: String,
+    pub released_state: String,
+    pub release_delay_us: f64,
 }
 
 #[derive(Debug, Serialize)]

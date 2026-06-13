@@ -150,7 +150,9 @@ explicit measured/simulated release timing. It emits runnable
 `UART_BOOTLOADER_SYNC` scenarios when the target RX net has an output-capable
 sender, reset/boot timing is derived from explicit RC or runtime timing
 evidence, and the required boot mode is proven by a direct rail/ground strap.
-It emits non-runnable templates for reset release without explicit timing
+Complete `board.runtime.control_line_sequences[]` evidence also emits runnable
+`CONTROL_LINE_RELEASE_SEQUENCE` scenarios for reviewed host-control traces. It
+emits non-runnable templates for reset release without explicit timing
 evidence, observed boot-strap states that are not direct rail/ground ties, UART
 bootloader sync without complete timing/strap/sender proof, and first-slice
 GPIO backdrive hot-plug risks when model/connectivity evidence is present but

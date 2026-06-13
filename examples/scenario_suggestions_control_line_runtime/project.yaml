@@ -1,0 +1,106 @@
+project:
+  name: scenario_suggestions_control_line_runtime
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        NRST: nrst
+        BOOT0: boot0
+        RX: uart_mcu_rx
+        TX: uart_mcu_tx
+    U2:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: rail_3v3
+      pins:
+        VCC: rail_3v3
+        GND: gnd
+        TXD: boot0_control
+        RXD: uart_mcu_tx
+    U3:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: rail_3v3
+      pins:
+        VCC: rail_3v3
+        GND: gnd
+        TXD: reset_control
+        RXD: uart_mcu_rx
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      power_valid_at_us: 1500
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+    uart_mcu_tx:
+      kind: digital_or_analog
+    boot0_control:
+      kind: digital_or_analog
+    reset_control:
+      kind: digital_or_analog
+  runtime:
+    control_line_sequences:
+      - name: runtime_control_lines_release_to_application
+        target:
+          component: U1
+          power_pin: VDD
+          reset_pin: NRST
+        required_boot_mode: application
+        timing:
+          power_valid_at_us: 1500
+          reset_release_at_us: 5000
+          boot_sample_at_us: 5100
+        control_effects:
+          - name: boot_select
+            source: { component: U2, pin: TXD }
+            target: { component: U1, pin: BOOT0 }
+            asserted_state: high
+            released_state: low
+            release_delay_us: 50
+          - name: reset
+            source: { component: U3, pin: TXD }
+            target: { component: U1, pin: NRST }
+            asserted_state: low
+            released_state: high
+            release_delay_us: 0
+        events:
+          - at_us: 0
+            action: control_line
+            line: boot_select
+            asserted: true
+          - at_us: 1000
+            action: control_line
+            line: reset
+            asserted: true
+          - at_us: 4900
+            action: control_line
+            line: boot_select
+            asserted: false
+          - at_us: 5000
+            action: control_line
+            line: reset
+            asserted: false
+        source: reviewed_host_control_trace
+
+scenarios: []

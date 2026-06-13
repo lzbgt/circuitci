@@ -61,6 +61,8 @@ pub struct BoardRuntime {
     pub gpio_backdrive: Vec<GpioBackdriveRuntimeEvidence>,
     #[serde(default)]
     pub reset_release: Vec<ResetReleaseRuntimeEvidence>,
+    #[serde(default)]
+    pub control_line_sequences: Vec<ControlLineSequenceRuntimeEvidence>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,6 +89,21 @@ pub struct ResetReleaseRuntimeEvidence {
     pub reset_release_at_us: f64,
     #[serde(default, rename = "reset_release_delay_us")]
     pub reset_release_delay_us: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ControlLineSequenceRuntimeEvidence {
+    #[serde(default)]
+    pub name: Option<String>,
+    pub target: ScenarioTarget,
+    pub required_boot_mode: String,
+    pub timing: ScenarioTiming,
+    #[serde(default)]
+    pub control_effects: Vec<ControlEffect>,
+    #[serde(default)]
+    pub events: Vec<ScenarioEvent>,
     #[serde(default)]
     pub source: Option<String>,
 }

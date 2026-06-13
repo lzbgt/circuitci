@@ -100,6 +100,13 @@ scenarios:
 
 Every `control_effect` must have at least one explicit `control_line` event before each evaluated sample time. The runtime must not infer initial line states.
 
+`suggest-scenarios` can generate a runnable `CONTROL_LINE_RELEASE_SEQUENCE`
+template from `board.runtime.control_line_sequences[]` when that runtime
+evidence already includes the target, required boot mode, timing, complete
+control effects, and explicit events. The suggestion path is only a projection
+from reviewed runtime evidence into scenario YAML; it does not infer a
+transistor-level control network.
+
 ## Validation Algorithm
 
 `CONTROL_LINE_RELEASE_SEQUENCE` should:

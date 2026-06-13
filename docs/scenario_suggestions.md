@@ -61,6 +61,11 @@ The command is conservative:
   timing for the target component and reset pin. This covers oscilloscope,
   simulation, reset-supervisor, or host-control timing evidence that has already
   been reviewed outside the schematic RC heuristic.
+- It emits runnable `CONTROL_LINE_RELEASE_SEQUENCE` suggestions from complete
+  `board.runtime.control_line_sequences[]` records. Those records must already
+  contain the target, required boot mode, timing, reduced control effects, and
+  explicit control-line events; CircuitCI does not infer initial line states or
+  transistor/diode/RC behavior.
 - `BOOT_STRAP_DEFINED` suggestions become runnable when every required strap
   pin is connected and the connected net is directly proven high by a declared
   powered rail or low by ground. Digital nets, resistor-bias-only evidence, and
