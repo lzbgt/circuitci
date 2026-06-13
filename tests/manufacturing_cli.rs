@@ -424,6 +424,59 @@ fn solder_paste_opening_fails_for_region_opening_area() {
 }
 
 #[test]
+fn solder_paste_spacing_passes_when_openings_are_far_enough() {
+    let report = run_validation("examples/good_solder_paste_spacing/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_spacing_fails_when_openings_are_too_close() {
+    let report = run_validation("examples/bad_solder_paste_spacing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_SPACING_VALID");
+    assert_eq!(failure["measured"]["solder_paste_layer"], "F.Paste");
+    assert_eq!(failure["measured"]["first_solder_paste_kind"], "feature");
+    assert_eq!(failure["measured"]["first_solder_paste_feature_index"], 0);
+    assert_eq!(failure["measured"]["second_solder_paste_kind"], "feature");
+    assert_eq!(failure["measured"]["second_solder_paste_feature_index"], 1);
+    let spacing = failure["measured"]["solder_paste_spacing_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((spacing - 0.08).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_paste_spacing_mm"], 0.15);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_spacing_fails_for_non_flash_openings() {
+    let report = run_validation("examples/bad_solder_paste_spacing_segment_region/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_solder_paste_kind"], "segment");
+    assert_eq!(failure["measured"]["first_solder_paste_segment_index"], 0);
+    assert_eq!(
+        failure["measured"]["first_solder_paste_segment_width_mm"],
+        0.2
+    );
+    assert_eq!(failure["measured"]["second_solder_paste_kind"], "region");
+    assert_eq!(failure["measured"]["second_solder_paste_region_index"], 0);
+    assert_eq!(
+        failure["measured"]["second_solder_paste_region_point_count"],
+        4
+    );
+    let spacing = failure["measured"]["solder_paste_spacing_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((spacing - 0.12).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_paste_spacing_mm"], 0.15);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_near_flashes() {
     let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
     assert_eq!(report["result"], "fail");

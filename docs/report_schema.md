@@ -457,6 +457,32 @@ Stable measured keys include
 `min_paste_area_ratio`, `max_paste_area_ratio`, and
 `max_copper_to_paste_center_offset_mm`.
 
+`SOLDER_PASTE_SPACING_VALID` reports are emitted by `manufacturing` scenarios
+that compare same-layer Gerber solder-paste opening evidence under
+`board.layout.solder_paste`. Stable measured keys include
+`solder_paste_layer`, `solder_paste_spacing_mm`,
+`first_solder_paste_kind`, and `second_solder_paste_kind`. Feature-opening
+findings report prefixed keys such as `first_solder_paste_feature_index`,
+`first_solder_paste_feature_x_mm`, `first_solder_paste_feature_y_mm`,
+`first_solder_paste_feature_layer`, `first_solder_paste_feature_aperture`,
+`first_solder_paste_feature_shape`, `first_solder_paste_feature_size_x_mm`,
+`first_solder_paste_feature_size_y_mm`,
+`first_solder_paste_feature_source_primitive`, and
+`first_solder_paste_feature_source_primitive_index`, with corresponding
+`second_...` keys for the other opening. Segment-opening findings report
+prefixed keys such as `first_solder_paste_segment_index`,
+`first_solder_paste_segment_start`, `first_solder_paste_segment_end`,
+`first_solder_paste_segment_layer`, `first_solder_paste_segment_aperture`,
+`first_solder_paste_segment_width_mm`,
+`first_solder_paste_segment_source_primitive`, and
+`first_solder_paste_segment_source_primitive_index`. Region-opening findings
+report prefixed keys such as `first_solder_paste_region_index`,
+`first_solder_paste_region_layer`,
+`first_solder_paste_region_source_primitive`,
+`first_solder_paste_region_source_primitive_index`, and
+`first_solder_paste_region_point_count`. Stable limit keys include
+`min_solder_paste_spacing_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

@@ -229,6 +229,12 @@ without explicit imported mechanical evidence.
   It does not yet evaluate multi-contour paste regions, windowed exposed-pad
   stencils, step-stencil thickness, paste volume, package-specific paste
   reductions, or 3D solderability effects.
+- `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
+  circular-aperture draw, and single-contour region openings for a static
+  same-layer 2D stencil-web screen. It can detect merged or too-close paste
+  openings between supported paste objects. It does not evaluate stencil
+  thickness, paste release, paste volume, multi-contour paste regions, or
+  package-specific intentional aperture merging.
 - Gerber copper import currently records dark `D03` flash features for circle,
   rectangle, and oval apertures, dark linear `D01` traces for circular
   apertures, and dark single-contour linear `G36`/`G37` region polygons. When

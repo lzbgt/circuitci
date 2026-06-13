@@ -107,6 +107,7 @@ Canonical executable check IDs:
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
+- `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -833,6 +834,38 @@ This is a static 2D stencil aperture screen. It checks flash, circular-aperture
 draw, and single-contour region area-ratio evidence. It does not yet evaluate
 multi-contour paste regions, windowed exposed-pad stencils, step-stencil
 thickness, paste volume, or package-specific paste reductions.
+
+Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
+Board IR includes at least two Gerber solder-paste opening objects under
+`board.layout.solder_paste.features`, `board.layout.solder_paste.segments`, or
+`board.layout.solder_paste.regions`.
+
+```yaml
+scenarios:
+  - name: solder_paste_spacing
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_SPACING_VALID
+    parameters:
+      min_solder_paste_spacing_mm: 0.15
+```
+
+Solder-paste spacing algorithm:
+
+1. Require `parameters.min_solder_paste_spacing_mm`.
+2. Require at least two finite solder-paste opening features, segments, or
+   regions.
+3. Compare same-layer opening pairs using supported `circle`, `rect`,
+   axis-aligned `oval`, circular-aperture linear draw, and single-contour
+   region geometry.
+4. Ignore different-layer opening pairs.
+5. Fail when the measured opening-to-opening gap is below
+   `min_solder_paste_spacing_mm`.
+
+This is a static 2D stencil web screen. It can detect merged or too-close paste
+apertures between imported flash, linear draw, and region openings, but it does
+not evaluate stencil thickness, paste volume, paste release, multi-contour
+paste regions, or package-specific intentional aperture merging.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

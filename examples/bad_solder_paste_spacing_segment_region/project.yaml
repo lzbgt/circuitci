@@ -1,0 +1,36 @@
+project:
+  name: bad_solder_paste_spacing_segment_region
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    solder_paste:
+      segments:
+        - start: { x_mm: 1.0, y_mm: 1.0 }
+          end: { x_mm: 2.0, y_mm: 1.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 0
+          aperture: D11
+          width_mm: 0.2
+      regions:
+        - points:
+            - { x_mm: 1.0, y_mm: 1.22 }
+            - { x_mm: 2.0, y_mm: 1.22 }
+            - { x_mm: 2.0, y_mm: 1.8 }
+            - { x_mm: 1.0, y_mm: 1.8 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_region
+          source_primitive_index: 1
+scenarios:
+  - name: solder_paste_spacing
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_SPACING_VALID
+    parameters:
+      min_solder_paste_spacing_mm: 0.15
