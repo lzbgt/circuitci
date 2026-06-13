@@ -29,6 +29,11 @@ board:
             end: { x_mm: 4.0, y_mm: 1.0 }
             width_mm: 0.2
             layer: F.Cu
+        vias:
+          - at: { x_mm: 3.0, y_mm: 1.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
     zones:
       VBAT:
         - layer: F.Cu

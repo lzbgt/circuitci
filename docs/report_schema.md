@@ -304,7 +304,10 @@ optional `drill_via_index`, optional `required_copper_layer`,
 `copper_feature_x_mm`, `copper_feature_y_mm`, `copper_feature_layer`,
 `copper_feature_aperture`, `copper_feature_shape`,
 `copper_feature_size_x_mm`, `copper_feature_size_y_mm`,
-optional `copper_feature_net`, optional `drill_copper_owner_mismatch`,
+optional `copper_feature_net`, optional `copper_feature_island_id`,
+optional `copper_feature_owner_kind`, optional `copper_feature_component`,
+optional `copper_feature_pin`, optional `copper_feature_via_index`, optional
+`drill_copper_owner_mismatch`,
 `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index` when a matching flash exists. Stable
 limit keys include `min_annular_ring_mm` and
@@ -321,6 +324,8 @@ optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
 Feature findings also report `copper_feature_index`, `copper_feature_x_mm`,
 `copper_feature_y_mm`, `copper_feature_layer`, optional
 `copper_feature_net`, optional `copper_feature_island_id`,
+optional `copper_feature_owner_kind`, optional `copper_feature_component`,
+optional `copper_feature_pin`, optional `copper_feature_via_index`,
 `copper_feature_aperture`, `copper_feature_shape`, `copper_feature_size_x_mm`,
 `copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index`. Segment findings report
@@ -346,7 +351,10 @@ Stable measured keys include
 `first_copper_feature_index`, `first_copper_feature_x_mm`,
 `first_copper_feature_y_mm`, `first_copper_feature_layer`,
 optional `first_copper_feature_net`, optional
-`first_copper_feature_island_id`, `first_copper_feature_aperture`,
+`first_copper_feature_island_id`, optional
+`first_copper_feature_owner_kind`, optional `first_copper_feature_component`,
+optional `first_copper_feature_pin`, optional `first_copper_feature_via_index`,
+`first_copper_feature_aperture`,
 `first_copper_feature_shape`, `first_copper_feature_size_x_mm`,
 `first_copper_feature_size_y_mm`,
 `first_copper_feature_source_primitive`, and

@@ -1196,12 +1196,7 @@ fn insert_copper_feature_edge_measurements(finding: &mut Finding, feature: &Layo
     finding
         .measured
         .insert("copper_feature_layer".to_string(), json!(feature.layer));
-    insert_optional_copper_owner_measurements(
-        finding,
-        "copper_feature",
-        feature.net.as_deref(),
-        feature.island_id.as_deref(),
-    );
+    insert_optional_copper_feature_owner_measurements(finding, "copper_feature", feature);
     finding.measured.insert(
         "copper_feature_aperture".to_string(),
         json!(feature.aperture),
@@ -1294,11 +1289,10 @@ fn insert_copper_object_measurements(
                 format!("{prefix}_copper_feature_layer"),
                 json!(feature.layer),
             );
-            insert_optional_copper_owner_measurements(
+            insert_optional_copper_feature_owner_measurements(
                 finding,
                 &format!("{prefix}_copper_feature"),
-                feature.net.as_deref(),
-                feature.island_id.as_deref(),
+                feature,
             );
             finding.measured.insert(
                 format!("{prefix}_copper_feature_aperture"),
@@ -1395,6 +1389,37 @@ fn insert_optional_copper_owner_measurements(
     }
 }
 
+fn insert_optional_copper_feature_owner_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    feature: &LayoutCopperFeature,
+) {
+    insert_optional_copper_owner_measurements(
+        finding,
+        prefix,
+        feature.net.as_deref(),
+        feature.island_id.as_deref(),
+    );
+    if let Some(owner_kind) = &feature.owner_kind {
+        finding
+            .measured
+            .insert(format!("{prefix}_owner_kind"), json!(owner_kind));
+    }
+    if let Some(component) = &feature.component {
+        finding
+            .measured
+            .insert(format!("{prefix}_component"), json!(component));
+    }
+    if let Some(pin) = &feature.pin {
+        finding.measured.insert(format!("{prefix}_pin"), json!(pin));
+    }
+    if let Some(via_index) = feature.via_index {
+        finding
+            .measured
+            .insert(format!("{prefix}_via_index"), json!(via_index));
+    }
+}
+
 fn insert_copper_region_measurements(finding: &mut Finding, region: &LayoutCopperRegion) {
     finding
         .measured
@@ -1474,12 +1499,7 @@ fn insert_copper_feature_measurements(
         "copper_feature_layer".to_string(),
         json!(candidate.feature.layer),
     );
-    insert_optional_copper_owner_measurements(
-        finding,
-        "copper_feature",
-        candidate.feature.net.as_deref(),
-        candidate.feature.island_id.as_deref(),
-    );
+    insert_optional_copper_feature_owner_measurements(finding, "copper_feature", candidate.feature);
     finding.measured.insert(
         "copper_feature_aperture".to_string(),
         json!(candidate.feature.aperture),

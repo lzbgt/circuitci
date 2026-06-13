@@ -28,7 +28,9 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 - aperture shape: `circle`, `rect`, or `oval`,
 - aperture X/Y size in millimeters,
 - optional `net` and `island_id` when existing Board IR layout evidence gives
-  exactly one owner.
+  exactly one owner,
+- optional `owner_kind`, `component`, `pin`, and `via_index` on flash evidence
+  when a unique pad or via owner can be correlated.
 
 ## Supported Gerber Subset
 
@@ -57,15 +59,18 @@ Gerber copper import is fabrication geometry evidence. When the input Board IR
 already contains PCB layout evidence, the importer can annotate imported copper
 with ownership from exactly one matching owner:
 
-- `net` from pad overlap in `board.layout.pads`,
+- `net` plus pad `owner_kind`/`component`/`pin` from pad overlap in
+  `board.layout.pads`,
+- `net` plus via `owner_kind`/`via_index` from via overlap in
+  `board.layout.routes`,
 - `net` from route overlap in `board.layout.routes`,
 - `net` plus zone-derived `island_id` from zone containment in
   `board.layout.zones`.
 
-It does not infer component ownership, pad names, annular rings, schematic
-intent, or electrical connectivity. Ambiguous or missing ownership evidence
-leaves the imported copper anonymous. Combine it with schematic, PCB, assembly,
-outline, and drill imports before using electrical or manufacturability checks.
+It does not infer annular rings, schematic intent, or electrical connectivity.
+Ambiguous or missing ownership evidence leaves the imported copper anonymous.
+Combine it with schematic, PCB, assembly, outline, and drill imports before
+using electrical or manufacturability checks.
 
 `DRILL_ANNULAR_RING_VALID` can consume imported dark flash evidence together
 with Excellon drill hits for a static annular-ring screen. When drill and

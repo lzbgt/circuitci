@@ -323,7 +323,10 @@ coordinate system as placements, outlines, drills, pads, routes, and zones.
 Gerber-imported copper is anonymous by default, but any copper feature,
 segment, or region may carry optional `net` and `island_id` evidence when a
 separate importer or hand-authored project can associate fabrication copper
-with PCB/net or zone-island ownership.
+with PCB/net or zone-island ownership. Copper features may also carry
+`owner_kind: pad` plus `component`/`pin`, or `owner_kind: via` plus
+`via_index`, when imported flash evidence uniquely matches existing pad or via
+layout evidence.
 
 ```yaml
 board:
@@ -335,6 +338,9 @@ board:
           polarity: dark
           net: GND
           island_id: F_Cu_GND_0
+          owner_kind: pad
+          component: J1
+          pin: "1"
           source_primitive: gerber_flash
           source_primitive_index: 0
           aperture: D10
@@ -375,9 +381,10 @@ Clear-polarity flashes, draws, and regions are skipped/ignored because they
 represent copper voids rather than conductive copper. When existing Board IR
 layout pads, routes, or zones uniquely overlap imported Gerber copper,
 `import-gerber-copper` can annotate the imported copper with `net`; zone
-matches can also annotate `island_id`. Gerber copper evidence is fabrication
-evidence only and does not by itself assign nets, components, pad names, copper
-islands, or electrical connectivity.
+matches can also annotate `island_id`, and pad/via flash matches can annotate
+feature owner fields. Gerber copper evidence is fabrication evidence only and
+does not by itself assign nets, components, pad names, copper islands, or
+electrical connectivity.
 
 ## Layout Pad Evidence
 

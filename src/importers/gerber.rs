@@ -81,6 +81,10 @@ struct GerberCopperFeature {
     source_primitive_index: usize,
     net: Option<String>,
     island_id: Option<String>,
+    owner_kind: Option<String>,
+    component: Option<String>,
+    pin: Option<String>,
+    via_index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -169,6 +173,14 @@ struct CopperFeatureYaml {
     net: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     island_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    via_index: Option<usize>,
     source_primitive: String,
     source_primitive_index: usize,
     aperture: String,
@@ -800,6 +812,10 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                         source_primitive_index,
                         net: None,
                         island_id: None,
+                        owner_kind: None,
+                        component: None,
+                        pin: None,
+                        via_index: None,
                     });
                     source_primitive_index += 1;
                 } else {
@@ -1155,6 +1171,10 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
                 polarity: "dark".to_string(),
                 net: feature.net.clone(),
                 island_id: feature.island_id.clone(),
+                owner_kind: feature.owner_kind.clone(),
+                component: feature.component.clone(),
+                pin: feature.pin.clone(),
+                via_index: feature.via_index,
                 source_primitive: "gerber_flash".to_string(),
                 source_primitive_index: feature.source_primitive_index,
                 aperture: format!("D{}", feature.aperture_code),

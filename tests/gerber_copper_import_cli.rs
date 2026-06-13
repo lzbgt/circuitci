@@ -111,7 +111,7 @@ fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
         .unwrap();
     assert!(command_output.status.success());
     let stdout = String::from_utf8_lossy(&command_output.stdout);
-    assert!(stdout.contains("1 net-associated features"));
+    assert!(stdout.contains("2 net-associated features"));
     assert!(stdout.contains("1 net-associated segments"));
     assert!(stdout.contains("1 net-associated regions"));
     assert!(stdout.contains("0 island-associated features"));
@@ -127,8 +127,14 @@ fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
     let features = imported["board"]["layout"]["copper"]["features"]
         .as_array()
         .unwrap();
-    assert_eq!(features.len(), 1);
+    assert_eq!(features.len(), 2);
     assert_eq!(features[0]["net"], "GND");
+    assert_eq!(features[0]["owner_kind"], "pad");
+    assert_eq!(features[0]["component"], "J1");
+    assert_eq!(features[0]["pin"], "1");
+    assert_eq!(features[1]["net"], "USB_DP");
+    assert_eq!(features[1]["owner_kind"], "via");
+    assert_eq!(features[1]["via_index"], 0);
     let segments = imported["board"]["layout"]["copper"]["segments"]
         .as_array()
         .unwrap();

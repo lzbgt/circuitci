@@ -1,4 +1,4 @@
-use crate::board_ir::{BoardLayout, CopperZone, LayoutPad, LayoutPoint, NetRoute};
+use crate::board_ir::{BoardLayout, CopperZone, LayoutPad, LayoutPoint, NetRoute, RouteVia};
 
 use super::{
     GerberCopper, GerberCopperFeature, GerberCopperRegion, GerberCopperSegment, GerberPoint,
@@ -9,6 +9,10 @@ use super::{
 struct CopperNetOwner {
     net: String,
     island_id: Option<String>,
+    owner_kind: Option<&'static str>,
+    component: Option<String>,
+    pin: Option<String>,
+    via_index: Option<usize>,
 }
 
 impl CopperNetOwner {
@@ -16,6 +20,32 @@ impl CopperNetOwner {
         Self {
             net: net.to_string(),
             island_id: None,
+            owner_kind: None,
+            component: None,
+            pin: None,
+            via_index: None,
+        }
+    }
+
+    fn pad(net: &str, component: &str, pin: &str) -> Self {
+        Self {
+            net: net.to_string(),
+            island_id: None,
+            owner_kind: Some("pad"),
+            component: Some(component.to_string()),
+            pin: Some(pin.to_string()),
+            via_index: None,
+        }
+    }
+
+    fn via(net: &str, via_index: usize) -> Self {
+        Self {
+            net: net.to_string(),
+            island_id: None,
+            owner_kind: Some("via"),
+            component: None,
+            pin: None,
+            via_index: Some(via_index),
         }
     }
 }
@@ -25,9 +55,20 @@ struct CopperOwnerPad {
     at: GerberPoint,
     layers: Vec<String>,
     net: String,
+    component: String,
+    pin: String,
     shape: Option<String>,
     size_x_mm: Option<f64>,
     size_y_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+struct CopperOwnerVia {
+    at: GerberPoint,
+    layers: Vec<String>,
+    net: String,
+    via_index: usize,
+    size_mm: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +91,7 @@ struct CopperOwnerZone {
 #[derive(Debug, Clone, Default)]
 struct CopperOwnershipIndex {
     pads: Vec<CopperOwnerPad>,
+    vias: Vec<CopperOwnerVia>,
     route_segments: Vec<CopperOwnerRouteSegment>,
     zones: Vec<CopperOwnerZone>,
 }
@@ -60,6 +102,10 @@ pub(super) fn associate_copper_nets(copper: &mut GerberCopper, layout: &BoardLay
         if let Some(owner) = ownership.owner_for_feature(feature, &copper.layer) {
             feature.net = Some(owner.net);
             feature.island_id = owner.island_id;
+            feature.owner_kind = owner.owner_kind.map(str::to_string);
+            feature.component = owner.component;
+            feature.pin = owner.pin;
+            feature.via_index = owner.via_index;
         }
     }
     for segment in &mut copper.segments {
@@ -80,9 +126,23 @@ impl CopperOwnershipIndex {
     fn from_layout(layout: &BoardLayout) -> Self {
         let pads = layout
             .pads
-            .values()
-            .flat_map(|component_pads| component_pads.values())
-            .filter_map(owner_pad_from_layout_pad)
+            .iter()
+            .flat_map(|(component, component_pads)| {
+                component_pads
+                    .iter()
+                    .filter_map(|(pin, pad)| owner_pad_from_layout_pad(component, pin, pad))
+            })
+            .collect();
+        let vias = layout
+            .routes
+            .iter()
+            .flat_map(|(net, route)| {
+                route
+                    .vias
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(via_index, via)| owner_via_from_route_via(net, via_index, via))
+            })
             .collect();
         let route_segments = layout
             .routes
@@ -96,6 +156,7 @@ impl CopperOwnershipIndex {
             .collect();
         Self {
             pads,
+            vias,
             route_segments,
             zones,
         }
@@ -109,7 +170,12 @@ impl CopperOwnershipIndex {
         let mut candidates = Vec::new();
         for pad in self.pads.iter().filter(|pad| pad_on_layer(pad, layer)) {
             if point_inside_feature_pad(feature.at, pad) {
-                candidates.push(CopperNetOwner::net_only(&pad.net));
+                candidates.push(CopperNetOwner::pad(&pad.net, &pad.component, &pad.pin));
+            }
+        }
+        for via in self.vias.iter().filter(|via| via_on_layer(via, layer)) {
+            if point_inside_feature_via(feature, via) {
+                candidates.push(CopperNetOwner::via(&via.net, via.via_index));
             }
         }
         for route in self
@@ -133,6 +199,10 @@ impl CopperOwnershipIndex {
                 candidates.push(CopperNetOwner {
                     net: zone.net.clone(),
                     island_id: Some(zone.island_id.clone()),
+                    owner_kind: None,
+                    component: None,
+                    pin: None,
+                    via_index: None,
                 });
             }
         }
@@ -176,6 +246,10 @@ impl CopperOwnershipIndex {
                 candidates.push(CopperNetOwner {
                     net: zone.net.clone(),
                     island_id: Some(zone.island_id.clone()),
+                    owner_kind: None,
+                    component: None,
+                    pin: None,
+                    via_index: None,
                 });
             }
         }
@@ -194,6 +268,10 @@ impl CopperOwnershipIndex {
                 candidates.push(CopperNetOwner {
                     net: zone.net.clone(),
                     island_id: Some(zone.island_id.clone()),
+                    owner_kind: None,
+                    component: None,
+                    pin: None,
+                    via_index: None,
                 });
             }
         }
@@ -206,7 +284,11 @@ impl CopperOwnershipIndex {
     }
 }
 
-fn owner_pad_from_layout_pad(pad: &LayoutPad) -> Option<CopperOwnerPad> {
+fn owner_pad_from_layout_pad(
+    component: &str,
+    pin: &str,
+    pad: &LayoutPad,
+) -> Option<CopperOwnerPad> {
     if !finite_gerber_point(point_from_layout(&pad.at)) || pad.net.trim().is_empty() {
         return None;
     }
@@ -214,9 +296,27 @@ fn owner_pad_from_layout_pad(pad: &LayoutPad) -> Option<CopperOwnerPad> {
         at: point_from_layout(&pad.at),
         layers: pad.layers.clone(),
         net: pad.net.clone(),
+        component: component.to_string(),
+        pin: pin.to_string(),
         shape: pad.shape.clone(),
         size_x_mm: pad.size.as_ref().map(|size| size.x_mm),
         size_y_mm: pad.size.as_ref().map(|size| size.y_mm),
+    })
+}
+
+fn owner_via_from_route_via(net: &str, via_index: usize, via: &RouteVia) -> Option<CopperOwnerVia> {
+    if net.trim().is_empty() || !finite_gerber_point(point_from_layout(&via.at)) {
+        return None;
+    }
+    if !via.size_mm.is_finite() || via.size_mm <= 0.0 {
+        return None;
+    }
+    Some(CopperOwnerVia {
+        at: point_from_layout(&via.at),
+        layers: via.layers.clone(),
+        net: net.to_string(),
+        via_index,
+        size_mm: via.size_mm,
     })
 }
 
@@ -324,22 +424,48 @@ fn unique_owner(candidates: Vec<CopperNetOwner>) -> Option<CopperNetOwner> {
         return None;
     }
     let mut island_ids = candidates
-        .into_iter()
+        .iter()
         .filter(|candidate| candidate.net == nets[0])
-        .filter_map(|candidate| candidate.island_id)
+        .filter_map(|candidate| candidate.island_id.clone())
         .filter(|island_id| !island_id.trim().is_empty())
         .collect::<Vec<_>>();
     island_ids.sort();
     island_ids.dedup();
+    let mut rich_owners = candidates
+        .iter()
+        .filter(|candidate| candidate.net == nets[0])
+        .filter(|candidate| candidate.owner_kind.is_some())
+        .map(|candidate| {
+            (
+                candidate.owner_kind,
+                candidate.component.clone(),
+                candidate.pin.clone(),
+                candidate.via_index,
+            )
+        })
+        .collect::<Vec<_>>();
+    rich_owners.sort();
+    rich_owners.dedup();
+    let rich_owner = (rich_owners.len() == 1)
+        .then(|| rich_owners.pop().expect("rich_owners contains one element"));
+    let (owner_kind, component, pin, via_index) = rich_owner.unwrap_or((None, None, None, None));
     Some(CopperNetOwner {
         net: nets.pop().expect("nets contains one element"),
         island_id: (island_ids.len() == 1)
             .then(|| island_ids.pop().expect("island_ids contains one element")),
+        owner_kind,
+        component,
+        pin,
+        via_index,
     })
 }
 
 fn pad_on_layer(pad: &CopperOwnerPad, layer: &str) -> bool {
     pad.layers.is_empty() || pad.layers.iter().any(|candidate| candidate == layer)
+}
+
+fn via_on_layer(via: &CopperOwnerVia, layer: &str) -> bool {
+    via.layers.is_empty() || via.layers.iter().any(|candidate| candidate == layer)
 }
 
 fn point_inside_feature_pad(point: GerberPoint, pad: &CopperOwnerPad) -> bool {
@@ -362,6 +488,20 @@ fn point_inside_feature_pad(point: GerberPoint, pad: &CopperOwnerPad) -> bool {
         }
         Some(_) => point_distance_mm(point, pad.at) <= 0.05,
     }
+}
+
+fn point_inside_feature_via(feature: &GerberCopperFeature, via: &CopperOwnerVia) -> bool {
+    if feature.aperture.x_mm <= 0.0
+        || feature.aperture.y_mm <= 0.0
+        || !feature.aperture.x_mm.is_finite()
+        || !feature.aperture.y_mm.is_finite()
+    {
+        return false;
+    }
+    point_distance_mm(feature.at, via.at)
+        <= feature.aperture.x_mm.min(feature.aperture.y_mm) / 2.0
+            + via.size_mm / 2.0
+            + POINT_EPSILON_MM
 }
 
 fn point_inside_axis_aligned_oval(dx: f64, dy: f64, width_mm: f64, height_mm: f64) -> bool {

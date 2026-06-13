@@ -322,6 +322,10 @@
                       "polarity": { "enum": ["dark"] },
                       "net": { "type": "string", "minLength": 1 },
                       "island_id": { "type": "string", "minLength": 1 },
+                      "owner_kind": { "enum": ["pad", "via"] },
+                      "component": { "type": "string", "minLength": 1 },
+                      "pin": { "type": "string", "minLength": 1 },
+                      "via_index": { "type": "integer", "minimum": 0 },
                       "source_primitive": { "enum": ["gerber_flash"] },
                       "source_primitive_index": {
                         "type": "integer",

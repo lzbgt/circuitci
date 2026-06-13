@@ -197,9 +197,9 @@ without explicit imported mechanical evidence.
   flashes, trace segments, and region polygons with board-outline centerline
   segments for a static 2D copper-edge screen. It does not model solder mask,
   etch compensation, panelization tabs, fab-specific clearance expansion,
-  or copper island connectivity. Imported copper may carry `net` or
-  `island_id` when correlated with separate layout evidence, but plain Gerber
-  copper remains anonymous.
+  or copper island connectivity. Imported copper may carry `net`, `island_id`,
+  or flash-level pad/via owner fields when correlated with separate layout
+  evidence, but plain Gerber copper remains anonymous.
 - `COPPER_SPACING_VALID` uses imported Gerber copper flashes, trace
   segments, and region polygons for a static same-layer 2D copper-spacing
   screen. If copper objects carry explicit `net` or `island_id` ownership
