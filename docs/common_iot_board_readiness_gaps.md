@@ -187,8 +187,8 @@ distance from `board.layout.routes`. It can now require imported
 measured with same-net pad evidence instead of component placement centers;
 supported pad geometry is checked against imported pad copper extent.
 `USB_VBUS_ROUTE_VALID` adds the matching static VBUS power-entry route guard
-for route length, via count, optional minimum segment width, and
-connector-to-VBUS-protection route distance.
+for route length, optional via count, optional minimum segment width, and
+optional connector-to-VBUS-protection route distance.
 KiCad PCB import now also carries mapped copper-zone outlines into
 `board.layout.zones`. `USB_RETURN_PATH_VALID` adds the first static
 return-path guard by requiring D+/D- route segment midpoints to sit inside
@@ -207,8 +207,10 @@ return paths, stitching-via inductance, or USB eye margin.
 `suggest-scenarios` now emits connector-level schematic templates automatically
 from `usb_connector` metadata and connected clamp evidence. It can emit runnable
 USB data-route templates when imported KiCad routing constraints provide both
-route-length and pair-mismatch limits; placement, VBUS-route, and return-path
-templates remain non-runnable until board-specific limits are supplied. These
+route-length and pair-mismatch limits. It can also emit runnable VBUS-route
+templates when imported KiCad routing constraints provide the VBUS
+route-length limit. Placement and return-path templates remain non-runnable
+until board-specific limits are supplied. These
 checks do not invent placement or unreferenced-return-path limits, timing,
 observed strap
 states, protocol events, GPIO pin-state observations, protection-path

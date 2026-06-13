@@ -34,7 +34,6 @@ use route_evidence::{
     ground_zones_have_filled_polygons, pad_to_route_distance_mm,
     return_path_filled_zone_clearance_segments, return_path_unreferenced_segments,
     route_distance_between_pads_mm, route_ground_zone_contacts, suggested_usb_route_pad,
-    usb_vbus_route_pad_contact_evidence_exists,
 };
 
 pub(super) fn usb_connector_protection_suggestion(
@@ -427,13 +426,6 @@ pub(super) fn usb_vbus_route_suggestion(
             vbus_clamp.protected_pin.as_str(),
         )),
     )?;
-    let has_pad_contact_evidence = usb_vbus_route_pad_contact_evidence_exists(
-        bound,
-        component_id,
-        component,
-        connector,
-        &vbus_clamp,
-    );
     let route_limit = bound
         .project
         .board
@@ -463,18 +455,15 @@ pub(super) fn usb_vbus_route_suggestion(
         ),
         (
             "require_vbus_route_pad_contact_evidence".to_string(),
-            if has_pad_contact_evidence {
-                serde_json::Value::Bool(true)
-            } else {
-                serde_json::Value::Null
-            },
+            serde_json::Value::Null,
         ),
     ]);
+    let runnable = route_limit.is_some();
     Some(ScenarioSuggestion {
         id: format!("usb_vbus_route_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has VBUS route and protection evidence; add VBUS power-entry route checks."
         ),
@@ -504,21 +493,18 @@ pub(super) fn usb_vbus_route_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            route_limit_required_input(
-                route_limit,
-                "max_vbus_route_length_mm",
-                "Fill max_vbus_route_length_mm from the board's USB power-entry layout rule.",
-            ),
-            "Fill max_vbus_via_count from the board's USB power-entry routing policy.".to_string(),
-            "Review or fill min_vbus_route_width_mm from the board's VBUS current/temperature-rise routing rule.".to_string(),
-            if has_pad_contact_evidence {
-                "Review require_vbus_route_pad_contact_evidence=true against imported connector/protection pad evidence before treating the VBUS route template as sign-off.".to_string()
-            } else {
-                "Import PCB pad evidence or set require_vbus_route_pad_contact_evidence only after connector/protection pads are mapped to the routed VBUS net.".to_string()
-            },
-            "Fill max_connector_to_vbus_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/power-entry layout guidance before treating the VBUS route template as sign-off.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                route_limit_required_input(
+                    route_limit,
+                    "max_vbus_route_length_mm",
+                    "Fill max_vbus_route_length_mm from the board's USB power-entry layout rule.",
+                ),
+                "Optional VBUS route checks can be enabled later with via-count, width, pad-contact, and connector-to-protection route-distance limits.".to_string(),
+            ]
+        },
     })
 }
 

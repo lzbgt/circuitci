@@ -1,12 +1,11 @@
 use super::super::super::{
-    SuggestedProtectionClamp, SuggestedUsbFilledZoneClearanceSegment,
-    SuggestedUsbGroundZoneContact, SuggestedUsbRoutePad, SuggestedUsbRoutePadSize,
-    SuggestedUsbUnreferencedSegment,
+    SuggestedUsbFilledZoneClearanceSegment, SuggestedUsbGroundZoneContact, SuggestedUsbRoutePad,
+    SuggestedUsbRoutePadSize, SuggestedUsbUnreferencedSegment,
 };
 use crate::board_ir::{
-    ComponentSpec, CopperZone, LayoutPad, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia,
+    CopperZone, LayoutPad, LayoutPoint, NetKind, NetRoute, RouteSegment, RouteVia,
 };
-use crate::library::{BoundBoard, UsbConnector};
+use crate::library::BoundBoard;
 use std::collections::BTreeMap;
 
 pub(super) fn return_path_unreferenced_segments(
@@ -150,38 +149,6 @@ pub(super) fn route_ground_zone_contacts(
         }
     }
     contacts.into_values().collect()
-}
-
-pub(super) fn usb_vbus_route_pad_contact_evidence_exists(
-    bound: &BoundBoard<'_>,
-    connector_id: &str,
-    component: &ComponentSpec,
-    connector: &UsbConnector,
-    vbus_clamp: &SuggestedProtectionClamp,
-) -> bool {
-    route_pad_exists(
-        bound,
-        connector_id,
-        &connector.vbus_pin,
-        component.pins.get(&connector.vbus_pin).map(String::as_str),
-    ) && route_pad_exists(
-        bound,
-        &vbus_clamp.component,
-        &vbus_clamp.protected_pin,
-        Some(vbus_clamp.protected_net.as_str()),
-    )
-}
-
-fn route_pad_exists(
-    bound: &BoundBoard<'_>,
-    component_id: &str,
-    pin: &str,
-    expected_net: Option<&str>,
-) -> bool {
-    let Some(expected_net) = expected_net else {
-        return false;
-    };
-    route_pad_for_pin(bound, component_id, pin, expected_net).is_some()
 }
 
 pub(super) fn suggested_usb_route_pad(

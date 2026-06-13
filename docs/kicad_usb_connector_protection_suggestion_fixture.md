@@ -127,6 +127,14 @@ Via-count, route-width, pair-gap, and connector-to-protection route-distance
 limits remain optional `null` policy knobs unless a board-specific rule declares
 them.
 
+The same imported net-rule evidence makes the VBUS route suggestion runnable
+when `length_max_mm` is present on the VBUS net. The template pre-fills
+`max_vbus_route_length_mm` from that rule and pre-fills optional
+`min_vbus_route_width_mm` from `track_width_mm` when available. It still leaves
+VBUS via-count, route-order distance, and
+`require_vbus_route_pad_contact_evidence` as `null` until a board-specific
+power-entry layout policy supplies those limits.
+
 Because the PCB fixture also imports a same-layer GND copper-zone outline over
 the USB D+/D- route segment midpoints, the return-path suggestion reports
 `unreferenced_route_length_mm: 0.0` and

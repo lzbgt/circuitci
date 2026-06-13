@@ -1008,7 +1008,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
         .expect("USB VBUS route suggestion");
     assert_eq!(vbus_route["kind"], "interface_protection");
-    assert_eq!(vbus_route["runnable"], false);
+    assert_eq!(vbus_route["runnable"], true);
+    assert!(vbus_route.get("required_inputs").is_none());
     assert_eq!(vbus_route["scenario"]["type"], "interface_protection");
     assert_eq!(vbus_route["scenario"]["checks"][0], "USB_VBUS_ROUTE_VALID");
     assert_eq!(vbus_route["scenario"]["target"]["component"], "J1");

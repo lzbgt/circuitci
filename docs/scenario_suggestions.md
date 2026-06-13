@@ -198,19 +198,20 @@ The command is conservative:
   routed copper touches the pad copper; otherwise it falls back to pad-center
   projection distance. Pad records include center coordinates, layers, and
   optional imported KiCad kind/shape/size/rotation/drill evidence.
-- It emits non-runnable `USB_VBUS_ROUTE_VALID` templates when the USB connector,
+- It emits `USB_VBUS_ROUTE_VALID` templates when the USB connector,
   VBUS protection component, placements, and `board.layout.routes` evidence are
   present. The template includes `scenario.usb_routes[]` with VBUS net, route
   length, via count, optional imported `expected_vbus_route_width_mm`, measured
   `measured_vbus_route_width_min_mm`, and the matching protection component.
-  If imported net rules include a VBUS `length` constraint or `track_width_mm`,
-  the template pre-fills `max_vbus_route_length_mm` and
-  `min_vbus_route_width_mm`; via-count and connector-to-protection route
+  If imported net rules include a VBUS `length` constraint, the template
+  pre-fills `max_vbus_route_length_mm` and becomes runnable. If imported net
+  rules also include `track_width_mm`, the template pre-fills optional
+  `min_vbus_route_width_mm`. Via-count and connector-to-protection route
   distance limits remain `null` until an agent supplies board-specific policy.
-  When imported connector VBUS and protection pad evidence exists, the template
-  sets `require_vbus_route_pad_contact_evidence: true`; the VBUS
-  `scenario.usb_routes[]` entry then reports `connector_pad`, `protection_pad`,
-  pad geometry, pad-to-route distances, and
+  `require_vbus_route_pad_contact_evidence` also remains `null` until route
+  distance limits are supplied. When imported connector VBUS and protection pad
+  evidence exists, the VBUS `scenario.usb_routes[]` entry reports
+  `connector_pad`, `protection_pad`, pad geometry, pad-to-route distances, and
   `connector_to_protection_pad_route_distance_mm`.
 - It emits non-runnable `USB_RETURN_PATH_VALID` templates when USB D+/D-
   `board.layout.routes` evidence and same-layer ground-zone outlines under

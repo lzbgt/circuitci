@@ -649,9 +649,16 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
         .expect("USB VBUS route suggestion");
+    assert_eq!(vbus_route["runnable"], false);
+    assert!(
+        vbus_route["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("max_vbus_route_length_mm")
+    );
     assert_eq!(
         vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
-        true
+        serde_json::Value::Null
     );
     let vbus = &vbus_route["scenario"]["usb_routes"][0];
     assert_eq!(vbus["connector_pad"]["pin"], "VBUS");
@@ -1665,6 +1672,8 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_vbus_route_j1")
         .unwrap();
+    assert_eq!(vbus_route["runnable"], true);
+    assert!(vbus_route.get("required_inputs").is_none());
     assert_eq!(vbus_route["scenario"]["checks"][0], "USB_VBUS_ROUTE_VALID");
     assert_eq!(
         vbus_route["scenario"]["parameters"]["max_vbus_route_length_mm"],
@@ -1677,7 +1686,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     );
     assert_eq!(
         vbus_route["scenario"]["parameters"]["require_vbus_route_pad_contact_evidence"],
-        true
+        serde_json::Value::Null
     );
     let vbus = &vbus_route["scenario"]["usb_routes"][0];
     assert_eq!(vbus["signal"], "VBUS");

@@ -1309,10 +1309,10 @@ scenarios:
       component: J1
     parameters:
       max_vbus_route_length_mm: 20.0
-      max_vbus_via_count: 0
+      max_vbus_via_count: 0       # optional
       min_vbus_route_width_mm: 0.30   # optional
-      max_connector_to_vbus_protection_route_distance_mm: 2.0
-      max_component_to_route_distance_mm: 0.2
+      max_connector_to_vbus_protection_route_distance_mm: 2.0 # optional
+      max_component_to_route_distance_mm: 0.2 # optional
       require_vbus_route_pad_contact_evidence: true # optional
 ```
 
@@ -1322,11 +1322,13 @@ USB VBUS route algorithm:
 2. Resolve the connector VBUS net and require a `board.layout.routes` entry.
 3. Sum routed segment lengths and require the net to stay within
    `max_vbus_route_length_mm`.
-4. Count vias and require the count to stay within `max_vbus_via_count`.
+4. If `max_vbus_via_count` is declared, count vias and require the count to
+   stay within that limit.
 5. If `min_vbus_route_width_mm` is declared, require every VBUS segment to be at
    least that wide.
-6. By default, project connector and VBUS protection component placements onto
-   the routed net within `max_component_to_route_distance_mm`. When
+6. If both route-distance limits are declared, project connector and VBUS
+   protection component placements onto the routed net within
+   `max_component_to_route_distance_mm`. When
    `require_vbus_route_pad_contact_evidence` is true, use imported
    `board.layout.pads` for the connector VBUS pin and matching protection pad
    instead; each pad must be on the same net and on a route layer within

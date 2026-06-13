@@ -293,20 +293,21 @@ Route-geometry validation:
 
 - `USB_VBUS_ROUTE_VALID` targets the same connector component and uses
   `board.layout.routes` evidence for the connector VBUS net.
-- The scenario must declare `parameters.max_vbus_route_length_mm`,
-  `parameters.max_vbus_via_count`,
-  `parameters.max_connector_to_vbus_protection_route_distance_mm`, and
-  `parameters.max_component_to_route_distance_mm`.
+- The scenario must declare `parameters.max_vbus_route_length_mm`.
+- When `parameters.max_vbus_via_count` is present, the route via count must
+  stay within that limit.
 - When `parameters.min_vbus_route_width_mm` is present, every imported VBUS
   route segment must be at least that wide.
-- By default, the rule projects connector/protection placements onto the VBUS
-  route graph and checks the routed distance from connector VBUS to the nearest
-  valid VBUS protection component. When
-  `parameters.require_vbus_route_pad_contact_evidence` is true, the same
-  route-order check uses imported same-net connector VBUS and protection pad
-  evidence from `board.layout.pads` instead of component placement centers.
-  When supported imported pad shape/size evidence exists, the route must touch
-  the pad copper extent instead of only projecting near the pad center.
+- When `parameters.max_connector_to_vbus_protection_route_distance_mm` and
+  `parameters.max_component_to_route_distance_mm` are both present, the rule
+  projects connector/protection placements onto the VBUS route graph and checks
+  the routed distance from connector VBUS to the nearest valid VBUS protection
+  component. When `parameters.require_vbus_route_pad_contact_evidence` is true,
+  the same route-order check uses imported same-net connector VBUS and
+  protection pad evidence from `board.layout.pads` instead of component
+  placement centers. When supported imported pad shape/size evidence exists,
+  the route must touch the pad copper extent instead of only projecting near the
+  pad center.
 - Scenario suggestions expose VBUS route evidence in `scenario.usb_routes[]`,
   including measured length, via count, optional imported expected VBUS route
   width, measured minimum VBUS route width, and matching protection component.

@@ -183,11 +183,11 @@ pub(super) fn validate_usb_vbus_route(
     else {
         return;
     };
-    let Some(max_via_count) = required_integer_parameter(scenario, "max_vbus_via_count", findings)
+    let Some(max_via_count) = optional_integer_parameter(scenario, "max_vbus_via_count", findings)
     else {
         return;
     };
-    let Some(max_protection_route_distance_mm) = required_positive_parameter(
+    let Some(max_protection_route_distance_mm) = optional_positive_parameter(
         scenario,
         "max_connector_to_vbus_protection_route_distance_mm",
         findings,
@@ -195,7 +195,7 @@ pub(super) fn validate_usb_vbus_route(
         return;
     };
     let Some(max_component_to_route_distance_mm) =
-        required_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
+        optional_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
     else {
         return;
     };
@@ -326,7 +326,9 @@ pub(super) fn validate_usb_vbus_route(
         ));
     }
     let via_count = route.vias.len();
-    if via_count > max_via_count {
+    if let Some(max_via_count) = max_via_count
+        && via_count > max_via_count
+    {
         findings.push(usb_vbus_route_via_count_finding(
             scenario,
             &target.component,
@@ -387,8 +389,8 @@ struct VbusRouteProtectionCheck<'a> {
     connector_placement: &'a ComponentPlacement,
     net_name: &'a str,
     route: &'a NetRoute,
-    max_protection_route_distance_mm: f64,
-    max_component_to_route_distance_mm: f64,
+    max_protection_route_distance_mm: Option<f64>,
+    max_component_to_route_distance_mm: Option<f64>,
     require_route_pad_contact_evidence: bool,
 }
 
@@ -766,8 +768,24 @@ fn validate_vbus_protection_route_distance(
     check: VbusRouteProtectionCheck<'_>,
     findings: &mut Vec<Finding>,
 ) {
+    let (Some(max_protection_route_distance_mm), Some(max_component_to_route_distance_mm)) = (
+        check.max_protection_route_distance_mm,
+        check.max_component_to_route_distance_mm,
+    ) else {
+        return;
+    };
+    let distance_limits = RouteDistanceLimits {
+        max_protection_route_distance_mm,
+        max_component_to_route_distance_mm,
+    };
     if check.require_route_pad_contact_evidence {
-        validate_vbus_protection_route_distance_from_pads(bound, scenario, &check, findings);
+        validate_vbus_protection_route_distance_from_pads(
+            bound,
+            scenario,
+            &check,
+            distance_limits,
+            findings,
+        );
         return;
     }
 
@@ -809,7 +827,7 @@ fn validate_vbus_protection_route_distance(
             check.route,
             connector_point,
             protection_point,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ) else {
             off_route.push(protection.component_id.to_string());
             continue;
@@ -828,18 +846,18 @@ fn validate_vbus_protection_route_distance(
             check.net_name,
             &missing_placements,
             &off_route,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ));
         return;
     };
-    if route_distance_mm > check.max_protection_route_distance_mm {
+    if route_distance_mm > distance_limits.max_protection_route_distance_mm {
         findings.push(usb_vbus_route_protection_distance_finding(
             scenario,
             check.connector_id,
             check.net_name,
             protection_component,
             route_distance_mm,
-            check.max_protection_route_distance_mm,
+            distance_limits.max_protection_route_distance_mm,
         ));
     }
 }
@@ -848,6 +866,7 @@ fn validate_vbus_protection_route_distance_from_pads(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     check: &VbusRouteProtectionCheck<'_>,
+    distance_limits: RouteDistanceLimits,
     findings: &mut Vec<Finding>,
 ) {
     let protections = valid_protection_clamps_for_net(bound, check.connector_id, check.net_name);
@@ -906,9 +925,9 @@ fn validate_vbus_protection_route_distance_from_pads(
     if pad_to_route_distance_mm(
         check.route,
         connector_pad,
-        check.max_component_to_route_distance_mm,
+        distance_limits.max_component_to_route_distance_mm,
     )
-    .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
+    .is_none_or(|distance_mm| distance_mm > distance_limits.max_component_to_route_distance_mm)
     {
         findings.push(usb_vbus_route_pad_metadata_finding(
             scenario,
@@ -923,7 +942,7 @@ fn validate_vbus_protection_route_distance_from_pads(
                 "USB connector {} VBUS pad {connector_pin} is not on the imported route for net {} within {:.3} mm.",
                 check.connector_id,
                 check.net_name,
-                check.max_component_to_route_distance_mm
+                distance_limits.max_component_to_route_distance_mm
             ),
         ));
         return;
@@ -947,7 +966,7 @@ fn validate_vbus_protection_route_distance_from_pads(
             check.route,
             connector_pad,
             protection_pad,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ) else {
             off_route_pads.push(format!("{}.{}", protection.component_id, protection_pin));
             continue;
@@ -972,12 +991,12 @@ fn validate_vbus_protection_route_distance_from_pads(
                 connector_pin,
                 missing_pads: &missing_pads,
                 off_route_pads: &off_route_pads,
-                max_pad_to_route_distance_mm: check.max_component_to_route_distance_mm,
+                max_pad_to_route_distance_mm: distance_limits.max_component_to_route_distance_mm,
             },
         ));
         return;
     };
-    if route_distance_mm > check.max_protection_route_distance_mm {
+    if route_distance_mm > distance_limits.max_protection_route_distance_mm {
         findings.push(usb_vbus_route_protection_pad_distance_finding(
             scenario,
             check.connector_id,
@@ -987,7 +1006,7 @@ fn validate_vbus_protection_route_distance_from_pads(
                 protection_component,
                 protection_pin,
                 route_distance_mm,
-                max_route_distance_mm: check.max_protection_route_distance_mm,
+                max_route_distance_mm: distance_limits.max_protection_route_distance_mm,
             },
         ));
     }
@@ -1380,21 +1399,4 @@ fn optional_bool_parameter(
         return None;
     };
     Some(value)
-}
-
-fn required_integer_parameter(
-    scenario: &Scenario,
-    name: &str,
-    findings: &mut Vec<Finding>,
-) -> Option<usize> {
-    let value = required_scenario_numeric_parameter(scenario, name, findings)?;
-    if value.fract() != 0.0 || value > usize::MAX as f64 {
-        validation_input_missing(
-            findings,
-            scenario,
-            format!("interface_protection parameters.{name} must be a non-negative integer."),
-        );
-        return None;
-    }
-    Some(value as usize)
 }

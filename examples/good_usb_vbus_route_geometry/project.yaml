@@ -85,3 +85,16 @@ scenarios:
       max_connector_to_vbus_protection_route_distance_mm: 2.0
       max_component_to_route_distance_mm: 0.01
       require_vbus_route_pad_contact_evidence: true
+  - name: usb_vbus_route_imported_length_width_only
+    type: interface_protection
+    checks:
+      - USB_VBUS_ROUTE_VALID
+    target:
+      component: J1
+    parameters:
+      max_vbus_route_length_mm: 20.0
+      max_vbus_via_count:
+      min_vbus_route_width_mm: 0.25
+      max_connector_to_vbus_protection_route_distance_mm:
+      max_component_to_route_distance_mm:
+      require_vbus_route_pad_contact_evidence:
