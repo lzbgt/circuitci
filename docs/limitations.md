@@ -208,6 +208,12 @@ without explicit imported mechanical evidence.
   overlapping/touching anonymous copper because plain Gerber evidence has no
   net or island ownership. It does not prove solder-mask behavior, etch
   compensation, fab-specific spacing expansion, or copper connectivity.
+- `SOLDER_MASK_OPENING_VALID` uses imported Gerber copper flashes and Gerber
+  solder-mask flash openings for a static 2D mask-aperture screen. It checks
+  same-side `F.Cu` -> `F.Mask` and `B.Cu` -> `B.Mask` co-located openings and
+  minimum X/Y expansion. It does not yet evaluate mask region polygons, mask
+  dams between adjacent pads, paste stencil openings, fab-specific mask swell,
+  package-specific solder-mask-defined pad rules, or 3D solderability effects.
 - Gerber copper import currently records dark `D03` flash features for circle,
   rectangle, and oval apertures, dark linear `D01` traces for circular
   apertures, and dark single-contour linear `G36`/`G37` region polygons. When

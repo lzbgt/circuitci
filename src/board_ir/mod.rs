@@ -46,6 +46,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub copper: LayoutCopper,
     #[serde(default)]
+    pub solder_mask: LayoutCopper,
+    #[serde(default)]
     pub pads: BTreeMap<String, BTreeMap<String, LayoutPad>>,
     #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,

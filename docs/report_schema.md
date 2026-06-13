@@ -375,6 +375,30 @@ optional `first_copper_region_net`, optional
 `first_copper_region_point_count`; the same keys may appear with the
 `second_` prefix. Stable limit keys include `min_copper_spacing_mm`.
 
+`SOLDER_MASK_OPENING_VALID` reports are emitted by `manufacturing` scenarios
+that compare Gerber copper flash evidence under `board.layout.copper.features`
+with Gerber solder-mask flash-opening evidence under
+`board.layout.solder_mask.features`. Stable measured keys include
+`copper_feature_index`, `copper_feature_x_mm`, `copper_feature_y_mm`,
+`copper_feature_layer`, optional `copper_feature_net`, optional
+`copper_feature_island_id`, optional `copper_feature_owner_kind`, optional
+`copper_feature_component`, optional `copper_feature_pin`, optional
+`copper_feature_via_index`, `copper_feature_aperture`,
+`copper_feature_shape`, `copper_feature_size_x_mm`,
+`copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
+`copper_feature_source_primitive_index`. Missing-opening findings also report
+`expected_solder_mask_layer`. Undersized-opening findings also report
+`solder_mask_feature_index`, `solder_mask_feature_x_mm`,
+`solder_mask_feature_y_mm`, `solder_mask_feature_layer`,
+`solder_mask_feature_aperture`, `solder_mask_feature_shape`,
+`solder_mask_feature_size_x_mm`, `solder_mask_feature_size_y_mm`,
+`solder_mask_feature_source_primitive`,
+`solder_mask_feature_source_primitive_index`,
+`measured_mask_expansion_x_mm`, `measured_mask_expansion_y_mm`,
+`measured_min_mask_expansion_mm`, and `copper_to_mask_center_offset_mm`.
+Stable limit keys include `min_mask_expansion_mm` and
+`max_copper_to_mask_center_offset_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

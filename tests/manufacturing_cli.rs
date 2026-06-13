@@ -240,6 +240,50 @@ fn copper_spacing_passes_for_touching_same_net_copper() {
 }
 
 #[test]
+fn solder_mask_opening_passes_when_opening_expands_copper_flash() {
+    let report = run_validation("examples/good_solder_mask_opening/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_mask_opening_fails_when_opening_is_missing() {
+    let report = run_validation("examples/bad_solder_mask_opening_missing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_OPENING_VALID");
+    assert_eq!(failure["measured"]["copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["copper_feature_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["expected_solder_mask_layer"], "F.Mask");
+    assert_eq!(failure["limit"]["min_mask_expansion_mm"], 0.05);
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("no co-located solder-mask opening")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_mask_opening_fails_when_opening_is_undersized() {
+    let report = run_validation("examples/bad_solder_mask_opening_undersized/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_OPENING_VALID");
+    assert_eq!(failure["measured"]["copper_feature_layer"], "B.Cu");
+    assert_eq!(failure["measured"]["solder_mask_feature_layer"], "B.Mask");
+    assert_eq!(failure["measured"]["solder_mask_feature_shape"], "oval");
+    let measured_min_expansion = failure["measured"]["measured_min_mask_expansion_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((measured_min_expansion - 0.03).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_mask_expansion_mm"], 0.05);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_near_flashes() {
     let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
     assert_eq!(report["result"], "fail");

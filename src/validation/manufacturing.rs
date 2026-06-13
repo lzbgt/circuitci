@@ -13,13 +13,14 @@ use self::geometry::{
     CopperFeatureEdgeClearance, CopperObjectRef, CopperRegionEdgeClearance,
     CopperSegmentEdgeClearance, DrillEdgeClearance, copper_object_spacing_mm,
     nearest_copper_feature_edge_clearance, nearest_copper_region_edge_clearance,
-    nearest_copper_segment_edge_clearance, nearest_drill_edge_clearance, usable_outline_segment,
-    validate_copper_feature_geometry, validate_copper_region_geometry,
+    nearest_copper_segment_edge_clearance, nearest_drill_edge_clearance, point_distance_mm,
+    usable_outline_segment, validate_copper_feature_geometry, validate_copper_region_geometry,
     validate_copper_segment_geometry, validate_drill_geometry,
 };
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::SOLDER_MASK_OPENING_VALID;
 use super::common::validation_input_missing;
 
 pub(super) use annular_ring::validate_drill_annular_ring;
@@ -277,6 +278,279 @@ pub(super) fn validate_copper_spacing(
             );
         }
     }
+}
+
+pub(super) fn validate_solder_mask_opening(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_expansion_mm) =
+        required_numeric_parameter(scenario, "min_mask_expansion_mm", findings)
+    else {
+        return;
+    };
+    if min_expansion_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_mask_expansion_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let Some(max_center_offset_mm) = optional_numeric_parameter(
+        scenario,
+        "max_copper_to_mask_center_offset_mm",
+        0.1,
+        findings,
+    ) else {
+        return;
+    };
+    if max_center_offset_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.max_copper_to_mask_center_offset_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let copper = &bound.project.board.layout.copper;
+    if copper.features.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_MASK_OPENING_VALID requires board.layout.copper.features evidence.",
+        );
+        return;
+    }
+    let mask = &bound.project.board.layout.solder_mask;
+    if mask.features.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_MASK_OPENING_VALID requires board.layout.solder_mask.features evidence.",
+        );
+        return;
+    }
+    for (copper_index, copper_feature) in copper.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(copper_feature, copper_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(mask_layer) = solder_mask_layer_for_copper_layer(&copper_feature.layer) else {
+            continue;
+        };
+        let mut best_candidate: Option<SolderMaskOpeningCandidate<'_>> = None;
+        for (mask_index, mask_feature) in mask.features.iter().enumerate() {
+            if let Err(message) = validate_copper_feature_geometry(mask_feature, mask_index) {
+                validation_input_missing(findings, scenario, message);
+                continue;
+            }
+            if mask_feature.layer != mask_layer {
+                continue;
+            }
+            let center_offset_mm = point_distance_mm(&copper_feature.at, &mask_feature.at);
+            if center_offset_mm > max_center_offset_mm {
+                continue;
+            }
+            let expansion_x_mm = (mask_feature.size.x_mm - copper_feature.size.x_mm) / 2.0;
+            let expansion_y_mm = (mask_feature.size.y_mm - copper_feature.size.y_mm) / 2.0;
+            let min_expansion_found_mm = expansion_x_mm.min(expansion_y_mm);
+            let candidate = SolderMaskOpeningCandidate {
+                mask_feature,
+                mask_index,
+                center_offset_mm,
+                expansion_x_mm,
+                expansion_y_mm,
+                min_expansion_found_mm,
+            };
+            if best_candidate.is_none_or(|best| {
+                candidate.min_expansion_found_mm > best.min_expansion_found_mm
+                    || (candidate.min_expansion_found_mm == best.min_expansion_found_mm
+                        && candidate.center_offset_mm < best.center_offset_mm)
+            }) {
+                best_candidate = Some(candidate);
+            }
+        }
+        match best_candidate {
+            Some(candidate)
+                if candidate.min_expansion_found_mm + f64::EPSILON < min_expansion_mm =>
+            {
+                findings.push(solder_mask_opening_undersized_finding(
+                    scenario,
+                    copper_feature,
+                    copper_index,
+                    candidate,
+                    min_expansion_mm,
+                    max_center_offset_mm,
+                ));
+            }
+            None => findings.push(solder_mask_opening_missing_finding(
+                scenario,
+                copper_feature,
+                copper_index,
+                mask_layer,
+                min_expansion_mm,
+                max_center_offset_mm,
+            )),
+            _ => {}
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SolderMaskOpeningCandidate<'a> {
+    mask_feature: &'a LayoutCopperFeature,
+    mask_index: usize,
+    center_offset_mm: f64,
+    expansion_x_mm: f64,
+    expansion_y_mm: f64,
+    min_expansion_found_mm: f64,
+}
+
+fn solder_mask_layer_for_copper_layer(copper_layer: &str) -> Option<&'static str> {
+    match copper_layer {
+        "F.Cu" => Some("F.Mask"),
+        "B.Cu" => Some("B.Mask"),
+        _ => None,
+    }
+}
+
+fn solder_mask_opening_missing_finding(
+    scenario: &Scenario,
+    copper_feature: &LayoutCopperFeature,
+    copper_index: usize,
+    expected_mask_layer: &str,
+    min_expansion_mm: f64,
+    max_center_offset_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_MASK_OPENING_VALID,
+        scenario.name.clone(),
+        format!(
+            "Copper flash {copper_index} on {} has no co-located solder-mask opening on {expected_mask_layer}.",
+            copper_feature.layer
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Add or restore a solder-mask opening over this copper pad/via, or verify the fabrication export did not omit the mask aperture.".to_string(),
+    ];
+    finding
+        .measured
+        .insert("copper_feature_index".to_string(), json!(copper_index));
+    insert_copper_feature_edge_measurements(&mut finding, copper_feature);
+    finding.measured.insert(
+        "expected_solder_mask_layer".to_string(),
+        json!(expected_mask_layer),
+    );
+    finding
+        .limit
+        .insert("min_mask_expansion_mm".to_string(), json!(min_expansion_mm));
+    finding.limit.insert(
+        "max_copper_to_mask_center_offset_mm".to_string(),
+        json!(max_center_offset_mm),
+    );
+    finding
+}
+
+fn solder_mask_opening_undersized_finding(
+    scenario: &Scenario,
+    copper_feature: &LayoutCopperFeature,
+    copper_index: usize,
+    candidate: SolderMaskOpeningCandidate<'_>,
+    min_expansion_mm: f64,
+    max_center_offset_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_MASK_OPENING_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-mask opening {} on {} expands copper flash {copper_index} by only {:.6} mm; required at least {:.6} mm.",
+            candidate.mask_index,
+            candidate.mask_feature.layer,
+            candidate.min_expansion_found_mm,
+            min_expansion_mm
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Increase the solder-mask aperture expansion or restore the PCB tool's intended solder-mask clearance for this pad/via.".to_string(),
+    ];
+    finding
+        .measured
+        .insert("copper_feature_index".to_string(), json!(copper_index));
+    insert_copper_feature_edge_measurements(&mut finding, copper_feature);
+    insert_solder_mask_feature_measurements(&mut finding, candidate);
+    finding
+        .limit
+        .insert("min_mask_expansion_mm".to_string(), json!(min_expansion_mm));
+    finding.limit.insert(
+        "max_copper_to_mask_center_offset_mm".to_string(),
+        json!(max_center_offset_mm),
+    );
+    finding.measured.insert(
+        "measured_mask_expansion_x_mm".to_string(),
+        json!(candidate.expansion_x_mm),
+    );
+    finding.measured.insert(
+        "measured_mask_expansion_y_mm".to_string(),
+        json!(candidate.expansion_y_mm),
+    );
+    finding.measured.insert(
+        "measured_min_mask_expansion_mm".to_string(),
+        json!(candidate.min_expansion_found_mm),
+    );
+    finding.measured.insert(
+        "copper_to_mask_center_offset_mm".to_string(),
+        json!(candidate.center_offset_mm),
+    );
+    finding
+}
+
+fn insert_solder_mask_feature_measurements(
+    finding: &mut Finding,
+    candidate: SolderMaskOpeningCandidate<'_>,
+) {
+    let feature = candidate.mask_feature;
+    finding.measured.insert(
+        "solder_mask_feature_index".to_string(),
+        json!(candidate.mask_index),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_x_mm".to_string(),
+        json!(feature.at.x_mm),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_y_mm".to_string(),
+        json!(feature.at.y_mm),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_layer".to_string(),
+        json!(feature.layer),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_aperture".to_string(),
+        json!(feature.aperture),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_shape".to_string(),
+        json!(feature.shape),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_size_x_mm".to_string(),
+        json!(feature.size.x_mm),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_size_y_mm".to_string(),
+        json!(feature.size.y_mm),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_source_primitive".to_string(),
+        json!(feature.source_primitive),
+    );
+    finding.measured.insert(
+        "solder_mask_feature_source_primitive_index".to_string(),
+        json!(feature.source_primitive_index),
+    );
 }
 
 fn required_numeric_parameter(

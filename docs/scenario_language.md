@@ -104,6 +104,7 @@ Canonical executable check IDs:
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`
+- `SOLDER_MASK_OPENING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -724,6 +725,40 @@ This is a static 2D fabrication screen. It can find too-tight same-layer copper
 spacing in Gerber evidence, but it cannot prove shorts, same-net intent,
 copper-island connectivity, solder-mask margin, etch compensation, or
 fab-specific spacing rules without richer PCB/net evidence.
+
+Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
+IR includes Gerber copper flash evidence under `board.layout.copper.features`
+and Gerber solder-mask flash-opening evidence under
+`board.layout.solder_mask.features`.
+
+```yaml
+scenarios:
+  - name: solder_mask_openings
+    type: manufacturing
+    checks:
+      - SOLDER_MASK_OPENING_VALID
+    parameters:
+      min_mask_expansion_mm: 0.05
+      max_copper_to_mask_center_offset_mm: 0.05 # optional, defaults to 0.1
+```
+
+Solder-mask opening algorithm:
+
+1. Require `parameters.min_mask_expansion_mm`.
+2. Require finite Gerber copper flash features and solder-mask flash features.
+3. Map `F.Cu` copper to `F.Mask` openings and `B.Cu` copper to `B.Mask`
+   openings.
+4. For each copper flash, find the same-layer mask opening within
+   `max_copper_to_mask_center_offset_mm` that gives the largest minimum X/Y
+   expansion.
+5. Fail when no co-located opening exists.
+6. Fail when the opening expands the copper flash by less than
+   `min_mask_expansion_mm` on either axis.
+
+This is a static 2D solder-mask aperture screen. It checks flash-to-flash
+opening evidence and does not yet solve mask regions, mask dams between pads,
+fab-specific mask swell, paste stencil behavior, or package-specific mask
+rules.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

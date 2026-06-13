@@ -40,6 +40,7 @@ pub(super) const DRILL_ANNULAR_RING_VALID: &str = "DRILL_ANNULAR_RING_VALID";
 pub(super) const COPPER_TO_BOARD_EDGE_CLEARANCE_VALID: &str =
     "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
+pub(super) const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
 pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
@@ -298,6 +299,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 COPPER_SPACING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_copper_spacing(bound, scenario, &mut findings)
                 }
+                SOLDER_MASK_OPENING_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_solder_mask_opening(bound, scenario, &mut findings)
+                }
                 IO_VOLTAGE_COMPATIBLE if scenario.scenario_type == "power_tree" => {
                     io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)
                 }
@@ -326,6 +330,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | DRILL_ANNULAR_RING_VALID
                 | COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
                 | COPPER_SPACING_VALID
+                | SOLDER_MASK_OPENING_VALID
                 | IO_VOLTAGE_COMPATIBLE
                 | USB_CONNECTOR_PROTECTION_VALID
                 | USB_PROTECTION_PLACEMENT_VALID

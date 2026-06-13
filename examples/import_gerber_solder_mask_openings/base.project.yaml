@@ -1,0 +1,27 @@
+project:
+  name: import_gerber_solder_mask_openings
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.8 }
+scenarios:
+  - name: solder_mask_opening
+    type: manufacturing
+    checks:
+      - SOLDER_MASK_OPENING_VALID
+    parameters:
+      min_mask_expansion_mm: 0.05
+      max_copper_to_mask_center_offset_mm: 0.05

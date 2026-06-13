@@ -61,6 +61,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`
+- `SOLDER_MASK_OPENING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
