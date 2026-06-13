@@ -68,8 +68,9 @@ Observed but not yet encoded as process defaults:
 
 Next source work before expanding presets:
 
-- Pin exact text values for drill-to-edge, slot-to-edge, annular ring,
-  copper-spacing, and stencil-spacing thresholds from official JLCPCB material
-  or from an exported process capability document.
+- Pin exact text values for drill-to-edge, slot-to-edge,
+  copper-to-board-edge, copper-spacing, paste-area-ratio, and stencil-spacing
+  thresholds from official JLCPCB material, package stencil guidance, or an
+  exported process capability document.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.
