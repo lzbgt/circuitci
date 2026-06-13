@@ -469,10 +469,13 @@ Stable measured keys include
 `copper_feature_shape`, `copper_feature_size_x_mm`,
 `copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index`. Missing-opening findings also report
-`expected_solder_paste_layer`. Area-ratio findings also report
+`expected_solder_paste_layer`. Area-ratio findings aggregate all co-located
+paste openings within `max_copper_to_paste_center_offset_mm` and also report
 `solder_paste_kind`, `copper_feature_area_mm2`,
-`solder_paste_opening_area_mm2`, `solder_paste_area_ratio`, and
-`copper_to_paste_center_offset_mm`. Feature-opening findings report
+`solder_paste_opening_area_mm2`, `solder_paste_opening_count`,
+`solder_paste_area_ratio`, and `copper_to_paste_center_offset_mm`.
+`solder_paste_kind` and object-specific fields identify the representative
+nearest opening from that aggregate. Feature-opening findings report
 `solder_paste_feature_index`, `solder_paste_feature_x_mm`,
 `solder_paste_feature_y_mm`, `solder_paste_feature_layer`,
 optional `solder_paste_feature_net`, optional

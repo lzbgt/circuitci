@@ -399,7 +399,9 @@ pub(in crate::validation) fn validate_solder_paste_opening(
             );
             continue;
         };
-        let mut best_candidate: Option<SolderPasteOpeningCandidate<'_>> = None;
+        let mut representative: Option<SolderPasteOpeningCandidate<'_>> = None;
+        let mut paste_area_total_mm2 = 0.0;
+        let mut paste_opening_count = 0usize;
         for paste_object in &paste_objects {
             if paste_object.layer() != paste_layer {
                 continue;
@@ -424,23 +426,31 @@ pub(in crate::validation) fn validate_solder_paste_opening(
                 );
                 continue;
             };
-            let area_ratio = paste_area_mm2 / copper_area_mm2;
             let candidate = SolderPasteOpeningCandidate {
                 paste_object: *paste_object,
                 center_offset_mm,
                 copper_area_mm2,
                 paste_area_mm2,
-                area_ratio,
+                paste_opening_count: 1,
+                area_ratio: paste_area_mm2 / copper_area_mm2,
             };
-            if best_candidate.is_none_or(|best| {
+            paste_area_total_mm2 += paste_area_mm2;
+            paste_opening_count += 1;
+            if representative.is_none_or(|best| {
                 candidate.center_offset_mm < best.center_offset_mm
                     || (candidate.center_offset_mm == best.center_offset_mm
                         && (candidate.area_ratio - 1.0).abs() < (best.area_ratio - 1.0).abs())
             }) {
-                best_candidate = Some(candidate);
+                representative = Some(candidate);
             }
         }
-        match best_candidate {
+        let aggregate_candidate = representative.map(|candidate| SolderPasteOpeningCandidate {
+            paste_area_mm2: paste_area_total_mm2,
+            paste_opening_count,
+            area_ratio: paste_area_total_mm2 / copper_area_mm2,
+            ..candidate
+        });
+        match aggregate_candidate {
             Some(candidate)
                 if candidate.area_ratio + f64::EPSILON < min_area_ratio
                     || candidate.area_ratio > max_area_ratio + f64::EPSILON =>
@@ -568,6 +578,7 @@ struct SolderPasteOpeningCandidate<'a> {
     center_offset_mm: f64,
     copper_area_mm2: f64,
     paste_area_mm2: f64,
+    paste_opening_count: usize,
     area_ratio: f64,
 }
 
@@ -1134,6 +1145,10 @@ fn insert_solder_paste_feature_measurements(
     finding.measured.insert(
         "solder_paste_opening_area_mm2".to_string(),
         json!(candidate.paste_area_mm2),
+    );
+    finding.measured.insert(
+        "solder_paste_opening_count".to_string(),
+        json!(candidate.paste_opening_count),
     );
     finding.measured.insert(
         "solder_paste_area_ratio".to_string(),

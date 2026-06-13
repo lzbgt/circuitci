@@ -45,13 +45,16 @@ single-contour region opening evidence from `board.layout.solder_paste`
 together with Gerber copper flashes under `board.layout.copper.features`. It
 maps `F.Cu` to `F.Paste` and `B.Cu` to `B.Paste`, then checks that co-located
 paste aperture area stays within scenario-provided min/max area-ratio bounds.
+When multiple paste openings are co-located with the same copper flash, their
+areas are summed before checking the ratio, which supports static screening of
+windowed exposed-pad stencil patterns.
 
 `SOLDER_PASTE_SPACING_VALID` consumes the same solder-paste feature, segment,
 and region opening evidence to check same-layer opening-to-opening spacing for
 static stencil manufacturability.
 
 The importer intentionally does not infer package-specific stencil reductions,
-step-stencil process rules, paste windowing for exposed pads, or paste-bearing
-pad intent from Gerber alone. Use pad or Gerber ownership evidence where
-available, and tune `SOLDER_PASTE_OPENING_VALID` and
-`SOLDER_PASTE_SPACING_VALID` thresholds to the package and fabricator process.
+step-stencil process rules, paste volume, or paste-bearing pad intent from
+Gerber alone. Use pad or Gerber ownership evidence where available, and tune
+`SOLDER_PASTE_OPENING_VALID` and `SOLDER_PASTE_SPACING_VALID` thresholds to the
+package and fabricator process.

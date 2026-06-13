@@ -225,10 +225,11 @@ without explicit imported mechanical evidence.
   solder-paste flash, circular-aperture draw, and single-contour region
   openings for a static 2D stencil-aperture screen. It checks same-side `F.Cu`
   -> `F.Paste` and `B.Cu` -> `B.Paste` co-located openings and min/max
-  paste-to-copper area ratio. It skips copper features explicitly owned by vias.
-  It does not yet evaluate multi-contour paste regions, windowed exposed-pad
-  stencils, step-stencil thickness, paste volume, package-specific paste
-  reductions, or 3D solderability effects.
+  paste-to-copper area ratio, aggregating multiple co-located paste openings
+  for windowed stencil patterns. It skips copper features explicitly owned by
+  vias. It does not yet evaluate multi-contour paste regions, step-stencil
+  thickness, paste volume, package-specific paste reductions, or 3D
+  solderability effects.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close

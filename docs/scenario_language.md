@@ -825,17 +825,20 @@ Solder-paste opening algorithm:
 4. Skip copper features explicitly owned by vias.
 5. Map `F.Cu` copper to `F.Paste` openings and `B.Cu` copper to `B.Paste`
    openings.
-6. For each checked copper flash, find the nearest same-layer paste opening by
-   feature center, segment midpoint, or region centroid within
+6. For each checked copper flash, collect same-layer paste openings whose
+   feature center, segment midpoint, or region centroid is within
    `max_copper_to_paste_center_offset_mm`.
 7. Fail when no co-located opening exists.
-8. Fail when `paste_area_mm2 / copper_area_mm2` is outside the configured
-   inclusive area-ratio range.
+8. Sum all co-located paste-opening areas for that copper flash.
+9. Fail when `paste_area_mm2 / copper_area_mm2` is outside the configured
+   inclusive area-ratio range. Reports identify the nearest contributing
+   opening as representative evidence and include `solder_paste_opening_count`.
 
 This is a static 2D stencil aperture screen. It checks flash, circular-aperture
-draw, and single-contour region area-ratio evidence. It does not yet evaluate
-multi-contour paste regions, windowed exposed-pad stencils, step-stencil
-thickness, paste volume, or package-specific paste reductions.
+draw, and single-contour region area-ratio evidence, including aggregate area
+for multiple co-located window apertures. It does not yet evaluate
+multi-contour paste regions, step-stencil thickness, paste volume, or
+package-specific paste reductions.
 
 Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
 Board IR includes at least two Gerber solder-paste opening objects under

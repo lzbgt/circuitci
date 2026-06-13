@@ -1,0 +1,63 @@
+project:
+  name: bad_solder_paste_opening_windowed_oversized
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Cu
+          polarity: dark
+          owner_kind: pad
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 4.0, y_mm: 4.0 }
+    solder_paste:
+      features:
+        - at: { x_mm: 9.4, y_mm: 9.4 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
+        - at: { x_mm: 10.6, y_mm: 9.4 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
+        - at: { x_mm: 9.4, y_mm: 10.6 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 2
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
+        - at: { x_mm: 10.6, y_mm: 10.6 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 3
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 1.0 }
+scenarios:
+  - name: solder_paste_opening
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_OPENING_VALID
+    parameters:
+      min_paste_area_ratio: 0.2
+      max_paste_area_ratio: 0.24
+      max_copper_to_paste_center_offset_mm: 0.9
