@@ -27,6 +27,7 @@
           "reason": { "type": "string", "minLength": 1 },
           "required_inputs": {
             "type": "array",
+            "minItems": 1,
             "items": { "type": "string", "minLength": 1 }
           },
           "scenario": {
@@ -506,6 +507,21 @@
             "additionalProperties": false
           }
         },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "runnable": { "const": true }
+              },
+              "required": ["runnable"]
+            },
+            "then": {
+              "not": {
+                "required": ["required_inputs"]
+              }
+            }
+          }
+        ],
         "additionalProperties": false
       }
     }

@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::process::Command;
 
 fn run_suggest_scenarios(project: &str) -> Value {
@@ -32,6 +32,39 @@ fn assert_suggestion_schema_valid(suggestions: &Value) {
         .map(|error| format!("{} at {}", error, error.instance_path()))
         .collect();
     assert!(errors.is_empty(), "suggestion schema errors: {errors:#?}");
+}
+
+#[test]
+fn scenario_suggestion_schema_rejects_required_inputs_on_runnable_suggestions() {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let report = json!({
+        "schema_version": "0.1.0",
+        "project": "bad_suggestion_report",
+        "suggestions": [
+            {
+                "id": "bad_runnable_required_inputs",
+                "kind": "test",
+                "confidence": "high",
+                "runnable": true,
+                "reason": "Runnable suggestions must not have missing required inputs.",
+                "required_inputs": ["missing evidence"],
+                "scenario": {
+                    "name": "bad",
+                    "type": "test",
+                    "checks": ["TEST_CHECK"]
+                }
+            }
+        ]
+    });
+    let errors = validator.iter_errors(&report).collect::<Vec<_>>();
+    assert!(
+        !errors.is_empty(),
+        "schema accepted runnable suggestion with required_inputs"
+    );
 }
 
 fn assert_runnable_suggestions_have_no_required_inputs(suggestions: &Value) {

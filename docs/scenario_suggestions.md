@@ -6,6 +6,12 @@ completed.
 The artifact is validated by
 `schemas/scenario_suggestion_report.schema.json`.
 
+The schema enforces the core execution contract: a suggestion with
+`runnable: true` must not include `required_inputs`. Missing evidence, missing
+source-backed thresholds, or missing board/order metadata must make the
+suggestion non-runnable until that input is supplied. Optional review guidance
+belongs in `reason` or supporting docs, not in `required_inputs`.
+
 ```bash
 circuitci suggest-scenarios project.yaml --output out/scenario_suggestions.yaml
 ```
