@@ -448,10 +448,13 @@ fn run_import_gerber_solder_mask(gerber: PathBuf, project: PathBuf, output: Path
         },
     )?;
     println!(
-        "CircuitCI imported Gerber solder mask: {} flash openings, {} draw openings, {} region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
+        "CircuitCI imported Gerber solder mask: {} flash openings, {} draw openings, {} region openings, {} owner-associated flash openings, {} owner-associated draw openings, {} owner-associated region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
         summary.openings,
         summary.draw_openings,
         summary.region_openings,
+        summary.owner_associated_openings,
+        summary.owner_associated_draw_openings,
+        summary.owner_associated_region_openings,
         summary.apertures,
         summary.ignored_draws,
         summary.skipped_clear_flashes,
@@ -476,10 +479,13 @@ fn run_import_gerber_solder_paste(
         },
     )?;
     println!(
-        "CircuitCI imported Gerber solder paste: {} flash openings, {} draw openings, {} region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
+        "CircuitCI imported Gerber solder paste: {} flash openings, {} draw openings, {} region openings, {} owner-associated flash openings, {} owner-associated draw openings, {} owner-associated region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
         summary.openings,
         summary.draw_openings,
         summary.region_openings,
+        summary.owner_associated_openings,
+        summary.owner_associated_draw_openings,
+        summary.owner_associated_region_openings,
         summary.apertures,
         summary.ignored_draws,
         summary.skipped_clear_flashes,

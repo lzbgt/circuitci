@@ -26,6 +26,11 @@ draw, and region openings can inherit conservative owner metadata:
 - `net` plus `owner_kind: via` and `via_index` from a unique matching via on
   the corresponding copper layer.
 
+The CLI summary reports owner-associated flash, draw, and region opening
+counts. A zero owner-associated count means the Gerber mask primitives were
+still imported, but the input project did not yet contain unique pad/via layout
+evidence for those openings.
+
 Example:
 
 ```bash

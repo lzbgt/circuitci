@@ -387,6 +387,21 @@ pub(super) fn summary_for_solder_mask(mask: &GerberCopper) -> GerberSolderMaskIm
         openings: mask.features.len(),
         draw_openings: mask.segments.len(),
         region_openings: mask.regions.len(),
+        owner_associated_openings: mask
+            .features
+            .iter()
+            .filter(|feature| feature.owner_kind.is_some())
+            .count(),
+        owner_associated_draw_openings: mask
+            .segments
+            .iter()
+            .filter(|segment| segment.owner_kind.is_some())
+            .count(),
+        owner_associated_region_openings: mask
+            .regions
+            .iter()
+            .filter(|region| region.owner_kind.is_some())
+            .count(),
         apertures: mask.aperture_count,
         ignored_draws: mask.ignored_draws,
         skipped_clear_flashes: mask.skipped_clear_flashes,
@@ -399,6 +414,21 @@ pub(super) fn summary_for_solder_paste(paste: &GerberCopper) -> GerberSolderPast
         openings: paste.features.len(),
         draw_openings: paste.segments.len(),
         region_openings: paste.regions.len(),
+        owner_associated_openings: paste
+            .features
+            .iter()
+            .filter(|feature| feature.owner_kind.is_some())
+            .count(),
+        owner_associated_draw_openings: paste
+            .segments
+            .iter()
+            .filter(|segment| segment.owner_kind.is_some())
+            .count(),
+        owner_associated_region_openings: paste
+            .regions
+            .iter()
+            .filter(|region| region.owner_kind.is_some())
+            .count(),
         apertures: paste.aperture_count,
         ignored_draws: paste.ignored_draws,
         skipped_clear_flashes: paste.skipped_clear_flashes,

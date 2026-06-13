@@ -23,6 +23,11 @@ and region openings can inherit conservative owner metadata: `net`,
 layer. Via ownership is intentionally not copied into paste openings because
 vias are not normally paste-bearing stencil features.
 
+The CLI summary reports owner-associated flash, draw, and region opening
+counts. A zero owner-associated count means the Gerber paste primitives were
+still imported, but the input project did not yet contain unique pad layout
+evidence for those openings.
+
 Example:
 
 ```bash

@@ -33,6 +33,23 @@ and `import-excellon-drill` reads the observed PTH/NPTH NC drill subset into
 ingestion or a richer adapter that converts those release files into
 electrical Board IR plus scenario suggestions.
 
+Current owner-association evidence from the release-only flow is intentionally
+zero because BOM/CPL plus Gerbers do not expose pad, via, or net ownership:
+
+- Top copper: `2725` flash features, `2567` trace segments, `22` regions,
+  `0` net-associated objects.
+- Bottom copper: `1275` flash features, `854` trace segments, `3` regions,
+  `0` net-associated objects.
+- Top solder mask: `1546` flash openings, `7` region openings,
+  `0` owner-associated openings.
+- Bottom solder mask: `96` flash openings, `0` owner-associated openings.
+- Top solder paste: `1111` flash openings, `354` region openings,
+  `0` owner-associated openings.
+
+This makes `.eprj2` layout extraction or another pad/net evidence adapter the
+next requirement before fabricated-release mask, paste, copper, and drill
+reports can reliably point back to affected component pins.
+
 ## Project-Level Evidence
 
 - ESP32-S3 hub/node design:

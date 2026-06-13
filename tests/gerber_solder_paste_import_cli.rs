@@ -25,6 +25,9 @@ fn import_gerber_solder_paste_appends_schema_valid_opening_evidence() {
     assert!(stdout.contains("1 flash openings"));
     assert!(stdout.contains("0 draw openings"));
     assert!(stdout.contains("0 region openings"));
+    assert!(stdout.contains("1 owner-associated flash openings"));
+    assert!(stdout.contains("0 owner-associated draw openings"));
+    assert!(stdout.contains("0 owner-associated region openings"));
     assert!(stdout.contains("1 apertures"));
 
     let schema: Value =
@@ -92,6 +95,9 @@ fn import_gerber_solder_paste_samples_arc_draw_openings() {
     let stdout = String::from_utf8_lossy(&command_output.stdout);
     assert!(stdout.contains("0 flash openings"));
     assert!(stdout.contains("7 draw openings"));
+    assert!(stdout.contains("0 owner-associated flash openings"));
+    assert!(stdout.contains("1 owner-associated draw openings"));
+    assert!(stdout.contains("0 owner-associated region openings"));
 
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -151,6 +157,9 @@ fn import_gerber_solder_paste_associates_region_opening_owner() {
     assert!(command_output.status.success());
     let stdout = String::from_utf8_lossy(&command_output.stdout);
     assert!(stdout.contains("1 region openings"));
+    assert!(stdout.contains("0 owner-associated flash openings"));
+    assert!(stdout.contains("0 owner-associated draw openings"));
+    assert!(stdout.contains("1 owner-associated region openings"));
 
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
