@@ -8,6 +8,8 @@ board:
   nets: {}
   manufacturing:
     stencil_thickness_mm: 0.10
+    min_drill_edge_clearance_mm: 0.50
+    min_slot_edge_clearance_mm: 0.50
     source: example_stencil_order
   layout:
     outline:

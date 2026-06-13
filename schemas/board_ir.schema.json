@@ -121,6 +121,8 @@
           "type": "object",
           "properties": {
             "stencil_thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
+            "min_drill_edge_clearance_mm": { "type": "number", "minimum": 0 },
+            "min_slot_edge_clearance_mm": { "type": "number", "minimum": 0 },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

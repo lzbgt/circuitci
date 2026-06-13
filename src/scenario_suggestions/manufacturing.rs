@@ -83,20 +83,35 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
             ),
         );
         if has_outline {
+            let drill_edge_clearance_mm = bound
+                .project
+                .board
+                .manufacturing
+                .min_drill_edge_clearance_mm
+                .filter(|value| value.is_finite() && *value >= 0.0);
+            let runnable = drill_edge_clearance_mm.is_some();
             push_if_not_declared(
                 bound,
                 &mut suggestions,
                 DRILL_TO_BOARD_EDGE_CLEARANCE_VALID,
                 manufacturing_suggestion(
                     "drill_to_board_edge_clearance",
-                    false,
-                    "Imported circular drill and board-outline evidence can be screened for drill-to-board-edge clearance once the process limit is supplied.",
+                    runnable,
+                    if runnable {
+                        "Imported circular drill and board-outline evidence can be screened for drill-to-board-edge clearance using board-level manufacturing metadata."
+                    } else {
+                        "Imported circular drill and board-outline evidence can be screened for drill-to-board-edge clearance once the process limit is supplied."
+                    },
                     &format!("{project_name}_drill_to_board_edge_clearance"),
                     DRILL_TO_BOARD_EDGE_CLEARANCE_VALID,
-                    None,
-                    vec![
-                        "Set manufacturing parameters.min_drill_edge_clearance_mm from the selected fabrication process or board specification.".to_string(),
-                    ],
+                    board_numeric_parameter("min_drill_edge_clearance_mm", drill_edge_clearance_mm),
+                    if runnable {
+                        Vec::new()
+                    } else {
+                        vec![
+                            "Set manufacturing parameters.min_drill_edge_clearance_mm or board.manufacturing.min_drill_edge_clearance_mm from the selected fabrication process or board specification.".to_string(),
+                        ]
+                    },
                 ),
             );
         }
@@ -149,20 +164,35 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
             ),
         );
         if has_outline {
+            let slot_edge_clearance_mm = bound
+                .project
+                .board
+                .manufacturing
+                .min_slot_edge_clearance_mm
+                .filter(|value| value.is_finite() && *value >= 0.0);
+            let runnable = slot_edge_clearance_mm.is_some();
             push_if_not_declared(
                 bound,
                 &mut suggestions,
                 SLOT_TO_BOARD_EDGE_CLEARANCE_VALID,
                 manufacturing_suggestion(
                     "slot_to_board_edge_clearance",
-                    false,
-                    "Imported routed-slot and board-outline evidence can be screened for slot-to-board-edge clearance once the process limit is supplied.",
+                    runnable,
+                    if runnable {
+                        "Imported routed-slot and board-outline evidence can be screened for slot-to-board-edge clearance using board-level manufacturing metadata."
+                    } else {
+                        "Imported routed-slot and board-outline evidence can be screened for slot-to-board-edge clearance once the process limit is supplied."
+                    },
                     &format!("{project_name}_slot_to_board_edge_clearance"),
                     SLOT_TO_BOARD_EDGE_CLEARANCE_VALID,
-                    None,
-                    vec![
-                        "Set manufacturing parameters.min_slot_edge_clearance_mm from the selected fabrication process or board specification.".to_string(),
-                    ],
+                    board_numeric_parameter("min_slot_edge_clearance_mm", slot_edge_clearance_mm),
+                    if runnable {
+                        Vec::new()
+                    } else {
+                        vec![
+                            "Set manufacturing parameters.min_slot_edge_clearance_mm or board.manufacturing.min_slot_edge_clearance_mm from the selected fabrication process or board specification.".to_string(),
+                        ]
+                    },
                 ),
             );
         }
@@ -489,6 +519,10 @@ fn fabrication_process(process: &str) -> BTreeMap<String, Value> {
 
 fn pin_pitch_parameter(pin_pitch_mm: f64) -> BTreeMap<String, Value> {
     BTreeMap::from([("pin_pitch_mm".to_string(), json!(pin_pitch_mm))])
+}
+
+fn board_numeric_parameter(name: &str, value: Option<f64>) -> Option<BTreeMap<String, Value>> {
+    value.map(|value| BTreeMap::from([(name.to_string(), json!(value))]))
 }
 
 fn stencil_area_ratio_parameters(stencil_thickness_mm: Option<f64>) -> BTreeMap<String, Value> {

@@ -12,7 +12,8 @@ enrich these evidence families:
 - component graph: `board.components`, `board.nets`, and component
   `source` metadata;
 - board-level manufacturing facts: `board.manufacturing`, currently including
-  `stencil_thickness_mm`;
+  `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
+  `min_slot_edge_clearance_mm`;
 - placement/layout evidence: `placements`, `footprints`, `pads`, `routes`,
   `zones`, and `outline`;
 - fabrication evidence: `drills`, `slots`, `copper`, `solder_mask`, and

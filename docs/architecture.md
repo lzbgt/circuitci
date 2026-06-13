@@ -107,8 +107,10 @@ Presets are deliberately narrow. JLCPCB castellated-hole values are only exposed
 through `CASTELLATED_HOLE_VALID`; they are not reused as generic drill-edge
 clearance. JLC stencil table rows are package/pitch-scoped rules rather than
 global paste-spacing or paste-area presets. Board-level process facts that are
-not present in Gerbers, such as `board.manufacturing.stencil_thickness_mm`, are
-stored as Board IR metadata and remain explicit evidence.
+not present in Gerbers, such as `board.manufacturing.stencil_thickness_mm`,
+`board.manufacturing.min_drill_edge_clearance_mm`, and
+`board.manufacturing.min_slot_edge_clearance_mm`, are stored as Board IR metadata
+and remain explicit evidence.
 
 ## Scenario Suggestions
 

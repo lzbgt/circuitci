@@ -128,6 +128,45 @@ pub(super) fn required_numeric_parameter(
     None
 }
 
+pub(super) fn required_numeric_parameter_with_board_default(
+    scenario: &Scenario,
+    name: &str,
+    board_default: Option<f64>,
+    board_field: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if let Some(value) = explicit_numeric_parameter(scenario, name, findings) {
+        return Some(value);
+    }
+    if scenario.parameters.contains_key(name) {
+        return None;
+    }
+    match fabrication_process_numeric_default(scenario, name, findings) {
+        ProcessDefaultLookup::Default(value) => return Some(value),
+        ProcessDefaultLookup::InvalidProcess => return None,
+        ProcessDefaultLookup::NoProcess | ProcessDefaultLookup::NoDefault => {}
+    }
+    if let Some(value) = board_default {
+        if !value.is_finite() {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("board.manufacturing.{board_field} must be finite."),
+            );
+            return None;
+        }
+        return Some(value);
+    }
+    validation_input_missing(
+        findings,
+        scenario,
+        format!(
+            "manufacturing parameters.{name} or board.manufacturing.{board_field} is required."
+        ),
+    );
+    None
+}
+
 pub(super) fn optional_numeric_parameter(
     scenario: &Scenario,
     name: &str,

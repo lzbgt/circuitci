@@ -40,6 +40,10 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub stencil_thickness_mm: Option<f64>,
     #[serde(default)]
+    pub min_drill_edge_clearance_mm: Option<f64>,
+    #[serde(default)]
+    pub min_slot_edge_clearance_mm: Option<f64>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 

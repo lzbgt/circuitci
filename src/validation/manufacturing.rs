@@ -24,6 +24,7 @@ use self::geometry::{
 };
 use self::process::{
     explicit_numeric_parameter, optional_numeric_parameter, required_numeric_parameter,
+    required_numeric_parameter_with_board_default,
 };
 use super::CASTELLATED_HOLE_VALID;
 use super::COPPER_SPACING_VALID;
@@ -108,16 +109,24 @@ pub(super) fn validate_drill_to_board_edge_clearance(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(min_clearance_mm) =
-        required_numeric_parameter(scenario, "min_drill_edge_clearance_mm", findings)
-    else {
+    let Some(min_clearance_mm) = required_numeric_parameter_with_board_default(
+        scenario,
+        "min_drill_edge_clearance_mm",
+        bound
+            .project
+            .board
+            .manufacturing
+            .min_drill_edge_clearance_mm,
+        "min_drill_edge_clearance_mm",
+        findings,
+    ) else {
         return;
     };
     if min_clearance_mm < 0.0 {
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.min_drill_edge_clearance_mm must be greater than or equal to zero.",
+            "min_drill_edge_clearance_mm must be greater than or equal to zero.",
         );
         return;
     }
@@ -177,16 +186,20 @@ pub(super) fn validate_slot_to_board_edge_clearance(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(min_clearance_mm) =
-        required_numeric_parameter(scenario, "min_slot_edge_clearance_mm", findings)
-    else {
+    let Some(min_clearance_mm) = required_numeric_parameter_with_board_default(
+        scenario,
+        "min_slot_edge_clearance_mm",
+        bound.project.board.manufacturing.min_slot_edge_clearance_mm,
+        "min_slot_edge_clearance_mm",
+        findings,
+    ) else {
         return;
     };
     if min_clearance_mm < 0.0 {
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.min_slot_edge_clearance_mm must be greater than or equal to zero.",
+            "min_slot_edge_clearance_mm must be greater than or equal to zero.",
         );
         return;
     }

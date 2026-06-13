@@ -30,6 +30,17 @@ fn drill_to_board_edge_clearance_fails_external_edge_violation() {
 }
 
 #[test]
+fn drill_to_board_edge_clearance_uses_board_manufacturing_default() {
+    let report =
+        run_validation("examples/bad_drill_to_board_edge_clearance_board_metadata/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["limit"]["min_drill_edge_clearance_mm"], 0.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn drill_to_board_edge_clearance_treats_cutouts_as_board_edges() {
     let report = run_validation("examples/bad_drill_to_cutout_edge_clearance/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -102,6 +113,17 @@ fn slot_to_board_edge_clearance_fails_external_edge_violation() {
     assert_eq!(failure["measured"]["slot_tool"], "T08");
     assert_eq!(failure["measured"]["source_slot_index"], 0);
     assert_eq!(failure["measured"]["board_edge_boundary_role"], "external");
+    assert_eq!(failure["limit"]["min_slot_edge_clearance_mm"], 0.5);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn slot_to_board_edge_clearance_uses_board_manufacturing_default() {
+    let report =
+        run_validation("examples/bad_slot_to_board_edge_clearance_board_metadata/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID");
     assert_eq!(failure["limit"]["min_slot_edge_clearance_mm"], 0.5);
     assert_report_schema_valid(&report);
 }

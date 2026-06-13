@@ -294,6 +294,21 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "jlcpcb_drill_diameter_range_2026_06"
     );
 
+    let drill_edge = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "drill_to_board_edge_clearance")
+        .expect("drill edge suggestion");
+    assert_eq!(drill_edge["runnable"], true);
+    assert_eq!(
+        drill_edge["scenario"]["checks"][0],
+        "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID"
+    );
+    assert_eq!(
+        drill_edge["scenario"]["parameters"]["min_drill_edge_clearance_mm"],
+        0.50
+    );
+    assert!(drill_edge.get("required_inputs").is_none());
+
     let slot_width = suggested
         .iter()
         .find(|suggestion| suggestion["id"] == "slot_width_valid")
@@ -318,6 +333,21 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         slot_aspect_ratio["scenario"]["parameters"]["fabrication_process"],
         "jlcpcb_slot_min_2026_06"
     );
+
+    let slot_edge = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "slot_to_board_edge_clearance")
+        .expect("slot edge suggestion");
+    assert_eq!(slot_edge["runnable"], true);
+    assert_eq!(
+        slot_edge["scenario"]["checks"][0],
+        "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID"
+    );
+    assert_eq!(
+        slot_edge["scenario"]["parameters"]["min_slot_edge_clearance_mm"],
+        0.50
+    );
+    assert!(slot_edge.get("required_inputs").is_none());
 
     let castellated_hole = suggested
         .iter()

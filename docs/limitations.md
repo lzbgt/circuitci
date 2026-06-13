@@ -182,9 +182,13 @@ without explicit imported mechanical evidence.
   against explicit or preset process ranges and can use the dedicated JLCPCB
   0.15-6.30 mm circular drill preset. `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
   uses imported drill centers, drill diameters, and board-outline centerline
-  segments for a static 2D edge-clearance screen. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
-  similarly uses imported Excellon `G85` routed-slot centerlines and widths
-  under `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width
+  segments for a static 2D edge-clearance screen and can use
+  `board.manufacturing.min_drill_edge_clearance_mm` when the scenario omits the
+  parameter. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` similarly uses imported
+  Excellon `G85` routed-slot centerlines and widths under `board.layout.slots[]`
+  and can use `board.manufacturing.min_slot_edge_clearance_mm`. These edge
+  metadata fields are order-specific board facts, not generic JLCPCB defaults.
+  `SLOT_WIDTH_VALID` checks routed-slot width
   against process thresholds and can use the dedicated JLCPCB
   metallized/non-metallized slot preset. `SLOT_ASPECT_RATIO_VALID` checks
   routed-slot length-to-width ratio and can use the same JLCPCB slot preset.

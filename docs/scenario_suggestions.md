@@ -281,7 +281,11 @@ The command is conservative:
   `fabrication_process: jlcpcb_drill_diameter_range_2026_06`. When
   `board.layout.slots[]` is present, it emits runnable `SLOT_WIDTH_VALID` using
   `fabrication_process: jlcpcb_slot_min_2026_06` and runnable
-  `SLOT_ASPECT_RATIO_VALID` using the same slot preset. When drills and copper
+  `SLOT_ASPECT_RATIO_VALID` using the same slot preset. Drill-to-board-edge and
+  slot-to-board-edge templates become runnable when the Board IR carries
+  `board.manufacturing.min_drill_edge_clearance_mm` or
+  `board.manufacturing.min_slot_edge_clearance_mm`; otherwise they stay
+  non-runnable and request those order-specific limits. When drills and copper
   flashes are present, it emits runnable `DRILL_ANNULAR_RING_VALID` using
   `fabrication_process: jlcpcb_double_sided_via_min_2026_06`. When copper and
   routed board-outline evidence are present, it emits runnable

@@ -107,6 +107,8 @@ executable.
 board:
   manufacturing:
     stencil_thickness_mm: 0.10
+    min_drill_edge_clearance_mm: 0.50
+    min_slot_edge_clearance_mm: 0.50
     source: jlc_stencil_order
 ```
 
@@ -116,6 +118,14 @@ board:
 a user can run what-if checks against another stencil thickness. The field is
 not inferred from Gerbers because paste Gerbers describe aperture openings, not
 the physical stencil foil thickness.
+
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` and
+`SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` consume
+`board.manufacturing.min_drill_edge_clearance_mm` and
+`board.manufacturing.min_slot_edge_clearance_mm` respectively when the scenario
+does not provide the matching `parameters.*` value and no process preset supplies
+one. These fields are order- or process-specific board facts, not generic JLCPCB
+defaults.
 
 Power semantics:
 

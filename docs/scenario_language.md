@@ -638,7 +638,9 @@ scenarios:
 
 Drill-to-board-edge algorithm:
 
-1. Require `parameters.min_drill_edge_clearance_mm`.
+1. Resolve `min_drill_edge_clearance_mm` from the scenario parameter first,
+   then from any selected process preset, then from
+   `board.manufacturing.min_drill_edge_clearance_mm`.
 2. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
 3. Require finite `board.layout.outline.segments[]` entries.
 4. Measure each drill center to the nearest outline segment and subtract drill
@@ -668,7 +670,9 @@ scenarios:
 
 Slot-to-board-edge algorithm:
 
-1. Require `parameters.min_slot_edge_clearance_mm`.
+1. Resolve `min_slot_edge_clearance_mm` from the scenario parameter first, then
+   from any selected process preset, then from
+   `board.manufacturing.min_slot_edge_clearance_mm`.
 2. Require finite `board.layout.slots[]` entries with positive `width_mm` and
    non-zero start/end centerline length.
 3. Require finite `board.layout.outline.segments[]` entries.

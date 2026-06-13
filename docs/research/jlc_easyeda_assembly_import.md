@@ -229,12 +229,12 @@ Runnable manufacturing suggestions generated from source-backed package evidence
 
 Non-runnable suggestions generated because the imported evidence proves the
 geometry exists but the process threshold is not yet pinned to an authoritative
-named preset:
+named preset or supplied as board/order metadata:
 
 | Suggestion | Check | Required source-pinned threshold |
 | --- | --- | --- |
-| `drill_to_board_edge_clearance` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_drill_edge_clearance_mm` |
-| `slot_to_board_edge_clearance` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_slot_edge_clearance_mm` |
+| `drill_to_board_edge_clearance` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_drill_edge_clearance_mm` or `board.manufacturing.min_drill_edge_clearance_mm` |
+| `slot_to_board_edge_clearance` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_slot_edge_clearance_mm` or `board.manufacturing.min_slot_edge_clearance_mm` |
 | `solder_paste_opening_valid` | `SOLDER_PASTE_OPENING_VALID` | `min_paste_area_ratio`, `max_paste_area_ratio` |
 | `solder_paste_aperture_area_ratio_valid` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | `stencil_thickness_mm`; area-ratio floor comes from `jlcpcb_stencil_area_ratio_2026_06` |
 | `solder_paste_spacing_valid` | `SOLDER_PASTE_SPACING_VALID` | `min_solder_paste_spacing_mm` |
@@ -242,8 +242,8 @@ named preset:
 This confirms the fabricated-release ingestion is now strong enough to produce
 a concrete manufacturing checklist automatically. The remaining gap is process
 evidence, not detection plumbing: those five non-runnable checks need exact,
-condition-scoped JLCPCB or package/stencil source values before CircuitCI should
-turn them into preset-backed runnable scenarios.
+condition-scoped JLCPCB/package/stencil source values or explicit board/order
+metadata before CircuitCI should turn them into runnable scenarios.
 
 The JLCPCB stencil capability source is pinned for one generic stencil
 manufacturability floor: minimum aperture size `>0.08mm`. CircuitCI therefore
