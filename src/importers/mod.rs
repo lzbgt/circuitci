@@ -1,3 +1,4 @@
+pub mod drill;
 pub mod gerber;
 pub mod jlc;
 pub mod kicad;

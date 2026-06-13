@@ -276,6 +276,24 @@
               },
               "additionalProperties": false
             },
+            "drills": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["at", "drill_mm", "plating"],
+                "properties": {
+                  "at": { "$ref": "#/$defs/layout_point" },
+                  "drill_mm": { "type": "number", "exclusiveMinimum": 0 },
+                  "plating": {
+                    "enum": ["plated", "non_plated", "unknown"]
+                  },
+                  "layer": { "type": "string", "minLength": 1 },
+                  "tool": { "type": "string", "minLength": 1 },
+                  "source_hit_index": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
             "pads": {
               "type": "object",
               "additionalProperties": {

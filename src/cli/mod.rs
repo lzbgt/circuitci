@@ -100,6 +100,13 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ImportExcellonDrill {
+        drill: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -178,6 +185,11 @@ pub fn run() -> Result<()> {
             project,
             output,
         }) => run_import_gerber_outline(gerber, project, output),
+        Some(Command::ImportExcellonDrill {
+            drill,
+            project,
+            output,
+        }) => run_import_excellon_drill(drill, project, output),
         None => {
             Args::parse_from(["circuitci", "--help"]);
             Ok(())
@@ -355,6 +367,28 @@ fn run_import_gerber_outline(gerber: PathBuf, project: PathBuf, output: PathBuf)
         summary.cutout_segments,
         summary.unknown_segments,
         gerber.display(),
+        project.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_excellon_drill(drill: PathBuf, project: PathBuf, output: PathBuf) -> Result<()> {
+    let summary = crate::importers::drill::import_excellon_drill(
+        &crate::importers::drill::ExcellonDrillImportOptions {
+            drill: drill.clone(),
+            project: project.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI imported Excellon/NC drill evidence: {} hits, {} tools ({} plated, {} non-plated, {} unknown plating) {} + {} -> {}",
+        summary.drill_hits,
+        summary.tools,
+        summary.plated_hits,
+        summary.non_plated_hits,
+        summary.unknown_plating_hits,
+        drill.display(),
         project.display(),
         output.display()
     );

@@ -14,7 +14,8 @@ Relevant assembly files:
 Relevant fabrication file:
 
 - `fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip`, member
-  `Gerber_BoardOutlineLayer.GKO`
+  `Gerber_BoardOutlineLayer.GKO`, `Drill_PTH_Through.DRL`, and
+  `Drill_NPTH_Through.DRL`
 
 Observed BOM header:
 
@@ -51,6 +52,11 @@ The companion `import-gerber-outline` command can add board-outline segment
 evidence from the release's Gerber outline layer. It imports linear outline
 draw records only and does not infer copper, pads, drills, routes, or nets.
 
+The companion `import-excellon-drill` command can append fabrication drill-hit
+evidence from the release's PTH and NPTH drill files. It imports hole centers,
+diameters, plating class, layer, and selected tool, but still does not infer
+pad copper, annular rings, component ownership, or nets.
+
 ## Manual Peer Verification
 
 The full peer release can be imported with:
@@ -73,6 +79,16 @@ unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_
 circuitci import-gerber-outline out/urine-monitor-board-outline.gko \
   --project out/urine-monitor-jlc-assembly.project.yaml \
   --output out/urine-monitor-jlc-assembly-outline.project.yaml
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Drill_PTH_Through.DRL > out/urine-monitor-pth.drl
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Drill_NPTH_Through.DRL > out/urine-monitor-npth.drl
+circuitci import-excellon-drill out/urine-monitor-pth.drl \
+  --project out/urine-monitor-jlc-assembly-outline.project.yaml \
+  --output out/urine-monitor-jlc-assembly-outline-pth.project.yaml
+circuitci import-excellon-drill out/urine-monitor-npth.drl \
+  --project out/urine-monitor-jlc-assembly-outline-pth.project.yaml \
+  --output out/urine-monitor-jlc-assembly-outline-drills.project.yaml
 ```
 
 Observed on 2026-06-13:
@@ -92,4 +108,11 @@ Observed Gerber outline enrichment:
 
 ```text
 CircuitCI imported Gerber outline: 16 segments (4 external, 12 cutout, 0 unknown)
+```
+
+Observed PTH/NPTH drill enrichment:
+
+```text
+CircuitCI imported Excellon/NC drill evidence: 1275 hits, 8 tools (1275 plated, 0 non-plated, 0 unknown plating)
+CircuitCI imported Excellon/NC drill evidence: 31 hits, 4 tools (0 plated, 31 non-plated, 0 unknown plating)
 ```

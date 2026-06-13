@@ -24,10 +24,11 @@ This release is now the first peer-board import target for fabricated evidence:
 `import-jlc-assembly` reads the JLC/EasyEDA BOM and placement CSV files into
 Board IR component source metadata plus `board.layout.placements`, and
 `import-gerber-outline` reads the observed `Gerber_BoardOutlineLayer.GKO`
-subset into `board.layout.outline.segments`. The remaining import gap is
-Gerber copper/pad/drill/route geometry and `.eprj2` schematic/layout ingestion
-or a richer adapter that converts those release files into electrical Board IR
-plus scenario suggestions.
+subset into `board.layout.outline.segments`. `import-excellon-drill` reads the
+observed PTH/NPTH NC drill subset into `board.layout.drills`. The remaining
+import gap is Gerber copper/pad/route geometry and `.eprj2` schematic/layout
+ingestion or a richer adapter that converts those release files into
+electrical Board IR plus scenario suggestions.
 
 ## Project-Level Evidence
 
@@ -81,8 +82,8 @@ existing CircuitCI checks:
 
 ## Recommended Work Queue
 
-1. Extend direct support for JLC/EasyEDA release evidence beyond BOM/CPL and
-   Gerber outline: pad/drill/route geometry and eventually `.eprj2`
+1. Extend direct support for JLC/EasyEDA release evidence beyond BOM/CPL,
+   Gerber outline, and drill hits: pad/route geometry and eventually `.eprj2`
    schematic/layout import.
 2. Add the remaining ESP32-S3-WROOM and STM32L431 component packs using the
    peer datasheets and public vendor datasheets as authoritative sources.

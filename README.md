@@ -17,7 +17,7 @@ engineer can fix the design and rerun validation.
 - Parses Board IR YAML projects and component model libraries.
 - Imports SPICE decks, KiCad XML netlists, native KiCad schematics, KiCad PCB
   placement/route evidence, JLC/EasyEDA BOM/CPL assembly evidence, and
-  Gerber board-outline evidence.
+  Gerber board-outline plus Excellon/NC drill evidence.
 - Suggests missing validation scenarios from board/model evidence.
 - Validates power trees, regulator constraints, reset supervisors, boot straps,
   GPIO backdrive paths, I/O voltage compatibility, USB protection, USB route
@@ -117,6 +117,14 @@ Enrich an imported project with Gerber board-outline evidence:
 circuitci import-gerber-outline path/to/Gerber_BoardOutlineLayer.GKO \
   --project out/imported_assembly.project.yaml \
   --output out/imported_with_outline.project.yaml
+```
+
+Append Excellon/NC drill evidence:
+
+```bash
+circuitci import-excellon-drill path/to/Drill_PTH_Through.DRL \
+  --project out/imported_with_outline.project.yaml \
+  --output out/imported_with_drills.project.yaml
 ```
 
 Run an acceptance suite:

@@ -42,6 +42,8 @@ pub struct BoardLayout {
     #[serde(default)]
     pub outline: BoardOutline,
     #[serde(default)]
+    pub drills: Vec<LayoutDrill>,
+    #[serde(default)]
     pub pads: BTreeMap<String, BTreeMap<String, LayoutPad>>,
     #[serde(default)]
     pub routes: BTreeMap<String, NetRoute>,
@@ -202,6 +204,19 @@ pub struct LayoutPad {
     pub rotation_deg: Option<f64>,
     #[serde(default)]
     pub drill_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutDrill {
+    pub at: LayoutPoint,
+    pub drill_mm: f64,
+    pub plating: String,
+    #[serde(default)]
+    pub layer: Option<String>,
+    #[serde(default)]
+    pub tool: Option<String>,
+    #[serde(default)]
+    pub source_hit_index: Option<usize>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
