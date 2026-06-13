@@ -38,10 +38,20 @@ const JLCPCB_SLOT_MIN_2026_06: FabricationProcessPreset = FabricationProcessPres
     ],
 };
 
+const JLCPCB_DRILL_DIAMETER_RANGE_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_drill_diameter_range_2026_06",
+    aliases: &["jlcpcb_drill_diameter_range"],
+    numeric_defaults: &[
+        ("min_drill_diameter_mm", 0.15),
+        ("max_drill_diameter_mm", 6.30),
+    ],
+};
+
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_STANDARD_2026_06,
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
     JLCPCB_SLOT_MIN_2026_06,
+    JLCPCB_DRILL_DIAMETER_RANGE_2026_06,
 ];
 
 pub(super) fn required_numeric_parameter(

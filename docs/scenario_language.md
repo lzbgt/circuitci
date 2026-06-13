@@ -100,6 +100,7 @@ Canonical executable check IDs:
 - `INTERFACE_PROTECTION_REVIEW`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
+- `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -583,7 +584,35 @@ preset string or a list of preset strings. The supported presets are documented
 in `docs/fabrication_process_presets.md`; they currently supply
 `min_mask_expansion_mm: 0.05`, `min_solder_mask_dam_mm: 0.10`, and a dedicated
 JLCPCB double-sided/multilayer via minimum `min_annular_ring_mm: 0.05`, plus
-JLCPCB routed-slot minimums for metallized and non-metallized slots.
+JLCPCB routed-slot minimums for metallized and non-metallized slots and a
+dedicated JLCPCB circular drill diameter range.
+
+Drill-diameter validation uses `DRILL_DIAMETER_VALID` when the Board IR
+includes circular fabrication drill evidence under `board.layout.drills`.
+
+```yaml
+scenarios:
+  - name: drill_diameter
+    type: manufacturing
+    checks:
+      - DRILL_DIAMETER_VALID
+    parameters:
+      fabrication_process: jlcpcb_drill_diameter_range_2026_06
+```
+
+Drill-diameter algorithm:
+
+1. Require `parameters.min_drill_diameter_mm` and
+   `parameters.max_drill_diameter_mm`, either explicitly or from a fabrication
+   process preset.
+2. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
+3. Check every imported circular drill hit against the selected diameter range.
+4. Fail when a drill diameter is smaller than `min_drill_diameter_mm` or larger
+   than `max_drill_diameter_mm`.
+
+This is a static circular-drill process screen. It does not model routed slots,
+drill wander, plating thickness, tolerance classes, or special-order drill
+processes. Routed slots are checked separately by `SLOT_WIDTH_VALID`.
 
 Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
 the Board IR includes fabrication drill evidence under `board.layout.drills`

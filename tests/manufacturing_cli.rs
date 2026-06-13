@@ -44,6 +44,38 @@ fn drill_to_board_edge_clearance_treats_cutouts_as_board_edges() {
 }
 
 #[test]
+fn drill_diameter_passes_with_jlc_process_defaults() {
+    let report = run_validation("examples/good_drill_diameter_jlc_process/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn drill_diameter_fails_with_jlc_process_defaults() {
+    let report = run_validation("examples/bad_drill_diameter_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 2);
+    let failures = report["failures"].as_array().unwrap();
+    assert!(
+        failures
+            .iter()
+            .all(|failure| failure["id"] == "DRILL_DIAMETER_VALID")
+    );
+    assert_eq!(failures[0]["measured"]["drill_index"], 0);
+    assert_eq!(failures[0]["measured"]["drill_mm"], 0.1);
+    assert_eq!(failures[0]["measured"]["drill_plating"], "plated");
+    assert_eq!(failures[0]["limit"]["min_drill_diameter_mm"], 0.15);
+    assert_eq!(failures[0]["limit"]["max_drill_diameter_mm"], 6.3);
+    assert_eq!(failures[1]["measured"]["drill_index"], 1);
+    assert_eq!(failures[1]["measured"]["drill_mm"], 6.4);
+    assert_eq!(failures[1]["measured"]["drill_plating"], "non_plated");
+    assert_eq!(failures[1]["limit"]["min_drill_diameter_mm"], 0.15);
+    assert_eq!(failures[1]["limit"]["max_drill_diameter_mm"], 6.3);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn slot_to_board_edge_clearance_passes_when_slot_is_far_enough() {
     let report = run_validation("examples/good_slot_to_board_edge_clearance/project.yaml");
     assert_eq!(report["result"], "pass");

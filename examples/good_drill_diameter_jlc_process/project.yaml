@@ -1,0 +1,39 @@
+project:
+  name: good_drill_diameter_jlc_process
+  version: 0.1.0
+  description: Drill diameters stay within the source-backed JLC circular drill range.
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    drills:
+      - at:
+          x_mm: 2.0
+          y_mm: 2.0
+        drill_mm: 0.15
+        plating: plated
+        tool: T01
+        source_hit_index: 0
+      - at:
+          x_mm: 6.0
+          y_mm: 2.0
+        drill_mm: 6.3
+        plating: non_plated
+        tool: T02
+        source_hit_index: 1
+      - at:
+          x_mm: 10.0
+          y_mm: 2.0
+        drill_mm: 0.3
+        plating: unknown
+        tool: T03
+        source_hit_index: 2
+scenarios:
+  - name: jlc_drill_diameter
+    type: manufacturing
+    checks:
+      - DRILL_DIAMETER_VALID
+    parameters:
+      fabrication_process: jlcpcb_drill_diameter_range_2026_06

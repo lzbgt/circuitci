@@ -18,6 +18,7 @@ Implemented preset:
 - `jlcpcb_standard_2026_06`
 - `jlcpcb_double_sided_via_min_2026_06`
 - `jlcpcb_slot_min_2026_06`
+- `jlcpcb_drill_diameter_range_2026_06`
 
 Implemented default:
 
@@ -26,6 +27,8 @@ Implemented default:
 - `min_annular_ring_mm: 0.05`
 - `min_plated_slot_width_mm: 0.65`
 - `min_non_plated_slot_width_mm: 1.00`
+- `min_drill_diameter_mm: 0.15`
+- `max_drill_diameter_mm: 6.30`
 
 Rationale:
 
@@ -52,11 +55,13 @@ Rationale:
 - The same via article says the smallest slot drill size is 0.65 mm for
   metallized slots and the smallest non-metallized slot routing bit is 1.0 mm.
   CircuitCI encodes those as a dedicated routed-slot minimum preset.
+- The same via article says mechanical drilling uses circular drill bits from
+  0.15 mm to 6.30 mm in diameter. CircuitCI encodes those as a dedicated
+  circular drill diameter range preset because routed slots and special-order
+  drill processes are separate process conditions.
 
 Observed but not yet encoded as process defaults:
 
-- The JLCPCB via article says mechanical drilling uses 0.15-6.30 mm circular
-  drills.
 - The JLCPCB capability page bundle references drilling, trace, solder-mask,
   outline, and stencil capability tables, but many visible table values are
   resolved through runtime i18n keys rather than plaintext in the saved HTML.

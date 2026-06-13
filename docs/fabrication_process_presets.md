@@ -38,6 +38,11 @@ Supported aliases for the JLCPCB routed-slot minimum preset:
 - `jlcpcb_slot_min_2026_06`
 - `jlcpcb_slot_min`
 
+Supported aliases for the JLCPCB circular drill diameter range preset:
+
+- `jlcpcb_drill_diameter_range_2026_06`
+- `jlcpcb_drill_diameter_range`
+
 Current preset defaults:
 
 | Parameter | Value | Source |
@@ -47,6 +52,8 @@ Current preset defaults:
 | `min_annular_ring_mm` | `0.05` | JLCPCB via article: double-sided/multilayer vias have 0.15 mm minimum inner diameter and 0.25 mm minimum outer diameter; `(0.25 - 0.15) / 2 = 0.05`. |
 | `min_plated_slot_width_mm` | `0.65` | JLCPCB via article: smallest slot drill size is 0.65 mm for metallized slots. |
 | `min_non_plated_slot_width_mm` | `1.00` | JLCPCB via article: smallest non-metallized slot routing bit is 1.0 mm. |
+| `min_drill_diameter_mm` | `0.15` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
+| `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 
 Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.

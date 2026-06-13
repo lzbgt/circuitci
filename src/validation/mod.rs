@@ -35,6 +35,7 @@ pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQ
 pub(super) const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
+pub(super) const DRILL_DIAMETER_VALID: &str = "DRILL_DIAMETER_VALID";
 pub(super) const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const SLOT_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "SLOT_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const SLOT_WIDTH_VALID: &str = "SLOT_WIDTH_VALID";
@@ -280,6 +281,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 POWER_TREE_VALID if scenario.scenario_type == "power_tree" => {
                     power_tree::validate_power_tree(bound, scenario, &mut findings)
                 }
+                DRILL_DIAMETER_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_drill_diameter(bound, scenario, &mut findings)
+                }
                 DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
                     if scenario.scenario_type == "manufacturing" =>
                 {
@@ -350,6 +354,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | CLOCK_SOURCE_VALID
                 | FUNCTIONAL_MCU_FIRMWARE
                 | POWER_TREE_VALID
+                | DRILL_DIAMETER_VALID
                 | DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
                 | SLOT_TO_BOARD_EDGE_CLEARANCE_VALID
                 | SLOT_WIDTH_VALID

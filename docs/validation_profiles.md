@@ -57,6 +57,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `USB_RETURN_PATH_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
+- `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_WIDTH_VALID`

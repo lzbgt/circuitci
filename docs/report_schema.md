@@ -277,6 +277,15 @@ optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `entry_aperture_source` is `footprint_front`, `component_model_aperture`,
 `kicad_mapping_aperture`, or `footprint_property_aperture`.
 
+`DRILL_DIAMETER_VALID` reports are emitted by `manufacturing` scenarios that
+check `board.layout.drills` circular drill evidence against selected process
+diameter limits. Stable measured keys include `drill_index`, `drill_x_mm`,
+`drill_y_mm`, `drill_mm`, `drill_radius_mm`, `drill_plating`, optional
+`drill_layer`, optional `drill_tool`, optional `source_hit_index`, optional
+`drill_owner_kind`, optional `drill_net`, optional `drill_component`, optional
+`drill_pin`, and optional `drill_via_index`. Stable limit keys include
+`min_drill_diameter_mm` and `max_drill_diameter_mm`.
+
 `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by `manufacturing`
 scenarios that combine `board.layout.drills` evidence with
 `board.layout.outline.segments`. Stable measured keys include `drill_index`,

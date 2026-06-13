@@ -178,15 +178,18 @@ without explicit imported mechanical evidence.
   net-class/custom-rule route constraints for mapped nets, not arbitrary DRC
   rule semantics, filled-copper connectivity, thermal relief behavior, solder
   mask expansion, return paths, or signal-integrity constraints.
-- `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported drill centers, drill
-  diameters, and board-outline centerline segments for a static 2D
-  edge-clearance screen. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` similarly uses
-  imported Excellon `G85` routed-slot centerlines and widths under
-  `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width against
-  process thresholds and can use the dedicated JLCPCB metallized/non-metallized
-  slot preset. These rules do not model drill wander, route-tool runout/
-  overcut, plating tolerances, panel tabs, fab-specific stackup rules,
-  copper-to-hole clearance, minimum slot length, or 3D mechanical fit.
+- `DRILL_DIAMETER_VALID` checks imported circular Excellon drill diameters
+  against explicit or preset process ranges and can use the dedicated JLCPCB
+  0.15-6.30 mm circular drill preset. `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
+  uses imported drill centers, drill diameters, and board-outline centerline
+  segments for a static 2D edge-clearance screen. `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
+  similarly uses imported Excellon `G85` routed-slot centerlines and widths
+  under `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width
+  against process thresholds and can use the dedicated JLCPCB
+  metallized/non-metallized slot preset. These rules do not model drill wander,
+  route-tool runout/overcut, plating tolerances, panel tabs, fab-specific
+  stackup rules, copper-to-hole clearance, minimum slot length, or 3D
+  mechanical fit.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   Gerber flash copper geometry for a static 2D annular-ring screen. It checks
   circle, rectangle, and axis-aligned oval flashes, skips non-plated drills,

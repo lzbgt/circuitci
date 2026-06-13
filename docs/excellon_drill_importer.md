@@ -71,6 +71,11 @@ fabricator's intended drill package semantics.
 
 ## Related Validation
 
+`DRILL_DIAMETER_VALID` can consume imported `board.layout.drills` to screen
+circular drill hits against selected process diameter limits. With
+`fabrication_process: jlcpcb_drill_diameter_range_2026_06`, circular drills use
+the source-backed JLC 0.15 mm to 6.30 mm range.
+
 `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported `board.layout.drills`
 plus `board.layout.outline.segments` to screen each drill edge against the
 nearest external, cutout, or unknown board-edge segment.

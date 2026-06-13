@@ -23,6 +23,7 @@ use self::geometry::{
 use self::process::{optional_numeric_parameter, required_numeric_parameter};
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::DRILL_DIAMETER_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::SLOT_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::SLOT_WIDTH_VALID;
@@ -33,6 +34,65 @@ pub(super) use solder_mask::{
     validate_solder_mask_dam, validate_solder_mask_opening, validate_solder_paste_opening,
     validate_solder_paste_spacing,
 };
+
+pub(super) fn validate_drill_diameter(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_drill_diameter_mm) =
+        required_numeric_parameter(scenario, "min_drill_diameter_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_drill_diameter_mm) =
+        required_numeric_parameter(scenario, "max_drill_diameter_mm", findings)
+    else {
+        return;
+    };
+    if min_drill_diameter_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_drill_diameter_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    if max_drill_diameter_mm < min_drill_diameter_mm {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.max_drill_diameter_mm must be greater than or equal to parameters.min_drill_diameter_mm.",
+        );
+        return;
+    }
+    let drills = &bound.project.board.layout.drills;
+    if drills.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "DRILL_DIAMETER_VALID requires board.layout.drills evidence.",
+        );
+        return;
+    }
+    for (drill_index, drill) in drills.iter().enumerate() {
+        if let Err(message) = validate_drill_geometry(drill, drill_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        if drill.drill_mm + f64::EPSILON < min_drill_diameter_mm
+            || drill.drill_mm > max_drill_diameter_mm + f64::EPSILON
+        {
+            findings.push(drill_diameter_finding(
+                scenario,
+                drill,
+                drill_index,
+                min_drill_diameter_mm,
+                max_drill_diameter_mm,
+            ));
+        }
+    }
+}
 
 pub(super) fn validate_drill_to_board_edge_clearance(
     bound: &BoundBoard<'_>,
@@ -487,6 +547,40 @@ fn copper_objects_conflict(first: CopperObjectRef<'_>, second: CopperObjectRef<'
             _ => false,
         },
     }
+}
+
+fn drill_diameter_finding(
+    scenario: &Scenario,
+    drill: &LayoutDrill,
+    drill_index: usize,
+    min_drill_diameter_mm: f64,
+    max_drill_diameter_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        DRILL_DIAMETER_VALID,
+        &scenario.name,
+        format!(
+            "Drill hit {} is {:.3} mm; selected fabrication process supports {:.3} mm to {:.3} mm circular drills.",
+            drill_index, drill.drill_mm, min_drill_diameter_mm, max_drill_diameter_mm
+        ),
+    );
+    insert_drill_measurements(&mut finding, drill, drill_index);
+    finding.limit.insert(
+        "min_drill_diameter_mm".to_string(),
+        json!(min_drill_diameter_mm),
+    );
+    finding.limit.insert(
+        "max_drill_diameter_mm".to_string(),
+        json!(max_drill_diameter_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Choose a circular drill diameter inside the selected fabrication process range."
+            .to_string(),
+        "Use a routed slot rule instead if this geometry is a routed slot rather than a circular drill hit.".to_string(),
+        "Move the board to a process option that explicitly supports this drill diameter."
+            .to_string(),
+    ];
+    finding
 }
 
 fn drill_edge_clearance_finding(
