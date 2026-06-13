@@ -573,7 +573,12 @@ saved JLCPCB BGA pitch aperture-size table. Stable measured keys include
 `solder_paste_kind`, `solder_paste_bga_aperture_size_mm`, `pin_pitch_mm`, and
 `source_condition`. Feature findings reuse the same `solder_paste_feature_*`
 keys documented for solder-paste opening reports. Stable limit keys include
-`solder_paste_bga_aperture_size_mm`.
+`solder_paste_bga_aperture_size_mm`. Pitch-grid failures also report
+`solder_paste_bga_feature_count`,
+`solder_paste_bga_horizontal_pitch_gap_count`, and
+`solder_paste_bga_vertical_pitch_gap_count`; stable limit keys include
+`min_solder_paste_bga_horizontal_pitch_gap_count` and
+`min_solder_paste_bga_vertical_pitch_gap_count`.
 
 `SOLDER_PASTE_SPACING_VALID` reports are emitted by `manufacturing` scenarios
 that compare same-layer Gerber solder-paste opening evidence under

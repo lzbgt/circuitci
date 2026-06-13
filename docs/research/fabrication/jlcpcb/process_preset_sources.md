@@ -148,6 +148,9 @@ Observed but not yet encoded as process defaults:
   0.55 mm; and 1.27 mm opens 0.65 mm. `suggest-scenarios` may infer this check
   only when one component has repeated same-pitch gaps in both horizontal and
   vertical axes, and it suppresses the IC row suggestion for the same target.
+  The validator also requires the selected target evidence to prove the
+  declared BGA pitch in both axes, so a wrong hand-authored `pin_pitch_mm` does
+  not pass merely because the aperture size matches another source row.
 
 Next source work before expanding presets:
 

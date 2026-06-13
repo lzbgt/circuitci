@@ -266,9 +266,11 @@ without explicit imported mechanical evidence.
   evidence for an opt-in BGA aperture-size screen against the saved JLCPCB BGA
   stencil opening table. It only runs for an explicit source-backed
   `pin_pitch_mm`, honors `target.component` when present, and `suggest-scenarios`
-  only infers it from repeated two-axis grid evidence. It does not infer
-  arbitrary package class, paste volume, or BGA stencil rules beyond the encoded
-  JLC pitch rows.
+  only infers it from repeated two-axis grid evidence. The validator also
+  requires same-pitch horizontal and vertical grid evidence for the declared
+  pitch, so a hand-authored BGA scenario with the wrong pitch fails closed. It
+  does not infer arbitrary package class, paste volume, or BGA stencil rules
+  beyond the encoded JLC pitch rows.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close

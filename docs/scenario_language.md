@@ -1084,6 +1084,9 @@ BGA solder-paste aperture algorithm:
 5. Measure the smaller of `size.x_mm` and `size.y_mm`.
 6. Fail when a pad-owned paste feature differs from the pitch-conditioned BGA
    opening size.
+7. Require at least four pad-owned paste features and at least two horizontal
+   plus two vertical same-pitch gaps matching `pin_pitch_mm`, so the selected
+   paste evidence proves a two-axis BGA grid for the declared pitch.
 
 This is not a generic paste area-ratio or paste-spacing rule. It represents the
 BGA package rows in JLCPCB's stencil opening table. `suggest-scenarios` may

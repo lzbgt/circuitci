@@ -44,7 +44,7 @@ pub(in crate::validation) fn validate_solder_paste_bga_aperture(
         return;
     }
 
-    let mut checked_pad_owned_features = 0usize;
+    let mut selected_features = Vec::new();
     for (feature_index, feature) in paste.features.iter().enumerate() {
         if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
             validation_input_missing(findings, scenario, message);
@@ -56,7 +56,7 @@ pub(in crate::validation) fn validate_solder_paste_bga_aperture(
         if !feature_matches_target(feature.component.as_deref(), scenario) {
             continue;
         }
-        checked_pad_owned_features += 1;
+        selected_features.push((feature_index, feature));
         let aperture_size_mm = feature.size.x_mm.min(feature.size.y_mm);
         if (aperture_size_mm - aperture.size_mm).abs() > f64::EPSILON {
             findings.push(solder_paste_bga_aperture_finding(
@@ -72,7 +72,7 @@ pub(in crate::validation) fn validate_solder_paste_bga_aperture(
         }
     }
 
-    if checked_pad_owned_features == 0 {
+    if selected_features.is_empty() {
         let message = scenario.target.as_ref().map_or_else(
             || {
                 "SOLDER_PASTE_BGA_APERTURE_VALID requires pad-owned board.layout.solder_paste feature evidence.".to_string()
@@ -85,6 +85,28 @@ pub(in crate::validation) fn validate_solder_paste_bga_aperture(
             },
         );
         validation_input_missing(findings, scenario, message);
+        return;
+    }
+
+    if selected_features.len() < 4 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_BGA_APERTURE_VALID requires at least four pad-owned solder-paste flash features to prove a two-axis BGA pitch grid.",
+        );
+        return;
+    }
+    let (horizontal_gaps, vertical_gaps) =
+        count_axis_aligned_pitch_gaps(&selected_features, pin_pitch_mm);
+    if horizontal_gaps < 2 || vertical_gaps < 2 {
+        findings.push(solder_paste_bga_pitch_grid_finding(
+            scenario,
+            selected_features.len(),
+            horizontal_gaps,
+            vertical_gaps,
+            pin_pitch_mm,
+            aperture,
+        ));
     }
 }
 
@@ -122,6 +144,28 @@ fn feature_matches_target(component: Option<&str>, scenario: &Scenario) -> bool 
         return true;
     };
     component == Some(target.component.as_str())
+}
+
+fn count_axis_aligned_pitch_gaps(
+    features: &[(usize, &crate::board_ir::LayoutCopperFeature)],
+    pin_pitch_mm: f64,
+) -> (usize, usize) {
+    const TOLERANCE_MM: f64 = 0.01;
+    let mut horizontal_gaps = 0usize;
+    let mut vertical_gaps = 0usize;
+    for (index, (_, first)) in features.iter().enumerate() {
+        for (_, second) in features.iter().skip(index + 1) {
+            let dx = first.at.x_mm - second.at.x_mm;
+            let dy = first.at.y_mm - second.at.y_mm;
+            if dy.abs() <= TOLERANCE_MM && (dx.abs() - pin_pitch_mm).abs() <= TOLERANCE_MM {
+                horizontal_gaps += 1;
+            }
+            if dx.abs() <= TOLERANCE_MM && (dy.abs() - pin_pitch_mm).abs() <= TOLERANCE_MM {
+                vertical_gaps += 1;
+            }
+        }
+    }
+    (horizontal_gaps, vertical_gaps)
 }
 
 fn solder_paste_bga_aperture_finding(
@@ -163,6 +207,57 @@ fn solder_paste_bga_aperture_finding(
     finding.limit.insert(
         "solder_paste_bga_aperture_size_mm".to_string(),
         json!(aperture.size_mm),
+    );
+    finding
+}
+
+fn solder_paste_bga_pitch_grid_finding(
+    scenario: &Scenario,
+    feature_count: usize,
+    horizontal_gaps: usize,
+    vertical_gaps: usize,
+    pin_pitch_mm: f64,
+    aperture: BgaApertureSize,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_BGA_APERTURE_VALID,
+        scenario.name.clone(),
+        format!(
+            "Pad-owned solder-paste flashes do not prove a two-axis BGA grid at {:.3} mm pitch; found {} horizontal and {} vertical matching gaps.",
+            pin_pitch_mm, horizontal_gaps, vertical_gaps
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Use the BGA aperture rule only for the component whose pad-owned paste flashes prove the declared BGA pitch in both axes.".to_string(),
+        "Correct parameters.pin_pitch_mm if the BGA package pitch was entered incorrectly.".to_string(),
+        "If only partial paste evidence was imported, import the full paste layer and pad ownership evidence before applying this package-specific check.".to_string(),
+    ];
+    finding.measured.insert(
+        "solder_paste_bga_feature_count".to_string(),
+        json!(feature_count),
+    );
+    finding.measured.insert(
+        "solder_paste_bga_horizontal_pitch_gap_count".to_string(),
+        json!(horizontal_gaps),
+    );
+    finding.measured.insert(
+        "solder_paste_bga_vertical_pitch_gap_count".to_string(),
+        json!(vertical_gaps),
+    );
+    finding
+        .measured
+        .insert("pin_pitch_mm".to_string(), json!(pin_pitch_mm));
+    finding.measured.insert(
+        "source_condition".to_string(),
+        json!(aperture.source_condition),
+    );
+    finding.limit.insert(
+        "min_solder_paste_bga_horizontal_pitch_gap_count".to_string(),
+        json!(2),
+    );
+    finding.limit.insert(
+        "min_solder_paste_bga_vertical_pitch_gap_count".to_string(),
+        json!(2),
     );
     finding
 }

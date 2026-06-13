@@ -1,0 +1,63 @@
+project:
+  name: bad_solder_paste_bga_pitch_grid_jlc
+  version: 0.1.0
+libraries: []
+board:
+  components: {}
+  nets: {}
+  layout:
+    solder_paste:
+      features:
+        - layer: F.Paste
+          polarity: dark
+          aperture: D10
+          shape: rect
+          at: { x_mm: 10.0, y_mm: 10.0 }
+          size: { x_mm: 0.35, y_mm: 0.35 }
+          owner_kind: pad
+          component: U1
+          pin: A1
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+        - layer: F.Paste
+          polarity: dark
+          aperture: D10
+          shape: rect
+          at: { x_mm: 10.5, y_mm: 10.0 }
+          size: { x_mm: 0.35, y_mm: 0.35 }
+          owner_kind: pad
+          component: U1
+          pin: A2
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+        - layer: F.Paste
+          polarity: dark
+          aperture: D10
+          shape: rect
+          at: { x_mm: 10.0, y_mm: 10.5 }
+          size: { x_mm: 0.35, y_mm: 0.35 }
+          owner_kind: pad
+          component: U1
+          pin: B1
+          source_primitive: gerber_flash
+          source_primitive_index: 2
+        - layer: F.Paste
+          polarity: dark
+          aperture: D10
+          shape: rect
+          at: { x_mm: 10.5, y_mm: 10.5 }
+          size: { x_mm: 0.35, y_mm: 0.35 }
+          owner_kind: pad
+          component: U1
+          pin: B2
+          source_primitive: gerber_flash
+          source_primitive_index: 3
+scenarios:
+  - name: solder_paste_bga_pitch_grid
+    type: manufacturing
+    target:
+      component: U1
+    checks:
+      - SOLDER_PASTE_BGA_APERTURE_VALID
+    parameters:
+      pin_pitch_mm: 0.65

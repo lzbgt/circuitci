@@ -808,6 +808,34 @@ fn solder_paste_bga_aperture_fails_for_jlc_pitch_size() {
 }
 
 #[test]
+fn solder_paste_bga_aperture_fails_without_declared_pitch_grid() {
+    let report = run_validation("examples/bad_solder_paste_bga_pitch_grid_jlc/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_BGA_APERTURE_VALID");
+    assert_eq!(failure["measured"]["solder_paste_bga_feature_count"], 4);
+    assert_eq!(
+        failure["measured"]["solder_paste_bga_horizontal_pitch_gap_count"],
+        0
+    );
+    assert_eq!(
+        failure["measured"]["solder_paste_bga_vertical_pitch_gap_count"],
+        0
+    );
+    assert_eq!(failure["measured"]["pin_pitch_mm"], 0.65);
+    assert_eq!(
+        failure["limit"]["min_solder_paste_bga_horizontal_pitch_gap_count"],
+        2
+    );
+    assert_eq!(
+        failure["limit"]["min_solder_paste_bga_vertical_pitch_gap_count"],
+        2
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_spacing_passes_when_openings_are_far_enough() {
     let report = run_validation("examples/good_solder_paste_spacing/project.yaml");
     assert_eq!(report["result"], "pass");
