@@ -171,6 +171,25 @@ circuitci import-excellon-drill path/to/Drill_PTH_Through_Via.DRL \
   --output out/imported_with_drills_and_vias.project.yaml
 ```
 
+Attach explicit order/manufacturing metadata when those values are known from
+the fabrication order, stencil order, or another reviewed process record:
+
+```bash
+circuitci set-manufacturing-metadata out/imported_with_drills_and_vias.project.yaml \
+  --output out/imported_with_order_metadata.project.yaml \
+  --stencil-thickness-mm 0.10 \
+  --min-drill-edge-clearance-mm 0.50 \
+  --min-slot-edge-clearance-mm 0.50 \
+  --min-paste-area-ratio 0.70 \
+  --max-paste-area-ratio 1.00 \
+  --min-solder-paste-spacing-mm 0.15 \
+  --source jlc_order_metadata
+```
+
+`suggest-scenarios` consumes these Board IR fields to make matching
+manufacturing templates runnable without turning order-specific limits into
+global process defaults.
+
 Run an acceptance suite:
 
 ```bash

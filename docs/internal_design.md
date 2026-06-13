@@ -123,6 +123,13 @@ coverage. A runnable suggestion must include all required rule parameters,
 either directly or through process presets and board metadata. A non-runnable
 suggestion must list the missing inputs in `required_inputs`.
 
+`set-manufacturing-metadata` is an evidence-enrichment command for board/order
+facts that cannot be inferred from Gerber, Excellon, schematic, or component
+model data. It may add or replace fields under `board.manufacturing`, but it
+must not mutate layout artifacts or invent process defaults. Generated projects
+use absolute library paths so follow-on validation and suggestion commands do
+not depend on the caller's current directory.
+
 Power-tree load-switch suggestions may infer the control pin state only from a
 direct rail/ground tie or exactly one positive-valued pull resistor to a direct
 rail/ground state matching the model's `power_switch.enabled_state`. Dividers,

@@ -381,7 +381,10 @@ The command is conservative:
   preset nor present as Board IR manufacturing metadata are suggested as
   `runnable: false` with explicit required inputs. This keeps order-specific
   drill-to-edge, slot-to-edge, paste coverage, and paste-spacing limits out of
-  generic presets.
+  generic presets. When those values are known from order or process evidence,
+  use `circuitci set-manufacturing-metadata` to attach them under
+  `board.manufacturing`; the same suggestions then become runnable without
+  changing the imported Gerber/Excellon evidence.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing

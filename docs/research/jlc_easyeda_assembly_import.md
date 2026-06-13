@@ -245,6 +245,14 @@ evidence, not detection plumbing: those five non-runnable checks need exact,
 condition-scoped JLCPCB/package/stencil source values or explicit board/order
 metadata before CircuitCI should turn them into runnable scenarios.
 
+CircuitCI now has an explicit metadata overlay path for that second case:
+`circuitci set-manufacturing-metadata` writes reviewed order/process values
+under `board.manufacturing` after the fabricated-release import chain. This is
+intentionally separate from process presets; it records board-specific facts
+such as stencil thickness, drill/slot edge-clearance limits, paste coverage
+ratio bounds, and paste-spacing limits without claiming those values are global
+JLCPCB defaults.
+
 The JLCPCB stencil capability source is pinned for one generic stencil
 manufacturability floor: minimum aperture size `>0.08mm`. CircuitCI therefore
 emits runnable `SOLDER_PASTE_APERTURE_SIZE_VALID` with

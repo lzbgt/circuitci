@@ -138,6 +138,22 @@ consumes `board.manufacturing.min_solder_paste_spacing_mm`. These are stencil,
 package, or assembly-process facts; CircuitCI stores them only when the board or
 order evidence supplies the values.
 
+Use `circuitci set-manufacturing-metadata` to attach reviewed board/order
+metadata to an imported Board IR without hand-editing YAML:
+
+```bash
+circuitci set-manufacturing-metadata imported.project.yaml \
+  --output imported_with_order_metadata.project.yaml \
+  --stencil-thickness-mm 0.10 \
+  --min-paste-area-ratio 0.70 \
+  --max-paste-area-ratio 1.00 \
+  --source jlc_order_metadata
+```
+
+The command updates only `board.manufacturing`, preserves existing design and
+layout evidence, and rewrites relative `libraries` entries as absolute paths so
+the generated project can be validated from any working directory.
+
 Power semantics:
 
 - `powered: true`: actual rail voltage equals `nominal_voltage`.
