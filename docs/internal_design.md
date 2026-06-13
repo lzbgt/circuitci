@@ -63,6 +63,12 @@ Input handling follows this order:
 
 Explicit scenario parameters override defaults so users can run what-if checks.
 
+Resistor-programmed charger current inference is centralized in
+`src/charger_programming.rs`. It requires exactly one positive resistor between
+the model-declared programming and reference pins and computes
+`current_A = current_gain_V / resistor_ohm`; ambiguous evidence returns no value
+so callers preserve fail-closed behavior.
+
 ## Manufacturing Geometry
 
 Manufacturing validation uses shared geometry helpers for points, line

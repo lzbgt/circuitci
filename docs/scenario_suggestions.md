@@ -19,10 +19,12 @@ The command is conservative:
   runnable when the control pin is hard-tied to a declared powered rail for a
   high state or to ground for a low state. Other control nets remain
   `runnable: false` until enable-state evidence is confirmed.
-- If a board includes a model with `battery_charger` and the required
-  programmed charge-current component parameter is missing, the power-tree
-  suggestion is marked `runnable: false` and records the parameter the agent
-  must derive from the PROG resistor or board configuration.
+- If a board includes a model with `battery_charger`, the power-tree suggestion
+  is runnable when programmed charge current is already a component parameter or
+  can be derived from exactly one source-backed PROG/ISET resistor. If neither
+  evidence path is present, the suggestion is marked `runnable: false` and
+  records the parameter the agent must derive from charger evidence or board
+  configuration.
 - If a powered output rail is fed by a model with `power_mux` and the selected
   input component parameter is missing, the power-tree suggestion is marked
   `runnable: false` and records the exact parameter plus allowed source names.

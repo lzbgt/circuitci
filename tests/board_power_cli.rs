@@ -1221,6 +1221,49 @@ fn microchip_mcp73831_charge_current_uses_datasheet_limit() {
 }
 
 #[test]
+fn microchip_mcp73831_derives_charge_current_from_prog_resistor() {
+    let report = run_validation("examples/good_microchip_mcp73831_prog_resistor/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn microchip_mcp73831_prog_resistor_current_uses_datasheet_limit() {
+    let report =
+        run_validation("examples/bad_microchip_mcp73831_prog_resistor_charge_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("battery_charger_max_charge_current_A")
+                .is_some()
+        })
+        .expect("expected charger current limit finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UCHG");
+    assert_eq!(failure["net"], "battery");
+    assert_eq!(failure["measured"]["programmed_charge_current_A"], 1.0);
+    assert_eq!(
+        failure["measured"]["programmed_charge_current_source"],
+        "programming_resistor"
+    );
+    assert_eq!(
+        failure["measured"]["programming_resistor_component"],
+        "RPROG"
+    );
+    assert_eq!(failure["measured"]["programming_resistor_ohm"], 1000.0);
+    assert_eq!(
+        failure["limit"]["battery_charger_max_charge_current_A"],
+        0.5
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn microchip_mcp73831_requires_programmed_charge_current() {
     let report = run_validation("examples/bad_microchip_mcp73831_missing_current/project.yaml");
     assert_eq!(report["result"], "fail");

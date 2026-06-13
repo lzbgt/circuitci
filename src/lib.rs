@@ -1,4 +1,5 @@
 pub mod board_ir;
+pub mod charger_programming;
 pub mod cli;
 pub mod importers;
 pub mod library;

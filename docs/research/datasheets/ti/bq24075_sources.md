@@ -16,6 +16,8 @@
 - BQ24075 OUT regulation is `5.5 V` typical, with `5.4 V` minimum and `5.6 V`
   maximum.
 - Fast-charge current range is `150 mA` to `1.5 A` in ISET mode.
+- Fast-charge current is programmed by a resistor from `ISET` to `VSS`; the
+  datasheet gives `ICHG = KISET / RISET`, with typical `KISET = 890 A*Ohm`.
 - EN1/EN2 select USB100, USB500, or ILIM-programmed input current.
 - ILIM can program maximum input current; the current CircuitCI model expects
   board policy to declare input-rail `supply_current_limit_A` rather than
@@ -28,7 +30,9 @@
 - input-rail voltage range,
 - battery-regulation voltage ceiling,
 - programmed fast-charge current range,
+- explicit or resistor-derived programmed fast-charge current,
 - programmed charge current versus input source-current budget.
 
 It does not sign off thermal regulation, DPPM, battery supplement mode,
-charging timers, NTC limits, USB enumeration, or power-path transient sharing.
+charging timers, NTC limits, USB enumeration, ILIM/EN-derived input-current
+limits, or power-path transient sharing.

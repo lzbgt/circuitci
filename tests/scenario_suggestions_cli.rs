@@ -203,6 +203,27 @@ fn suggest_scenarios_marks_charger_power_tree_template_non_runnable_without_curr
 }
 
 #[test]
+fn suggest_scenarios_makes_charger_power_tree_template_runnable_from_prog_resistor() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_charger_prog_resistor/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_charger_prog_resistor"
+    );
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power_tree suggestion");
+    assert_eq!(power_tree["kind"], "power_tree");
+    assert_eq!(power_tree["runnable"], true);
+    assert!(power_tree.get("required_inputs").is_none());
+    assert_eq!(power_tree["scenario"]["type"], "power_tree");
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+}
+
+#[test]
 fn suggest_scenarios_marks_power_mux_template_non_runnable_without_source_selection() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_power_mux/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_power_mux");

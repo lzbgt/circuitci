@@ -87,6 +87,17 @@
         "input_pin": { "type": "string", "minLength": 1 },
         "battery_pin": { "type": "string", "minLength": 1 },
         "charge_current_parameter": { "type": "string", "minLength": 1 },
+        "charge_current_programming": {
+          "type": "object",
+          "required": ["programming_pin", "reference_pin", "current_gain_V"],
+          "properties": {
+            "programming_pin": { "type": "string", "minLength": 1 },
+            "reference_pin": { "type": "string", "minLength": 1 },
+            "current_gain_V": { "type": "number", "exclusiveMinimum": 0 },
+            "source": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
         "min_charge_current_A": { "type": "number", "minimum": 0 },
         "max_charge_current_A": { "type": "number", "minimum": 0 },
         "regulation_voltage_V": { "type": "number", "exclusiveMinimum": 0 }

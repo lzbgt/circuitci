@@ -1,4 +1,5 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
+use crate::charger_programming::derive_charge_current_from_programming_resistor;
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use std::collections::BTreeMap;
 
@@ -182,7 +183,10 @@ fn battery_charger_power_tree_inputs(bound: &BoundBoard<'_>) -> Vec<String> {
         let Some(parameter) = charger.charge_current_parameter.as_deref() else {
             continue;
         };
-        if component.parameters.contains_key(parameter) {
+        if component.parameters.contains_key(parameter)
+            || derive_charge_current_from_programming_resistor(bound.project, component, charger)
+                .is_some()
+        {
             continue;
         }
         required_inputs.push(format!(

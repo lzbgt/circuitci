@@ -747,6 +747,8 @@ failure. Stable limit keys include `operating_voltage_minimum_V`,
 `required_component_parameter`, `battery_charger_min_charge_current_A`,
 `battery_charger_max_charge_current_A`, `input_supply_current_limit_A`,
 `battery_charger_regulation_voltage_V`, `battery_charger_field`,
+`programmed_charge_current_source`, `programming_resistor_component`,
+`programming_resistor_ohm`, `programming_current_source`,
 `selected_input_powered`, `required_reverse_blocking`, `allowed_inputs`, and
 `power_mux_max_output_current_A`, `power_mux_field`.
 

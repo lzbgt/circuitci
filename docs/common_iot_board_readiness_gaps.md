@@ -88,8 +88,8 @@ Executable slices now covered by `POWER_TREE_VALID`:
   inductors between two declared converter switch-pin nets,
 - explicit load-switch `power_switch` enable-state evidence and maximum
   switched-output current budget,
-- explicit battery-charger `battery_charger` programmed-current range and
-  input-source current budget,
+- explicit or source-backed resistor-derived battery-charger
+  `battery_charger` programmed-current range and input-source current budget,
 - explicit power-mux `power_mux` source-selection evidence and inactive-input
   reverse-blocking checks,
 - explicit reset-supervisor `reset_supervisor` threshold checks against rail

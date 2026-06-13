@@ -1,4 +1,7 @@
 use crate::board_ir::{ComponentSpec, NetKind, NetSpec, PinLogicState, Scenario};
+use crate::charger_programming::{
+    DerivedChargeCurrent, derive_charge_current_from_programming_resistor,
+};
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use crate::reports::Finding;
 use serde_json::json;
@@ -213,7 +216,23 @@ fn validate_battery_charger(
                 .parameters
                 .get(parameter)
                 .and_then(serde_yaml_ng::Value::as_f64)
-                .map(|current| (parameter, current))
+                .map(|current| ResolvedChargeCurrent {
+                    parameter,
+                    current_a: current,
+                    evidence: None,
+                })
+                .or_else(|| {
+                    derive_charge_current_from_programming_resistor(
+                        bound.project,
+                        component,
+                        charger,
+                    )
+                    .map(|evidence| ResolvedChargeCurrent {
+                        parameter,
+                        current_a: evidence.current_a,
+                        evidence: Some(evidence),
+                    })
+                })
         });
     if let Some(parameter) = charger.charge_current_parameter.as_deref()
         && charge_current_a.is_none()
@@ -237,7 +256,9 @@ fn validate_battery_charger(
         return;
     }
 
-    if let Some((parameter, charge_current_a)) = charge_current_a {
+    if let Some(charge_current) = charge_current_a {
+        let parameter = charge_current.parameter;
+        let charge_current_a = charge_current.current_a;
         if !charge_current_a.is_finite() || charge_current_a < 0.0 {
             battery_charger_metadata_finding(
                 component_id,
@@ -265,6 +286,7 @@ fn validate_battery_charger(
                 "programmed_charge_current_A".to_string(),
                 json!(charge_current_a),
             );
+            insert_charge_current_evidence(&mut finding, &charge_current);
             finding.limit.insert(
                 "battery_charger_min_charge_current_A".to_string(),
                 json!(min_charge_current_a),
@@ -292,6 +314,7 @@ fn validate_battery_charger(
                 "programmed_charge_current_A".to_string(),
                 json!(charge_current_a),
             );
+            insert_charge_current_evidence(&mut finding, &charge_current);
             finding.limit.insert(
                 "battery_charger_max_charge_current_A".to_string(),
                 json!(max_charge_current_a),
@@ -319,6 +342,7 @@ fn validate_battery_charger(
                 "programmed_charge_current_A".to_string(),
                 json!(charge_current_a),
             );
+            insert_charge_current_evidence(&mut finding, &charge_current);
             finding.limit.insert(
                 "input_supply_current_limit_A".to_string(),
                 json!(input_limit_a),
@@ -360,6 +384,37 @@ fn validate_battery_charger(
             "Correct the battery rail nominal_voltage if it represents nominal cell voltage rather than charge regulation voltage.".to_string(),
         ];
         findings.push(finding);
+    }
+}
+
+struct ResolvedChargeCurrent<'a> {
+    parameter: &'a str,
+    current_a: f64,
+    evidence: Option<DerivedChargeCurrent>,
+}
+
+fn insert_charge_current_evidence(
+    finding: &mut Finding,
+    charge_current: &ResolvedChargeCurrent<'_>,
+) {
+    if let Some(evidence) = &charge_current.evidence {
+        finding.measured.insert(
+            "programmed_charge_current_source".to_string(),
+            json!("programming_resistor"),
+        );
+        finding.measured.insert(
+            "programming_resistor_component".to_string(),
+            json!(evidence.resistor_component),
+        );
+        finding.measured.insert(
+            "programming_resistor_ohm".to_string(),
+            json!(evidence.resistor_ohm),
+        );
+        if let Some(source) = &evidence.source {
+            finding
+                .measured
+                .insert("programming_current_source".to_string(), json!(source));
+        }
     }
 }
 
@@ -614,6 +669,76 @@ fn validate_battery_charger_metadata(
             findings,
         );
         valid = false;
+    }
+    if let Some(programming) = &charger.charge_current_programming {
+        if !programming.current_gain_v.is_finite() || programming.current_gain_v <= 0.0 {
+            battery_charger_metadata_finding(
+                component_id,
+                "charge_current_programming.current_gain_V",
+                "battery_charger charge_current_programming.current_gain_V must be finite and positive.",
+                scenario,
+                findings,
+            );
+            valid = false;
+        }
+        match model.ports.get(&programming.programming_pin) {
+            Some(port) if port.kind == PortKind::Passive => {}
+            Some(_) => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    "charge_current_programming.programming_pin",
+                    &format!(
+                        "battery_charger charge_current_programming programming_pin {} is not a passive port.",
+                        programming.programming_pin
+                    ),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+            None => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    "charge_current_programming.programming_pin",
+                    &format!(
+                        "battery_charger charge_current_programming programming_pin {} is not declared in model ports.",
+                        programming.programming_pin
+                    ),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+        }
+        match model.ports.get(&programming.reference_pin) {
+            Some(port) if port.kind == PortKind::ElectricalGround => {}
+            Some(_) => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    "charge_current_programming.reference_pin",
+                    &format!(
+                        "battery_charger charge_current_programming reference_pin {} is not an electrical_ground port.",
+                        programming.reference_pin
+                    ),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+            None => {
+                battery_charger_metadata_finding(
+                    component_id,
+                    "charge_current_programming.reference_pin",
+                    &format!(
+                        "battery_charger charge_current_programming reference_pin {} is not declared in model ports.",
+                        programming.reference_pin
+                    ),
+                    scenario,
+                    findings,
+                );
+                valid = false;
+            }
+        }
     }
     valid
 }

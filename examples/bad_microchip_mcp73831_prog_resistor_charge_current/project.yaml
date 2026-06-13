@@ -1,0 +1,59 @@
+project:
+  name: bad_microchip_mcp73831_prog_resistor_charge_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    VBUS:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    RPROG:
+      model: generic.analog.resistor
+      part_number: 1k_1pct
+      pins:
+        A: prog
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    UCHG:
+      model: vendor.microchip.mcp73831_4v2
+      part_number: MCP73831T-2ACI/OT
+      power_domains:
+        VDD: usb_5v
+        VBAT: battery
+      pins:
+        VDD: usb_5v
+        VBAT: battery
+        VSS: gnd
+        PROG: prog
+        STAT: charge_stat
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 2.0
+    battery:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    prog:
+      kind: digital_or_analog
+    charge_stat:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: charger_prog_resistor_current_too_high
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

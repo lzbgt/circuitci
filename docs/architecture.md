@@ -57,6 +57,11 @@ Binding diagnostics such as `MODEL_NOT_FOUND` and `PIN_NOT_DECLARED` are report
 findings. Rule implementations should rely on `BoundBoard` rather than
 duplicating library binding checks.
 
+Source-backed model equations, such as charger PROG/ISET resistor current
+programming, live in component model metadata. Shared helpers resolve those
+equations from Board IR evidence before validators or scenario suggestions
+treat the check as runnable.
+
 ## Importer Design
 
 Importers append evidence instead of guessing missing intent. Examples:

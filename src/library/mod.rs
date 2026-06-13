@@ -101,12 +101,24 @@ pub struct BatteryCharger {
     pub battery_pin: String,
     #[serde(default)]
     pub charge_current_parameter: Option<String>,
+    #[serde(default)]
+    pub charge_current_programming: Option<ChargeCurrentProgramming>,
     #[serde(default, rename = "min_charge_current_A")]
     pub min_charge_current_a: Option<f64>,
     #[serde(default, rename = "max_charge_current_A")]
     pub max_charge_current_a: Option<f64>,
     #[serde(default, rename = "regulation_voltage_V")]
     pub regulation_voltage_v: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChargeCurrentProgramming {
+    pub programming_pin: String,
+    pub reference_pin: String,
+    #[serde(rename = "current_gain_V")]
+    pub current_gain_v: f64,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

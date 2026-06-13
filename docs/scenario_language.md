@@ -1569,8 +1569,10 @@ scenarios:
     battery pins must name distinct `electrical_power` ports and be connected
     to rails. Invalid charger metadata fails closed.
 20. If `battery_charger.charge_current_parameter` is declared, the component
-    instance must provide that numeric parameter. The programmed current must
-    fit `min_charge_current_A` / `max_charge_current_A` when present.
+    instance must provide that numeric parameter or the model must declare a
+    source-backed `charge_current_programming` equation with exactly one
+    positive programming resistor in Board IR. The programmed current must fit
+    `min_charge_current_A` / `max_charge_current_A` when present.
 21. If the charger input rail declares `supply_current_limit_A`, the programmed
     charge current must fit that input-source budget.
 22. If `battery_charger.regulation_voltage_V` is declared and the battery net

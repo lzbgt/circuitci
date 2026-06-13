@@ -228,6 +228,11 @@ battery_charger:
   input_pin: VDD
   battery_pin: VBAT
   charge_current_parameter: programmed_charge_current_A
+  charge_current_programming:
+    programming_pin: PROG
+    reference_pin: VSS
+    current_gain_V: 1000.0
+    source: MCP73831 DS20001984H section 5.1.2
   min_charge_current_A: 0.015
   max_charge_current_A: 0.5
   regulation_voltage_V: 4.2
@@ -238,6 +243,11 @@ battery_charger:
 - `charge_current_parameter` names a Board IR component instance parameter.
   For resistor-programmed chargers, agents should derive this value from the
   schematic programming resistor or board configuration.
+- `charge_current_programming`, when present, allows static inference from one
+  positive resistor between `programming_pin` and `reference_pin` using
+  `current_A = current_gain_V / resistor_ohm`. This is only for source-backed
+  linear programming equations such as `PROG`/`ISET` resistor chargers; multiple
+  matching resistors or missing resistor evidence fail closed.
 - `min_charge_current_A` and `max_charge_current_A` bound the programmed charge
   current.
 - `regulation_voltage_V` bounds the battery net nominal voltage for the modeled

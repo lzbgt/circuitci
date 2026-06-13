@@ -19,24 +19,27 @@ the 4.2 V regulation option:
 - `VBAT` regulation option: `4.20 V` typical, with the datasheet range
   `4.168 V` to `4.232 V`.
 - Programmable fast-charge current range: approximately `15 mA` to `500 mA`.
+- PROG resistor current equation: `I = 1000 V / RPROG`.
 - `PROG` is represented as a passive programming pin.
 - `STAT` is represented as a digital output for status connectivity.
 
-The Board IR component instance must declare:
+The Board IR component instance may declare:
 
 ```yaml
 parameters:
   programmed_charge_current_A: 0.1
 ```
 
-That value should come from the schematic `PROG` resistor or board
-configuration.
+When it is omitted, CircuitCI derives the value from exactly one positive
+resistor between `PROG` and `VSS`. Ambiguous or missing resistor evidence still
+requires the explicit parameter.
 
 ## Validation Use
 
 `POWER_TREE_VALID` uses the model's `battery_charger` metadata to check:
 
-- programmed charge current is present and finite,
+- programmed charge current is present, finite, or derivable from the
+  source-backed `PROG` resistor equation,
 - programmed charge current is inside the modeled charger range,
 - programmed charge current does not exceed the input rail
   `supply_current_limit_A`,

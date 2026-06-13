@@ -27,6 +27,11 @@ battery_charger:
   input_pin: VDD
   battery_pin: VBAT
   charge_current_parameter: programmed_charge_current_A
+  charge_current_programming:
+    programming_pin: PROG
+    reference_pin: VSS
+    current_gain_V: 1000.0
+    source: MCP73831 DS20001984H section 5.1.2
   min_charge_current_A: 0.015
   max_charge_current_A: 0.5
   regulation_voltage_V: 4.2
@@ -78,7 +83,7 @@ datasheet:
       unit: A
   device_parameters:
     charge_current_programming:
-      conditions: Fast charge current is programmed by a resistor from PROG to VSS; Board IR must declare programmed_charge_current_A from the schematic resistor or board configuration.
+      conditions: Fast charge current is programmed by a resistor from PROG to VSS; IREG = 1000 V / RPROG.
       unit: note
       simulation_relevance: Static power-tree validation compares programmed charge current against charger range and input-source current budget.
     thermal_regulation:
