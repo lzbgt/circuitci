@@ -139,6 +139,31 @@ fn drill_annular_ring_fails_when_drill_and_copper_owners_conflict() {
 }
 
 #[test]
+fn drill_annular_ring_fails_when_same_net_pad_owners_conflict() {
+    let report =
+        run_validation("examples/bad_drill_annular_ring_same_net_owner_mismatch/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    assert_eq!(failure["measured"]["drill_net"], "GND");
+    assert_eq!(failure["measured"]["drill_owner_kind"], "pad");
+    assert_eq!(failure["measured"]["drill_component"], "J1");
+    assert_eq!(failure["measured"]["drill_pin"], "1");
+    assert_eq!(failure["measured"]["copper_feature_net"], "GND");
+    assert_eq!(failure["measured"]["copper_feature_owner_kind"], "pad");
+    assert_eq!(failure["measured"]["copper_feature_component"], "J1");
+    assert_eq!(failure["measured"]["copper_feature_pin"], "2");
+    assert_eq!(failure["measured"]["drill_copper_owner_mismatch"], true);
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("different pad/via owner")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_to_board_edge_clearance_passes_for_far_flash_and_trace() {
     let report = run_validation("examples/good_copper_to_board_edge_clearance/project.yaml");
     assert_eq!(report["result"], "pass");

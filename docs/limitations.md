@@ -186,11 +186,11 @@ without explicit imported mechanical evidence.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   Gerber flash copper geometry for a static 2D annular-ring screen. It checks
   circle, rectangle, and axis-aligned oval flashes, skips non-plated drills,
-  rejects co-located copper as annular-ring evidence when both drill and flash
-  carry conflicting net ownership, and can require explicit copper flash
-  evidence on scenario-listed layers such as `F.Cu` and `B.Cu`. Drill hits may
-  carry pad or via ownership when an importer can correlate them with existing
-  layout evidence. It does not use copper draw traces, thermal reliefs,
+  rejects co-located copper as annular-ring evidence when drill and flash carry
+  conflicting net or pad/via owner evidence, and can require explicit copper
+  flash evidence on scenario-listed layers such as `F.Cu` and `B.Cu`. Drill
+  hits may carry pad or via ownership when an importer can correlate them with
+  existing layout evidence. It does not use copper draw traces, thermal reliefs,
   plated-barrel thickness, drill wander distributions, solder mask, fab
   compensation, or solve full electrical continuity.
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported Gerber copper

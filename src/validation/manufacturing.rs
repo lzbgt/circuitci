@@ -226,10 +226,43 @@ pub(super) fn validate_drill_annular_ring(
 }
 
 fn drill_and_copper_owners_conflict(drill: &LayoutDrill, feature: &LayoutCopperFeature) -> bool {
-    matches!(
+    if matches!(
         (drill.net.as_deref(), feature.net.as_deref()),
         (Some(drill_net), Some(feature_net)) if drill_net != feature_net
-    )
+    ) {
+        return true;
+    }
+    drill_and_copper_rich_owners_conflict(drill, feature)
+}
+
+fn drill_and_copper_rich_owners_conflict(
+    drill: &LayoutDrill,
+    feature: &LayoutCopperFeature,
+) -> bool {
+    match (drill.owner_kind.as_deref(), feature.owner_kind.as_deref()) {
+        (Some(drill_kind), Some(feature_kind)) if drill_kind != feature_kind => true,
+        (Some("pad"), Some("pad")) => {
+            match (
+                drill.component.as_deref(),
+                drill.pin.as_deref(),
+                feature.component.as_deref(),
+                feature.pin.as_deref(),
+            ) {
+                (
+                    Some(drill_component),
+                    Some(drill_pin),
+                    Some(feature_component),
+                    Some(feature_pin),
+                ) => (drill_component, drill_pin) != (feature_component, feature_pin),
+                _ => false,
+            }
+        }
+        (Some("via"), Some("via")) => match (drill.via_index, feature.via_index) {
+            (Some(drill_via), Some(feature_via)) => drill_via != feature_via,
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 fn report_annular_ring_candidate(
@@ -874,12 +907,7 @@ fn drill_annular_ring_owner_mismatch_finding(
     let mut finding = Finding::critical(
         DRILL_ANNULAR_RING_VALID,
         &scenario.name,
-        format!(
-            "Drill hit {} owner net {} is co-located with Gerber copper flash owner net {}, so annular-ring evidence is on the wrong owner.",
-            drill_index,
-            drill.net.as_deref().unwrap_or("unknown"),
-            candidate.feature.net.as_deref().unwrap_or("unknown")
-        ),
+        drill_copper_owner_mismatch_message(drill_index, drill, candidate.feature),
     );
     insert_drill_measurements(&mut finding, drill, drill_index);
     insert_required_copper_layer_measurement(&mut finding, required_layer);
@@ -911,6 +939,80 @@ fn drill_annular_ring_owner_mismatch_finding(
             .to_string(),
     ];
     finding
+}
+
+fn drill_copper_owner_mismatch_message(
+    drill_index: usize,
+    drill: &LayoutDrill,
+    feature: &LayoutCopperFeature,
+) -> String {
+    if matches!(
+        (drill.net.as_deref(), feature.net.as_deref()),
+        (Some(drill_net), Some(feature_net)) if drill_net != feature_net
+    ) {
+        return format!(
+            "Drill hit {} owner net {} is co-located with Gerber copper flash owner net {}, so annular-ring evidence is on the wrong owner.",
+            drill_index,
+            drill.net.as_deref().unwrap_or("unknown"),
+            feature.net.as_deref().unwrap_or("unknown")
+        );
+    }
+    format!(
+        "Drill hit {} owner {} is co-located with Gerber copper flash owner {}, so annular-ring evidence is on a different pad/via owner.",
+        drill_index,
+        drill_owner_label(drill),
+        copper_feature_owner_label(feature)
+    )
+}
+
+fn drill_owner_label(drill: &LayoutDrill) -> String {
+    match drill.owner_kind.as_deref() {
+        Some("pad") => format!(
+            "pad {}/{} on net {}",
+            drill.component.as_deref().unwrap_or("unknown"),
+            drill.pin.as_deref().unwrap_or("unknown"),
+            drill.net.as_deref().unwrap_or("unknown")
+        ),
+        Some("via") => format!(
+            "via {} on net {}",
+            drill
+                .via_index
+                .map(|index| index.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+            drill.net.as_deref().unwrap_or("unknown")
+        ),
+        Some(kind) => format!(
+            "{} on net {}",
+            kind,
+            drill.net.as_deref().unwrap_or("unknown")
+        ),
+        None => format!("net {}", drill.net.as_deref().unwrap_or("unknown")),
+    }
+}
+
+fn copper_feature_owner_label(feature: &LayoutCopperFeature) -> String {
+    match feature.owner_kind.as_deref() {
+        Some("pad") => format!(
+            "pad {}/{} on net {}",
+            feature.component.as_deref().unwrap_or("unknown"),
+            feature.pin.as_deref().unwrap_or("unknown"),
+            feature.net.as_deref().unwrap_or("unknown")
+        ),
+        Some("via") => format!(
+            "via {} on net {}",
+            feature
+                .via_index
+                .map(|index| index.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+            feature.net.as_deref().unwrap_or("unknown")
+        ),
+        Some(kind) => format!(
+            "{} on net {}",
+            kind,
+            feature.net.as_deref().unwrap_or("unknown")
+        ),
+        None => format!("net {}", feature.net.as_deref().unwrap_or("unknown")),
+    }
 }
 
 fn drill_annular_ring_finding(

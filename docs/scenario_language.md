@@ -633,7 +633,8 @@ Drill annular-ring algorithm:
 6. Skip `non_plated` drills. Check `plated` and `unknown` drills.
 7. Match co-located copper flashes within the center-offset limit.
 8. Reject a co-located flash as annular-ring evidence when both drill and
-   copper carry `net` ownership and those owners differ.
+   copper carry conflicting owner evidence: different `net` values, different
+   pad owners, different via owners, or a pad/via kind mismatch.
 9. Compute the best annular ring from supported `circle`, `rect`, or
    axis-aligned `oval` copper flash geometry.
 10. Fail when no matching same/unknown-owner copper flash exists on the
