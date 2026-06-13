@@ -579,6 +579,8 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
         .expect("USB route geometry suggestion");
+    assert_eq!(route["runnable"], true);
+    assert!(route.get("required_inputs").is_none());
     assert_eq!(route["scenario"]["checks"][0], "USB_ROUTE_GEOMETRY_VALID");
     assert_eq!(
         route["scenario"]["parameters"]["max_data_line_route_length_mm"],
@@ -590,10 +592,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
     );
     assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
     assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
-    assert_eq!(
-        route["scenario"]["parameters"]["require_route_pad_contact_evidence"],
-        true
-    );
+    assert!(route["scenario"]["parameters"]["require_route_pad_contact_evidence"].is_null());
     assert!(
         route["scenario"]["usb_routes"]
             .as_array()
@@ -1615,6 +1614,8 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_route_geometry_j1")
         .unwrap();
+    assert_eq!(route["runnable"], true);
+    assert!(route.get("required_inputs").is_none());
     assert_eq!(
         route["scenario"]["parameters"]["max_data_line_route_length_mm"],
         25.0

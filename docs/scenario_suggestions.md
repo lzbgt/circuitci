@@ -168,8 +168,8 @@ The command is conservative:
   Otherwise it stays non-runnable, preserves any available metadata-derived
   value, and leaves missing values as `null` until an agent fills them from
   connector, plug, panel, enclosure, or assembly mechanical drawings.
-- It emits non-runnable `USB_ROUTE_GEOMETRY_VALID` templates when the USB
-  connector, D+/D- protection components, placements, and
+- It emits `USB_ROUTE_GEOMETRY_VALID` templates when the USB connector, D+/D-
+  protection components, placements, and
   `board.layout.routes` evidence are present. The template includes
   `scenario.usb_routes[]` with data-line net, route length, via count, and the
   matching protection component. When imported net rules include route width,
@@ -181,13 +181,14 @@ The command is conservative:
   `data_pair_gap_delta_mm` when available. If KiCad PCB import found
   applicable custom DRC `length` or `skew` constraints, the template pre-fills
   `max_data_line_route_length_mm` and
-  `max_data_pair_length_mismatch_mm`; via-count, width tolerance, gap
-  tolerance, and ESD placement limits remain `null` until an agent supplies
-  board-specific policy. When imported connector and protection pad evidence
-  exists for both data lines, the template sets
-  `require_route_pad_contact_evidence: true` so validation measures route order
-  from same-net pad evidence instead of component placement centers. Each
-  matching `scenario.usb_routes[]` entry also reports
+  `max_data_pair_length_mismatch_mm` and becomes runnable. Without both
+  imported limits, it remains non-runnable until an agent supplies the missing
+  board-specific policy. Via-count, width tolerance, gap tolerance, and ESD
+  placement limits remain optional `null` checks until an agent supplies those
+  policies. `require_route_pad_contact_evidence` also remains `null` until route
+  distance limits are supplied. When imported connector and protection pad
+  evidence exists for both data lines, each matching `scenario.usb_routes[]`
+  entry reports
   `connector_pad`, `protection_pad`,
   `connector_pad_to_route_distance_mm`,
   `protection_pad_to_route_distance_mm`, and

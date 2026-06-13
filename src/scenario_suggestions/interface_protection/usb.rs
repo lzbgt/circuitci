@@ -34,7 +34,7 @@ use route_evidence::{
     ground_zones_have_filled_polygons, pad_to_route_distance_mm,
     return_path_filled_zone_clearance_segments, return_path_unreferenced_segments,
     route_distance_between_pads_mm, route_ground_zone_contacts, suggested_usb_route_pad,
-    usb_route_pad_contact_evidence_exists, usb_vbus_route_pad_contact_evidence_exists,
+    usb_vbus_route_pad_contact_evidence_exists,
 };
 
 pub(super) fn usb_connector_protection_suggestion(
@@ -296,14 +296,8 @@ pub(super) fn usb_route_geometry_suggestion(
     )?;
     let route_pair = suggested_usb_route_pair(bound, &dp_route, &dm_route)?;
     let route_limits = suggested_usb_route_limits(bound, &dp_route.net, &dm_route.net);
-    let has_pad_contact_evidence = usb_route_pad_contact_evidence_exists(
-        bound,
-        component_id,
-        component,
-        connector,
-        &dp_clamp,
-        &dm_clamp,
-    );
+    let runnable = route_limits.max_data_line_route_length_mm.is_some()
+        && route_limits.max_data_pair_length_mismatch_mm.is_some();
     let parameters = BTreeMap::from([
         (
             "max_data_line_route_length_mm".to_string(),
@@ -339,20 +333,16 @@ pub(super) fn usb_route_geometry_suggestion(
         ),
         (
             "require_route_pad_contact_evidence".to_string(),
-            if has_pad_contact_evidence {
-                serde_json::Value::Bool(true)
-            } else {
-                serde_json::Value::Null
-            },
+            serde_json::Value::Null,
         ),
     ]);
     Some(ScenarioSuggestion {
         id: format!("usb_route_geometry_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
-            "USB connector {component_id} has placed protection components and imported D+/D- route geometry; add route-length, via-count, and connector-to-protection route checks."
+            "USB connector {component_id} has placed protection components and imported D+/D- route geometry; add route-length and differential-pair matching checks."
         ),
         scenario: SuggestedScenario {
             name: format!("{}_usb_route_geometry", sanitized_name(component_id)),
@@ -380,28 +370,25 @@ pub(super) fn usb_route_geometry_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            route_limit_required_input(
-                route_limits.max_data_line_route_length_mm,
-                "max_data_line_route_length_mm",
-                "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.",
-            ),
-            "Fill max_data_line_via_count from the board's USB routing policy; use zero when layer changes are not allowed.".to_string(),
-            "Fill max_data_line_width_delta_mm when imported route width constraints should be enforced.".to_string(),
-            route_limit_required_input(
-                route_limits.max_data_pair_length_mismatch_mm,
-                "max_data_pair_length_mismatch_mm",
-                "Fill max_data_pair_length_mismatch_mm from the USB differential-pair matching rule.",
-            ),
-            "Fill max_data_pair_via_count_delta from the USB differential-pair matching rule.".to_string(),
-            "Fill max_data_pair_gap_delta_mm when imported differential-pair gap constraints should be enforced.".to_string(),
-            if has_pad_contact_evidence {
-                "Review require_route_pad_contact_evidence=true against imported connector/protection pad evidence before treating the route template as sign-off.".to_string()
-            } else {
-                "Import PCB pad evidence or set require_route_pad_contact_evidence only after connector/protection pads are mapped to the routed USB nets.".to_string()
-            },
-            "Fill max_connector_to_protection_route_distance_mm and max_component_to_route_distance_mm from ESD/layout guidance before treating the route template as sign-off.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            let mut inputs = Vec::new();
+            if route_limits.max_data_line_route_length_mm.is_none() {
+                inputs.push(
+                    "Fill max_data_line_route_length_mm from the board's USB layout rule or signal-integrity budget.".to_string(),
+                );
+            }
+            if route_limits.max_data_pair_length_mismatch_mm.is_none() {
+                inputs.push(
+                    "Fill max_data_pair_length_mismatch_mm from the USB differential-pair matching rule.".to_string(),
+                );
+            }
+            inputs.push(
+                "Optional USB route checks can be enabled later with via-count, width-delta, pair-gap, pad-contact, and connector-to-protection route-distance limits.".to_string(),
+            );
+            inputs
+        },
     })
 }
 

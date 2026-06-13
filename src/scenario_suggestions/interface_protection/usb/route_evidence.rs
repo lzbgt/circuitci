@@ -152,37 +152,6 @@ pub(super) fn route_ground_zone_contacts(
     contacts.into_values().collect()
 }
 
-pub(super) fn usb_route_pad_contact_evidence_exists(
-    bound: &BoundBoard<'_>,
-    connector_id: &str,
-    component: &ComponentSpec,
-    connector: &UsbConnector,
-    dp_clamp: &SuggestedProtectionClamp,
-    dm_clamp: &SuggestedProtectionClamp,
-) -> bool {
-    route_pad_exists(
-        bound,
-        connector_id,
-        &connector.dp_pin,
-        component.pins.get(&connector.dp_pin).map(String::as_str),
-    ) && route_pad_exists(
-        bound,
-        connector_id,
-        &connector.dm_pin,
-        component.pins.get(&connector.dm_pin).map(String::as_str),
-    ) && route_pad_exists(
-        bound,
-        &dp_clamp.component,
-        &dp_clamp.protected_pin,
-        Some(dp_clamp.protected_net.as_str()),
-    ) && route_pad_exists(
-        bound,
-        &dm_clamp.component,
-        &dm_clamp.protected_pin,
-        Some(dm_clamp.protected_net.as_str()),
-    )
-}
-
 pub(super) fn usb_vbus_route_pad_contact_evidence_exists(
     bound: &BoundBoard<'_>,
     connector_id: &str,

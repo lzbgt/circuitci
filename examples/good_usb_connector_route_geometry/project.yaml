@@ -113,3 +113,19 @@ scenarios:
       max_data_line_width_delta_mm: 0.01
       max_data_pair_gap_delta_mm: 0.01
       require_route_pad_contact_evidence: true
+  - name: usb_route_geometry_imported_length_skew_only
+    type: interface_protection
+    checks:
+      - USB_ROUTE_GEOMETRY_VALID
+    target:
+      component: J1
+    parameters:
+      max_data_line_route_length_mm: 5.0
+      max_data_line_via_count:
+      max_connector_to_protection_route_distance_mm:
+      max_component_to_route_distance_mm:
+      max_data_pair_length_mismatch_mm: 0.5
+      max_data_pair_via_count_delta:
+      max_data_line_width_delta_mm:
+      max_data_pair_gap_delta_mm:
+      require_route_pad_contact_evidence:

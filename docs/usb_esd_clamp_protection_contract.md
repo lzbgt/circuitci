@@ -207,29 +207,32 @@ Route-geometry validation:
 
 - `USB_ROUTE_GEOMETRY_VALID` targets the same connector component and uses
   `board.layout.routes` evidence.
-- The scenario must declare `parameters.max_data_line_route_length_mm`,
+- The scenario must declare `parameters.max_data_line_route_length_mm` and
+  `parameters.max_data_pair_length_mismatch_mm`. It can optionally declare
   `parameters.max_data_line_via_count`,
-  `parameters.max_connector_to_protection_route_distance_mm`, and
-  `parameters.max_component_to_route_distance_mm`,
-  `parameters.max_data_pair_length_mismatch_mm`, and
-  `parameters.max_data_pair_via_count_delta`.
+  `parameters.max_connector_to_protection_route_distance_mm`,
+  `parameters.max_component_to_route_distance_mm`, and
+  `parameters.max_data_pair_via_count_delta` to enable those extra policy
+  checks.
 - The rule checks D+ and D- only. VBUS route validation should use a separate
   `USB_VBUS_ROUTE_VALID` rule because its constraints are different from
   data-line geometry.
-- The rule also checks D+/D- length mismatch and via-count symmetry using the
-  imported route evidence.
+- The rule also checks D+/D- length mismatch using the imported route evidence,
+  and checks via-count symmetry when
+  `parameters.max_data_pair_via_count_delta` is present.
 - When `parameters.max_data_line_width_delta_mm` is present, it checks data-line
   segment widths against imported `diff_pair_width_mm` or `track_width_mm`.
 - When `parameters.max_data_pair_gap_delta_mm` is present, it checks the
   edge-to-edge gap of overlapping parallel D+/D- segments against imported
   `diff_pair_gap_mm`.
-- When `parameters.require_route_pad_contact_evidence` is true, connector to
+- When route-distance limits are present and
+  `parameters.require_route_pad_contact_evidence` is true, connector to
   protection route-order checks use imported same-net connector/protection pad
   centers from `board.layout.pads`, and each pad center must project onto a
   matching route layer within `parameters.max_component_to_route_distance_mm`.
   When supported imported pad shape/size evidence exists, the route must touch
   the pad copper extent instead of only projecting near the pad center. Without
-  that parameter, the rule keeps the older component-placement projection
+  pad-contact evidence, the rule keeps the older component-placement projection
   behavior for hand-authored route evidence.
 - Scenario suggestions expose route and pair evidence in `scenario.usb_routes[]`
   and `scenario.usb_route_pairs[]` so agents can inspect measured length,

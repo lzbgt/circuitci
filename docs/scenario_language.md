@@ -1235,9 +1235,10 @@ does not evaluate stencil thickness, paste volume, paste release,
 multi-contour paste regions, or package-specific intentional aperture merging.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
-`board.layout.routes` evidence imported from PCB data. The rule checks D+ and
-D- route length, via count, and the routed distance from the connector to the
-nearest valid protection component.
+`board.layout.routes` evidence imported from PCB data. The rule always checks
+D+ and D- route length plus route length mismatch. Via-count, width, gap,
+pad-contact, and routed connector-to-protection distance checks run only when
+their corresponding optional policy parameters are declared.
 
 ```yaml
 scenarios:
@@ -1266,21 +1267,22 @@ USB route geometry algorithm:
 3. Require `board.layout.routes` entries for both data nets.
 4. Sum routed segment lengths and require each data net to stay within
    `max_data_line_route_length_mm`.
-5. Count vias in each net route and require the count to stay within
-   `max_data_line_via_count`.
+5. If `max_data_line_via_count` is declared, count vias in each net route and
+   require the count to stay within that limit.
 6. If `max_data_line_width_delta_mm` is declared, resolve
    `board.layout.constraints.net_rules` for each data net and require every
    segment width to match `diff_pair_width_mm` or `track_width_mm` within that
    tolerance.
 7. Require the D+/D- route length mismatch to stay within
    `max_data_pair_length_mismatch_mm`.
-8. Require the D+/D- via-count delta to stay within
-   `max_data_pair_via_count_delta`.
+8. If `max_data_pair_via_count_delta` is declared, require the D+/D- via-count
+   delta to stay within that limit.
 9. If `max_data_pair_gap_delta_mm` is declared, resolve
    `diff_pair_gap_mm`, find overlapping parallel D+/D- routed segments, and
    require edge-to-edge gap to match within that tolerance.
-10. By default, project connector and protection component placements onto the
-   routed net within `max_component_to_route_distance_mm`. When
+10. If `max_connector_to_protection_route_distance_mm` and
+   `max_component_to_route_distance_mm` are declared, project connector and
+   protection component placements onto the routed net. When
    `require_route_pad_contact_evidence` is true, use imported
    `board.layout.pads` for the connector signal pin and matching protection
    pad instead; each pad must be on the same net and on a route layer within

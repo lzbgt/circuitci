@@ -33,11 +33,11 @@ pub(super) fn validate_usb_route_geometry(
         return;
     };
     let Some(max_via_count) =
-        required_integer_parameter(scenario, "max_data_line_via_count", findings)
+        optional_integer_parameter(scenario, "max_data_line_via_count", findings)
     else {
         return;
     };
-    let Some(max_protection_route_distance_mm) = required_positive_parameter(
+    let Some(max_protection_route_distance_mm) = optional_positive_parameter(
         scenario,
         "max_connector_to_protection_route_distance_mm",
         findings,
@@ -45,7 +45,7 @@ pub(super) fn validate_usb_route_geometry(
         return;
     };
     let Some(max_component_to_route_distance_mm) =
-        required_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
+        optional_positive_parameter(scenario, "max_component_to_route_distance_mm", findings)
     else {
         return;
     };
@@ -55,7 +55,7 @@ pub(super) fn validate_usb_route_geometry(
         return;
     };
     let Some(max_pair_via_count_delta) =
-        required_integer_parameter(scenario, "max_data_pair_via_count_delta", findings)
+        optional_integer_parameter(scenario, "max_data_pair_via_count_delta", findings)
     else {
         return;
     };
@@ -373,10 +373,10 @@ struct UsbRouteSignalCheck<'a> {
     connector_placement: &'a ComponentPlacement,
     signal: UsbConnectorSignal,
     max_route_length_mm: f64,
-    max_via_count: usize,
+    max_via_count: Option<usize>,
     max_data_line_width_delta_mm: Option<f64>,
-    max_protection_route_distance_mm: f64,
-    max_component_to_route_distance_mm: f64,
+    max_protection_route_distance_mm: Option<f64>,
+    max_component_to_route_distance_mm: Option<f64>,
     require_route_pad_contact_evidence: bool,
 }
 
@@ -390,6 +390,12 @@ struct VbusRouteProtectionCheck<'a> {
     max_protection_route_distance_mm: f64,
     max_component_to_route_distance_mm: f64,
     require_route_pad_contact_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RouteDistanceLimits {
+    max_protection_route_distance_mm: f64,
+    max_component_to_route_distance_mm: f64,
 }
 
 fn validate_usb_route_for_signal(
@@ -464,14 +470,16 @@ fn validate_usb_route_for_signal(
         ));
     }
     let via_count = route.vias.len();
-    if via_count > check.max_via_count {
+    if let Some(max_via_count) = check.max_via_count
+        && via_count > max_via_count
+    {
         findings.push(usb_route_via_count_finding(
             scenario,
             check.connector_id,
             check.signal,
             net_name,
             via_count,
-            check.max_via_count,
+            max_via_count,
         ));
     }
     if let Some(max_width_delta_mm) = check.max_data_line_width_delta_mm {
@@ -496,9 +504,25 @@ fn validate_protection_route_distance(
     route: &NetRoute,
     findings: &mut Vec<Finding>,
 ) {
+    let (Some(max_protection_route_distance_mm), Some(max_component_to_route_distance_mm)) = (
+        check.max_protection_route_distance_mm,
+        check.max_component_to_route_distance_mm,
+    ) else {
+        return;
+    };
+    let distance_limits = RouteDistanceLimits {
+        max_protection_route_distance_mm,
+        max_component_to_route_distance_mm,
+    };
     if check.require_route_pad_contact_evidence {
         validate_protection_route_distance_from_pads(
-            bound, scenario, check, net_name, route, findings,
+            bound,
+            scenario,
+            check,
+            net_name,
+            route,
+            distance_limits,
+            findings,
         );
         return;
     }
@@ -542,7 +566,7 @@ fn validate_protection_route_distance(
             route,
             connector_point,
             protection_point,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ) else {
             off_route.push(protection.component_id.to_string());
             continue;
@@ -562,11 +586,11 @@ fn validate_protection_route_distance(
             net_name,
             &missing_placements,
             &off_route,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ));
         return;
     };
-    if route_distance_mm > check.max_protection_route_distance_mm {
+    if route_distance_mm > distance_limits.max_protection_route_distance_mm {
         findings.push(usb_route_protection_distance_finding(
             scenario,
             check.connector_id,
@@ -574,7 +598,7 @@ fn validate_protection_route_distance(
             net_name,
             protection_component,
             route_distance_mm,
-            check.max_protection_route_distance_mm,
+            distance_limits.max_protection_route_distance_mm,
         ));
     }
 }
@@ -585,6 +609,7 @@ fn validate_protection_route_distance_from_pads(
     check: &UsbRouteSignalCheck<'_>,
     net_name: &str,
     route: &NetRoute,
+    distance_limits: RouteDistanceLimits,
     findings: &mut Vec<Finding>,
 ) {
     let protections = valid_protection_clamps_for_net(bound, check.connector_id, net_name);
@@ -627,9 +652,9 @@ fn validate_protection_route_distance_from_pads(
     if pad_to_route_distance_mm(
         route,
         connector_pad,
-        check.max_component_to_route_distance_mm,
+        distance_limits.max_component_to_route_distance_mm,
     )
-    .is_none_or(|distance_mm| distance_mm > check.max_component_to_route_distance_mm)
+    .is_none_or(|distance_mm| distance_mm > distance_limits.max_component_to_route_distance_mm)
     {
         findings.push(usb_route_pad_metadata_finding(
             scenario,
@@ -645,7 +670,7 @@ fn validate_protection_route_distance_from_pads(
                 "USB connector {} {} pad {connector_pin} is not on the imported route for net {net_name} within {:.3} mm.",
                 check.connector_id,
                 check.signal.label(),
-                check.max_component_to_route_distance_mm
+                distance_limits.max_component_to_route_distance_mm
             ),
         ));
         return;
@@ -666,7 +691,7 @@ fn validate_protection_route_distance_from_pads(
             route,
             connector_pad,
             protection_pad,
-            check.max_component_to_route_distance_mm,
+            distance_limits.max_component_to_route_distance_mm,
         ) else {
             off_route_pads.push(format!("{}.{}", protection.component_id, protection_pin));
             continue;
@@ -692,12 +717,12 @@ fn validate_protection_route_distance_from_pads(
                 connector_pin,
                 missing_pads: &missing_pads,
                 off_route_pads: &off_route_pads,
-                max_pad_to_route_distance_mm: check.max_component_to_route_distance_mm,
+                max_pad_to_route_distance_mm: distance_limits.max_component_to_route_distance_mm,
             },
         ));
         return;
     };
-    if route_distance_mm > check.max_protection_route_distance_mm {
+    if route_distance_mm > distance_limits.max_protection_route_distance_mm {
         findings.push(usb_route_protection_pad_distance_finding(
             scenario,
             check.connector_id,
@@ -708,7 +733,7 @@ fn validate_protection_route_distance_from_pads(
                 protection_component,
                 protection_pin,
                 route_distance_mm,
-                max_route_distance_mm: check.max_protection_route_distance_mm,
+                max_route_distance_mm: distance_limits.max_protection_route_distance_mm,
             },
         ));
     }
@@ -1081,7 +1106,9 @@ fn validate_usb_pair_consistency(
     let dp_via_count = dp_route.vias.len();
     let dm_via_count = dm_route.vias.len();
     let via_count_delta = dp_via_count.abs_diff(dm_via_count);
-    if via_count_delta > limits.max_via_count_delta {
+    if let Some(max_via_count_delta) = limits.max_via_count_delta
+        && via_count_delta > max_via_count_delta
+    {
         findings.push(usb_pair_via_delta_finding(
             scenario,
             connector_id,
@@ -1091,7 +1118,7 @@ fn validate_usb_pair_consistency(
                 dp_via_count,
                 dm_via_count,
                 via_count_delta,
-                max_via_count_delta: limits.max_via_count_delta,
+                max_via_count_delta,
             },
         ));
     }
@@ -1121,7 +1148,7 @@ struct UsbPairRouteTarget<'a> {
 #[derive(Debug, Clone, Copy)]
 struct UsbPairLimits {
     max_length_mismatch_mm: f64,
-    max_via_count_delta: usize,
+    max_via_count_delta: Option<usize>,
     max_gap_delta_mm: Option<f64>,
 }
 
@@ -1251,6 +1278,9 @@ fn optional_nonnegative_parameter(
     let Some(raw) = scenario.parameters.get(name) else {
         return Some(None);
     };
+    if raw.is_null() {
+        return Some(None);
+    }
     let Some(value) = raw.as_f64() else {
         validation_input_missing(
             findings,
@@ -1270,6 +1300,66 @@ fn optional_nonnegative_parameter(
     Some(Some(value))
 }
 
+fn optional_positive_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<f64>> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        return Some(None);
+    };
+    if raw.is_null() {
+        return Some(None);
+    }
+    let Some(value) = raw.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be a number."),
+        );
+        return None;
+    };
+    if !value.is_finite() || value <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be greater than zero."),
+        );
+        return None;
+    }
+    Some(Some(value))
+}
+
+fn optional_integer_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<usize>> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        return Some(None);
+    };
+    if raw.is_null() {
+        return Some(None);
+    }
+    let Some(value) = raw.as_f64() else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be a number."),
+        );
+        return None;
+    };
+    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 || value > usize::MAX as f64 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("interface_protection parameters.{name} must be a non-negative integer."),
+        );
+        return None;
+    }
+    Some(Some(value as usize))
+}
+
 fn optional_bool_parameter(
     scenario: &Scenario,
     name: &str,
@@ -1278,6 +1368,9 @@ fn optional_bool_parameter(
     let Some(raw) = scenario.parameters.get(name) else {
         return Some(false);
     };
+    if raw.is_null() {
+        return Some(false);
+    }
     let Some(value) = raw.as_bool() else {
         validation_input_missing(
             findings,

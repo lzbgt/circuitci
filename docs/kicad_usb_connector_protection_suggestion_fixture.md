@@ -117,10 +117,15 @@ direction, the nearest entry-corridor obstruction changes to `UVBUS`.
 
 The PCB fixture also declares a `USB_HS` net class and a simple custom DRC rule
 for USB data length/skew. Import preserves that evidence under
-`board.layout.constraints.net_rules`, and the USB route suggestion pre-fills:
+`board.layout.constraints.net_rules`, and the USB route suggestion is runnable
+for the imported length and pair-mismatch checks. It pre-fills:
 
 - `max_data_line_route_length_mm: 25.0`
 - `max_data_pair_length_mismatch_mm: 0.5`
+
+Via-count, route-width, pair-gap, and connector-to-protection route-distance
+limits remain optional `null` policy knobs unless a board-specific rule declares
+them.
 
 Because the PCB fixture also imports a same-layer GND copper-zone outline over
 the USB D+/D- route segment midpoints, the return-path suggestion reports
