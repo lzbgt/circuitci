@@ -158,9 +158,9 @@ owner association becomes:
 
 ```text
 Top copper: 2018 net-associated features, 1255 net-associated segments, 22 net-associated regions
-Bottom copper: 0 net-associated objects because the flying-probe file reports layer T only
+Bottom copper: 96 net-associated features and 33 net-associated segments after applying JLC placement side evidence
 Top solder mask: 121 owner-associated flash openings
-Bottom solder mask: 0 owner-associated openings because the flying-probe file reports layer T only
+Bottom solder mask: 9 owner-associated flash openings after applying JLC placement side evidence
 Top solder paste: 103 owner-associated flash openings, 9 owner-associated region openings
 PTH drills: 9 pad-associated hits
 ```

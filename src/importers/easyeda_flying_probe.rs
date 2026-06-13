@@ -28,6 +28,12 @@ pub struct EasyedaFlyingProbeImportSummary {
     pub nets_imported: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlacementSide {
+    Top,
+    Bottom,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct ImportedPad {
     component: String,
@@ -353,6 +359,7 @@ fn merge_pads_into_project(
             }
         }
 
+        let layers = resolved_pad_layers(root, pad)?;
         let board = mapping_field_mut(root, "board")?;
         let layout = ensure_mapping_field_mut(board, "layout")?;
         let pads_root = ensure_mapping_field_mut(layout, "pads")?;
@@ -375,7 +382,7 @@ fn merge_pads_into_project(
             serde_yaml_ng::to_value(LayoutPadYaml {
                 at: pad.at.clone(),
                 net: pad.net.clone(),
-                layers: pad.layers.clone(),
+                layers,
                 kind: pad.kind.clone(),
                 shape: pad.shape.clone(),
                 size: pad.size.clone(),
@@ -386,6 +393,57 @@ fn merge_pads_into_project(
         summary.pads_imported += 1;
     }
     Ok(summary)
+}
+
+fn resolved_pad_layers(root: &mut Mapping, pad: &ImportedPad) -> Result<Vec<String>> {
+    if pad.kind == "through_hole" || pad.drill_mm.is_some() {
+        return Ok(vec!["F.Cu".to_string(), "B.Cu".to_string()]);
+    }
+    let Some(side) = placement_side_for_component(root, &pad.component)? else {
+        return Ok(pad.layers.clone());
+    };
+    if pad.layers == ["F.Cu"] && side == PlacementSide::Bottom {
+        return Ok(vec!["B.Cu".to_string()]);
+    }
+    Ok(pad.layers.clone())
+}
+
+fn placement_side_for_component(
+    root: &mut Mapping,
+    component: &str,
+) -> Result<Option<PlacementSide>> {
+    let board = mapping_field_mut(root, "board")?;
+    let Some(layout) = board.get_mut(Value::String("layout".to_string())) else {
+        return Ok(None);
+    };
+    let layout = layout
+        .as_mapping_mut()
+        .context("Board IR field board.layout must be a YAML object.")?;
+    let Some(placements) = layout.get_mut(Value::String("placements".to_string())) else {
+        return Ok(None);
+    };
+    let placements = placements
+        .as_mapping_mut()
+        .context("Board IR field board.layout.placements must be a YAML object.")?;
+    let Some(placement) = placements.get_mut(Value::String(component.to_string())) else {
+        return Ok(None);
+    };
+    let placement = placement.as_mapping_mut().with_context(|| {
+        format!("Board IR field board.layout.placements.{component} must be a YAML object.")
+    })?;
+    let Some(side) = placement.get(Value::String("side".to_string())) else {
+        return Ok(None);
+    };
+    let side = side.as_str().with_context(|| {
+        format!("Board IR field board.layout.placements.{component}.side must be a string.")
+    })?;
+    match side {
+        "top" => Ok(Some(PlacementSide::Top)),
+        "bottom" => Ok(Some(PlacementSide::Bottom)),
+        other => bail!(
+            "Board IR field board.layout.placements.{component}.side uses unsupported value {other:?}."
+        ),
+    }
 }
 
 fn mapping_field_mut<'a>(mapping: &'a mut Mapping, field: &str) -> Result<&'a mut Mapping> {

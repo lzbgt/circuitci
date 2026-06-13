@@ -44,12 +44,12 @@ pads imported first:
   `2018` net-associated features, `1255` net-associated segments, and `22`
   net-associated regions.
 - Bottom copper: `1275` flash features, `854` trace segments, `3` regions,
-  `0` net-associated objects because the observed flying-probe file reports
-  all pads on top-side layer `T`.
+  `96` net-associated features and `33` net-associated segments after applying
+  JLC placement side evidence to flying-probe pad layers.
 - Top solder mask: `1546` flash openings, `7` region openings, `121`
   owner-associated flash openings.
-- Bottom solder mask: `96` flash openings and `0` owner-associated openings
-  for the same top-side-only flying-probe reason.
+- Bottom solder mask: `96` flash openings and `9` owner-associated openings
+  after applying JLC placement side evidence to flying-probe pad layers.
 - Top solder paste: `1111` flash openings, `354` region openings, `103`
   owner-associated flash openings, and `9` owner-associated region openings.
 - PTH drills: `1275` hits with `9` pad-associated hits.

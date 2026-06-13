@@ -199,6 +199,81 @@ fn import_gerber_copper_associates_easyeda_toplayer_with_front_copper_pads() {
 }
 
 #[test]
+fn import_gerber_copper_associates_easyeda_bottomlayer_with_back_copper_pads() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let project = dir.path().join("bottom_pad.project.yaml");
+    let gerber = dir.path().join("bottom_layer.gbl");
+    let output = dir.path().join("with_easyeda_bottomlayer.project.yaml");
+    std::fs::write(
+        &project,
+        concat!(
+            "project:\n",
+            "  name: bottom_layer_ownership\n",
+            "  version: 0.1.0\n",
+            "libraries:\n",
+            "  - ../../libs/generic/schematic\n",
+            "board:\n",
+            "  components:\n",
+            "    J1:\n",
+            "      model: generic.schematic.imported_component\n",
+            "      pins: {}\n",
+            "  nets:\n",
+            "    GND: { kind: ground }\n",
+            "  layout:\n",
+            "    pads:\n",
+            "      J1:\n",
+            "        1:\n",
+            "          at: { x_mm: 10.0, y_mm: 10.0 }\n",
+            "          net: GND\n",
+            "          layers: [B.Cu]\n",
+            "          shape: circle\n",
+            "          size: { x_mm: 0.6, y_mm: 0.6 }\n",
+            "scenarios: []\n",
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: BottomLayer*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "%ADD10C,0.600*%\n",
+            "D10*\n",
+            "X01000000Y01000000D03*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-copper",
+            gerber.to_str().unwrap(),
+            "--project",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 net-associated features"));
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let features = imported["board"]["layout"]["copper"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(features[0]["layer"], "BottomLayer");
+    assert_eq!(features[0]["net"], "GND");
+    assert_eq!(features[0]["owner_kind"], "pad");
+    assert_eq!(features[0]["component"], "J1");
+    assert_eq!(features[0]["pin"], "1");
+}
+
+#[test]
 fn import_gerber_copper_associates_rotated_rect_and_polygon_pads() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

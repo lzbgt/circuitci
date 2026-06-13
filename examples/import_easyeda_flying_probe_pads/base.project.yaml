@@ -8,6 +8,14 @@ board:
     J1:
       model: generic.schematic.imported_component
       pins: {}
+    U2:
+      model: generic.schematic.imported_component
+      pins: {}
   nets: {}
-  layout: {}
+  layout:
+    placements:
+      U2:
+        x_mm: 30.0
+        y_mm: -10.0
+        side: bottom
 scenarios: []

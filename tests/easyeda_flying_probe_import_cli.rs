@@ -22,14 +22,14 @@ fn import_easyeda_flying_probe_adds_schema_valid_pad_evidence() {
         .unwrap();
     assert!(command_output.status.success());
     let stdout = String::from_utf8_lossy(&command_output.stdout);
-    assert!(stdout.contains("5 pin rows"));
-    assert!(stdout.contains("3 connected pin rows"));
-    assert!(stdout.contains("3 pads imported"));
+    assert!(stdout.contains("6 pin rows"));
+    assert!(stdout.contains("4 connected pin rows"));
+    assert!(stdout.contains("4 pads imported"));
     assert!(stdout.contains("1 duplicate pin rows"));
     assert!(stdout.contains("0 multipart pin rows"));
     assert!(stdout.contains("1 unconnected pins skipped"));
     assert!(stdout.contains("1 components created"));
-    assert!(stdout.contains("3 nets imported"));
+    assert!(stdout.contains("4 nets imported"));
 
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -45,9 +45,13 @@ fn import_easyeda_flying_probe_adds_schema_valid_pad_evidence() {
     assert!((j1_pad_1["at"]["x_mm"].as_f64().unwrap() - 25.4).abs() < 1.0e-12);
     assert!((j1_pad_1["size"]["y_mm"].as_f64().unwrap() - 0.508).abs() < 1.0e-12);
     let j1_pad_2 = &imported["board"]["layout"]["pads"]["J1"]["2"];
+    assert_eq!(j1_pad_2["layers"], serde_json::json!(["F.Cu", "B.Cu"]));
     assert_eq!(j1_pad_2["kind"], "through_hole");
     assert_eq!(j1_pad_2["shape"], "circle");
     assert!((j1_pad_2["drill_mm"].as_f64().unwrap() - 0.508).abs() < 1.0e-12);
+    let u2_pad_1 = &imported["board"]["layout"]["pads"]["U2"]["1"];
+    assert_eq!(u2_pad_1["net"], "BOTTOM_NET");
+    assert_eq!(u2_pad_1["layers"], serde_json::json!(["B.Cu"]));
     assert_eq!(
         imported["board"]["components"]["TP1"]["source"]["format"],
         "easyeda_flying_probe"

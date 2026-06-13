@@ -31,7 +31,10 @@ to millimeters. The importer also accepts `lengthUnit: "mm"`.
 
 Connected rows become `board.layout.pads.<component>.<pin>` evidence. `PIN_NAME`
 is split at the last underscore, so `C1_1` becomes component `C1`, pin `1`.
-`T` maps to `F.Cu`, and `B` maps to `B.Cu`.
+`T` maps to `F.Cu`, and `B` maps to `B.Cu`. When the existing Board IR already
+has JLC/CPL placement side evidence for a component, a top-side probe row for a
+bottom-side SMD component is emitted as `B.Cu` instead. Through-hole or drilled
+pad rows are emitted on both `F.Cu` and `B.Cu`.
 Pad shape, size, and rotation are preserved so later Gerber imports can perform
 owner association against rotated rectangular, oval, and polygon-style pad
 bounding geometry.

@@ -450,10 +450,12 @@ KiCad PCB import fills this from connected footprint `pad` entries when both
 the footprint reference and pad net map to existing Board IR objects. The
 EasyEDA/JLC flying-probe importer can also fill this from
 `FlyingProbeTesting.json`, creating pad-only placeholder components when the
-fabrication evidence names a component absent from the assembly import.
-Unconnected pads are skipped. This is static pad evidence only: it does not
-model solder mask expansion, thermal relief, plated-hole barrel geometry, or
-copper-island connectivity.
+fabrication evidence names a component absent from the assembly import. When
+JLC placement side evidence is available, the importer uses it to put
+bottom-side SMD pads on `B.Cu`; through-hole/drilled pads are emitted on both
+`F.Cu` and `B.Cu`. Unconnected pads are skipped. This is static pad evidence
+only: it does not model solder mask expansion, thermal relief, plated-hole
+barrel geometry, or copper-island connectivity.
 
 ## Layout Route Evidence
 
