@@ -109,6 +109,9 @@ board:
     stencil_thickness_mm: 0.10
     min_drill_edge_clearance_mm: 0.50
     min_slot_edge_clearance_mm: 0.50
+    min_paste_area_ratio: 0.70
+    max_paste_area_ratio: 1.00
+    min_solder_paste_spacing_mm: 0.15
     source: jlc_stencil_order
 ```
 
@@ -126,6 +129,14 @@ the physical stencil foil thickness.
 does not provide the matching `parameters.*` value and no process preset supplies
 one. These fields are order- or process-specific board facts, not generic JLCPCB
 defaults.
+
+`SOLDER_PASTE_OPENING_VALID` consumes
+`board.manufacturing.min_paste_area_ratio` and
+`board.manufacturing.max_paste_area_ratio` when the scenario does not provide
+the matching `parameters.*` values. `SOLDER_PASTE_SPACING_VALID` similarly
+consumes `board.manufacturing.min_solder_paste_spacing_mm`. These are stencil,
+package, or assembly-process facts; CircuitCI stores them only when the board or
+order evidence supplies the values.
 
 Power semantics:
 

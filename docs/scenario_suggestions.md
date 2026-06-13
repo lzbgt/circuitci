@@ -310,6 +310,13 @@ The command is conservative:
   runnable when `board.manufacturing.stencil_thickness_mm` is present; otherwise
   it remains non-runnable until `stencil_thickness_mm` is supplied because
   stencil release area ratio depends on stencil thickness.
+  When copper flashes and solder-paste openings are present,
+  `SOLDER_PASTE_OPENING_VALID` becomes runnable if
+  `board.manufacturing.min_paste_area_ratio` and
+  `board.manufacturing.max_paste_area_ratio` are present and consistent.
+  When at least two solder-paste openings are present,
+  `SOLDER_PASTE_SPACING_VALID` becomes runnable if
+  `board.manufacturing.min_solder_paste_spacing_mm` is present.
   When pad-owned solder-paste flashes for one component show at least two
   repeated gaps matching a discrete source-backed JLC IC pitch row, it emits
   runnable target-scoped `SOLDER_PASTE_IC_PIN_APERTURE_VALID` with the inferred
@@ -323,10 +330,11 @@ The command is conservative:
   emits runnable target-scoped `SOLDER_PASTE_BGA_APERTURE_VALID` with the
   inferred `pin_pitch_mm`. The BGA grid suggestion suppresses the IC row
   suggestion for the same target component.
-- Manufacturing checks whose thresholds are not yet pinned to a named process
-  preset are suggested as `runnable: false` with explicit required inputs:
-  drill-to-edge clearance, slot-to-edge clearance, solder-paste area ratio, and
-  solder-paste spacing.
+- Manufacturing checks whose thresholds are neither pinned to a named process
+  preset nor present as Board IR manufacturing metadata are suggested as
+  `runnable: false` with explicit required inputs. This keeps order-specific
+  drill-to-edge, slot-to-edge, paste coverage, and paste-spacing limits out of
+  generic presets.
 - It emits UART bootloader templates when model bootloader metadata declares a
   UART interface. If an output-capable sender pin is already wired to the target
   RX net, the template includes that sender; otherwise it records the missing

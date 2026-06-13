@@ -1028,8 +1028,10 @@ scenarios:
 
 Solder-paste opening algorithm:
 
-1. Require finite `parameters.min_paste_area_ratio` and
-   `parameters.max_paste_area_ratio`.
+1. Resolve finite `min_paste_area_ratio` and `max_paste_area_ratio` from
+   scenario parameters first, then process presets, then
+   `board.manufacturing.min_paste_area_ratio` and
+   `board.manufacturing.max_paste_area_ratio`.
 2. Require `max_paste_area_ratio >= min_paste_area_ratio`.
 3. Require finite Gerber copper flash features and solder-paste feature,
    segment, or region openings.
@@ -1216,7 +1218,8 @@ scenarios:
 
 Solder-paste spacing algorithm:
 
-1. Require `parameters.min_solder_paste_spacing_mm`.
+1. Resolve `min_solder_paste_spacing_mm` from the scenario parameter first,
+   then process presets, then `board.manufacturing.min_solder_paste_spacing_mm`.
 2. Require at least two finite solder-paste opening features, segments, or
    regions.
 3. Compare same-layer opening pairs using supported `circle`, `rect`,

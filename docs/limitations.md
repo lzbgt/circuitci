@@ -252,9 +252,11 @@ without explicit imported mechanical evidence.
   -> `F.Paste` and `B.Cu` -> `B.Paste` co-located openings and min/max
   paste-to-copper area ratio, aggregating multiple co-located paste openings
   for windowed stencil patterns. It skips copper features explicitly owned by
-  vias. It does not yet evaluate multi-contour paste regions, step-stencil
-  thickness, paste volume, package-specific paste reductions, or 3D
-  solderability effects.
+  vias. The min/max ratio may come from scenario parameters or explicit
+  `board.manufacturing` metadata; CircuitCI does not invent global defaults for
+  package-specific paste coverage. It does not yet evaluate multi-contour paste
+  regions, step-stencil thickness, paste volume, package-specific paste
+  reductions, or 3D solderability effects.
 - `SOLDER_PASTE_APERTURE_SIZE_VALID` uses imported Gerber solder-paste flash
   and circular-aperture draw evidence for a static stencil minimum aperture-size
   screen. Source-backed process presets can provide selected defaults,
@@ -293,9 +295,11 @@ without explicit imported mechanical evidence.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close
-  paste openings between supported paste objects. It does not evaluate stencil
-  thickness, paste release, paste volume, multi-contour paste regions, or
-  package-specific intentional aperture merging.
+  paste openings between supported paste objects. The spacing limit may come
+  from scenario parameters or explicit `board.manufacturing` metadata; CircuitCI
+  does not invent a global paste-spacing preset for package-specific stencil
+  behavior. It does not evaluate stencil thickness, paste release, paste volume,
+  multi-contour paste regions, or package-specific intentional aperture merging.
 - Gerber copper import currently records dark `D03` flash features for circle,
   rectangle, oval, and observed EasyEDA `RoundRect` apertures, dark linear
   `D01` traces and sampled `G02`/`G03` arc traces for circular apertures, and

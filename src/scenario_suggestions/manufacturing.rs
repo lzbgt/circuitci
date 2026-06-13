@@ -286,20 +286,33 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     }
 
     if !layout.copper.features.is_empty() && paste_objects > 0 {
+        let paste_area_parameters = paste_area_ratio_parameters(
+            bound.project.board.manufacturing.min_paste_area_ratio,
+            bound.project.board.manufacturing.max_paste_area_ratio,
+        );
+        let runnable = paste_area_parameters.is_some();
         push_if_not_declared(
             bound,
             &mut suggestions,
             SOLDER_PASTE_OPENING_VALID,
             manufacturing_suggestion(
                 "solder_paste_opening_valid",
-                false,
-                "Imported Gerber copper flash and solder-paste evidence can be screened for stencil paste area ratio once package or process limits are supplied.",
+                runnable,
+                if runnable {
+                    "Imported Gerber copper flash and solder-paste evidence can be screened for stencil paste area ratio using board-level stencil metadata."
+                } else {
+                    "Imported Gerber copper flash and solder-paste evidence can be screened for stencil paste area ratio once package or process limits are supplied."
+                },
                 &format!("{project_name}_solder_paste_opening"),
                 SOLDER_PASTE_OPENING_VALID,
-                None,
-                vec![
-                    "Set manufacturing parameters.min_paste_area_ratio and parameters.max_paste_area_ratio from the package stencil recommendation or fabrication process.".to_string(),
-                ],
+                paste_area_parameters,
+                if runnable {
+                    Vec::new()
+                } else {
+                    vec![
+                        "Set manufacturing parameters.min_paste_area_ratio and parameters.max_paste_area_ratio, or board.manufacturing.min_paste_area_ratio and board.manufacturing.max_paste_area_ratio, from the package stencil recommendation or fabrication process.".to_string(),
+                    ]
+                },
             ),
         );
     }
@@ -418,20 +431,35 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
     }
 
     if paste_objects >= 2 {
+        let paste_spacing_mm = bound
+            .project
+            .board
+            .manufacturing
+            .min_solder_paste_spacing_mm
+            .filter(|value| value.is_finite() && *value >= 0.0);
+        let runnable = paste_spacing_mm.is_some();
         push_if_not_declared(
             bound,
             &mut suggestions,
             SOLDER_PASTE_SPACING_VALID,
             manufacturing_suggestion(
                 "solder_paste_spacing_valid",
-                false,
-                "Imported Gerber solder-paste opening evidence can be screened for stencil aperture spacing once the process limit is supplied.",
+                runnable,
+                if runnable {
+                    "Imported Gerber solder-paste opening evidence can be screened for stencil aperture spacing using board-level stencil metadata."
+                } else {
+                    "Imported Gerber solder-paste opening evidence can be screened for stencil aperture spacing once the process limit is supplied."
+                },
                 &format!("{project_name}_solder_paste_spacing"),
                 SOLDER_PASTE_SPACING_VALID,
-                None,
-                vec![
-                    "Set manufacturing parameters.min_solder_paste_spacing_mm from the stencil fabrication process or package assembly rule.".to_string(),
-                ],
+                board_numeric_parameter("min_solder_paste_spacing_mm", paste_spacing_mm),
+                if runnable {
+                    Vec::new()
+                } else {
+                    vec![
+                        "Set manufacturing parameters.min_solder_paste_spacing_mm or board.manufacturing.min_solder_paste_spacing_mm from the stencil fabrication process or package assembly rule.".to_string(),
+                    ]
+                },
             ),
         );
     }
@@ -523,6 +551,21 @@ fn pin_pitch_parameter(pin_pitch_mm: f64) -> BTreeMap<String, Value> {
 
 fn board_numeric_parameter(name: &str, value: Option<f64>) -> Option<BTreeMap<String, Value>> {
     value.map(|value| BTreeMap::from([(name.to_string(), json!(value))]))
+}
+
+fn paste_area_ratio_parameters(
+    min_paste_area_ratio: Option<f64>,
+    max_paste_area_ratio: Option<f64>,
+) -> Option<BTreeMap<String, Value>> {
+    let min_value = min_paste_area_ratio.filter(|value| value.is_finite() && *value >= 0.0)?;
+    let max_value = max_paste_area_ratio.filter(|value| value.is_finite() && *value >= 0.0)?;
+    if max_value < min_value {
+        return None;
+    }
+    Some(BTreeMap::from([
+        ("min_paste_area_ratio".to_string(), json!(min_value)),
+        ("max_paste_area_ratio".to_string(), json!(max_value)),
+    ]))
 }
 
 fn stencil_area_ratio_parameters(stencil_thickness_mm: Option<f64>) -> BTreeMap<String, Value> {

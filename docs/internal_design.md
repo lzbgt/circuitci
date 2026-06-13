@@ -13,7 +13,8 @@ enrich these evidence families:
   `source` metadata;
 - board-level manufacturing facts: `board.manufacturing`, currently including
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
-  `min_slot_edge_clearance_mm`;
+  `min_slot_edge_clearance_mm`, plus optional paste area-ratio and paste-spacing
+  limits when those are supplied by board/order evidence;
 - placement/layout evidence: `placements`, `footprints`, `pads`, `routes`,
   `zones`, and `outline`;
 - fabrication evidence: `drills`, `slots`, `copper`, `solder_mask`, and

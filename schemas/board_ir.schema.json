@@ -123,6 +123,9 @@
             "stencil_thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
             "min_drill_edge_clearance_mm": { "type": "number", "minimum": 0 },
             "min_slot_edge_clearance_mm": { "type": "number", "minimum": 0 },
+            "min_paste_area_ratio": { "type": "number", "minimum": 0 },
+            "max_paste_area_ratio": { "type": "number", "minimum": 0 },
+            "min_solder_paste_spacing_mm": { "type": "number", "minimum": 0 },
             "source": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": true

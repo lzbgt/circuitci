@@ -44,6 +44,12 @@ pub struct BoardManufacturing {
     #[serde(default)]
     pub min_slot_edge_clearance_mm: Option<f64>,
     #[serde(default)]
+    pub min_paste_area_ratio: Option<f64>,
+    #[serde(default)]
+    pub max_paste_area_ratio: Option<f64>,
+    #[serde(default)]
+    pub min_solder_paste_spacing_mm: Option<f64>,
+    #[serde(default)]
     pub source: Option<String>,
 }
 

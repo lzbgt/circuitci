@@ -235,9 +235,9 @@ named preset or supplied as board/order metadata:
 | --- | --- | --- |
 | `drill_to_board_edge_clearance` | `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_drill_edge_clearance_mm` or `board.manufacturing.min_drill_edge_clearance_mm` |
 | `slot_to_board_edge_clearance` | `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID` | `min_slot_edge_clearance_mm` or `board.manufacturing.min_slot_edge_clearance_mm` |
-| `solder_paste_opening_valid` | `SOLDER_PASTE_OPENING_VALID` | `min_paste_area_ratio`, `max_paste_area_ratio` |
-| `solder_paste_aperture_area_ratio_valid` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | `stencil_thickness_mm`; area-ratio floor comes from `jlcpcb_stencil_area_ratio_2026_06` |
-| `solder_paste_spacing_valid` | `SOLDER_PASTE_SPACING_VALID` | `min_solder_paste_spacing_mm` |
+| `solder_paste_opening_valid` | `SOLDER_PASTE_OPENING_VALID` | `min_paste_area_ratio` and `max_paste_area_ratio`, or `board.manufacturing.min_paste_area_ratio` and `board.manufacturing.max_paste_area_ratio` |
+| `solder_paste_aperture_area_ratio_valid` | `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` | `stencil_thickness_mm` or `board.manufacturing.stencil_thickness_mm`; area-ratio floor comes from `jlcpcb_stencil_area_ratio_2026_06` |
+| `solder_paste_spacing_valid` | `SOLDER_PASTE_SPACING_VALID` | `min_solder_paste_spacing_mm` or `board.manufacturing.min_solder_paste_spacing_mm` |
 
 This confirms the fabricated-release ingestion is now strong enough to produce
 a concrete manufacturing checklist automatically. The remaining gap is process
@@ -253,9 +253,10 @@ printing defects source is pinned for the IPC-7525 aperture area-ratio floor:
 `0.66`. CircuitCI emits non-runnable
 `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` with
 `jlcpcb_stencil_area_ratio_2026_06` because this rule still needs explicit
-`stencil_thickness_mm`. The JLCPCB stencil opening standard is package- and
-pitch-specific, so paste-to-copper coverage and paste-spacing suggestions still
-require explicit package/process limits.
+`stencil_thickness_mm` or `board.manufacturing.stencil_thickness_mm`. The
+JLCPCB stencil opening standard is package- and pitch-specific, so
+paste-to-copper coverage and paste-spacing suggestions still require explicit
+package/process limits or board/order metadata.
 
 CircuitCI now also encodes the source-backed JLCPCB BGA stencil aperture table
 as `SOLDER_PASTE_BGA_APERTURE_VALID`. It remains package-scoped rather than a

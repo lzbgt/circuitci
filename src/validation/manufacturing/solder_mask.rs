@@ -19,7 +19,7 @@ use super::geometry::{
 use super::{
     explicit_numeric_parameter, insert_copper_feature_edge_measurements,
     insert_optional_copper_feature_owner_measurements, optional_numeric_parameter,
-    required_numeric_parameter,
+    required_numeric_parameter, required_numeric_parameter_with_board_default,
 };
 
 pub(in crate::validation) fn validate_solder_mask_opening(
@@ -287,21 +287,29 @@ pub(in crate::validation) fn validate_solder_paste_opening(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(min_area_ratio) =
-        required_numeric_parameter(scenario, "min_paste_area_ratio", findings)
-    else {
+    let Some(min_area_ratio) = required_numeric_parameter_with_board_default(
+        scenario,
+        "min_paste_area_ratio",
+        bound.project.board.manufacturing.min_paste_area_ratio,
+        "min_paste_area_ratio",
+        findings,
+    ) else {
         return;
     };
-    let Some(max_area_ratio) =
-        required_numeric_parameter(scenario, "max_paste_area_ratio", findings)
-    else {
+    let Some(max_area_ratio) = required_numeric_parameter_with_board_default(
+        scenario,
+        "max_paste_area_ratio",
+        bound.project.board.manufacturing.max_paste_area_ratio,
+        "max_paste_area_ratio",
+        findings,
+    ) else {
         return;
     };
     if min_area_ratio < 0.0 {
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.min_paste_area_ratio must be greater than or equal to zero.",
+            "min_paste_area_ratio must be greater than or equal to zero.",
         );
         return;
     }
@@ -309,7 +317,7 @@ pub(in crate::validation) fn validate_solder_paste_opening(
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.max_paste_area_ratio must be greater than or equal to parameters.min_paste_area_ratio.",
+            "max_paste_area_ratio must be greater than or equal to min_paste_area_ratio.",
         );
         return;
     }
@@ -485,16 +493,24 @@ pub(in crate::validation) fn validate_solder_paste_spacing(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(min_spacing_mm) =
-        required_numeric_parameter(scenario, "min_solder_paste_spacing_mm", findings)
-    else {
+    let Some(min_spacing_mm) = required_numeric_parameter_with_board_default(
+        scenario,
+        "min_solder_paste_spacing_mm",
+        bound
+            .project
+            .board
+            .manufacturing
+            .min_solder_paste_spacing_mm,
+        "min_solder_paste_spacing_mm",
+        findings,
+    ) else {
         return;
     };
     if min_spacing_mm < 0.0 {
         validation_input_missing(
             findings,
             scenario,
-            "manufacturing parameters.min_solder_paste_spacing_mm must be greater than or equal to zero.",
+            "min_solder_paste_spacing_mm must be greater than or equal to zero.",
         );
         return;
     }

@@ -724,6 +724,22 @@ fn solder_paste_opening_fails_when_opening_is_undersized() {
 }
 
 #[test]
+fn solder_paste_opening_uses_board_manufacturing_area_ratio() {
+    let report =
+        run_validation("examples/bad_solder_paste_opening_undersized_board_metadata/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_OPENING_VALID");
+    let area_ratio = failure["measured"]["solder_paste_area_ratio"]
+        .as_f64()
+        .unwrap();
+    assert!((area_ratio - 0.4375).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_paste_area_ratio"], 0.7);
+    assert_eq!(failure["limit"]["max_paste_area_ratio"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_opening_fails_when_opening_is_oversized() {
     let report = run_validation("examples/bad_solder_paste_opening_oversized/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -1093,6 +1109,20 @@ fn solder_paste_spacing_fails_when_openings_are_too_close() {
         "U1"
     );
     assert_eq!(failure["measured"]["second_solder_paste_feature_pin"], "2");
+    let spacing = failure["measured"]["solder_paste_spacing_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((spacing - 0.08).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_paste_spacing_mm"], 0.15);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_spacing_uses_board_manufacturing_default() {
+    let report = run_validation("examples/bad_solder_paste_spacing_board_metadata/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_SPACING_VALID");
     let spacing = failure["measured"]["solder_paste_spacing_mm"]
         .as_f64()
         .unwrap();

@@ -434,17 +434,20 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         .iter()
         .find(|suggestion| suggestion["id"] == "solder_paste_opening_valid")
         .expect("paste opening suggestion");
-    assert_eq!(paste_opening["runnable"], false);
+    assert_eq!(paste_opening["runnable"], true);
     assert_eq!(
         paste_opening["scenario"]["checks"][0],
         "SOLDER_PASTE_OPENING_VALID"
     );
-    assert!(
-        paste_opening["required_inputs"][0]
-            .as_str()
-            .unwrap()
-            .contains("min_paste_area_ratio")
+    assert_eq!(
+        paste_opening["scenario"]["parameters"]["min_paste_area_ratio"],
+        0.70
     );
+    assert_eq!(
+        paste_opening["scenario"]["parameters"]["max_paste_area_ratio"],
+        1.00
+    );
+    assert!(paste_opening.get("required_inputs").is_none());
 
     let paste_aperture = suggested
         .iter()
@@ -496,6 +499,21 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
             .unwrap()
             .contains("U1 on F.Paste")
     );
+
+    let paste_spacing = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_spacing_valid")
+        .expect("paste spacing suggestion");
+    assert_eq!(paste_spacing["runnable"], true);
+    assert_eq!(
+        paste_spacing["scenario"]["checks"][0],
+        "SOLDER_PASTE_SPACING_VALID"
+    );
+    assert_eq!(
+        paste_spacing["scenario"]["parameters"]["min_solder_paste_spacing_mm"],
+        0.15
+    );
+    assert!(paste_spacing.get("required_inputs").is_none());
 }
 
 #[test]
