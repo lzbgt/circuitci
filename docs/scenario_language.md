@@ -100,6 +100,7 @@ Canonical executable check IDs:
 - `INTERFACE_PROTECTION_REVIEW`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
+- `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -565,6 +566,38 @@ Connector entry-clearance algorithm:
 This is a static 2D entry corridor screen. It does not prove connector shell
 volume, plug shape, cable bend radius, panel cutout, enclosure interference, or
 assembly stack-up tolerances.
+
+## Manufacturing Scenario Shape
+
+Drill-to-board-edge clearance uses `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` when
+the Board IR includes fabrication drill evidence under `board.layout.drills`
+and board-outline segment evidence under `board.layout.outline.segments`.
+
+```yaml
+scenarios:
+  - name: drill_to_board_edge_clearance
+    type: manufacturing
+    checks:
+      - DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
+    parameters:
+      min_drill_edge_clearance_mm: 0.5
+```
+
+Drill-to-board-edge algorithm:
+
+1. Require `parameters.min_drill_edge_clearance_mm`.
+2. Require finite `board.layout.drills[]` entries with positive `drill_mm`.
+3. Require finite `board.layout.outline.segments[]` entries.
+4. Measure each drill center to the nearest outline segment and subtract drill
+   radius.
+5. Fail when any drill edge-to-outline clearance is below
+   `min_drill_edge_clearance_mm`.
+
+External board-outline segments, cutout segments, and unknown outline segments
+all count as board edges for this check. This is a static 2D centerline
+fabrication screen; it does not model drill wander, routed-slot width, plating
+barrel tolerances, panel tabs, fab-specific minimums, or copper-to-hole
+clearance.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

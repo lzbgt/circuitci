@@ -11,6 +11,7 @@ mod control_line;
 mod firmware_functional;
 mod interface_protection;
 mod io_voltage;
+mod manufacturing;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
@@ -34,6 +35,7 @@ pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQ
 pub(super) const CLOCK_SOURCE_VALID: &str = "CLOCK_SOURCE_VALID";
 pub(super) const FUNCTIONAL_MCU_FIRMWARE: &str = "FUNCTIONAL_MCU_FIRMWARE";
 pub(super) const POWER_TREE_VALID: &str = "POWER_TREE_VALID";
+pub(super) const DRILL_TO_BOARD_EDGE_CLEARANCE_VALID: &str = "DRILL_TO_BOARD_EDGE_CLEARANCE_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
 pub(super) const USB_PROTECTION_PLACEMENT_VALID: &str = "USB_PROTECTION_PLACEMENT_VALID";
@@ -55,6 +57,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "firmware_update",
     "firmware_in_loop",
     "interface_protection",
+    "manufacturing",
     "power_tree",
     "control_line_sequence",
     "clock",
@@ -266,6 +269,15 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 }
                 POWER_TREE_VALID if scenario.scenario_type == "power_tree" => {
                     power_tree::validate_power_tree(bound, scenario, &mut findings)
+                }
+                DRILL_TO_BOARD_EDGE_CLEARANCE_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_drill_to_board_edge_clearance(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
                 }
                 IO_VOLTAGE_COMPATIBLE if scenario.scenario_type == "power_tree" => {
                     io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)

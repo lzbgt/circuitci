@@ -51,3 +51,9 @@ The importer appends drill hits as evidence and does not deduplicate overlapping
 fabrication outputs. Some JLC/EasyEDA releases include both aggregate PTH drill
 files and via-only PTH drill files; import the file set that matches the
 fabricator's intended drill package semantics.
+
+## Related Validation
+
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported `board.layout.drills`
+plus `board.layout.outline.segments` to screen each drill edge against the
+nearest external, cutout, or unknown board-edge segment.

@@ -149,6 +149,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   net-class/custom-rule route constraints for mapped nets, not arbitrary DRC
   rule semantics, filled-copper connectivity, thermal relief behavior, solder
   mask expansion, return paths, or signal-integrity constraints.
+- `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported drill centers, drill
+  diameters, and board-outline centerline segments for a static 2D
+  edge-clearance screen. It does not model drill wander, routed-slot width,
+  plating tolerances, panel tabs, fab-specific stackup rules, or copper-to-hole
+  clearance.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

@@ -277,6 +277,18 @@ optional `obstruction_footprint_graphic_kind`. Stable limit keys include
 `entry_aperture_source` is `footprint_front`, `component_model_aperture`,
 `kicad_mapping_aperture`, or `footprint_property_aperture`.
 
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by `manufacturing`
+scenarios that combine `board.layout.drills` evidence with
+`board.layout.outline.segments`. Stable measured keys include `drill_index`,
+`drill_x_mm`, `drill_y_mm`, `drill_mm`, `drill_radius_mm`, `clearance_mm`,
+`center_to_board_edge_distance_mm`, `drill_plating`, optional `drill_layer`,
+optional `drill_tool`, optional `source_hit_index`, `board_edge_start`,
+`board_edge_end`, optional `board_edge_layer`, optional
+`board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
+optional `board_edge_contour_index`, and optional
+`board_edge_boundary_role`. Stable limit keys include
+`min_drill_edge_clearance_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys
