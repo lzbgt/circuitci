@@ -1,13 +1,19 @@
 # Manufacturing Validation Split
 
-`src/validation/manufacturing.rs` owns manufacturing-rule orchestration and
-stable report construction for drill-edge, copper-edge, and copper-spacing
-checks.
+`src/validation/manufacturing.rs` owns manufacturing-rule orchestration,
+shared manufacturing report helpers, and stable copper-edge/copper-spacing
+report construction.
 
 `src/validation/manufacturing/annular_ring.rs` owns
 `DRILL_ANNULAR_RING_VALID`, including annular-ring parameter parsing,
 pad/via/copper owner consistency, required copper-layer checks, and stable
 annular-ring report construction.
+
+`src/validation/manufacturing/drill_slot.rs` owns circular drill diameter,
+drill-to-board-edge, routed-slot edge/width/aspect-ratio, and
+castellated-hole checks. It keeps drill/slot-specific finding construction with
+those rules while reusing shared board-edge and drill-measurement serializers
+from the parent module.
 
 `src/validation/manufacturing/solder_mask.rs` owns
 `SOLDER_MASK_OPENING_VALID`, `SOLDER_MASK_DAM_VALID`, and
