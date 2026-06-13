@@ -47,6 +47,10 @@ fn import_gerber_solder_mask_appends_schema_valid_opening_evidence() {
     assert_eq!(openings[0]["size"]["y_mm"], 0.94);
     assert_eq!(openings[0]["at"]["x_mm"], 10.0);
     assert_eq!(openings[0]["at"]["y_mm"], 10.0);
+    assert_eq!(openings[0]["net"], "GND");
+    assert_eq!(openings[0]["owner_kind"], "pad");
+    assert_eq!(openings[0]["component"], "J1");
+    assert_eq!(openings[0]["pin"], "1");
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");
@@ -97,6 +101,9 @@ fn import_gerber_solder_mask_accepts_easyeda_round_rect_apertures() {
         .unwrap();
     assert_eq!(openings.len(), 1);
     assert_eq!(openings[0]["shape"], "rect");
+    assert_eq!(openings[0]["owner_kind"], "pad");
+    assert_eq!(openings[0]["component"], "J1");
+    assert_eq!(openings[0]["pin"], "1");
     let size_x = openings[0]["size"]["x_mm"].as_f64().unwrap();
     let size_y = openings[0]["size"]["y_mm"].as_f64().unwrap();
     assert!((size_x - 1.4516).abs() < 1.0e-12);

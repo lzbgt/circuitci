@@ -16,6 +16,12 @@ Imported evidence is written under `board.layout.solder_paste.features`,
 `board.layout.solder_paste.segments`, and `board.layout.solder_paste.regions`.
 Dark solder-paste primitives are treated as stencil openings.
 
+When the input project already contains PCB layout pad evidence, flash openings
+can inherit conservative owner metadata: `net`, `owner_kind: pad`,
+`component`, and `pin` from a unique matching pad on the corresponding copper
+layer. Via ownership is intentionally not copied into paste openings because
+vias are not normally paste-bearing stencil features.
+
 Example:
 
 ```bash
@@ -36,6 +42,6 @@ static stencil manufacturability.
 
 The importer intentionally does not infer package-specific stencil reductions,
 step-stencil process rules, paste windowing for exposed pads, or paste-bearing
-pad intent. Use pad or Gerber ownership evidence where available, and tune
-`SOLDER_PASTE_OPENING_VALID` and `SOLDER_PASTE_SPACING_VALID` thresholds to the
-package and fabricator process.
+pad intent from Gerber alone. Use pad or Gerber ownership evidence where
+available, and tune `SOLDER_PASTE_OPENING_VALID` and
+`SOLDER_PASTE_SPACING_VALID` thresholds to the package and fabricator process.

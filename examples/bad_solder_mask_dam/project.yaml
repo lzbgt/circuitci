@@ -5,13 +5,19 @@ libraries:
   - ../../libs/generic
 board:
   components: {}
-  nets: {}
+  nets:
+    GND:
+      kind: ground
   layout:
     solder_mask:
       features:
         - at: { x_mm: 10.0, y_mm: 10.0 }
           layer: F.Mask
           polarity: dark
+          net: GND
+          owner_kind: pad
+          component: U1
+          pin: "1"
           source_primitive: gerber_flash
           source_primitive_index: 0
           aperture: D11
@@ -20,6 +26,10 @@ board:
         - at: { x_mm: 11.08, y_mm: 10.0 }
           layer: F.Mask
           polarity: dark
+          net: GND
+          owner_kind: pad
+          component: U1
+          pin: "2"
           source_primitive: gerber_flash
           source_primitive_index: 1
           aperture: D11

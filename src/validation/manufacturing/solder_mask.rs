@@ -13,7 +13,8 @@ use super::geometry::{
     validate_copper_region_geometry, validate_copper_segment_geometry,
 };
 use super::{
-    insert_copper_feature_edge_measurements, optional_numeric_parameter, required_numeric_parameter,
+    insert_copper_feature_edge_measurements, insert_optional_copper_feature_owner_measurements,
+    optional_numeric_parameter, required_numeric_parameter,
 };
 
 pub(in crate::validation) fn validate_solder_mask_opening(
@@ -872,6 +873,7 @@ fn insert_solder_mask_feature_measurements(
         "solder_mask_feature_layer".to_string(),
         json!(feature.layer),
     );
+    insert_optional_copper_feature_owner_measurements(finding, "solder_mask_feature", feature);
     finding.measured.insert(
         "solder_mask_feature_aperture".to_string(),
         json!(feature.aperture),
@@ -950,6 +952,7 @@ fn insert_prefixed_solder_paste_object_measurements(
             finding
                 .measured
                 .insert(key("feature_layer"), json!(feature.layer));
+            insert_optional_copper_feature_owner_measurements(finding, &key("feature"), feature);
             finding
                 .measured
                 .insert(key("feature_aperture"), json!(feature.aperture));
@@ -1049,6 +1052,11 @@ fn insert_solder_mask_object_measurements(
             finding.measured.insert(
                 format!("{prefix}_solder_mask_feature_layer"),
                 json!(feature.layer),
+            );
+            insert_optional_copper_feature_owner_measurements(
+                finding,
+                &format!("{prefix}_solder_mask_feature"),
+                feature,
             );
             finding.measured.insert(
                 format!("{prefix}_solder_mask_feature_aperture"),

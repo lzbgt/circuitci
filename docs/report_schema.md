@@ -390,7 +390,11 @@ with Gerber solder-mask flash-opening evidence under
 `expected_solder_mask_layer`. Undersized-opening findings also report
 `solder_mask_feature_index`, `solder_mask_feature_x_mm`,
 `solder_mask_feature_y_mm`, `solder_mask_feature_layer`,
-`solder_mask_feature_aperture`, `solder_mask_feature_shape`,
+optional `solder_mask_feature_net`, optional
+`solder_mask_feature_owner_kind`, optional `solder_mask_feature_component`,
+optional `solder_mask_feature_pin`, optional
+`solder_mask_feature_via_index`, `solder_mask_feature_aperture`,
+`solder_mask_feature_shape`,
 `solder_mask_feature_size_x_mm`, `solder_mask_feature_size_y_mm`,
 `solder_mask_feature_source_primitive`,
 `solder_mask_feature_source_primitive_index`,
@@ -406,6 +410,11 @@ under `board.layout.solder_mask`. Stable measured keys include
 `second_solder_mask_kind`. Feature operands report prefixed fields such as
 `first_solder_mask_feature_index`, `first_solder_mask_feature_x_mm`,
 `first_solder_mask_feature_y_mm`, `first_solder_mask_feature_layer`,
+optional `first_solder_mask_feature_net`, optional
+`first_solder_mask_feature_owner_kind`, optional
+`first_solder_mask_feature_component`, optional
+`first_solder_mask_feature_pin`, optional
+`first_solder_mask_feature_via_index`,
 `first_solder_mask_feature_aperture`, `first_solder_mask_feature_shape`,
 `first_solder_mask_feature_size_x_mm`,
 `first_solder_mask_feature_size_y_mm`,
@@ -441,7 +450,11 @@ Stable measured keys include
 `copper_to_paste_center_offset_mm`. Feature-opening findings report
 `solder_paste_feature_index`, `solder_paste_feature_x_mm`,
 `solder_paste_feature_y_mm`, `solder_paste_feature_layer`,
-`solder_paste_feature_aperture`, `solder_paste_feature_shape`,
+optional `solder_paste_feature_net`, optional
+`solder_paste_feature_owner_kind`, optional `solder_paste_feature_component`,
+optional `solder_paste_feature_pin`, optional
+`solder_paste_feature_via_index`, `solder_paste_feature_aperture`,
+`solder_paste_feature_shape`,
 `solder_paste_feature_size_x_mm`, `solder_paste_feature_size_y_mm`,
 `solder_paste_feature_source_primitive`,
 `solder_paste_feature_source_primitive_index`. Segment-opening findings report
@@ -465,6 +478,11 @@ that compare same-layer Gerber solder-paste opening evidence under
 findings report prefixed keys such as `first_solder_paste_feature_index`,
 `first_solder_paste_feature_x_mm`, `first_solder_paste_feature_y_mm`,
 `first_solder_paste_feature_layer`, `first_solder_paste_feature_aperture`,
+optional `first_solder_paste_feature_net`, optional
+`first_solder_paste_feature_owner_kind`, optional
+`first_solder_paste_feature_component`, optional
+`first_solder_paste_feature_pin`, optional
+`first_solder_paste_feature_via_index`,
 `first_solder_paste_feature_shape`, `first_solder_paste_feature_size_x_mm`,
 `first_solder_paste_feature_size_y_mm`,
 `first_solder_paste_feature_source_primitive`, and

@@ -47,6 +47,10 @@ fn import_gerber_solder_paste_appends_schema_valid_opening_evidence() {
     assert_eq!(openings[0]["size"]["y_mm"], 0.72);
     assert_eq!(openings[0]["at"]["x_mm"], 10.0);
     assert_eq!(openings[0]["at"]["y_mm"], 10.0);
+    assert_eq!(openings[0]["net"], "GND");
+    assert_eq!(openings[0]["owner_kind"], "pad");
+    assert_eq!(openings[0]["component"], "U1");
+    assert_eq!(openings[0]["pin"], "1");
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");

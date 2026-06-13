@@ -122,6 +122,41 @@ pub(super) fn associate_copper_nets(copper: &mut GerberCopper, layout: &BoardLay
     }
 }
 
+pub(super) fn associate_solder_mask_opening_owners(mask: &mut GerberCopper, layout: &BoardLayout) {
+    let ownership = CopperOwnershipIndex::from_layout(layout);
+    let Some(copper_layer) = copper_layer_for_solder_mask_layer(&mask.layer) else {
+        return;
+    };
+    for feature in &mut mask.features {
+        if let Some(owner) = ownership.owner_for_opening_feature(feature, copper_layer, true) {
+            feature.net = Some(owner.net);
+            feature.owner_kind = owner.owner_kind.map(str::to_string);
+            feature.component = owner.component;
+            feature.pin = owner.pin;
+            feature.via_index = owner.via_index;
+        }
+    }
+}
+
+pub(super) fn associate_solder_paste_opening_owners(
+    paste: &mut GerberCopper,
+    layout: &BoardLayout,
+) {
+    let ownership = CopperOwnershipIndex::from_layout(layout);
+    let Some(copper_layer) = copper_layer_for_solder_paste_layer(&paste.layer) else {
+        return;
+    };
+    for feature in &mut paste.features {
+        if let Some(owner) = ownership.owner_for_opening_feature(feature, copper_layer, false) {
+            feature.net = Some(owner.net);
+            feature.owner_kind = owner.owner_kind.map(str::to_string);
+            feature.component = owner.component;
+            feature.pin = owner.pin;
+            feature.via_index = owner.via_index;
+        }
+    }
+}
+
 impl CopperOwnershipIndex {
     fn from_layout(layout: &BoardLayout) -> Self {
         let pads = layout
@@ -209,6 +244,36 @@ impl CopperOwnershipIndex {
         unique_owner(candidates)
     }
 
+    fn owner_for_opening_feature(
+        &self,
+        feature: &GerberCopperFeature,
+        copper_layer: &str,
+        include_vias: bool,
+    ) -> Option<CopperNetOwner> {
+        let mut candidates = Vec::new();
+        for pad in self
+            .pads
+            .iter()
+            .filter(|pad| pad_on_layer(pad, copper_layer))
+        {
+            if point_inside_feature_pad(feature.at, pad) {
+                candidates.push(CopperNetOwner::pad(&pad.net, &pad.component, &pad.pin));
+            }
+        }
+        if include_vias {
+            for via in self
+                .vias
+                .iter()
+                .filter(|via| via_on_layer(via, copper_layer))
+            {
+                if point_inside_feature_via(feature, via) {
+                    candidates.push(CopperNetOwner::via(&via.net, via.via_index));
+                }
+            }
+        }
+        unique_owner(candidates)
+    }
+
     fn owner_for_segment(
         &self,
         segment: &GerberCopperSegment,
@@ -281,6 +346,22 @@ impl CopperOwnershipIndex {
             }
         }
         unique_owner(candidates)
+    }
+}
+
+fn copper_layer_for_solder_mask_layer(layer: &str) -> Option<&'static str> {
+    match layer {
+        "F.Mask" => Some("F.Cu"),
+        "B.Mask" => Some("B.Cu"),
+        _ => None,
+    }
+}
+
+fn copper_layer_for_solder_paste_layer(layer: &str) -> Option<&'static str> {
+    match layer {
+        "F.Paste" => Some("F.Cu"),
+        "B.Paste" => Some("B.Cu"),
+        _ => None,
     }
 }
 

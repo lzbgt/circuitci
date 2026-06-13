@@ -300,8 +300,26 @@ fn solder_mask_dam_fails_when_openings_leave_thin_web() {
     assert_eq!(failure["measured"]["solder_mask_layer"], "F.Mask");
     assert_eq!(failure["measured"]["first_solder_mask_kind"], "feature");
     assert_eq!(failure["measured"]["first_solder_mask_feature_index"], 0);
+    assert_eq!(
+        failure["measured"]["first_solder_mask_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["first_solder_mask_feature_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["first_solder_mask_feature_pin"], "1");
     assert_eq!(failure["measured"]["second_solder_mask_kind"], "feature");
     assert_eq!(failure["measured"]["second_solder_mask_feature_index"], 1);
+    assert_eq!(
+        failure["measured"]["second_solder_mask_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["second_solder_mask_feature_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["second_solder_mask_feature_pin"], "2");
     let dam_width = failure["measured"]["solder_mask_dam_width_mm"]
         .as_f64()
         .unwrap();
@@ -440,8 +458,26 @@ fn solder_paste_spacing_fails_when_openings_are_too_close() {
     assert_eq!(failure["measured"]["solder_paste_layer"], "F.Paste");
     assert_eq!(failure["measured"]["first_solder_paste_kind"], "feature");
     assert_eq!(failure["measured"]["first_solder_paste_feature_index"], 0);
+    assert_eq!(
+        failure["measured"]["first_solder_paste_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["first_solder_paste_feature_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["first_solder_paste_feature_pin"], "1");
     assert_eq!(failure["measured"]["second_solder_paste_kind"], "feature");
     assert_eq!(failure["measured"]["second_solder_paste_feature_index"], 1);
+    assert_eq!(
+        failure["measured"]["second_solder_paste_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["second_solder_paste_feature_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["second_solder_paste_feature_pin"], "2");
     let spacing = failure["measured"]["solder_paste_spacing_mm"]
         .as_f64()
         .unwrap();

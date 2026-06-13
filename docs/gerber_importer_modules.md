@@ -30,7 +30,11 @@ matching owner:
 - `net` from route overlap in `board.layout.routes`,
 - `net` and zone-derived `island_id` from zone containment in
   `board.layout.zones`.
+- solder-mask flash-opening owner metadata from unique pad or via overlap on
+  the corresponding copper layer,
+- solder-paste flash-opening owner metadata from unique pad overlap on the
+  corresponding copper layer.
 
 It intentionally does not infer new connectivity, component ownership, or pad
 names from Gerber data alone. Ambiguous or missing ownership evidence leaves
-imported copper anonymous.
+imported Gerber artwork anonymous.

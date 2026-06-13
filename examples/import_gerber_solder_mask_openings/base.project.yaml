@@ -5,13 +5,27 @@ libraries:
   - ../../libs/generic
 board:
   components: {}
-  nets: {}
+  nets:
+    GND:
+      kind: ground
   layout:
+    pads:
+      J1:
+        "1":
+          at: { x_mm: 10.0, y_mm: 10.0 }
+          net: GND
+          layers: [F.Cu]
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.8 }
     copper:
       features:
         - at: { x_mm: 10.0, y_mm: 10.0 }
           layer: F.Cu
           polarity: dark
+          net: GND
+          owner_kind: pad
+          component: J1
+          pin: "1"
           source_primitive: gerber_flash
           source_primitive_index: 0
           aperture: D10

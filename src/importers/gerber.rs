@@ -8,7 +8,10 @@ use board_ir::{
     merge_solder_paste_into_project, summary_for_copper, summary_for_outline,
     summary_for_solder_mask, summary_for_solder_paste,
 };
-use ownership::associate_copper_nets;
+use ownership::{
+    associate_copper_nets, associate_solder_mask_opening_owners,
+    associate_solder_paste_opening_owners,
+};
 use serde::Serialize;
 use serde_yaml_ng::Value;
 use std::fs;
@@ -328,20 +331,26 @@ pub fn import_gerber_solder_mask(
             options.gerber.display()
         )
     })?;
-    let mask = parse_gerber_copper(&text, &options.gerber)?;
-    let mut project_yaml: Value =
-        serde_yaml_ng::from_str(&fs::read_to_string(&options.project).with_context(|| {
-            format!(
-                "Failed to read Board IR project YAML {}",
-                options.project.display()
-            )
-        })?)
-        .with_context(|| {
-            format!(
-                "Failed to parse Board IR project YAML {} for solder-mask import",
-                options.project.display()
-            )
-        })?;
+    let mut mask = parse_gerber_copper(&text, &options.gerber)?;
+    let project_text = fs::read_to_string(&options.project).with_context(|| {
+        format!(
+            "Failed to read Board IR project YAML {}",
+            options.project.display()
+        )
+    })?;
+    let mut project_yaml: Value = serde_yaml_ng::from_str(&project_text).with_context(|| {
+        format!(
+            "Failed to parse Board IR project YAML {} for solder-mask import",
+            options.project.display()
+        )
+    })?;
+    let project: BoardProject = serde_yaml_ng::from_str(&project_text).with_context(|| {
+        format!(
+            "Failed to parse Board IR project YAML {} for solder-mask ownership association",
+            options.project.display()
+        )
+    })?;
+    associate_solder_mask_opening_owners(&mut mask, &project.board.layout);
     merge_solder_mask_into_project(&mut project_yaml, &mask)?;
     if let Some(parent) = options.output.parent() {
         fs::create_dir_all(parent)
@@ -365,20 +374,26 @@ pub fn import_gerber_solder_paste(
             options.gerber.display()
         )
     })?;
-    let paste = parse_gerber_copper(&text, &options.gerber)?;
-    let mut project_yaml: Value =
-        serde_yaml_ng::from_str(&fs::read_to_string(&options.project).with_context(|| {
-            format!(
-                "Failed to read Board IR project YAML {}",
-                options.project.display()
-            )
-        })?)
-        .with_context(|| {
-            format!(
-                "Failed to parse Board IR project YAML {} for solder-paste import",
-                options.project.display()
-            )
-        })?;
+    let mut paste = parse_gerber_copper(&text, &options.gerber)?;
+    let project_text = fs::read_to_string(&options.project).with_context(|| {
+        format!(
+            "Failed to read Board IR project YAML {}",
+            options.project.display()
+        )
+    })?;
+    let mut project_yaml: Value = serde_yaml_ng::from_str(&project_text).with_context(|| {
+        format!(
+            "Failed to parse Board IR project YAML {} for solder-paste import",
+            options.project.display()
+        )
+    })?;
+    let project: BoardProject = serde_yaml_ng::from_str(&project_text).with_context(|| {
+        format!(
+            "Failed to parse Board IR project YAML {} for solder-paste ownership association",
+            options.project.display()
+        )
+    })?;
+    associate_solder_paste_opening_owners(&mut paste, &project.board.layout);
     merge_solder_paste_into_project(&mut project_yaml, &paste)?;
     if let Some(parent) = options.output.parent() {
         fs::create_dir_all(parent)
