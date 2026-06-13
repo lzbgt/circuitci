@@ -16,6 +16,8 @@ Saved source artifacts:
   <https://jlcpcb.com/capabilities/pcb-stencil-manufacturing>
 - `opening_process_standard_of_stencil.html` from
   <https://jlcpcb.com/help/article/opening-process-standard-of-stencil>
+- `Hole_to_board_edge.892a998.png` from
+  <https://jlcpcb.com/ssr/img/Hole_to_board_edge.892a998.png>
 
 Implemented preset:
 
@@ -104,11 +106,31 @@ Observed but not yet encoded as process defaults:
   spacing and routed-edge copper clearance rows, are available through runtime
   i18n keys in the saved JavaScript; other current table values still need
   exact extraction or separate source evidence before encoding.
+- The saved JLCPCB capability page JavaScript contains castellated-hole text
+  with "Hole to board edge" requirements, including
+  `i18n_web_app_211_1` with `Hole to board edge (L): >= 1 mm`. The referenced
+  saved diagram, `Hole_to_board_edge.892a998.png`, labels a different
+  castellated-pad condition: `Castellated pad to board edge >= 0.5 mm`,
+  `Castellated hole diameter >= 0.3 mm`, and `Castellated hole to hole >=
+  0.4 mm`. CircuitCI does not encode either value as
+  `min_drill_edge_clearance_mm` because the current rule measures generic
+  circular drill edge-to-outline clearance, while the source evidence is
+  specifically castellated-pad/castellated-hole geometry and the text/image
+  conditions are not the same.
+- The saved JLCPCB stencil opening-process article gives package- and
+  pitch-specific aperture optimization examples for IC, BGA, connector,
+  high-power transistor, through-hole, and red-glue stencil cases. It does not
+  provide a single generic solder-paste area ratio or paste-aperture spacing
+  floor suitable for all `SOLDER_PASTE_OPENING_VALID` or
+  `SOLDER_PASTE_SPACING_VALID` scenarios.
 
 Next source work before expanding presets:
 
-- Pin exact text values for drill-to-edge, slot-to-edge, paste-area-ratio, and
-  stencil-spacing thresholds from official JLCPCB material, package stencil
-  guidance, or an exported process capability document.
+- Pin exact text values for generic drill-to-edge, slot-to-edge,
+  paste-area-ratio, and stencil-spacing thresholds from official JLCPCB
+  material, package stencil guidance, or an exported process capability
+  document. Castellated-pad edge values should become a separate
+  castellated-specific rule or preset only after the Board IR can identify that
+  condition explicitly.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

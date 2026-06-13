@@ -186,10 +186,13 @@ without explicit imported mechanical evidence.
   similarly uses imported Excellon `G85` routed-slot centerlines and widths
   under `board.layout.slots[]`. `SLOT_WIDTH_VALID` checks routed-slot width
   against process thresholds and can use the dedicated JLCPCB
-  metallized/non-metallized slot preset. These rules do not model drill wander,
-  route-tool runout/overcut, plating tolerances, panel tabs, fab-specific
-  stackup rules, copper-to-hole clearance, minimum slot length, or 3D
-  mechanical fit.
+  metallized/non-metallized slot preset. Saved JLCPCB castellated-pad edge
+  source material is not used as a generic drill-edge preset because
+  castellated-hole geometry is a narrower board-edge condition that imported
+  fabrication evidence does not yet classify. These rules do not model drill
+  wander, route-tool runout/overcut, plating tolerances, panel tabs,
+  fab-specific stackup rules, copper-to-hole clearance, minimum slot length, or
+  3D mechanical fit.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   Gerber flash copper geometry for a static 2D annular-ring screen. It checks
   circle, rectangle, and axis-aligned oval flashes, skips non-plated drills,

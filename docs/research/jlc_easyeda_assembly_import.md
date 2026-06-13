@@ -243,3 +243,13 @@ emits runnable `SOLDER_PASTE_APERTURE_SIZE_VALID` with
 `jlcpcb_stencil_aperture_min_2026_06`. The separate JLCPCB stencil opening
 standard is package- and pitch-specific, so paste area-ratio and paste-spacing
 suggestions still require explicit package/process limits.
+
+Follow-up source review on 2026-06-13 found JLCPCB castellated-hole edge
+material, but not a generic drill-to-board-edge or slot-to-board-edge process
+floor. The saved diagram `Hole_to_board_edge.892a998.png` labels castellated
+pad-to-board-edge, castellated hole diameter, and castellated hole-to-hole
+conditions. Those values are not used for the peer release's generic
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` or `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
+suggestions because the imported release evidence does not classify
+castellated pads/holes, and the current drill-edge rule measures generic
+circular hole edge clearance.

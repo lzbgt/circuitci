@@ -87,3 +87,10 @@ stencil capability floor and is not a package paste-reduction rule.
 Package-specific SMD pad spacing, stencil aperture spacing, paste area ratio,
 drill/slot-to-board-edge clearance, V-cut panel clearance, and special-order
 constraints still need narrower presets or explicit scenario parameters.
+
+JLCPCB castellated-hole source material is intentionally not exposed as a
+generic drill-to-board-edge preset. The saved capability text and diagram are
+castellated-pad/castellated-hole specific, while
+`DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` measures generic circular drill
+edge-to-outline clearance. CircuitCI should add a castellated-specific
+evidence path before using those values automatically.
