@@ -307,9 +307,9 @@ or nets.
 ## Layout Fabrication Copper Evidence
 
 Board IR can carry imported anonymous copper features under
-`board.layout.copper.features`. Coordinates are feature centers in millimeters
-in the same coordinate system as placements, outlines, drills, pads, routes,
-and zones.
+`board.layout.copper.features` and imported anonymous copper traces under
+`board.layout.copper.segments`. Coordinates are in millimeters in the same
+coordinate system as placements, outlines, drills, pads, routes, and zones.
 
 ```yaml
 board:
@@ -324,14 +324,25 @@ board:
           aperture: D10
           shape: circle
           size: { x_mm: 0.6, y_mm: 0.6 }
+      segments:
+        - start: { x_mm: 10.0, y_mm: -10.0 }
+          end: { x_mm: 20.0, y_mm: -10.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 1
+          aperture: D10
+          width_mm: 0.6
 ```
 
 `import-gerber-copper` currently imports dark `D03` flashes for Gerber circle,
-rectangle, and oval apertures from millimeter absolute RS-274X files. Linear
-draw records are counted in the import summary but are not converted into
-Board IR copper geometry yet. Clear-polarity flashes are skipped because they
-represent copper voids rather than conductive copper. Imported copper features
-are fabrication evidence only and do not assign nets, components, pad names, or
+rectangle, and oval apertures from millimeter absolute RS-274X files. It also
+imports dark linear `D01` draw records made with circular apertures as copper
+segments. Linear draws with non-circular apertures are counted as ignored
+records because their exact swept geometry is not a simple trace-width segment.
+Clear-polarity flashes and draws are skipped/ignored because they represent
+copper voids rather than conductive copper. Imported copper evidence is
+fabrication evidence only and does not assign nets, components, pad names, or
 electrical connectivity.
 
 ## Layout Pad Evidence

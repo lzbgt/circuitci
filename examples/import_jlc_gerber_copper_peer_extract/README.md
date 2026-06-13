@@ -11,7 +11,8 @@ The fixture exercises the supported `import-gerber-copper` subset:
 - `G04 Layer: F.Cu` layer metadata,
 - circle, rectangle, and oval aperture definitions,
 - dark `D03` copper flashes,
-- one linear draw record that is counted but not imported yet,
+- one circular-aperture linear draw imported as a copper segment,
+- one rectangular-aperture linear draw counted as ignored,
 - one clear-polarity flash that is skipped as non-conductive clearance.
 
 The imported evidence is anonymous fabrication copper. It does not assign nets,

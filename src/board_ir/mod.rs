@@ -225,6 +225,8 @@ pub struct LayoutDrill {
 pub struct LayoutCopper {
     #[serde(default)]
     pub features: Vec<LayoutCopperFeature>,
+    #[serde(default)]
+    pub segments: Vec<LayoutCopperSegment>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -237,6 +239,18 @@ pub struct LayoutCopperFeature {
     pub aperture: String,
     pub shape: String,
     pub size: LayoutPadSize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutCopperSegment {
+    pub start: LayoutPoint,
+    pub end: LayoutPoint,
+    pub layer: String,
+    pub polarity: String,
+    pub source_primitive: String,
+    pub source_primitive_index: usize,
+    pub aperture: String,
+    pub width_mm: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

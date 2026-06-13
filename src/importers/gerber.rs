@@ -31,6 +31,7 @@ pub struct GerberOutlineImportSummary {
 #[derive(Debug, Clone, Default)]
 pub struct GerberCopperImportSummary {
     pub flash_features: usize,
+    pub trace_segments: usize,
     pub apertures: usize,
     pub ignored_draws: usize,
     pub skipped_clear_flashes: usize,
@@ -52,6 +53,7 @@ struct GerberOutline {
 struct GerberCopper {
     layer: String,
     features: Vec<GerberCopperFeature>,
+    segments: Vec<GerberCopperSegment>,
     aperture_count: usize,
     ignored_draws: usize,
     skipped_clear_flashes: usize,
@@ -60,6 +62,15 @@ struct GerberCopper {
 #[derive(Debug, Clone)]
 struct GerberCopperFeature {
     at: GerberPoint,
+    aperture_code: u32,
+    aperture: GerberAperture,
+    source_primitive_index: usize,
+}
+
+#[derive(Debug, Clone)]
+struct GerberCopperSegment {
+    start: GerberPoint,
+    end: GerberPoint,
     aperture_code: u32,
     aperture: GerberAperture,
     source_primitive_index: usize,
@@ -119,6 +130,7 @@ struct OutlineSegmentYaml {
 #[derive(Debug, Serialize)]
 struct CopperYaml {
     features: Vec<CopperFeatureYaml>,
+    segments: Vec<CopperSegmentYaml>,
 }
 
 #[derive(Debug, Serialize)]
@@ -137,6 +149,18 @@ struct CopperFeatureYaml {
 struct CopperFeatureSizeYaml {
     x_mm: f64,
     y_mm: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct CopperSegmentYaml {
+    start: GerberPoint,
+    end: GerberPoint,
+    layer: String,
+    polarity: String,
+    source_primitive: String,
+    source_primitive_index: usize,
+    aperture: String,
+    width_mm: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -414,6 +438,7 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
     let mut layer = "gerber_copper".to_string();
     let mut apertures = std::collections::BTreeMap::<u32, GerberAperture>::new();
     let mut features = Vec::new();
+    let mut segments = Vec::new();
     let mut source_primitive_index = 0;
     let mut ignored_draws = 0;
     let mut skipped_clear_flashes = 0;
@@ -557,7 +582,43 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                 state.current = Some(target);
             }
             Some(GerberOperation::Draw) => {
-                ignored_draws += 1;
+                let Some(start) = state.current else {
+                    bail!(
+                        "Gerber copper {} has draw command before a current position.",
+                        path.display()
+                    );
+                };
+                let Some(aperture_code) = state.aperture_code else {
+                    bail!(
+                        "Gerber copper {} draws before selecting an aperture.",
+                        path.display()
+                    );
+                };
+                let aperture = apertures.get(&aperture_code).cloned().with_context(|| {
+                    format!(
+                        "Gerber copper {} draws with undefined aperture D{}.",
+                        path.display(),
+                        aperture_code
+                    )
+                })?;
+                if point_distance_mm(start, target) <= POINT_EPSILON_MM {
+                    bail!(
+                        "Gerber copper {} has zero-length linear draw.",
+                        path.display()
+                    );
+                }
+                if state.dark_polarity && aperture.shape == GerberApertureShape::Circle {
+                    segments.push(GerberCopperSegment {
+                        start,
+                        end: target,
+                        aperture_code,
+                        aperture,
+                        source_primitive_index,
+                    });
+                    source_primitive_index += 1;
+                } else {
+                    ignored_draws += 1;
+                }
                 state.current = Some(target);
             }
             Some(GerberOperation::Flash) => {
@@ -595,15 +656,16 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
             }
         }
     }
-    if features.is_empty() {
+    if features.is_empty() && segments.is_empty() {
         bail!(
-            "Gerber copper {} produced no dark D03 flash copper features.",
+            "Gerber copper {} produced no dark flash or circular-aperture linear draw copper evidence.",
             path.display()
         );
     }
     Ok(GerberCopper {
         layer,
         features,
+        segments,
         aperture_count: apertures.len(),
         ignored_draws,
         skipped_clear_flashes,
@@ -898,6 +960,7 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
             copper_key.clone(),
             serde_yaml_ng::to_value(CopperYaml {
                 features: Vec::new(),
+                segments: Vec::new(),
             })
             .context("Failed to initialize Board IR copper evidence YAML.")?,
         );
@@ -932,6 +995,30 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
                 },
             })
             .context("Failed to serialize Gerber copper evidence into Board IR YAML.")?,
+        );
+    }
+    let segments_key = Value::String("segments".to_string());
+    if !copper_yaml.contains_key(&segments_key) {
+        copper_yaml.insert(segments_key.clone(), Value::Sequence(Vec::new()));
+    }
+    let segments = copper_yaml
+        .get_mut(&segments_key)
+        .expect("segments field was inserted when absent")
+        .as_sequence_mut()
+        .context("Board IR field board.layout.copper.segments must be a list.")?;
+    for segment in &copper.segments {
+        segments.push(
+            serde_yaml_ng::to_value(CopperSegmentYaml {
+                start: segment.start,
+                end: segment.end,
+                layer: copper.layer.clone(),
+                polarity: "dark".to_string(),
+                source_primitive: "gerber_linear_draw".to_string(),
+                source_primitive_index: segment.source_primitive_index,
+                aperture: format!("D{}", segment.aperture_code),
+                width_mm: segment.aperture.x_mm,
+            })
+            .context("Failed to serialize Gerber copper segment evidence into Board IR YAML.")?,
         );
     }
     Ok(())
@@ -983,6 +1070,7 @@ fn summary_for_outline(outline: &GerberOutline) -> GerberOutlineImportSummary {
 fn summary_for_copper(copper: &GerberCopper) -> GerberCopperImportSummary {
     GerberCopperImportSummary {
         flash_features: copper.features.len(),
+        trace_segments: copper.segments.len(),
         apertures: copper.aperture_count,
         ignored_draws: copper.ignored_draws,
         skipped_clear_flashes: copper.skipped_clear_flashes,

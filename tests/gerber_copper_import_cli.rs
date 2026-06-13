@@ -23,6 +23,7 @@ fn import_gerber_copper_appends_schema_valid_flash_evidence() {
     assert!(command_output.status.success());
     let stdout = String::from_utf8_lossy(&command_output.stdout);
     assert!(stdout.contains("3 flash features"));
+    assert!(stdout.contains("1 trace segments"));
     assert!(stdout.contains("3 apertures"));
     assert!(stdout.contains("1 ignored draw records"));
     assert!(stdout.contains("1 skipped clear flashes"));
@@ -53,6 +54,20 @@ fn import_gerber_copper_appends_schema_valid_flash_evidence() {
     assert_eq!(features[2]["shape"], "oval");
     assert_eq!(features[2]["size"]["x_mm"], 1.5);
     assert_eq!(features[2]["size"]["y_mm"], 0.7);
+    let segments = imported["board"]["layout"]["copper"]["segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(segments.len(), 1);
+    assert_eq!(segments[0]["layer"], "F.Cu");
+    assert_eq!(segments[0]["polarity"], "dark");
+    assert_eq!(segments[0]["source_primitive"], "gerber_linear_draw");
+    assert_eq!(segments[0]["source_primitive_index"], 1);
+    assert_eq!(segments[0]["aperture"], "D10");
+    assert_eq!(segments[0]["width_mm"], 0.6);
+    assert_eq!(segments[0]["start"]["x_mm"], 10.0);
+    assert_eq!(segments[0]["start"]["y_mm"], -10.0);
+    assert_eq!(segments[0]["end"]["x_mm"], 20.0);
+    assert_eq!(segments[0]["end"]["y_mm"], -10.0);
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");

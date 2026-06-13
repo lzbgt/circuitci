@@ -1,7 +1,8 @@
 # Gerber Copper Importer
 
 `circuitci import-gerber-copper` enriches an existing Board IR project with
-anonymous flashed copper feature evidence from a Gerber copper layer.
+anonymous flashed copper feature and circular-aperture linear trace evidence
+from a Gerber copper layer.
 
 ```bash
 circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
@@ -12,10 +13,13 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 ## Imported Evidence
 
 - `board.layout.copper.features[]`,
+- `board.layout.copper.segments[]`,
 - feature center coordinates in millimeters,
+- segment start/end coordinates and trace width in millimeters,
 - layer name from `G04 Layer: ...` when present,
 - `polarity: dark`,
 - `source_primitive: gerber_flash`,
+- `source_primitive: gerber_linear_draw`,
 - `source_primitive_index`,
 - aperture code such as `D10`,
 - aperture shape: `circle`, `rect`, or `oval`,
@@ -31,11 +35,13 @@ subset:
 - absolute coordinates,
 - aperture definitions for `C`, `R`, and `O` shapes,
 - bare `Dnn` and `G54Dnn` aperture selection,
-- dark-polarity `D03` flashes.
+- dark-polarity `D03` flashes,
+- dark-polarity linear `D01` draws with circular apertures.
 
-Linear `D01` draw records are counted in the CLI summary but are not converted
-into Board IR copper geometry yet. Clear-polarity flashes are skipped because
-they represent copper voids rather than conductive copper.
+Linear `D01` draw records with non-circular apertures are counted as ignored
+draw records because their exact swept geometry is not a simple trace-width
+segment. Clear-polarity flashes and draws are skipped/ignored because they
+represent copper voids rather than conductive copper.
 
 ## Limits
 

@@ -119,7 +119,7 @@ circuitci import-gerber-outline path/to/Gerber_BoardOutlineLayer.GKO \
   --output out/imported_with_outline.project.yaml
 ```
 
-Append Gerber copper flash evidence:
+Append Gerber copper evidence:
 
 ```bash
 circuitci import-gerber-copper path/to/Gerber_TopLayer.GTL \

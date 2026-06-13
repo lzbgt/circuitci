@@ -157,13 +157,13 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   anonymous Gerber flash copper geometry for a static 2D annular-ring screen.
   It checks circle, rectangle, and axis-aligned oval flashes, and skips
-  non-plated drills. It does not model copper draw traces, thermal reliefs,
+  non-plated drills. It does not use copper draw traces, thermal reliefs,
   plated-barrel thickness, drill wander distributions, solder mask, fab
   compensation, copper-to-copper clearance, or net ownership.
 - Gerber copper import currently records anonymous dark `D03` flash features
-  for circle, rectangle, and oval apertures. It counts but does not yet convert
-  linear draw traces, and it does not infer nets, component ownership, pad
-  names, copper islands, mask expansion, or electrical
+  for circle, rectangle, and oval apertures plus dark linear `D01` traces for
+  circular apertures. It ignores non-circular aperture draws and does not infer
+  nets, component ownership, pad names, copper islands, mask expansion, or electrical
   connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
