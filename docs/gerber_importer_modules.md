@@ -16,13 +16,14 @@ Owns the CLI-facing Gerber import flows:
 ## `src/importers/gerber/ownership.rs`
 
 Owns conservative copper ownership association for imported Gerber copper.
-It can annotate copper with `net` when existing Board IR layout evidence has
-exactly one matching owner:
+It can annotate copper when existing Board IR layout evidence has exactly one
+matching owner:
 
-- pad overlap from `board.layout.pads`,
-- route overlap from `board.layout.routes`,
-- zone containment from `board.layout.zones`.
+- `net` from pad overlap in `board.layout.pads`,
+- `net` from route overlap in `board.layout.routes`,
+- `net` and zone-derived `island_id` from zone containment in
+  `board.layout.zones`.
 
-It intentionally does not infer new connectivity, `island_id`, component
-ownership, or pad names from Gerber data alone. Ambiguous or missing ownership
-evidence leaves imported copper anonymous.
+It intentionally does not infer new connectivity, component ownership, or pad
+names from Gerber data alone. Ambiguous or missing ownership evidence leaves
+imported copper anonymous.

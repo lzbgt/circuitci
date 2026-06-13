@@ -26,7 +26,9 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 - `source_primitive_index`,
 - aperture code such as `D10`,
 - aperture shape: `circle`, `rect`, or `oval`,
-- aperture X/Y size in millimeters.
+- aperture X/Y size in millimeters,
+- optional `net` and `island_id` when existing Board IR layout evidence gives
+  exactly one owner.
 
 ## Supported Gerber Subset
 
@@ -53,17 +55,17 @@ nested, open, degenerate, flashed, or arc-interpolated regions fail closed.
 
 Gerber copper import is fabrication geometry evidence. When the input Board IR
 already contains PCB layout evidence, the importer can annotate imported copper
-with `net` from exactly one matching owner:
+with ownership from exactly one matching owner:
 
-- pad overlap from `board.layout.pads`,
-- route overlap from `board.layout.routes`,
-- zone containment from `board.layout.zones`.
+- `net` from pad overlap in `board.layout.pads`,
+- `net` from route overlap in `board.layout.routes`,
+- `net` plus zone-derived `island_id` from zone containment in
+  `board.layout.zones`.
 
-It does not invent `island_id`, component ownership, pad names, annular rings,
-schematic intent, or electrical connectivity. Ambiguous or missing ownership
-evidence leaves the imported copper anonymous. Combine it with schematic, PCB,
-assembly, outline, and drill imports before using electrical or
-manufacturability checks.
+It does not infer component ownership, pad names, annular rings, schematic
+intent, or electrical connectivity. Ambiguous or missing ownership evidence
+leaves the imported copper anonymous. Combine it with schematic, PCB, assembly,
+outline, and drill imports before using electrical or manufacturability checks.
 
 `DRILL_ANNULAR_RING_VALID` can consume imported dark flash evidence together
 with Excellon drill hits for a static annular-ring screen. That rule still
@@ -78,7 +80,7 @@ island connectivity, solder-mask margin, or fab-specific etch compensation.
 
 `COPPER_SPACING_VALID` can consume the same imported dark flash,
 circular-aperture draw, and region evidence for a static same-layer
-copper-spacing screen. When imported copper has `net` ownership evidence, the
-rule can distinguish same-net contact from different-net overlap. Anonymous
-touching copper is still ignored to avoid flagging intentionally connected
-Gerber primitives without ownership evidence.
+copper-spacing screen. When imported copper has `net` or `island_id` ownership
+evidence, the rule can distinguish same-owner contact from conflicting-owner
+overlap. Anonymous touching copper is still ignored to avoid flagging
+intentionally connected Gerber primitives without ownership evidence.

@@ -8,6 +8,16 @@ use super::{
 #[derive(Debug, Clone)]
 struct CopperNetOwner {
     net: String,
+    island_id: Option<String>,
+}
+
+impl CopperNetOwner {
+    fn net_only(net: &str) -> Self {
+        Self {
+            net: net.to_string(),
+            island_id: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +43,7 @@ struct CopperOwnerRouteSegment {
 struct CopperOwnerZone {
     layer: String,
     net: String,
+    island_id: String,
     polygons: Vec<Vec<GerberPoint>>,
 }
 
@@ -46,19 +57,22 @@ struct CopperOwnershipIndex {
 pub(super) fn associate_copper_nets(copper: &mut GerberCopper, layout: &BoardLayout) {
     let ownership = CopperOwnershipIndex::from_layout(layout);
     for feature in &mut copper.features {
-        feature.net = ownership
-            .owner_for_feature(feature, &copper.layer)
-            .map(|owner| owner.net);
+        if let Some(owner) = ownership.owner_for_feature(feature, &copper.layer) {
+            feature.net = Some(owner.net);
+            feature.island_id = owner.island_id;
+        }
     }
     for segment in &mut copper.segments {
-        segment.net = ownership
-            .owner_for_segment(segment, &copper.layer)
-            .map(|owner| owner.net);
+        if let Some(owner) = ownership.owner_for_segment(segment, &copper.layer) {
+            segment.net = Some(owner.net);
+            segment.island_id = owner.island_id;
+        }
     }
     for region in &mut copper.regions {
-        region.net = ownership
-            .owner_for_region(region, &copper.layer)
-            .map(|owner| owner.net);
+        if let Some(owner) = ownership.owner_for_region(region, &copper.layer) {
+            region.net = Some(owner.net);
+            region.island_id = owner.island_id;
+        }
     }
 }
 
@@ -95,7 +109,7 @@ impl CopperOwnershipIndex {
         let mut candidates = Vec::new();
         for pad in self.pads.iter().filter(|pad| pad_on_layer(pad, layer)) {
             if point_inside_feature_pad(feature.at, pad) {
-                candidates.push(pad.net.clone());
+                candidates.push(CopperNetOwner::net_only(&pad.net));
             }
         }
         for route in self
@@ -107,7 +121,7 @@ impl CopperOwnershipIndex {
             if point_to_segment_distance_mm(feature.at, route.start, route.end)
                 <= feature_radius + route.width_mm / 2.0 + POINT_EPSILON_MM
             {
-                candidates.push(route.net.clone());
+                candidates.push(CopperNetOwner::net_only(&route.net));
             }
         }
         for zone in self.zones.iter().filter(|zone| zone.layer == layer) {
@@ -116,7 +130,10 @@ impl CopperOwnershipIndex {
                 .iter()
                 .any(|polygon| point_inside_polygon(feature.at, polygon))
             {
-                candidates.push(zone.net.clone());
+                candidates.push(CopperNetOwner {
+                    net: zone.net.clone(),
+                    island_id: Some(zone.island_id.clone()),
+                });
             }
         }
         unique_owner(candidates)
@@ -136,14 +153,14 @@ impl CopperOwnershipIndex {
             if segment_to_segment_distance_mm(segment.start, segment.end, route.start, route.end)
                 <= segment.aperture.x_mm / 2.0 + route.width_mm / 2.0 + POINT_EPSILON_MM
             {
-                candidates.push(route.net.clone());
+                candidates.push(CopperNetOwner::net_only(&route.net));
             }
         }
         for pad in self.pads.iter().filter(|pad| pad_on_layer(pad, layer)) {
             if point_to_segment_distance_mm(pad.at, segment.start, segment.end)
                 <= segment.aperture.x_mm / 2.0 + POINT_EPSILON_MM
             {
-                candidates.push(pad.net.clone());
+                candidates.push(CopperNetOwner::net_only(&pad.net));
             }
         }
         for zone in self.zones.iter().filter(|zone| zone.layer == layer) {
@@ -156,7 +173,10 @@ impl CopperOwnershipIndex {
                 .iter()
                 .any(|polygon| point_inside_polygon(midpoint, polygon))
             {
-                candidates.push(zone.net.clone());
+                candidates.push(CopperNetOwner {
+                    net: zone.net.clone(),
+                    island_id: Some(zone.island_id.clone()),
+                });
             }
         }
         unique_owner(candidates)
@@ -171,12 +191,15 @@ impl CopperOwnershipIndex {
                 .iter()
                 .any(|polygon| point_inside_polygon(representative, polygon))
             {
-                candidates.push(zone.net.clone());
+                candidates.push(CopperNetOwner {
+                    net: zone.net.clone(),
+                    island_id: Some(zone.island_id.clone()),
+                });
             }
         }
         for pad in self.pads.iter().filter(|pad| pad_on_layer(pad, layer)) {
             if point_inside_polygon(pad.at, &region.points) {
-                candidates.push(pad.net.clone());
+                candidates.push(CopperNetOwner::net_only(&pad.net));
             }
         }
         unique_owner(candidates)
@@ -222,44 +245,96 @@ fn owner_route_segments_from_route<'a>(
 
 fn owner_zones_from_zones(net: &str, zones: &[CopperZone]) -> Vec<CopperOwnerZone> {
     let mut owner_zones = Vec::new();
-    for zone in zones {
+    for (zone_index, zone) in zones.iter().enumerate() {
         if net.trim().is_empty() {
             continue;
         }
-        let polygons = if zone.filled_polygons.is_empty() {
-            vec![points_from_layout(&zone.polygon)]
+        let source_polygons = if zone.filled_polygons.is_empty() {
+            vec![&zone.polygon]
         } else {
-            zone.filled_polygons
-                .iter()
-                .map(|polygon| points_from_layout(polygon))
-                .collect()
+            zone.filled_polygons.iter().collect()
         };
-        let polygons = polygons
-            .into_iter()
-            .filter(|polygon| {
-                polygon.len() >= 3 && polygon_signed_area_mm2(polygon).abs() > f64::EPSILON
-            })
-            .collect::<Vec<_>>();
-        if !polygons.is_empty() {
+        for (polygon_index, polygon) in source_polygons.into_iter().enumerate() {
+            let polygon = points_from_layout(polygon);
+            if polygon.len() < 3 || polygon_signed_area_mm2(&polygon).abs() <= f64::EPSILON {
+                continue;
+            }
             owner_zones.push(CopperOwnerZone {
                 layer: zone.layer.clone(),
                 net: net.to_string(),
-                polygons,
+                island_id: zone_owner_island_id(net, zone, zone_index, polygon_index),
+                polygons: vec![polygon],
             });
         }
     }
     owner_zones
 }
 
-fn unique_owner(candidates: Vec<String>) -> Option<CopperNetOwner> {
-    let mut unique = candidates
-        .into_iter()
-        .filter(|candidate| !candidate.trim().is_empty())
+fn zone_owner_island_id(
+    net: &str,
+    zone: &CopperZone,
+    zone_index: usize,
+    polygon_index: usize,
+) -> String {
+    if let Some(island_id) = zone
+        .island_id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        if zone.filled_polygons.len() <= 1 {
+            return island_id.to_string();
+        }
+        return format!("{island_id}_polygon_{polygon_index}");
+    }
+    format!(
+        "{}_{}_zone_{}_polygon_{}",
+        sanitize_island_id_part(&zone.layer),
+        sanitize_island_id_part(net),
+        zone_index,
+        polygon_index
+    )
+}
+
+fn sanitize_island_id_part(value: &str) -> String {
+    let mut sanitized = String::new();
+    for ch in value.chars() {
+        if ch.is_ascii_alphanumeric() {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    let sanitized = sanitized.trim_matches('_');
+    if sanitized.is_empty() {
+        "unnamed".to_string()
+    } else {
+        sanitized.to_string()
+    }
+}
+
+fn unique_owner(candidates: Vec<CopperNetOwner>) -> Option<CopperNetOwner> {
+    let mut nets = candidates
+        .iter()
+        .filter(|candidate| !candidate.net.trim().is_empty())
+        .map(|candidate| candidate.net.clone())
         .collect::<Vec<_>>();
-    unique.sort();
-    unique.dedup();
-    (unique.len() == 1).then(|| CopperNetOwner {
-        net: unique.pop().expect("unique contains one element"),
+    nets.sort();
+    nets.dedup();
+    if nets.len() != 1 {
+        return None;
+    }
+    let mut island_ids = candidates
+        .into_iter()
+        .filter(|candidate| candidate.net == nets[0])
+        .filter_map(|candidate| candidate.island_id)
+        .filter(|island_id| !island_id.trim().is_empty())
+        .collect::<Vec<_>>();
+    island_ids.sort();
+    island_ids.dedup();
+    Some(CopperNetOwner {
+        net: nets.pop().expect("nets contains one element"),
+        island_id: (island_ids.len() == 1)
+            .then(|| island_ids.pop().expect("island_ids contains one element")),
     })
 }
 

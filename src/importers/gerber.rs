@@ -40,6 +40,9 @@ pub struct GerberCopperImportSummary {
     pub net_associated_features: usize,
     pub net_associated_segments: usize,
     pub net_associated_regions: usize,
+    pub island_associated_features: usize,
+    pub island_associated_segments: usize,
+    pub island_associated_regions: usize,
     pub apertures: usize,
     pub ignored_draws: usize,
     pub skipped_clear_flashes: usize,
@@ -77,6 +80,7 @@ struct GerberCopperFeature {
     aperture: GerberAperture,
     source_primitive_index: usize,
     net: Option<String>,
+    island_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +91,7 @@ struct GerberCopperSegment {
     aperture: GerberAperture,
     source_primitive_index: usize,
     net: Option<String>,
+    island_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +99,7 @@ struct GerberCopperRegion {
     points: Vec<GerberPoint>,
     source_primitive_index: usize,
     net: Option<String>,
+    island_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -161,6 +167,8 @@ struct CopperFeatureYaml {
     polarity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    island_id: Option<String>,
     source_primitive: String,
     source_primitive_index: usize,
     aperture: String,
@@ -182,6 +190,8 @@ struct CopperSegmentYaml {
     polarity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    island_id: Option<String>,
     source_primitive: String,
     source_primitive_index: usize,
     aperture: String,
@@ -195,6 +205,8 @@ struct CopperRegionYaml {
     polarity: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    island_id: Option<String>,
     source_primitive: String,
     source_primitive_index: usize,
 }
@@ -576,6 +588,7 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                     points,
                     source_primitive_index,
                     net: None,
+                    island_id: None,
                 });
                 source_primitive_index += 1;
             } else {
@@ -757,6 +770,7 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                         aperture,
                         source_primitive_index,
                         net: None,
+                        island_id: None,
                     });
                     source_primitive_index += 1;
                 } else {
@@ -785,6 +799,7 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                         aperture,
                         source_primitive_index,
                         net: None,
+                        island_id: None,
                     });
                     source_primitive_index += 1;
                 } else {
@@ -1139,6 +1154,7 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
                 layer: copper.layer.clone(),
                 polarity: "dark".to_string(),
                 net: feature.net.clone(),
+                island_id: feature.island_id.clone(),
                 source_primitive: "gerber_flash".to_string(),
                 source_primitive_index: feature.source_primitive_index,
                 aperture: format!("D{}", feature.aperture_code),
@@ -1168,6 +1184,7 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
                 layer: copper.layer.clone(),
                 polarity: "dark".to_string(),
                 net: segment.net.clone(),
+                island_id: segment.island_id.clone(),
                 source_primitive: "gerber_linear_draw".to_string(),
                 source_primitive_index: segment.source_primitive_index,
                 aperture: format!("D{}", segment.aperture_code),
@@ -1192,6 +1209,7 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
                 layer: copper.layer.clone(),
                 polarity: "dark".to_string(),
                 net: region.net.clone(),
+                island_id: region.island_id.clone(),
                 source_primitive: "gerber_region".to_string(),
                 source_primitive_index: region.source_primitive_index,
             })
@@ -1263,6 +1281,21 @@ fn summary_for_copper(copper: &GerberCopper) -> GerberCopperImportSummary {
             .regions
             .iter()
             .filter(|region| region.net.is_some())
+            .count(),
+        island_associated_features: copper
+            .features
+            .iter()
+            .filter(|feature| feature.island_id.is_some())
+            .count(),
+        island_associated_segments: copper
+            .segments
+            .iter()
+            .filter(|segment| segment.island_id.is_some())
+            .count(),
+        island_associated_regions: copper
+            .regions
+            .iter()
+            .filter(|region| region.island_id.is_some())
             .count(),
         apertures: copper.aperture_count,
         ignored_draws: copper.ignored_draws,

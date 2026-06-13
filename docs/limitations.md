@@ -189,12 +189,14 @@ without explicit imported mechanical evidence.
   non-plated drills. It does not use copper draw traces, thermal reliefs,
   plated-barrel thickness, drill wander distributions, solder mask, fab
   compensation, copper-to-copper clearance, or net ownership.
-- `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported anonymous Gerber copper
+- `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported Gerber copper
   flashes, trace segments, and region polygons with board-outline centerline
   segments for a static 2D copper-edge screen. It does not model solder mask,
   etch compensation, panelization tabs, fab-specific clearance expansion,
-  copper island connectivity, or net ownership.
-- `COPPER_SPACING_VALID` uses imported anonymous Gerber copper flashes, trace
+  or copper island connectivity. Imported copper may carry `net` or
+  `island_id` when correlated with separate layout evidence, but plain Gerber
+  copper remains anonymous.
+- `COPPER_SPACING_VALID` uses imported Gerber copper flashes, trace
   segments, and region polygons for a static same-layer 2D copper-spacing
   screen. If copper objects carry explicit `net` or `island_id` ownership
   evidence, the rule can skip same-owner copper and report touching

@@ -305,6 +305,7 @@ pub struct RouteVia {
 pub struct CopperZone {
     pub layer: String,
     pub polygon: Vec<LayoutPoint>,
+    pub island_id: Option<String>,
     #[serde(default)]
     pub filled_polygons: Vec<Vec<LayoutPoint>>,
 }

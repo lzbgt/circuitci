@@ -107,6 +107,7 @@ struct PcbRouteVia {
 struct PcbZone {
     layer: String,
     polygon: Vec<PcbPoint>,
+    island_id: String,
     filled_polygons: Vec<Vec<PcbPoint>>,
 }
 
@@ -193,6 +194,7 @@ struct NetRuleYaml<'a> {
 #[derive(Debug, Serialize)]
 struct ZoneYaml {
     layer: String,
+    island_id: String,
     polygon: Vec<PcbPoint>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     filled_polygons: Vec<Vec<PcbPoint>>,
@@ -440,7 +442,9 @@ fn parse_zones(root_list: &[Sexp], path: &Path) -> Result<BTreeMap<String, Vec<P
                 .get(&layer)
                 .cloned()
                 .unwrap_or_default();
+            let zone_index = zones.get(&net_name).map_or(0, Vec::len);
             zones.entry(net_name.clone()).or_default().push(PcbZone {
+                island_id: zone_island_id(&net_name, &layer, zone_index),
                 layer,
                 polygon: polygon.clone(),
                 filled_polygons,
@@ -1346,12 +1350,39 @@ fn zone_yaml_value(zones: &[PcbZone]) -> Result<Value> {
             .iter()
             .map(|zone| ZoneYaml {
                 layer: zone.layer.clone(),
+                island_id: zone.island_id.clone(),
                 polygon: zone.polygon.clone(),
                 filled_polygons: zone.filled_polygons.clone(),
             })
             .collect::<Vec<_>>(),
     )
     .context("Failed to serialize KiCad PCB copper zones into Board IR YAML.")
+}
+
+fn zone_island_id(net_name: &str, layer: &str, zone_index: usize) -> String {
+    format!(
+        "{}_{}_zone_{}",
+        sanitize_island_id_part(layer),
+        sanitize_island_id_part(net_name),
+        zone_index
+    )
+}
+
+fn sanitize_island_id_part(value: &str) -> String {
+    let mut sanitized = String::new();
+    for ch in value.chars() {
+        if ch.is_ascii_alphanumeric() {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    let sanitized = sanitized.trim_matches('_');
+    if sanitized.is_empty() {
+        "unnamed".to_string()
+    } else {
+        sanitized.to_string()
+    }
 }
 
 fn map_pcb_net_to_board_net(

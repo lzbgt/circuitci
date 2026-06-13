@@ -114,6 +114,9 @@ fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
     assert!(stdout.contains("1 net-associated features"));
     assert!(stdout.contains("1 net-associated segments"));
     assert!(stdout.contains("1 net-associated regions"));
+    assert!(stdout.contains("0 island-associated features"));
+    assert!(stdout.contains("0 island-associated segments"));
+    assert!(stdout.contains("1 island-associated regions"));
 
     let schema: Value =
         serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
@@ -136,6 +139,7 @@ fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
         .unwrap();
     assert_eq!(regions.len(), 1);
     assert_eq!(regions[0]["net"], "VBAT");
+    assert_eq!(regions[0]["island_id"], "F_Cu_VBAT_zone_0_polygon_0");
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");

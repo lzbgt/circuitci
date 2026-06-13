@@ -316,7 +316,7 @@ coordinate system as placements, outlines, drills, pads, routes, and zones.
 Gerber-imported copper is anonymous by default, but any copper feature,
 segment, or region may carry optional `net` and `island_id` evidence when a
 separate importer or hand-authored project can associate fabrication copper
-with PCB/net ownership.
+with PCB/net or zone-island ownership.
 
 ```yaml
 board:
@@ -365,9 +365,12 @@ segments and dark single-contour linear `G36`/`G37` regions as copper region
 polygons. Linear draws with non-circular apertures are counted as ignored
 records because their exact swept geometry is not a simple trace-width segment.
 Clear-polarity flashes, draws, and regions are skipped/ignored because they
-represent copper voids rather than conductive copper. Gerber copper evidence is
-fabrication evidence only and does not by itself assign nets, components, pad
-names, copper islands, or electrical connectivity.
+represent copper voids rather than conductive copper. When existing Board IR
+layout pads, routes, or zones uniquely overlap imported Gerber copper,
+`import-gerber-copper` can annotate the imported copper with `net`; zone
+matches can also annotate `island_id`. Gerber copper evidence is fabrication
+evidence only and does not by itself assign nets, components, pad names, copper
+islands, or electrical connectivity.
 
 ## Layout Pad Evidence
 
@@ -436,8 +439,8 @@ ordering.
 
 Board IR can carry imported copper-zone outline evidence under
 `board.layout.zones`. Each key is an existing Board IR net. Each zone records a
-KiCad copper layer, the intended zone outline polygon, and optional filled
-copper polygons in millimeters.
+KiCad copper layer, a zone `island_id`, the intended zone outline polygon, and
+optional filled copper polygons in millimeters.
 
 ```yaml
 board:
@@ -445,6 +448,7 @@ board:
     zones:
       gnd:
         - layer: F.Cu
+          island_id: F_Cu_gnd_zone_0
           polygon:
             - { x_mm: -1.0, y_mm: -1.0 }
             - { x_mm: 2.0, y_mm: -1.0 }
@@ -460,10 +464,12 @@ board:
 KiCad PCB import fills this from `zone` entries when the PCB zone net maps
 unambiguously to an existing Board IR net. `polygon` is the zone outline.
 `filled_polygons` comes from KiCad `filled_polygon` entries and is absent when
-the board file has not saved filled-zone geometry. This is still static
-geometry evidence: it does not prove pad-to-zone connectivity, thermal relief
-behavior, clearances, or return-path continuity by itself, even when imported
-pad geometry is present.
+the board file has not saved filled-zone geometry. KiCad PCB import assigns a
+stable zone `island_id` from layer, net, and zone index so later fabrication
+copper import can carry zone-island provenance. This is still static geometry
+evidence: it does not prove pad-to-zone connectivity, thermal relief behavior,
+clearances, or return-path continuity by itself, even when imported pad
+geometry is present.
 
 ## Layout Constraint Evidence
 

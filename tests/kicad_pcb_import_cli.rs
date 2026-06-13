@@ -231,6 +231,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .unwrap();
     assert_eq!(ground_zones.len(), 1);
     assert_eq!(ground_zones[0]["layer"], "F.Cu");
+    assert_eq!(ground_zones[0]["island_id"], "F_Cu_GND_zone_0");
     assert_eq!(ground_zones[0]["polygon"].as_array().unwrap().len(), 4);
     assert_eq!(ground_zones[0]["polygon"][0]["x_mm"], -1.0);
     assert_eq!(ground_zones[0]["polygon"][2]["y_mm"], 1.0);
@@ -1517,6 +1518,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
     assert_eq!(
         imported["board"]["layout"]["zones"]["gnd"][0]["polygon"][2]["x_mm"],
         2.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["zones"]["gnd"][0]["island_id"],
+        "F_Cu_GND_zone_0"
     );
     assert_eq!(
         imported["board"]["layout"]["zones"]["gnd"][0]["filled_polygons"][0][2]["x_mm"],
