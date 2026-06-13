@@ -10,8 +10,11 @@ unchanged while creating room for more board-validation logic.
 ## Module Ownership
 
 - `src/validation/power_tree.rs` owns orchestration, rail scanning, generic
-  rail voltage/current checks, regulator, load-switch, charger, and
-  I/O-voltage checks.
+  rail voltage/current checks, load-switch, charger, and I/O-voltage checks.
+- `src/validation/power_tree/power_conversion.rs` owns `power_conversion`
+  validation: regulator input/output connectivity, dropout, minimum/maximum
+  output-current checks, startup timing, support capacitance, support
+  inductance, and regulator metadata diagnostics.
 - `src/validation/power_tree/power_mux.rs` owns `power_mux` validation:
   source-selection evidence, selected-input powered checks, inactive-input
   reverse-blocking checks, output-current limits, and power-mux metadata
@@ -27,6 +30,9 @@ unchanged while creating room for more board-validation logic.
   assertions in `tests/board_power_cli.rs`.
 - Reset-supervisor behavior changes should add focused fixtures under
   `examples/` and assertions in `tests/board_power_cli.rs`.
+- Regulator `power_conversion` behavior changes should add focused fixtures
+  under `examples/`, assertions in `tests/board_power_cli.rs`, and suggestion
+  evidence coverage when the rule consumes imported support-network metadata.
 - Keep shared helpers in `power_tree.rs` only when they are used by multiple
   power-tree submodules.
 - Do not add new power-validation logic to a file that would push it near the
