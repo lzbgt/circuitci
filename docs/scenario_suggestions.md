@@ -285,11 +285,13 @@ The command is conservative:
   overlaps the reference geometry, even if the pad center is outside it. In
   filled-zone evidence, contacts are only listed when they share a saved
   `filled_polygon` island with at least one covered route segment midpoint.
-- It emits runnable `CLOCK_SOURCE_VALID` templates when a component model
-  declares `clock_sources[]`, the oscillator input/output pins are connected to
-  distinct nets, and no existing clock scenario covers the component. The
-  template includes `scenario.clocks[]` with the oscillator pins, nets, and
-  identified crystal/resonator component when one is modeled between the nets.
+- It emits `CLOCK_SOURCE_VALID` templates when a component model declares
+  `clock_sources[]`, the oscillator input/output pins are connected to distinct
+  nets, and no existing clock scenario covers the component. The template is
+  runnable only when the crystal/resonator component is modeled between those
+  nets; otherwise it remains non-runnable and asks for that evidence.
+  `scenario.clocks[]` records the oscillator pins, nets, and identified
+  crystal/resonator component when present.
 - It emits boot-strap templates when model boot modes declare required straps
   and the strap pins are connected.
 - It emits runnable `BOOT_STRAP_BIAS_VALID` templates when required strap pins
@@ -710,7 +712,7 @@ suggestions:
     kind: clock
     confidence: medium
     runnable: true
-    reason: Component U1 model declares external clock source metadata, but no CLOCK_SOURCE_VALID scenario covers it.
+    reason: Component U1 model declares external clock source metadata and modeled crystal/resonator evidence, but no CLOCK_SOURCE_VALID scenario covers it.
     scenario:
       name: u1_clock_source
       type: clock

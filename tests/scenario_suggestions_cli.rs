@@ -1664,6 +1664,34 @@ fn suggest_scenarios_derives_clock_source_template() {
 }
 
 #[test]
+fn suggest_scenarios_keeps_clock_source_non_runnable_without_crystal() {
+    let suggestions = run_suggest_scenarios(
+        "examples/scenario_suggestions_clock_source_missing_crystal/project.yaml",
+    );
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_clock_source_missing_crystal"
+    );
+    let clock = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "clock_source_valid_u1")
+        .expect("clock source suggestion");
+    assert_eq!(clock["kind"], "clock");
+    assert_eq!(clock["runnable"], false);
+    assert_eq!(clock["confidence"], "low");
+    assert_eq!(clock["scenario"]["checks"][0], "CLOCK_SOURCE_VALID");
+    assert!(clock["scenario"]["clocks"][0]["crystal_component"].is_null());
+    assert!(
+        clock["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("Connect or model a crystal/resonator")
+    );
+}
+
+#[test]
 fn suggest_scenarios_reports_reset_supervisor_evidence() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_reset_supervisor/project.yaml");

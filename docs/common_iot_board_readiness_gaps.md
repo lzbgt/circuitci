@@ -253,9 +253,10 @@ integrity remain component-pack and physics gaps.
 Executable clock slice: `CLOCK_SOURCE_VALID` now statically checks declared
 external crystal support networks: crystal between oscillator pins, load
 capacitors from both oscillator pins to ground, and effective load capacitance
-against the crystal model target. `suggest-scenarios` now emits runnable clock
-templates when the component model declares `clock_sources[]` and board
-connectivity provides distinct oscillator nets. It does not prove oscillator
+against the crystal model target. `suggest-scenarios` emits clock templates
+when the component model declares `clock_sources[]` and board connectivity
+provides distinct oscillator nets, but marks them runnable only when a modeled
+crystal/resonator exists between those nets. It does not prove oscillator
 startup, ESR, drive level, ppm accuracy, or layout parasitics.
 
 ## 5. Layout-Dependent Physics

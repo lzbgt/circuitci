@@ -653,7 +653,7 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                 )
             })
             .collect::<Vec<_>>();
-        let runnable = true;
+        let runnable = required_inputs.is_empty();
         suggestions.push(ScenarioSuggestion {
             id: format!("clock_source_valid_{}", sanitized_name(component_id)),
             kind: "clock".to_string(),
@@ -664,9 +664,15 @@ fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
             }
             .to_string(),
             runnable,
-            reason: format!(
-                "Component {component_id} model declares external clock source metadata, but no CLOCK_SOURCE_VALID scenario covers it."
-            ),
+            reason: if runnable {
+                format!(
+                    "Component {component_id} model declares external clock source metadata and modeled crystal/resonator evidence, but no CLOCK_SOURCE_VALID scenario covers it."
+                )
+            } else {
+                format!(
+                    "Component {component_id} model declares external clock source metadata, but modeled crystal/resonator evidence is incomplete."
+                )
+            },
             scenario: SuggestedScenario {
                 name: format!("{}_clock_source", sanitized_name(component_id)),
                 scenario_type: "clock".to_string(),
