@@ -40,6 +40,13 @@ struct ResetRcEvidence {
 }
 
 #[derive(Debug)]
+struct ResetRuntimeEvidence {
+    reset_release_delay_us: f64,
+    reset_release_at_us: f64,
+    source: Option<String>,
+}
+
+#[derive(Debug)]
 struct BootloaderTimingEvidence {
     power_pin: String,
     power_valid_at_us: f64,
@@ -755,12 +762,24 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 power_valid_at_us,
             )
         });
+        let runtime_evidence =
+            runtime_reset_release_evidence(bound.project, component_id, &reset.pin, &power_pin);
         let reset_release_at_us = rc_evidence
             .as_ref()
-            .map(|evidence| evidence.reset_release_at_us);
+            .map(|evidence| evidence.reset_release_at_us)
+            .or_else(|| {
+                runtime_evidence
+                    .as_ref()
+                    .map(|evidence| evidence.reset_release_at_us)
+            });
         let reset_release_delay_us = rc_evidence
             .as_ref()
             .map(|evidence| evidence.reset_release_delay_us)
+            .or_else(|| {
+                runtime_evidence
+                    .as_ref()
+                    .map(|evidence| evidence.reset_release_delay_us)
+            })
             .unwrap_or(0.0);
         let boot_sample_at_us = model
             .behavior
@@ -768,16 +787,30 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
             .as_ref()
             .and_then(|boot| boot.sample_time_after_reset_release_us)
             .map(|delay_us| reset_release_at_us.unwrap_or(power_valid_at_us) + delay_us);
-        let (runnable, reason, required_inputs) = match &rc_evidence {
-            Some(evidence) => (
+        let (runnable, reason, required_inputs) = if let Some(evidence) = &rc_evidence {
+            (
                 true,
                 format!(
                     "Component {component_id} has active-low reset behavior, target rail power_valid_at_us, and explicit RC reset evidence from {} and {}.",
                     evidence.pullup_component, evidence.capacitor_component
                 ),
                 Vec::new(),
-            ),
-            None => (
+            )
+        } else if let Some(evidence) = &runtime_evidence {
+            let source = evidence
+                .source
+                .as_deref()
+                .map(|source| format!(" from {source}"))
+                .unwrap_or_default();
+            (
+                true,
+                format!(
+                    "Component {component_id} has reset behavior, target rail power_valid_at_us, and explicit runtime reset-release timing{source}."
+                ),
+                Vec::new(),
+            )
+        } else {
+            (
                 false,
                 format!(
                     "Component {component_id} has reset behavior and target rail power_valid_at_us, but no RESET_RELEASE_AFTER_POWER_VALID scenario."
@@ -786,7 +819,7 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                     "Fill timing.reset_release_at_us from reset supervisor, RC, control-line, or analog waveform evidence before validation.".to_string(),
                     "Keep timing.power_valid_at_us equal to the target rail power_valid_at_us or remove duplicated stale timing.".to_string(),
                 ],
-            ),
+            )
         };
         suggestions.push(ScenarioSuggestion {
             id: format!(
@@ -922,6 +955,46 @@ fn reset_rc_evidence(
         reset_release_delay_us,
         reset_release_at_us,
     })
+}
+
+fn runtime_reset_release_evidence(
+    project: &BoardProject,
+    component_id: &str,
+    reset_pin: &str,
+    power_pin: &str,
+) -> Option<ResetRuntimeEvidence> {
+    let matches: Vec<ResetRuntimeEvidence> = project
+        .board
+        .runtime
+        .reset_release
+        .iter()
+        .filter(|evidence| evidence.component == component_id && evidence.reset_pin == reset_pin)
+        .filter(|evidence| {
+            evidence
+                .power_pin
+                .as_deref()
+                .is_none_or(|evidence_power_pin| evidence_power_pin == power_pin)
+        })
+        .filter_map(|evidence| {
+            if !evidence.reset_release_at_us.is_finite() || evidence.reset_release_at_us < 0.0 {
+                return None;
+            }
+            let reset_release_delay_us = evidence.reset_release_delay_us.unwrap_or(0.0);
+            if !reset_release_delay_us.is_finite() || reset_release_delay_us < 0.0 {
+                return None;
+            }
+            Some(ResetRuntimeEvidence {
+                reset_release_delay_us,
+                reset_release_at_us: evidence.reset_release_at_us,
+                source: evidence.source.clone(),
+            })
+        })
+        .collect();
+    if matches.len() == 1 {
+        matches.into_iter().next()
+    } else {
+        None
+    }
 }
 
 fn finite_positive(value: Option<f64>) -> Option<f64> {
@@ -1133,7 +1206,7 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                 continue;
             };
             let sender = find_output_sender(bound, component_id, rx_net);
-            let timing = uart_bootloader_timing_evidence(bound, component, model);
+            let timing = uart_bootloader_timing_evidence(bound, component_id, component, model);
             let boot_mode = direct_boot_mode_suggestion(bound, component_id, component, model);
             let boot_modes_required = model
                 .behavior
@@ -1412,6 +1485,7 @@ fn find_output_sender(
 
 fn uart_bootloader_timing_evidence(
     bound: &BoundBoard<'_>,
+    component_id: &str,
     component: &ComponentSpec,
     model: &ComponentModel,
 ) -> Option<BootloaderTimingEvidence> {
@@ -1439,7 +1513,26 @@ fn uart_bootloader_timing_evidence(
         reset_net,
         &power_net,
         power_valid_at_us,
-    )?;
+    );
+    let runtime_evidence =
+        runtime_reset_release_evidence(bound.project, component_id, &reset.pin, &power_pin);
+    let reset_release_at_us = rc_evidence
+        .as_ref()
+        .map(|evidence| evidence.reset_release_at_us)
+        .or_else(|| {
+            runtime_evidence
+                .as_ref()
+                .map(|evidence| evidence.reset_release_at_us)
+        })?;
+    let reset_release_delay_us = rc_evidence
+        .as_ref()
+        .map(|evidence| evidence.reset_release_delay_us)
+        .or_else(|| {
+            runtime_evidence
+                .as_ref()
+                .map(|evidence| evidence.reset_release_delay_us)
+        })
+        .unwrap_or(0.0);
     let boot_sample_delay_us = model
         .behavior
         .boot
@@ -1448,7 +1541,7 @@ fn uart_bootloader_timing_evidence(
     if !boot_sample_delay_us.is_finite() || boot_sample_delay_us < 0.0 {
         return None;
     }
-    let boot_sample_at_us = rc_evidence.reset_release_at_us + boot_sample_delay_us;
+    let boot_sample_at_us = reset_release_at_us + boot_sample_delay_us;
     if !boot_sample_at_us.is_finite() {
         return None;
     }
@@ -1456,8 +1549,8 @@ fn uart_bootloader_timing_evidence(
         power_pin,
         power_valid_at_us,
         reset_pin: reset.pin.clone(),
-        reset_release_delay_us: rc_evidence.reset_release_delay_us,
-        reset_release_at_us: rc_evidence.reset_release_at_us,
+        reset_release_delay_us,
+        reset_release_at_us,
         boot_sample_at_us,
     })
 }

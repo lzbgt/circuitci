@@ -737,8 +737,28 @@ The driver and victim pins must be connected to the same net in the board IR.
 ## Runtime Evidence
 
 `board.runtime` stores explicit operating-state evidence that is not layout or
-manufacturing policy. The first runtime evidence object is
-`board.runtime.gpio_backdrive[]`:
+manufacturing policy. `board.runtime.reset_release[]` stores measured or
+otherwise explicit reset-release timing that can make reset suggestions
+runnable without deriving timing from an RC network:
+
+```yaml
+board:
+  runtime:
+    reset_release:
+      - component: U1
+        reset_pin: NRST
+        power_pin: VDD
+        reset_release_at_us: 2600
+        source: oscilloscope_reset_release_measurement
+```
+
+`suggest-scenarios` only consumes reset-release runtime evidence when exactly
+one record matches the target component and reset pin, and the optional
+`power_pin` matches the target power pin. Ambiguous, negative, or non-finite
+timing evidence is ignored so the template remains evidence-gathering.
+
+`board.runtime.gpio_backdrive[]` stores explicit backdrive operating-state
+evidence:
 
 ```yaml
 board:

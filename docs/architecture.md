@@ -132,8 +132,9 @@ limits and USB return-path budgets.
   board fact is still missing;
 - package-scoped stencil suggestions are inferred only from conservative
   owner-backed geometry patterns and discrete source-backed pitch rows.
-- runtime-state suggestions such as GPIO backdrive become runnable only from
-  explicit `board.runtime` evidence for the exact endpoint pair.
+- runtime-state suggestions such as reset-release timing and GPIO backdrive
+  become runnable only from explicit `board.runtime` evidence for the exact
+  component/pin or endpoint pair.
 
 The suggestion engine is not a hidden validator. It never silently adds
 thresholds that are missing from the project, source documents, or Board IR.

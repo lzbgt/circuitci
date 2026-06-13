@@ -154,6 +154,22 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "reset_release": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["component", "reset_pin", "reset_release_at_us"],
+                "properties": {
+                  "component": { "type": "string", "minLength": 1 },
+                  "reset_pin": { "type": "string", "minLength": 1 },
+                  "power_pin": { "type": "string", "minLength": 1 },
+                  "reset_release_at_us": { "type": "number", "minimum": 0 },
+                  "reset_release_delay_us": { "type": "number", "minimum": 0 },
+                  "source": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

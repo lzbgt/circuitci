@@ -1,0 +1,56 @@
+project:
+  name: scenario_suggestions_reset_runtime
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+
+board:
+  components:
+    U1:
+      model: generic.mcu.basic
+      part_number: GENERIC_MCU
+      power_domains:
+        VDD: rail_3v3
+      pins:
+        VDD: rail_3v3
+        GND: gnd
+        NRST: nrst
+        BOOT0: boot0
+        RX: uart_mcu_rx
+        TX: uart_mcu_tx
+    U2:
+      model: generic.usb_uart.basic
+      part_number: GENERIC_USB_UART
+      power_domains:
+        VCC: rail_3v3
+      pins:
+        VCC: rail_3v3
+        GND: gnd
+        TXD: uart_mcu_rx
+        RXD: uart_mcu_tx
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      power_valid_at_us: 1500
+    gnd:
+      kind: ground
+    nrst:
+      kind: digital_or_analog
+    boot0:
+      kind: digital_or_analog
+    uart_mcu_rx:
+      kind: digital_or_analog
+    uart_mcu_tx:
+      kind: digital_or_analog
+  runtime:
+    reset_release:
+      - component: U1
+        reset_pin: NRST
+        power_pin: VDD
+        reset_release_at_us: 2600
+        source: oscilloscope_reset_release_measurement
+
+scenarios: []

@@ -1410,6 +1410,54 @@ fn suggest_scenarios_derives_reset_release_from_rc_network() {
 }
 
 #[test]
+fn suggest_scenarios_uses_runtime_reset_release_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_reset_runtime/project.yaml");
+    assert_eq!(suggestions["project"], "scenario_suggestions_reset_runtime");
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "reset_release_after_power_valid_u1")
+        .expect("reset release suggestion");
+    assert_eq!(reset["kind"], "reset_boot");
+    assert_eq!(reset["runnable"], true);
+    assert_eq!(
+        reset["scenario"]["checks"][0],
+        "RESET_RELEASE_AFTER_POWER_VALID"
+    );
+    assert_eq!(reset["scenario"]["target"]["component"], "U1");
+    assert_eq!(reset["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(reset["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(reset["scenario"]["timing"]["power_valid_at_us"], 1500.0);
+    assert_eq!(reset["scenario"]["timing"]["reset_release_delay_us"], 0.0);
+    assert_eq!(reset["scenario"]["timing"]["reset_release_at_us"], 2600.0);
+    assert!(reset.get("required_inputs").is_none());
+    assert!(reset["reason"].as_str().unwrap().contains(
+        "explicit runtime reset-release timing from oscilloscope_reset_release_measurement"
+    ));
+
+    let uart = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "uart_bootloader_sync_u1_uart")
+        .expect("uart bootloader suggestion");
+    assert_eq!(uart["runnable"], false);
+    assert_eq!(uart["scenario"]["timing"]["reset_release_at_us"], 2600.0);
+    assert!(
+        uart["required_inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|input| !input
+                .as_str()
+                .unwrap()
+                .contains("reset release and boot strap sampling timing"))
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_clock_source_template() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_clock_source/project.yaml");

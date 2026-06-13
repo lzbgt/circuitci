@@ -56,6 +56,11 @@ The command is conservative:
   evidence: a mapped resistor from the reset net to the target power rail and a
   mapped capacitor from reset to ground. In that case `reset_release_at_us` is
   derived from `-R*C*ln(1 - VIH/Vrail)` plus the rail `power_valid_at_us`.
+- Reset suggestions also become runnable when exactly one matching
+  `board.runtime.reset_release[]` record supplies explicit reset-release
+  timing for the target component and reset pin. This covers oscilloscope,
+  simulation, reset-supervisor, or host-control timing evidence that has already
+  been reviewed outside the schematic RC heuristic.
 - `BOOT_STRAP_DEFINED` suggestions become runnable when every required strap
   pin is connected and the connected net is directly proven high by a declared
   powered rail or low by ground. Digital nets, resistor-bias-only evidence, and

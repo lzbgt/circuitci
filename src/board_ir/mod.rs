@@ -59,6 +59,8 @@ pub struct BoardManufacturing {
 pub struct BoardRuntime {
     #[serde(default)]
     pub gpio_backdrive: Vec<GpioBackdriveRuntimeEvidence>,
+    #[serde(default)]
+    pub reset_release: Vec<ResetReleaseRuntimeEvidence>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -71,6 +73,20 @@ pub struct GpioBackdriveRuntimeEvidence {
     pub victim_mode: Option<PinMode>,
     #[serde(default)]
     pub series_resistance_ohm: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResetReleaseRuntimeEvidence {
+    pub component: String,
+    pub reset_pin: String,
+    #[serde(default)]
+    pub power_pin: Option<String>,
+    #[serde(rename = "reset_release_at_us")]
+    pub reset_release_at_us: f64,
+    #[serde(default, rename = "reset_release_delay_us")]
+    pub reset_release_delay_us: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

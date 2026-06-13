@@ -144,17 +144,20 @@ when every required strap is directly tied to a declared powered rail or
 ground, so the required state is proven without observing firmware behavior. It
 also emits runnable `RESET_RELEASE_AFTER_POWER_VALID` scenarios when active-low
 reset nets have explicit pull-up resistor and reset-to-ground capacitor
-evidence, including mapped KiCad RC networks with parsed schematic values. It
-emits runnable `UART_BOOTLOADER_SYNC` scenarios when the target RX net has an
-output-capable sender, reset/boot timing is derived from explicit RC evidence,
-and the required boot mode is proven by a direct rail/ground strap. It emits
-non-runnable templates for reset release without RC evidence, observed
-boot-strap states that are not direct rail/ground ties, UART bootloader sync
-without complete timing/strap/sender proof, and first-slice GPIO backdrive
-hot-plug risks when model/connectivity evidence is present but observations
-still need real evidence. Matching `board.runtime.gpio_backdrive[]` evidence
-makes those GPIO backdrive templates runnable by supplying the runtime driver
-state, victim mode, and schematic series resistance. It also emits
+evidence, including mapped KiCad RC networks with parsed schematic values, or
+when exactly one matching `board.runtime.reset_release[]` record supplies
+explicit measured/simulated release timing. It emits runnable
+`UART_BOOTLOADER_SYNC` scenarios when the target RX net has an output-capable
+sender, reset/boot timing is derived from explicit RC or runtime timing
+evidence, and the required boot mode is proven by a direct rail/ground strap.
+It emits non-runnable templates for reset release without explicit timing
+evidence, observed boot-strap states that are not direct rail/ground ties, UART
+bootloader sync without complete timing/strap/sender proof, and first-slice
+GPIO backdrive hot-plug risks when model/connectivity evidence is present but
+observations still need real evidence. Matching
+`board.runtime.gpio_backdrive[]` evidence makes those GPIO backdrive templates
+runnable by supplying the runtime driver state, victim mode, and schematic
+series resistance. It also emits
 interface-protection review templates when component models declare explicit
 `signal_conditioning.channels`, and includes regulator input/output rail,
 dropout/current/startup/capacitance requirements plus measured support-capacitor
