@@ -1,0 +1,78 @@
+suite:
+  name: public_typical_circuits
+  version: 0.1.0
+  validation_profile: iot_basic_v0
+  description: >
+    Public datasheet-backed typical circuit checks for common IoT-board building
+    blocks. Passing cases model typical/reference application circuits; paired
+    failing cases inject one constrained design error to measure detector
+    behavior against the same public component facts.
+cases:
+  - id: diodes_ap2112k_typical_ldo_passes
+    project: ../examples/good_diodes_ap2112k_3v3_regulator/project.yaml
+    expect: pass
+
+  - id: diodes_ap2112k_dropout_detected
+    project: ../examples/bad_diodes_ap2112k_3v3_dropout/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: microchip_mcp73831_typical_usb_charger_passes
+    project: ../examples/good_microchip_mcp73831_usb_charger/project.yaml
+    expect: pass
+
+  - id: microchip_mcp73831_usb_budget_detected
+    project: ../examples/bad_microchip_mcp73831_usb_budget/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tps2115a_typical_power_mux_passes
+    project: ../examples/good_ti_tps2115a_power_mux/project.yaml
+    expect: pass
+
+  - id: ti_tps2115a_output_overcurrent_detected
+    project: ../examples/bad_ti_tps2115a_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tpd2eusb30_typical_usb_esd_passes
+    project: ../examples/good_ti_tpd2eusb30_usb_esd/project.yaml
+    expect: pass
+
+  - id: ti_tpd2eusb30_capacitance_budget_detected
+    project: ../examples/bad_ti_tpd2eusb30_usb_esd_capacitance/project.yaml
+    expect: fail
+    required_findings:
+      - id: INTERFACE_PROTECTION_REVIEW
+        severity: critical
+
+repairs:
+  - id: fix_ap2112k_dropout_margin
+    detects_case: diodes_ap2112k_dropout_detected
+    fixed_case: diodes_ap2112k_typical_ldo_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_mcp73831_usb_current_budget
+    detects_case: microchip_mcp73831_usb_budget_detected
+    fixed_case: microchip_mcp73831_typical_usb_charger_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps2115a_output_current
+    detects_case: ti_tps2115a_output_overcurrent_detected
+    fixed_case: ti_tps2115a_typical_power_mux_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tpd2eusb30_capacitance_budget
+    detects_case: ti_tpd2eusb30_capacitance_budget_detected
+    fixed_case: ti_tpd2eusb30_typical_usb_esd_passes
+    fixes_findings:
+      - INTERFACE_PROTECTION_REVIEW
