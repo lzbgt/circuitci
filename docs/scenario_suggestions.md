@@ -103,8 +103,10 @@ The command is conservative:
   template includes `parameters.clamp` plus `scenario.protection_clamps[]`
   evidence with protected/reference pins and nets, standoff voltage, and line
   capacitance. Ground-referenced clamps such as TPD2EUSB30 and power-referenced
-  rail-to-rail clamps such as PRTR5V0U2X are both represented. Agents should
-  fill `parameters.max_line_capacitance_F` from the real interface budget when
+  rail-to-rail clamps such as PRTR5V0U2X are both represented. These
+  suggestions are runnable without a capacitance budget because
+  reference/standoff checks can still execute; agents should add
+  `parameters.max_line_capacitance_F` from the real interface budget when
   capacitance screening is required.
 - It emits runnable `USB_CONNECTOR_PROTECTION_VALID` templates for connector
   models that declare `usb_connector` metadata. The template includes
@@ -705,9 +707,6 @@ suggestions:
           reference: ground
           working_voltage_max_V: 5.5
           line_capacitance_F: 7.0e-13
-    required_inputs:
-      - Fill parameters.max_line_capacitance_F from the real interface capacitance budget when capacitance screening is required; do not use the clamp's own capacitance as the budget unless that is the actual design limit.
-      - Use layout, signal-integrity, and ESD-pulse validation for USB eye margin, return path, and IEC stress sign-off.
   - id: clock_source_valid_u1
     kind: clock
     confidence: medium

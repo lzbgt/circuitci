@@ -17,6 +17,7 @@ fn run_suggest_scenarios(project: &str) -> Value {
     let suggestions: Value =
         serde_yaml_ng::from_str(&std::fs::read_to_string(output).unwrap()).unwrap();
     assert_suggestion_schema_valid(&suggestions);
+    assert_runnable_suggestions_have_no_required_inputs(&suggestions);
     suggestions
 }
 
@@ -31,6 +32,18 @@ fn assert_suggestion_schema_valid(suggestions: &Value) {
         .map(|error| format!("{} at {}", error, error.instance_path()))
         .collect();
     assert!(errors.is_empty(), "suggestion schema errors: {errors:#?}");
+}
+
+fn assert_runnable_suggestions_have_no_required_inputs(suggestions: &Value) {
+    for suggestion in suggestions["suggestions"].as_array().unwrap() {
+        if suggestion["runnable"] == true {
+            assert!(
+                suggestion.get("required_inputs").is_none(),
+                "runnable suggestion {} must not include required_inputs",
+                suggestion["id"].as_str().unwrap_or("<missing id>")
+            );
+        }
+    }
 }
 
 #[test]
@@ -916,12 +929,7 @@ fn suggest_scenarios_derives_usb_esd_clamp_templates() {
     assert_eq!(clamp["reference"], "ground");
     assert_eq!(clamp["working_voltage_max_V"], 5.5);
     assert_eq!(clamp["line_capacitance_F"], 7.0e-13);
-    assert!(
-        dp["required_inputs"][0]
-            .as_str()
-            .unwrap()
-            .contains("max_line_capacitance_F")
-    );
+    assert!(dp.get("required_inputs").is_none());
     let dm = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -1055,18 +1063,12 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             && clamp["protected_net"] == "usb_vbus"
             && clamp["placement"]["x_mm"] == 1.5
     }));
+    assert!(connector.get("required_inputs").is_none());
     assert!(
-        connector["required_inputs"][0]
+        connector["reason"]
             .as_str()
             .unwrap()
-            .contains("PCB/layout validation")
-    );
-    assert!(
-        connector["required_inputs"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|input| input.as_str().unwrap().contains("require_shield_ground"))
+            .contains("require_shield_ground")
     );
     let placement = suggestions["suggestions"]
         .as_array()

@@ -22,6 +22,6 @@ After import, `circuitci suggest-scenarios` emits runnable
 - standoff limit `5.5 V`,
 - line capacitance `0.7 pF`.
 
-The suggestions still require an agent to fill `parameters.max_line_capacitance_F`
-from the real USB interface budget when capacitance screening is part of the
-sign-off.
+The suggestions are runnable without `parameters.max_line_capacitance_F`
+because reference and working-voltage checks still execute. Add the real USB
+interface capacitance budget when capacitance screening is part of the sign-off.

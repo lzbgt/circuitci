@@ -157,10 +157,7 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     pin_states: Vec::new(),
                     paths: Vec::new(),
                 },
-                required_inputs: vec![
-                    "Fill parameters.max_line_capacitance_F from the real interface capacitance budget when capacitance screening is required; do not use the clamp's own capacitance as the budget unless that is the actual design limit.".to_string(),
-                    "Use layout, signal-integrity, and ESD-pulse validation for USB eye margin, return path, and IEC stress sign-off.".to_string(),
-                ],
+                required_inputs: Vec::new(),
             });
         }
         if model.usb_connector.is_some()

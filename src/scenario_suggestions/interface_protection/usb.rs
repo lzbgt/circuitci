@@ -97,18 +97,13 @@ pub(super) fn usb_connector_protection_suggestion(
             serde_json::Value::from(vbus_voltage),
         );
     }
-    let mut required_inputs = vec![
-        "Use PCB/layout validation for USB connector placement, protection placement, return path, shield strategy, and differential routing.".to_string(),
-        "Use clamp-specific INTERFACE_PROTECTION_REVIEW scenarios when capacitance budget, standoff, or reference-net evidence needs independent sign-off.".to_string(),
-    ];
+    let mut review_notes = Vec::new();
     if protection_clamps.is_empty() {
-        required_inputs.insert(
-            0,
+        review_notes.push(
             "Add datasheet-backed ESD/protection components on USB connector exposed nets; this runnable template will fail until coverage exists.".to_string(),
         );
     } else if protection_clamps.len() < 2 {
-        required_inputs.insert(
-            0,
+        review_notes.push(
             "Review missing USB D+ or D- protection coverage; this runnable template will fail if either data line has no valid clamp.".to_string(),
         );
     } else if require_vbus_protection && suggested_connector.vbus_net.is_some() {
@@ -119,14 +114,13 @@ pub(super) fn usb_connector_protection_suggestion(
                 .is_some_and(|net| clamp.protected_net == *net)
         });
         if !has_vbus_clamp {
-            required_inputs.insert(
-                0,
+            review_notes.push(
                 "Review missing USB VBUS protection coverage; require_vbus_protection is true because VBUS is connected to a declared power net.".to_string(),
             );
         }
     }
     if require_shield_ground {
-        required_inputs.push(
+        review_notes.push(
             "Review whether the simplified require_shield_ground check matches the board's intended USB shield strategy; model RC, ferrite, chassis-only, or spark-gap bonding explicitly before using this as EMC sign-off.".to_string(),
         );
     }
@@ -135,9 +129,16 @@ pub(super) fn usb_connector_protection_suggestion(
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
         runnable: true,
-        reason: format!(
-            "USB connector {component_id} exposes D+/D-/VBUS nets; add a connector-level protection coverage scenario."
-        ),
+        reason: if review_notes.is_empty() {
+            format!(
+                "USB connector {component_id} exposes D+/D-/VBUS nets with modeled protection evidence; add a connector-level protection coverage scenario."
+            )
+        } else {
+            format!(
+                "USB connector {component_id} exposes D+/D-/VBUS nets; add a runnable connector-level protection scenario and review: {}",
+                review_notes.join(" ")
+            )
+        },
         scenario: SuggestedScenario {
             name: format!("{}_usb_connector_protection", sanitized_name(component_id)),
             scenario_type: "interface_protection".to_string(),
@@ -165,7 +166,7 @@ pub(super) fn usb_connector_protection_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs,
+        required_inputs: Vec::new(),
     })
 }
 

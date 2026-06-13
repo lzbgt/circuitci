@@ -45,9 +45,11 @@ connector-layout correctness.
 
 `circuitci suggest-scenarios` emits clamp review templates automatically for
 connected models with `signal_conditioning.protection_clamps`. The suggestions
-include `parameters.clamp` and `scenario.protection_clamps[]` evidence, but
-agents still need to fill `parameters.max_line_capacitance_F` from the actual
-interface budget when capacitance screening is part of the sign-off.
+include `parameters.clamp` and `scenario.protection_clamps[]` evidence. They
+are runnable without `parameters.max_line_capacitance_F` because reference and
+working-voltage checks still execute; agents should add
+`parameters.max_line_capacitance_F` from the actual interface budget when
+capacitance screening is part of the sign-off.
 
 `circuitci suggest-scenarios` also emits connector-level
 `USB_CONNECTOR_PROTECTION_VALID` templates for connector models that declare
