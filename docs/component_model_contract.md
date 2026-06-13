@@ -218,6 +218,14 @@ reset_supervisor:
 - `reset_release_delay_us` is optional static delay metadata for reset timing
   scenarios.
 
+`suggest-scenarios` may use `reset_release_delay_us` to make
+`RESET_RELEASE_AFTER_POWER_VALID` or UART bootloader timing suggestions runnable
+only when the supervisor model is datasheet-backed, not low-confidence, uniquely
+matches the target reset net, and monitors the same rail as the target power
+pin. Generic reset-supervisor models still document topology and threshold
+evidence for power-tree suggestions, but do not become standalone reset timing
+proof.
+
 `POWER_TREE_VALID` checks that the monitored rail nominal voltage is above the
 worst-case threshold maximum, and that the worst-case threshold minimum is not
 below the minimum operating voltage of powered loads on the monitored rail.

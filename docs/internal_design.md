@@ -136,14 +136,15 @@ suggesting the rule.
 
 Reset/boot suggestions use the same discipline: UART bootloader sync templates
 become runnable only when the sender endpoint is proven output-capable, reset
-timing is derived from explicit RC evidence or exactly one matching
-`board.runtime.reset_release[]` record, and any required boot mode is proven by
-direct strap state rather than assumed firmware behavior. Standalone
-`RESET_RELEASE_AFTER_POWER_VALID` suggestions use the same runtime timing
-evidence when the record matches the target component/reset pin and optional
-power pin. `CONTROL_LINE_RELEASE_SEQUENCE` suggestions are generated only from
-complete `board.runtime.control_line_sequences[]` records; the record is already
-the reviewed reduced semantic model of host-line effects and events.
+timing is derived from explicit RC evidence, exactly one matching
+`board.runtime.reset_release[]` record, or exactly one datasheet-backed reset
+supervisor that monitors the same target rail and drives the same reset net.
+Any required boot mode must still be proven by direct strap state rather than
+assumed firmware behavior. Standalone `RESET_RELEASE_AFTER_POWER_VALID`
+suggestions use the same runtime and source-backed supervisor timing evidence.
+`CONTROL_LINE_RELEASE_SEQUENCE` suggestions are generated only from complete
+`board.runtime.control_line_sequences[]` records; the record is already the
+reviewed reduced semantic model of host-line effects and events.
 Standalone `BOOT_STRAP_DEFINED` suggestions may fill `straps[].actual` and
 become runnable only when every required strap is directly tied to a declared
 powered rail or ground; resistor bias and digital nets remain explicit

@@ -63,6 +63,11 @@ The command is conservative:
   timing for the target component and reset pin. This covers oscilloscope,
   simulation, reset-supervisor, or host-control timing evidence that has already
   been reviewed outside the schematic RC heuristic.
+- Reset suggestions can also use source-backed reset-supervisor model timing
+  directly when exactly one non-generic datasheet-backed supervisor monitors the
+  same target rail, drives the same reset net, and declares
+  `reset_release_delay_us`. Generic supervisor models still produce evidence in
+  power-tree suggestions but do not make reset timing runnable by themselves.
 - It emits runnable `CONTROL_LINE_RELEASE_SEQUENCE` suggestions from complete
   `board.runtime.control_line_sequences[]` records. Those records must already
   contain the target, required boot mode, timing, reduced control effects, and
@@ -74,8 +79,8 @@ The command is conservative:
   other observed states still keep the template non-runnable until explicit
   strap-state evidence is supplied.
 - Other reset suggestions are marked `runnable: false` until real
-  `timing.reset_release_at_us` evidence is filled from a reset supervisor,
-  control-line model, firmware/host trace, or analog waveform.
+  `timing.reset_release_at_us` evidence is filled from source-backed supervisor
+  metadata, control-line model, firmware/host trace, or analog waveform.
 - It emits GPIO backdrive templates when a powered output-capable pin shares a
   net with an unpowered input-capable pin, model electrical metadata is present,
   and no existing `GPIO_BACKDRIVE` scenario covers that driver/victim path.
@@ -295,7 +300,10 @@ The command is conservative:
   `examples/import_kicad_esp32_wroom_32e_suggestions/`.
 - Imported KiCad schematics can also provide reset-supervisor evidence when a
   supervisor symbol is mapped to a model with `reset_supervisor` metadata; see
-  `examples/import_kicad_tlv803_reset_supervisor_suggestions/`.
+  `examples/import_kicad_tlv803_reset_supervisor_suggestions/`. Datasheet-backed
+  supervisor delay metadata can make `RESET_RELEASE_AFTER_POWER_VALID` and UART
+  bootloader timing suggestions runnable; see
+  `examples/scenario_suggestions_tlv803_reset_release/`.
 - Imported KiCad schematics can provide regulator evidence when a regulator
   symbol is mapped to a model with `power_conversion` metadata; see
   `examples/import_kicad_ap2112_regulator_suggestions/`,

@@ -146,9 +146,13 @@ also emits runnable `RESET_RELEASE_AFTER_POWER_VALID` scenarios when active-low
 reset nets have explicit pull-up resistor and reset-to-ground capacitor
 evidence, including mapped KiCad RC networks with parsed schematic values, or
 when exactly one matching `board.runtime.reset_release[]` record supplies
-explicit measured/simulated release timing. It emits runnable
-`UART_BOOTLOADER_SYNC` scenarios when the target RX net has an output-capable
-sender, reset/boot timing is derived from explicit RC or runtime timing
+explicit measured/simulated release timing. The same reset timing suggestions
+also become runnable from exactly one datasheet-backed reset-supervisor model
+that monitors the target rail, drives the target reset net, and declares
+conservative `reset_release_delay_us`; generic supervisor evidence remains a
+non-runnable timing prompt. It emits runnable `UART_BOOTLOADER_SYNC` scenarios
+when the target RX net has an output-capable sender, reset/boot timing is
+derived from explicit RC, runtime, or source-backed reset-supervisor timing
 evidence, and the required boot mode is proven by a direct rail/ground strap.
 Complete `board.runtime.control_line_sequences[]` evidence also emits runnable
 `CONTROL_LINE_RELEASE_SEQUENCE` scenarios for reviewed host-control traces. It

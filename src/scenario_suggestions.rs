@@ -1,6 +1,8 @@
 use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::charger_programming::derive_charge_current_from_programming_resistor;
-use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
+use crate::library::{
+    BoundBoard, ComponentModel, PortKind, PowerSwitchState, ResetSupervisorActive,
+};
 use crate::power_mux_selection::derive_selected_power_mux_input_from_powered_nets;
 use std::collections::BTreeMap;
 
@@ -49,6 +51,13 @@ struct ResetRuntimeEvidence {
 }
 
 #[derive(Debug)]
+struct ResetSupervisorTimingEvidence {
+    reset_release_delay_us: f64,
+    reset_release_at_us: f64,
+    supervisor: SuggestedResetSupervisor,
+}
+
+#[derive(Debug)]
 struct BootloaderTimingEvidence {
     power_pin: String,
     power_valid_at_us: f64,
@@ -56,6 +65,7 @@ struct BootloaderTimingEvidence {
     reset_release_delay_us: f64,
     reset_release_at_us: f64,
     boot_sample_at_us: f64,
+    reset_supervisors: Vec<SuggestedResetSupervisor>,
 }
 
 #[derive(Debug)]
@@ -824,11 +834,25 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
         });
         let runtime_evidence =
             runtime_reset_release_evidence(bound.project, component_id, &reset.pin, &power_pin);
+        let supervisor_evidence = reset_net.and_then(|net| {
+            reset_supervisor_timing_evidence(
+                bound,
+                component_id,
+                net,
+                &power_net,
+                power_valid_at_us,
+            )
+        });
         let reset_release_at_us = rc_evidence
             .as_ref()
             .map(|evidence| evidence.reset_release_at_us)
             .or_else(|| {
                 runtime_evidence
+                    .as_ref()
+                    .map(|evidence| evidence.reset_release_at_us)
+            })
+            .or_else(|| {
+                supervisor_evidence
                     .as_ref()
                     .map(|evidence| evidence.reset_release_at_us)
             });
@@ -837,6 +861,11 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
             .map(|evidence| evidence.reset_release_delay_us)
             .or_else(|| {
                 runtime_evidence
+                    .as_ref()
+                    .map(|evidence| evidence.reset_release_delay_us)
+            })
+            .or_else(|| {
+                supervisor_evidence
                     .as_ref()
                     .map(|evidence| evidence.reset_release_delay_us)
             })
@@ -866,6 +895,15 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 true,
                 format!(
                     "Component {component_id} has reset behavior, target rail power_valid_at_us, and explicit runtime reset-release timing{source}."
+                ),
+                Vec::new(),
+            )
+        } else if let Some(evidence) = &supervisor_evidence {
+            (
+                true,
+                format!(
+                    "Component {component_id} has reset behavior, target rail power_valid_at_us, and source-backed reset-supervisor timing from {}.",
+                    evidence.supervisor.component
                 ),
                 Vec::new(),
             )
@@ -917,7 +955,10 @@ fn reset_release_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> 
                 usb_routes: Vec::new(),
                 usb_route_pairs: Vec::new(),
                 clocks: Vec::new(),
-                reset_supervisors: Vec::new(),
+                reset_supervisors: supervisor_evidence
+                    .as_ref()
+                    .map(|evidence| vec![evidence.supervisor.clone()])
+                    .unwrap_or_default(),
                 regulators: Vec::new(),
                 pin_states: Vec::new(),
                 paths: Vec::new(),
@@ -1048,6 +1089,66 @@ fn runtime_reset_release_evidence(
                 reset_release_delay_us,
                 reset_release_at_us: evidence.reset_release_at_us,
                 source: evidence.source.clone(),
+            })
+        })
+        .collect();
+    if matches.len() == 1 {
+        matches.into_iter().next()
+    } else {
+        None
+    }
+}
+
+fn reset_supervisor_timing_evidence(
+    bound: &BoundBoard<'_>,
+    target_component: &str,
+    reset_net: &str,
+    power_net: &str,
+    power_valid_at_us: f64,
+) -> Option<ResetSupervisorTimingEvidence> {
+    let matches: Vec<ResetSupervisorTimingEvidence> = bound
+        .project
+        .board
+        .components
+        .iter()
+        .filter(|(component_id, _)| component_id.as_str() != target_component)
+        .filter_map(|(component_id, component)| {
+            let model = bound.library.get(&component.model)?;
+            let supervisor = model.reset_supervisor.as_ref()?;
+            if model.model_quality.source.trim() != "datasheet"
+                || model.model_quality.confidence.trim() == "low"
+                || supervisor.active != ResetSupervisorActive::Low
+            {
+                return None;
+            }
+            let monitored_net = resolve_power_pin_net(component, &supervisor.monitored_pin)?;
+            if monitored_net != power_net {
+                return None;
+            }
+            let supervisor_reset_net = component.pins.get(&supervisor.reset_output_pin)?;
+            if supervisor_reset_net != reset_net {
+                return None;
+            }
+            let reset_release_delay_us = supervisor.reset_release_delay_us?;
+            if !reset_release_delay_us.is_finite() || reset_release_delay_us < 0.0 {
+                return None;
+            }
+            let reset_release_at_us = power_valid_at_us + reset_release_delay_us;
+            if !reset_release_at_us.is_finite() {
+                return None;
+            }
+            Some(ResetSupervisorTimingEvidence {
+                reset_release_delay_us,
+                reset_release_at_us,
+                supervisor: SuggestedResetSupervisor {
+                    component: component_id.clone(),
+                    monitored_pin: supervisor.monitored_pin.clone(),
+                    monitored_net: monitored_net.to_string(),
+                    reset_output_pin: supervisor.reset_output_pin.clone(),
+                    reset_net: supervisor_reset_net.clone(),
+                    threshold_min_v: supervisor.threshold_min_v,
+                    threshold_max_v: supervisor.threshold_max_v,
+                },
             })
         })
         .collect();
@@ -1231,7 +1332,7 @@ fn boot_strap_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
                     required_boot_mode: Some(mode_name.clone()),
                     straps,
                     bootloader: None,
-                control_effects: Vec::new(),
+                    control_effects: Vec::new(),
                     events: Vec::new(),
                     conditioning: None,
                     protection_clamps: Vec::new(),
@@ -1367,7 +1468,10 @@ fn uart_bootloader_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion
                     usb_routes: Vec::new(),
                     usb_route_pairs: Vec::new(),
                     clocks: Vec::new(),
-                    reset_supervisors: Vec::new(),
+                    reset_supervisors: timing
+                        .as_ref()
+                        .map(|evidence| evidence.reset_supervisors.clone())
+                        .unwrap_or_default(),
                     regulators: Vec::new(),
                     pin_states: Vec::new(),
                     paths: Vec::new(),
@@ -1582,11 +1686,23 @@ fn uart_bootloader_timing_evidence(
     );
     let runtime_evidence =
         runtime_reset_release_evidence(bound.project, component_id, &reset.pin, &power_pin);
+    let supervisor_evidence = reset_supervisor_timing_evidence(
+        bound,
+        component_id,
+        reset_net,
+        &power_net,
+        power_valid_at_us,
+    );
     let reset_release_at_us = rc_evidence
         .as_ref()
         .map(|evidence| evidence.reset_release_at_us)
         .or_else(|| {
             runtime_evidence
+                .as_ref()
+                .map(|evidence| evidence.reset_release_at_us)
+        })
+        .or_else(|| {
+            supervisor_evidence
                 .as_ref()
                 .map(|evidence| evidence.reset_release_at_us)
         })?;
@@ -1595,6 +1711,11 @@ fn uart_bootloader_timing_evidence(
         .map(|evidence| evidence.reset_release_delay_us)
         .or_else(|| {
             runtime_evidence
+                .as_ref()
+                .map(|evidence| evidence.reset_release_delay_us)
+        })
+        .or_else(|| {
+            supervisor_evidence
                 .as_ref()
                 .map(|evidence| evidence.reset_release_delay_us)
         })
@@ -1618,6 +1739,9 @@ fn uart_bootloader_timing_evidence(
         reset_release_delay_us,
         reset_release_at_us,
         boot_sample_at_us,
+        reset_supervisors: supervisor_evidence
+            .map(|evidence| vec![evidence.supervisor])
+            .unwrap_or_default(),
     })
 }
 

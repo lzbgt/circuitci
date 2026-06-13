@@ -1519,6 +1519,65 @@ fn suggest_scenarios_uses_runtime_reset_release_evidence() {
 }
 
 #[test]
+fn suggest_scenarios_uses_datasheet_reset_supervisor_timing() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_tlv803_reset_release/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_tlv803_reset_release"
+    );
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "reset_release_after_power_valid_u1")
+        .expect("reset release suggestion");
+    assert_eq!(reset["kind"], "reset_boot");
+    assert_eq!(reset["runnable"], true);
+    assert_eq!(
+        reset["scenario"]["checks"][0],
+        "RESET_RELEASE_AFTER_POWER_VALID"
+    );
+    assert_eq!(reset["scenario"]["target"]["component"], "U1");
+    assert_eq!(reset["scenario"]["target"]["power_pin"], "VDD");
+    assert_eq!(reset["scenario"]["target"]["reset_pin"], "NRST");
+    assert_eq!(reset["scenario"]["timing"]["power_valid_at_us"], 1500.0);
+    assert_eq!(
+        reset["scenario"]["timing"]["reset_release_delay_us"],
+        270000.0
+    );
+    assert_eq!(reset["scenario"]["timing"]["reset_release_at_us"], 271500.0);
+    assert_eq!(reset["scenario"]["timing"]["boot_sample_at_us"], 271600.0);
+    let supervisor = &reset["scenario"]["reset_supervisors"][0];
+    assert_eq!(supervisor["component"], "USUP");
+    assert_eq!(supervisor["monitored_pin"], "VDD");
+    assert_eq!(supervisor["monitored_net"], "rail_3v3");
+    assert_eq!(supervisor["reset_output_pin"], "RESET");
+    assert_eq!(supervisor["reset_net"], "nrst");
+    assert!(reset.get("required_inputs").is_none());
+    assert!(
+        reset["reason"]
+            .as_str()
+            .unwrap()
+            .contains("source-backed reset-supervisor timing from USUP")
+    );
+
+    let uart = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "uart_bootloader_sync_u1_uart")
+        .expect("uart bootloader suggestion");
+    assert_eq!(uart["runnable"], true);
+    assert_eq!(uart["scenario"]["timing"]["reset_release_at_us"], 271500.0);
+    assert_eq!(
+        uart["scenario"]["reset_supervisors"][0]["component"],
+        "USUP"
+    );
+    assert!(uart.get("required_inputs").is_none());
+}
+
+#[test]
 fn suggest_scenarios_uses_runtime_control_line_sequence_evidence() {
     let suggestions =
         run_suggest_scenarios("examples/scenario_suggestions_control_line_runtime/project.yaml");
@@ -1629,4 +1688,22 @@ fn suggest_scenarios_reports_reset_supervisor_evidence() {
     assert_eq!(supervisor["reset_net"], "nrst");
     assert_eq!(supervisor["threshold_min_V"], 2.93);
     assert_eq!(supervisor["threshold_max_V"], 3.08);
+
+    let reset = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "reset_release_after_power_valid_u1")
+        .expect("reset release suggestion");
+    assert_eq!(reset["runnable"], false);
+    assert!(
+        reset["required_inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|input| input
+                .as_str()
+                .unwrap()
+                .contains("Fill timing.reset_release_at_us"))
+    );
 }

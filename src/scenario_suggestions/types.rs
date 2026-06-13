@@ -572,7 +572,7 @@ pub struct SuggestedClockSource {
     pub crystal_component: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SuggestedResetSupervisor {
     pub component: String,
     pub monitored_pin: String,

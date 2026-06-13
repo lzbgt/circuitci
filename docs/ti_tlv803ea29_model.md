@@ -34,9 +34,10 @@ active-low open-drain `2.93 V` threshold variant:
 - using a supervisor whose worst-case low threshold can release reset below a
   powered load's minimum operating voltage.
 
-The model can also provide conservative delay metadata to
-`RESET_RELEASE_AFTER_POWER_VALID` scenarios when a board-level reset timing
-check refers to this supervisor.
+The model can also provide conservative delay metadata to generated
+`RESET_RELEASE_AFTER_POWER_VALID` and UART bootloader timing suggestions when
+the supervisor uniquely monitors the target rail and drives the target reset
+net. See `examples/scenario_suggestions_tlv803_reset_release/`.
 
 This model is not a reset waveform model. It is not valid for open-drain pull-up
 timing, glitch immunity, transient noise immunity, propagation-delay sign-off,
