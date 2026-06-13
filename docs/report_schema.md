@@ -303,6 +303,7 @@ optional `drill_via_index`, `annular_ring_mm`,
 `copper_feature_x_mm`, `copper_feature_y_mm`, `copper_feature_layer`,
 `copper_feature_aperture`, `copper_feature_shape`,
 `copper_feature_size_x_mm`, `copper_feature_size_y_mm`,
+optional `copper_feature_net`, optional `drill_copper_owner_mismatch`,
 `copper_feature_source_primitive`, and
 `copper_feature_source_primitive_index` when a matching flash exists. Stable
 limit keys include `min_annular_ring_mm` and

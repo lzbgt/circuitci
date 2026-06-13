@@ -153,6 +153,7 @@ pub(super) fn validate_drill_annular_ring(
             continue;
         }
         let mut best_candidate = None;
+        let mut best_mismatched_candidate = None;
         for (feature_index, feature) in copper_features.iter().enumerate() {
             if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
                 validation_input_missing(findings, scenario, message);
@@ -171,7 +172,15 @@ pub(super) fn validate_drill_annular_ring(
                 center_offset_mm,
                 annular_ring_mm,
             };
-            if best_candidate
+            if drill_and_copper_owners_conflict(drill, feature) {
+                if best_mismatched_candidate.as_ref().is_none_or(
+                    |best: &DrillAnnularRingCandidate<'_>| {
+                        candidate.annular_ring_mm > best.annular_ring_mm
+                    },
+                ) {
+                    best_mismatched_candidate = Some(candidate);
+                }
+            } else if best_candidate
                 .as_ref()
                 .is_none_or(|best: &DrillAnnularRingCandidate<'_>| {
                     candidate.annular_ring_mm > best.annular_ring_mm
@@ -181,6 +190,17 @@ pub(super) fn validate_drill_annular_ring(
             }
         }
         let Some(best_candidate) = best_candidate else {
+            if let Some(mismatched_candidate) = best_mismatched_candidate {
+                findings.push(drill_annular_ring_owner_mismatch_finding(
+                    scenario,
+                    drill,
+                    drill_index,
+                    mismatched_candidate,
+                    min_annular_ring_mm,
+                    max_center_offset_mm,
+                ));
+                continue;
+            }
             findings.push(drill_annular_ring_missing_finding(
                 scenario,
                 drill,
@@ -201,6 +221,13 @@ pub(super) fn validate_drill_annular_ring(
             ));
         }
     }
+}
+
+fn drill_and_copper_owners_conflict(drill: &LayoutDrill, feature: &LayoutCopperFeature) -> bool {
+    matches!(
+        (drill.net.as_deref(), feature.net.as_deref()),
+        (Some(drill_net), Some(feature_net)) if drill_net != feature_net
+    )
 }
 
 pub(super) fn validate_copper_to_board_edge_clearance(
@@ -691,6 +718,55 @@ fn drill_annular_ring_missing_finding(
         "Increase the pad copper size around the plated drill or reduce drill diameter if allowed."
             .to_string(),
         "Check that the drill and copper Gerbers share the same origin and units.".to_string(),
+    ];
+    finding
+}
+
+fn drill_annular_ring_owner_mismatch_finding(
+    scenario: &Scenario,
+    drill: &LayoutDrill,
+    drill_index: usize,
+    candidate: DrillAnnularRingCandidate<'_>,
+    min_annular_ring_mm: f64,
+    max_center_offset_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        DRILL_ANNULAR_RING_VALID,
+        &scenario.name,
+        format!(
+            "Drill hit {} owner net {} is co-located with Gerber copper flash owner net {}, so annular-ring evidence is on the wrong owner.",
+            drill_index,
+            drill.net.as_deref().unwrap_or("unknown"),
+            candidate.feature.net.as_deref().unwrap_or("unknown")
+        ),
+    );
+    insert_drill_measurements(&mut finding, drill, drill_index);
+    finding.measured.insert(
+        "annular_ring_mm".to_string(),
+        json!(candidate.annular_ring_mm),
+    );
+    finding.measured.insert(
+        "drill_to_copper_center_offset_mm".to_string(),
+        json!(candidate.center_offset_mm),
+    );
+    insert_copper_feature_measurements(&mut finding, candidate);
+    finding
+        .measured
+        .insert("drill_copper_owner_mismatch".to_string(), json!(true));
+    finding.limit.insert(
+        "min_annular_ring_mm".to_string(),
+        json!(min_annular_ring_mm),
+    );
+    finding.limit.insert(
+        "max_drill_to_copper_center_offset_mm".to_string(),
+        json!(max_center_offset_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Check that the drill hit is associated with the intended pad or via net.".to_string(),
+        "Check the copper Gerber layer and PCB net ownership evidence for origin or net mapping errors."
+            .to_string(),
+        "Move or correct the copper pad/flash so the drilled pad or via has copper on the same owner net."
+            .to_string(),
     ];
     finding
 }

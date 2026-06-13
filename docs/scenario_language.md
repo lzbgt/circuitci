@@ -603,8 +603,8 @@ barrel tolerances, panel tabs, fab-specific minimums, or copper-to-hole
 clearance.
 
 Drill annular-ring screening uses `DRILL_ANNULAR_RING_VALID` when the Board IR
-includes fabrication drill evidence under `board.layout.drills` and anonymous
-Gerber copper flash evidence under `board.layout.copper.features`.
+includes fabrication drill evidence under `board.layout.drills` and Gerber
+copper flash evidence under `board.layout.copper.features`.
 
 ```yaml
 scenarios:
@@ -627,14 +627,18 @@ Drill annular-ring algorithm:
    aperture sizes.
 5. Skip `non_plated` drills. Check `plated` and `unknown` drills.
 6. Match co-located copper flashes within the center-offset limit.
-7. Compute the best annular ring from supported `circle`, `rect`, or
+7. Reject a co-located flash as annular-ring evidence when both drill and
+   copper carry `net` ownership and those owners differ.
+8. Compute the best annular ring from supported `circle`, `rect`, or
    axis-aligned `oval` copper flash geometry.
-8. Fail when no matching copper flash exists or when the best ring is below
+9. Fail when no matching same/unknown-owner copper flash exists, when only
+   owner-mismatched copper exists, or when the best ring is below
    `min_annular_ring_mm`.
 
 This is a static 2D fabrication screen. It does not model copper draws,
 thermal reliefs, plating tolerance, drill wander distributions, solder mask,
-fab-specific compensation, or net ownership.
+fab-specific compensation, or electrical continuity beyond explicit imported
+owner metadata.
 
 Copper-to-board-edge clearance uses `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 when the Board IR includes board-outline segment evidence under
