@@ -11,6 +11,7 @@ components:
       "3": EN
       "4": PG
       "5": VOS
+      "7": SW
   U1:
     model: generic.mcu.basic
     pin_map:
@@ -32,6 +33,14 @@ components:
     spice:
       primitive: capacitor
       value_f_from: schematic_value
+  L1:
+    model: generic.analog.inductor
+    pin_map:
+      "1": A
+      "2": B
+    spice:
+      primitive: inductor
+      value_h_from: schematic_value
 nets:
   RAIL_12V:
     kind: power

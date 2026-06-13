@@ -22,6 +22,12 @@ pub(super) fn resolve_component_spice(
             component.refdes
         );
     }
+    if spice.value_h.is_some() && spice.value_h_from.is_some() {
+        bail!(
+            "KiCad mapping for component {} cannot declare both spice.value_h and spice.value_h_from.",
+            component.refdes
+        );
+    }
     if let Some(SpiceValueSourceYaml::SchematicValue) = spice.value_ohm_from {
         if spice.primitive != SpicePrimitiveYaml::Resistor {
             bail!(
@@ -46,8 +52,21 @@ pub(super) fn resolve_component_spice(
             PassiveValueKind::Capacitance,
         )?);
     }
+    if let Some(SpiceValueSourceYaml::SchematicValue) = spice.value_h_from {
+        if spice.primitive != SpicePrimitiveYaml::Inductor {
+            bail!(
+                "KiCad mapping for component {} can use spice.value_h_from only with primitive inductor.",
+                component.refdes
+            );
+        }
+        spice.value_h = Some(parse_schematic_passive_value(
+            component,
+            PassiveValueKind::Inductance,
+        )?);
+    }
     spice.value_ohm_from = None;
     spice.value_f_from = None;
+    spice.value_h_from = None;
     validate_component_spice_shape(component, &spice)?;
     Ok(Some(spice))
 }
@@ -58,7 +77,11 @@ fn validate_component_spice_shape(
 ) -> Result<()> {
     match spice.primitive {
         SpicePrimitiveYaml::Resistor => {
-            if spice.value_f.is_some() || spice.dc_v.is_some() || spice.pulse.is_some() {
+            if spice.value_f.is_some()
+                || spice.value_h.is_some()
+                || spice.dc_v.is_some()
+                || spice.pulse.is_some()
+            {
                 bail!(
                     "KiCad mapping for component {} primitive resistor may declare only spice.value_ohm.",
                     component.refdes
@@ -67,7 +90,11 @@ fn validate_component_spice_shape(
             positive_spice_field(component, spice.value_ohm, "spice.value_ohm")?;
         }
         SpicePrimitiveYaml::Capacitor => {
-            if spice.value_ohm.is_some() || spice.dc_v.is_some() || spice.pulse.is_some() {
+            if spice.value_ohm.is_some()
+                || spice.value_h.is_some()
+                || spice.dc_v.is_some()
+                || spice.pulse.is_some()
+            {
                 bail!(
                     "KiCad mapping for component {} primitive capacitor may declare only spice.value_f.",
                     component.refdes
@@ -75,8 +102,25 @@ fn validate_component_spice_shape(
             }
             positive_spice_field(component, spice.value_f, "spice.value_f")?;
         }
+        SpicePrimitiveYaml::Inductor => {
+            if spice.value_ohm.is_some()
+                || spice.value_f.is_some()
+                || spice.dc_v.is_some()
+                || spice.pulse.is_some()
+            {
+                bail!(
+                    "KiCad mapping for component {} primitive inductor may declare only spice.value_h.",
+                    component.refdes
+                );
+            }
+            positive_spice_field(component, spice.value_h, "spice.value_h")?;
+        }
         SpicePrimitiveYaml::DcVoltageSource => {
-            if spice.value_ohm.is_some() || spice.value_f.is_some() || spice.pulse.is_some() {
+            if spice.value_ohm.is_some()
+                || spice.value_f.is_some()
+                || spice.value_h.is_some()
+                || spice.pulse.is_some()
+            {
                 bail!(
                     "KiCad mapping for component {} primitive dc_voltage_source may declare only spice.dc_v.",
                     component.refdes
@@ -85,7 +129,11 @@ fn validate_component_spice_shape(
             finite_spice_field(component, spice.dc_v, "spice.dc_v")?;
         }
         SpicePrimitiveYaml::PulseVoltageSource => {
-            if spice.value_ohm.is_some() || spice.value_f.is_some() || spice.dc_v.is_some() {
+            if spice.value_ohm.is_some()
+                || spice.value_f.is_some()
+                || spice.value_h.is_some()
+                || spice.dc_v.is_some()
+            {
                 bail!(
                     "KiCad mapping for component {} primitive pulse_voltage_source may declare only spice.pulse.",
                     component.refdes
@@ -140,6 +188,7 @@ fn finite_spice_field(component: &ParsedComponent, value: Option<f64>, field: &s
 enum PassiveValueKind {
     Resistance,
     Capacitance,
+    Inductance,
 }
 
 impl PassiveValueKind {
@@ -147,6 +196,7 @@ impl PassiveValueKind {
         match self {
             Self::Resistance => "resistance",
             Self::Capacitance => "capacitance",
+            Self::Inductance => "inductance",
         }
     }
 
@@ -154,6 +204,7 @@ impl PassiveValueKind {
         match self {
             Self::Resistance => "ohm",
             Self::Capacitance => "farad",
+            Self::Inductance => "henry",
         }
     }
 }
@@ -190,17 +241,25 @@ fn parse_passive_value(raw_value: &str, kind: PassiveValueKind) -> Result<f64> {
         bail!("value contains unsupported annotation or sign");
     }
     if let Ok(value) = trimmed.parse::<f64>() {
-        if matches!(kind, PassiveValueKind::Capacitance) {
-            bail!("plain numeric capacitance requires an explicit F suffix");
+        if matches!(
+            kind,
+            PassiveValueKind::Capacitance | PassiveValueKind::Inductance
+        ) {
+            bail!("plain numeric passive value requires an explicit unit suffix");
         }
         return positive_passive_value(value);
     }
     let (normalized, explicit_farads) = match kind {
         PassiveValueKind::Resistance => (trimmed, false),
-        PassiveValueKind::Capacitance => {
+        PassiveValueKind::Capacitance | PassiveValueKind::Inductance => {
+            let unit = match kind {
+                PassiveValueKind::Capacitance => ['F', 'f'],
+                PassiveValueKind::Inductance => ['H', 'h'],
+                PassiveValueKind::Resistance => unreachable!(),
+            };
             let stripped = trimmed
-                .strip_suffix('F')
-                .or_else(|| trimmed.strip_suffix('f'))
+                .strip_suffix(unit[0])
+                .or_else(|| trimmed.strip_suffix(unit[1]))
                 .filter(|value| !value.is_empty());
             (stripped.unwrap_or(trimmed), stripped.is_some())
         }
@@ -285,6 +344,12 @@ fn suffix_scale(suffix: &str, kind: PassiveValueKind) -> Result<f64> {
             "m" => Ok(1e-3),
             _ => bail!("unsupported capacitance suffix {suffix:?}"),
         },
+        PassiveValueKind::Inductance => match suffix {
+            "n" | "N" => Ok(1e-9),
+            "u" | "U" => Ok(1e-6),
+            "m" => Ok(1e-3),
+            _ => bail!("unsupported inductance suffix {suffix:?}"),
+        },
     }
 }
 
@@ -345,5 +410,23 @@ mod tests {
         );
         assert!(parse_passive_value("100", PassiveValueKind::Capacitance).is_err());
         assert!(parse_passive_value("100n/50V", PassiveValueKind::Capacitance).is_err());
+    }
+
+    #[test]
+    fn parses_strict_inductance_values() {
+        assert!(
+            (parse_passive_value("2u2", PassiveValueKind::Inductance).unwrap() - 2.2e-6).abs()
+                < 1e-18
+        );
+        assert!(
+            (parse_passive_value("2.2uH", PassiveValueKind::Inductance).unwrap() - 2.2e-6).abs()
+                < 1e-18
+        );
+        assert!(
+            (parse_passive_value("330nH", PassiveValueKind::Inductance).unwrap() - 330e-9).abs()
+                < 1e-18
+        );
+        assert!(parse_passive_value("2.2", PassiveValueKind::Inductance).is_err());
+        assert!(parse_passive_value("2.2uH shielded", PassiveValueKind::Inductance).is_err());
     }
 }

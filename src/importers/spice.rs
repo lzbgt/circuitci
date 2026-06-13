@@ -47,6 +47,7 @@ struct TranSpec {
 enum SpicePrimitiveSpec {
     Resistor { value_ohm: f64 },
     Capacitor { value_f: f64 },
+    Inductor { value_h: f64 },
     DcVoltageSource { dc_v: f64 },
     PulseVoltageSource { pulse: PulseSpec },
 }
@@ -87,6 +88,8 @@ struct ComponentSpiceYaml {
     value_ohm: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     value_f: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value_h: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -346,6 +349,9 @@ fn parse_element(tokens: &[String], line: &str) -> Result<ParsedElement> {
         }),
         'C' => parse_two_terminal(tokens, "generic.analog.capacitor", |value| {
             SpicePrimitiveSpec::Capacitor { value_f: value }
+        }),
+        'L' => parse_two_terminal(tokens, "generic.analog.inductor", |value| {
+            SpicePrimitiveSpec::Inductor { value_h: value }
         }),
         'V' => parse_voltage_source(tokens),
         'D' => parse_fixed_pins(
@@ -639,6 +645,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "resistor".to_string(),
                 value_ohm: Some(*value_ohm),
                 value_f: None,
+                value_h: None,
                 dc_v: None,
                 pulse: None,
             },
@@ -646,6 +653,15 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "capacitor".to_string(),
                 value_ohm: None,
                 value_f: Some(*value_f),
+                value_h: None,
+                dc_v: None,
+                pulse: None,
+            },
+            SpicePrimitiveSpec::Inductor { value_h } => Self {
+                primitive: "inductor".to_string(),
+                value_ohm: None,
+                value_f: None,
+                value_h: Some(*value_h),
                 dc_v: None,
                 pulse: None,
             },
@@ -653,6 +669,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "dc_voltage_source".to_string(),
                 value_ohm: None,
                 value_f: None,
+                value_h: None,
                 dc_v: Some(*dc_v),
                 pulse: None,
             },
@@ -660,6 +677,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "pulse_voltage_source".to_string(),
                 value_ohm: None,
                 value_f: None,
+                value_h: None,
                 dc_v: None,
                 pulse: Some(PulseSpec {
                     initial_v: pulse.initial_v,

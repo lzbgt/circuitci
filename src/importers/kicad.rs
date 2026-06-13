@@ -187,6 +187,10 @@ struct ComponentSpiceYaml {
     #[serde(default, skip_serializing)]
     value_f_from: Option<SpiceValueSourceYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    value_h: Option<f64>,
+    #[serde(default, skip_serializing)]
+    value_h_from: Option<SpiceValueSourceYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     dc_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pulse: Option<PulseSpecYaml>,
@@ -197,6 +201,7 @@ struct ComponentSpiceYaml {
 enum SpicePrimitiveYaml {
     Resistor,
     Capacitor,
+    Inductor,
     DcVoltageSource,
     PulseVoltageSource,
 }

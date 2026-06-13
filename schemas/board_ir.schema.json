@@ -62,12 +62,14 @@
                     "enum": [
                       "resistor",
                       "capacitor",
+                      "inductor",
                       "dc_voltage_source",
                       "pulse_voltage_source"
                     ]
                   },
                   "value_ohm": { "type": "number", "exclusiveMinimum": 0 },
                   "value_f": { "type": "number", "exclusiveMinimum": 0 },
+                  "value_h": { "type": "number", "exclusiveMinimum": 0 },
                   "dc_v": { "type": "number" },
                   "pulse": {
                     "type": "object",

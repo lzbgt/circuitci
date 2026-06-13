@@ -37,8 +37,8 @@ now covers a first datasheet-backed clamp-only USB ESD array for static
 standoff-voltage and capacitance screening. Nexperia PRTR5V0U2X now covers a
 rail-to-rail two-line USB ESD array with VCC reference validation. TI
 TPS62162-3.3 now covers a common 3 V to 17 V, 1 A fixed 3.3 V synchronous buck
-regulator for static input-range, output-current, and support-capacitance
-screening. The gap remains broad library depth across other USB-UART bridges,
+regulator for static input-range, output-current, support-capacitance, and
+direct output-inductance screening. The gap remains broad library depth across other USB-UART bridges,
 debug probes, radios, sensors, regulators, power muxes, reset supervisors, and
 protection devices.
 
@@ -71,6 +71,8 @@ Executable slices now covered by `POWER_TREE_VALID`:
   metadata,
 - explicit regulator input/output support-capacitance requirements against
   Board IR capacitors to ground,
+- explicit regulator direct output-inductance requirements against Board IR
+  inductors between switch and output nets,
 - explicit load-switch `power_switch` enable-state evidence and maximum
   switched-output current budget,
 - explicit battery-charger `battery_charger` programmed-current range and

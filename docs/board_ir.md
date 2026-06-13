@@ -73,6 +73,7 @@ scenarios:
 | component pins | pin-to-net map | Pin names must exist in the bound model. |
 | component power domains | power-port-to-net map | `power_domains` maps model power pins to rails. |
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
+| component spice | optional primitive evidence | `spice.primitive` supports `resistor`/`value_ohm`, `capacitor`/`value_f`, `inductor`/`value_h`, and voltage-source primitives for analog or static support-network checks. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
 | layout footprints | optional component map | Imported footprint drawing evidence for body/courtyard-aware layout checks. |

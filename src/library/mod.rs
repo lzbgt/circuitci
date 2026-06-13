@@ -46,6 +46,8 @@ pub struct ComponentModel {
 pub struct PowerConversion {
     pub input_pin: String,
     pub output_pin: String,
+    #[serde(default)]
+    pub switch_pin: Option<String>,
     #[serde(default, rename = "dropout_voltage_V")]
     pub dropout_voltage_v: Option<f64>,
     #[serde(default, rename = "min_output_current_A")]
@@ -58,6 +60,10 @@ pub struct PowerConversion {
     pub input_capacitance_min_f: Option<f64>,
     #[serde(default, rename = "output_capacitance_min_F")]
     pub output_capacitance_min_f: Option<f64>,
+    #[serde(default, rename = "output_inductance_min_H")]
+    pub output_inductance_min_h: Option<f64>,
+    #[serde(default, rename = "output_inductance_max_H")]
+    pub output_inductance_max_h: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

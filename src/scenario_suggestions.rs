@@ -253,6 +253,19 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
             let output_support = conversion
                 .output_capacitance_min_f
                 .map(|_| support_capacitance_to_ground(bound, output_net));
+            let switch_net = conversion
+                .switch_pin
+                .as_deref()
+                .and_then(|pin| component.pins.get(pin).map(String::as_str));
+            let output_inductor_support = switch_net.and_then(|net| {
+                if conversion.output_inductance_min_h.is_some()
+                    || conversion.output_inductance_max_h.is_some()
+                {
+                    Some(direct_inductance_between_nets(bound, net, output_net))
+                } else {
+                    None
+                }
+            });
             Some(SuggestedRegulator {
                 component: component_id.clone(),
                 input_pin: conversion.input_pin.clone(),
@@ -273,6 +286,14 @@ fn regulator_power_tree_evidence(bound: &BoundBoard<'_>) -> Vec<SuggestedRegulat
                     .as_ref()
                     .map(|(capacitance_f, _)| *capacitance_f),
                 output_support_capacitors: output_support.map(|(_, capacitors)| capacitors),
+                switch_pin: conversion.switch_pin.clone(),
+                switch_net: switch_net.map(str::to_string),
+                output_inductance_min_h: conversion.output_inductance_min_h,
+                output_inductance_max_h: conversion.output_inductance_max_h,
+                output_support_inductance_h: output_inductor_support
+                    .as_ref()
+                    .map(|(inductance_h, _)| *inductance_h),
+                output_support_inductors: output_inductor_support.map(|(_, inductors)| inductors),
             })
         })
         .collect()
@@ -302,6 +323,34 @@ fn support_capacitance_to_ground(bound: &BoundBoard<'_>, net_name: &str) -> (f64
     (total_f, capacitors)
 }
 
+fn direct_inductance_between_nets(
+    bound: &BoundBoard<'_>,
+    first_net_name: &str,
+    second_net_name: &str,
+) -> (f64, Vec<String>) {
+    let mut total_h = 0.0;
+    let mut inductors = Vec::new();
+    for (component_id, component) in &bound.project.board.components {
+        let Some(spice) = &component.spice else {
+            continue;
+        };
+        if spice.primitive != SpicePrimitive::Inductor {
+            continue;
+        }
+        let Some(value_h) = spice.value_h else {
+            continue;
+        };
+        if !value_h.is_finite() || value_h <= 0.0 {
+            continue;
+        }
+        if component_connects_two_nets(component, first_net_name, second_net_name) {
+            total_h += value_h;
+            inductors.push(component_id.clone());
+        }
+    }
+    (total_h, inductors)
+}
+
 fn component_connects_net_to_ground(
     bound: &BoundBoard<'_>,
     component: &ComponentSpec,
@@ -317,6 +366,15 @@ fn component_connects_net_to_ground(
                     .get(net)
                     .is_some_and(|spec| spec.kind == NetKind::Ground)
         })
+}
+
+fn component_connects_two_nets(
+    component: &ComponentSpec,
+    first_net_name: &str,
+    second_net_name: &str,
+) -> bool {
+    component.pins.values().any(|net| net == first_net_name)
+        && component.pins.values().any(|net| net == second_net_name)
 }
 
 fn io_voltage_suggestion(bound: &BoundBoard<'_>) -> Option<ScenarioSuggestion> {

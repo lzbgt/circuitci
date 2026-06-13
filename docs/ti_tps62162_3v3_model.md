@@ -25,6 +25,10 @@ fixed 3.3 V TPS62162 synchronous buck regulator:
 - Typical switching frequency: `2.25 MHz`, recorded as datasheet metadata only.
 - Typical support-component screen: `10 uF` input capacitance and `22 uF`
   output capacitance to ground.
+- Static output inductor screen: `SW` must connect to the output rail through
+  at least `2.2 uH` direct modeled inductance. This follows the datasheet
+  inductor-selection section, which states that TPS6216x can operate as low as
+  `2.2 uH` and recommends `3.3 uH` for low input voltage/full-current designs.
 
 ## Validation Use
 
@@ -37,7 +41,10 @@ fixed 3.3 V TPS62162 synchronous buck regulator:
 - The summed declared output load must not exceed `1.0 A`.
 - The board must include at least `10 uF` input and `22 uF` output capacitance
   to ground.
+- The board must include modeled output inductance directly between the `SW`
+  net and `VOS` output rail. This is a static direct-link screen; it does not
+  prove saturation current, DCR, ripple, or loop stability.
 
-This is a static buck-regulator screen. It is not valid for inductor selection,
-loop compensation, ripple, transient response, switch-node stress, thermal
-sign-off, EMI, or PCB layout sign-off.
+This is a static buck-regulator screen. It is not valid for saturation-current
+selection, loop compensation, ripple, transient response, switch-node stress,
+thermal sign-off, EMI, or PCB layout sign-off.

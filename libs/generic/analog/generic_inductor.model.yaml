@@ -1,0 +1,21 @@
+component_id: generic.analog.inductor
+version: 0.1.0
+category: inductor
+ports:
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - linear_passive_transient
+    - regulator_support_inductance_screening
+  not_valid_for:
+    - saturation_current_signoff
+    - dcr_or_core_loss_modeling
+    - emi_or_layout_parasitic_signoff

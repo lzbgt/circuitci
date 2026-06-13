@@ -716,6 +716,10 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
         "net_rail_3v3"
     );
     assert_eq!(
+        imported["board"]["components"]["UBUCK"]["pins"]["SW"],
+        "net_buck_sw"
+    );
+    assert_eq!(
         imported["board"]["components"]["UBUCK"]["pins"]["EN"],
         "net_rail_12v"
     );
@@ -742,6 +746,18 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
             - 0.000022)
             .abs()
             < 1.0e-15
+    );
+    assert_eq!(
+        imported["board"]["components"]["L1"]["spice"]["primitive"],
+        "inductor"
+    );
+    assert!(
+        (imported["board"]["components"]["L1"]["spice"]["value_h"]
+            .as_f64()
+            .unwrap()
+            - 0.0000022)
+            .abs()
+            < 1.0e-18
     );
     assert_eq!(
         imported["board"]["nets"]["net_rail_12v"]["nominal_voltage"],
@@ -786,9 +802,12 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
     assert_eq!(regulator["input_net"], "net_rail_12v");
     assert_eq!(regulator["output_pin"], "VOS");
     assert_eq!(regulator["output_net"], "net_rail_3v3");
+    assert_eq!(regulator["switch_pin"], "SW");
+    assert_eq!(regulator["switch_net"], "net_buck_sw");
     assert_eq!(regulator["max_output_current_A"], 1.0);
     assert!((regulator["input_capacitance_min_F"].as_f64().unwrap() - 0.000010).abs() < 1.0e-15);
     assert!((regulator["output_capacitance_min_F"].as_f64().unwrap() - 0.000022).abs() < 1.0e-15);
+    assert!((regulator["output_inductance_min_H"].as_f64().unwrap() - 0.0000022).abs() < 1.0e-18);
     assert!(
         (regulator["input_support_capacitance_F"].as_f64().unwrap() - 0.000010).abs() < 1.0e-15
     );
@@ -797,6 +816,10 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
         (regulator["output_support_capacitance_F"].as_f64().unwrap() - 0.000022).abs() < 1.0e-15
     );
     assert_eq!(regulator["output_support_capacitors"][0], "COUT");
+    assert!(
+        (regulator["output_support_inductance_H"].as_f64().unwrap() - 0.0000022).abs() < 1.0e-18
+    );
+    assert_eq!(regulator["output_support_inductors"][0], "L1");
 }
 
 #[test]

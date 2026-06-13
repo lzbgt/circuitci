@@ -1,5 +1,5 @@
 project:
-  name: good_ti_tps62162_3v3_buck
+  name: bad_ti_tps62162_3v3_output_inductance
   version: 0.1.0
 
 libraries:
@@ -29,13 +29,13 @@ board:
         PG: buck_pg
     L1:
       model: generic.analog.inductor
-      part_number: 2.2uH
+      part_number: 1uH
       pins:
         A: buck_sw
         B: rail_3v3
       spice:
         primitive: inductor
-        value_h: 0.0000022
+        value_h: 0.000001
     UMCU:
       model: generic.mcu.basic
       part_number: GENERIC_MCU
@@ -81,7 +81,7 @@ board:
       kind: ground
 
 scenarios:
-  - name: tps62162_3v3_static_power_tree
+  - name: tps62162_3v3_output_inductance_too_small
     type: power_tree
     checks:
       - POWER_TREE_VALID

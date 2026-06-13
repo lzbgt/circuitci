@@ -1729,6 +1729,44 @@ fn ams1117_3v3_dropout_uses_datasheet_limit() {
 }
 
 #[test]
+fn tps62162_3v3_buck_passes_static_power_tree() {
+    let report = run_validation("examples/good_ti_tps62162_3v3_buck/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn tps62162_3v3_output_inductance_uses_datasheet_requirement() {
+    let report = run_validation("examples/bad_ti_tps62162_3v3_output_inductance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| {
+            finding["limit"]
+                .get("regulator_output_inductance_min_H")
+                .is_some()
+        })
+        .expect("expected TPS62162 output-inductance finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert_eq!(failure["component"], "UBUCK");
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["output_inductance_H"], 0.000001);
+    assert_eq!(failure["measured"]["output_inductors"][0], "L1");
+    assert_eq!(failure["measured"]["switch_net"], "buck_sw");
+    assert_eq!(failure["measured"]["output_net"], "rail_3v3");
+    assert_eq!(failure["limit"]["switch_pin"], "SW");
+    assert_eq!(failure["limit"]["output_pin"], "VOS");
+    assert_eq!(
+        failure["limit"]["regulator_output_inductance_min_H"],
+        0.0000022
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ams1117_3v3_minimum_load_uses_datasheet_requirement() {
     let report = run_validation("examples/bad_ams1117_3v3_minimum_load/project.yaml");
     assert_eq!(report["result"], "fail");

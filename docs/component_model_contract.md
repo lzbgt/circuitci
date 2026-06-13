@@ -111,16 +111,21 @@ metadata:
 power_conversion:
   input_pin: VIN
   output_pin: VOUT
+  switch_pin: SW
   dropout_voltage_V: 0.3
   min_output_current_A: 0.01
   max_output_current_A: 0.1
   startup_delay_us: 1000
   input_capacitance_min_F: 0.000001
   output_capacitance_min_F: 0.000001
+  output_inductance_min_H: 0.0000022
 ```
 
 - `input_pin` and `output_pin` must name model ports connected to Board IR power
   rails. They must be distinct `electrical_power` ports.
+- `switch_pin` is optional unless output inductance limits are declared. When
+  present, it must name a model port distinct from the input/output rails and
+  be connected to the converter switch net in Board IR.
 - `dropout_voltage_V` is a static nominal-voltage margin check:
   `V(input) - V(output)` must be at least this value.
 - `min_output_current_A` checks the sum of declared `min_supply_current_A`
@@ -134,11 +139,16 @@ power_conversion:
   Board IR capacitor primitives from the corresponding rail to ground. The
   validator sums those capacitances. This is a schematic support-component
   screen, not an ESR/ESL/DC-bias or regulator stability sign-off.
+- `output_inductance_min_H` and `output_inductance_max_H` require explicit
+  Board IR inductor primitives directly between `switch_pin` and `output_pin`.
+  The validator sums direct inductors on that path. This is a static
+  support-component screen, not saturation-current, DCR, ripple, or loop
+  stability sign-off.
 
 `POWER_TREE_VALID` uses these values to check that a component is connected to
 a powered rail inside its allowed operating range, that declared rail current
 budgets are not exceeded, and that explicitly modeled regulator dropout/output
-current/startup timing/support-capacitance margins are plausible. Invalid
+current/startup timing/support-capacitance/support-inductance margins are plausible. Invalid
 `power_conversion` metadata fails closed at validation time. Generic models may
 use conservative screening values; datasheet-backed packs should cite their
 source documents.

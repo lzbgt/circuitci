@@ -4,8 +4,8 @@
 
 - static `POWER_TREE_VALID` fixtures,
 - static `IO_VOLTAGE_COMPATIBLE` fixtures,
-- regulator dropout, output-current, support-capacitance, metadata, and startup
-  timing checks,
+- regulator dropout, output-current, support-capacitance, support-inductance,
+  metadata, and startup timing checks,
 - reset-supervisor threshold checks,
 - interface-protection channel checks,
 - datasheet-backed USB-UART and level-shifter power-limit regressions.

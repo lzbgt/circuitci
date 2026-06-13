@@ -128,6 +128,18 @@ fn import_spice_generates_schema_valid_file_backed_project() {
         Value::Array(vec![])
     );
     assert!(imported["board"]["components"].get("R1").is_some());
+    assert_eq!(
+        imported["board"]["components"]["L1"]["spice"]["primitive"],
+        "inductor"
+    );
+    assert!(
+        (imported["board"]["components"]["L1"]["spice"]["value_h"]
+            .as_f64()
+            .unwrap()
+            - 0.0000022)
+            .abs()
+            < 1.0e-18
+    );
     assert!(imported["board"]["components"].get("D1").is_some());
     let model_file = &imported["scenarios"][0]["analog"]["model_files"][0];
     assert!(

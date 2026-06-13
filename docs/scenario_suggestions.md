@@ -29,7 +29,10 @@ The command is conservative:
   input/output nets, and declared dropout/current/startup/capacitance limits.
   When a capacitance requirement is declared, the entry also includes measured
   input/output support capacitance and the capacitor component IDs contributing
-  to each rail. This gives agents the exact regulator evidence that
+  to each rail. When output inductance limits are declared, the entry includes
+  the converter `switch_pin`, `switch_net`, output inductance limits, measured
+  direct switch-to-output support inductance, and the contributing inductor
+  component IDs. This gives agents the exact regulator evidence that
   `POWER_TREE_VALID` will execute.
 - If a model declares `reset_supervisor`, the power-tree suggestion includes
   `scenario.reset_supervisors[]` with the supervisor component, monitored
@@ -314,6 +317,12 @@ suggestions:
           output_support_capacitance_F: 0.000001
           output_support_capacitors:
             - COUT
+          switch_pin: SW
+          switch_net: buck_sw
+          output_inductance_min_H: 0.0000022
+          output_support_inductance_H: 0.0000022
+          output_support_inductors:
+            - L1
       reset_supervisors:
         - component: USUP
           monitored_pin: VDD

@@ -8,18 +8,22 @@
       (pin power_in line (at 0 10 270) (length 2.54) (name "GND") (number "2"))
       (pin input line (at -10 0 0) (length 2.54) (name "EN") (number "3"))
       (pin output line (at 10 0 180) (length 2.54) (name "PG") (number "4"))
-      (pin power_out line (at 10 -5 180) (length 2.54) (name "VOS") (number "5")))
+      (pin power_out line (at 10 -5 180) (length 2.54) (name "VOS") (number "5"))
+      (pin passive line (at 10 -10 180) (length 2.54) (name "SW") (number "7")))
     (symbol "MCU:Generic"
       (pin power_in line (at 0 -10 90) (length 2.54) (name "VDD") (number "1"))
       (pin power_in line (at 0 10 270) (length 2.54) (name "GND") (number "2")))
     (symbol "Device:C"
+      (pin passive line (at 0 -5 90) (length 2.54) (name "~") (number "1"))
+      (pin passive line (at 0 5 270) (length 2.54) (name "~") (number "2")))
+    (symbol "Device:L"
       (pin passive line (at 0 -5 90) (length 2.54) (name "~") (number "1"))
       (pin passive line (at 0 5 270) (length 2.54) (name "~") (number "2"))))
 
   (symbol (lib_id "Regulator:TPS62162") (at 40 20 0)
     (property "Reference" "UBUCK")
     (property "Value" "TPS62162DSG")
-    (pin "1") (pin "2") (pin "3") (pin "4") (pin "5"))
+    (pin "1") (pin "2") (pin "3") (pin "4") (pin "5") (pin "7"))
   (symbol (lib_id "MCU:Generic") (at 80 25 0)
     (property "Reference" "U1")
     (property "Value" "GENERIC_MCU")
@@ -32,12 +36,19 @@
     (property "Reference" "COUT")
     (property "Value" "22uF")
     (pin "1") (pin "2"))
+  (symbol (lib_id "Device:L") (at 60 15 0)
+    (property "Reference" "L1")
+    (property "Value" "2.2uH")
+    (pin "1") (pin "2"))
 
   (wire (pts (xy 30 15) (xy 30 25) (xy 20 25) (xy 20 30)))
   (wire (pts (xy 30 20) (xy 30 15)))
   (label "RAIL_12V" (at 30 15 0))
 
   (wire (pts (xy 50 15) (xy 80 15) (xy 60 15) (xy 60 30)))
+  (wire (pts (xy 50 10) (xy 60 10)))
+  (label "BUCK_SW" (at 55 10 0))
+  (wire (pts (xy 60 20) (xy 60 15)))
   (label "RAIL_3V3" (at 55 15 0))
 
   (wire (pts (xy 50 20) (xy 55 20)))

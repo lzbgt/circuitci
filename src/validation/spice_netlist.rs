@@ -116,6 +116,13 @@ fn generate_component_line(
                 pin_node(component_id, component, node_by_net, "B")?,
                 positive(spice.value_f, component_id, "spice.value_f")?
             )),
+            SpicePrimitive::Inductor => Ok(format!(
+                "{} {} {} {}",
+                element_name("L", component_id),
+                pin_node(component_id, component, node_by_net, "A")?,
+                pin_node(component_id, component, node_by_net, "B")?,
+                positive(spice.value_h, component_id, "spice.value_h")?
+            )),
             SpicePrimitive::DcVoltageSource => Ok(format!(
                 "{} {} {} DC {}",
                 element_name("V", component_id),

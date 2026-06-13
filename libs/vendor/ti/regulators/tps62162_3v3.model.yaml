@@ -17,6 +17,9 @@ ports:
   GND:
     kind: electrical_ground
     required: true
+  SW:
+    kind: passive
+    required: true
   EN:
     kind: digital_electrical_input
     required: false
@@ -26,9 +29,11 @@ ports:
 power_conversion:
   input_pin: VIN
   output_pin: VOS
+  switch_pin: SW
   max_output_current_A: 1.0
   input_capacitance_min_F: 0.000010
   output_capacitance_min_F: 0.000022
+  output_inductance_min_H: 0.0000022
 datasheet:
   manufacturer: Texas Instruments
   part_number: TPS62162
@@ -72,6 +77,10 @@ datasheet:
       conditions: Typical application support capacitor screen.
       min: 22
       unit: uF
+    output_inductor:
+      conditions: Datasheet inductor-selection section states the family can operate with an inductor as low as 2.2 uH; 3.3 uH is recommended for low input voltage/full output current.
+      min: 2.2
+      unit: uH
   documents:
     - title: TPS6216x 3-V to 17-V, 1-A Step-Down Converters with DCS-Control
       path: docs/research/datasheets/ti/tps62160.pdf
@@ -87,7 +96,7 @@ model_quality:
     - common_iot_3v3_rail_screening
   not_valid_for:
     - buck_transient_or_stability_signoff
-    - inductor_selection_signoff
+    - inductor_saturation_current_or_dcr_signoff
     - output_ripple_or_control_loop_signoff
     - regulator_thermal_signoff
     - switch_node_absolute_maximum_signoff

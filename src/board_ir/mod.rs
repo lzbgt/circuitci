@@ -302,6 +302,8 @@ pub struct ComponentSpiceSpec {
     #[serde(default)]
     pub value_f: Option<f64>,
     #[serde(default)]
+    pub value_h: Option<f64>,
+    #[serde(default)]
     pub dc_v: Option<f64>,
     #[serde(default)]
     pub pulse: Option<SpicePulseSpec>,
@@ -312,6 +314,7 @@ pub struct ComponentSpiceSpec {
 pub enum SpicePrimitive {
     Resistor,
     Capacitor,
+    Inductor,
     DcVoltageSource,
     PulseVoltageSource,
 }

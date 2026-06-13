@@ -20,8 +20,15 @@ facts used by `vendor.ti.tps62162_3v3` are:
 - typical quiescent current `17 uA`,
 - typical switching frequency `2.25 MHz`,
 - typical support-component screen using input and output ceramic capacitance.
+- output filter evidence:
+  - the SW pin connects through the output inductor to the output rail,
+  - the family can operate with an inductor as low as `2.2 uH`,
+  - `3.3 uH` is recommended for low input voltage when full output current is
+    required,
+  - Table 2 lists `2.2 uH` and `3.3 uH` as proven nominal inductance values
+    with the `22 uF` output capacitance used by the fixture.
 
 CircuitCI currently uses only static power-tree facts from this source. The
-model deliberately does not sign off inductor value/saturation current, ripple,
+model deliberately does not sign off inductor saturation current, DCR, ripple,
 control-loop stability, switch-node stress, thermal behavior, EMI, or PCB
 layout.
