@@ -852,6 +852,20 @@
                   },
                   "additionalProperties": false
                 },
+                "usb_route": {
+                  "type": "object",
+                  "properties": {
+                    "max_data_line_via_count": { "type": "integer", "minimum": 0 },
+                    "max_data_line_width_delta_mm": { "type": "number", "minimum": 0 },
+                    "max_connector_to_protection_route_distance_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "max_component_to_route_distance_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "max_data_pair_via_count_delta": { "type": "integer", "minimum": 0 },
+                    "max_data_pair_gap_delta_mm": { "type": "number", "minimum": 0 },
+                    "require_route_pad_contact_evidence": { "type": "boolean" },
+                    "source": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                },
                 "usb_return_path": {
                   "type": "object",
                   "properties": {

@@ -1256,7 +1256,8 @@ USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule always checks
 D+ and D- route length plus route length mismatch. Via-count, width, gap,
 pad-contact, and routed connector-to-protection distance checks run only when
-their corresponding optional policy parameters are declared.
+their corresponding optional policy parameters are declared in the scenario or
+in explicit `board.layout.constraints.usb_route` metadata.
 
 ```yaml
 scenarios:
@@ -1277,6 +1278,13 @@ scenarios:
       max_data_pair_gap_delta_mm: 0.01        # optional
       require_route_pad_contact_evidence: true # optional
 ```
+
+For optional USB route parameters, explicit scenario values take precedence.
+When a field is omitted or null, the validator uses matching
+`board.layout.constraints.usb_route` metadata if present. Net-class route
+width/gap values are not tolerances by themselves; they provide expected
+geometry only after a tolerance such as `max_data_line_width_delta_mm` or
+`max_data_pair_gap_delta_mm` has been supplied.
 
 USB route geometry algorithm:
 

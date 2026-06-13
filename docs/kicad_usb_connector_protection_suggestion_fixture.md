@@ -127,8 +127,9 @@ for the imported length and pair-mismatch checks. It pre-fills:
 - `max_data_pair_length_mismatch_mm: 0.5`
 
 Via-count, route-width, pair-gap, and connector-to-protection route-distance
-limits remain optional `null` policy knobs unless a board-specific rule declares
-them.
+limits come from explicit `board.layout.constraints.usb_route` policy when
+present. They remain optional `null` policy knobs when the board-specific route
+policy is absent.
 
 The same imported net-rule evidence makes the VBUS route suggestion runnable
 when `length_max_mm` is present on the VBUS net. The template pre-fills

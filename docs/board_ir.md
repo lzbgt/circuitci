@@ -644,6 +644,30 @@ These values are not inferred from component coordinates. They should come from
 connector datasheets, enclosure drawings, assembly drawings, or explicit board
 mechanical rules.
 
+`board.layout.constraints.usb_route` is explicit board/layout policy for the
+optional parts of `USB_ROUTE_GEOMETRY_VALID`. Scenario parameters still take
+precedence, but when a scenario omits one of these fields the validator and
+suggestion engine can use this object:
+
+```yaml
+board:
+  layout:
+    constraints:
+      usb_route:
+        max_data_line_via_count: 1
+        max_data_line_width_delta_mm: 0.02
+        max_connector_to_protection_route_distance_mm: 2.0
+        max_component_to_route_distance_mm: 0.05
+        max_data_pair_via_count_delta: 1
+        max_data_pair_gap_delta_mm: 0.12
+        require_route_pad_contact_evidence: true
+        source: board_usb_route_rule
+```
+
+These values are policy/tolerance limits. Expected data-line width and pair gap
+still come from `board.layout.constraints.net_rules` entries such as
+`diff_pair_width_mm`, `track_width_mm`, and `diff_pair_gap_mm`.
+
 `board.layout.constraints.usb_return_path` is explicit board/layout policy for
 `USB_RETURN_PATH_VALID`. Scenario parameters still take precedence, but when a
 scenario omits one of these fields the validator and suggestion engine can use

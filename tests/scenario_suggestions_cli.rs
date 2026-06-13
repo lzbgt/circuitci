@@ -996,16 +996,35 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
     assert_eq!(route["scenario"]["checks"][0], "USB_ROUTE_GEOMETRY_VALID");
     assert_eq!(route["scenario"]["target"]["component"], "J1");
     assert!(route["scenario"]["parameters"]["max_data_line_route_length_mm"].is_null());
-    assert!(route["scenario"]["parameters"]["max_data_line_via_count"].is_null());
-    assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
-    assert!(
-        route["scenario"]["parameters"]["max_connector_to_protection_route_distance_mm"].is_null()
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_via_count"],
+        1
     );
-    assert!(route["scenario"]["parameters"]["max_component_to_route_distance_mm"].is_null());
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_width_delta_mm"],
+        0.02
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_connector_to_protection_route_distance_mm"],
+        2.0
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_component_to_route_distance_mm"],
+        0.05
+    );
     assert!(route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"].is_null());
-    assert!(route["scenario"]["parameters"]["max_data_pair_via_count_delta"].is_null());
-    assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
-    assert!(route["scenario"]["parameters"]["require_route_pad_contact_evidence"].is_null());
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_via_count_delta"],
+        1
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"],
+        0.12
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["require_route_pad_contact_evidence"],
+        true
+    );
     let routes = route["scenario"]["usb_routes"].as_array().unwrap();
     assert!(routes.iter().any(|usb_route| {
         usb_route["signal"] == "D+"

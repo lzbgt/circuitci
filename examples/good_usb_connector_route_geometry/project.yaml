@@ -84,6 +84,15 @@ board:
             width_mm: 0.15
             layer: F.Cu
     constraints:
+      usb_route:
+        max_data_line_via_count: 0
+        max_data_line_width_delta_mm: 0.01
+        max_connector_to_protection_route_distance_mm: 2.0
+        max_component_to_route_distance_mm: 0.01
+        max_data_pair_via_count_delta: 0
+        max_data_pair_gap_delta_mm: 0.01
+        require_route_pad_contact_evidence: true
+        source: fixture_usb_route_layout_rule
       net_rules:
         usb_dp:
           net_class: USB_HS

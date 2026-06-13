@@ -1561,6 +1561,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         181.0
     );
     assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_route"]["max_data_line_via_count"],
+        1
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_route"]["max_data_pair_gap_delta_mm"],
+        0.12
+    );
+    assert_eq!(
         imported["board"]["layout"]["constraints"]["usb_return_path"]["max_data_line_unreferenced_length_mm"],
         0.0
     );
@@ -1714,8 +1722,34 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         route["scenario"]["parameters"]["max_data_pair_length_mismatch_mm"],
         0.5
     );
-    assert!(route["scenario"]["parameters"]["max_data_line_width_delta_mm"].is_null());
-    assert!(route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"].is_null());
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_via_count"],
+        1
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_line_width_delta_mm"],
+        0.02
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_connector_to_protection_route_distance_mm"],
+        2.0
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_component_to_route_distance_mm"],
+        0.05
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_via_count_delta"],
+        1
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["max_data_pair_gap_delta_mm"],
+        0.12
+    );
+    assert_eq!(
+        route["scenario"]["parameters"]["require_route_pad_contact_evidence"],
+        true
+    );
     assert!(
         route["scenario"]["usb_routes"]
             .as_array()

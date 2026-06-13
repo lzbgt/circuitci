@@ -184,6 +184,8 @@ pub struct LayoutConstraints {
     #[serde(default)]
     pub usb_connector: UsbConnectorLayoutRule,
     #[serde(default)]
+    pub usb_route: UsbRouteLayoutRule,
+    #[serde(default)]
     pub usb_return_path: UsbReturnPathLayoutRule,
 }
 
@@ -201,6 +203,26 @@ pub struct NetLayoutRule {
     pub length_max_mm: Option<f64>,
     #[serde(default)]
     pub skew_max_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct UsbRouteLayoutRule {
+    #[serde(default)]
+    pub max_data_line_via_count: Option<usize>,
+    #[serde(default)]
+    pub max_data_line_width_delta_mm: Option<f64>,
+    #[serde(default)]
+    pub max_connector_to_protection_route_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub max_component_to_route_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub max_data_pair_via_count_delta: Option<usize>,
+    #[serde(default)]
+    pub max_data_pair_gap_delta_mm: Option<f64>,
+    #[serde(default)]
+    pub require_route_pad_contact_evidence: Option<bool>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

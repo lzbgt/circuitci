@@ -311,19 +311,19 @@ pub(super) fn usb_route_geometry_suggestion(
         ),
         (
             "max_data_line_via_count".to_string(),
-            serde_json::Value::Null,
+            optional_usize_value(route_limits.max_data_line_via_count),
         ),
         (
             "max_data_line_width_delta_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_data_line_width_delta_mm),
         ),
         (
             "max_connector_to_protection_route_distance_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_connector_to_protection_route_distance_mm),
         ),
         (
             "max_component_to_route_distance_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_component_to_route_distance_mm),
         ),
         (
             "max_data_pair_length_mismatch_mm".to_string(),
@@ -331,15 +331,15 @@ pub(super) fn usb_route_geometry_suggestion(
         ),
         (
             "max_data_pair_via_count_delta".to_string(),
-            serde_json::Value::Null,
+            optional_usize_value(route_limits.max_data_pair_via_count_delta),
         ),
         (
             "max_data_pair_gap_delta_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(route_limits.max_data_pair_gap_delta_mm),
         ),
         (
             "require_route_pad_contact_evidence".to_string(),
-            serde_json::Value::Null,
+            optional_bool_value(route_limits.require_route_pad_contact_evidence),
         ),
     ]);
     Some(ScenarioSuggestion {
@@ -622,7 +622,14 @@ pub(super) fn usb_return_path_suggestion(
 #[derive(Debug, Clone, Copy, Default)]
 struct SuggestedUsbRouteLimits {
     max_data_line_route_length_mm: Option<f64>,
+    max_data_line_via_count: Option<usize>,
+    max_data_line_width_delta_mm: Option<f64>,
+    max_connector_to_protection_route_distance_mm: Option<f64>,
+    max_component_to_route_distance_mm: Option<f64>,
     max_data_pair_length_mismatch_mm: Option<f64>,
+    max_data_pair_via_count_delta: Option<usize>,
+    max_data_pair_gap_delta_mm: Option<f64>,
+    require_route_pad_contact_evidence: Option<bool>,
 }
 
 fn suggested_usb_route_limits(
@@ -632,9 +639,18 @@ fn suggested_usb_route_limits(
 ) -> SuggestedUsbRouteLimits {
     let dp_rule = bound.project.board.layout.constraints.net_rules.get(dp_net);
     let dm_rule = bound.project.board.layout.constraints.net_rules.get(dm_net);
+    let usb_route = &bound.project.board.layout.constraints.usb_route;
     SuggestedUsbRouteLimits {
         max_data_line_route_length_mm: min_rule_value(dp_rule, dm_rule, |rule| rule.length_max_mm),
+        max_data_line_via_count: usb_route.max_data_line_via_count,
+        max_data_line_width_delta_mm: usb_route.max_data_line_width_delta_mm,
+        max_connector_to_protection_route_distance_mm: usb_route
+            .max_connector_to_protection_route_distance_mm,
+        max_component_to_route_distance_mm: usb_route.max_component_to_route_distance_mm,
         max_data_pair_length_mismatch_mm: min_rule_value(dp_rule, dm_rule, |rule| rule.skew_max_mm),
+        max_data_pair_via_count_delta: usb_route.max_data_pair_via_count_delta,
+        max_data_pair_gap_delta_mm: usb_route.max_data_pair_gap_delta_mm,
+        require_route_pad_contact_evidence: usb_route.require_route_pad_contact_evidence,
     }
 }
 
@@ -656,6 +672,10 @@ fn expected_usb_data_width_mm(rule: &NetLayoutRule) -> Option<f64> {
 }
 
 fn optional_number_value(value: Option<f64>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, serde_json::Value::from)
+}
+
+fn optional_usize_value(value: Option<usize>) -> serde_json::Value {
     value.map_or(serde_json::Value::Null, serde_json::Value::from)
 }
 
