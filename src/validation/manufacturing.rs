@@ -1,8 +1,11 @@
-use crate::board_ir::{LayoutCopperFeature, LayoutDrill, LayoutPoint, LayoutSegment, Scenario};
+use crate::board_ir::{
+    LayoutCopperFeature, LayoutCopperSegment, LayoutDrill, LayoutPoint, LayoutSegment, Scenario,
+};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
+use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_ANNULAR_RING_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::common::validation_input_missing;
@@ -187,6 +190,98 @@ pub(super) fn validate_drill_annular_ring(
     }
 }
 
+pub(super) fn validate_copper_to_board_edge_clearance(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_clearance_mm) =
+        required_numeric_parameter(scenario, "min_copper_edge_clearance_mm", findings)
+    else {
+        return;
+    };
+    if min_clearance_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_copper_edge_clearance_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let copper = &bound.project.board.layout.copper;
+    if copper.features.is_empty() && copper.segments.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID requires board.layout.copper.features or board.layout.copper.segments evidence.",
+        );
+        return;
+    }
+    let board_edges = bound
+        .project
+        .board
+        .layout
+        .outline
+        .segments
+        .iter()
+        .filter(|segment| usable_outline_segment(segment))
+        .collect::<Vec<_>>();
+    if board_edges.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID requires usable board.layout.outline.segments evidence.",
+        );
+        return;
+    }
+    for (feature_index, feature) in copper.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(nearest) = nearest_copper_feature_edge_clearance(feature, &board_edges) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID could not compute finite copper feature-to-board-edge clearance.",
+            );
+            continue;
+        };
+        if nearest.clearance_mm + f64::EPSILON < min_clearance_mm {
+            findings.push(copper_feature_edge_clearance_finding(
+                scenario,
+                feature,
+                feature_index,
+                nearest,
+                min_clearance_mm,
+            ));
+        }
+    }
+    for (segment_index, segment) in copper.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(nearest) = nearest_copper_segment_edge_clearance(segment, &board_edges) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID could not compute finite copper segment-to-board-edge clearance.",
+            );
+            continue;
+        };
+        if nearest.clearance_mm + f64::EPSILON < min_clearance_mm {
+            findings.push(copper_segment_edge_clearance_finding(
+                scenario,
+                segment,
+                segment_index,
+                nearest,
+                min_clearance_mm,
+            ));
+        }
+    }
+}
+
 fn required_numeric_parameter(
     scenario: &Scenario,
     name: &str,
@@ -290,6 +385,28 @@ fn validate_copper_feature_geometry(
     Ok(())
 }
 
+fn validate_copper_segment_geometry(
+    segment: &LayoutCopperSegment,
+    segment_index: usize,
+) -> Result<(), String> {
+    if !finite_point(&segment.start) || !finite_point(&segment.end) {
+        return Err(format!(
+            "board.layout.copper.segments[{segment_index}] start/end must contain finite coordinates."
+        ));
+    }
+    if point_distance_mm(&segment.start, &segment.end) <= f64::EPSILON {
+        return Err(format!(
+            "board.layout.copper.segments[{segment_index}] must have non-zero length."
+        ));
+    }
+    if !segment.width_mm.is_finite() || segment.width_mm <= 0.0 {
+        return Err(format!(
+            "board.layout.copper.segments[{segment_index}].width_mm must be finite and positive."
+        ));
+    }
+    Ok(())
+}
+
 fn usable_outline_segment(segment: &LayoutSegment) -> bool {
     finite_point(&segment.start)
         && finite_point(&segment.end)
@@ -315,6 +432,19 @@ struct DrillAnnularRingCandidate<'a> {
     annular_ring_mm: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct CopperFeatureEdgeClearance<'a> {
+    edge: &'a LayoutSegment,
+    clearance_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CopperSegmentEdgeClearance<'a> {
+    edge: &'a LayoutSegment,
+    centerline_distance_mm: f64,
+    clearance_mm: f64,
+}
+
 fn nearest_drill_edge_clearance<'a>(
     drill: &LayoutDrill,
     board_edges: &'a [&LayoutSegment],
@@ -331,6 +461,46 @@ fn nearest_drill_edge_clearance<'a>(
                     edge,
                     center_distance_mm,
                     clearance_mm: center_distance_mm - radius_mm,
+                })
+        })
+        .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
+}
+
+fn nearest_copper_feature_edge_clearance<'a>(
+    feature: &LayoutCopperFeature,
+    board_edges: &'a [&LayoutSegment],
+) -> Option<CopperFeatureEdgeClearance<'a>> {
+    board_edges
+        .iter()
+        .filter_map(|edge| {
+            let clearance_mm = copper_feature_to_segment_clearance_mm(feature, edge)?;
+            clearance_mm
+                .is_finite()
+                .then_some(CopperFeatureEdgeClearance { edge, clearance_mm })
+        })
+        .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
+}
+
+fn nearest_copper_segment_edge_clearance<'a>(
+    segment: &LayoutCopperSegment,
+    board_edges: &'a [&LayoutSegment],
+) -> Option<CopperSegmentEdgeClearance<'a>> {
+    let radius_mm = segment.width_mm / 2.0;
+    board_edges
+        .iter()
+        .filter_map(|edge| {
+            let centerline_distance_mm = segment_to_segment_distance_mm(
+                &segment.start,
+                &segment.end,
+                &edge.start,
+                &edge.end,
+            );
+            centerline_distance_mm
+                .is_finite()
+                .then_some(CopperSegmentEdgeClearance {
+                    edge,
+                    centerline_distance_mm,
+                    clearance_mm: centerline_distance_mm - radius_mm,
                 })
         })
         .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
@@ -523,6 +693,90 @@ fn drill_annular_ring_finding(
     finding
 }
 
+fn copper_feature_edge_clearance_finding(
+    scenario: &Scenario,
+    feature: &LayoutCopperFeature,
+    feature_index: usize,
+    nearest: CopperFeatureEdgeClearance<'_>,
+    min_clearance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        COPPER_TO_BOARD_EDGE_CLEARANCE_VALID,
+        &scenario.name,
+        format!(
+            "Gerber copper feature {} has {:.3} mm board-edge clearance, below {:.3} mm minimum.",
+            feature_index, nearest.clearance_mm, min_clearance_mm
+        ),
+    );
+    finding
+        .measured
+        .insert("copper_kind".to_string(), json!("feature"));
+    finding
+        .measured
+        .insert("copper_feature_index".to_string(), json!(feature_index));
+    insert_copper_feature_edge_measurements(&mut finding, feature);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(nearest.clearance_mm));
+    insert_board_edge_measurements(&mut finding, nearest.edge);
+    finding.limit.insert(
+        "min_copper_edge_clearance_mm".to_string(),
+        json!(min_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move the copper feature farther from the board outline or cutout edge.".to_string(),
+        "Reduce copper flash size only if the pad/land requirement allows it.".to_string(),
+        "Adjust the board outline or copper Gerber origin if fabrication layers are misregistered."
+            .to_string(),
+    ];
+    finding
+}
+
+fn copper_segment_edge_clearance_finding(
+    scenario: &Scenario,
+    segment: &LayoutCopperSegment,
+    segment_index: usize,
+    nearest: CopperSegmentEdgeClearance<'_>,
+    min_clearance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        COPPER_TO_BOARD_EDGE_CLEARANCE_VALID,
+        &scenario.name,
+        format!(
+            "Gerber copper segment {} has {:.3} mm board-edge clearance, below {:.3} mm minimum.",
+            segment_index, nearest.clearance_mm, min_clearance_mm
+        ),
+    );
+    finding
+        .measured
+        .insert("copper_kind".to_string(), json!("segment"));
+    finding
+        .measured
+        .insert("copper_segment_index".to_string(), json!(segment_index));
+    insert_copper_segment_measurements(&mut finding, segment);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(nearest.clearance_mm));
+    finding.measured.insert(
+        "trace_centerline_to_board_edge_distance_mm".to_string(),
+        json!(nearest.centerline_distance_mm),
+    );
+    insert_board_edge_measurements(&mut finding, nearest.edge);
+    finding.limit.insert(
+        "min_copper_edge_clearance_mm".to_string(),
+        json!(min_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move or reroute the copper segment farther from the board outline or cutout edge."
+            .to_string(),
+        "Reduce trace width only if current capacity, impedance, and fabrication rules allow it."
+            .to_string(),
+        "Adjust the board outline or copper Gerber origin if fabrication layers are misregistered."
+            .to_string(),
+    ];
+    finding
+}
+
 fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_index: usize) {
     finding
         .measured
@@ -557,6 +811,77 @@ fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_i
             .measured
             .insert("source_hit_index".to_string(), json!(source_hit_index));
     }
+}
+
+fn insert_copper_feature_edge_measurements(finding: &mut Finding, feature: &LayoutCopperFeature) {
+    finding
+        .measured
+        .insert("copper_feature_x_mm".to_string(), json!(feature.at.x_mm));
+    finding
+        .measured
+        .insert("copper_feature_y_mm".to_string(), json!(feature.at.y_mm));
+    finding
+        .measured
+        .insert("copper_feature_layer".to_string(), json!(feature.layer));
+    finding.measured.insert(
+        "copper_feature_aperture".to_string(),
+        json!(feature.aperture),
+    );
+    finding
+        .measured
+        .insert("copper_feature_shape".to_string(), json!(feature.shape));
+    finding.measured.insert(
+        "copper_feature_size_x_mm".to_string(),
+        json!(feature.size.x_mm),
+    );
+    finding.measured.insert(
+        "copper_feature_size_y_mm".to_string(),
+        json!(feature.size.y_mm),
+    );
+    finding.measured.insert(
+        "copper_feature_source_primitive".to_string(),
+        json!(feature.source_primitive),
+    );
+    finding.measured.insert(
+        "copper_feature_source_primitive_index".to_string(),
+        json!(feature.source_primitive_index),
+    );
+}
+
+fn insert_copper_segment_measurements(finding: &mut Finding, segment: &LayoutCopperSegment) {
+    finding.measured.insert(
+        "copper_segment_start".to_string(),
+        json!({
+            "x_mm": segment.start.x_mm,
+            "y_mm": segment.start.y_mm,
+        }),
+    );
+    finding.measured.insert(
+        "copper_segment_end".to_string(),
+        json!({
+            "x_mm": segment.end.x_mm,
+            "y_mm": segment.end.y_mm,
+        }),
+    );
+    finding
+        .measured
+        .insert("copper_segment_layer".to_string(), json!(segment.layer));
+    finding.measured.insert(
+        "copper_segment_aperture".to_string(),
+        json!(segment.aperture),
+    );
+    finding.measured.insert(
+        "copper_segment_width_mm".to_string(),
+        json!(segment.width_mm),
+    );
+    finding.measured.insert(
+        "copper_segment_source_primitive".to_string(),
+        json!(segment.source_primitive),
+    );
+    finding.measured.insert(
+        "copper_segment_source_primitive_index".to_string(),
+        json!(segment.source_primitive_index),
+    );
 }
 
 fn insert_copper_feature_measurements(
@@ -605,6 +930,50 @@ fn insert_copper_feature_measurements(
     );
 }
 
+fn insert_board_edge_measurements(finding: &mut Finding, edge: &LayoutSegment) {
+    finding.measured.insert(
+        "board_edge_start".to_string(),
+        json!({
+            "x_mm": edge.start.x_mm,
+            "y_mm": edge.start.y_mm,
+        }),
+    );
+    finding.measured.insert(
+        "board_edge_end".to_string(),
+        json!({
+            "x_mm": edge.end.x_mm,
+            "y_mm": edge.end.y_mm,
+        }),
+    );
+    if let Some(layer) = &edge.layer {
+        finding
+            .measured
+            .insert("board_edge_layer".to_string(), json!(layer));
+    }
+    if let Some(source_primitive) = &edge.source_primitive {
+        finding.measured.insert(
+            "board_edge_source_primitive".to_string(),
+            json!(source_primitive),
+        );
+    }
+    if let Some(source_primitive_index) = edge.source_primitive_index {
+        finding.measured.insert(
+            "board_edge_source_primitive_index".to_string(),
+            json!(source_primitive_index),
+        );
+    }
+    if let Some(contour_index) = edge.contour_index {
+        finding
+            .measured
+            .insert("board_edge_contour_index".to_string(), json!(contour_index));
+    }
+    if let Some(boundary_role) = &edge.boundary_role {
+        finding
+            .measured
+            .insert("board_edge_boundary_role".to_string(), json!(boundary_role));
+    }
+}
+
 fn annular_ring_for_feature(drill: &LayoutDrill, feature: &LayoutCopperFeature) -> Option<f64> {
     let drill_radius_mm = drill.drill_mm / 2.0;
     let dx = drill.at.x_mm - feature.at.x_mm;
@@ -620,6 +989,34 @@ fn annular_ring_for_feature(drill: &LayoutDrill, feature: &LayoutCopperFeature) 
         _ => return None,
     };
     Some(copper_boundary_distance_mm - drill_radius_mm)
+}
+
+fn copper_feature_to_segment_clearance_mm(
+    feature: &LayoutCopperFeature,
+    edge: &LayoutSegment,
+) -> Option<f64> {
+    let center = &feature.at;
+    match feature.shape.as_str() {
+        "circle" => {
+            let radius = feature.size.x_mm.min(feature.size.y_mm) / 2.0;
+            Some(point_to_segment_distance_mm(center, &edge.start, &edge.end) - radius)
+        }
+        "rect" => Some(segment_to_axis_aligned_rect_distance_mm(
+            &edge.start,
+            &edge.end,
+            center,
+            feature.size.x_mm / 2.0,
+            feature.size.y_mm / 2.0,
+        )),
+        "oval" => Some(segment_to_axis_aligned_oval_distance_mm(
+            &edge.start,
+            &edge.end,
+            center,
+            feature.size.x_mm,
+            feature.size.y_mm,
+        )),
+        _ => None,
+    }
 }
 
 fn oval_boundary_distance_mm(dx: f64, dy: f64, width_mm: f64, height_mm: f64) -> f64 {
@@ -642,6 +1039,122 @@ fn oval_boundary_distance_mm(dx: f64, dy: f64, width_mm: f64, height_mm: f64) ->
     }
 }
 
+fn segment_to_axis_aligned_oval_distance_mm(
+    start: &LayoutPoint,
+    end: &LayoutPoint,
+    center: &LayoutPoint,
+    width_mm: f64,
+    height_mm: f64,
+) -> f64 {
+    if width_mm >= height_mm {
+        let radius = height_mm / 2.0;
+        let half_segment = (width_mm - height_mm) / 2.0;
+        let capsule_start = LayoutPoint {
+            x_mm: center.x_mm - half_segment,
+            y_mm: center.y_mm,
+        };
+        let capsule_end = LayoutPoint {
+            x_mm: center.x_mm + half_segment,
+            y_mm: center.y_mm,
+        };
+        (segment_to_segment_distance_mm(start, end, &capsule_start, &capsule_end) - radius).max(0.0)
+    } else {
+        let radius = width_mm / 2.0;
+        let half_segment = (height_mm - width_mm) / 2.0;
+        let capsule_start = LayoutPoint {
+            x_mm: center.x_mm,
+            y_mm: center.y_mm - half_segment,
+        };
+        let capsule_end = LayoutPoint {
+            x_mm: center.x_mm,
+            y_mm: center.y_mm + half_segment,
+        };
+        (segment_to_segment_distance_mm(start, end, &capsule_start, &capsule_end) - radius).max(0.0)
+    }
+}
+
+fn segment_to_axis_aligned_rect_distance_mm(
+    start: &LayoutPoint,
+    end: &LayoutPoint,
+    center: &LayoutPoint,
+    half_x_mm: f64,
+    half_y_mm: f64,
+) -> f64 {
+    let min_x = center.x_mm - half_x_mm;
+    let max_x = center.x_mm + half_x_mm;
+    let min_y = center.y_mm - half_y_mm;
+    let max_y = center.y_mm + half_y_mm;
+    if point_inside_rect(start, min_x, max_x, min_y, max_y)
+        || point_inside_rect(end, min_x, max_x, min_y, max_y)
+    {
+        return 0.0;
+    }
+    let corners = [
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: min_y,
+        },
+        LayoutPoint {
+            x_mm: max_x,
+            y_mm: max_y,
+        },
+        LayoutPoint {
+            x_mm: min_x,
+            y_mm: max_y,
+        },
+    ];
+    let rect_edges = [
+        (&corners[0], &corners[1]),
+        (&corners[1], &corners[2]),
+        (&corners[2], &corners[3]),
+        (&corners[3], &corners[0]),
+    ];
+    if rect_edges
+        .iter()
+        .any(|(first, second)| segments_intersect(start, end, first, second))
+    {
+        return 0.0;
+    }
+    let endpoint_distance = point_to_rect_distance_mm(start, min_x, max_x, min_y, max_y)
+        .min(point_to_rect_distance_mm(end, min_x, max_x, min_y, max_y));
+    corners
+        .iter()
+        .map(|corner| point_to_segment_distance_mm(corner, start, end))
+        .fold(endpoint_distance, f64::min)
+}
+
+fn point_inside_rect(point: &LayoutPoint, min_x: f64, max_x: f64, min_y: f64, max_y: f64) -> bool {
+    point.x_mm >= min_x && point.x_mm <= max_x && point.y_mm >= min_y && point.y_mm <= max_y
+}
+
+fn point_to_rect_distance_mm(
+    point: &LayoutPoint,
+    min_x: f64,
+    max_x: f64,
+    min_y: f64,
+    max_y: f64,
+) -> f64 {
+    let dx = if point.x_mm < min_x {
+        min_x - point.x_mm
+    } else if point.x_mm > max_x {
+        point.x_mm - max_x
+    } else {
+        0.0
+    };
+    let dy = if point.y_mm < min_y {
+        min_y - point.y_mm
+    } else if point.y_mm > max_y {
+        point.y_mm - max_y
+    } else {
+        0.0
+    };
+    dx.hypot(dy)
+}
+
 fn point_to_segment_distance_mm(
     point: &LayoutPoint,
     start: &LayoutPoint,
@@ -660,6 +1173,70 @@ fn point_to_segment_distance_mm(
         y_mm: start.y_mm + t * dy,
     };
     point_distance_mm(point, &projection)
+}
+
+fn segment_to_segment_distance_mm(
+    first_start: &LayoutPoint,
+    first_end: &LayoutPoint,
+    second_start: &LayoutPoint,
+    second_end: &LayoutPoint,
+) -> f64 {
+    if segments_intersect(first_start, first_end, second_start, second_end) {
+        return 0.0;
+    }
+    point_to_segment_distance_mm(first_start, second_start, second_end)
+        .min(point_to_segment_distance_mm(
+            first_end,
+            second_start,
+            second_end,
+        ))
+        .min(point_to_segment_distance_mm(
+            second_start,
+            first_start,
+            first_end,
+        ))
+        .min(point_to_segment_distance_mm(
+            second_end,
+            first_start,
+            first_end,
+        ))
+}
+
+fn segments_intersect(
+    first_start: &LayoutPoint,
+    first_end: &LayoutPoint,
+    second_start: &LayoutPoint,
+    second_end: &LayoutPoint,
+) -> bool {
+    let o1 = orientation(first_start, first_end, second_start);
+    let o2 = orientation(first_start, first_end, second_end);
+    let o3 = orientation(second_start, second_end, first_start);
+    let o4 = orientation(second_start, second_end, first_end);
+    if o1.abs() <= f64::EPSILON && point_on_segment(second_start, first_start, first_end) {
+        return true;
+    }
+    if o2.abs() <= f64::EPSILON && point_on_segment(second_end, first_start, first_end) {
+        return true;
+    }
+    if o3.abs() <= f64::EPSILON && point_on_segment(first_start, second_start, second_end) {
+        return true;
+    }
+    if o4.abs() <= f64::EPSILON && point_on_segment(first_end, second_start, second_end) {
+        return true;
+    }
+    (o1 > 0.0) != (o2 > 0.0) && (o3 > 0.0) != (o4 > 0.0)
+}
+
+fn orientation(first: &LayoutPoint, second: &LayoutPoint, third: &LayoutPoint) -> f64 {
+    (second.x_mm - first.x_mm) * (third.y_mm - first.y_mm)
+        - (second.y_mm - first.y_mm) * (third.x_mm - first.x_mm)
+}
+
+fn point_on_segment(point: &LayoutPoint, start: &LayoutPoint, end: &LayoutPoint) -> bool {
+    point.x_mm >= start.x_mm.min(end.x_mm) - f64::EPSILON
+        && point.x_mm <= start.x_mm.max(end.x_mm) + f64::EPSILON
+        && point.y_mm >= start.y_mm.min(end.y_mm) - f64::EPSILON
+        && point.y_mm <= start.y_mm.max(end.y_mm) + f64::EPSILON
 }
 
 fn point_distance_mm(first: &LayoutPoint, second: &LayoutPoint) -> f64 {

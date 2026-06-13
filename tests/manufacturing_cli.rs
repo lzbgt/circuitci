@@ -94,3 +94,44 @@ fn drill_annular_ring_fails_when_plated_drill_has_no_matching_copper_flash() {
     );
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn copper_to_board_edge_clearance_passes_for_far_flash_and_trace() {
+    let report = run_validation("examples/good_copper_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_to_board_edge_clearance_fails_for_near_flash() {
+    let report = run_validation("examples/bad_copper_feature_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["copper_kind"], "feature");
+    assert_eq!(failure["measured"]["copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["copper_feature_shape"], "circle");
+    assert_eq!(failure["measured"]["clearance_mm"], 0.10000000000000003);
+    assert_eq!(failure["measured"]["board_edge_boundary_role"], "external");
+    assert_eq!(failure["limit"]["min_copper_edge_clearance_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_to_board_edge_clearance_fails_for_near_trace_segment() {
+    let report = run_validation("examples/bad_copper_segment_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["copper_kind"], "segment");
+    assert_eq!(failure["measured"]["copper_segment_index"], 0);
+    assert_eq!(failure["measured"]["copper_segment_width_mm"], 0.4);
+    assert_eq!(
+        failure["measured"]["trace_centerline_to_board_edge_distance_mm"],
+        0.4
+    );
+    assert_eq!(failure["measured"]["clearance_mm"], 0.2);
+    assert_eq!(failure["limit"]["min_copper_edge_clearance_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}

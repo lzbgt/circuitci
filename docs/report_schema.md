@@ -304,6 +304,25 @@ include `drill_index`, `drill_x_mm`, `drill_y_mm`, `drill_mm`,
 limit keys include `min_annular_ring_mm` and
 `max_drill_to_copper_center_offset_mm`.
 
+`COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by
+`manufacturing` scenarios that combine `board.layout.copper.features` or
+`board.layout.copper.segments` evidence with `board.layout.outline.segments`.
+Stable measured keys include `copper_kind`, `clearance_mm`,
+`board_edge_start`, `board_edge_end`, optional `board_edge_layer`, optional
+`board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
+optional `board_edge_contour_index`, and optional `board_edge_boundary_role`.
+Feature findings also report `copper_feature_index`, `copper_feature_x_mm`,
+`copper_feature_y_mm`, `copper_feature_layer`, `copper_feature_aperture`,
+`copper_feature_shape`, `copper_feature_size_x_mm`,
+`copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
+`copper_feature_source_primitive_index`. Segment findings report
+`copper_segment_index`, `copper_segment_start`, `copper_segment_end`,
+`copper_segment_layer`, `copper_segment_aperture`,
+`copper_segment_width_mm`, `copper_segment_source_primitive`,
+`copper_segment_source_primitive_index`, and
+`trace_centerline_to_board_edge_distance_mm`. Stable limit keys include
+`min_copper_edge_clearance_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

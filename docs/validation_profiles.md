@@ -59,6 +59,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `POWER_TREE_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `DRILL_ANNULAR_RING_VALID`
+- `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 

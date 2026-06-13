@@ -102,6 +102,7 @@ Canonical executable check IDs:
 - `POWER_TREE_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `DRILL_ANNULAR_RING_VALID`
+- `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -633,6 +634,39 @@ Drill annular-ring algorithm:
 This is a static 2D fabrication screen. It does not model copper draws,
 thermal reliefs, plating tolerance, drill wander distributions, solder mask,
 fab-specific compensation, or net ownership.
+
+Copper-to-board-edge clearance uses `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
+when the Board IR includes board-outline segment evidence under
+`board.layout.outline.segments` and anonymous Gerber copper evidence under
+`board.layout.copper.features` or `board.layout.copper.segments`.
+
+```yaml
+scenarios:
+  - name: copper_to_board_edge_clearance
+    type: manufacturing
+    checks:
+      - COPPER_TO_BOARD_EDGE_CLEARANCE_VALID
+    parameters:
+      min_copper_edge_clearance_mm: 0.25
+```
+
+Copper-to-board-edge algorithm:
+
+1. Require `parameters.min_copper_edge_clearance_mm`.
+2. Require finite `board.layout.outline.segments[]` entries.
+3. Require at least one finite copper feature or copper segment.
+4. Measure each supported flash shape to the nearest board-outline or cutout
+   segment.
+5. Measure each imported copper segment centerline to the nearest board-outline
+   or cutout segment and subtract half the trace width.
+6. Fail when any copper edge-to-outline clearance is below
+   `min_copper_edge_clearance_mm`.
+
+External board-outline segments, cutout segments, and unknown outline segments
+all count as board edges for this check. This is a static 2D fabrication
+screen; it does not model solder mask, copper etch compensation, fab-specific
+clearance compensation, panelization tabs, copper island connectivity, or net
+ownership.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

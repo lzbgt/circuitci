@@ -160,6 +160,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   non-plated drills. It does not use copper draw traces, thermal reliefs,
   plated-barrel thickness, drill wander distributions, solder mask, fab
   compensation, copper-to-copper clearance, or net ownership.
+- `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported anonymous Gerber copper
+  flashes/segments and board-outline centerline segments for a static 2D
+  copper-edge screen. It does not model solder mask, etch compensation,
+  panelization tabs, fab-specific clearance expansion, copper island
+  connectivity, or net ownership.
 - Gerber copper import currently records anonymous dark `D03` flash features
   for circle, rectangle, and oval apertures plus dark linear `D01` traces for
   circular apertures. It ignores non-circular aperture draws and does not infer

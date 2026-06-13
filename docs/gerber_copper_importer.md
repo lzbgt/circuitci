@@ -54,3 +54,9 @@ drill imports before using electrical or manufacturability checks.
 with Excellon drill hits for a static annular-ring screen. That rule still
 operates on anonymous fabrication geometry; it does not prove net ownership,
 thermal relief connectivity, or electrical continuity.
+
+`COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported dark flash and
+circular-aperture draw evidence together with board-outline evidence for a
+static copper-to-board-edge screen. That rule still operates on anonymous 2D
+fabrication geometry; it does not prove net ownership, copper island
+connectivity, solder-mask margin, or fab-specific etch compensation.
