@@ -338,6 +338,67 @@ fn solder_mask_dam_fails_for_non_flash_openings() {
 }
 
 #[test]
+fn solder_paste_opening_passes_when_area_ratio_is_in_range() {
+    let report = run_validation("examples/good_solder_paste_opening/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_opening_fails_when_opening_is_missing() {
+    let report = run_validation("examples/bad_solder_paste_opening_missing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_OPENING_VALID");
+    assert_eq!(failure["measured"]["copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["copper_feature_layer"], "F.Cu");
+    assert_eq!(
+        failure["measured"]["expected_solder_paste_layer"],
+        "F.Paste"
+    );
+    assert_eq!(failure["limit"]["min_paste_area_ratio"], 0.7);
+    assert_eq!(failure["limit"]["max_paste_area_ratio"], 1.0);
+    assert!(
+        failure["message"]
+            .as_str()
+            .unwrap()
+            .contains("no co-located solder-paste opening")
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_opening_fails_when_opening_is_undersized() {
+    let report = run_validation("examples/bad_solder_paste_opening_undersized/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_OPENING_VALID");
+    assert_eq!(failure["measured"]["solder_paste_feature_layer"], "F.Paste");
+    assert_eq!(failure["measured"]["solder_paste_feature_shape"], "rect");
+    let area_ratio = failure["measured"]["solder_paste_area_ratio"]
+        .as_f64()
+        .unwrap();
+    assert!((area_ratio - 0.4375).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_paste_area_ratio"], 0.7);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_opening_fails_when_opening_is_oversized() {
+    let report = run_validation("examples/bad_solder_paste_opening_oversized/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_OPENING_VALID");
+    let area_ratio = failure["measured"]["solder_paste_area_ratio"]
+        .as_f64()
+        .unwrap();
+    assert!((area_ratio - 1.2375).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["max_paste_area_ratio"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_near_flashes() {
     let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
     assert_eq!(report["result"], "fail");

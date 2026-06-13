@@ -386,6 +386,30 @@ feature owner fields. Gerber copper evidence is fabrication evidence only and
 does not by itself assign nets, components, pad names, copper islands, or
 electrical connectivity.
 
+Board IR can carry imported solder-paste stencil evidence under
+`board.layout.solder_paste.features`, `board.layout.solder_paste.segments`, and
+`board.layout.solder_paste.regions`. The shape is intentionally the same as
+`board.layout.copper` and `board.layout.solder_mask`; dark Gerber primitives on
+`F.Paste` or `B.Paste` represent paste stencil openings.
+
+```yaml
+board:
+  layout:
+    solder_paste:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D11
+          shape: rect
+          size: { x_mm: 0.9, y_mm: 0.72 }
+```
+
+This is fabrication stencil evidence only. It does not by itself prove component
+pin ownership or whether a copper flash is intended to be paste-bearing.
+
 ## Layout Pad Evidence
 
 Board IR can carry imported pad evidence under `board.layout.pads`. The first

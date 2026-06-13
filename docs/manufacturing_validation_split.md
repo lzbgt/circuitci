@@ -10,9 +10,10 @@ pad/via/copper owner consistency, required copper-layer checks, and stable
 annular-ring report construction.
 
 `src/validation/manufacturing/solder_mask.rs` owns
-`SOLDER_MASK_OPENING_VALID` and `SOLDER_MASK_DAM_VALID`, including solder-mask
-opening/dam parameter parsing, supported mask object validation, mask-opening
-selection, and stable solder-mask report construction.
+`SOLDER_MASK_OPENING_VALID`, `SOLDER_MASK_DAM_VALID`, and
+`SOLDER_PASTE_OPENING_VALID`, including solder-mask opening/dam and solder-paste
+opening parameter parsing, supported mask/paste object validation,
+opening-selection logic, and stable mask/paste report construction.
 
 `src/validation/manufacturing/geometry.rs` owns shared 2D geometry and evidence
 selection for imported fabrication data:

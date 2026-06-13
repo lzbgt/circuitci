@@ -541,6 +541,127 @@
               },
               "additionalProperties": false
             },
+            "solder_paste": {
+              "type": "object",
+              "properties": {
+                "features": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "at",
+                      "layer",
+                      "polarity",
+                      "source_primitive",
+                      "source_primitive_index",
+                      "aperture",
+                      "shape",
+                      "size"
+                    ],
+                    "properties": {
+                      "at": { "$ref": "#/$defs/layout_point" },
+                      "layer": { "type": "string", "minLength": 1 },
+                      "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
+                      "owner_kind": { "enum": ["pad", "via"] },
+                      "component": { "type": "string", "minLength": 1 },
+                      "pin": { "type": "string", "minLength": 1 },
+                      "via_index": { "type": "integer", "minimum": 0 },
+                      "source_primitive": { "enum": ["gerber_flash"] },
+                      "source_primitive_index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "aperture": {
+                        "type": "string",
+                        "pattern": "^D[0-9]+$"
+                      },
+                      "shape": { "enum": ["circle", "rect", "oval"] },
+                      "size": {
+                        "type": "object",
+                        "required": ["x_mm", "y_mm"],
+                        "properties": {
+                          "x_mm": { "type": "number", "exclusiveMinimum": 0 },
+                          "y_mm": { "type": "number", "exclusiveMinimum": 0 }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "segments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "start",
+                      "end",
+                      "layer",
+                      "polarity",
+                      "source_primitive",
+                      "source_primitive_index",
+                      "aperture",
+                      "width_mm"
+                    ],
+                    "properties": {
+                      "start": { "$ref": "#/$defs/layout_point" },
+                      "end": { "$ref": "#/$defs/layout_point" },
+                      "layer": { "type": "string", "minLength": 1 },
+                      "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
+                      "source_primitive": { "enum": ["gerber_linear_draw"] },
+                      "source_primitive_index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "aperture": {
+                        "type": "string",
+                        "pattern": "^D[0-9]+$"
+                      },
+                      "width_mm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "regions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "points",
+                      "layer",
+                      "polarity",
+                      "source_primitive",
+                      "source_primitive_index"
+                    ],
+                    "properties": {
+                      "points": {
+                        "type": "array",
+                        "minItems": 3,
+                        "items": { "$ref": "#/$defs/layout_point" }
+                      },
+                      "layer": { "type": "string", "minLength": 1 },
+                      "polarity": { "enum": ["dark"] },
+                      "net": { "type": "string", "minLength": 1 },
+                      "island_id": { "type": "string", "minLength": 1 },
+                      "source_primitive": { "enum": ["gerber_region"] },
+                      "source_primitive_index": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
             "pads": {
               "type": "object",
               "additionalProperties": {

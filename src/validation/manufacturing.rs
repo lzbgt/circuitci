@@ -24,7 +24,9 @@ use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::common::validation_input_missing;
 
 pub(super) use annular_ring::validate_drill_annular_ring;
-pub(super) use solder_mask::{validate_solder_mask_dam, validate_solder_mask_opening};
+pub(super) use solder_mask::{
+    validate_solder_mask_dam, validate_solder_mask_opening, validate_solder_paste_opening,
+};
 
 pub(super) fn validate_drill_to_board_edge_clearance(
     bound: &BoundBoard<'_>,

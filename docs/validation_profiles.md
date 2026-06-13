@@ -63,6 +63,7 @@ For this stage, `iot_basic_v0` recognizes these executable checks when project s
 - `COPPER_SPACING_VALID`
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
+- `SOLDER_PASTE_OPENING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 

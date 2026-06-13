@@ -4,7 +4,7 @@ use crate::reports::Finding;
 use serde_json::json;
 
 use super::super::common::validation_input_missing;
-use super::super::{SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID};
+use super::super::{SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_OPENING_VALID};
 use super::geometry::{
     CopperObjectRef, copper_object_spacing_mm, point_distance_mm, validate_copper_feature_geometry,
     validate_copper_region_geometry, validate_copper_segment_geometry,
@@ -214,6 +214,163 @@ pub(in crate::validation) fn validate_solder_mask_dam(
     }
 }
 
+pub(in crate::validation) fn validate_solder_paste_opening(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_area_ratio) =
+        required_numeric_parameter(scenario, "min_paste_area_ratio", findings)
+    else {
+        return;
+    };
+    let Some(max_area_ratio) =
+        required_numeric_parameter(scenario, "max_paste_area_ratio", findings)
+    else {
+        return;
+    };
+    if min_area_ratio < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_paste_area_ratio must be greater than or equal to zero.",
+        );
+        return;
+    }
+    if max_area_ratio < min_area_ratio {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.max_paste_area_ratio must be greater than or equal to parameters.min_paste_area_ratio.",
+        );
+        return;
+    }
+    let Some(max_center_offset_mm) = optional_numeric_parameter(
+        scenario,
+        "max_copper_to_paste_center_offset_mm",
+        0.1,
+        findings,
+    ) else {
+        return;
+    };
+    if max_center_offset_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.max_copper_to_paste_center_offset_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let copper = &bound.project.board.layout.copper;
+    if copper.features.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_OPENING_VALID requires board.layout.copper.features evidence.",
+        );
+        return;
+    }
+    let paste = &bound.project.board.layout.solder_paste;
+    if paste.features.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_OPENING_VALID requires board.layout.solder_paste.features evidence.",
+        );
+        return;
+    }
+    for (copper_index, copper_feature) in copper.features.iter().enumerate() {
+        if copper_feature.owner_kind.as_deref() == Some("via") {
+            continue;
+        }
+        if let Err(message) = validate_copper_feature_geometry(copper_feature, copper_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(paste_layer) = solder_paste_layer_for_copper_layer(&copper_feature.layer) else {
+            continue;
+        };
+        let Some(copper_area_mm2) = feature_area_mm2(copper_feature) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!(
+                    "SOLDER_PASTE_OPENING_VALID does not support copper feature {copper_index} shape {} for area-ratio validation.",
+                    copper_feature.shape
+                ),
+            );
+            continue;
+        };
+        let mut best_candidate: Option<SolderPasteOpeningCandidate<'_>> = None;
+        for (paste_index, paste_feature) in paste.features.iter().enumerate() {
+            if let Err(message) = validate_copper_feature_geometry(paste_feature, paste_index) {
+                validation_input_missing(findings, scenario, message);
+                continue;
+            }
+            if paste_feature.layer != paste_layer {
+                continue;
+            }
+            let center_offset_mm = point_distance_mm(&copper_feature.at, &paste_feature.at);
+            if center_offset_mm > max_center_offset_mm {
+                continue;
+            }
+            let Some(paste_area_mm2) = feature_area_mm2(paste_feature) else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    format!(
+                        "SOLDER_PASTE_OPENING_VALID does not support solder-paste feature {paste_index} shape {} for area-ratio validation.",
+                        paste_feature.shape
+                    ),
+                );
+                continue;
+            };
+            let area_ratio = paste_area_mm2 / copper_area_mm2;
+            let candidate = SolderPasteOpeningCandidate {
+                paste_feature,
+                paste_index,
+                center_offset_mm,
+                copper_area_mm2,
+                paste_area_mm2,
+                area_ratio,
+            };
+            if best_candidate.is_none_or(|best| {
+                candidate.center_offset_mm < best.center_offset_mm
+                    || (candidate.center_offset_mm == best.center_offset_mm
+                        && (candidate.area_ratio - 1.0).abs() < (best.area_ratio - 1.0).abs())
+            }) {
+                best_candidate = Some(candidate);
+            }
+        }
+        match best_candidate {
+            Some(candidate)
+                if candidate.area_ratio + f64::EPSILON < min_area_ratio
+                    || candidate.area_ratio > max_area_ratio + f64::EPSILON =>
+            {
+                findings.push(solder_paste_opening_area_finding(
+                    scenario,
+                    copper_feature,
+                    copper_index,
+                    candidate,
+                    min_area_ratio,
+                    max_area_ratio,
+                    max_center_offset_mm,
+                ));
+            }
+            None => findings.push(solder_paste_opening_missing_finding(
+                scenario,
+                copper_feature,
+                copper_index,
+                paste_layer,
+                min_area_ratio,
+                max_area_ratio,
+                max_center_offset_mm,
+            )),
+            _ => {}
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct SolderMaskOpeningCandidate<'a> {
     mask_feature: &'a LayoutCopperFeature,
@@ -224,10 +381,38 @@ struct SolderMaskOpeningCandidate<'a> {
     min_expansion_found_mm: f64,
 }
 
+#[derive(Clone, Copy)]
+struct SolderPasteOpeningCandidate<'a> {
+    paste_feature: &'a LayoutCopperFeature,
+    paste_index: usize,
+    center_offset_mm: f64,
+    copper_area_mm2: f64,
+    paste_area_mm2: f64,
+    area_ratio: f64,
+}
+
 fn solder_mask_layer_for_copper_layer(copper_layer: &str) -> Option<&'static str> {
     match copper_layer {
         "F.Cu" => Some("F.Mask"),
         "B.Cu" => Some("B.Mask"),
+        _ => None,
+    }
+}
+
+fn solder_paste_layer_for_copper_layer(copper_layer: &str) -> Option<&'static str> {
+    match copper_layer {
+        "F.Cu" => Some("F.Paste"),
+        "B.Cu" => Some("B.Paste"),
+        _ => None,
+    }
+}
+
+fn feature_area_mm2(feature: &LayoutCopperFeature) -> Option<f64> {
+    match feature.shape.as_str() {
+        "rect" => Some(feature.size.x_mm * feature.size.y_mm),
+        "circle" | "oval" => {
+            Some(std::f64::consts::PI * feature.size.x_mm * feature.size.y_mm / 4.0)
+        }
         _ => None,
     }
 }
@@ -359,6 +544,100 @@ fn solder_mask_dam_finding(
     finding
 }
 
+fn solder_paste_opening_missing_finding(
+    scenario: &Scenario,
+    copper_feature: &LayoutCopperFeature,
+    copper_index: usize,
+    expected_paste_layer: &str,
+    min_area_ratio: f64,
+    max_area_ratio: f64,
+    max_center_offset_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_OPENING_VALID,
+        scenario.name.clone(),
+        format!(
+            "Copper flash {copper_index} on {} has no co-located solder-paste opening on {expected_paste_layer}.",
+            copper_feature.layer
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Add or restore a solder-paste stencil aperture over this paste-bearing SMT pad, or verify the paste Gerber was exported for the correct board side.".to_string(),
+    ];
+    finding
+        .measured
+        .insert("copper_feature_index".to_string(), json!(copper_index));
+    insert_copper_feature_edge_measurements(&mut finding, copper_feature);
+    finding.measured.insert(
+        "expected_solder_paste_layer".to_string(),
+        json!(expected_paste_layer),
+    );
+    insert_solder_paste_limits(
+        &mut finding,
+        min_area_ratio,
+        max_area_ratio,
+        max_center_offset_mm,
+    );
+    finding
+}
+
+fn solder_paste_opening_area_finding(
+    scenario: &Scenario,
+    copper_feature: &LayoutCopperFeature,
+    copper_index: usize,
+    candidate: SolderPasteOpeningCandidate<'_>,
+    min_area_ratio: f64,
+    max_area_ratio: f64,
+    max_center_offset_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_OPENING_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-paste opening {} on {} has area ratio {:.6} against copper flash {copper_index}; allowed range is {:.6}..={:.6}.",
+            candidate.paste_index,
+            candidate.paste_feature.layer,
+            candidate.area_ratio,
+            min_area_ratio,
+            max_area_ratio
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Adjust the stencil aperture size or paste margin/ratio for this pad so paste area matches the package and fabrication process requirements.".to_string(),
+        "Verify the paste Gerber layer is registered to the copper Gerber and that paste apertures were not globally over-expanded or suppressed.".to_string(),
+    ];
+    finding
+        .measured
+        .insert("copper_feature_index".to_string(), json!(copper_index));
+    insert_copper_feature_edge_measurements(&mut finding, copper_feature);
+    insert_solder_paste_feature_measurements(&mut finding, candidate);
+    insert_solder_paste_limits(
+        &mut finding,
+        min_area_ratio,
+        max_area_ratio,
+        max_center_offset_mm,
+    );
+    finding
+}
+
+fn insert_solder_paste_limits(
+    finding: &mut Finding,
+    min_area_ratio: f64,
+    max_area_ratio: f64,
+    max_center_offset_mm: f64,
+) {
+    finding
+        .limit
+        .insert("min_paste_area_ratio".to_string(), json!(min_area_ratio));
+    finding
+        .limit
+        .insert("max_paste_area_ratio".to_string(), json!(max_area_ratio));
+    finding.limit.insert(
+        "max_copper_to_paste_center_offset_mm".to_string(),
+        json!(max_center_offset_mm),
+    );
+}
+
 fn insert_solder_mask_feature_measurements(
     finding: &mut Finding,
     candidate: SolderMaskOpeningCandidate<'_>,
@@ -403,6 +682,69 @@ fn insert_solder_mask_feature_measurements(
     finding.measured.insert(
         "solder_mask_feature_source_primitive_index".to_string(),
         json!(feature.source_primitive_index),
+    );
+}
+
+fn insert_solder_paste_feature_measurements(
+    finding: &mut Finding,
+    candidate: SolderPasteOpeningCandidate<'_>,
+) {
+    let feature = candidate.paste_feature;
+    finding.measured.insert(
+        "solder_paste_feature_index".to_string(),
+        json!(candidate.paste_index),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_x_mm".to_string(),
+        json!(feature.at.x_mm),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_y_mm".to_string(),
+        json!(feature.at.y_mm),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_layer".to_string(),
+        json!(feature.layer),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_aperture".to_string(),
+        json!(feature.aperture),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_shape".to_string(),
+        json!(feature.shape),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_size_x_mm".to_string(),
+        json!(feature.size.x_mm),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_size_y_mm".to_string(),
+        json!(feature.size.y_mm),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_source_primitive".to_string(),
+        json!(feature.source_primitive),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_source_primitive_index".to_string(),
+        json!(feature.source_primitive_index),
+    );
+    finding.measured.insert(
+        "copper_feature_area_mm2".to_string(),
+        json!(candidate.copper_area_mm2),
+    );
+    finding.measured.insert(
+        "solder_paste_feature_area_mm2".to_string(),
+        json!(candidate.paste_area_mm2),
+    );
+    finding.measured.insert(
+        "solder_paste_area_ratio".to_string(),
+        json!(candidate.area_ratio),
+    );
+    finding.measured.insert(
+        "copper_to_paste_center_offset_mm".to_string(),
+        json!(candidate.center_offset_mm),
     );
 }
 

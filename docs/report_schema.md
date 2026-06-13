@@ -423,6 +423,30 @@ prefixed fields such as `first_solder_mask_region_index`,
 `first_solder_mask_region_point_count`. Stable limit keys include
 `min_solder_mask_dam_mm`.
 
+`SOLDER_PASTE_OPENING_VALID` reports are emitted by `manufacturing` scenarios
+that compare Gerber copper flash evidence under `board.layout.copper.features`
+with Gerber solder-paste flash-opening evidence under
+`board.layout.solder_paste.features`. Stable measured keys include
+`copper_feature_index`, `copper_feature_x_mm`, `copper_feature_y_mm`,
+`copper_feature_layer`, optional `copper_feature_net`, optional
+`copper_feature_island_id`, optional `copper_feature_owner_kind`, optional
+`copper_feature_component`, optional `copper_feature_pin`, optional
+`copper_feature_via_index`, `copper_feature_aperture`,
+`copper_feature_shape`, `copper_feature_size_x_mm`,
+`copper_feature_size_y_mm`, `copper_feature_source_primitive`, and
+`copper_feature_source_primitive_index`. Missing-opening findings also report
+`expected_solder_paste_layer`. Area-ratio findings also report
+`solder_paste_feature_index`, `solder_paste_feature_x_mm`,
+`solder_paste_feature_y_mm`, `solder_paste_feature_layer`,
+`solder_paste_feature_aperture`, `solder_paste_feature_shape`,
+`solder_paste_feature_size_x_mm`, `solder_paste_feature_size_y_mm`,
+`solder_paste_feature_source_primitive`,
+`solder_paste_feature_source_primitive_index`, `copper_feature_area_mm2`,
+`solder_paste_feature_area_mm2`, `solder_paste_area_ratio`, and
+`copper_to_paste_center_offset_mm`. Stable limit keys include
+`min_paste_area_ratio`, `max_paste_area_ratio`, and
+`max_copper_to_paste_center_offset_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

@@ -114,6 +114,13 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ImportGerberSolderPaste {
+        gerber: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     ImportExcellonDrill {
         drill: PathBuf,
         #[arg(long)]
@@ -209,6 +216,11 @@ pub fn run() -> Result<()> {
             project,
             output,
         }) => run_import_gerber_solder_mask(gerber, project, output),
+        Some(Command::ImportGerberSolderPaste {
+            gerber,
+            project,
+            output,
+        }) => run_import_gerber_solder_paste(gerber, project, output),
         Some(Command::ImportExcellonDrill {
             drill,
             project,
@@ -437,6 +449,34 @@ fn run_import_gerber_solder_mask(gerber: PathBuf, project: PathBuf, output: Path
     )?;
     println!(
         "CircuitCI imported Gerber solder mask: {} flash openings, {} draw openings, {} region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
+        summary.openings,
+        summary.draw_openings,
+        summary.region_openings,
+        summary.apertures,
+        summary.ignored_draws,
+        summary.skipped_clear_flashes,
+        summary.skipped_clear_regions,
+        gerber.display(),
+        project.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_gerber_solder_paste(
+    gerber: PathBuf,
+    project: PathBuf,
+    output: PathBuf,
+) -> Result<()> {
+    let summary = crate::importers::gerber::import_gerber_solder_paste(
+        &crate::importers::gerber::GerberSolderPasteImportOptions {
+            gerber: gerber.clone(),
+            project: project.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI imported Gerber solder paste: {} flash openings, {} draw openings, {} region openings, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
         summary.openings,
         summary.draw_openings,
         summary.region_openings,
