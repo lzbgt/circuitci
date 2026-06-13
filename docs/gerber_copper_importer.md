@@ -1,8 +1,8 @@
 # Gerber Copper Importer
 
 `circuitci import-gerber-copper` enriches an existing Board IR project with
-anonymous flashed copper feature, circular-aperture trace, and single-contour
-region evidence from a Gerber copper layer.
+anonymous flashed copper feature, circular-aperture trace, and simple region
+evidence from a Gerber copper layer.
 
 ```bash
 circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
@@ -53,14 +53,16 @@ subset:
 - dark-polarity linear `D01` draws with circular apertures,
 - dark-polarity `G02`/`G03` circular-aperture arc draws sampled into bounded
   segment evidence,
-- dark-polarity single-contour `G36`/`G37` regions made from linear or sampled
-  arc edges.
+- dark-polarity `G36`/`G37` regions made from linear or sampled arc edges.
+  Single-contour regions import as one polygon; disjoint multi-contour regions
+  import as one simple polygon per contour.
 
 Draw records with non-circular apertures are counted as ignored
 draw records because their exact swept geometry is not a simple trace-width
 segment. Clear-polarity flashes, draws, and regions are skipped/ignored because
-they represent copper voids rather than conductive copper. Multi-contour,
-nested, open, degenerate, or flashed regions fail closed.
+they represent copper voids rather than conductive copper. Nested, overlapping,
+open, degenerate, or flashed regions fail closed because Board IR region
+polygons do not represent holes.
 
 ## Limits
 

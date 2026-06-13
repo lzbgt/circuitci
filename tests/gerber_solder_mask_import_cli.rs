@@ -217,10 +217,71 @@ fn import_gerber_solder_mask_associates_draw_opening_owner() {
 }
 
 #[test]
-fn import_gerber_solder_mask_rejects_multi_contour_region() {
+fn import_gerber_solder_mask_imports_disjoint_multi_contour_region() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let gerber = dir.path().join("multi_contour_mask.gts");
+    let output = dir.path().join("with_multi_contour_mask.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: F.Mask*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "G36*\n",
+            "X00950000Y00960000D02*\n",
+            "X01050000Y00960000D01*\n",
+            "X01050000Y01040000D01*\n",
+            "X00950000Y01040000D01*\n",
+            "X00950000Y00960000D01*\n",
+            "X01200000Y00960000D02*\n",
+            "X01300000Y00960000D01*\n",
+            "X01300000Y01040000D01*\n",
+            "X01200000Y01040000D01*\n",
+            "X01200000Y00960000D01*\n",
+            "G37*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-solder-mask",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_solder_mask_openings/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("2 region openings"));
+    assert!(stdout.contains("1 owner-associated region openings"));
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let regions = imported["board"]["layout"]["solder_mask"]["regions"]
+        .as_array()
+        .unwrap();
+    assert_eq!(regions.len(), 2);
+    assert_eq!(regions[0]["source_primitive_index"], 0);
+    assert_eq!(regions[1]["source_primitive_index"], 1);
+    assert_eq!(regions[0]["owner_kind"], "pad");
+    assert_eq!(regions[0]["component"], "J1");
+    assert_eq!(regions[0]["pin"], "1");
+    assert!(regions[1].get("owner_kind").is_none());
+}
+
+#[test]
+fn import_gerber_solder_mask_rejects_nested_multi_contour_region() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("nested_multi_contour_mask.gts");
     let output = dir.path().join("bad.project.yaml");
     std::fs::write(
         &gerber,
@@ -229,13 +290,16 @@ fn import_gerber_solder_mask_rejects_multi_contour_region() {
             "%FSLAX45Y45*%\n",
             "%MOMM*%\n",
             "G36*\n",
-            "X00000000Y00000000D02*\n",
-            "X01000000Y00000000D01*\n",
-            "X01000000Y01000000D01*\n",
-            "X00000000Y01000000D01*\n",
-            "X00000000Y00000000D01*\n",
-            "X02000000Y00000000D02*\n",
-            "X03000000Y00000000D01*\n",
+            "X00900000Y00900000D02*\n",
+            "X01100000Y00900000D01*\n",
+            "X01100000Y01100000D01*\n",
+            "X00900000Y01100000D01*\n",
+            "X00900000Y00900000D01*\n",
+            "X00950000Y00950000D02*\n",
+            "X01050000Y00950000D01*\n",
+            "X01050000Y01050000D01*\n",
+            "X00950000Y01050000D01*\n",
+            "X00950000Y00950000D01*\n",
             "G37*\n",
             "M02*\n",
         ),
@@ -255,5 +319,5 @@ fn import_gerber_solder_mask_rejects_multi_contour_region() {
     assert!(!command_output.status.success());
     let stderr = String::from_utf8_lossy(&command_output.stderr);
     assert!(stderr.contains("Gerber solder mask"));
-    assert!(stderr.contains("multiple contours in one G36/G37 region"));
+    assert!(stderr.contains("overlapping or nested contours"));
 }

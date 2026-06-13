@@ -11,14 +11,16 @@ The importer uses the same conservative Gerber subset as the copper importer:
 - dark `D03` flashes for circle, rectangle, oval, and observed EasyEDA
   `RoundRect` apertures,
 - dark circular-aperture linear `D01` and sampled `G02`/`G03` draw openings,
-- dark single-contour `G36`/`G37` region openings.
+- dark `G36`/`G37` region openings. Single-contour regions import as one
+  polygon; disjoint multi-contour regions import as one simple polygon per
+  contour.
 
 Imported evidence is written under `board.layout.solder_mask.features`,
 `board.layout.solder_mask.segments`, and `board.layout.solder_mask.regions`.
 Dark solder-mask primitives are treated as openings in the solder-mask layer.
 Clear-polarity primitives are counted and skipped.
-Multi-contour, nested, open, degenerate, or flashed regions fail closed rather
-than being approximated as mask openings.
+Nested, overlapping, open, degenerate, or flashed regions fail closed rather
+than being approximated as mask openings with holes.
 
 When the input project already contains PCB layout pad or via evidence, flash,
 draw, and region openings can inherit conservative owner metadata:
@@ -44,8 +46,8 @@ circuitci import-gerber-solder-mask fabrication/F_Mask.gts \
   --output with_mask.project.yaml
 ```
 
-`SOLDER_MASK_OPENING_VALID` consumes flash, circular-aperture draw, and
-single-contour region opening evidence from `board.layout.solder_mask`
+`SOLDER_MASK_OPENING_VALID` consumes flash, circular-aperture draw, and simple
+region opening evidence from `board.layout.solder_mask`
 together with Gerber copper flashes under `board.layout.copper.features`. It
 fails when a copper flash has no co-located same-side mask opening or when the
 opening expansion is below `parameters.min_mask_expansion_mm`.

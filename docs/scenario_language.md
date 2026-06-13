@@ -926,7 +926,7 @@ Copper spacing algorithm:
 3. Compare same-layer copper feature/feature, feature/segment,
    feature/region, segment/segment, segment/region, and region/region pairs.
 4. Use supported `circle`, `rect`, and axis-aligned `oval` flash geometry plus
-   circular-aperture trace segment width and single-contour region polygon
+   circular-aperture trace segment width and simple region polygon
    boundaries.
 5. Ignore different-layer pairs.
 6. If both copper objects declare the same `net`, or no net and the same
@@ -950,7 +950,7 @@ Solder-mask opening validation uses `SOLDER_MASK_OPENING_VALID` when the Board
 IR includes Gerber copper flash evidence under `board.layout.copper.features`
 and Gerber solder-mask opening evidence under `board.layout.solder_mask`.
 Supported mask openings include flash features, circular-aperture draw
-segments, and single-contour regions.
+segments, and simple regions.
 
 ```yaml
 scenarios:
@@ -986,9 +986,9 @@ Solder-mask opening algorithm:
    `min_mask_expansion_mm`.
 
 This is a static 2D solder-mask aperture screen. It checks Gerber mask flash,
-circular-aperture draw, and single-contour region openings. It does not solve
-multi-contour mask regions, fab-specific mask swell, paste stencil behavior, or
-package-specific mask rules.
+circular-aperture draw, and simple region openings. It does not solve nested or
+overlapping mask-region holes, fab-specific mask swell, paste stencil behavior,
+or package-specific mask rules.
 
 Solder-mask dam validation uses `SOLDER_MASK_DAM_VALID` when the Board IR
 includes at least two Gerber solder-mask openings under
@@ -1012,7 +1012,7 @@ Solder-mask dam algorithm:
    regions.
 3. Compare same-layer opening pairs using supported `circle`, `rect`,
    axis-aligned `oval`, circular-aperture linear or sampled arc draw, and
-   single-contour region geometry.
+   simple region geometry.
 4. Ignore different-layer opening pairs.
 5. Fail when the measured opening-to-opening gap is below
    `min_solder_mask_dam_mm`.
@@ -1027,8 +1027,8 @@ parameters:
 
 This is a static 2D mask web screen. It can detect thin or missing mask dams
 between imported flash, linear/arc draw, and region openings, but it does not
-yet evaluate multi-contour mask regions, fab-specific mask bridge exceptions,
-package-specific no-dam rules, or paste stencil behavior.
+yet evaluate nested or overlapping mask-region holes, fab-specific mask bridge
+exceptions, package-specific no-dam rules, or paste stencil behavior.
 
 Solder-paste opening validation uses `SOLDER_PASTE_OPENING_VALID` when the
 Board IR includes Gerber copper flash evidence under
@@ -1070,9 +1070,9 @@ Solder-paste opening algorithm:
    opening as representative evidence and include `solder_paste_opening_count`.
 
 This is a static 2D stencil aperture screen. It checks flash, circular-aperture
-draw, and single-contour region area-ratio evidence, including aggregate area
-for multiple co-located window apertures. It does not yet evaluate
-multi-contour paste regions, step-stencil thickness, paste volume, or
+draw, and simple region area-ratio evidence, including aggregate area for
+multiple co-located window apertures. It does not yet evaluate nested or
+overlapping paste-region holes, step-stencil thickness, paste volume, or
 package-specific paste reductions.
 
 Solder-paste aperture-size validation uses `SOLDER_PASTE_APERTURE_SIZE_VALID`
@@ -1107,7 +1107,7 @@ minimum-width approximations.
 
 Solder-paste aperture area-ratio validation uses
 `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` when the Board IR includes Gerber
-solder-paste flash, circular-aperture draw, or single-contour region evidence.
+solder-paste flash, circular-aperture draw, or simple region evidence.
 It checks stencil release area ratio as
 `opening_area_mm2 / (opening_perimeter_mm * stencil_thickness_mm)`. With
 `fabrication_process: jlcpcb_stencil_area_ratio_2026_06`, the minimum area
@@ -1160,7 +1160,7 @@ IC pin solder-paste aperture algorithm:
 4. Require matching pad-owned solder-paste feature, segment, or region evidence.
 5. For flash openings, measure the smaller of `size.x_mm` and `size.y_mm`.
 6. For draw openings, measure the circular aperture draw width.
-7. For single-contour regions, measure the smaller bounding-box dimension.
+7. For simple regions, measure the smaller bounding-box dimension.
 8. Fail when a pad-owned paste opening is outside the pitch-conditioned width
    range.
 9. For source rows with an explicit length, fail when the measured aperture
@@ -1246,7 +1246,7 @@ Solder-paste spacing algorithm:
    regions.
 3. Compare same-layer opening pairs using supported `circle`, `rect`,
    axis-aligned `oval`, circular-aperture linear or sampled arc draw, and
-   single-contour region geometry.
+   simple region geometry.
 4. Ignore different-layer opening pairs.
 5. Fail when the measured opening-to-opening gap is below
    `min_solder_paste_spacing_mm`.
@@ -1254,7 +1254,8 @@ Solder-paste spacing algorithm:
 This is a static 2D stencil web screen. It can detect merged or too-close paste
 apertures between imported flash, linear/arc draw, and region openings, but it
 does not evaluate stencil thickness, paste volume, paste release,
-multi-contour paste regions, or package-specific intentional aperture merging.
+nested or overlapping paste-region holes, or package-specific intentional
+aperture merging.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule always checks

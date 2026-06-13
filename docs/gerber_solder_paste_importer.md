@@ -10,13 +10,14 @@ Supported subset:
 - dark polarity flashes (`D03`) for circle, rectangle, oval, and observed
   EasyEDA `RoundRect` apertures
 - dark linear and sampled `G02`/`G03` arc draws with circular apertures
-- dark single-contour regions
+- dark `G36`/`G37` regions. Single-contour regions import as one polygon;
+  disjoint multi-contour regions import as one simple polygon per contour
 
 Imported evidence is written under `board.layout.solder_paste.features`,
 `board.layout.solder_paste.segments`, and `board.layout.solder_paste.regions`.
 Dark solder-paste primitives are treated as stencil openings.
-Multi-contour, nested, open, degenerate, or flashed regions fail closed rather
-than being approximated as stencil openings.
+Nested, overlapping, open, degenerate, or flashed regions fail closed rather
+than being approximated as stencil openings with holes.
 
 When the input project already contains PCB layout pad evidence, flash, draw,
 and region openings can inherit conservative owner metadata: `net`,
@@ -42,8 +43,8 @@ circuitci import-gerber-solder-paste fabrication/F_Paste.gtp \
   --output out/imported_with_paste.project.yaml
 ```
 
-`SOLDER_PASTE_OPENING_VALID` consumes flash, circular-aperture draw, and
-single-contour region opening evidence from `board.layout.solder_paste`
+`SOLDER_PASTE_OPENING_VALID` consumes flash, circular-aperture draw, and simple
+region opening evidence from `board.layout.solder_paste`
 together with Gerber copper flashes under `board.layout.copper.features`. It
 maps `F.Cu` to `F.Paste` and `B.Cu` to `B.Paste`, then checks that co-located
 paste aperture area stays within scenario-provided min/max area-ratio bounds.
@@ -64,7 +65,7 @@ region openings are not used for this minimum-width screen yet because the rule
 does not approximate polygon neck width.
 
 `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` consumes solder-paste flash features,
-circular-aperture draw segments, and single-contour regions. With
+circular-aperture draw segments, and simple regions. With
 `fabrication_process: jlcpcb_stencil_area_ratio_2026_06`, apertures must meet
 the source-backed `0.66` JLCPCB/IPC-7525 area-ratio floor; scenarios must also
 provide `stencil_thickness_mm`, or the Board IR must provide
@@ -74,7 +75,7 @@ opening area divided by aperture wall area.
 `SOLDER_PASTE_IC_PIN_APERTURE_VALID` and `SOLDER_PASTE_BGA_APERTURE_VALID`
 consume pad-owned solder-paste evidence for package-specific JLCPCB stencil
 opening table rows. IC checks can use paste features, circular draw openings,
-and single-contour regions. BGA checks intentionally use flash features only,
+and simple regions. BGA checks intentionally use flash features only,
 because the source table gives ball-grid aperture sizes rather than arbitrary
 draw or polygon paste geometry.
 

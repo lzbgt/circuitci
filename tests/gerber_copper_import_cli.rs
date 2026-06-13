@@ -388,14 +388,87 @@ fn import_gerber_copper_rejects_undefined_aperture_selection() {
 }
 
 #[test]
-fn import_gerber_copper_rejects_multi_contour_region() {
+fn import_gerber_copper_imports_disjoint_multi_contour_region() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let gerber = dir.path().join("multi_contour_region.gtl");
+    let output = dir.path().join("with_multi_contour_region.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "G36*\n",
+            "X00000000Y00000000D02*\n",
+            "X01000000Y00000000D01*\n",
+            "X01000000Y-01000000D01*\n",
+            "X00000000Y-01000000D01*\n",
+            "X00000000Y00000000D01*\n",
+            "X02000000Y00000000D02*\n",
+            "X03000000Y00000000D01*\n",
+            "X03000000Y-01000000D01*\n",
+            "X02000000Y-01000000D01*\n",
+            "X02000000Y00000000D01*\n",
+            "G37*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-copper",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_jlc_gerber_copper_peer_extract/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("2 regions"));
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let regions = imported["board"]["layout"]["copper"]["regions"]
+        .as_array()
+        .unwrap();
+    assert_eq!(regions.len(), 2);
+    assert_eq!(regions[0]["source_primitive_index"], 0);
+    assert_eq!(regions[1]["source_primitive_index"], 1);
+    assert_eq!(regions[0]["points"].as_array().unwrap().len(), 4);
+    assert_eq!(regions[1]["points"].as_array().unwrap().len(), 4);
+}
+
+#[test]
+fn import_gerber_copper_rejects_nested_multi_contour_region() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("nested_multi_contour_region.gtl");
     let output = dir.path().join("bad.project.yaml");
     std::fs::write(
         &gerber,
-        "%FSLAX45Y45*%\n%MOMM*%\nG36*\nX00000000Y00000000D02*\nX01000000Y00000000D01*\nX01000000Y-01000000D01*\nX00000000Y-01000000D01*\nX00000000Y00000000D01*\nX02000000Y00000000D02*\nX03000000Y00000000D01*\nG37*\nM02*\n",
+        concat!(
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "G36*\n",
+            "X00000000Y00000000D02*\n",
+            "X03000000Y00000000D01*\n",
+            "X03000000Y-03000000D01*\n",
+            "X00000000Y-03000000D01*\n",
+            "X00000000Y00000000D01*\n",
+            "X01000000Y-01000000D02*\n",
+            "X02000000Y-01000000D01*\n",
+            "X02000000Y-02000000D01*\n",
+            "X01000000Y-02000000D01*\n",
+            "X01000000Y-01000000D01*\n",
+            "G37*\n",
+            "M02*\n",
+        ),
     )
     .unwrap();
     let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
@@ -411,7 +484,7 @@ fn import_gerber_copper_rejects_multi_contour_region() {
         .unwrap();
     assert!(!command_output.status.success());
     let stderr = String::from_utf8_lossy(&command_output.stderr);
-    assert!(stderr.contains("multiple contours in one G36/G37 region"));
+    assert!(stderr.contains("overlapping or nested contours"));
 }
 
 #[test]

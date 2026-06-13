@@ -578,7 +578,7 @@ fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<Ge
     let mut features = Vec::new();
     let mut segments = Vec::new();
     let mut regions = Vec::new();
-    let mut region_points: Option<Vec<GerberPoint>> = None;
+    let mut region_contours: Option<Vec<Vec<GerberPoint>>> = None;
     let mut source_primitive_index = 0;
     let mut ignored_draws = 0;
     let mut skipped_clear_flashes = 0;
@@ -631,53 +631,39 @@ fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<Ge
             continue;
         }
         if record == "G36" {
-            if region_points.is_some() {
+            if region_contours.is_some() {
                 bail!(
                     "Gerber copper {} starts nested G36 regions; nested regions are unsupported.",
                     path.display()
                 );
             }
-            region_points = Some(Vec::new());
+            region_contours = Some(Vec::new());
             state.current = None;
             state.modal_operation = None;
             continue;
         }
         if record == "G37" {
-            let Some(mut points) = region_points.take() else {
+            let Some(contours) = region_contours.take() else {
                 bail!(
                     "Gerber copper {} ends a G37 region before G36.",
                     path.display()
                 );
             };
-            if points.len() < 3 {
-                bail!(
-                    "Gerber copper {} has a G36/G37 region with fewer than three points.",
-                    path.display()
-                );
-            }
-            if let (Some(first), Some(last)) = (points.first().copied(), points.last().copied())
-                && points_close(first, last)
-            {
-                points.pop();
-            }
-            if points.len() < 3 || polygon_signed_area_mm2(&points).abs() <= f64::EPSILON {
-                bail!(
-                    "Gerber copper {} has a degenerate G36/G37 region.",
-                    path.display()
-                );
-            }
+            let contours = finish_region_contours(contours, &source)?;
             if state.dark_polarity {
-                regions.push(GerberCopperRegion {
-                    points,
-                    source_primitive_index,
-                    net: None,
-                    island_id: None,
-                    owner_kind: None,
-                    component: None,
-                    pin: None,
-                    via_index: None,
-                });
-                source_primitive_index += 1;
+                for points in contours {
+                    regions.push(GerberCopperRegion {
+                        points,
+                        source_primitive_index,
+                        net: None,
+                        island_id: None,
+                        owner_kind: None,
+                        component: None,
+                        pin: None,
+                        via_index: None,
+                    });
+                    source_primitive_index += 1;
+                }
             } else {
                 skipped_clear_regions += 1;
             }
@@ -774,21 +760,26 @@ fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<Ge
             );
         }
         let target = parse_target_point(record, format, state.current, path)?;
-        if let Some(points) = region_points.as_mut() {
+        if let Some(contours) = region_contours.as_mut() {
             match state.modal_operation {
                 Some(GerberOperation::Move) => {
-                    if points.is_empty() {
-                        points.push(target);
-                    } else if !points_close(points[0], target) {
-                        bail!(
-                            "{} has multiple contours in one G36/G37 region; only single-contour regions are supported.",
-                            source
-                        );
-                    }
+                    start_or_continue_region_contour(contours, target, &source)?;
                     state.current = Some(target);
                     continue;
                 }
                 Some(GerberOperation::Draw) => {
+                    if contours.is_empty() {
+                        let Some(start) = state.current else {
+                            bail!(
+                                "Gerber copper {} has region draw command before a region start point.",
+                                path.display()
+                            );
+                        };
+                        contours.push(vec![start]);
+                    }
+                    let points = contours
+                        .last_mut()
+                        .expect("region contour exists after draw start");
                     if points.is_empty() {
                         let Some(start) = state.current else {
                             bail!(
@@ -797,6 +788,12 @@ fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<Ge
                             );
                         };
                         points.push(start);
+                    }
+                    if region_contour_is_closed(points) {
+                        bail!(
+                            "{} has draw commands after a closed G36/G37 region contour; start another contour with D02.",
+                            source
+                        );
                     }
                     if let Some(direction) = arc_direction {
                         let Some(start) = state.current else {
@@ -959,7 +956,7 @@ fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<Ge
             }
         }
     }
-    if region_points.is_some() {
+    if region_contours.is_some() {
         bail!(
             "Gerber copper {} starts a G36 region without a matching G37.",
             path.display()
@@ -1021,6 +1018,114 @@ fn parse_coordinate_format(record: &str, path: &Path) -> Result<CoordinateFormat
         x_decimals,
         y_decimals,
     })
+}
+
+fn start_or_continue_region_contour(
+    contours: &mut Vec<Vec<GerberPoint>>,
+    target: GerberPoint,
+    source: &str,
+) -> Result<()> {
+    let Some(points) = contours.last_mut() else {
+        contours.push(vec![target]);
+        return Ok(());
+    };
+    if points.is_empty() {
+        points.push(target);
+        return Ok(());
+    }
+    if points_close(points[0], target) {
+        return Ok(());
+    }
+    if region_contour_is_closed(points) {
+        contours.push(vec![target]);
+        return Ok(());
+    }
+    bail!(
+        "{} starts a new G36/G37 region contour before closing the previous contour.",
+        source
+    );
+}
+
+fn finish_region_contours(
+    contours: Vec<Vec<GerberPoint>>,
+    source: &str,
+) -> Result<Vec<Vec<GerberPoint>>> {
+    if contours.is_empty() {
+        bail!("{source} has a G36/G37 region with no contours.");
+    }
+    let mut finished = Vec::with_capacity(contours.len());
+    for mut points in contours {
+        if let (Some(first), Some(last)) = (points.first().copied(), points.last().copied())
+            && points_close(first, last)
+        {
+            points.pop();
+        }
+        if points.len() < 3 {
+            bail!("{source} has a G36/G37 region contour with fewer than three points.");
+        }
+        let area_mm2 = polygon_signed_area_mm2(&points).abs();
+        if !area_mm2.is_finite() || area_mm2 <= f64::EPSILON {
+            bail!("{source} has a degenerate G36/G37 region contour.");
+        }
+        finished.push(points);
+    }
+    ensure_disjoint_region_contours(&finished, source)?;
+    Ok(finished)
+}
+
+fn region_contour_is_closed(points: &[GerberPoint]) -> bool {
+    points.len() >= 2 && points_close(points[0], *points.last().expect("points is not empty"))
+}
+
+fn ensure_disjoint_region_contours(contours: &[Vec<GerberPoint>], source: &str) -> Result<()> {
+    for first_index in 0..contours.len() {
+        for second_index in (first_index + 1)..contours.len() {
+            let first = &contours[first_index];
+            let second = &contours[second_index];
+            if polygon_bounds_overlap(first, second)
+                || point_inside_polygon(first[0], second)
+                || point_inside_polygon(second[0], first)
+            {
+                bail!(
+                    "{} has overlapping or nested contours in one G36/G37 region; only disjoint simple contours can be imported as separate regions.",
+                    source
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+fn polygon_bounds_overlap(first: &[GerberPoint], second: &[GerberPoint]) -> bool {
+    let first_bounds = polygon_bounds(first);
+    let second_bounds = polygon_bounds(second);
+    first_bounds.min_x_mm <= second_bounds.max_x_mm + POINT_EPSILON_MM
+        && first_bounds.max_x_mm + POINT_EPSILON_MM >= second_bounds.min_x_mm
+        && first_bounds.min_y_mm <= second_bounds.max_y_mm + POINT_EPSILON_MM
+        && first_bounds.max_y_mm + POINT_EPSILON_MM >= second_bounds.min_y_mm
+}
+
+fn polygon_bounds(points: &[GerberPoint]) -> PolygonBounds {
+    let mut bounds = PolygonBounds {
+        min_x_mm: f64::INFINITY,
+        max_x_mm: f64::NEG_INFINITY,
+        min_y_mm: f64::INFINITY,
+        max_y_mm: f64::NEG_INFINITY,
+    };
+    for point in points {
+        bounds.min_x_mm = bounds.min_x_mm.min(point.x_mm);
+        bounds.max_x_mm = bounds.max_x_mm.max(point.x_mm);
+        bounds.min_y_mm = bounds.min_y_mm.min(point.y_mm);
+        bounds.max_y_mm = bounds.max_y_mm.max(point.y_mm);
+    }
+    bounds
+}
+
+struct PolygonBounds {
+    min_x_mm: f64,
+    max_x_mm: f64,
+    min_y_mm: f64,
+    max_y_mm: f64,
 }
 
 fn parse_operation(record: &str) -> Result<Option<GerberOperation>> {
