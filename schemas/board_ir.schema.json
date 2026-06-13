@@ -839,6 +839,18 @@
                     },
                     "additionalProperties": false
                   }
+                },
+                "usb_return_path": {
+                  "type": "object",
+                  "properties": {
+                    "max_data_line_unreferenced_length_mm": { "type": "number", "minimum": 0 },
+                    "max_data_via_to_ground_stitch_distance_mm": { "type": "number", "minimum": 0 },
+                    "require_filled_zone_coverage": { "type": "boolean" },
+                    "min_data_line_filled_zone_edge_clearance_mm": { "type": "number", "minimum": 0 },
+                    "require_ground_zone_contact_evidence": { "type": "boolean" },
+                    "source": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false

@@ -224,18 +224,15 @@ The command is conservative:
   `filled_zone_edge_clearance_min_mm` and
   `filled_zone_edge_clearance_segments[]` when filled polygons are present, so
   agents can see the nearest filled-copper edge margin before choosing a
-  minimum-clearance policy. It leaves
-  `max_data_line_unreferenced_length_mm` as `null` until an agent supplies the
-  board-specific USB return-path rule. It also includes
-  `max_data_via_to_ground_stitch_distance_mm: null` so agents can enable
-  stitching-via checks when USB data layer changes need nearby ground vias, and
-  `require_filled_zone_coverage: null` so agents can choose whether saved
-  filled-zone geometry must be used instead of intended zone outlines. The
-  `min_data_line_filled_zone_edge_clearance_mm` parameter remains `null` until
-  an agent supplies the board-specific filled-copper edge-margin rule. The
-  template also includes `require_ground_zone_contact_evidence: null` so agents
-  can choose whether imported same-net pad/via evidence must prove that the
-  same-layer ground zone is tied to the ground net. Each route can include
+  minimum-clearance policy. If
+  `board.layout.constraints.usb_return_path.max_data_line_unreferenced_length_mm`
+  is present, it pre-fills `max_data_line_unreferenced_length_mm` and the
+  template becomes runnable. Optional fields in the same constraint object can
+  pre-fill `max_data_via_to_ground_stitch_distance_mm`,
+  `require_filled_zone_coverage`,
+  `min_data_line_filled_zone_edge_clearance_mm`, and
+  `require_ground_zone_contact_evidence`; otherwise those parameters remain
+  `null` until an agent supplies board-specific policy. Each route can include
   `ground_zone_contacts[]` and, when saved filled polygons exist,
   `filled_ground_zone_contacts[]`; these list imported same-net pad or via
   contacts found inside the relevant same-layer ground reference geometry. For

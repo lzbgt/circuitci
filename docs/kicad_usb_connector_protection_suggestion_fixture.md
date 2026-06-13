@@ -138,9 +138,10 @@ power-entry layout policy supplies those limits.
 Because the PCB fixture also imports a same-layer GND copper-zone outline over
 the USB D+/D- route segment midpoints, the return-path suggestion reports
 `unreferenced_route_length_mm: 0.0` and
-`filled_unreferenced_route_length_mm: 0.0` for both data lines, then leaves
-`max_data_line_unreferenced_length_mm: null` for the board-specific return-path
-rule. It also leaves
+`filled_unreferenced_route_length_mm: 0.0` for both data lines. The fixture
+declares `board.layout.constraints.usb_return_path.max_data_line_unreferenced_length_mm:
+0.0`, so the generated return-path suggestion is runnable for the core
+unreferenced-length check. It still leaves
 `max_data_via_to_ground_stitch_distance_mm: null` so an agent can enable
 nearby ground-stitch checks when data vias cross layers, and
 `require_filled_zone_coverage: null` so an agent can choose saved

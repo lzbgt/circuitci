@@ -257,7 +257,10 @@ Route-geometry validation:
 - `USB_RETURN_PATH_VALID` targets the same connector component and uses
   `board.layout.routes` plus `board.layout.zones` evidence.
 - The scenario must declare
-  `parameters.max_data_line_unreferenced_length_mm`.
+  `parameters.max_data_line_unreferenced_length_mm`, or Board IR must provide
+  `board.layout.constraints.usb_return_path.max_data_line_unreferenced_length_mm`.
+  Scenario parameters take precedence so agents can run what-if checks without
+  changing imported board metadata.
 - The scenario may declare
   `parameters.max_data_via_to_ground_stitch_distance_mm` to require nearby
   ground-net stitching vias for USB data route vias.

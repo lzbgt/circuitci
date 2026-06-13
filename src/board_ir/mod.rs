@@ -181,6 +181,8 @@ pub struct BoardOutline {
 pub struct LayoutConstraints {
     #[serde(default)]
     pub net_rules: BTreeMap<String, NetLayoutRule>,
+    #[serde(default)]
+    pub usb_return_path: UsbReturnPathLayoutRule,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -197,6 +199,22 @@ pub struct NetLayoutRule {
     pub length_max_mm: Option<f64>,
     #[serde(default)]
     pub skew_max_mm: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct UsbReturnPathLayoutRule {
+    #[serde(default)]
+    pub max_data_line_unreferenced_length_mm: Option<f64>,
+    #[serde(default)]
+    pub max_data_via_to_ground_stitch_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub require_filled_zone_coverage: Option<bool>,
+    #[serde(default)]
+    pub min_data_line_filled_zone_edge_clearance_mm: Option<f64>,
+    #[serde(default)]
+    pub require_ground_zone_contact_evidence: Option<bool>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

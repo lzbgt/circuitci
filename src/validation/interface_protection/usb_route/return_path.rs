@@ -1,4 +1,6 @@
-use crate::board_ir::{CopperZone, LayoutPad, NetKind, NetRoute, RouteVia, Scenario};
+use crate::board_ir::{
+    CopperZone, LayoutPad, NetKind, NetRoute, RouteVia, Scenario, UsbReturnPathLayoutRule,
+};
 use crate::library::{BoundBoard, UsbConnector};
 use crate::reports::Finding;
 use crate::validation::common::validation_input_missing;
@@ -25,33 +27,53 @@ pub(super) fn validate_usb_return_path(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(max_unreferenced_length_mm) =
-        required_nonnegative_parameter(scenario, "max_data_line_unreferenced_length_mm", findings)
-    else {
-        return;
-    };
-    let Some(max_data_via_to_ground_stitch_distance_mm) = optional_nonnegative_parameter(
+    let rule = &bound.project.board.layout.constraints.usb_return_path;
+    let Some(max_unreferenced_length_mm) = required_return_path_nonnegative_parameter(
+        rule,
         scenario,
-        "max_data_via_to_ground_stitch_distance_mm",
+        "max_data_line_unreferenced_length_mm",
         findings,
     ) else {
         return;
     };
-    let Some(require_filled_zone_coverage) =
-        optional_bool_parameter(scenario, "require_filled_zone_coverage", findings)
+    let Some(max_data_via_to_ground_stitch_distance_mm) =
+        optional_return_path_nonnegative_parameter(
+            rule,
+            scenario,
+            "max_data_via_to_ground_stitch_distance_mm",
+            |rule| rule.max_data_via_to_ground_stitch_distance_mm,
+            findings,
+        )
     else {
         return;
     };
-    let Some(min_data_line_filled_zone_edge_clearance_mm) = optional_nonnegative_parameter(
+    let Some(require_filled_zone_coverage) = optional_return_path_bool_parameter(
+        rule,
         scenario,
-        "min_data_line_filled_zone_edge_clearance_mm",
+        "require_filled_zone_coverage",
+        |rule| rule.require_filled_zone_coverage,
         findings,
     ) else {
         return;
     };
-    let Some(require_ground_zone_contact_evidence) =
-        optional_bool_parameter(scenario, "require_ground_zone_contact_evidence", findings)
+    let Some(min_data_line_filled_zone_edge_clearance_mm) =
+        optional_return_path_nonnegative_parameter(
+            rule,
+            scenario,
+            "min_data_line_filled_zone_edge_clearance_mm",
+            |rule| rule.min_data_line_filled_zone_edge_clearance_mm,
+            findings,
+        )
     else {
+        return;
+    };
+    let Some(require_ground_zone_contact_evidence) = optional_return_path_bool_parameter(
+        rule,
+        scenario,
+        "require_ground_zone_contact_evidence",
+        |rule| rule.require_ground_zone_contact_evidence,
+        findings,
+    ) else {
         return;
     };
 
@@ -126,6 +148,73 @@ pub(super) fn validate_usb_return_path(
             findings,
         );
     }
+}
+
+fn required_return_path_nonnegative_parameter(
+    rule: &UsbReturnPathLayoutRule,
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if scenario.parameters.contains_key(name) {
+        return required_nonnegative_parameter(scenario, name, findings);
+    }
+    let Some(value) = rule.max_data_line_unreferenced_length_mm else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "interface_protection parameters.{name} or board.layout.constraints.usb_return_path.{name} is required."
+            ),
+        );
+        return None;
+    };
+    if !value.is_finite() || value < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("board.layout.constraints.usb_return_path.{name} must be non-negative."),
+        );
+        return None;
+    }
+    Some(value)
+}
+
+fn optional_return_path_nonnegative_parameter(
+    rule: &UsbReturnPathLayoutRule,
+    scenario: &Scenario,
+    name: &str,
+    fallback: impl Fn(&UsbReturnPathLayoutRule) -> Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<Option<f64>> {
+    if scenario.parameters.contains_key(name) {
+        return optional_nonnegative_parameter(scenario, name, findings);
+    }
+    let Some(value) = fallback(rule) else {
+        return Some(None);
+    };
+    if !value.is_finite() || value < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!("board.layout.constraints.usb_return_path.{name} must be non-negative."),
+        );
+        return None;
+    }
+    Some(Some(value))
+}
+
+fn optional_return_path_bool_parameter(
+    rule: &UsbReturnPathLayoutRule,
+    scenario: &Scenario,
+    name: &str,
+    fallback: impl Fn(&UsbReturnPathLayoutRule) -> Option<bool>,
+    findings: &mut Vec<Finding>,
+) -> Option<bool> {
+    if scenario.parameters.contains_key(name) {
+        return optional_bool_parameter(scenario, name, findings);
+    }
+    Some(fallback(rule).unwrap_or(false))
 }
 
 struct UsbReturnPathSignalCheck<'a> {

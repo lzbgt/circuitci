@@ -676,6 +676,13 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_return_path_j1")
         .expect("USB return-path suggestion");
+    assert_eq!(return_path["runnable"], false);
+    assert!(
+        return_path["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("usb_return_path.max_data_line_unreferenced_length_mm")
+    );
     assert_eq!(
         return_path["scenario"]["checks"][0],
         "USB_RETURN_PATH_VALID"
@@ -1545,6 +1552,10 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         imported["board"]["layout"]["constraints"]["net_rules"]["usb_dm"]["skew_max_mm"],
         0.5
     );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_return_path"]["max_data_line_unreferenced_length_mm"],
+        0.0
+    );
 
     let suggest_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -1714,12 +1725,15 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         .iter()
         .find(|suggestion| suggestion["id"] == "usb_return_path_j1")
         .unwrap();
+    assert_eq!(return_path["runnable"], true);
+    assert!(return_path.get("required_inputs").is_none());
     assert_eq!(
         return_path["scenario"]["checks"][0],
         "USB_RETURN_PATH_VALID"
     );
-    assert!(
-        return_path["scenario"]["parameters"]["max_data_line_unreferenced_length_mm"].is_null()
+    assert_eq!(
+        return_path["scenario"]["parameters"]["max_data_line_unreferenced_length_mm"],
+        0.0
     );
     assert!(
         return_path["scenario"]["parameters"]["max_data_via_to_ground_stitch_distance_mm"]

@@ -536,11 +536,14 @@ pub(super) fn usb_return_path_suggestion(
         .unreferenced_route_length_mm
         .unwrap_or(0.0)
         .max(dm_route.unreferenced_route_length_mm.unwrap_or(0.0));
+    let return_path_rule = &bound.project.board.layout.constraints.usb_return_path;
+    let max_unreferenced_length_mm = return_path_rule.max_data_line_unreferenced_length_mm;
+    let runnable = max_unreferenced_length_mm.is_some();
     Some(ScenarioSuggestion {
         id: format!("usb_return_path_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has imported D+/D- route geometry and same-layer ground-zone outline evidence; add static return-path coverage checks."
         ),
@@ -551,23 +554,27 @@ pub(super) fn usb_return_path_suggestion(
             parameters: Some(BTreeMap::from([
                 (
                     "max_data_line_unreferenced_length_mm".to_string(),
-                    serde_json::Value::Null,
+                    optional_number_value(max_unreferenced_length_mm),
                 ),
                 (
                     "max_data_via_to_ground_stitch_distance_mm".to_string(),
-                    serde_json::Value::Null,
+                    optional_number_value(
+                        return_path_rule.max_data_via_to_ground_stitch_distance_mm,
+                    ),
                 ),
                 (
                     "require_filled_zone_coverage".to_string(),
-                    serde_json::Value::Null,
+                    optional_bool_value(return_path_rule.require_filled_zone_coverage),
                 ),
                 (
                     "min_data_line_filled_zone_edge_clearance_mm".to_string(),
-                    serde_json::Value::Null,
+                    optional_number_value(
+                        return_path_rule.min_data_line_filled_zone_edge_clearance_mm,
+                    ),
                 ),
                 (
                     "require_ground_zone_contact_evidence".to_string(),
-                    serde_json::Value::Null,
+                    optional_bool_value(return_path_rule.require_ground_zone_contact_evidence),
                 ),
             ])),
             target: Some(SuggestedTarget {
@@ -591,16 +598,17 @@ pub(super) fn usb_return_path_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            format!(
-                "Fill max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule after reviewing measured uncovered length {measured_unreferenced_length_mm:.3} mm."
-            ),
-            "Fill max_data_via_to_ground_stitch_distance_mm when USB data layer changes require nearby ground stitching vias.".to_string(),
-            "Set require_filled_zone_coverage to true when imported filled_polygons should be used instead of intended zone outlines for return-path coverage.".to_string(),
-            "Fill min_data_line_filled_zone_edge_clearance_mm when USB data routes need minimum margin from filled ground-copper edges.".to_string(),
-            "Set require_ground_zone_contact_evidence to true when imported pad/via evidence should prove the same-layer ground zone is tied to the ground net.".to_string(),
-            "Treat this as a same-layer ground-zone screen only; adjacent planes, filled-zone island continuity, impedance, and EMI need more specific evidence.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                format!(
+                    "Fill board.layout.constraints.usb_return_path.max_data_line_unreferenced_length_mm from the board's USB return-path/layout rule after reviewing measured uncovered length {measured_unreferenced_length_mm:.3} mm."
+                ),
+                "Optional USB return-path checks can be enabled later with stitching-via distance, filled-zone coverage, filled-zone edge clearance, and ground-zone contact evidence policy.".to_string(),
+                "Treat this as a same-layer ground-zone screen only; adjacent planes, filled-zone island continuity, impedance, and EMI need more specific evidence.".to_string(),
+            ]
+        },
     })
 }
 
@@ -641,6 +649,10 @@ fn expected_usb_data_width_mm(rule: &NetLayoutRule) -> Option<f64> {
 }
 
 fn optional_number_value(value: Option<f64>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, serde_json::Value::from)
+}
+
+fn optional_bool_value(value: Option<bool>) -> serde_json::Value {
     value.map_or(serde_json::Value::Null, serde_json::Value::from)
 }
 

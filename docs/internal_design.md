@@ -15,6 +15,9 @@ enrich these evidence families:
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
   `min_slot_edge_clearance_mm`, plus optional paste area-ratio and paste-spacing
   limits when those are supplied by board/order evidence;
+- board-level layout policy: `board.layout.constraints`, currently including
+  imported per-net route rules and explicit USB return-path policy under
+  `usb_return_path`;
 - placement/layout evidence: `placements`, `footprints`, `pads`, `routes`,
   `zones`, and `outline`;
 - fabrication evidence: `drills`, `slots`, `copper`, `solder_mask`, and

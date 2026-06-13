@@ -1346,7 +1346,9 @@ USB return-path validation uses `USB_RETURN_PATH_VALID` when the Board IR
 includes USB D+/D- `board.layout.routes` evidence and same-layer ground-zone
 outline evidence under `board.layout.zones`. This rule is a static layout guard:
 it treats a data route segment as referenced when the segment midpoint is inside
-a ground-net zone outline on the same copper layer.
+a ground-net zone outline on the same copper layer. Scenario parameters take
+precedence, but `board.layout.constraints.usb_return_path` can provide explicit
+board-level defaults when the scenario omits them.
 
 ```yaml
 scenarios:

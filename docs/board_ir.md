@@ -600,6 +600,13 @@ sign-off rules.
 board:
   layout:
     constraints:
+      usb_return_path:
+        max_data_line_unreferenced_length_mm: 0.0
+        max_data_via_to_ground_stitch_distance_mm: 0.5
+        require_filled_zone_coverage: true
+        min_data_line_filled_zone_edge_clearance_mm: 0.25
+        require_ground_zone_contact_evidence: true
+        source: board_usb_layout_rule
       net_rules:
         usb_dp:
           net_class: USB_HS
@@ -614,6 +621,14 @@ KiCad PCB import fills this from `net_class` entries and simple custom DRC
 `length`/`skew` constraints whose conditions name a net class or explicit net.
 CircuitCI does not treat net-class track width as a hard DRC limit; KiCad uses
 net-class widths as router defaults unless a custom rule constrains them.
+
+`board.layout.constraints.usb_return_path` is explicit board/layout policy for
+`USB_RETURN_PATH_VALID`. Scenario parameters still take precedence, but when a
+scenario omits one of these fields the validator and suggestion engine can use
+this object. The only required field for runnable return-path suggestions is
+`max_data_line_unreferenced_length_mm`; stitching-via, filled-zone coverage,
+filled-zone edge clearance, and ground-zone contact evidence remain optional
+policy layers.
 
 ## Consistency Rules
 

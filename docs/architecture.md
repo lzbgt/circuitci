@@ -112,6 +112,8 @@ not present in Gerbers, such as `board.manufacturing.stencil_thickness_mm`,
 `board.manufacturing.min_slot_edge_clearance_mm`, and board/order-specific paste
 coverage and paste-spacing limits, are stored as Board IR metadata and remain
 explicit evidence.
+Layout policy that is not a manufacturing process fact lives under
+`board.layout.constraints`, for example explicit USB return-path budgets.
 
 ## Scenario Suggestions
 
