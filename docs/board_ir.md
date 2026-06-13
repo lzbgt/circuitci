@@ -154,11 +154,12 @@ Gerber board-outline layer. This is fabrication outline evidence only: a Gerber
 outline layer does not prove nets, pads, schematic intent, routing, or
 electrical correctness by itself.
 
-`import-gerber-copper` can append anonymous flashed copper features, trace
-segments, and region polygons under `board.layout.copper` from a copper Gerber
-layer. This is fabrication copper geometry only: a Gerber copper layer does not
-prove component ownership, pad names, nets, schematic intent, or electrical
-connectivity by itself.
+`import-gerber-copper` can append flashed copper features, trace segments, and
+region polygons under `board.layout.copper` from a copper Gerber layer. When
+the input Board IR already has matching pad, route, or zone evidence, imported
+copper can be annotated with `net`. This is still fabrication copper geometry:
+a Gerber copper layer does not prove component ownership, pad names, island
+connectivity, schematic intent, or electrical connectivity by itself.
 
 `import-excellon-drill` can append fabrication drill-hit evidence under
 `board.layout.drills`. This is drill evidence only: an NC drill file does not

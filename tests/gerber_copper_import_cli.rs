@@ -25,6 +25,9 @@ fn import_gerber_copper_appends_schema_valid_flash_evidence() {
     assert!(stdout.contains("3 flash features"));
     assert!(stdout.contains("1 trace segments"));
     assert!(stdout.contains("1 regions"));
+    assert!(stdout.contains("0 net-associated features"));
+    assert!(stdout.contains("0 net-associated segments"));
+    assert!(stdout.contains("0 net-associated regions"));
     assert!(stdout.contains("3 apertures"));
     assert!(stdout.contains("1 ignored draw records"));
     assert!(stdout.contains("1 skipped clear flashes"));
@@ -84,6 +87,55 @@ fn import_gerber_copper_appends_schema_valid_flash_evidence() {
     assert_eq!(points[0]["y_mm"], -2.0);
     assert_eq!(points[2]["x_mm"], 6.0);
     assert_eq!(points[2]["y_mm"], -3.0);
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("with_owned_gerber_copper.project.yaml");
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-copper",
+            "examples/import_gerber_copper_ownership/front_copper.gtl",
+            "--project",
+            "examples/import_gerber_copper_ownership/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 net-associated features"));
+    assert!(stdout.contains("1 net-associated segments"));
+    assert!(stdout.contains("1 net-associated regions"));
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let features = imported["board"]["layout"]["copper"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(features.len(), 1);
+    assert_eq!(features[0]["net"], "GND");
+    let segments = imported["board"]["layout"]["copper"]["segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(segments.len(), 1);
+    assert_eq!(segments[0]["net"], "USB_DP");
+    let regions = imported["board"]["layout"]["copper"]["regions"]
+        .as_array()
+        .unwrap();
+    assert_eq!(regions.len(), 1);
+    assert_eq!(regions[0]["net"], "VBAT");
 
     let report = run_validation(output.to_str().unwrap());
     assert_eq!(report["result"], "pass");

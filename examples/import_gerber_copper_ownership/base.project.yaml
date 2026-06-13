@@ -1,0 +1,41 @@
+project:
+  name: import_gerber_copper_ownership
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets:
+    GND:
+      kind: ground
+    USB_DP:
+      kind: digital_or_analog
+    VBAT:
+      kind: power
+  layout:
+    pads:
+      J1:
+        "1":
+          at: { x_mm: 1.0, y_mm: 1.0 }
+          net: GND
+          layers: [F.Cu]
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+    routes:
+      USB_DP:
+        segments:
+          - start: { x_mm: 2.0, y_mm: 1.0 }
+            end: { x_mm: 4.0, y_mm: 1.0 }
+            width_mm: 0.2
+            layer: F.Cu
+    zones:
+      VBAT:
+        - layer: F.Cu
+          polygon:
+            - { x_mm: 5.0, y_mm: 0.0 }
+            - { x_mm: 8.0, y_mm: 0.0 }
+            - { x_mm: 8.0, y_mm: 2.0 }
+            - { x_mm: 5.0, y_mm: 2.0 }
+
+scenarios: []

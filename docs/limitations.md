@@ -202,12 +202,14 @@ without explicit imported mechanical evidence.
   overlapping/touching anonymous copper because plain Gerber evidence has no
   net or island ownership. It does not prove solder-mask behavior, etch
   compensation, fab-specific spacing expansion, or copper connectivity.
-- Gerber copper import currently records anonymous dark `D03` flash features
-  for circle, rectangle, and oval apertures, dark linear `D01` traces for
-  circular apertures, and dark single-contour linear `G36`/`G37` region
-  polygons. It ignores non-circular aperture draws, skips clear-polarity copper
-  primitives, and does not infer nets, component ownership, pad names, copper
-  island connectivity, mask expansion, or electrical connectivity.
+- Gerber copper import currently records dark `D03` flash features for circle,
+  rectangle, and oval apertures, dark linear `D01` traces for circular
+  apertures, and dark single-contour linear `G36`/`G37` region polygons. When
+  the input Board IR already has exactly one matching pad, route, or zone owner,
+  it can annotate imported copper with `net`. It ignores non-circular aperture
+  draws, skips clear-polarity copper primitives, and does not infer component
+  ownership, pad names, copper island connectivity, mask expansion, or
+  electrical connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

@@ -51,10 +51,19 @@ nested, open, degenerate, flashed, or arc-interpolated regions fail closed.
 
 ## Limits
 
-Gerber copper import is fabrication geometry evidence only. It does not infer
-nets, components, pad names, annular rings, zones, schematic intent, or
-electrical connectivity. Combine it with schematic, PCB, assembly, outline, and
-drill imports before using electrical or manufacturability checks.
+Gerber copper import is fabrication geometry evidence. When the input Board IR
+already contains PCB layout evidence, the importer can annotate imported copper
+with `net` from exactly one matching owner:
+
+- pad overlap from `board.layout.pads`,
+- route overlap from `board.layout.routes`,
+- zone containment from `board.layout.zones`.
+
+It does not invent `island_id`, component ownership, pad names, annular rings,
+schematic intent, or electrical connectivity. Ambiguous or missing ownership
+evidence leaves the imported copper anonymous. Combine it with schematic, PCB,
+assembly, outline, and drill imports before using electrical or
+manufacturability checks.
 
 `DRILL_ANNULAR_RING_VALID` can consume imported dark flash evidence together
 with Excellon drill hits for a static annular-ring screen. That rule still
@@ -69,7 +78,7 @@ island connectivity, solder-mask margin, or fab-specific etch compensation.
 
 `COPPER_SPACING_VALID` can consume the same imported dark flash,
 circular-aperture draw, and region evidence for a static same-layer
-copper-spacing screen. Because Gerber copper import is anonymous, the rule
-ignores overlapping or touching copper objects to avoid flagging intentionally
-connected copper primitives. Use net-aware PCB evidence for electrical short
-sign-off.
+copper-spacing screen. When imported copper has `net` ownership evidence, the
+rule can distinguish same-net contact from different-net overlap. Anonymous
+touching copper is still ignored to avoid flagging intentionally connected
+Gerber primitives without ownership evidence.
