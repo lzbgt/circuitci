@@ -214,6 +214,16 @@ pub struct LayoutDrill {
     pub drill_mm: f64,
     pub plating: String,
     #[serde(default)]
+    pub owner_kind: Option<String>,
+    #[serde(default)]
+    pub net: Option<String>,
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default)]
+    pub pin: Option<String>,
+    #[serde(default)]
+    pub via_index: Option<usize>,
+    #[serde(default)]
     pub layer: Option<String>,
     #[serde(default)]
     pub tool: Option<String>,

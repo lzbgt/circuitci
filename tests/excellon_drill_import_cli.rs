@@ -64,6 +64,60 @@ fn import_excellon_drill_appends_schema_valid_drill_evidence() {
 }
 
 #[test]
+fn import_excellon_drill_associates_pad_and_via_owners() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("with_owned_drills.project.yaml");
+
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-excellon-drill",
+            "examples/import_excellon_drill_ownership/pth.drl",
+            "--project",
+            "examples/import_excellon_drill_ownership/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 pad-associated"));
+    assert!(stdout.contains("1 via-associated"));
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let drills = imported["board"]["layout"]["drills"].as_array().unwrap();
+    assert_eq!(drills.len(), 2);
+    assert_eq!(drills[0]["owner_kind"], "pad");
+    assert_eq!(drills[0]["net"], "GND");
+    assert_eq!(drills[0]["component"], "J1");
+    assert_eq!(drills[0]["pin"], "1");
+    assert_eq!(drills[1]["owner_kind"], "via");
+    assert_eq!(drills[1]["net"], "USB_DP");
+    assert_eq!(drills[1]["via_index"], 0);
+
+    let report = run_validation(output.to_str().unwrap());
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["id"] == "DRILL_ANNULAR_RING_VALID")
+        .unwrap();
+    assert_eq!(failure["id"], "DRILL_ANNULAR_RING_VALID");
+    assert_eq!(failure["measured"]["drill_owner_kind"], "pad");
+    assert_eq!(failure["measured"]["drill_net"], "GND");
+    assert_eq!(failure["measured"]["drill_component"], "J1");
+    assert_eq!(failure["measured"]["drill_pin"], "1");
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_excellon_drill_rejects_inch_units() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

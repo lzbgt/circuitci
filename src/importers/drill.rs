@@ -1,3 +1,4 @@
+use crate::board_ir::{BoardLayout, BoardProject, LayoutPad, LayoutPoint, RouteVia};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_yaml_ng::{Mapping, Value};
@@ -19,6 +20,8 @@ pub struct ExcellonDrillImportSummary {
     pub plated_hits: usize,
     pub non_plated_hits: usize,
     pub unknown_plating_hits: usize,
+    pub pad_associated_hits: usize,
+    pub via_associated_hits: usize,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -41,6 +44,22 @@ struct DrillHit {
     drill_mm: f64,
     tool: String,
     source_hit_index: usize,
+    owner: Option<DrillOwner>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DrillOwner {
+    kind: DrillOwnerKind,
+    net: String,
+    component: Option<String>,
+    pin: Option<String>,
+    via_index: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DrillOwnerKind {
+    Pad,
+    Via,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -56,10 +75,23 @@ struct DrillYaml {
     at: DrillPoint,
     drill_mm: f64,
     plating: DrillPlating,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_kind: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    net: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    via_index: Option<usize>,
     layer: String,
     tool: String,
     source_hit_index: usize,
 }
+
+const DRILL_OWNER_CENTER_TOLERANCE_MM: f64 = 0.05;
+const DRILL_OWNER_DIAMETER_TOLERANCE_MM: f64 = 0.05;
 
 #[derive(Debug, Clone, Copy)]
 struct DrillState {
@@ -83,7 +115,7 @@ pub fn import_excellon_drill(
 ) -> Result<ExcellonDrillImportSummary> {
     let text = fs::read_to_string(&options.drill)
         .with_context(|| format!("Failed to read drill file {}", options.drill.display()))?;
-    let parsed = parse_excellon_drill(&text, &options.drill)?;
+    let mut parsed = parse_excellon_drill(&text, &options.drill)?;
     let project_text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project {}",
@@ -96,6 +128,13 @@ pub fn import_excellon_drill(
             options.project.display()
         )
     })?;
+    let project: BoardProject = serde_yaml_ng::from_str(&project_text).with_context(|| {
+        format!(
+            "Failed to parse Board IR project {} for drill ownership association.",
+            options.project.display()
+        )
+    })?;
+    associate_drill_owners(&mut parsed, &project.board.layout);
     merge_drills_into_project(&mut project_yaml, &parsed)?;
     absolutize_relative_libraries(
         &mut project_yaml,
@@ -224,6 +263,7 @@ fn parse_excellon_drill(text: &str, path: &Path) -> Result<ParsedDrillFile> {
                 drill_mm,
                 tool,
                 source_hit_index: hits.len(),
+                owner: None,
             });
             continue;
         }
@@ -378,6 +418,11 @@ fn merge_drills_into_project(project_yaml: &mut Value, parsed: &ParsedDrillFile)
                 at: hit.at,
                 drill_mm: hit.drill_mm,
                 plating: parsed.plating,
+                owner_kind: hit.owner.as_ref().map(|owner| owner.kind.as_str()),
+                net: hit.owner.as_ref().map(|owner| owner.net.clone()),
+                component: hit.owner.as_ref().and_then(|owner| owner.component.clone()),
+                pin: hit.owner.as_ref().and_then(|owner| owner.pin.clone()),
+                via_index: hit.owner.as_ref().and_then(|owner| owner.via_index),
                 layer: parsed.layer.clone(),
                 tool: hit.tool.clone(),
                 source_hit_index: hit.source_hit_index,
@@ -386,6 +431,168 @@ fn merge_drills_into_project(project_yaml: &mut Value, parsed: &ParsedDrillFile)
         );
     }
     Ok(())
+}
+
+fn associate_drill_owners(parsed: &mut ParsedDrillFile, layout: &BoardLayout) {
+    let ownership = DrillOwnershipIndex::from_layout(layout);
+    for hit in &mut parsed.hits {
+        hit.owner = ownership.owner_for_hit(hit);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct DrillOwnershipIndex {
+    pads: Vec<DrillOwnerPad>,
+    vias: Vec<DrillOwnerVia>,
+}
+
+#[derive(Debug, Clone)]
+struct DrillOwnerPad {
+    at: DrillPoint,
+    drill_mm: f64,
+    owner: DrillOwner,
+}
+
+#[derive(Debug, Clone)]
+struct DrillOwnerVia {
+    at: DrillPoint,
+    drill_mm: f64,
+    owner: DrillOwner,
+}
+
+impl DrillOwnershipIndex {
+    fn from_layout(layout: &BoardLayout) -> Self {
+        let pads = layout
+            .pads
+            .iter()
+            .flat_map(|(component, pads)| {
+                pads.iter()
+                    .filter_map(|(pin, pad)| owner_pad_from_layout_pad(component, pin, pad))
+            })
+            .collect();
+        let vias = layout
+            .routes
+            .iter()
+            .flat_map(|(net, route)| {
+                route
+                    .vias
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(via_index, via)| owner_via_from_route_via(net, via_index, via))
+            })
+            .collect();
+        Self { pads, vias }
+    }
+
+    fn owner_for_hit(&self, hit: &DrillHit) -> Option<DrillOwner> {
+        let mut candidates = Vec::new();
+        for pad in &self.pads {
+            if drill_points_match(hit.at, pad.at)
+                && drill_diameters_match(hit.drill_mm, pad.drill_mm)
+            {
+                candidates.push(pad.owner.clone());
+            }
+        }
+        for via in &self.vias {
+            if drill_points_match(hit.at, via.at)
+                && drill_diameters_match(hit.drill_mm, via.drill_mm)
+            {
+                candidates.push(via.owner.clone());
+            }
+        }
+        unique_drill_owner(candidates)
+    }
+}
+
+fn owner_pad_from_layout_pad(component: &str, pin: &str, pad: &LayoutPad) -> Option<DrillOwnerPad> {
+    let drill_mm = pad.drill_mm?;
+    if pad.net.trim().is_empty() || !finite_positive(drill_mm) {
+        return None;
+    }
+    let at = drill_point_from_layout(&pad.at)?;
+    Some(DrillOwnerPad {
+        at,
+        drill_mm,
+        owner: DrillOwner {
+            kind: DrillOwnerKind::Pad,
+            net: pad.net.clone(),
+            component: Some(component.to_string()),
+            pin: Some(pin.to_string()),
+            via_index: None,
+        },
+    })
+}
+
+fn owner_via_from_route_via(net: &str, via_index: usize, via: &RouteVia) -> Option<DrillOwnerVia> {
+    if net.trim().is_empty() || !finite_positive(via.drill_mm) {
+        return None;
+    }
+    let at = drill_point_from_layout(&via.at)?;
+    Some(DrillOwnerVia {
+        at,
+        drill_mm: via.drill_mm,
+        owner: DrillOwner {
+            kind: DrillOwnerKind::Via,
+            net: net.to_string(),
+            component: None,
+            pin: None,
+            via_index: Some(via_index),
+        },
+    })
+}
+
+fn unique_drill_owner(candidates: Vec<DrillOwner>) -> Option<DrillOwner> {
+    let mut unique = candidates;
+    unique.sort_by(|first, second| {
+        (
+            first.kind.sort_key(),
+            first.net.as_str(),
+            first.component.as_deref(),
+            first.pin.as_deref(),
+            first.via_index,
+        )
+            .cmp(&(
+                second.kind.sort_key(),
+                second.net.as_str(),
+                second.component.as_deref(),
+                second.pin.as_deref(),
+                second.via_index,
+            ))
+    });
+    unique.dedup();
+    (unique.len() == 1).then(|| unique.pop().expect("unique contains one element"))
+}
+
+impl DrillOwnerKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pad => "pad",
+            Self::Via => "via",
+        }
+    }
+
+    fn sort_key(&self) -> &'static str {
+        self.as_str()
+    }
+}
+
+fn drill_point_from_layout(point: &LayoutPoint) -> Option<DrillPoint> {
+    (point.x_mm.is_finite() && point.y_mm.is_finite()).then_some(DrillPoint {
+        x_mm: point.x_mm,
+        y_mm: point.y_mm,
+    })
+}
+
+fn drill_points_match(first: DrillPoint, second: DrillPoint) -> bool {
+    (first.x_mm - second.x_mm).hypot(first.y_mm - second.y_mm) <= DRILL_OWNER_CENTER_TOLERANCE_MM
+}
+
+fn drill_diameters_match(first_mm: f64, second_mm: f64) -> bool {
+    (first_mm - second_mm).abs() <= DRILL_OWNER_DIAMETER_TOLERANCE_MM
+}
+
+fn finite_positive(value: f64) -> bool {
+    value.is_finite() && value > 0.0
 }
 
 fn mapping_field_mut<'a>(value: &'a mut Value, key: &str) -> Result<&'a mut Mapping> {
@@ -418,6 +625,24 @@ fn summary_for_drill_file(parsed: &ParsedDrillFile) -> ExcellonDrillImportSummar
         non_plated_hits: usize::from(parsed.plating == DrillPlating::NonPlated) * parsed.hits.len(),
         unknown_plating_hits: usize::from(parsed.plating == DrillPlating::Unknown)
             * parsed.hits.len(),
+        pad_associated_hits: parsed
+            .hits
+            .iter()
+            .filter(|hit| {
+                hit.owner
+                    .as_ref()
+                    .is_some_and(|owner| owner.kind == DrillOwnerKind::Pad)
+            })
+            .count(),
+        via_associated_hits: parsed
+            .hits
+            .iter()
+            .filter(|hit| {
+                hit.owner
+                    .as_ref()
+                    .is_some_and(|owner| owner.kind == DrillOwnerKind::Via)
+            })
+            .count(),
     }
 }
 

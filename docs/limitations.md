@@ -186,9 +186,10 @@ without explicit imported mechanical evidence.
 - `DRILL_ANNULAR_RING_VALID` uses imported drill centers, drill diameters, and
   anonymous Gerber flash copper geometry for a static 2D annular-ring screen.
   It checks circle, rectangle, and axis-aligned oval flashes, and skips
-  non-plated drills. It does not use copper draw traces, thermal reliefs,
-  plated-barrel thickness, drill wander distributions, solder mask, fab
-  compensation, copper-to-copper clearance, or net ownership.
+  non-plated drills. Drill hits may carry pad or via ownership when an importer
+  can correlate them with existing layout evidence. It does not use copper draw
+  traces, thermal reliefs, plated-barrel thickness, drill wander distributions,
+  solder mask, fab compensation, or copper-to-copper clearance.
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported Gerber copper
   flashes, trace segments, and region polygons with board-outline centerline
   segments for a static 2D copper-edge screen. It does not model solder mask,

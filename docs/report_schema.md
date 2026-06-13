@@ -282,8 +282,10 @@ scenarios that combine `board.layout.drills` evidence with
 `board.layout.outline.segments`. Stable measured keys include `drill_index`,
 `drill_x_mm`, `drill_y_mm`, `drill_mm`, `drill_radius_mm`, `clearance_mm`,
 `center_to_board_edge_distance_mm`, `drill_plating`, optional `drill_layer`,
-optional `drill_tool`, optional `source_hit_index`, `board_edge_start`,
-`board_edge_end`, optional `board_edge_layer`, optional
+optional `drill_tool`, optional `source_hit_index`, optional
+`drill_owner_kind`, optional `drill_net`, optional `drill_component`, optional
+`drill_pin`, optional `drill_via_index`, `board_edge_start`, `board_edge_end`,
+optional `board_edge_layer`, optional
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
 optional `board_edge_contour_index`, and optional
 `board_edge_boundary_role`. Stable limit keys include
@@ -294,7 +296,9 @@ that combine `board.layout.drills` evidence with
 `board.layout.copper.features` Gerber flash evidence. Stable measured keys
 include `drill_index`, `drill_x_mm`, `drill_y_mm`, `drill_mm`,
 `drill_radius_mm`, `drill_plating`, optional `drill_layer`, optional
-`drill_tool`, optional `source_hit_index`, `annular_ring_mm`,
+`drill_tool`, optional `source_hit_index`, optional `drill_owner_kind`,
+optional `drill_net`, optional `drill_component`, optional `drill_pin`,
+optional `drill_via_index`, `annular_ring_mm`,
 `drill_to_copper_center_offset_mm`, `copper_feature_index`,
 `copper_feature_x_mm`, `copper_feature_y_mm`, `copper_feature_layer`,
 `copper_feature_aperture`, `copper_feature_shape`,

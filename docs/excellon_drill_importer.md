@@ -18,6 +18,8 @@ drill file such as `Drill_NPTH_Through.DRL`.
 - drill center `at.x_mm` / `at.y_mm`,
 - `drill_mm`,
 - `plating`: `plated`, `non_plated`, or `unknown`,
+- optional `owner_kind`, `net`, `component`, `pin`, and `via_index` when
+  existing Board IR layout evidence gives exactly one pad or via owner,
 - source drill layer comment,
 - selected tool such as `T01`,
 - source hit index within the imported drill file.
@@ -41,11 +43,13 @@ commands.
 
 ## Limits
 
-Drill import is fabrication evidence only. It does not infer pad copper,
-annular rings, nets, plated barrel connectivity, component ownership, slots,
-routed cutouts, or electrical scenarios. It is intended to be combined with
-schematic import, PCB import, JLC/EasyEDA assembly import, Gerber outline
-import, or explicit Board IR before electrical validation.
+Drill import is fabrication evidence only. It can annotate drill hits with
+existing pad or via ownership when the input Board IR already contains a unique
+matching drilled pad or route via at the same center and diameter. It does not
+infer pad copper, annular rings, plated barrel connectivity, slots, routed
+cutouts, or electrical scenarios from drill files alone. It is intended to be
+combined with schematic import, PCB import, JLC/EasyEDA assembly import, Gerber
+outline import, or explicit Board IR before electrical validation.
 
 The importer appends drill hits as evidence and does not deduplicate overlapping
 fabrication outputs. Some JLC/EasyEDA releases include both aggregate PTH drill
@@ -57,3 +61,7 @@ fabricator's intended drill package semantics.
 `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported `board.layout.drills`
 plus `board.layout.outline.segments` to screen each drill edge against the
 nearest external, cutout, or unknown board-edge segment.
+
+`DRILL_ANNULAR_RING_VALID` reports optional drill ownership fields when present,
+which makes undersized annular-ring findings traceable to the affected pad or
+via instead of only a raw drill hit.

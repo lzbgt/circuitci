@@ -297,14 +297,21 @@ board:
       - at: { x_mm: 29.3, y_mm: -8.64001 }
         drill_mm: 0.305
         plating: plated
+        owner_kind: pad
+        net: GND
+        component: J1
+        pin: "1"
         layer: PTH_Through
         tool: T01
         source_hit_index: 0
 ```
 
 `plating` is `plated`, `non_plated`, or `unknown`. Drill evidence is
-fabrication evidence only and does not assign holes to pads, vias, components,
-or nets.
+fabrication evidence only by default. When existing Board IR pad or route-via
+layout evidence uniquely matches a drill center and diameter,
+`import-excellon-drill` can annotate the hit with `owner_kind: pad` plus
+`component`/`pin`/`net`, or `owner_kind: via` plus `net`/`via_index`. Ambiguous
+or missing matches remain anonymous.
 
 ## Layout Fabrication Copper Evidence
 

@@ -571,6 +571,27 @@ fn drill_edge_clearance_finding(
     finding
         .measured
         .insert("drill_plating".to_string(), json!(drill.plating));
+    if let Some(owner_kind) = &drill.owner_kind {
+        finding
+            .measured
+            .insert("drill_owner_kind".to_string(), json!(owner_kind));
+    }
+    if let Some(net) = &drill.net {
+        finding.measured.insert("drill_net".to_string(), json!(net));
+    }
+    if let Some(component) = &drill.component {
+        finding
+            .measured
+            .insert("drill_component".to_string(), json!(component));
+    }
+    if let Some(pin) = &drill.pin {
+        finding.measured.insert("drill_pin".to_string(), json!(pin));
+    }
+    if let Some(via_index) = drill.via_index {
+        finding
+            .measured
+            .insert("drill_via_index".to_string(), json!(via_index));
+    }
     if let Some(layer) = &drill.layer {
         finding
             .measured
@@ -900,6 +921,27 @@ fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_i
     finding
         .measured
         .insert("drill_plating".to_string(), json!(drill.plating));
+    if let Some(owner_kind) = &drill.owner_kind {
+        finding
+            .measured
+            .insert("drill_owner_kind".to_string(), json!(owner_kind));
+    }
+    if let Some(net) = &drill.net {
+        finding.measured.insert("drill_net".to_string(), json!(net));
+    }
+    if let Some(component) = &drill.component {
+        finding
+            .measured
+            .insert("drill_component".to_string(), json!(component));
+    }
+    if let Some(pin) = &drill.pin {
+        finding.measured.insert("drill_pin".to_string(), json!(pin));
+    }
+    if let Some(via_index) = drill.via_index {
+        finding
+            .measured
+            .insert("drill_via_index".to_string(), json!(via_index));
+    }
     if let Some(layer) = &drill.layer {
         finding
             .measured

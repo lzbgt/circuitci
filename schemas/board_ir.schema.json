@@ -287,6 +287,11 @@
                   "plating": {
                     "enum": ["plated", "non_plated", "unknown"]
                   },
+                  "owner_kind": { "enum": ["pad", "via"] },
+                  "net": { "type": "string", "minLength": 1 },
+                  "component": { "type": "string", "minLength": 1 },
+                  "pin": { "type": "string", "minLength": 1 },
+                  "via_index": { "type": "integer", "minimum": 0 },
                   "layer": { "type": "string", "minLength": 1 },
                   "tool": { "type": "string", "minLength": 1 },
                   "source_hit_index": { "type": "integer", "minimum": 0 }

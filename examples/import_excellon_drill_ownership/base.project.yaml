@@ -1,0 +1,59 @@
+project:
+  name: import_excellon_drill_ownership
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets:
+    GND:
+      kind: ground
+    USB_DP:
+      kind: digital_or_analog
+  layout:
+    pads:
+      J1:
+        "1":
+          at: { x_mm: 1.0, y_mm: 1.0 }
+          net: GND
+          layers: [F.Cu, B.Cu]
+          shape: circle
+          size: { x_mm: 1.0, y_mm: 1.0 }
+          drill_mm: 0.6
+    routes:
+      USB_DP:
+        vias:
+          - at: { x_mm: 2.0, y_mm: 2.0 }
+            size_mm: 0.6
+            drill_mm: 0.3
+            layers: [F.Cu, B.Cu]
+    copper:
+      features:
+        - at: { x_mm: 1.0, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          net: GND
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+        - at: { x_mm: 2.0, y_mm: 2.0 }
+          layer: F.Cu
+          polarity: dark
+          net: USB_DP
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: circle
+          size: { x_mm: 0.7, y_mm: 0.7 }
+
+scenarios:
+  - name: drill_annular_ring
+    type: manufacturing
+    checks:
+      - DRILL_ANNULAR_RING_VALID
+    parameters:
+      min_annular_ring_mm: 0.15
+      max_drill_to_copper_center_offset_mm: 0.05
