@@ -845,12 +845,17 @@ scenarios:
     `power_conversion.output_capacitance_min_F` is declared, the corresponding
     regulator rail must have at least that much explicit Board IR capacitance
     to ground.
-12. If `power_conversion.output_inductance_min_H` or
+12. If `power_conversion.input_inductance_min_H` or
+    `power_conversion.input_inductance_max_H` is declared, the model must also
+    declare `switch_pin`, the board must connect it to a switch net, and the
+    board must have direct modeled Board IR inductance between the regulator
+    input rail and that switch net within the declared range.
+13. If `power_conversion.output_inductance_min_H` or
     `power_conversion.output_inductance_max_H` is declared, the model must also
     declare `switch_pin`, the board must connect it to a switch net, and the
     board must have direct modeled Board IR inductance between that switch net
     and the regulator output rail within the declared range.
-13. If a component model declares `power_switch`, the declared input and output
+14. If a component model declares `power_switch`, the declared input and output
     pins must name distinct `electrical_power` ports, the control pin must be a
     digital input/IO port, and a powered output rail must have matching
     scenario `pin_states` evidence for the required enabled state.

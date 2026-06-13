@@ -1,0 +1,97 @@
+project:
+  name: good_ti_tps61023_5v_boost
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    VBAT:
+      model: generic.analog.dc_voltage_source
+      part_number: LIION_SOURCE
+      pins:
+        P: battery
+        N: gnd
+    UBOOST:
+      model: vendor.ti.tps61023_5v
+      part_number: TPS61023DRLT
+      power_domains:
+        VIN: battery
+        VOUT: vext_5v
+      pins:
+        VIN: battery
+        SW: boost_sw
+        VOUT: vext_5v
+        FB: boost_fb
+        EN: boost_en
+        GND: gnd
+    L1:
+      model: generic.analog.inductor
+      part_number: 1uH
+      pins:
+        A: battery
+        B: boost_sw
+      spice:
+        primitive: inductor
+        value_h: 0.000001
+    CIN:
+      model: generic.analog.capacitor
+      part_number: 10uF
+      pins:
+        A: battery
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000010
+    COUT1:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: vext_5v
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+    COUT2:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: vext_5v
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+    ULOAD:
+      model: fixture.tps61023_nominal_5v_load
+      part_number: NOMINAL_5V_LOAD
+      power_domains:
+        VDD: vext_5v
+      pins:
+        VDD: vext_5v
+        GND: gnd
+  nets:
+    battery:
+      kind: power
+      nominal_voltage: 3.7
+      powered: true
+    vext_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    boost_sw:
+      kind: digital_or_analog
+    boost_fb:
+      kind: digital_or_analog
+    boost_en:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps61023_5v_static_boost
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

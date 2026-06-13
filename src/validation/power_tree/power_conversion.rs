@@ -234,6 +234,38 @@ pub(super) fn validate_power_conversion(
             findings,
         );
     }
+    if conversion.input_inductance_min_h.is_some() || conversion.input_inductance_max_h.is_some() {
+        let Some(switch_pin) = conversion.switch_pin.as_deref() else {
+            power_conversion_metadata_finding(
+                component_id,
+                "switch_pin",
+                "power_conversion switch_pin is required when input inductance limits are declared.",
+                scenario,
+                findings,
+            );
+            return;
+        };
+        let Some(switch_net_name) = component.pins.get(switch_pin).map(String::as_str) else {
+            power_conversion_pin_finding(component_id, switch_pin, "switch", scenario, findings);
+            return;
+        };
+        validate_regulator_input_inductance(
+            RegulatorInductanceContext {
+                component_id,
+                switch_pin,
+                switch_net_name,
+                input_pin: &conversion.input_pin,
+                input_net_name,
+                output_pin: &conversion.output_pin,
+                output_net_name,
+                min_inductance_h: conversion.input_inductance_min_h,
+                max_inductance_h: conversion.input_inductance_max_h,
+            },
+            bound,
+            scenario,
+            findings,
+        );
+    }
     if conversion.output_inductance_min_h.is_some() || conversion.output_inductance_max_h.is_some()
     {
         let Some(switch_pin) = conversion.switch_pin.as_deref() else {
@@ -255,6 +287,8 @@ pub(super) fn validate_power_conversion(
                 component_id,
                 switch_pin,
                 switch_net_name,
+                input_pin: &conversion.input_pin,
+                input_net_name,
                 output_pin: &conversion.output_pin,
                 output_net_name,
                 min_inductance_h: conversion.output_inductance_min_h,
@@ -338,13 +372,15 @@ fn validate_power_conversion_metadata(
             );
             valid = false;
         }
-    } else if conversion.output_inductance_min_h.is_some()
+    } else if conversion.input_inductance_min_h.is_some()
+        || conversion.input_inductance_max_h.is_some()
+        || conversion.output_inductance_min_h.is_some()
         || conversion.output_inductance_max_h.is_some()
     {
         power_conversion_metadata_finding(
             component_id,
             "switch_pin",
-            "power_conversion switch_pin is required when output inductance limits are declared.",
+            "power_conversion switch_pin is required when inductance limits are declared.",
             scenario,
             findings,
         );
@@ -417,6 +453,44 @@ fn validate_power_conversion_metadata(
             component_id,
             "output_capacitance_min_F",
             "power_conversion output_capacitance_min_F must be finite and positive.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(input_inductance_min_h) = conversion.input_inductance_min_h
+        && (!input_inductance_min_h.is_finite() || input_inductance_min_h <= 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "input_inductance_min_H",
+            "power_conversion input_inductance_min_H must be finite and positive.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let Some(input_inductance_max_h) = conversion.input_inductance_max_h
+        && (!input_inductance_max_h.is_finite() || input_inductance_max_h <= 0.0)
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "input_inductance_max_H",
+            "power_conversion input_inductance_max_H must be finite and positive.",
+            scenario,
+            findings,
+        );
+        valid = false;
+    }
+    if let (Some(min_h), Some(max_h)) = (
+        conversion.input_inductance_min_h,
+        conversion.input_inductance_max_h,
+    ) && min_h > max_h
+    {
+        power_conversion_metadata_finding(
+            component_id,
+            "input_inductance_min_H",
+            "power_conversion input_inductance_min_H must not exceed input_inductance_max_H.",
             scenario,
             findings,
         );
@@ -701,6 +775,76 @@ fn validate_regulator_output_inductance(
     findings.push(finding);
 }
 
+fn validate_regulator_input_inductance(
+    context: RegulatorInductanceContext<'_>,
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let (input_inductance_h, input_inductors) =
+        direct_inductance_between_nets(bound, context.input_net_name, context.switch_net_name);
+    let below_min = context
+        .min_inductance_h
+        .is_some_and(|min_h| input_inductance_h < min_h);
+    let above_max = context
+        .max_inductance_h
+        .is_some_and(|max_h| input_inductance_h > max_h);
+    if !below_min && !above_max {
+        return;
+    }
+
+    let mut finding = Finding::critical(
+        POWER_TREE_VALID,
+        &scenario.name,
+        format!(
+            "Regulator {component_id} input inductor path {input_net_name}->{switch_net_name} has {:.6e} H direct inductance, outside the modeled support range.",
+            input_inductance_h,
+            component_id = context.component_id,
+            input_net_name = context.input_net_name,
+            switch_net_name = context.switch_net_name,
+        ),
+    );
+    finding.component = Some(context.component_id.to_string());
+    finding.net = Some(context.input_net_name.to_string());
+    finding
+        .measured
+        .insert("input_inductance_H".to_string(), json!(input_inductance_h));
+    finding
+        .measured
+        .insert("input_inductors".to_string(), json!(input_inductors));
+    finding
+        .measured
+        .insert("input_net".to_string(), json!(context.input_net_name));
+    finding
+        .measured
+        .insert("switch_net".to_string(), json!(context.switch_net_name));
+    finding
+        .limit
+        .insert("input_pin".to_string(), json!(context.input_pin));
+    finding
+        .limit
+        .insert("switch_pin".to_string(), json!(context.switch_pin));
+    if let Some(min_h) = context.min_inductance_h {
+        finding
+            .limit
+            .insert("regulator_input_inductance_min_H".to_string(), json!(min_h));
+    }
+    if let Some(max_h) = context.max_inductance_h {
+        finding
+            .limit
+            .insert("regulator_input_inductance_max_H".to_string(), json!(max_h));
+    }
+    finding.suggested_fixes = vec![
+        format!(
+            "Add a modeled input inductor directly between regulator input rail {} and switch net {} with inductance inside the datasheet-backed range.",
+            context.input_net_name, context.switch_net_name
+        ),
+        "Map the schematic inductor value into Board IR when the inductor is present but not modeled.".to_string(),
+        "Use regulator-specific design tools or analog simulation for saturation current, ripple current, DCR, loop stability, and layout sign-off.".to_string(),
+    ];
+    findings.push(finding);
+}
+
 fn direct_inductance_between_nets(
     bound: &BoundBoard<'_>,
     first_net_name: &str,
@@ -776,6 +920,8 @@ struct RegulatorInductanceContext<'a> {
     component_id: &'a str,
     switch_pin: &'a str,
     switch_net_name: &'a str,
+    input_pin: &'a str,
+    input_net_name: &'a str,
     output_pin: &'a str,
     output_net_name: &'a str,
     min_inductance_h: Option<f64>,

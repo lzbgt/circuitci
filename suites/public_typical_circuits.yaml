@@ -106,6 +106,17 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_tps61023_typical_5v_boost_passes
+    project: ../examples/good_ti_tps61023_5v_boost/project.yaml
+    expect: pass
+
+  - id: ti_tps61023_input_inductance_detected
+    project: ../examples/bad_ti_tps61023_5v_input_inductance/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: espressif_esp32_wroom_32e_application_passes
     project: ../examples/good_espressif_esp32_wroom_32e_application/project.yaml
     expect: pass
@@ -200,6 +211,12 @@ repairs:
   - id: fix_tps62162_output_inductance
     detects_case: ti_tps62162_output_inductance_detected
     fixed_case: ti_tps62162_typical_buck_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps61023_input_inductance
+    detects_case: ti_tps61023_input_inductance_detected
+    fixed_case: ti_tps61023_typical_5v_boost_passes
     fixes_findings:
       - POWER_TREE_VALID
 

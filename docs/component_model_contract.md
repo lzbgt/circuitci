@@ -118,12 +118,13 @@ power_conversion:
   startup_delay_us: 1000
   input_capacitance_min_F: 0.000001
   output_capacitance_min_F: 0.000001
+  input_inductance_min_H: 0.00000037
   output_inductance_min_H: 0.0000022
 ```
 
 - `input_pin` and `output_pin` must name model ports connected to Board IR power
   rails. They must be distinct `electrical_power` ports.
-- `switch_pin` is optional unless output inductance limits are declared. When
+- `switch_pin` is optional unless input or output inductance limits are declared. When
   present, it must name a model port distinct from the input/output rails and
   be connected to the converter switch net in Board IR.
 - `dropout_voltage_V` is a static nominal-voltage margin check:
@@ -139,11 +140,14 @@ power_conversion:
   Board IR capacitor primitives from the corresponding rail to ground. The
   validator sums those capacitances. This is a schematic support-component
   screen, not an ESR/ESL/DC-bias or regulator stability sign-off.
+- `input_inductance_min_H` and `input_inductance_max_H` require explicit
+  Board IR inductor primitives directly between `input_pin` and `switch_pin`.
+  This models boost-style energy-storage inductors.
 - `output_inductance_min_H` and `output_inductance_max_H` require explicit
   Board IR inductor primitives directly between `switch_pin` and `output_pin`.
-  The validator sums direct inductors on that path. This is a static
-  support-component screen, not saturation-current, DCR, ripple, or loop
-  stability sign-off.
+  This models buck-style output inductors. The validator sums direct inductors
+  on each declared path. This is a static support-component screen, not
+  saturation-current, DCR, ripple, or loop stability sign-off.
 
 `POWER_TREE_VALID` uses these values to check that a component is connected to
 a powered rail inside its allowed operating range, that declared rail current

@@ -1,0 +1,21 @@
+component_id: fixture.tps61023_nominal_5v_load
+version: 0.1.0
+category: load
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.5
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 1.0
+  GND:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - boost_regulator_fixture_load
+  not_valid_for:
+    - real_component_signoff

@@ -320,6 +320,10 @@ suggestions:
             - COUT
           switch_pin: SW
           switch_net: buck_sw
+          input_inductance_min_H: 0.00000037
+          input_support_inductance_H: 0.000001
+          input_support_inductors:
+            - LIN
           output_inductance_min_H: 0.0000022
           output_support_inductance_H: 0.0000022
           output_support_inductors:

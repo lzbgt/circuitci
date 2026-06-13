@@ -1,0 +1,107 @@
+component_id: vendor.ti.tps61023_5v
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.5
+      operating_voltage_max_V: 5.5
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.9
+      operating_voltage_max_V: 5.1
+  GND:
+    kind: electrical_ground
+    required: true
+  SW:
+    kind: passive
+    required: true
+  FB:
+    kind: passive
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: true
+power_conversion:
+  input_pin: VIN
+  output_pin: VOUT
+  switch_pin: SW
+  input_capacitance_min_F: 0.000010
+  output_capacitance_min_F: 0.000004
+  input_inductance_min_H: 0.00000037
+  input_inductance_max_H: 0.0000029
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS61023DRLT
+  package: SOT563 DRL
+  polarity: synchronous_boost_converter_fixed_5v_reference_fixture
+  pinout:
+    VIN: VIN
+    VOUT: VOUT
+    GND: GND
+    SW: SW
+    FB: FB
+    EN: EN
+  electrical_characteristics:
+    input_voltage_operating:
+      conditions: Recommended input voltage range.
+      min: 0.5
+      max: 5.5
+      unit: V
+    startup_input_voltage:
+      conditions: Minimum input voltage at startup.
+      min: 1.8
+      unit: V
+    output_voltage_setting:
+      conditions: External feedback setting range.
+      min: 2.2
+      max: 5.5
+      unit: V
+    valley_switch_current_limit:
+      conditions: VIN = 3.6 V, VOUT = 5.0 V.
+      min: 2.7
+      typ: 3.7
+      unit: A
+    inductor_value:
+      conditions: Device-supported inductor range.
+      min: 0.00000037
+      max: 0.0000029
+      unit: H
+    input_capacitance:
+      conditions: 10-uF input capacitor is sufficient for most applications.
+      min: 0.000010
+      unit: F
+    output_capacitance:
+      conditions: Effective X5R/X7R ceramic output-capacitance range.
+      min: 0.000004
+      max: 0.001
+      unit: F
+  documents:
+    - title: TPS61023 3.7-A Boost Converter With 0.5-V Ultra Low Input Voltage
+      path: docs/research/datasheets/ti/tps61023.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps61023.pdf
+      sha256: 79a66e0a66e98e89b84ced5ba6f4504fca843ec072641c94b1fd73876c43226d
+      retrieved: "2026-06-13"
+    - title: Peer urine_monitor cached TPS61023DRLT datasheet
+      path: ../urine_monitor/docs/fresh_design/lcsc_downloads/datasheets/C1852149_TPS61023DRLT.pdf
+      source_url: local_peer_project
+      sha256: 4a9042ba1594d7009a0f4831f881a4f089cc8a2b037c1a25ab76c90d9cf50887
+      retrieved: "2026-06-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - boost_regulator_static_screening
+    - peer_board_vext_5v_screening
+  not_valid_for:
+    - output_current_signoff
+    - inductor_saturation_current_signoff
+    - ripple_current_signoff
+    - dcr_efficiency_signoff
+    - loop_stability_signoff
+    - thermal_signoff

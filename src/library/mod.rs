@@ -60,6 +60,10 @@ pub struct PowerConversion {
     pub input_capacitance_min_f: Option<f64>,
     #[serde(default, rename = "output_capacitance_min_F")]
     pub output_capacitance_min_f: Option<f64>,
+    #[serde(default, rename = "input_inductance_min_H")]
+    pub input_inductance_min_h: Option<f64>,
+    #[serde(default, rename = "input_inductance_max_H")]
+    pub input_inductance_max_h: Option<f64>,
     #[serde(default, rename = "output_inductance_min_H")]
     pub output_inductance_min_h: Option<f64>,
     #[serde(default, rename = "output_inductance_max_H")]

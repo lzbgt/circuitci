@@ -57,6 +57,8 @@
         "startup_delay_us": { "type": "number", "minimum": 0 },
         "input_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 },
         "output_capacitance_min_F": { "type": "number", "exclusiveMinimum": 0 },
+        "input_inductance_min_H": { "type": "number", "exclusiveMinimum": 0 },
+        "input_inductance_max_H": { "type": "number", "exclusiveMinimum": 0 },
         "output_inductance_min_H": { "type": "number", "exclusiveMinimum": 0 },
         "output_inductance_max_H": { "type": "number", "exclusiveMinimum": 0 }
       },

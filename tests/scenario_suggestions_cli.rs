@@ -200,6 +200,38 @@ fn suggest_scenarios_marks_power_mux_template_non_runnable_without_source_select
 }
 
 #[test]
+fn suggest_scenarios_reports_boost_input_inductance_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_tps61023_boost/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_tps61023_boost"
+    );
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power_tree suggestion");
+    assert_eq!(power_tree["kind"], "power_tree");
+    assert_eq!(power_tree["runnable"], true);
+    let regulator = power_tree["scenario"]["regulators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|regulator| regulator["component"] == "UBOOST")
+        .expect("TPS61023 regulator evidence");
+    assert_eq!(regulator["input_pin"], "VIN");
+    assert_eq!(regulator["input_net"], "battery");
+    assert_eq!(regulator["switch_pin"], "SW");
+    assert_eq!(regulator["switch_net"], "boost_sw");
+    assert_eq!(regulator["input_inductance_min_H"], 0.00000037);
+    assert_eq!(regulator["input_inductance_max_H"], 0.0000029);
+    assert_eq!(regulator["input_support_inductance_H"], 0.000001);
+    assert_eq!(regulator["input_support_inductors"][0], "L1");
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");
