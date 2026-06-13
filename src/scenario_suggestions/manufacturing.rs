@@ -16,6 +16,7 @@ const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
 const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
+const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
 const JLC_IC_PIN_PITCH_INFERENCE_CANDIDATES: &[IcPinPitchInferenceCandidate] = &[
@@ -255,7 +256,42 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         );
     }
 
+    let bga_pitch_evidence = infer_bga_pitch_from_paste(&layout.solder_paste);
+    if let Some(evidence) = &bga_pitch_evidence
+        && !manufacturing_check_declared_for_target(
+            bound,
+            SOLDER_PASTE_BGA_APERTURE_VALID,
+            &evidence.component,
+        )
+    {
+        let mut suggestion = manufacturing_suggestion(
+            "solder_paste_bga_aperture_valid",
+            true,
+            &format!(
+                "Imported pad-owned solder-paste evidence for {} on {} has {} horizontal and {} vertical repeated {:.3} mm BGA pitch gaps matching the source-backed JLCPCB BGA stencil table.",
+                evidence.component,
+                evidence.layer,
+                evidence.horizontal_gaps,
+                evidence.vertical_gaps,
+                evidence.pitch_mm
+            ),
+            &format!("{project_name}_solder_paste_bga_aperture"),
+            SOLDER_PASTE_BGA_APERTURE_VALID,
+            Some(pin_pitch_parameter(evidence.pitch_mm)),
+            Vec::new(),
+        );
+        suggestion.scenario.target = Some(SuggestedTarget {
+            component: evidence.component.clone(),
+            power_pin: None,
+            reset_pin: None,
+        });
+        suggestions.push(suggestion);
+    }
+
     if let Some(evidence) = infer_ic_pin_pitch_from_paste(&layout.solder_paste)
+        && bga_pitch_evidence
+            .as_ref()
+            .is_none_or(|bga| bga.component != evidence.component)
         && !manufacturing_check_declared_for_target(
             bound,
             SOLDER_PASTE_IC_PIN_APERTURE_VALID,
@@ -401,6 +437,103 @@ struct IcPinPitchEvidence {
 struct IcPinPitchInferenceCandidate {
     pitch_mm: f64,
     min_matched_gaps: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct BgaPitchEvidence {
+    component: String,
+    layer: String,
+    pitch_mm: f64,
+    horizontal_gaps: usize,
+    vertical_gaps: usize,
+}
+
+const JLC_BGA_PITCH_INFERENCE_CANDIDATES_MM: &[f64] = &[0.4, 0.45, 0.5, 0.65, 0.8, 1.0, 1.27];
+
+fn infer_bga_pitch_from_paste(paste: &LayoutCopper) -> Option<BgaPitchEvidence> {
+    let mut features_by_component_layer: BTreeMap<(String, String), Vec<&LayoutCopperFeature>> =
+        BTreeMap::new();
+    for feature in &paste.features {
+        if feature.owner_kind.as_deref() != Some("pad") || feature.polarity != "dark" {
+            continue;
+        }
+        let Some(component) = &feature.component else {
+            continue;
+        };
+        features_by_component_layer
+            .entry((component.clone(), feature.layer.clone()))
+            .or_default()
+            .push(feature);
+    }
+
+    let mut best: Option<BgaPitchEvidence> = None;
+    for ((component, layer), features) in features_by_component_layer {
+        if features.len() < 4 {
+            continue;
+        }
+        for pitch_mm in JLC_BGA_PITCH_INFERENCE_CANDIDATES_MM {
+            let (horizontal_gaps, vertical_gaps) =
+                count_axis_aligned_pitch_gaps(&features, *pitch_mm);
+            if horizontal_gaps < 2 || vertical_gaps < 2 {
+                continue;
+            }
+            let candidate = BgaPitchEvidence {
+                component: component.clone(),
+                layer: layer.clone(),
+                pitch_mm: *pitch_mm,
+                horizontal_gaps,
+                vertical_gaps,
+            };
+            if best
+                .as_ref()
+                .is_none_or(|current| is_better_bga_pitch_evidence(&candidate, current))
+            {
+                best = Some(candidate);
+            }
+        }
+    }
+
+    best
+}
+
+fn count_axis_aligned_pitch_gaps(
+    features: &[&LayoutCopperFeature],
+    pitch_mm: f64,
+) -> (usize, usize) {
+    let mut horizontal_gaps = 0usize;
+    let mut vertical_gaps = 0usize;
+    for (index, first) in features.iter().enumerate() {
+        for second in features.iter().skip(index + 1) {
+            let dx = first.at.x_mm - second.at.x_mm;
+            let dy = first.at.y_mm - second.at.y_mm;
+            if dy.abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM
+                && (dx.abs() - pitch_mm).abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM
+            {
+                horizontal_gaps += 1;
+            }
+            if dx.abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM
+                && (dy.abs() - pitch_mm).abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM
+            {
+                vertical_gaps += 1;
+            }
+        }
+    }
+    (horizontal_gaps, vertical_gaps)
+}
+
+fn is_better_bga_pitch_evidence(candidate: &BgaPitchEvidence, current: &BgaPitchEvidence) -> bool {
+    candidate
+        .horizontal_gaps
+        .min(candidate.vertical_gaps)
+        .cmp(&current.horizontal_gaps.min(current.vertical_gaps))
+        .then_with(|| {
+            (candidate.horizontal_gaps + candidate.vertical_gaps)
+                .cmp(&(current.horizontal_gaps + current.vertical_gaps))
+        })
+        .then_with(|| current.pitch_mm.total_cmp(&candidate.pitch_mm))
+        .then_with(|| current.component.cmp(&candidate.component))
+        .then_with(|| current.layer.cmp(&candidate.layer))
+        .is_gt()
 }
 
 fn infer_ic_pin_pitch_from_paste(paste: &LayoutCopper) -> Option<IcPinPitchEvidence> {

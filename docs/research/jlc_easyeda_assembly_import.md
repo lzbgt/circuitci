@@ -250,6 +250,13 @@ emits runnable `SOLDER_PASTE_APERTURE_SIZE_VALID` with
 standard is package- and pitch-specific, so paste area-ratio and paste-spacing
 suggestions still require explicit package/process limits.
 
+CircuitCI now also encodes the source-backed JLCPCB BGA stencil aperture table
+as `SOLDER_PASTE_BGA_APERTURE_VALID`. It remains package-scoped rather than a
+generic paste preset. The real `urine_monitor` imported release still generated
+13 suggestions after this addition, with no BGA stencil suggestion, because the
+current owner-backed solder-paste evidence did not prove a repeated two-axis
+BGA grid for one component.
+
 Follow-up source review on 2026-06-13 found JLCPCB castellated-hole edge
 material, but not a generic drill-to-board-edge or slot-to-board-edge process
 floor. The saved diagram `Hole_to_board_edge.892a998.png` labels castellated

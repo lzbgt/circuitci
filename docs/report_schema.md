@@ -567,6 +567,14 @@ Stable limit keys include
 `min_solder_paste_ic_pin_aperture_width_mm` and
 `max_solder_paste_ic_pin_aperture_width_mm`.
 
+`SOLDER_PASTE_BGA_APERTURE_VALID` reports are emitted by `manufacturing`
+scenarios that compare pad-owned Gerber solder-paste flash evidence with the
+saved JLCPCB BGA pitch aperture-size table. Stable measured keys include
+`solder_paste_kind`, `solder_paste_bga_aperture_size_mm`, `pin_pitch_mm`, and
+`source_condition`. Feature findings reuse the same `solder_paste_feature_*`
+keys documented for solder-paste opening reports. Stable limit keys include
+`solder_paste_bga_aperture_size_mm`.
+
 `SOLDER_PASTE_SPACING_VALID` reports are emitted by `manufacturing` scenarios
 that compare same-layer Gerber solder-paste opening evidence under
 `board.layout.solder_paste`. Stable measured keys include

@@ -303,7 +303,12 @@ The command is conservative:
   discrete 0.3, 0.35, 0.4, 0.5, and 0.65 mm rows plus representative exact
   0.8, 1.0, and 1.27 mm pitches inside the source-backed 0.8-1.27 mm IC table
   row. Broad-row candidates require at least three repeated gaps, so a single
-  arbitrary pair cannot become a stencil-rule input.
+  arbitrary pair cannot become a stencil-rule input. When pad-owned
+  solder-paste flashes for one component form a two-axis grid with repeated
+  horizontal and vertical gaps matching a source-backed JLC BGA pitch row, it
+  emits runnable target-scoped `SOLDER_PASTE_BGA_APERTURE_VALID` with the
+  inferred `pin_pitch_mm`. The BGA grid suggestion suppresses the IC row
+  suggestion for the same target component.
 - Manufacturing checks whose thresholds are not yet pinned to a named process
   preset are suggested as `runnable: false` with explicit required inputs:
   drill-to-edge clearance, slot-to-edge clearance, solder-paste area ratio, and

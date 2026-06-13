@@ -63,6 +63,13 @@ greater than the source-backed JLCPCB 0.08 mm minimum aperture size. Arbitrary
 region openings are not used for this minimum-width screen yet because the rule
 does not approximate polygon neck width.
 
+`SOLDER_PASTE_IC_PIN_APERTURE_VALID` and `SOLDER_PASTE_BGA_APERTURE_VALID`
+consume pad-owned solder-paste evidence for package-specific JLCPCB stencil
+opening table rows. IC checks can use paste features, circular draw openings,
+and single-contour regions. BGA checks intentionally use flash features only,
+because the source table gives ball-grid aperture sizes rather than arbitrary
+draw or polygon paste geometry.
+
 The importer intentionally does not infer package-specific stencil reductions,
 step-stencil process rules, paste volume, or paste-bearing pad intent from
 Gerber alone. Use pad or Gerber ownership evidence where available, and tune

@@ -1053,6 +1053,45 @@ selected discrete source rows. Representative exact pitches inside the broad
 rows. The validator itself does not infer package class, step-stencil
 thickness, or order remarks automatically.
 
+Solder-paste BGA aperture validation uses
+`SOLDER_PASTE_BGA_APERTURE_VALID` when the Board IR includes pad-owned Gerber
+solder-paste flash evidence and the scenario declares a source-backed BGA ball
+pitch.
+
+```yaml
+scenarios:
+  - name: solder_paste_bga_aperture
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_BGA_APERTURE_VALID
+    target:
+      component: U1
+    parameters:
+      pin_pitch_mm: 0.5
+```
+
+BGA solder-paste aperture algorithm:
+
+1. Require `parameters.pin_pitch_mm`.
+2. Map the pitch to the saved JLCPCB stencil opening standard BGA rows:
+   0.4 mm pitch opens 0.23 mm square with rounded corners; 0.45 mm opens
+   0.26 mm; 0.5 mm opens 0.30 mm; 0.65 mm opens 0.35 mm; 0.8 mm opens
+   0.45 mm; 1.0 mm opens 0.55 mm; and 1.27 mm opens 0.65 mm.
+3. If `target.component` is present, check only pad-owned solder-paste flash
+   evidence for that component. Without a target, check all pad-owned paste
+   flash evidence.
+4. Require matching pad-owned solder-paste feature evidence.
+5. Measure the smaller of `size.x_mm` and `size.y_mm`.
+6. Fail when a pad-owned paste feature differs from the pitch-conditioned BGA
+   opening size.
+
+This is not a generic paste area-ratio or paste-spacing rule. It represents the
+BGA package rows in JLCPCB's stencil opening table. `suggest-scenarios` may
+infer a target-scoped BGA `pin_pitch_mm` only when pad-owned solder-paste
+flashes for one component show repeated same-pitch gaps in both horizontal and
+vertical axes. That grid evidence prevents a BGA from also being suggested as a
+one-dimensional IC lead row for the same component.
+
 Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
 Board IR includes at least two Gerber solder-paste opening objects under
 `board.layout.solder_paste.features`, `board.layout.solder_paste.segments`, or

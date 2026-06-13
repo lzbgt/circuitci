@@ -2,6 +2,7 @@ mod annular_ring;
 mod geometry;
 mod process;
 mod solder_mask;
+mod solder_paste_bga;
 mod solder_paste_ic;
 
 use crate::board_ir::{
@@ -35,6 +36,7 @@ pub(super) use solder_mask::{
     validate_solder_mask_dam, validate_solder_mask_opening, validate_solder_paste_aperture_size,
     validate_solder_paste_opening, validate_solder_paste_spacing,
 };
+pub(super) use solder_paste_bga::validate_solder_paste_bga_aperture;
 pub(super) use solder_paste_ic::validate_solder_paste_ic_pin_aperture;
 
 pub(super) fn validate_drill_diameter(

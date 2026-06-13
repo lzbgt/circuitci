@@ -139,6 +139,15 @@ Observed but not yet encoded as process defaults:
   least three repeated same-pitch gaps. The generated scenario is
   target-scoped to that component, so the inferred pitch is not applied to
   unrelated pad-owned paste elsewhere on the board.
+- CircuitCI implements the BGA pitch rows from the same stencil
+  opening-process article as the opt-in `SOLDER_PASTE_BGA_APERTURE_VALID`
+  check. It requires explicit `pin_pitch_mm` and pad-owned solder-paste flash
+  evidence, then applies only the source-backed BGA rows: 0.4 mm pitch opens
+  0.23 mm square with rounded corners; 0.45 mm opens 0.26 mm; 0.5 mm opens
+  0.30 mm; 0.65 mm opens 0.35 mm; 0.8 mm opens 0.45 mm; 1.0 mm opens
+  0.55 mm; and 1.27 mm opens 0.65 mm. `suggest-scenarios` may infer this check
+  only when one component has repeated same-pitch gaps in both horizontal and
+  vertical axes, and it suppresses the IC row suggestion for the same target.
 
 Next source work before expanding presets:
 

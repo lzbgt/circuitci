@@ -452,6 +452,41 @@ fn suggest_scenarios_derives_broad_ic_stencil_pitch_template() {
 }
 
 #[test]
+fn suggest_scenarios_derives_bga_stencil_pitch_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_bga_stencil_pitch/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_bga_stencil_pitch"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 3);
+
+    let paste_bga = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_bga_aperture_valid")
+        .expect("BGA paste aperture suggestion");
+    assert_eq!(paste_bga["runnable"], true);
+    assert_eq!(
+        paste_bga["scenario"]["checks"][0],
+        "SOLDER_PASTE_BGA_APERTURE_VALID"
+    );
+    assert_eq!(paste_bga["scenario"]["target"]["component"], "U1");
+    assert_eq!(paste_bga["scenario"]["parameters"]["pin_pitch_mm"], 0.8);
+    assert!(
+        paste_bga["reason"]
+            .as_str()
+            .unwrap()
+            .contains("2 horizontal and 2 vertical repeated 0.800 mm")
+    );
+    assert!(
+        suggested
+            .iter()
+            .all(|suggestion| suggestion["id"] != "solder_paste_ic_pin_aperture_valid")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");
