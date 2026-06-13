@@ -7,11 +7,18 @@ separate.
 
 Owns the CLI-facing Gerber import flows:
 
-- RS-274X outline parsing and Board IR outline serialization,
+- RS-274X outline parsing,
 - RS-274X copper flash/draw/region parsing,
-- Board IR copper serialization,
 - import summaries and fail-closed parser errors,
 - shared outline-contour geometry helpers.
+
+## `src/importers/gerber/board_ir.rs`
+
+Owns Board IR projection for parsed Gerber evidence:
+
+- outline YAML serialization,
+- copper, solder-mask, and solder-paste YAML serialization,
+- import summary construction for parsed outline and artwork evidence.
 
 ## `src/importers/gerber/ownership.rs`
 
