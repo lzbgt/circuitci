@@ -80,11 +80,36 @@ circuitci import-gerber-outline out/urine-monitor-board-outline.gko \
   --project out/urine-monitor-jlc-assembly.project.yaml \
   --output out/urine-monitor-jlc-assembly-outline.project.yaml
 unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_TopLayer.GTL > out/urine-monitor-top-copper.gtl
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_BottomLayer.GBL > out/urine-monitor-bottom-copper.gbl
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_TopSolderMaskLayer.GTS > out/urine-monitor-top-mask.gts
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_BottomSolderMaskLayer.GBS > out/urine-monitor-bottom-mask.gbs
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  Gerber_TopPasteMaskLayer.GTP > out/urine-monitor-top-paste.gtp
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
   Drill_PTH_Through.DRL > out/urine-monitor-pth.drl
 unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
   Drill_NPTH_Through.DRL > out/urine-monitor-npth.drl
-circuitci import-excellon-drill out/urine-monitor-pth.drl \
+circuitci import-gerber-copper out/urine-monitor-top-copper.gtl \
   --project out/urine-monitor-jlc-assembly-outline.project.yaml \
+  --output out/urine-monitor-jlc-assembly-top-copper.project.yaml
+circuitci import-gerber-copper out/urine-monitor-bottom-copper.gbl \
+  --project out/urine-monitor-jlc-assembly-top-copper.project.yaml \
+  --output out/urine-monitor-jlc-assembly-copper.project.yaml
+circuitci import-gerber-solder-mask out/urine-monitor-top-mask.gts \
+  --project out/urine-monitor-jlc-assembly-copper.project.yaml \
+  --output out/urine-monitor-jlc-assembly-top-mask.project.yaml
+circuitci import-gerber-solder-mask out/urine-monitor-bottom-mask.gbs \
+  --project out/urine-monitor-jlc-assembly-top-mask.project.yaml \
+  --output out/urine-monitor-jlc-assembly-mask.project.yaml
+circuitci import-gerber-solder-paste out/urine-monitor-top-paste.gtp \
+  --project out/urine-monitor-jlc-assembly-mask.project.yaml \
+  --output out/urine-monitor-jlc-assembly-paste.project.yaml
+circuitci import-excellon-drill out/urine-monitor-pth.drl \
+  --project out/urine-monitor-jlc-assembly-paste.project.yaml \
   --output out/urine-monitor-jlc-assembly-outline-pth.project.yaml
 circuitci import-excellon-drill out/urine-monitor-npth.drl \
   --project out/urine-monitor-jlc-assembly-outline-pth.project.yaml \
@@ -110,9 +135,35 @@ Observed Gerber outline enrichment:
 CircuitCI imported Gerber outline: 16 segments (4 external, 12 cutout, 0 unknown)
 ```
 
+Observed Gerber copper/mask/paste enrichment after adding observed EasyEDA
+`RoundRect` aperture and `G02`/`G03` circular-arc draw support:
+
+```text
+CircuitCI imported Gerber copper: 2725 flash features, 2567 trace segments, 22 regions, 0 net-associated features, 0 net-associated segments, 0 net-associated regions, 0 island-associated features, 0 island-associated segments, 0 island-associated regions, 120 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+CircuitCI imported Gerber copper: 1275 flash features, 854 trace segments, 3 regions, 0 net-associated features, 0 net-associated segments, 0 net-associated regions, 0 island-associated features, 0 island-associated segments, 0 island-associated regions, 30 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+CircuitCI imported Gerber solder mask: 1546 flash openings, 0 draw openings, 7 region openings, 107 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+CircuitCI imported Gerber solder mask: 96 flash openings, 0 draw openings, 0 region openings, 19 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+CircuitCI imported Gerber solder paste: 1111 flash openings, 0 draw openings, 354 region openings, 75 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+```
+
 Observed PTH/NPTH drill enrichment:
 
 ```text
 CircuitCI imported Excellon/NC drill evidence: 1275 hits, 8 tools (1275 plated, 0 non-plated, 0 unknown plating)
 CircuitCI imported Excellon/NC drill evidence: 31 hits, 4 tools (0 plated, 31 non-plated, 0 unknown plating)
 ```
+
+Observed static mask/paste manufacturability checks on the same imported peer
+release:
+
+```text
+min_solder_mask_dam_mm: 0.05 and min_solder_paste_spacing_mm: 0.05
+CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
+
+min_solder_mask_dam_mm: 0.10 and min_solder_paste_spacing_mm: 0.10
+CircuitCI urine_monitor_jlc_assembly: fail (critical=148, warning=0, info=0)
+```
+
+The `0.10 mm` screen produced only `SOLDER_MASK_DAM_VALID` findings; paste
+spacing had no findings at that threshold. The reported solder-mask dam range
+was approximately `0.093982..0.099850 mm`, all on `TopSolderMaskLayer`.

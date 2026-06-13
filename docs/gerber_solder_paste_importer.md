@@ -7,8 +7,9 @@ Supported subset:
 
 - RS-274X millimeter units (`%MOMM*%`)
 - absolute coordinates (`G90`, the default)
-- dark polarity flashes (`D03`) for circle, rectangle, and oval apertures
-- dark linear draws with circular apertures
+- dark polarity flashes (`D03`) for circle, rectangle, oval, and observed
+  EasyEDA `RoundRect` apertures
+- dark linear and sampled `G02`/`G03` arc draws with circular apertures
 - dark single-contour regions
 
 Imported evidence is written under `board.layout.solder_paste.features`,

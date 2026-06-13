@@ -9,6 +9,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const POINT_EPSILON_MM: f64 = 1.0e-6;
+const GERBER_ARC_MAX_STEP_DEG: f64 = 15.0;
+const GERBER_ARC_MAX_CHORD_MM: f64 = 0.25;
+const GERBER_ARC_MAX_SEGMENTS: usize = 256;
 
 #[derive(Debug, Clone)]
 pub struct GerberOutlineImportOptions {
@@ -129,6 +132,7 @@ struct GerberCopperSegment {
     end: GerberPoint,
     aperture_code: u32,
     aperture: GerberAperture,
+    source_primitive: &'static str,
     source_primitive_index: usize,
     net: Option<String>,
     island_id: Option<String>,
@@ -297,6 +301,12 @@ enum GerberOperation {
     Draw,
     Move,
     Flash,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum GerberArcDirection {
+    Clockwise,
+    CounterClockwise,
 }
 
 pub fn import_gerber_outline(
@@ -730,14 +740,15 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
             }
             continue;
         }
+        let arc_direction = if record.starts_with("G02") {
+            Some(GerberArcDirection::Clockwise)
+        } else if record.starts_with("G03") {
+            Some(GerberArcDirection::CounterClockwise)
+        } else {
+            None
+        };
         if record == "G01" || record.starts_with("G01X") || record.starts_with("G01Y") {
             state.line_mode = true;
-        } else if record.starts_with("G02") || record.starts_with("G03") {
-            bail!(
-                "Gerber copper {} contains arc interpolation {}; import currently supports flashes and linear draw counting only.",
-                path.display(),
-                record
-            );
         } else if let Some(selection) = record.strip_prefix("G54") {
             if let Some(code) = aperture_selection_code(selection) {
                 if !apertures.contains_key(&code) {
@@ -774,7 +785,7 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
         if !(record.contains('X') || record.contains('Y') || record.contains('D')) {
             continue;
         }
-        if !state.line_mode {
+        if arc_direction.is_none() && !state.line_mode {
             bail!(
                 "Gerber copper {} has coordinate record before linear interpolation mode: {}.",
                 path.display(),
@@ -832,8 +843,28 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                         };
                         points.push(start);
                     }
-                    if point_distance_mm(*points.last().expect("points is not empty"), target)
-                        > POINT_EPSILON_MM
+                    if let Some(direction) = arc_direction {
+                        let Some(start) = state.current else {
+                            bail!(
+                                "Gerber copper {} has region arc command before a current position.",
+                                path.display()
+                            );
+                        };
+                        for point in
+                            sample_arc_points(start, target, record, format, path, direction)?
+                        {
+                            if point_distance_mm(
+                                *points.last().expect("points is not empty"),
+                                point,
+                            ) > POINT_EPSILON_MM
+                            {
+                                points.push(point);
+                            }
+                        }
+                    } else if point_distance_mm(
+                        *points.last().expect("points is not empty"),
+                        target,
+                    ) > POINT_EPSILON_MM
                     {
                         points.push(target);
                     }
@@ -885,16 +916,40 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                     );
                 }
                 if state.dark_polarity && aperture.shape == GerberApertureShape::Circle {
-                    segments.push(GerberCopperSegment {
-                        start,
-                        end: target,
-                        aperture_code,
-                        aperture,
-                        source_primitive_index,
-                        net: None,
-                        island_id: None,
-                    });
-                    source_primitive_index += 1;
+                    if let Some(direction) = arc_direction {
+                        let mut segment_start = start;
+                        for point in
+                            sample_arc_points(start, target, record, format, path, direction)?
+                        {
+                            if point_distance_mm(segment_start, point) <= POINT_EPSILON_MM {
+                                continue;
+                            }
+                            segments.push(GerberCopperSegment {
+                                start: segment_start,
+                                end: point,
+                                aperture_code,
+                                aperture: aperture.clone(),
+                                source_primitive: "gerber_arc_draw",
+                                source_primitive_index,
+                                net: None,
+                                island_id: None,
+                            });
+                            source_primitive_index += 1;
+                            segment_start = point;
+                        }
+                    } else {
+                        segments.push(GerberCopperSegment {
+                            start,
+                            end: target,
+                            aperture_code,
+                            aperture,
+                            source_primitive: "gerber_linear_draw",
+                            source_primitive_index,
+                            net: None,
+                            island_id: None,
+                        });
+                        source_primitive_index += 1;
+                    }
                 } else {
                     ignored_draws += 1;
                 }
@@ -1057,6 +1112,92 @@ fn parse_target_point(
     Ok(GerberPoint { x_mm, y_mm })
 }
 
+fn sample_arc_points(
+    start: GerberPoint,
+    target: GerberPoint,
+    record: &str,
+    format: CoordinateFormat,
+    path: &Path,
+    direction: GerberArcDirection,
+) -> Result<Vec<GerberPoint>> {
+    let i_mm =
+        coordinate_offset_field(record, 'I', format.x_decimals, path)?.with_context(|| {
+            format!(
+                "Gerber copper {} arc record {} is missing I center offset.",
+                path.display(),
+                record
+            )
+        })?;
+    let j_mm =
+        coordinate_offset_field(record, 'J', format.y_decimals, path)?.with_context(|| {
+            format!(
+                "Gerber copper {} arc record {} is missing J center offset.",
+                path.display(),
+                record
+            )
+        })?;
+    let center = GerberPoint {
+        x_mm: start.x_mm + i_mm,
+        y_mm: start.y_mm + j_mm,
+    };
+    let radius_mm = point_distance_mm(start, center);
+    let target_radius_mm = point_distance_mm(target, center);
+    if !(radius_mm.is_finite() && target_radius_mm.is_finite()) || radius_mm <= POINT_EPSILON_MM {
+        bail!(
+            "Gerber copper {} arc record {} has invalid radius.",
+            path.display(),
+            record
+        );
+    }
+    if (target_radius_mm - radius_mm).abs() > 0.05 {
+        bail!(
+            "Gerber copper {} arc record {} has inconsistent start/end radius.",
+            path.display(),
+            record
+        );
+    }
+    let start_angle = (start.y_mm - center.y_mm).atan2(start.x_mm - center.x_mm);
+    let end_angle = (target.y_mm - center.y_mm).atan2(target.x_mm - center.x_mm);
+    let sweep = match direction {
+        GerberArcDirection::CounterClockwise => {
+            let mut value = end_angle - start_angle;
+            if value <= 0.0 {
+                value += std::f64::consts::TAU;
+            }
+            value
+        }
+        GerberArcDirection::Clockwise => {
+            let mut value = start_angle - end_angle;
+            if value <= 0.0 {
+                value += std::f64::consts::TAU;
+            }
+            value
+        }
+    };
+    let angular_steps = (sweep / GERBER_ARC_MAX_STEP_DEG.to_radians()).ceil() as usize;
+    let chord_steps = ((radius_mm * sweep) / GERBER_ARC_MAX_CHORD_MM).ceil() as usize;
+    let steps = angular_steps
+        .max(chord_steps)
+        .clamp(1, GERBER_ARC_MAX_SEGMENTS);
+    let mut points = Vec::with_capacity(steps);
+    for step in 1..=steps {
+        if step == steps {
+            points.push(target);
+            continue;
+        }
+        let fraction = step as f64 / steps as f64;
+        let angle = match direction {
+            GerberArcDirection::CounterClockwise => start_angle + sweep * fraction,
+            GerberArcDirection::Clockwise => start_angle - sweep * fraction,
+        };
+        points.push(GerberPoint {
+            x_mm: center.x_mm + radius_mm * angle.cos(),
+            y_mm: center.y_mm + radius_mm * angle.sin(),
+        });
+    }
+    Ok(points)
+}
+
 fn coordinate_field(record: &str, axis: char) -> Option<&str> {
     let start = record.find(axis)? + axis.len_utf8();
     let bytes = record.as_bytes();
@@ -1068,6 +1209,17 @@ fn coordinate_field(record: &str, axis: char) -> Option<&str> {
         end += 1;
     }
     (end > start).then_some(&record[start..end])
+}
+
+fn coordinate_offset_field(
+    record: &str,
+    axis: char,
+    decimals: u32,
+    path: &Path,
+) -> Result<Option<f64>> {
+    coordinate_field(record, axis)
+        .map(|value| parse_coordinate_mm(value, decimals, path))
+        .transpose()
 }
 
 fn parse_coordinate_mm(value: &str, decimals: u32, path: &Path) -> Result<f64> {
@@ -1152,16 +1304,6 @@ fn parse_aperture_definition(record: &str, path: &Path) -> Result<Option<(u32, G
             })
         })
         .collect::<Result<Vec<_>>>()?;
-    if dimensions
-        .iter()
-        .any(|value| !value.is_finite() || *value <= 0.0)
-    {
-        bail!(
-            "Gerber copper {} has non-positive aperture size in {}.",
-            path.display(),
-            record
-        );
-    }
     let aperture = match shape_code {
         "C" => {
             if dimensions.len() != 1 {
@@ -1171,6 +1313,7 @@ fn parse_aperture_definition(record: &str, path: &Path) -> Result<Option<(u32, G
                     record
                 );
             }
+            ensure_positive_aperture_dimensions(&dimensions, path, record)?;
             GerberAperture {
                 shape: GerberApertureShape::Circle,
                 x_mm: dimensions[0],
@@ -1185,6 +1328,7 @@ fn parse_aperture_definition(record: &str, path: &Path) -> Result<Option<(u32, G
                     record
                 );
             }
+            ensure_positive_aperture_dimensions(&dimensions, path, record)?;
             GerberAperture {
                 shape: GerberApertureShape::Rect,
                 x_mm: dimensions[0],
@@ -1199,15 +1343,17 @@ fn parse_aperture_definition(record: &str, path: &Path) -> Result<Option<(u32, G
                     record
                 );
             }
+            ensure_positive_aperture_dimensions(&dimensions, path, record)?;
             GerberAperture {
                 shape: GerberApertureShape::Oval,
                 x_mm: dimensions[0],
                 y_mm: dimensions[1],
             }
         }
+        "RoundRect" => parse_easyeda_round_rect_aperture(&dimensions, path, record)?,
         _ => {
             bail!(
-                "Gerber copper {} uses unsupported aperture shape {} in {}; supported shapes are C, R, and O.",
+                "Gerber copper {} uses unsupported aperture shape {} in {}; supported shapes are C, R, O, and EasyEDA RoundRect.",
                 path.display(),
                 shape_code,
                 record
@@ -1215,6 +1361,62 @@ fn parse_aperture_definition(record: &str, path: &Path) -> Result<Option<(u32, G
         }
     };
     Ok(Some((code, aperture)))
+}
+
+fn ensure_positive_aperture_dimensions(
+    dimensions: &[f64],
+    path: &Path,
+    record: &str,
+) -> Result<()> {
+    if dimensions
+        .iter()
+        .any(|value| !value.is_finite() || *value <= 0.0)
+    {
+        bail!(
+            "Gerber copper {} has non-positive aperture size in {}.",
+            path.display(),
+            record
+        );
+    }
+    Ok(())
+}
+
+fn parse_easyeda_round_rect_aperture(
+    dimensions: &[f64],
+    path: &Path,
+    record: &str,
+) -> Result<GerberAperture> {
+    if dimensions.len() != 5 {
+        bail!(
+            "Gerber copper {} EasyEDA RoundRect aperture must have stroke diameter and four corner coordinates: {}.",
+            path.display(),
+            record
+        );
+    }
+    if dimensions.iter().any(|value| !value.is_finite()) || dimensions[0] <= 0.0 {
+        bail!(
+            "Gerber copper {} has invalid EasyEDA RoundRect aperture dimensions in {}.",
+            path.display(),
+            record
+        );
+    }
+    let stroke_mm = dimensions[0];
+    let max_x_mm = dimensions[1].abs().max(dimensions[3].abs());
+    let max_y_mm = dimensions[2].abs().max(dimensions[4].abs());
+    let x_mm = 2.0 * max_x_mm + stroke_mm;
+    let y_mm = 2.0 * max_y_mm + stroke_mm;
+    if !(x_mm.is_finite() && y_mm.is_finite() && x_mm > 0.0 && y_mm > 0.0) {
+        bail!(
+            "Gerber copper {} produced invalid EasyEDA RoundRect aperture bounds in {}.",
+            path.display(),
+            record
+        );
+    }
+    Ok(GerberAperture {
+        shape: GerberApertureShape::Rect,
+        x_mm,
+        y_mm,
+    })
 }
 
 fn merge_outline_into_project(project_yaml: &mut Value, outline: &GerberOutline) -> Result<()> {
@@ -1342,7 +1544,7 @@ fn merge_layer_artwork_into_project(
                 polarity: "dark".to_string(),
                 net: segment.net.clone(),
                 island_id: segment.island_id.clone(),
-                source_primitive: "gerber_linear_draw".to_string(),
+                source_primitive: segment.source_primitive.to_string(),
                 source_primitive_index: segment.source_primitive_index,
                 aperture: format!("D{}", segment.aperture_code),
                 width_mm: segment.aperture.x_mm,

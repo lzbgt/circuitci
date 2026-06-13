@@ -214,13 +214,13 @@ without explicit imported mechanical evidence.
   minimum X/Y expansion. It does not yet evaluate mask region polygons, mask
   dams between adjacent pads, paste stencil openings, fab-specific mask swell,
   package-specific solder-mask-defined pad rules, or 3D solderability effects.
-- `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, linear draw,
+- `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, sampled draw,
   and region openings for a static same-layer 2D mask-web screen. It can detect
   thin or missing dams between supported circle, rectangle, axis-aligned oval,
-  circular-aperture linear draw, and single-contour region openings. It does
-  not yet evaluate multi-contour solder-mask regions, package-specific no-dam
-  exceptions, manufacturer-specific bridge rules, paste stencil behavior, or
-  3D solderability effects.
+  observed EasyEDA `RoundRect`, circular-aperture linear/arc draw, and
+  single-contour region openings. It does not yet evaluate multi-contour
+  solder-mask regions, package-specific no-dam exceptions, manufacturer-specific
+  bridge rules, paste stencil behavior, or 3D solderability effects.
 - `SOLDER_PASTE_OPENING_VALID` uses imported Gerber copper flashes and Gerber
   solder-paste flash, circular-aperture draw, and single-contour region
   openings for a static 2D stencil-aperture screen. It checks same-side `F.Cu`
@@ -230,19 +230,20 @@ without explicit imported mechanical evidence.
   stencils, step-stencil thickness, paste volume, package-specific paste
   reductions, or 3D solderability effects.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
-  circular-aperture draw, and single-contour region openings for a static
-  same-layer 2D stencil-web screen. It can detect merged or too-close paste
-  openings between supported paste objects. It does not evaluate stencil
+  circular-aperture linear/arc draw, and single-contour region openings for a
+  static same-layer 2D stencil-web screen. It can detect merged or too-close
+  paste openings between supported paste objects. It does not evaluate stencil
   thickness, paste release, paste volume, multi-contour paste regions, or
   package-specific intentional aperture merging.
 - Gerber copper import currently records dark `D03` flash features for circle,
-  rectangle, and oval apertures, dark linear `D01` traces for circular
-  apertures, and dark single-contour linear `G36`/`G37` region polygons. When
-  the input Board IR already has exactly one matching pad, route, or zone owner,
-  it can annotate imported copper with `net`. It ignores non-circular aperture
-  draws, skips clear-polarity copper primitives, and does not infer component
-  ownership, pad names, copper island connectivity, mask expansion, or
-  electrical connectivity.
+  rectangle, oval, and observed EasyEDA `RoundRect` apertures, dark linear
+  `D01` traces and sampled `G02`/`G03` arc traces for circular apertures, and
+  dark single-contour `G36`/`G37` region polygons. When the input Board IR
+  already has exactly one matching pad, route, or zone owner, it can annotate
+  imported copper with `net`. It ignores non-circular aperture draws, skips
+  clear-polarity copper primitives, and does not infer component ownership, pad
+  names, copper island connectivity, mask expansion, or electrical
+  connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

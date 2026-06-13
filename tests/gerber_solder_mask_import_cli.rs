@@ -52,3 +52,53 @@ fn import_gerber_solder_mask_appends_schema_valid_opening_evidence() {
     assert_eq!(report["result"], "pass");
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn import_gerber_solder_mask_accepts_easyeda_round_rect_apertures() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("round_rect_mask.gts");
+    let output = dir.path().join("with_round_rect_mask.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: F.Mask*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "%AMRoundRect*1,1,$1,$2,$3*1,1,$1,$4,$5*%\n",
+            "%ADD10RoundRect,0.1016X-0.675X-0.705X-0.675X0.705*%\n",
+            "D10*\n",
+            "X01000000Y01000000D03*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-solder-mask",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_solder_mask_openings/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let openings = imported["board"]["layout"]["solder_mask"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(openings.len(), 1);
+    assert_eq!(openings[0]["shape"], "rect");
+    let size_x = openings[0]["size"]["x_mm"].as_f64().unwrap();
+    let size_y = openings[0]["size"]["y_mm"].as_f64().unwrap();
+    assert!((size_x - 1.4516).abs() < 1.0e-12);
+    assert!((size_y - 1.5116).abs() < 1.0e-12);
+}

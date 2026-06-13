@@ -1,8 +1,8 @@
 # Gerber Copper Importer
 
 `circuitci import-gerber-copper` enriches an existing Board IR project with
-anonymous flashed copper feature, circular-aperture linear trace, and
-single-contour region evidence from a Gerber copper layer.
+anonymous flashed copper feature, circular-aperture trace, and single-contour
+region evidence from a Gerber copper layer.
 
 ```bash
 circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
@@ -21,11 +21,12 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 - layer name from `G04 Layer: ...` when present,
 - `polarity: dark`,
 - `source_primitive: gerber_flash`,
-- `source_primitive: gerber_linear_draw`,
+- `source_primitive: gerber_linear_draw` or `gerber_arc_draw`,
 - `source_primitive: gerber_region`,
 - `source_primitive_index`,
 - aperture code such as `D10`,
-- aperture shape: `circle`, `rect`, or `oval`,
+- aperture shape: `circle`, `rect`, or `oval`; observed EasyEDA `RoundRect`
+  aperture macros are imported as bounded `rect` apertures,
 - aperture X/Y size in millimeters,
 - optional `net` and `island_id` when existing Board IR layout evidence gives
   exactly one owner,
@@ -40,18 +41,21 @@ subset:
 - RS-274X coordinate format declared with `%FSLAX...Y...*%`,
 - millimeter units declared with `%MOMM*%`,
 - absolute coordinates,
-- aperture definitions for `C`, `R`, and `O` shapes,
+- aperture definitions for `C`, `R`, `O`, and observed EasyEDA `RoundRect`
+  apertures,
 - bare `Dnn` and `G54Dnn` aperture selection,
 - dark-polarity `D03` flashes,
 - dark-polarity linear `D01` draws with circular apertures,
-- dark-polarity single-contour `G36`/`G37` regions made from linear `D01`
-  edges.
+- dark-polarity `G02`/`G03` circular-aperture arc draws sampled into bounded
+  segment evidence,
+- dark-polarity single-contour `G36`/`G37` regions made from linear or sampled
+  arc edges.
 
-Linear `D01` draw records with non-circular apertures are counted as ignored
+Draw records with non-circular apertures are counted as ignored
 draw records because their exact swept geometry is not a simple trace-width
 segment. Clear-polarity flashes, draws, and regions are skipped/ignored because
 they represent copper voids rather than conductive copper. Multi-contour,
-nested, open, degenerate, flashed, or arc-interpolated regions fail closed.
+nested, open, degenerate, or flashed regions fail closed.
 
 ## Limits
 

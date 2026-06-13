@@ -7,10 +7,11 @@ The importer uses the same conservative Gerber subset as the copper importer:
 
 - millimeter units (`%MOMM*%`),
 - absolute coordinates,
-- linear interpolation,
-- dark `D03` flashes for circle, rectangle, and oval apertures,
-- dark circular-aperture linear `D01` draw openings,
-- dark single-contour linear `G36`/`G37` region openings.
+- linear and circular interpolation,
+- dark `D03` flashes for circle, rectangle, oval, and observed EasyEDA
+  `RoundRect` apertures,
+- dark circular-aperture linear `D01` and sampled `G02`/`G03` draw openings,
+- dark single-contour `G36`/`G37` region openings.
 
 Imported evidence is written under `board.layout.solder_mask.features`,
 `board.layout.solder_mask.segments`, and `board.layout.solder_mask.regions`.

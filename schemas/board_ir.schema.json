@@ -370,7 +370,7 @@
                       "polarity": { "enum": ["dark"] },
                       "net": { "type": "string", "minLength": 1 },
                       "island_id": { "type": "string", "minLength": 1 },
-                      "source_primitive": { "enum": ["gerber_linear_draw"] },
+                      "source_primitive": { "enum": ["gerber_linear_draw", "gerber_arc_draw"] },
                       "source_primitive_index": {
                         "type": "integer",
                         "minimum": 0
@@ -491,7 +491,7 @@
                       "polarity": { "enum": ["dark"] },
                       "net": { "type": "string", "minLength": 1 },
                       "island_id": { "type": "string", "minLength": 1 },
-                      "source_primitive": { "enum": ["gerber_linear_draw"] },
+                      "source_primitive": { "enum": ["gerber_linear_draw", "gerber_arc_draw"] },
                       "source_primitive_index": {
                         "type": "integer",
                         "minimum": 0
@@ -612,7 +612,7 @@
                       "polarity": { "enum": ["dark"] },
                       "net": { "type": "string", "minLength": 1 },
                       "island_id": { "type": "string", "minLength": 1 },
-                      "source_primitive": { "enum": ["gerber_linear_draw"] },
+                      "source_primitive": { "enum": ["gerber_linear_draw", "gerber_arc_draw"] },
                       "source_primitive_index": {
                         "type": "integer",
                         "minimum": 0
