@@ -165,6 +165,12 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   copper-edge screen. It does not model solder mask, etch compensation,
   panelization tabs, fab-specific clearance expansion, copper island
   connectivity, or net ownership.
+- `COPPER_SPACING_VALID` uses imported anonymous Gerber copper flashes/segments
+  for a static same-layer 2D copper-spacing screen. It ignores different-layer
+  copper and overlapping/touching anonymous copper because current Gerber
+  evidence has no net or island ownership. It does not prove same-net intent,
+  shorts, solder-mask behavior, etch compensation, fab-specific spacing
+  expansion, or copper connectivity.
 - Gerber copper import currently records anonymous dark `D03` flash features
   for circle, rectangle, and oval apertures plus dark linear `D01` traces for
   circular apertures. It ignores non-circular aperture draws and does not infer

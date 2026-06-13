@@ -135,3 +135,57 @@ fn copper_to_board_edge_clearance_fails_for_near_trace_segment() {
     assert_eq!(failure["limit"]["min_copper_edge_clearance_mm"], 0.25);
     assert_report_schema_valid(&report);
 }
+
+#[test]
+fn copper_spacing_passes_for_far_or_different_layer_copper() {
+    let report = run_validation("examples/good_copper_spacing/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_near_flashes() {
+    let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["first_copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["second_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["second_copper_feature_index"], 1);
+    assert_eq!(failure["measured"]["copper_layer"], "F.Cu");
+    assert_eq!(failure["measured"]["clearance_mm"], 0.19999999999999996);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_near_flash_and_trace() {
+    let report = run_validation("examples/bad_copper_feature_segment_spacing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["first_copper_feature_shape"], "rect");
+    assert_eq!(failure["measured"]["second_copper_kind"], "segment");
+    assert_eq!(failure["measured"]["second_copper_segment_width_mm"], 0.2);
+    assert_eq!(failure["measured"]["clearance_mm"], 0.35);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.4);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_near_traces() {
+    let report = run_validation("examples/bad_copper_segment_spacing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "segment");
+    assert_eq!(failure["measured"]["first_copper_segment_index"], 0);
+    assert_eq!(failure["measured"]["second_copper_kind"], "segment");
+    assert_eq!(failure["measured"]["second_copper_segment_index"], 1);
+    assert_eq!(failure["measured"]["clearance_mm"], 0.19999999999999993);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}

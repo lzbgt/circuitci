@@ -323,6 +323,25 @@ Feature findings also report `copper_feature_index`, `copper_feature_x_mm`,
 `trace_centerline_to_board_edge_distance_mm`. Stable limit keys include
 `min_copper_edge_clearance_mm`.
 
+`COPPER_SPACING_VALID` reports are emitted by `manufacturing` scenarios that
+compare same-layer `board.layout.copper.features` and
+`board.layout.copper.segments` evidence. Stable measured keys include
+`clearance_mm`, `copper_layer`, `first_copper_kind`, and
+`second_copper_kind`. Feature operands report prefixed keys such as
+`first_copper_feature_index`, `first_copper_feature_x_mm`,
+`first_copper_feature_y_mm`, `first_copper_feature_layer`,
+`first_copper_feature_aperture`, `first_copper_feature_shape`,
+`first_copper_feature_size_x_mm`, `first_copper_feature_size_y_mm`,
+`first_copper_feature_source_primitive`, and
+`first_copper_feature_source_primitive_index`; the same keys may appear with
+the `second_` prefix. Segment operands report prefixed keys such as
+`first_copper_segment_index`, `first_copper_segment_start`,
+`first_copper_segment_end`, `first_copper_segment_layer`,
+`first_copper_segment_aperture`, `first_copper_segment_width_mm`,
+`first_copper_segment_source_primitive`, and
+`first_copper_segment_source_primitive_index`; the same keys may appear with
+the `second_` prefix. Stable limit keys include `min_copper_spacing_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys

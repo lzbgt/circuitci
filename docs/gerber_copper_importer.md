@@ -60,3 +60,9 @@ circular-aperture draw evidence together with board-outline evidence for a
 static copper-to-board-edge screen. That rule still operates on anonymous 2D
 fabrication geometry; it does not prove net ownership, copper island
 connectivity, solder-mask margin, or fab-specific etch compensation.
+
+`COPPER_SPACING_VALID` can consume the same imported dark flash and
+circular-aperture draw evidence for a static same-layer copper-spacing screen.
+Because Gerber copper import is anonymous, the rule ignores overlapping or
+touching copper objects to avoid flagging intentionally connected copper
+primitives. Use net-aware PCB evidence for electrical short sign-off.

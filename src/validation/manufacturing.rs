@@ -5,6 +5,7 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
+use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_ANNULAR_RING_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
@@ -282,6 +283,108 @@ pub(super) fn validate_copper_to_board_edge_clearance(
     }
 }
 
+pub(super) fn validate_copper_spacing(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_spacing_mm) =
+        required_numeric_parameter(scenario, "min_copper_spacing_mm", findings)
+    else {
+        return;
+    };
+    if min_spacing_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_copper_spacing_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let copper = &bound.project.board.layout.copper;
+    if copper.features.len() + copper.segments.len() < 2 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "COPPER_SPACING_VALID requires at least two board.layout.copper features or segments.",
+        );
+        return;
+    }
+    for (first_index, first_feature) in copper.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(first_feature, first_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        for (second_index, second_feature) in
+            copper.features.iter().enumerate().skip(first_index + 1)
+        {
+            if let Err(message) = validate_copper_feature_geometry(second_feature, second_index) {
+                validation_input_missing(findings, scenario, message);
+                continue;
+            }
+            maybe_report_copper_spacing(
+                scenario,
+                findings,
+                CopperObjectRef::Feature {
+                    feature: first_feature,
+                    index: first_index,
+                },
+                CopperObjectRef::Feature {
+                    feature: second_feature,
+                    index: second_index,
+                },
+                min_spacing_mm,
+            );
+        }
+        for (second_index, second_segment) in copper.segments.iter().enumerate() {
+            if let Err(message) = validate_copper_segment_geometry(second_segment, second_index) {
+                validation_input_missing(findings, scenario, message);
+                continue;
+            }
+            maybe_report_copper_spacing(
+                scenario,
+                findings,
+                CopperObjectRef::Feature {
+                    feature: first_feature,
+                    index: first_index,
+                },
+                CopperObjectRef::Segment {
+                    segment: second_segment,
+                    index: second_index,
+                },
+                min_spacing_mm,
+            );
+        }
+    }
+    for (first_index, first_segment) in copper.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(first_segment, first_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        for (second_index, second_segment) in
+            copper.segments.iter().enumerate().skip(first_index + 1)
+        {
+            if let Err(message) = validate_copper_segment_geometry(second_segment, second_index) {
+                validation_input_missing(findings, scenario, message);
+                continue;
+            }
+            maybe_report_copper_spacing(
+                scenario,
+                findings,
+                CopperObjectRef::Segment {
+                    segment: first_segment,
+                    index: first_index,
+                },
+                CopperObjectRef::Segment {
+                    segment: second_segment,
+                    index: second_index,
+                },
+                min_spacing_mm,
+            );
+        }
+    }
+}
+
 fn required_numeric_parameter(
     scenario: &Scenario,
     name: &str,
@@ -445,6 +548,34 @@ struct CopperSegmentEdgeClearance<'a> {
     clearance_mm: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CopperObjectRef<'a> {
+    Feature {
+        feature: &'a LayoutCopperFeature,
+        index: usize,
+    },
+    Segment {
+        segment: &'a LayoutCopperSegment,
+        index: usize,
+    },
+}
+
+impl CopperObjectRef<'_> {
+    fn layer(&self) -> &str {
+        match self {
+            Self::Feature { feature, .. } => &feature.layer,
+            Self::Segment { segment, .. } => &segment.layer,
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Feature { .. } => "feature",
+            Self::Segment { .. } => "segment",
+        }
+    }
+}
+
 fn nearest_drill_edge_clearance<'a>(
     drill: &LayoutDrill,
     board_edges: &'a [&LayoutSegment],
@@ -504,6 +635,38 @@ fn nearest_copper_segment_edge_clearance<'a>(
                 })
         })
         .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
+}
+
+fn maybe_report_copper_spacing(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    first: CopperObjectRef<'_>,
+    second: CopperObjectRef<'_>,
+    min_spacing_mm: f64,
+) {
+    if first.layer() != second.layer() {
+        return;
+    }
+    let Some(clearance_mm) = copper_object_spacing_mm(first, second) else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "COPPER_SPACING_VALID could not compute finite copper-to-copper spacing for supported Gerber copper geometry.",
+        );
+        return;
+    };
+    if clearance_mm <= f64::EPSILON {
+        return;
+    }
+    if clearance_mm + f64::EPSILON < min_spacing_mm {
+        findings.push(copper_spacing_finding(
+            scenario,
+            first,
+            second,
+            clearance_mm,
+            min_spacing_mm,
+        ));
+    }
 }
 
 fn drill_edge_clearance_finding(
@@ -777,6 +940,44 @@ fn copper_segment_edge_clearance_finding(
     finding
 }
 
+fn copper_spacing_finding(
+    scenario: &Scenario,
+    first: CopperObjectRef<'_>,
+    second: CopperObjectRef<'_>,
+    clearance_mm: f64,
+    min_spacing_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        COPPER_SPACING_VALID,
+        &scenario.name,
+        format!(
+            "Gerber copper {} and {} have {:.3} mm same-layer spacing, below {:.3} mm minimum.",
+            first.kind(),
+            second.kind(),
+            clearance_mm,
+            min_spacing_mm
+        ),
+    );
+    insert_copper_object_measurements(&mut finding, "first", first);
+    insert_copper_object_measurements(&mut finding, "second", second);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(clearance_mm));
+    finding
+        .measured
+        .insert("copper_layer".to_string(), json!(first.layer()));
+    finding
+        .limit
+        .insert("min_copper_spacing_mm".to_string(), json!(min_spacing_mm));
+    finding.suggested_fixes = vec![
+        "Increase spacing between the same-layer copper objects in the Gerber output."
+            .to_string(),
+        "Move pads or reroute traces to satisfy the fabrication copper-spacing rule.".to_string(),
+        "If the copper objects are intentionally connected, use net-aware PCB evidence instead of anonymous Gerber spacing for sign-off.".to_string(),
+    ];
+    finding
+}
+
 fn insert_drill_measurements(finding: &mut Finding, drill: &LayoutDrill, drill_index: usize) {
     finding
         .measured
@@ -882,6 +1083,98 @@ fn insert_copper_segment_measurements(finding: &mut Finding, segment: &LayoutCop
         "copper_segment_source_primitive_index".to_string(),
         json!(segment.source_primitive_index),
     );
+}
+
+fn insert_copper_object_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    object: CopperObjectRef<'_>,
+) {
+    finding
+        .measured
+        .insert(format!("{prefix}_copper_kind"), json!(object.kind()));
+    match object {
+        CopperObjectRef::Feature { feature, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_copper_feature_index"), json!(index));
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_x_mm"),
+                json!(feature.at.x_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_y_mm"),
+                json!(feature.at.y_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_layer"),
+                json!(feature.layer),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_aperture"),
+                json!(feature.aperture),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_shape"),
+                json!(feature.shape),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_size_x_mm"),
+                json!(feature.size.x_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_size_y_mm"),
+                json!(feature.size.y_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_source_primitive"),
+                json!(feature.source_primitive),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_feature_source_primitive_index"),
+                json!(feature.source_primitive_index),
+            );
+        }
+        CopperObjectRef::Segment { segment, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_copper_segment_index"), json!(index));
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_start"),
+                json!({
+                    "x_mm": segment.start.x_mm,
+                    "y_mm": segment.start.y_mm,
+                }),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_end"),
+                json!({
+                    "x_mm": segment.end.x_mm,
+                    "y_mm": segment.end.y_mm,
+                }),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_layer"),
+                json!(segment.layer),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_aperture"),
+                json!(segment.aperture),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_width_mm"),
+                json!(segment.width_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_source_primitive"),
+                json!(segment.source_primitive),
+            );
+            finding.measured.insert(
+                format!("{prefix}_copper_segment_source_primitive_index"),
+                json!(segment.source_primitive_index),
+            );
+        }
+    }
 }
 
 fn insert_copper_feature_measurements(
@@ -991,6 +1284,90 @@ fn annular_ring_for_feature(drill: &LayoutDrill, feature: &LayoutCopperFeature) 
     Some(copper_boundary_distance_mm - drill_radius_mm)
 }
 
+fn copper_object_spacing_mm(
+    first: CopperObjectRef<'_>,
+    second: CopperObjectRef<'_>,
+) -> Option<f64> {
+    match (first, second) {
+        (
+            CopperObjectRef::Feature { feature: first, .. },
+            CopperObjectRef::Feature {
+                feature: second, ..
+            },
+        ) => copper_feature_to_feature_clearance_mm(first, second),
+        (CopperObjectRef::Feature { feature, .. }, CopperObjectRef::Segment { segment, .. })
+        | (CopperObjectRef::Segment { segment, .. }, CopperObjectRef::Feature { feature, .. }) => {
+            copper_feature_to_copper_segment_clearance_mm(feature, segment)
+        }
+        (
+            CopperObjectRef::Segment { segment: first, .. },
+            CopperObjectRef::Segment {
+                segment: second, ..
+            },
+        ) => Some(
+            segment_to_segment_distance_mm(&first.start, &first.end, &second.start, &second.end)
+                - first.width_mm / 2.0
+                - second.width_mm / 2.0,
+        ),
+    }
+    .filter(|value| value.is_finite())
+}
+
+fn copper_feature_to_feature_clearance_mm(
+    first: &LayoutCopperFeature,
+    second: &LayoutCopperFeature,
+) -> Option<f64> {
+    match (first.shape.as_str(), second.shape.as_str()) {
+        ("circle", "circle") => {
+            let first_radius = first.size.x_mm.min(first.size.y_mm) / 2.0;
+            let second_radius = second.size.x_mm.min(second.size.y_mm) / 2.0;
+            Some(point_distance_mm(&first.at, &second.at) - first_radius - second_radius)
+        }
+        ("circle", "rect") => Some(
+            point_to_rect_distance_mm(
+                &first.at,
+                second.at.x_mm - second.size.x_mm / 2.0,
+                second.at.x_mm + second.size.x_mm / 2.0,
+                second.at.y_mm - second.size.y_mm / 2.0,
+                second.at.y_mm + second.size.y_mm / 2.0,
+            ) - first.size.x_mm.min(first.size.y_mm) / 2.0,
+        ),
+        ("rect", "circle") => copper_feature_to_feature_clearance_mm(second, first),
+        ("rect", "rect") => {
+            let dx = (first.at.x_mm - second.at.x_mm).abs()
+                - first.size.x_mm / 2.0
+                - second.size.x_mm / 2.0;
+            let dy = (first.at.y_mm - second.at.y_mm).abs()
+                - first.size.y_mm / 2.0
+                - second.size.y_mm / 2.0;
+            Some(dx.max(0.0).hypot(dy.max(0.0)))
+        }
+        ("circle" | "rect" | "oval", "circle" | "rect" | "oval") => {
+            Some(sampled_feature_to_feature_distance_mm(first, second))
+        }
+        _ => None,
+    }
+}
+
+fn copper_feature_to_copper_segment_clearance_mm(
+    feature: &LayoutCopperFeature,
+    segment: &LayoutCopperSegment,
+) -> Option<f64> {
+    let centerline = LayoutSegment {
+        start: segment.start.clone(),
+        end: segment.end.clone(),
+        layer: None,
+        source_primitive: None,
+        source_primitive_index: None,
+        sample_index: None,
+        sample_count: None,
+        contour_index: None,
+        boundary_role: None,
+    };
+    copper_feature_to_segment_clearance_mm(feature, &centerline)
+        .map(|clearance| clearance - segment.width_mm / 2.0)
+}
+
 fn copper_feature_to_segment_clearance_mm(
     feature: &LayoutCopperFeature,
     edge: &LayoutSegment,
@@ -1016,6 +1393,140 @@ fn copper_feature_to_segment_clearance_mm(
             feature.size.y_mm,
         )),
         _ => None,
+    }
+}
+
+fn sampled_feature_to_feature_distance_mm(
+    first: &LayoutCopperFeature,
+    second: &LayoutCopperFeature,
+) -> f64 {
+    let first_points = feature_boundary_points(first);
+    let second_points = feature_boundary_points(second);
+    if first_points
+        .iter()
+        .any(|point| point_inside_copper_feature(point, second))
+        || second_points
+            .iter()
+            .any(|point| point_inside_copper_feature(point, first))
+    {
+        return 0.0;
+    }
+    let mut min_distance = f64::INFINITY;
+    for first_edge in closed_edges(&first_points) {
+        for second_edge in closed_edges(&second_points) {
+            min_distance = min_distance.min(segment_to_segment_distance_mm(
+                first_edge.0,
+                first_edge.1,
+                second_edge.0,
+                second_edge.1,
+            ));
+        }
+    }
+    min_distance
+}
+
+fn feature_boundary_points(feature: &LayoutCopperFeature) -> Vec<LayoutPoint> {
+    match feature.shape.as_str() {
+        "circle" => (0..32)
+            .map(|index| {
+                let theta = std::f64::consts::TAU * index as f64 / 32.0;
+                let radius = feature.size.x_mm.min(feature.size.y_mm) / 2.0;
+                LayoutPoint {
+                    x_mm: feature.at.x_mm + radius * theta.cos(),
+                    y_mm: feature.at.y_mm + radius * theta.sin(),
+                }
+            })
+            .collect(),
+        "rect" => {
+            let half_x = feature.size.x_mm / 2.0;
+            let half_y = feature.size.y_mm / 2.0;
+            vec![
+                LayoutPoint {
+                    x_mm: feature.at.x_mm - half_x,
+                    y_mm: feature.at.y_mm - half_y,
+                },
+                LayoutPoint {
+                    x_mm: feature.at.x_mm + half_x,
+                    y_mm: feature.at.y_mm - half_y,
+                },
+                LayoutPoint {
+                    x_mm: feature.at.x_mm + half_x,
+                    y_mm: feature.at.y_mm + half_y,
+                },
+                LayoutPoint {
+                    x_mm: feature.at.x_mm - half_x,
+                    y_mm: feature.at.y_mm + half_y,
+                },
+            ]
+        }
+        "oval" => oval_boundary_points(&feature.at, feature.size.x_mm, feature.size.y_mm),
+        _ => Vec::new(),
+    }
+}
+
+fn oval_boundary_points(center: &LayoutPoint, width_mm: f64, height_mm: f64) -> Vec<LayoutPoint> {
+    let mut points = Vec::with_capacity(34);
+    if width_mm >= height_mm {
+        let radius = height_mm / 2.0;
+        let half_segment = (width_mm - height_mm) / 2.0;
+        for index in 0..=16 {
+            let theta = -std::f64::consts::FRAC_PI_2 + std::f64::consts::PI * index as f64 / 16.0;
+            points.push(LayoutPoint {
+                x_mm: center.x_mm + half_segment + radius * theta.cos(),
+                y_mm: center.y_mm + radius * theta.sin(),
+            });
+        }
+        for index in 0..=16 {
+            let theta = std::f64::consts::FRAC_PI_2 + std::f64::consts::PI * index as f64 / 16.0;
+            points.push(LayoutPoint {
+                x_mm: center.x_mm - half_segment + radius * theta.cos(),
+                y_mm: center.y_mm + radius * theta.sin(),
+            });
+        }
+    } else {
+        let radius = width_mm / 2.0;
+        let half_segment = (height_mm - width_mm) / 2.0;
+        for index in 0..=16 {
+            let theta = std::f64::consts::PI * index as f64 / 16.0;
+            points.push(LayoutPoint {
+                x_mm: center.x_mm + radius * theta.cos(),
+                y_mm: center.y_mm + half_segment + radius * theta.sin(),
+            });
+        }
+        for index in 0..=16 {
+            let theta = std::f64::consts::PI + std::f64::consts::PI * index as f64 / 16.0;
+            points.push(LayoutPoint {
+                x_mm: center.x_mm + radius * theta.cos(),
+                y_mm: center.y_mm - half_segment + radius * theta.sin(),
+            });
+        }
+    }
+    points
+}
+
+fn closed_edges(points: &[LayoutPoint]) -> impl Iterator<Item = (&LayoutPoint, &LayoutPoint)> {
+    points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .take(points.len())
+}
+
+fn point_inside_copper_feature(point: &LayoutPoint, feature: &LayoutCopperFeature) -> bool {
+    let dx = point.x_mm - feature.at.x_mm;
+    let dy = point.y_mm - feature.at.y_mm;
+    match feature.shape.as_str() {
+        "circle" => dx.hypot(dy) <= feature.size.x_mm.min(feature.size.y_mm) / 2.0 + f64::EPSILON,
+        "rect" => point_inside_rect(
+            point,
+            feature.at.x_mm - feature.size.x_mm / 2.0,
+            feature.at.x_mm + feature.size.x_mm / 2.0,
+            feature.at.y_mm - feature.size.y_mm / 2.0,
+            feature.at.y_mm + feature.size.y_mm / 2.0,
+        ),
+        "oval" => {
+            oval_boundary_distance_mm(dx, dy, feature.size.x_mm, feature.size.y_mm) >= -f64::EPSILON
+        }
+        _ => false,
     }
 }
 

@@ -103,6 +103,7 @@ Canonical executable check IDs:
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
+- `COPPER_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
 
@@ -667,6 +668,39 @@ all count as board edges for this check. This is a static 2D fabrication
 screen; it does not model solder mask, copper etch compensation, fab-specific
 clearance compensation, panelization tabs, copper island connectivity, or net
 ownership.
+
+Copper spacing uses `COPPER_SPACING_VALID` when the Board IR includes at least
+two anonymous Gerber copper objects under `board.layout.copper.features` or
+`board.layout.copper.segments`.
+
+```yaml
+scenarios:
+  - name: copper_spacing
+    type: manufacturing
+    checks:
+      - COPPER_SPACING_VALID
+    parameters:
+      min_copper_spacing_mm: 0.25
+```
+
+Copper spacing algorithm:
+
+1. Require `parameters.min_copper_spacing_mm`.
+2. Require at least two finite copper features or copper segments.
+3. Compare same-layer copper feature/feature, feature/segment, and
+   segment/segment pairs.
+4. Use supported `circle`, `rect`, and axis-aligned `oval` flash geometry plus
+   circular-aperture trace segment width.
+5. Ignore different-layer pairs.
+6. Ignore overlapping or touching pairs because anonymous Gerber copper has no
+   net ownership or island connectivity evidence.
+7. Fail when separated same-layer copper spacing is below
+   `min_copper_spacing_mm`.
+
+This is a static 2D fabrication screen. It can find too-tight same-layer copper
+spacing in Gerber evidence, but it cannot prove shorts, same-net intent,
+copper-island connectivity, solder-mask margin, etch compensation, or
+fab-specific spacing rules without richer PCB/net evidence.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

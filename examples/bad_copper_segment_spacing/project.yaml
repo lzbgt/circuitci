@@ -1,0 +1,36 @@
+project:
+  name: bad_copper_segment_spacing
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      segments:
+        - start: { x_mm: 1.0, y_mm: 1.0 }
+          end: { x_mm: 4.0, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 0
+          aperture: D10
+          width_mm: 0.2
+        - start: { x_mm: 1.0, y_mm: 1.4 }
+          end: { x_mm: 4.0, y_mm: 1.4 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 1
+          aperture: D10
+          width_mm: 0.2
+
+scenarios:
+  - name: copper_spacing
+    type: manufacturing
+    checks:
+      - COPPER_SPACING_VALID
+    parameters:
+      min_copper_spacing_mm: 0.25
