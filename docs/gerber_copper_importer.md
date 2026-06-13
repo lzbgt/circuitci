@@ -33,6 +33,9 @@ circuitci import-gerber-copper fabrication/Gerber_TopLayer.GTL \
 - optional `owner_kind`, `component`, `pin`, and `via_index` on flash evidence
   when a unique pad or via owner can be correlated.
 
+For ownership matching, EasyEDA layer names `TopLayer` and `BottomLayer` are
+treated as aliases of Board IR copper layers `F.Cu` and `B.Cu`.
+
 ## Supported Gerber Subset
 
 The first implementation intentionally supports a bounded fabrication-copper

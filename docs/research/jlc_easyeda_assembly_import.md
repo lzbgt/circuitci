@@ -67,6 +67,11 @@ circuitci import-jlc-assembly \
   --placement ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/assembly/placement_STM32_ESP32_V01_2026-04-28.csv \
   --output out/urine-monitor-jlc-assembly.project.yaml \
   --name urine_monitor_jlc_assembly
+unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
+  FlyingProbeTesting.json > out/urine-monitor-flying-probe.json
+circuitci import-easyeda-flying-probe out/urine-monitor-flying-probe.json \
+  --project out/urine-monitor-jlc-assembly.project.yaml \
+  --output out/urine-monitor-jlc-assembly-probe.project.yaml
 ```
 
 This is an assembly-traceability import, not a board sign-off.
@@ -77,7 +82,7 @@ The peer release's Gerber outline member can then be extracted and merged:
 unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
   Gerber_BoardOutlineLayer.GKO > out/urine-monitor-board-outline.gko
 circuitci import-gerber-outline out/urine-monitor-board-outline.gko \
-  --project out/urine-monitor-jlc-assembly.project.yaml \
+  --project out/urine-monitor-jlc-assembly-probe.project.yaml \
   --output out/urine-monitor-jlc-assembly-outline.project.yaml
 unzip -p ../urine_monitor/docs/fresh_design/artifacts/jlc_eda_releases/DELIVERY_20260428_combined_v01/fabrication/gerber_STM32_ESP32_V01_2026-04-28.zip \
   Gerber_TopLayer.GTL > out/urine-monitor-top-copper.gtl
@@ -120,6 +125,7 @@ Observed on 2026-06-13:
 
 ```text
 CircuitCI imported JLC/EasyEDA assembly: 450 components, 100 BOM rows, 450 placements, 450 BOM-matched components, 450 placement-matched components
+CircuitCI imported EasyEDA/JLC flying-probe pads: 3168 pin rows, 2985 connected pin rows, 2985 pads imported, 183 duplicate pin rows, 17 multipart pin rows, 0 unconnected pins skipped, 1432 components created, 440 nets imported
 ```
 
 The generated assembly-only Board IR also passed baseline schema/binding
@@ -144,6 +150,19 @@ CircuitCI imported Gerber copper: 1275 flash features, 854 trace segments, 3 reg
 CircuitCI imported Gerber solder mask: 1546 flash openings, 0 draw openings, 7 region openings, 107 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
 CircuitCI imported Gerber solder mask: 96 flash openings, 0 draw openings, 0 region openings, 19 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
 CircuitCI imported Gerber solder paste: 1111 flash openings, 0 draw openings, 354 region openings, 75 apertures, 0 ignored draw records, 0 skipped clear flashes, 0 skipped clear regions
+```
+
+After importing `FlyingProbeTesting.json` first and adding EasyEDA Gerber layer
+aliases (`TopLayer`, `TopSolderMaskLayer`, and `TopPasteMaskLayer`), observed
+owner association becomes:
+
+```text
+Top copper: 1937 net-associated features, 1255 net-associated segments, 22 net-associated regions
+Bottom copper: 0 net-associated objects because the flying-probe file reports layer T only
+Top solder mask: 103 owner-associated flash openings
+Bottom solder mask: 0 owner-associated openings because the flying-probe file reports layer T only
+Top solder paste: 89 owner-associated flash openings, 9 owner-associated region openings
+PTH drills: 9 pad-associated hits
 ```
 
 Observed PTH/NPTH drill enrichment:

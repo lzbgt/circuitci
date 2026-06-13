@@ -153,6 +153,52 @@ fn import_gerber_copper_associates_nets_from_existing_layout_evidence() {
 }
 
 #[test]
+fn import_gerber_copper_associates_easyeda_toplayer_with_front_copper_pads() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("top_layer.gtl");
+    let output = dir.path().join("with_easyeda_toplayer.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: TopLayer*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "%ADD10C,0.600*%\n",
+            "D10*\n",
+            "X00100000Y00100000D03*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-copper",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_copper_ownership/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 net-associated features"));
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let features = imported["board"]["layout"]["copper"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(features[0]["layer"], "TopLayer");
+    assert_eq!(features[0]["net"], "GND");
+    assert_eq!(features[0]["owner_kind"], "pad");
+    assert_eq!(features[0]["component"], "J1");
+    assert_eq!(features[0]["pin"], "1");
+}
+
+#[test]
 fn import_gerber_copper_rejects_undefined_aperture_selection() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

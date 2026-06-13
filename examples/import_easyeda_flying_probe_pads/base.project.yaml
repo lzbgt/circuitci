@@ -1,0 +1,13 @@
+project:
+  name: easyeda_flying_probe_base
+  version: 0.1.0
+libraries:
+  - ../../libs/generic/schematic
+board:
+  components:
+    J1:
+      model: generic.schematic.imported_component
+      pins: {}
+  nets: {}
+  layout: {}
+scenarios: []

@@ -26,6 +26,9 @@ draw, and region openings can inherit conservative owner metadata:
 - `net` plus `owner_kind: via` and `via_index` from a unique matching via on
   the corresponding copper layer.
 
+For ownership matching, EasyEDA `TopSolderMaskLayer` and
+`BottomSolderMaskLayer` are treated as openings above `F.Cu` and `B.Cu`.
+
 The CLI summary reports owner-associated flash, draw, and region opening
 counts. A zero owner-associated count means the Gerber mask primitives were
 still imported, but the input project did not yet contain unique pad/via layout

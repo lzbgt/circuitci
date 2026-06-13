@@ -119,6 +119,14 @@ circuitci inspect-easyeda-pro path/to/project.eprj2 \
   --output out/easyeda_pro_inspection.md
 ```
 
+Append EasyEDA/JLC flying-probe pad and net evidence:
+
+```bash
+circuitci import-easyeda-flying-probe path/to/FlyingProbeTesting.json \
+  --project out/imported_assembly.project.yaml \
+  --output out/imported_with_probe_pads.project.yaml
+```
+
 Enrich an imported project with Gerber board-outline evidence:
 
 ```bash

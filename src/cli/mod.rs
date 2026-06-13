@@ -98,6 +98,15 @@ enum Command {
         #[arg(long, short = 'o')]
         output: PathBuf,
     },
+    ImportEasyedaFlyingProbe {
+        json: PathBuf,
+        #[arg(long)]
+        project: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+        #[arg(long, default_value = "generic.schematic.imported_component")]
+        default_model: String,
+    },
     ImportGerberOutline {
         gerber: PathBuf,
         #[arg(long)]
@@ -209,6 +218,12 @@ pub fn run() -> Result<()> {
         Some(Command::InspectEasyedaPro { eprj2, output }) => {
             run_inspect_easyeda_pro(eprj2, output)
         }
+        Some(Command::ImportEasyedaFlyingProbe {
+            json,
+            project,
+            output,
+            default_model,
+        }) => run_import_easyeda_flying_probe(json, project, output, default_model),
         Some(Command::ImportGerberOutline {
             gerber,
             project,
@@ -418,6 +433,37 @@ fn run_inspect_easyeda_pro(eprj2: PathBuf, output: PathBuf) -> Result<()> {
         summary.pcbs,
         summary.encoded_history_payloads,
         eprj2.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_import_easyeda_flying_probe(
+    json: PathBuf,
+    project: PathBuf,
+    output: PathBuf,
+    default_model: String,
+) -> Result<()> {
+    let summary = crate::importers::easyeda_flying_probe::import_easyeda_flying_probe(
+        &crate::importers::easyeda_flying_probe::EasyedaFlyingProbeImportOptions {
+            input: json.clone(),
+            project: project.clone(),
+            output: output.clone(),
+            default_model,
+        },
+    )?;
+    println!(
+        "CircuitCI imported EasyEDA/JLC flying-probe pads: {} pin rows, {} connected pin rows, {} pads imported, {} duplicate pin rows, {} multipart pin rows, {} unconnected pins skipped, {} components created, {} nets imported {} + {} -> {}",
+        summary.pin_rows,
+        summary.connected_pin_rows,
+        summary.pads_imported,
+        summary.duplicate_pin_rows,
+        summary.multipart_pin_rows,
+        summary.skipped_unconnected_pins,
+        summary.components_created,
+        summary.nets_imported,
+        json.display(),
+        project.display(),
         output.display()
     );
     Ok(())

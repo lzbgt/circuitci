@@ -23,32 +23,43 @@ datasheets, so it is a better next benchmark source than synthetic fixtures.
 This release is now the first peer-board import target for fabricated evidence:
 `import-jlc-assembly` reads the JLC/EasyEDA BOM and placement CSV files into
 Board IR component source metadata plus `board.layout.placements`;
-`import-gerber-outline` reads the observed `Gerber_BoardOutlineLayer.GKO`
-subset into `board.layout.outline.segments`; `import-gerber-copper` reads the
-observed top/bottom copper Gerbers, including EasyEDA `RoundRect` apertures and
-sampled `G02`/`G03` circular-arc draws; `import-gerber-solder-mask` and
+`import-easyeda-flying-probe` reads `FlyingProbeTesting.json` into
+`board.layout.pads` and imported net evidence; `import-gerber-outline` reads the
+observed `Gerber_BoardOutlineLayer.GKO` subset into
+`board.layout.outline.segments`; `import-gerber-copper` reads the observed
+top/bottom copper Gerbers, including EasyEDA `RoundRect` apertures and sampled
+`G02`/`G03` circular-arc draws; `import-gerber-solder-mask` and
 `import-gerber-solder-paste` read real solder-mask and paste stencil evidence;
 and `import-excellon-drill` reads the observed PTH/NPTH NC drill subset into
-`board.layout.drills`. The remaining import gap is `.eprj2` schematic/layout
-ingestion or a richer adapter that converts those release files into
-electrical Board IR plus scenario suggestions.
+`board.layout.drills`. The remaining import gap is schematic-grade electrical
+intent and route/via/zone evidence beyond what the flying-probe artifact proves.
 
-Current owner-association evidence from the release-only flow is intentionally
-zero because BOM/CPL plus Gerbers do not expose pad, via, or net ownership:
+Observed owner-association evidence from the release flow with flying-probe
+pads imported first:
 
+- Flying-probe pads: `3168` pin rows, `2985` connected pad rows,
+  `183` duplicate pin rows, `17` multipart pin rows, `1432` pad-only
+  placeholder components, and `440` imported nets.
 - Top copper: `2725` flash features, `2567` trace segments, `22` regions,
-  `0` net-associated objects.
+  `1937` net-associated features, `1255` net-associated segments, and `22`
+  net-associated regions.
 - Bottom copper: `1275` flash features, `854` trace segments, `3` regions,
-  `0` net-associated objects.
-- Top solder mask: `1546` flash openings, `7` region openings,
-  `0` owner-associated openings.
-- Bottom solder mask: `96` flash openings, `0` owner-associated openings.
-- Top solder paste: `1111` flash openings, `354` region openings,
-  `0` owner-associated openings.
+  `0` net-associated objects because the observed flying-probe file reports
+  all pads on top-side layer `T`.
+- Top solder mask: `1546` flash openings, `7` region openings, `103`
+  owner-associated flash openings.
+- Bottom solder mask: `96` flash openings and `0` owner-associated openings
+  for the same top-side-only flying-probe reason.
+- Top solder paste: `1111` flash openings, `354` region openings, `89`
+  owner-associated flash openings, and `9` owner-associated region openings.
+- PTH drills: `1275` hits with `9` pad-associated hits.
+- NPTH drills: `31` non-plated hits with no pad/via owners.
 
-This makes `.eprj2` layout extraction or another pad/net evidence adapter the
-next requirement before fabricated-release mask, paste, copper, and drill
-reports can reliably point back to affected component pins.
+The baseline peer validation still passes with no findings:
+
+```text
+CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
+```
 
 `circuitci inspect-easyeda-pro` now records what the local EasyEDA Pro source
 can prove without decoding private design-object payloads. On

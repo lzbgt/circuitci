@@ -238,6 +238,7 @@ impl CopperOwnershipIndex {
         feature: &GerberCopperFeature,
         layer: &str,
     ) -> Option<CopperNetOwner> {
+        let layer = canonical_copper_layer(layer);
         let mut candidates = Vec::new();
         for pad in self.pads.iter().filter(|pad| pad_on_layer(pad, layer)) {
             if point_inside_feature_pad(feature.at, pad) {
@@ -380,6 +381,7 @@ impl CopperOwnershipIndex {
         segment: &GerberCopperSegment,
         layer: &str,
     ) -> Option<CopperNetOwner> {
+        let layer = canonical_copper_layer(layer);
         let mut candidates = Vec::new();
         for route in self
             .route_segments
@@ -423,6 +425,7 @@ impl CopperOwnershipIndex {
     }
 
     fn owner_for_region(&self, region: &GerberCopperRegion, layer: &str) -> Option<CopperNetOwner> {
+        let layer = canonical_copper_layer(layer);
         let representative = polygon_representative_point(&region.points);
         let mut candidates = Vec::new();
         for zone in self.zones.iter().filter(|zone| zone.layer == layer) {
@@ -452,17 +455,25 @@ impl CopperOwnershipIndex {
 
 fn copper_layer_for_solder_mask_layer(layer: &str) -> Option<&'static str> {
     match layer {
-        "F.Mask" => Some("F.Cu"),
-        "B.Mask" => Some("B.Cu"),
+        "F.Mask" | "TopSolderMaskLayer" => Some("F.Cu"),
+        "B.Mask" | "BottomSolderMaskLayer" => Some("B.Cu"),
         _ => None,
     }
 }
 
 fn copper_layer_for_solder_paste_layer(layer: &str) -> Option<&'static str> {
     match layer {
-        "F.Paste" => Some("F.Cu"),
-        "B.Paste" => Some("B.Cu"),
+        "F.Paste" | "TopPasteMaskLayer" => Some("F.Cu"),
+        "B.Paste" | "BottomPasteMaskLayer" => Some("B.Cu"),
         _ => None,
+    }
+}
+
+fn canonical_copper_layer(layer: &str) -> &str {
+    match layer {
+        "TopLayer" => "F.Cu",
+        "BottomLayer" => "B.Cu",
+        other => other,
     }
 }
 

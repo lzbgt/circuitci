@@ -61,6 +61,52 @@ fn import_gerber_solder_paste_appends_schema_valid_opening_evidence() {
 }
 
 #[test]
+fn import_gerber_solder_paste_associates_easyeda_top_paste_with_front_copper_pads() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("top_paste.gtp");
+    let output = dir.path().join("with_easyeda_top_paste.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: TopPasteMaskLayer*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "%ADD10R,0.900X0.720*%\n",
+            "D10*\n",
+            "X01000000Y01000000D03*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-solder-paste",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_solder_paste_openings/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 owner-associated flash openings"));
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let openings = imported["board"]["layout"]["solder_paste"]["features"]
+        .as_array()
+        .unwrap();
+    assert_eq!(openings[0]["layer"], "TopPasteMaskLayer");
+    assert_eq!(openings[0]["net"], "GND");
+    assert_eq!(openings[0]["owner_kind"], "pad");
+    assert_eq!(openings[0]["component"], "U1");
+    assert_eq!(openings[0]["pin"], "1");
+}
+
+#[test]
 fn import_gerber_solder_paste_samples_arc_draw_openings() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
