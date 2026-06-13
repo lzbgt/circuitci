@@ -87,7 +87,9 @@ Unsupported `iot_basic_v0` checks are blocking for fabrication readiness even wh
 `PROFILE_COVERAGE_PARTIAL` limitation when declared project scenarios do not
 cover the core executable profile checks. This limitation does not change
 `result`; it prevents partial scenario declarations from being mistaken for
-full-profile sign-off.
+full-profile sign-off. Use `suggest-scenarios --profile iot_basic_v0` after
+importing available evidence to generate missing-core-check remediation
+templates.
 
 Projects using `generic`, `estimated`, or `low` confidence component models must include non-blocking `LOW_CONFIDENCE_MODEL` limitations scoped to the component and model.
 

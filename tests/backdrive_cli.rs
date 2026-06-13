@@ -58,6 +58,7 @@ fn iot_basic_profile_reports_partial_coverage_without_failing() {
     let message = limitation["message"].as_str().unwrap();
     assert!(message.contains("POWER_TREE_VALID"));
     assert!(message.contains("RESET_RELEASE_AFTER_POWER_VALID"));
+    assert!(message.contains("suggest-scenarios --profile iot_basic_v0"));
     assert_report_schema_valid(&report);
 }
 

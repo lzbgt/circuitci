@@ -126,7 +126,7 @@ pub fn profile_coverage_limitations(profile: &str, project: &BoardProject) -> Ve
         confidence: "high".to_string(),
         blocking: false,
         message: format!(
-            "iot_basic_v0 validation is scenario-declaration driven. Declared checks: {declared_summary}. Missing core profile coverage: {}. Add scenarios or run suggest-scenarios/import evidence before treating this report as full-profile sign-off.",
+            "iot_basic_v0 validation is scenario-declaration driven. Declared checks: {declared_summary}. Missing core profile coverage: {}. Add scenarios or run suggest-scenarios --profile iot_basic_v0 after importing available evidence before treating this report as full-profile sign-off.",
             missing_checks.join(", ")
         ),
     }]
