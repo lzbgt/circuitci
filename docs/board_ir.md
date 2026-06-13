@@ -154,10 +154,11 @@ Gerber board-outline layer. This is fabrication outline evidence only: a Gerber
 outline layer does not prove nets, pads, schematic intent, routing, or
 electrical correctness by itself.
 
-`import-gerber-copper` can append anonymous flashed copper features under
-`board.layout.copper.features` from a copper Gerber layer. This is fabrication
-copper geometry only: a Gerber copper layer does not prove component ownership,
-pad names, nets, schematic intent, or electrical connectivity by itself.
+`import-gerber-copper` can append anonymous flashed copper features, trace
+segments, and region polygons under `board.layout.copper` from a copper Gerber
+layer. This is fabrication copper geometry only: a Gerber copper layer does not
+prove component ownership, pad names, nets, schematic intent, or electrical
+connectivity by itself.
 
 `import-excellon-drill` can append fabrication drill-hit evidence under
 `board.layout.drills`. This is drill evidence only: an NC drill file does not
@@ -307,8 +308,9 @@ or nets.
 ## Layout Fabrication Copper Evidence
 
 Board IR can carry imported anonymous copper features under
-`board.layout.copper.features` and imported anonymous copper traces under
-`board.layout.copper.segments`. Coordinates are in millimeters in the same
+`board.layout.copper.features`, imported anonymous copper traces under
+`board.layout.copper.segments`, and imported anonymous copper regions under
+`board.layout.copper.regions`. Coordinates are in millimeters in the same
 coordinate system as placements, outlines, drills, pads, routes, and zones.
 
 ```yaml
@@ -333,17 +335,28 @@ board:
           source_primitive_index: 1
           aperture: D10
           width_mm: 0.6
+      regions:
+        - points:
+            - { x_mm: 5.0, y_mm: -2.0 }
+            - { x_mm: 6.0, y_mm: -2.0 }
+            - { x_mm: 6.0, y_mm: -3.0 }
+            - { x_mm: 5.0, y_mm: -3.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_region
+          source_primitive_index: 2
 ```
 
 `import-gerber-copper` currently imports dark `D03` flashes for Gerber circle,
 rectangle, and oval apertures from millimeter absolute RS-274X files. It also
 imports dark linear `D01` draw records made with circular apertures as copper
-segments. Linear draws with non-circular apertures are counted as ignored
+segments and dark single-contour linear `G36`/`G37` regions as copper region
+polygons. Linear draws with non-circular apertures are counted as ignored
 records because their exact swept geometry is not a simple trace-width segment.
-Clear-polarity flashes and draws are skipped/ignored because they represent
-copper voids rather than conductive copper. Imported copper evidence is
-fabrication evidence only and does not assign nets, components, pad names, or
-electrical connectivity.
+Clear-polarity flashes, draws, and regions are skipped/ignored because they
+represent copper voids rather than conductive copper. Imported copper evidence
+is fabrication evidence only and does not assign nets, components, pad names,
+copper islands, or electrical connectivity.
 
 ## Layout Pad Evidence
 

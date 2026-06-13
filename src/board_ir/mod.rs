@@ -227,6 +227,8 @@ pub struct LayoutCopper {
     pub features: Vec<LayoutCopperFeature>,
     #[serde(default)]
     pub segments: Vec<LayoutCopperSegment>,
+    #[serde(default)]
+    pub regions: Vec<LayoutCopperRegion>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -251,6 +253,15 @@ pub struct LayoutCopperSegment {
     pub source_primitive_index: usize,
     pub aperture: String,
     pub width_mm: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LayoutCopperRegion {
+    pub points: Vec<LayoutPoint>,
+    pub layer: String,
+    pub polarity: String,
+    pub source_primitive: String,
+    pub source_primitive_index: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]

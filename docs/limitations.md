@@ -172,10 +172,11 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   shorts, solder-mask behavior, etch compensation, fab-specific spacing
   expansion, or copper connectivity.
 - Gerber copper import currently records anonymous dark `D03` flash features
-  for circle, rectangle, and oval apertures plus dark linear `D01` traces for
-  circular apertures. It ignores non-circular aperture draws and does not infer
-  nets, component ownership, pad names, copper islands, mask expansion, or electrical
-  connectivity.
+  for circle, rectangle, and oval apertures, dark linear `D01` traces for
+  circular apertures, and dark single-contour linear `G36`/`G37` region
+  polygons. It ignores non-circular aperture draws, skips clear-polarity copper
+  primitives, and does not infer nets, component ownership, pad names, copper
+  island connectivity, mask expansion, or electrical connectivity.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.

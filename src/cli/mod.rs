@@ -394,12 +394,14 @@ fn run_import_gerber_copper(gerber: PathBuf, project: PathBuf, output: PathBuf) 
         },
     )?;
     println!(
-        "CircuitCI imported Gerber copper: {} flash features, {} trace segments, {} apertures, {} ignored draw records, {} skipped clear flashes {} + {} -> {}",
+        "CircuitCI imported Gerber copper: {} flash features, {} trace segments, {} regions, {} apertures, {} ignored draw records, {} skipped clear flashes, {} skipped clear regions {} + {} -> {}",
         summary.flash_features,
         summary.trace_segments,
+        summary.regions,
         summary.apertures,
         summary.ignored_draws,
         summary.skipped_clear_flashes,
+        summary.skipped_clear_regions,
         gerber.display(),
         project.display(),
         output.display()

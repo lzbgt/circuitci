@@ -32,9 +32,11 @@ pub struct GerberOutlineImportSummary {
 pub struct GerberCopperImportSummary {
     pub flash_features: usize,
     pub trace_segments: usize,
+    pub regions: usize,
     pub apertures: usize,
     pub ignored_draws: usize,
     pub skipped_clear_flashes: usize,
+    pub skipped_clear_regions: usize,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -54,9 +56,11 @@ struct GerberCopper {
     layer: String,
     features: Vec<GerberCopperFeature>,
     segments: Vec<GerberCopperSegment>,
+    regions: Vec<GerberCopperRegion>,
     aperture_count: usize,
     ignored_draws: usize,
     skipped_clear_flashes: usize,
+    skipped_clear_regions: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +77,12 @@ struct GerberCopperSegment {
     end: GerberPoint,
     aperture_code: u32,
     aperture: GerberAperture,
+    source_primitive_index: usize,
+}
+
+#[derive(Debug, Clone)]
+struct GerberCopperRegion {
+    points: Vec<GerberPoint>,
     source_primitive_index: usize,
 }
 
@@ -131,6 +141,7 @@ struct OutlineSegmentYaml {
 struct CopperYaml {
     features: Vec<CopperFeatureYaml>,
     segments: Vec<CopperSegmentYaml>,
+    regions: Vec<CopperRegionYaml>,
 }
 
 #[derive(Debug, Serialize)]
@@ -161,6 +172,15 @@ struct CopperSegmentYaml {
     source_primitive_index: usize,
     aperture: String,
     width_mm: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct CopperRegionYaml {
+    points: Vec<GerberPoint>,
+    layer: String,
+    polarity: String,
+    source_primitive: String,
+    source_primitive_index: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -439,9 +459,12 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
     let mut apertures = std::collections::BTreeMap::<u32, GerberAperture>::new();
     let mut features = Vec::new();
     let mut segments = Vec::new();
+    let mut regions = Vec::new();
+    let mut region_points: Option<Vec<GerberPoint>> = None;
     let mut source_primitive_index = 0;
     let mut ignored_draws = 0;
     let mut skipped_clear_flashes = 0;
+    let mut skipped_clear_regions = 0;
     for raw_record in text.split('*') {
         let record = raw_record.replace('%', "");
         let record = record.trim();
@@ -487,6 +510,55 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
         }
         if record == "LPC" {
             state.dark_polarity = false;
+            continue;
+        }
+        if record == "G36" {
+            if region_points.is_some() {
+                bail!(
+                    "Gerber copper {} starts nested G36 regions; nested regions are unsupported.",
+                    path.display()
+                );
+            }
+            region_points = Some(Vec::new());
+            state.current = None;
+            state.modal_operation = None;
+            continue;
+        }
+        if record == "G37" {
+            let Some(mut points) = region_points.take() else {
+                bail!(
+                    "Gerber copper {} ends a G37 region before G36.",
+                    path.display()
+                );
+            };
+            if points.len() < 3 {
+                bail!(
+                    "Gerber copper {} has a G36/G37 region with fewer than three points.",
+                    path.display()
+                );
+            }
+            if let (Some(first), Some(last)) = (points.first().copied(), points.last().copied())
+                && points_close(first, last)
+            {
+                points.pop();
+            }
+            if points.len() < 3 || polygon_signed_area_mm2(&points).abs() <= f64::EPSILON {
+                bail!(
+                    "Gerber copper {} has a degenerate G36/G37 region.",
+                    path.display()
+                );
+            }
+            if state.dark_polarity {
+                regions.push(GerberCopperRegion {
+                    points,
+                    source_primitive_index,
+                });
+                source_primitive_index += 1;
+            } else {
+                skipped_clear_regions += 1;
+            }
+            state.current = None;
+            state.modal_operation = None;
             continue;
         }
         if let Some(aperture) = parse_aperture_definition(record, path)? {
@@ -577,6 +649,52 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
             );
         }
         let target = parse_target_point(record, format, state.current, path)?;
+        if let Some(points) = region_points.as_mut() {
+            match state.modal_operation {
+                Some(GerberOperation::Move) => {
+                    if points.is_empty() {
+                        points.push(target);
+                    } else if !points_close(points[0], target) {
+                        bail!(
+                            "Gerber copper {} has multiple contours in one G36/G37 region; only single-contour regions are supported.",
+                            path.display()
+                        );
+                    }
+                    state.current = Some(target);
+                    continue;
+                }
+                Some(GerberOperation::Draw) => {
+                    if points.is_empty() {
+                        let Some(start) = state.current else {
+                            bail!(
+                                "Gerber copper {} has region draw command before a region start point.",
+                                path.display()
+                            );
+                        };
+                        points.push(start);
+                    }
+                    if point_distance_mm(*points.last().expect("points is not empty"), target)
+                        > POINT_EPSILON_MM
+                    {
+                        points.push(target);
+                    }
+                    state.current = Some(target);
+                    continue;
+                }
+                Some(GerberOperation::Flash) => {
+                    bail!(
+                        "Gerber copper {} has a D03 flash inside a G36/G37 region.",
+                        path.display()
+                    );
+                }
+                None => {
+                    bail!(
+                        "Gerber copper {} has region coordinates without D01/D02 modal operation.",
+                        path.display()
+                    );
+                }
+            }
+        }
         match state.modal_operation {
             Some(GerberOperation::Move) => {
                 state.current = Some(target);
@@ -656,9 +774,15 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
             }
         }
     }
-    if features.is_empty() && segments.is_empty() {
+    if region_points.is_some() {
         bail!(
-            "Gerber copper {} produced no dark flash or circular-aperture linear draw copper evidence.",
+            "Gerber copper {} starts a G36 region without a matching G37.",
+            path.display()
+        );
+    }
+    if features.is_empty() && segments.is_empty() && regions.is_empty() {
+        bail!(
+            "Gerber copper {} produced no dark flash, circular-aperture linear draw, or region copper evidence.",
             path.display()
         );
     }
@@ -666,9 +790,11 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
         layer,
         features,
         segments,
+        regions,
         aperture_count: apertures.len(),
         ignored_draws,
         skipped_clear_flashes,
+        skipped_clear_regions,
     })
 }
 
@@ -961,6 +1087,7 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
             serde_yaml_ng::to_value(CopperYaml {
                 features: Vec::new(),
                 segments: Vec::new(),
+                regions: Vec::new(),
             })
             .context("Failed to initialize Board IR copper evidence YAML.")?,
         );
@@ -1021,6 +1148,27 @@ fn merge_copper_into_project(project_yaml: &mut Value, copper: &GerberCopper) ->
             .context("Failed to serialize Gerber copper segment evidence into Board IR YAML.")?,
         );
     }
+    let regions_key = Value::String("regions".to_string());
+    if !copper_yaml.contains_key(&regions_key) {
+        copper_yaml.insert(regions_key.clone(), Value::Sequence(Vec::new()));
+    }
+    let regions = copper_yaml
+        .get_mut(&regions_key)
+        .expect("regions field was inserted when absent")
+        .as_sequence_mut()
+        .context("Board IR field board.layout.copper.regions must be a list.")?;
+    for region in &copper.regions {
+        regions.push(
+            serde_yaml_ng::to_value(CopperRegionYaml {
+                points: region.points.clone(),
+                layer: copper.layer.clone(),
+                polarity: "dark".to_string(),
+                source_primitive: "gerber_region".to_string(),
+                source_primitive_index: region.source_primitive_index,
+            })
+            .context("Failed to serialize Gerber copper region evidence into Board IR YAML.")?,
+        );
+    }
     Ok(())
 }
 
@@ -1071,9 +1219,11 @@ fn summary_for_copper(copper: &GerberCopper) -> GerberCopperImportSummary {
     GerberCopperImportSummary {
         flash_features: copper.features.len(),
         trace_segments: copper.segments.len(),
+        regions: copper.regions.len(),
         apertures: copper.aperture_count,
         ignored_draws: copper.ignored_draws,
         skipped_clear_flashes: copper.skipped_clear_flashes,
+        skipped_clear_regions: copper.skipped_clear_regions,
     }
 }
 

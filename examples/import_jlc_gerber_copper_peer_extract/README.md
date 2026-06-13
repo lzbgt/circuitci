@@ -12,8 +12,10 @@ The fixture exercises the supported `import-gerber-copper` subset:
 - circle, rectangle, and oval aperture definitions,
 - dark `D03` copper flashes,
 - one circular-aperture linear draw imported as a copper segment,
+- one dark single-contour `G36`/`G37` region imported as a copper polygon,
 - one rectangular-aperture linear draw counted as ignored,
-- one clear-polarity flash that is skipped as non-conductive clearance.
+- one clear-polarity flash and one clear-polarity region that are skipped as
+  non-conductive clearance.
 
 The imported evidence is anonymous fabrication copper. It does not assign nets,
-component ownership, pad names, or electrical connectivity.
+component ownership, pad names, copper islands, or electrical connectivity.
