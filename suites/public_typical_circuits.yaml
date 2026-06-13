@@ -70,6 +70,24 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: espressif_esp32_wroom_32e_application_passes
+    project: ../examples/good_espressif_esp32_wroom_32e_application/project.yaml
+    expect: pass
+
+  - id: espressif_esp32_wroom_32e_supply_current_detected
+    project: ../examples/bad_espressif_esp32_wroom_32e_supply_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: espressif_esp32_wroom_32e_gpio0_bootstrap_detected
+    project: ../examples/bad_espressif_esp32_wroom_32e_bootstrap/project.yaml
+    expect: fail
+    required_findings:
+      - id: BOOT_STRAP_BIAS_VALID
+        severity: critical
+
 repairs:
   - id: fix_ap2112k_dropout_margin
     detects_case: diodes_ap2112k_dropout_detected
@@ -106,3 +124,15 @@ repairs:
     fixed_case: ti_tps62162_typical_buck_passes
     fixes_findings:
       - POWER_TREE_VALID
+
+  - id: fix_esp32_wroom_32e_supply_current
+    detects_case: espressif_esp32_wroom_32e_supply_current_detected
+    fixed_case: espressif_esp32_wroom_32e_application_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_esp32_wroom_32e_gpio0_bootstrap
+    detects_case: espressif_esp32_wroom_32e_gpio0_bootstrap_detected
+    fixed_case: espressif_esp32_wroom_32e_application_passes
+    fixes_findings:
+      - BOOT_STRAP_BIAS_VALID

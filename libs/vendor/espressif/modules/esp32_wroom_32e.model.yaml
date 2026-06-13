@@ -1,0 +1,148 @@
+component_id: vendor.espressif.esp32_wroom_32e
+version: 0.1.0
+category: mcu
+ports:
+  3V3:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.5
+  GND:
+    kind: electrical_ground
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.475
+      vil_max_V: 0.6
+      injection_current_limit_A: 0.0001
+  IO0:
+    kind: digital_electrical_io
+    required: true
+    electrical:
+      vih_min_V: 2.475
+      vil_max_V: 0.825
+      injection_current_limit_A: 0.0001
+  IO2:
+    kind: digital_electrical_io
+    required: false
+    electrical:
+      vih_min_V: 2.475
+      vil_max_V: 0.825
+      injection_current_limit_A: 0.0001
+  TXD0:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 2.64
+      source_impedance_ohm: 82.5
+  RXD0:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.475
+      vil_max_V: 0.825
+      injection_current_limit_A: 0.0001
+behavior:
+  reset:
+    pin: EN
+    active: low
+  boot:
+    sample_time_after_reset_release_us: 3000
+    modes:
+      spi_flash:
+        straps:
+          - pin: IO0
+            required_state: high
+      uart_download:
+        straps:
+          - pin: IO0
+            required_state: low
+          - pin: IO2
+            required_state: low
+rules:
+  - POWER_TREE_VALID
+  - RESET_RELEASE_AFTER_POWER_VALID
+  - BOOT_STRAP_DEFINED
+  - BOOT_STRAP_BIAS_VALID
+datasheet:
+  manufacturer: Espressif Systems
+  part_number: ESP32-WROOM-32E
+  package: 38-pin SMD module
+  polarity: wifi_bluetooth_mcu_module
+  pinout:
+    3V3: 3V3
+    GND: GND
+    EN: EN
+    IO0: IO0
+    IO2: IO2
+    TXD0: TXD0
+    RXD0: RXD0
+  electrical_characteristics:
+    module_supply_voltage:
+      conditions: Recommended operating condition, VDD33.
+      min: 3.0
+      typ: 3.3
+      max: 3.6
+      unit: V
+    external_supply_current:
+      conditions: Minimum current delivered by external power supply.
+      min: 0.5
+      unit: A
+    gpio_input_high:
+      conditions: DC characteristics at 3.3 V; VIH = 0.75 x VDD.
+      min: 2.475
+      unit: V
+    gpio_input_low:
+      conditions: DC characteristics at 3.3 V; VIL = 0.25 x VDD.
+      max: 0.825
+      unit: V
+    chip_enable_low:
+      conditions: Low-level CHIP_PU/EN voltage to shut down the chip.
+      max: 0.6
+      unit: V
+    rf_tx_peak_current:
+      conditions: 802.11b, 20 MHz, 1 Mbps, 19.5 dBm, 3.3 V supply.
+      max: 0.379
+      unit: A
+  device_parameters:
+    gpio0_default_strap:
+      value: 1
+      unit: logic
+      simulation_relevance: GPIO0 has an internal pull-up and controls SPI flash versus download boot.
+    gpio2_default_strap:
+      value: 0
+      unit: logic
+      simulation_relevance: GPIO2 has an internal pull-down and must be low with GPIO0 low for download boot.
+    strap_hold_time:
+      conditions: Hardware design guideline minimum hold time after CHIP_PU rises.
+      value: 3
+      unit: ms
+      simulation_relevance: Boot strap sample timing is modeled as reset release plus this hold time.
+  documents:
+    - title: ESP32-WROOM-32E ESP32-WROOM-32UE Datasheet v2.0
+      path: docs/research/datasheets/espressif/esp32-wroom-32e_esp32-wroom-32ue_datasheet_en.pdf
+      source_url: https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32e_esp32-wroom-32ue_datasheet_en.pdf
+      sha256: 1dabd3a7eecee58e2852aaacd6af6f811f4f5d01235211de5ab8486cc001cf40
+      retrieved: 2026-06-13
+    - title: ESP32 Hardware Design Guidelines
+      path: docs/research/datasheets/espressif/esp32_hardware_design_guidelines_en.pdf
+      source_url: https://docs.espressif.com/projects/esp-hardware-design-guidelines/en/latest/esp32/esp-hardware-design-guidelines-en-master-esp32.pdf
+      sha256: c37ebba953555065e0c5cb884cb6ce61a9cf7509bc6b7ec6514b501aebef8424
+      retrieved: 2026-06-13
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_voltage_and_current_budget
+    - reset_enable_polarity
+    - gpio0_gpio2_boot_strap_bias
+  not_valid_for:
+    - rf_matching_or_antenna_layout
+    - esp_rom_serial_protocol
+    - firmware_execution
+    - flash_psram_pin_mux_safety
+    - thermal_or_peak_transient_waveforms

@@ -1767,6 +1767,53 @@ fn tps62162_3v3_output_inductance_uses_datasheet_requirement() {
 }
 
 #[test]
+fn esp32_wroom_32e_application_board_passes_static_checks() {
+    let report = run_validation("examples/good_espressif_esp32_wroom_32e_application/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn esp32_wroom_32e_supply_current_uses_datasheet_requirement() {
+    let report =
+        run_validation("examples/bad_espressif_esp32_wroom_32e_supply_current/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("supply_current_limit_A").is_some())
+        .expect("expected ESP32 source-current budget finding");
+    assert_eq!(failure["id"], "POWER_TREE_VALID");
+    assert!(failure["component"].is_null());
+    assert_eq!(failure["net"], "rail_3v3");
+    assert_eq!(failure["measured"]["declared_load_current_A"], 0.5);
+    assert_eq!(failure["limit"]["supply_current_limit_A"], 0.3);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn esp32_wroom_32e_gpio0_bootstrap_uses_datasheet_threshold() {
+    let report = run_validation("examples/bad_espressif_esp32_wroom_32e_bootstrap/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = report["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["limit"].get("required_IO0").is_some())
+        .expect("expected ESP32 GPIO0 strap finding");
+    assert_eq!(failure["id"], "BOOT_STRAP_BIAS_VALID");
+    assert_eq!(failure["component"], "UESP");
+    assert_eq!(failure["net"], "esp_io0");
+    assert_eq!(failure["measured"]["required_boot_mode"], "spi_flash");
+    assert_eq!(failure["measured"]["strap_voltage_V"], 1.65);
+    assert_eq!(failure["limit"]["required_IO0"], "high");
+    assert_eq!(failure["limit"]["vih_min_V"], 2.475);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn ams1117_3v3_minimum_load_uses_datasheet_requirement() {
     let report = run_validation("examples/bad_ams1117_3v3_minimum_load/project.yaml");
     assert_eq!(report["result"], "fail");

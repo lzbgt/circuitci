@@ -38,9 +38,11 @@ standoff-voltage and capacitance screening. Nexperia PRTR5V0U2X now covers a
 rail-to-rail two-line USB ESD array with VCC reference validation. TI
 TPS62162-3.3 now covers a common 3 V to 17 V, 1 A fixed 3.3 V synchronous buck
 regulator for static input-range, output-current, support-capacitance, and
-direct output-inductance screening. The gap remains broad library depth across other USB-UART bridges,
-debug probes, radios, sensors, regulators, power muxes, reset supervisors, and
-protection devices.
+direct output-inductance screening. Espressif ESP32-WROOM-32E now covers a
+first common Wi-Fi/Bluetooth MCU-module pack for 3.3 V rail budgeting and
+GPIO0/GPIO2 boot-strap screening. The gap remains broad library depth across
+other MCU/wireless modules, USB-UART bridges, debug probes, radios, sensors,
+regulators, power muxes, reset supervisors, and protection devices.
 
 ## 2. Power-Tree Validation
 

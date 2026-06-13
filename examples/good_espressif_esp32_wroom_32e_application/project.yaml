@@ -1,0 +1,84 @@
+project:
+  name: good_espressif_esp32_wroom_32e_application
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UESP:
+      model: vendor.espressif.esp32_wroom_32e
+      part_number: ESP32-WROOM-32E-N4
+      power_domains:
+        3V3: rail_3v3
+      pins:
+        3V3: rail_3v3
+        GND: gnd
+        EN: esp_en
+        IO0: esp_io0
+        IO2: esp_io2
+        TXD0: esp_txd0
+        RXD0: esp_rxd0
+    RIO0_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: esp_io0
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    RIO0_DN:
+      model: generic.analog.resistor
+      part_number: 100K
+      pins:
+        A: esp_io0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000
+    RIO2_DN:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: esp_io2
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.6
+    gnd:
+      kind: ground
+    esp_en:
+      kind: digital_or_analog
+    esp_io0:
+      kind: digital_or_analog
+    esp_io2:
+      kind: digital_or_analog
+    esp_txd0:
+      kind: digital_or_analog
+    esp_rxd0:
+      kind: digital_or_analog
+
+scenarios:
+  - name: esp32_wroom_32e_static_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+  - name: esp32_wroom_32e_spi_flash_boot_bias
+    type: reset_boot
+    target:
+      component: UESP
+      power_pin: 3V3
+    checks:
+      - BOOT_STRAP_BIAS_VALID
+    required_boot_mode: spi_flash
+    parameters:
+      max_strap_bias_current_A: 0.0001
