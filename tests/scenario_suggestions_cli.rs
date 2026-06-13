@@ -871,7 +871,8 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         .find(|suggestion| suggestion["id"] == "usb_protection_placement_j1")
         .expect("USB protection placement suggestion");
     assert_eq!(placement["kind"], "interface_protection");
-    assert_eq!(placement["runnable"], false);
+    assert_eq!(placement["runnable"], true);
+    assert!(placement.get("required_inputs").is_none());
     assert_eq!(placement["scenario"]["type"], "interface_protection");
     assert_eq!(
         placement["scenario"]["checks"][0],
@@ -882,8 +883,9 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         placement["scenario"]["parameters"]["require_vbus_protection"],
         true
     );
-    assert!(
-        placement["scenario"]["parameters"]["max_connector_to_protection_distance_mm"].is_null()
+    assert_eq!(
+        placement["scenario"]["parameters"]["max_connector_to_protection_distance_mm"],
+        2.0
     );
     let placement_clamps = placement["scenario"]["protection_clamps"]
         .as_array()
@@ -904,12 +906,6 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
             && clamp["protected_net"] == "usb_vbus"
             && clamp["distance_to_target_mm"] == 1.5
     }));
-    assert!(
-        placement["required_inputs"][0]
-            .as_str()
-            .unwrap()
-            .contains("max_connector_to_protection_distance_mm")
-    );
     let orientation = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -924,7 +920,10 @@ fn suggest_scenarios_derives_usb_connector_protection_template() {
         "USB_CONNECTOR_ORIENTATION_VALID"
     );
     assert!(orientation["scenario"]["parameters"]["expected_connector_rotation_deg"].is_null());
-    assert!(orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"].is_null());
+    assert_eq!(
+        orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"],
+        181.0
+    );
     assert_eq!(
         orientation["scenario"]["usb_connectors"][0]["placement"]["rotation_deg"],
         0.0

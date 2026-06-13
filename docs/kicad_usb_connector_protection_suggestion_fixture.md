@@ -47,9 +47,9 @@ That enriched flow emits connector-to-protection distance evidence:
 - `J1 -> UESD`: `1.0 mm` for D+ and D-
 - `J1 -> UVBUS`: `1.5 mm` for VBUS
 
-The placement suggestion remains non-runnable until an agent fills
-`parameters.max_connector_to_protection_distance_mm` from the board's actual
-ESD/layout rule.
+The project fixture declares explicit USB connector layout policy under
+`board.layout.constraints.usb_connector`, so the placement suggestion is
+runnable and pre-fills `max_connector_to_protection_distance_mm: 2.0`.
 
 Because the PCB fixture also imports `Edge.Cuts` board-outline segment
 evidence, the orientation and edge-proximity suggestions include nearest-edge
@@ -65,6 +65,9 @@ fallback behavior when no supported footprint drawing evidence exists.
 `project_checks.yaml` in the same fixture directory exercises the imported PCB
 evidence through `validate`, not just through suggestions. After
 `import-kicad-pcb` enriches that project, its
+board-level `usb_connector` constraints provide the mechanical limits for
+connector placement, orientation tolerance, edge proximity, body overhang, and
+component-clearance scenarios that omit those parameters. Its explicit
 `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` scenario uses the imported `J1`
 fabrication polygon and the imported `UESD` fabrication rectangle. The executable
 check reports the measured footprint-to-footprint clearance as `0.5 mm` and

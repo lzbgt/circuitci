@@ -391,6 +391,11 @@ Connector-to-protection placement algorithm:
    matching protection component to be no farther than
    `parameters.max_connector_to_protection_distance_mm`.
 
+Scenario `parameters.max_connector_to_protection_distance_mm` takes precedence.
+If it is omitted or left `null`, `board.layout.constraints.usb_connector` can
+provide `max_connector_to_protection_distance_mm` from an explicit board
+ESD/layout rule.
+
 USB connector orientation uses `USB_CONNECTOR_ORIENTATION_VALID` when
 `board.layout.placements.<connector>.rotation_deg` evidence is present and a
 mechanical/layout rule declares the expected entry direction.
@@ -420,9 +425,10 @@ Connector-orientation algorithm:
 
 `suggest-scenarios` can prefill `expected_connector_rotation_deg` from imported
 `board.layout.outline.segments` evidence by finding the nearest board
-edge and using its outward normal. That suggestion is still non-runnable until a
-layout-specific tolerance is supplied, and the inferred direction must be
-checked against the footprint's connector-entry rotation convention.
+edge and using its outward normal. If
+`board.layout.constraints.usb_connector.max_connector_rotation_error_deg` is
+also present, the suggestion becomes runnable. The inferred direction should
+still be checked against the footprint's connector-entry rotation convention.
 
 USB connector edge proximity uses `USB_CONNECTOR_EDGE_PROXIMITY_VALID` when
 the Board IR includes connector placement evidence and board-edge outline
@@ -456,6 +462,10 @@ Connector-to-board-edge algorithm:
 6. Require the nearest distance to be no greater than
    `parameters.max_connector_to_board_edge_distance_mm`.
 
+Scenario `parameters.max_connector_to_board_edge_distance_mm` takes precedence.
+If it is omitted or left `null`, `board.layout.constraints.usb_connector` can
+provide the connector/enclosure mechanical rule.
+
 USB connector body overhang uses `USB_CONNECTOR_BODY_OVERHANG_VALID` when
 the Board IR includes board-edge outline segment evidence and imported
 connector `fabrication` or `courtyard` footprint graphics.
@@ -486,6 +496,10 @@ Connector-body overhang algorithm:
    along the outward normal.
 7. Require the measured `connector_body_overhang_mm` to be no greater than
    `parameters.max_connector_body_overhang_mm`.
+
+Scenario `parameters.max_connector_body_overhang_mm` takes precedence. If it is
+omitted or left `null`, `board.layout.constraints.usb_connector` can provide the
+connector/enclosure overhang rule.
 
 This is a static 2D board/footprint drawing guard. It does not sign off 3D
 connector shell volume, panel cutouts, arcs, enclosure interference, or cable
@@ -521,6 +535,10 @@ Connector component-clearance algorithm:
    other component's evidence.
 5. Require every measured clearance to be at least
    `parameters.min_connector_to_component_clearance_mm`.
+
+Scenario `parameters.min_connector_to_component_clearance_mm` takes precedence.
+If it is omitted or left `null`, `board.layout.constraints.usb_connector` can
+provide the connector keepout or assembly clearance rule.
 
 This is a static 2D component keepout screen. It does not prove 3D connector
 shell clearance, cable insertion clearance, panel/enclosure clearance, or

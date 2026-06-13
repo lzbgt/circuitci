@@ -1553,6 +1553,14 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         0.5
     );
     assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_connector"]["max_connector_to_protection_distance_mm"],
+        2.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["usb_connector"]["max_connector_rotation_error_deg"],
+        181.0
+    );
+    assert_eq!(
         imported["board"]["layout"]["constraints"]["usb_return_path"]["max_data_line_unreferenced_length_mm"],
         0.0
     );
@@ -1625,6 +1633,70 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
             .unwrap()
             .iter()
             .any(|suggestion| suggestion["id"] == "usb_return_path_j1")
+    );
+    let placement = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_protection_placement_j1")
+        .unwrap();
+    assert_eq!(placement["runnable"], true);
+    assert!(placement.get("required_inputs").is_none());
+    assert_eq!(
+        placement["scenario"]["parameters"]["max_connector_to_protection_distance_mm"],
+        2.0
+    );
+    let orientation = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_orientation_j1")
+        .unwrap();
+    assert_eq!(orientation["runnable"], true);
+    assert!(orientation.get("required_inputs").is_none());
+    assert_eq!(
+        orientation["scenario"]["parameters"]["expected_connector_rotation_deg"],
+        180.0
+    );
+    assert_eq!(
+        orientation["scenario"]["parameters"]["max_connector_rotation_error_deg"],
+        181.0
+    );
+    let edge_proximity = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_edge_proximity_j1")
+        .unwrap();
+    assert_eq!(edge_proximity["runnable"], true);
+    assert!(edge_proximity.get("required_inputs").is_none());
+    assert_eq!(
+        edge_proximity["scenario"]["parameters"]["max_connector_to_board_edge_distance_mm"],
+        0.1
+    );
+    let body_overhang = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_body_overhang_j1")
+        .unwrap();
+    assert_eq!(body_overhang["runnable"], true);
+    assert!(body_overhang.get("required_inputs").is_none());
+    assert_eq!(
+        body_overhang["scenario"]["parameters"]["max_connector_body_overhang_mm"],
+        0.5
+    );
+    let component_clearance = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "usb_connector_component_clearance_j1")
+        .unwrap();
+    assert_eq!(component_clearance["runnable"], true);
+    assert!(component_clearance.get("required_inputs").is_none());
+    assert_eq!(
+        component_clearance["scenario"]["parameters"]["min_connector_to_component_clearance_mm"],
+        0.5
     );
     let route = suggestions["suggestions"]
         .as_array()

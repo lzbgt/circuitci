@@ -622,6 +622,28 @@ KiCad PCB import fills this from `net_class` entries and simple custom DRC
 CircuitCI does not treat net-class track width as a hard DRC limit; KiCad uses
 net-class widths as router defaults unless a custom rule constrains them.
 
+`board.layout.constraints.usb_connector` is explicit board/layout policy for
+USB connector mechanical and ESD-placement checks. Scenario parameters still
+take precedence, but when a scenario omits one of these fields the validator and
+suggestion engine can use this object:
+
+```yaml
+board:
+  layout:
+    constraints:
+      usb_connector:
+        max_connector_to_protection_distance_mm: 2.0
+        max_connector_rotation_error_deg: 5.0
+        max_connector_to_board_edge_distance_mm: 0.5
+        max_connector_body_overhang_mm: 0.2
+        min_connector_to_component_clearance_mm: 0.5
+        source: enclosure_mechanical_rule
+```
+
+These values are not inferred from component coordinates. They should come from
+connector datasheets, enclosure drawings, assembly drawings, or explicit board
+mechanical rules.
+
 `board.layout.constraints.usb_return_path` is explicit board/layout policy for
 `USB_RETURN_PATH_VALID`. Scenario parameters still take precedence, but when a
 scenario omits one of these fields the validator and suggestion engine can use

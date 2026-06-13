@@ -113,7 +113,8 @@ not present in Gerbers, such as `board.manufacturing.stencil_thickness_mm`,
 coverage and paste-spacing limits, are stored as Board IR metadata and remain
 explicit evidence.
 Layout policy that is not a manufacturing process fact lives under
-`board.layout.constraints`, for example explicit USB return-path budgets.
+`board.layout.constraints`, for example explicit USB connector mechanical
+limits and USB return-path budgets.
 
 ## Scenario Suggestions
 

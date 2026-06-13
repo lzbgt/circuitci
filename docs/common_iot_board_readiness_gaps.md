@@ -211,8 +211,10 @@ route-length and pair-mismatch limits. It can also emit runnable VBUS-route
 templates when imported KiCad routing constraints provide the VBUS
 route-length limit. It can emit runnable USB return-path templates when
 `board.layout.constraints.usb_return_path.max_data_line_unreferenced_length_mm`
-is supplied. Placement templates remain non-runnable until board-specific
-limits are supplied. These
+is supplied. USB connector placement, orientation tolerance, edge proximity,
+body-overhang, and component-clearance templates can become runnable when
+explicit `board.layout.constraints.usb_connector` mechanical policy is supplied.
+These
 checks do not invent placement or unreferenced-return-path limits, timing,
 observed strap
 states, protocol events, GPIO pin-state observations, protection-path

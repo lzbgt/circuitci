@@ -182,6 +182,8 @@ pub struct LayoutConstraints {
     #[serde(default)]
     pub net_rules: BTreeMap<String, NetLayoutRule>,
     #[serde(default)]
+    pub usb_connector: UsbConnectorLayoutRule,
+    #[serde(default)]
     pub usb_return_path: UsbReturnPathLayoutRule,
 }
 
@@ -213,6 +215,22 @@ pub struct UsbReturnPathLayoutRule {
     pub min_data_line_filled_zone_edge_clearance_mm: Option<f64>,
     #[serde(default)]
     pub require_ground_zone_contact_evidence: Option<bool>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct UsbConnectorLayoutRule {
+    #[serde(default)]
+    pub max_connector_to_protection_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub max_connector_rotation_error_deg: Option<f64>,
+    #[serde(default)]
+    pub max_connector_to_board_edge_distance_mm: Option<f64>,
+    #[serde(default)]
+    pub max_connector_body_overhang_mm: Option<f64>,
+    #[serde(default)]
+    pub min_connector_to_component_clearance_mm: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

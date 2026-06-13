@@ -3,10 +3,10 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 
 use super::super::common::validation_input_missing;
-use super::required_scenario_numeric_parameter;
 use super::usb_connector::{
     footprint_arc_points, footprint_circle_points, mechanical_footprint_kind, placement_is_finite,
-    point_is_finite, point_to_segment_distance_mm, rectangle_corners, segment_length_mm,
+    point_is_finite, point_to_segment_distance_mm, rectangle_corners,
+    required_usb_connector_nonnegative_parameter, segment_length_mm,
     segment_to_segment_distance_mm,
 };
 use super::usb_connector_findings::{
@@ -18,9 +18,12 @@ pub(super) fn validate_usb_connector_component_clearance(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(min_clearance_mm) = required_scenario_numeric_parameter(
+    let rule = &bound.project.board.layout.constraints.usb_connector;
+    let Some(min_clearance_mm) = required_usb_connector_nonnegative_parameter(
         scenario,
+        rule,
         "min_connector_to_component_clearance_mm",
+        rule.min_connector_to_component_clearance_mm,
         findings,
     ) else {
         return;

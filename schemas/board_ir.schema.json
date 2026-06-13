@@ -840,6 +840,18 @@
                     "additionalProperties": false
                   }
                 },
+                "usb_connector": {
+                  "type": "object",
+                  "properties": {
+                    "max_connector_to_protection_distance_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "max_connector_rotation_error_deg": { "type": "number", "minimum": 0 },
+                    "max_connector_to_board_edge_distance_mm": { "type": "number", "exclusiveMinimum": 0 },
+                    "max_connector_body_overhang_mm": { "type": "number", "minimum": 0 },
+                    "min_connector_to_component_clearance_mm": { "type": "number", "minimum": 0 },
+                    "source": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                },
                 "usb_return_path": {
                   "type": "object",
                   "properties": {

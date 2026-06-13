@@ -59,11 +59,52 @@ board:
           width_mm: 1.2
           source: kicad_mapping
     constraints:
+      usb_connector:
+        max_connector_to_protection_distance_mm: 2.0
+        max_connector_rotation_error_deg: 181.0
+        max_connector_to_board_edge_distance_mm: 0.1
+        max_connector_body_overhang_mm: 0.5
+        min_connector_to_component_clearance_mm: 0.5
+        source: fixture_usb_connector_layout_rule
       usb_return_path:
         max_data_line_unreferenced_length_mm: 0.0
         source: fixture_usb_return_path_rule
 
 scenarios:
+  - name: usb_protection_placement_from_board_constraints
+    type: interface_protection
+    checks:
+      - USB_PROTECTION_PLACEMENT_VALID
+    target:
+      component: J1
+    parameters:
+      require_vbus_protection: true
+  - name: usb_connector_orientation_from_board_constraints
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_ORIENTATION_VALID
+    target:
+      component: J1
+    parameters:
+      expected_connector_rotation_deg: 180.0
+  - name: usb_connector_edge_proximity_from_board_constraints
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_EDGE_PROXIMITY_VALID
+    target:
+      component: J1
+  - name: usb_connector_body_overhang_from_board_constraints
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_BODY_OVERHANG_VALID
+    target:
+      component: J1
+  - name: usb_connector_component_clearance_from_board_constraints
+    type: interface_protection
+    checks:
+      - USB_CONNECTOR_COMPONENT_CLEARANCE_VALID
+    target:
+      component: J1
   - name: usb_connector_component_clearance_from_imported_pcb
     type: interface_protection
     checks:

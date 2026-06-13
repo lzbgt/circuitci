@@ -205,6 +205,9 @@ pub(super) fn usb_protection_placement_suggestion(
             connector_placement,
         )?);
     }
+    let connector_rule = &bound.project.board.layout.constraints.usb_connector;
+    let max_distance_mm = connector_rule.max_connector_to_protection_distance_mm;
+    let runnable = max_distance_mm.is_some();
     let parameters = BTreeMap::from([
         (
             "require_vbus_protection".to_string(),
@@ -212,14 +215,14 @@ pub(super) fn usb_protection_placement_suggestion(
         ),
         (
             "max_connector_to_protection_distance_mm".to_string(),
-            serde_json::Value::Null,
+            optional_number_value(max_distance_mm),
         ),
     ]);
     Some(ScenarioSuggestion {
         id: format!("usb_protection_placement_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} and connected protection components have placement evidence; add a connector-to-protection distance scenario."
         ),
@@ -249,10 +252,14 @@ pub(super) fn usb_protection_placement_suggestion(
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            "Fill parameters.max_connector_to_protection_distance_mm from the board's ESD/layout rule or datasheet/layout guidance; do not invent the limit from component coordinates.".to_string(),
-            "Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                "Fill board.layout.constraints.usb_connector.max_connector_to_protection_distance_mm from the board's ESD/layout rule or datasheet/layout guidance; do not invent the limit from component coordinates.".to_string(),
+                "Use PCB/layout review for routed trace order, via count, return path, shield strategy, and USB differential-pair constraints.".to_string(),
+            ]
+        },
     })
 }
 

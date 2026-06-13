@@ -1,7 +1,7 @@
 use crate::board_ir::{
     ComponentPlacement, ComponentSpec, LayoutFootprintArc, LayoutFootprintCircle,
     LayoutFootprintPolygon, LayoutFootprintRectangle, LayoutFootprintSegment, LayoutPoint,
-    LayoutSegment, NetKind, Scenario,
+    LayoutSegment, NetKind, Scenario, UsbConnectorLayoutRule,
 };
 use crate::library::{BoundBoard, ProtectionClamp, ProtectionReference, UsbConnector};
 use crate::reports::Finding;
@@ -22,9 +22,14 @@ pub(super) fn validate_usb_connector_orientation(
     else {
         return;
     };
-    let Some(max_error_deg) =
-        required_scenario_numeric_parameter(scenario, "max_connector_rotation_error_deg", findings)
-    else {
+    let rule = &bound.project.board.layout.constraints.usb_connector;
+    let Some(max_error_deg) = required_usb_connector_nonnegative_parameter(
+        scenario,
+        rule,
+        "max_connector_rotation_error_deg",
+        rule.max_connector_rotation_error_deg,
+        findings,
+    ) else {
         return;
     };
     let Some(target) = &scenario.target else {
@@ -123,9 +128,12 @@ pub(super) fn validate_usb_connector_edge_proximity(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(max_distance_mm) = required_scenario_numeric_parameter(
+    let rule = &bound.project.board.layout.constraints.usb_connector;
+    let Some(max_distance_mm) = required_usb_connector_nonnegative_parameter(
         scenario,
+        rule,
         "max_connector_to_board_edge_distance_mm",
+        rule.max_connector_to_board_edge_distance_mm,
         findings,
     ) else {
         return;
@@ -215,9 +223,14 @@ pub(super) fn validate_usb_connector_body_overhang(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(max_overhang_mm) =
-        required_scenario_numeric_parameter(scenario, "max_connector_body_overhang_mm", findings)
-    else {
+    let rule = &bound.project.board.layout.constraints.usb_connector;
+    let Some(max_overhang_mm) = required_usb_connector_nonnegative_parameter(
+        scenario,
+        rule,
+        "max_connector_body_overhang_mm",
+        rule.max_connector_body_overhang_mm,
+        findings,
+    ) else {
         return;
     };
     if max_overhang_mm < 0.0 {
@@ -398,9 +411,12 @@ pub(super) fn validate_usb_protection_placement(
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
 ) {
-    let Some(max_distance_mm) = required_scenario_numeric_parameter(
+    let rule = &bound.project.board.layout.constraints.usb_connector;
+    let Some(max_distance_mm) = required_usb_connector_nonnegative_parameter(
         scenario,
+        rule,
         "max_connector_to_protection_distance_mm",
+        rule.max_connector_to_protection_distance_mm,
         findings,
     ) else {
         return;
@@ -506,6 +522,65 @@ pub(super) fn validate_usb_protection_placement(
             findings,
         );
     }
+}
+
+pub(super) fn required_usb_connector_nonnegative_parameter(
+    scenario: &Scenario,
+    rule: &UsbConnectorLayoutRule,
+    name: &str,
+    rule_value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if let Some(raw) = scenario.parameters.get(name)
+        && !raw.is_null()
+    {
+        let Some(value) = raw.as_f64() else {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("interface_protection parameters.{name} must be numeric when declared."),
+            );
+            return None;
+        };
+        if !value.is_finite() || value < 0.0 {
+            validation_input_missing(
+                findings,
+                scenario,
+                format!("interface_protection parameters.{name} must be finite and non-negative."),
+            );
+            return None;
+        }
+        return Some(value);
+    }
+    let Some(value) = rule_value else {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "interface_protection parameters.{name} or board.layout.constraints.usb_connector.{name} is required."
+            ),
+        );
+        return None;
+    };
+    if !value.is_finite() || value < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            format!(
+                "board.layout.constraints.usb_connector.{name} must be finite and non-negative."
+            ),
+        );
+        return None;
+    }
+    if rule.source.as_deref().is_some_and(str::is_empty) {
+        validation_input_missing(
+            findings,
+            scenario,
+            "board.layout.constraints.usb_connector.source must not be empty when declared.",
+        );
+        return None;
+    }
+    Some(value)
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -23,9 +23,12 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
         .nearest_board_edge
         .as_ref()
         .and_then(|edge| edge.expected_connector_rotation_deg);
+    let connector_rule = &bound.project.board.layout.constraints.usb_connector;
+    let max_rotation_error = connector_rule.max_connector_rotation_error_deg;
+    let runnable = expected_rotation.is_some() && max_rotation_error.is_some();
     let mut parameters = BTreeMap::from([(
         "max_connector_rotation_error_deg".to_string(),
-        serde_json::Value::Null,
+        optional_number_value(max_rotation_error),
     )]);
     parameters.insert(
         "expected_connector_rotation_deg".to_string(),
@@ -33,43 +36,51 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_orien
             .map(serde_json::Value::from)
             .unwrap_or(serde_json::Value::Null),
     );
-    let mut required_inputs = vec![
-        "Fill max_connector_rotation_error_deg from the allowed footprint-orientation tolerance."
-            .to_string(),
-    ];
-    if expected_rotation.is_some() {
-        let offset = suggested_connector
-            .nearest_board_edge
-            .as_ref()
-            .and_then(|edge| edge.connector_entry_direction_offset_deg);
-        let offset_source = suggested_connector
-            .nearest_board_edge
-            .as_ref()
-            .and_then(|edge| edge.connector_entry_direction_offset_source.as_deref());
-        required_inputs.push(offset.map_or_else(
-            || "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
-            |offset_deg| {
-                let source = match offset_source {
-                    Some("footprint_property") => "KiCad footprint entry-direction property",
-                    Some("kicad_mapping") => "KiCad mapping entry-direction offset",
-                    _ => "component-model usb_connector.entry_direction_offset_deg",
-                };
-                format!(
-                    "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus {source} {:.3} before making this scenario runnable.",
-                    offset_deg
-                )
-            },
-        ));
+    let required_inputs = if runnable {
+        Vec::new()
     } else {
-        required_inputs.push(
-            "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
-        );
-    }
+        let mut required_inputs = Vec::new();
+        if max_rotation_error.is_none() {
+            required_inputs.push(
+                "Fill board.layout.constraints.usb_connector.max_connector_rotation_error_deg from the allowed footprint-orientation tolerance."
+                    .to_string(),
+            );
+        }
+        if expected_rotation.is_some() {
+            let offset = suggested_connector
+                .nearest_board_edge
+                .as_ref()
+                .and_then(|edge| edge.connector_entry_direction_offset_deg);
+            let offset_source = suggested_connector
+                .nearest_board_edge
+                .as_ref()
+                .and_then(|edge| edge.connector_entry_direction_offset_source.as_deref());
+            required_inputs.push(offset.map_or_else(
+                || "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence before making this scenario runnable.".to_string(),
+                |offset_deg| {
+                    let source = match offset_source {
+                        Some("footprint_property") => "KiCad footprint entry-direction property",
+                        Some("kicad_mapping") => "KiCad mapping entry-direction offset",
+                        _ => "component-model usb_connector.entry_direction_offset_deg",
+                    };
+                    format!(
+                        "Review the inferred expected_connector_rotation_deg from nearest board-edge outward-normal evidence minus {source} {:.3} before making this scenario runnable.",
+                        offset_deg
+                    )
+                },
+            ));
+        } else {
+            required_inputs.push(
+                "Fill expected_connector_rotation_deg from the board-edge or enclosure-entry mechanical rule.".to_string(),
+            );
+        }
+        required_inputs
+    };
     Some(ScenarioSuggestion {
         id: format!("usb_connector_orientation_{}", sanitized_name(component_id)),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has imported placement rotation evidence; add a connector-orientation scenario from the mechanical board-edge rule."
         ),
@@ -112,20 +123,29 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_edge_
     let connector = model.usb_connector.as_ref()?;
     let suggested_connector = suggested_usb_connector(bound, component_id, component, connector)?;
     suggested_connector.nearest_board_edge.as_ref()?;
+    let connector_rule = &bound.project.board.layout.constraints.usb_connector;
+    let max_distance_mm = connector_rule.max_connector_to_board_edge_distance_mm;
+    let runnable = max_distance_mm.is_some();
     let parameters = BTreeMap::from([(
         "max_connector_to_board_edge_distance_mm".to_string(),
-        serde_json::Value::Null,
+        optional_number_value(max_distance_mm),
     )]);
     Some(ScenarioSuggestion {
-        id: format!("usb_connector_edge_proximity_{}", sanitized_name(component_id)),
+        id: format!(
+            "usb_connector_edge_proximity_{}",
+            sanitized_name(component_id)
+        ),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has imported placement and board-edge outline evidence; add a connector-to-board-edge proximity scenario."
         ),
         scenario: SuggestedScenario {
-            name: format!("{}_usb_connector_edge_proximity", sanitized_name(component_id)),
+            name: format!(
+                "{}_usb_connector_edge_proximity",
+                sanitized_name(component_id)
+            ),
             scenario_type: "interface_protection".to_string(),
             checks: vec![USB_CONNECTOR_EDGE_PROXIMITY_VALID.to_string()],
             parameters: Some(parameters),
@@ -150,10 +170,14 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_edge_
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            "Fill max_connector_to_board_edge_distance_mm from the connector/enclosure mechanical rule before making this scenario runnable.".to_string(),
-            "Review the nearest_board_edge evidence; sampled Edge.Cuts segments retain source provenance but approximate exact curve geometry, cutouts, panel tabs, and connector body intrusion.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                "Fill board.layout.constraints.usb_connector.max_connector_to_board_edge_distance_mm from the connector/enclosure mechanical rule before making this scenario runnable.".to_string(),
+                "Review the nearest_board_edge evidence; sampled Edge.Cuts segments retain source provenance but approximate exact curve geometry, cutouts, panel tabs, and connector body intrusion.".to_string(),
+            ]
+        },
     })
 }
 
@@ -169,20 +193,29 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_body_
         .nearest_board_edge
         .as_ref()?
         .connector_body_overhang_mm?;
+    let connector_rule = &bound.project.board.layout.constraints.usb_connector;
+    let max_overhang_mm = connector_rule.max_connector_body_overhang_mm;
+    let runnable = max_overhang_mm.is_some();
     let parameters = BTreeMap::from([(
         "max_connector_body_overhang_mm".to_string(),
-        serde_json::Value::Null,
+        optional_number_value(max_overhang_mm),
     )]);
     Some(ScenarioSuggestion {
-        id: format!("usb_connector_body_overhang_{}", sanitized_name(component_id)),
+        id: format!(
+            "usb_connector_body_overhang_{}",
+            sanitized_name(component_id)
+        ),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has imported board-edge and mechanical footprint evidence; add a connector-body overhang scenario."
         ),
         scenario: SuggestedScenario {
-            name: format!("{}_usb_connector_body_overhang", sanitized_name(component_id)),
+            name: format!(
+                "{}_usb_connector_body_overhang",
+                sanitized_name(component_id)
+            ),
             scenario_type: "interface_protection".to_string(),
             checks: vec![USB_CONNECTOR_BODY_OVERHANG_VALID.to_string()],
             parameters: Some(parameters),
@@ -207,10 +240,14 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_body_
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            "Fill max_connector_body_overhang_mm from connector, enclosure, and assembly mechanical constraints before making this scenario runnable.".to_string(),
-            "Review the footprint body/courtyard evidence; imported straight lines, rectangles, and polygons do not model arcs, shell volume, panel cutouts, or enclosure interference.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                "Fill board.layout.constraints.usb_connector.max_connector_body_overhang_mm from connector, enclosure, and assembly mechanical constraints before making this scenario runnable.".to_string(),
+                "Review the footprint body/courtyard evidence; imported straight lines, rectangles, and polygons do not model arcs, shell volume, panel cutouts, or enclosure interference.".to_string(),
+            ]
+        },
     })
 }
 
@@ -226,9 +263,12 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_compo
     let nearest_clearance = suggested_connector.nearest_component_clearance.as_ref()?;
     let nearest_clearance_mm = nearest_clearance.clearance_mm;
     let nearest_clearance_component = nearest_clearance.component.clone();
+    let connector_rule = &bound.project.board.layout.constraints.usb_connector;
+    let min_clearance_mm = connector_rule.min_connector_to_component_clearance_mm;
+    let runnable = min_clearance_mm.is_some();
     let parameters = BTreeMap::from([(
         "min_connector_to_component_clearance_mm".to_string(),
-        serde_json::Value::Null,
+        optional_number_value(min_clearance_mm),
     )]);
     Some(ScenarioSuggestion {
         id: format!(
@@ -237,11 +277,10 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_compo
         ),
         kind: "interface_protection".to_string(),
         confidence: "medium".to_string(),
-        runnable: false,
+        runnable,
         reason: format!(
             "USB connector {component_id} has measured clearance {:.3} mm to nearby component {}; add a connector keepout/component-clearance scenario.",
-            nearest_clearance_mm,
-            nearest_clearance_component
+            nearest_clearance_mm, nearest_clearance_component
         ),
         scenario: SuggestedScenario {
             name: format!(
@@ -272,14 +311,18 @@ pub(in crate::scenario_suggestions::interface_protection) fn usb_connector_compo
             pin_states: Vec::new(),
             paths: Vec::new(),
         },
-        required_inputs: vec![
-            format!(
-                "Fill min_connector_to_component_clearance_mm from the connector courtyard, cable insertion, enclosure, or assembly keepout rule after reviewing measured nearest-component clearance {:.3} mm to {}.",
-                nearest_clearance_mm,
-                nearest_clearance_component
-            ),
-            "Review imported fabrication/courtyard evidence; this is a 2D component-clearance screen and does not prove 3D shell, cable, panel, or enclosure fit.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                format!(
+                    "Fill board.layout.constraints.usb_connector.min_connector_to_component_clearance_mm from the connector courtyard, cable insertion, enclosure, or assembly keepout rule after reviewing measured nearest-component clearance {:.3} mm to {}.",
+                    nearest_clearance_mm,
+                    nearest_clearance_component
+                ),
+                "Review imported fabrication/courtyard evidence; this is a 2D component-clearance screen and does not prove 3D shell, cable, panel, or enclosure fit.".to_string(),
+            ]
+        },
     })
 }
 
@@ -485,4 +528,8 @@ fn existing_target_components(project: &BoardProject, check_name: &str) -> BTree
                 .map(|target| target.component.clone())
         })
         .collect()
+}
+
+fn optional_number_value(value: Option<f64>) -> serde_json::Value {
+    value.map_or(serde_json::Value::Null, serde_json::Value::from)
 }

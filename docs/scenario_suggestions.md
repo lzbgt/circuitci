@@ -84,14 +84,16 @@ The command is conservative:
   validation checks the simple shield-to-ground case and asks agents to model
   RC, ferrite, chassis-only, or spark-gap strategies explicitly before treating
   the board as EMC-ready.
-- It emits non-runnable `USB_PROTECTION_PLACEMENT_VALID` templates when the USB
+- It emits `USB_PROTECTION_PLACEMENT_VALID` templates when the USB
   connector and required connected protection components already have finite
   `board.layout.placements` evidence. The template includes connector/clamp
   placement coordinates and `distance_to_target_mm` evidence, but leaves
   `parameters.max_connector_to_protection_distance_mm` as `null` until an agent
-  fills the board-specific ESD/layout rule. CircuitCI does not invent placement
+  fills the board-specific ESD/layout rule. If
+  `board.layout.constraints.usb_connector.max_connector_to_protection_distance_mm`
+  is present, the template becomes runnable. CircuitCI does not invent placement
   limits from component coordinates.
-- It emits non-runnable `USB_CONNECTOR_ORIENTATION_VALID` templates when the USB
+- It emits `USB_CONNECTOR_ORIENTATION_VALID` templates when the USB
   connector placement includes imported `rotation_deg` evidence. The template
   includes the measured placement rotation in `scenario.usb_connectors[]`.
   When `board.layout.outline.segments` contains imported board-edge segment
@@ -102,11 +104,13 @@ The command is conservative:
   `usb_connector.entry_direction_offset_deg`. `nearest_board_edge` keeps both
   raw `outward_normal_deg`, offset-aware `expected_connector_rotation_deg`, and
   `connector_entry_direction_offset_source` evidence. `max_connector_rotation_error_deg`
-  remains `null` until an agent supplies a board-specific tolerance, and the
-  inferred expected rotation should be reviewed against the connector footprint
-  convention before making the scenario runnable. Without outline evidence,
+  remains `null` until an agent supplies a board-specific tolerance or
+  `board.layout.constraints.usb_connector.max_connector_rotation_error_deg` is
+  present. With both expected rotation and tolerance evidence, the template
+  becomes runnable. The inferred expected rotation should be reviewed against
+  the connector footprint convention. Without outline evidence,
   both orientation parameters remain manual.
-- It emits non-runnable `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
+- It emits `USB_CONNECTOR_EDGE_PROXIMITY_VALID` templates when the
   USB connector has finite placement evidence and
   `board.layout.outline.segments` contains usable board-edge segment evidence.
   The template includes `nearest_board_edge.distance_to_connector_mm` and
@@ -125,8 +129,10 @@ The command is conservative:
   `fp_line`/`fp_rect`/`fp_poly`/`fp_circle`/`fp_arc` body, courtyard, or
   silkscreen evidence for mechanical review. The template leaves
   `max_connector_to_board_edge_distance_mm` as `null` until an agent fills the
-  connector/enclosure mechanical rule.
-- It emits non-runnable `USB_CONNECTOR_BODY_OVERHANG_VALID` templates when the
+  connector/enclosure mechanical rule. If
+  `board.layout.constraints.usb_connector.max_connector_to_board_edge_distance_mm`
+  is present, the template becomes runnable.
+- It emits `USB_CONNECTOR_BODY_OVERHANG_VALID` templates when the
   USB connector has finite placement evidence, board-edge outline segment
   evidence, and supported `fabrication`/`courtyard` footprint `fp_line`,
   `fp_rect`, `fp_poly`, `fp_circle`, or `fp_arc` evidence. The template reports
@@ -134,8 +140,10 @@ The command is conservative:
   `connector_edge_reference`, `footprint_graphic_layer`, and
   `footprint_graphic_kind` in `scenario.usb_connectors[]`. It leaves
   `max_connector_body_overhang_mm` as `null` until an agent fills the
-  connector, enclosure, panel, or assembly mechanical limit.
-- It emits non-runnable `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` templates
+  connector, enclosure, panel, or assembly mechanical limit. If
+  `board.layout.constraints.usb_connector.max_connector_body_overhang_mm` is
+  present, the template becomes runnable.
+- It emits `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` templates
   when the USB connector has supported footprint evidence and at least one
   other component has placement or footprint evidence. The template includes
   the connector footprint evidence plus
@@ -143,7 +151,9 @@ The command is conservative:
   nearest component, measured 2D clearance, and whether each side used
   footprint or placement-center evidence. It leaves
   `min_connector_to_component_clearance_mm` as `null` until an agent fills the
-  connector keepout, cable insertion, enclosure, or assembly clearance rule.
+  connector keepout, cable insertion, enclosure, or assembly clearance rule. If
+  `board.layout.constraints.usb_connector.min_connector_to_component_clearance_mm`
+  is present, the template becomes runnable.
 - It emits `USB_CONNECTOR_ENTRY_CLEARANCE_VALID` templates when the USB
   connector has imported placement rotation and supported
   `fabrication`/`courtyard` footprint evidence. The template copies

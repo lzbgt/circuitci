@@ -59,10 +59,13 @@ executable validation failure.
 
 When `board.layout.placements` has finite coordinates for the USB connector and
 the required connected protection components, `suggest-scenarios` also emits a
-non-runnable `USB_PROTECTION_PLACEMENT_VALID` template. The suggestion includes
+`USB_PROTECTION_PLACEMENT_VALID` template. The suggestion includes
 placement coordinates and connector-to-protection `distance_to_target_mm`
 evidence, but leaves `parameters.max_connector_to_protection_distance_mm` as
-`null` until an agent fills the board-specific ESD/layout rule.
+`null` until an agent fills the board-specific ESD/layout rule. If
+`board.layout.constraints.usb_connector.max_connector_to_protection_distance_mm`
+is present, the template is runnable and the executable rule uses that value
+when the scenario parameter is omitted or left `null`.
 
 Current fixtures:
 
@@ -165,7 +168,9 @@ Connector component-clearance validation:
   drawing evidence plus other component footprint or placement evidence.
 - The scenario must declare
   `parameters.min_connector_to_component_clearance_mm` from connector keepout,
-  cable insertion, enclosure, panel, or assembly drawings.
+  cable insertion, enclosure, panel, or assembly drawings, or the Board IR must
+  provide the same value at
+  `board.layout.constraints.usb_connector.min_connector_to_component_clearance_mm`.
 - The rule measures 2D clearance to every other component with usable layout
   evidence and fails components below the declared minimum.
 - It does not prove 3D shell volume, cable sweep, panel/enclosure interference,
