@@ -1,0 +1,38 @@
+project:
+  name: bad_copper_region_spacing
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 1.0, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+      regions:
+        - points:
+            - { x_mm: 1.55, y_mm: 0.5 }
+            - { x_mm: 2.25, y_mm: 0.5 }
+            - { x_mm: 2.25, y_mm: 1.5 }
+            - { x_mm: 1.55, y_mm: 1.5 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_region
+          source_primitive_index: 1
+
+scenarios:
+  - name: copper_spacing
+    type: manufacturing
+    checks:
+      - COPPER_SPACING_VALID
+    parameters:
+      min_copper_spacing_mm: 0.25

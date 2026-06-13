@@ -639,7 +639,8 @@ fab-specific compensation, or net ownership.
 Copper-to-board-edge clearance uses `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 when the Board IR includes board-outline segment evidence under
 `board.layout.outline.segments` and anonymous Gerber copper evidence under
-`board.layout.copper.features` or `board.layout.copper.segments`.
+`board.layout.copper.features`, `board.layout.copper.segments`, or
+`board.layout.copper.regions`.
 
 ```yaml
 scenarios:
@@ -655,12 +656,15 @@ Copper-to-board-edge algorithm:
 
 1. Require `parameters.min_copper_edge_clearance_mm`.
 2. Require finite `board.layout.outline.segments[]` entries.
-3. Require at least one finite copper feature or copper segment.
+3. Require at least one finite copper feature, copper segment, or copper
+   region.
 4. Measure each supported flash shape to the nearest board-outline or cutout
    segment.
 5. Measure each imported copper segment centerline to the nearest board-outline
    or cutout segment and subtract half the trace width.
-6. Fail when any copper edge-to-outline clearance is below
+6. Measure each imported copper region polygon to the nearest board-outline or
+   cutout segment.
+7. Fail when any copper edge-to-outline clearance is below
    `min_copper_edge_clearance_mm`.
 
 External board-outline segments, cutout segments, and unknown outline segments
@@ -670,8 +674,8 @@ clearance compensation, panelization tabs, copper island connectivity, or net
 ownership.
 
 Copper spacing uses `COPPER_SPACING_VALID` when the Board IR includes at least
-two anonymous Gerber copper objects under `board.layout.copper.features` or
-`board.layout.copper.segments`.
+two anonymous Gerber copper objects under `board.layout.copper.features`,
+`board.layout.copper.segments`, or `board.layout.copper.regions`.
 
 ```yaml
 scenarios:
@@ -686,11 +690,13 @@ scenarios:
 Copper spacing algorithm:
 
 1. Require `parameters.min_copper_spacing_mm`.
-2. Require at least two finite copper features or copper segments.
-3. Compare same-layer copper feature/feature, feature/segment, and
-   segment/segment pairs.
+2. Require at least two finite copper features, copper segments, or copper
+   regions.
+3. Compare same-layer copper feature/feature, feature/segment,
+   feature/region, segment/segment, segment/region, and region/region pairs.
 4. Use supported `circle`, `rect`, and axis-aligned `oval` flash geometry plus
-   circular-aperture trace segment width.
+   circular-aperture trace segment width and single-contour region polygon
+   boundaries.
 5. Ignore different-layer pairs.
 6. Ignore overlapping or touching pairs because anonymous Gerber copper has no
    net ownership or island connectivity evidence.

@@ -305,8 +305,9 @@ limit keys include `min_annular_ring_mm` and
 `max_drill_to_copper_center_offset_mm`.
 
 `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` reports are emitted by
-`manufacturing` scenarios that combine `board.layout.copper.features` or
-`board.layout.copper.segments` evidence with `board.layout.outline.segments`.
+`manufacturing` scenarios that combine `board.layout.copper.features`,
+`board.layout.copper.segments`, or `board.layout.copper.regions` evidence with
+`board.layout.outline.segments`.
 Stable measured keys include `copper_kind`, `clearance_mm`,
 `board_edge_start`, `board_edge_end`, optional `board_edge_layer`, optional
 `board_edge_source_primitive`, optional `board_edge_source_primitive_index`,
@@ -320,12 +321,17 @@ Feature findings also report `copper_feature_index`, `copper_feature_x_mm`,
 `copper_segment_layer`, `copper_segment_aperture`,
 `copper_segment_width_mm`, `copper_segment_source_primitive`,
 `copper_segment_source_primitive_index`, and
-`trace_centerline_to_board_edge_distance_mm`. Stable limit keys include
+`trace_centerline_to_board_edge_distance_mm`. Region findings report
+`copper_region_index`, `copper_region_layer`, `copper_region_polarity`,
+`copper_region_source_primitive`,
+`copper_region_source_primitive_index`, and
+`copper_region_point_count`. Stable limit keys include
 `min_copper_edge_clearance_mm`.
 
 `COPPER_SPACING_VALID` reports are emitted by `manufacturing` scenarios that
-compare same-layer `board.layout.copper.features` and
-`board.layout.copper.segments` evidence. Stable measured keys include
+compare same-layer `board.layout.copper.features`,
+`board.layout.copper.segments`, and `board.layout.copper.regions` evidence.
+Stable measured keys include
 `clearance_mm`, `copper_layer`, `first_copper_kind`, and
 `second_copper_kind`. Feature operands report prefixed keys such as
 `first_copper_feature_index`, `first_copper_feature_x_mm`,
@@ -340,7 +346,12 @@ the `second_` prefix. Segment operands report prefixed keys such as
 `first_copper_segment_aperture`, `first_copper_segment_width_mm`,
 `first_copper_segment_source_primitive`, and
 `first_copper_segment_source_primitive_index`; the same keys may appear with
-the `second_` prefix. Stable limit keys include `min_copper_spacing_mm`.
+the `second_` prefix. Region operands report prefixed keys such as
+`first_copper_region_index`, `first_copper_region_layer`,
+`first_copper_region_polarity`, `first_copper_region_source_primitive`,
+`first_copper_region_source_primitive_index`, and
+`first_copper_region_point_count`; the same keys may appear with the
+`second_` prefix. Stable limit keys include `min_copper_spacing_mm`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,

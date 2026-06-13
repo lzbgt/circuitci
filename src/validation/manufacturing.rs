@@ -1,18 +1,21 @@
 mod geometry;
 
 use crate::board_ir::{
-    LayoutCopperFeature, LayoutCopperSegment, LayoutDrill, LayoutSegment, Scenario,
+    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, LayoutSegment,
+    Scenario,
 };
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
 use self::geometry::{
-    CopperFeatureEdgeClearance, CopperObjectRef, CopperSegmentEdgeClearance, DrillEdgeClearance,
-    annular_ring_for_feature, copper_object_spacing_mm, nearest_copper_feature_edge_clearance,
-    nearest_copper_segment_edge_clearance, nearest_drill_edge_clearance, point_distance_mm,
-    usable_outline_segment, validate_copper_feature_geometry, validate_copper_segment_geometry,
-    validate_drill_geometry,
+    CopperFeatureEdgeClearance, CopperObjectRef, CopperRegionEdgeClearance,
+    CopperSegmentEdgeClearance, DrillEdgeClearance, annular_ring_for_feature,
+    copper_object_spacing_mm, nearest_copper_feature_edge_clearance,
+    nearest_copper_region_edge_clearance, nearest_copper_segment_edge_clearance,
+    nearest_drill_edge_clearance, point_distance_mm, usable_outline_segment,
+    validate_copper_feature_geometry, validate_copper_region_geometry,
+    validate_copper_segment_geometry, validate_drill_geometry,
 };
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
@@ -219,11 +222,11 @@ pub(super) fn validate_copper_to_board_edge_clearance(
         return;
     }
     let copper = &bound.project.board.layout.copper;
-    if copper.features.is_empty() && copper.segments.is_empty() {
+    if copper.features.is_empty() && copper.segments.is_empty() && copper.regions.is_empty() {
         validation_input_missing(
             findings,
             scenario,
-            "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID requires board.layout.copper.features or board.layout.copper.segments evidence.",
+            "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID requires board.layout.copper.features, board.layout.copper.segments, or board.layout.copper.regions evidence.",
         );
         return;
     }
@@ -290,6 +293,29 @@ pub(super) fn validate_copper_to_board_edge_clearance(
             ));
         }
     }
+    for (region_index, region) in copper.regions.iter().enumerate() {
+        if let Err(message) = validate_copper_region_geometry(region, region_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let Some(nearest) = nearest_copper_region_edge_clearance(region, &board_edges) else {
+            validation_input_missing(
+                findings,
+                scenario,
+                "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID could not compute finite copper region-to-board-edge clearance.",
+            );
+            continue;
+        };
+        if nearest.clearance_mm + f64::EPSILON < min_clearance_mm {
+            findings.push(copper_region_edge_clearance_finding(
+                scenario,
+                region,
+                region_index,
+                nearest,
+                min_clearance_mm,
+            ));
+        }
+    }
 }
 
 pub(super) fn validate_copper_spacing(
@@ -311,83 +337,52 @@ pub(super) fn validate_copper_spacing(
         return;
     }
     let copper = &bound.project.board.layout.copper;
-    if copper.features.len() + copper.segments.len() < 2 {
+    if copper.features.len() + copper.segments.len() + copper.regions.len() < 2 {
         validation_input_missing(
             findings,
             scenario,
-            "COPPER_SPACING_VALID requires at least two board.layout.copper features or segments.",
+            "COPPER_SPACING_VALID requires at least two board.layout.copper features, segments, or regions.",
         );
         return;
     }
+    let mut copper_objects = Vec::new();
     for (first_index, first_feature) in copper.features.iter().enumerate() {
         if let Err(message) = validate_copper_feature_geometry(first_feature, first_index) {
             validation_input_missing(findings, scenario, message);
             continue;
         }
-        for (second_index, second_feature) in
-            copper.features.iter().enumerate().skip(first_index + 1)
-        {
-            if let Err(message) = validate_copper_feature_geometry(second_feature, second_index) {
-                validation_input_missing(findings, scenario, message);
-                continue;
-            }
-            maybe_report_copper_spacing(
-                scenario,
-                findings,
-                CopperObjectRef::Feature {
-                    feature: first_feature,
-                    index: first_index,
-                },
-                CopperObjectRef::Feature {
-                    feature: second_feature,
-                    index: second_index,
-                },
-                min_spacing_mm,
-            );
-        }
-        for (second_index, second_segment) in copper.segments.iter().enumerate() {
-            if let Err(message) = validate_copper_segment_geometry(second_segment, second_index) {
-                validation_input_missing(findings, scenario, message);
-                continue;
-            }
-            maybe_report_copper_spacing(
-                scenario,
-                findings,
-                CopperObjectRef::Feature {
-                    feature: first_feature,
-                    index: first_index,
-                },
-                CopperObjectRef::Segment {
-                    segment: second_segment,
-                    index: second_index,
-                },
-                min_spacing_mm,
-            );
-        }
+        copper_objects.push(CopperObjectRef::Feature {
+            feature: first_feature,
+            index: first_index,
+        });
     }
-    for (first_index, first_segment) in copper.segments.iter().enumerate() {
-        if let Err(message) = validate_copper_segment_geometry(first_segment, first_index) {
+    for (segment_index, segment) in copper.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
             validation_input_missing(findings, scenario, message);
             continue;
         }
-        for (second_index, second_segment) in
-            copper.segments.iter().enumerate().skip(first_index + 1)
-        {
-            if let Err(message) = validate_copper_segment_geometry(second_segment, second_index) {
-                validation_input_missing(findings, scenario, message);
-                continue;
-            }
+        copper_objects.push(CopperObjectRef::Segment {
+            segment,
+            index: segment_index,
+        });
+    }
+    for (region_index, region) in copper.regions.iter().enumerate() {
+        if let Err(message) = validate_copper_region_geometry(region, region_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        copper_objects.push(CopperObjectRef::Region {
+            region,
+            index: region_index,
+        });
+    }
+    for (first_index, first_object) in copper_objects.iter().enumerate() {
+        for second_object in copper_objects.iter().skip(first_index + 1) {
             maybe_report_copper_spacing(
                 scenario,
                 findings,
-                CopperObjectRef::Segment {
-                    segment: first_segment,
-                    index: first_index,
-                },
-                CopperObjectRef::Segment {
-                    segment: second_segment,
-                    index: second_index,
-                },
+                *first_object,
+                *second_object,
                 min_spacing_mm,
             );
         }
@@ -773,6 +768,47 @@ fn copper_segment_edge_clearance_finding(
     finding
 }
 
+fn copper_region_edge_clearance_finding(
+    scenario: &Scenario,
+    region: &LayoutCopperRegion,
+    region_index: usize,
+    nearest: CopperRegionEdgeClearance<'_>,
+    min_clearance_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        COPPER_TO_BOARD_EDGE_CLEARANCE_VALID,
+        &scenario.name,
+        format!(
+            "Gerber copper region {} has {:.3} mm board-edge clearance, below {:.3} mm minimum.",
+            region_index, nearest.clearance_mm, min_clearance_mm
+        ),
+    );
+    finding
+        .measured
+        .insert("copper_kind".to_string(), json!("region"));
+    finding
+        .measured
+        .insert("copper_region_index".to_string(), json!(region_index));
+    insert_copper_region_measurements(&mut finding, region);
+    finding
+        .measured
+        .insert("clearance_mm".to_string(), json!(nearest.clearance_mm));
+    insert_board_edge_measurements(&mut finding, nearest.edge);
+    finding.limit.insert(
+        "min_copper_edge_clearance_mm".to_string(),
+        json!(min_clearance_mm),
+    );
+    finding.suggested_fixes = vec![
+        "Move or reshape the copper region farther from the board outline or cutout edge."
+            .to_string(),
+        "Reduce the polygon pour boundary only if the copper-pour requirement allows it."
+            .to_string(),
+        "Adjust the board outline or copper Gerber origin if fabrication layers are misregistered."
+            .to_string(),
+    ];
+    finding
+}
+
 fn copper_spacing_finding(
     scenario: &Scenario,
     first: CopperObjectRef<'_>,
@@ -1007,7 +1043,60 @@ fn insert_copper_object_measurements(
                 json!(segment.source_primitive_index),
             );
         }
+        CopperObjectRef::Region { region, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_copper_region_index"), json!(index));
+            insert_prefixed_copper_region_measurements(finding, prefix, region);
+        }
     }
+}
+
+fn insert_copper_region_measurements(finding: &mut Finding, region: &LayoutCopperRegion) {
+    finding
+        .measured
+        .insert("copper_region_layer".to_string(), json!(region.layer));
+    finding
+        .measured
+        .insert("copper_region_polarity".to_string(), json!(region.polarity));
+    finding.measured.insert(
+        "copper_region_source_primitive".to_string(),
+        json!(region.source_primitive),
+    );
+    finding.measured.insert(
+        "copper_region_source_primitive_index".to_string(),
+        json!(region.source_primitive_index),
+    );
+    finding.measured.insert(
+        "copper_region_point_count".to_string(),
+        json!(region.points.len()),
+    );
+}
+
+fn insert_prefixed_copper_region_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    region: &LayoutCopperRegion,
+) {
+    finding
+        .measured
+        .insert(format!("{prefix}_copper_region_layer"), json!(region.layer));
+    finding.measured.insert(
+        format!("{prefix}_copper_region_polarity"),
+        json!(region.polarity),
+    );
+    finding.measured.insert(
+        format!("{prefix}_copper_region_source_primitive"),
+        json!(region.source_primitive),
+    );
+    finding.measured.insert(
+        format!("{prefix}_copper_region_source_primitive_index"),
+        json!(region.source_primitive_index),
+    );
+    finding.measured.insert(
+        format!("{prefix}_copper_region_point_count"),
+        json!(region.points.len()),
+    );
 }
 
 fn insert_copper_feature_measurements(

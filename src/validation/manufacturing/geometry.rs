@@ -1,5 +1,6 @@
 use crate::board_ir::{
-    LayoutCopperFeature, LayoutCopperSegment, LayoutDrill, LayoutPoint, LayoutSegment,
+    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutDrill, LayoutPoint,
+    LayoutSegment,
 };
 
 pub(super) fn validate_drill_geometry(
@@ -62,6 +63,28 @@ pub(super) fn validate_copper_segment_geometry(
     Ok(())
 }
 
+pub(super) fn validate_copper_region_geometry(
+    region: &LayoutCopperRegion,
+    region_index: usize,
+) -> Result<(), String> {
+    if region.points.len() < 3 {
+        return Err(format!(
+            "board.layout.copper.regions[{region_index}].points must contain at least three points."
+        ));
+    }
+    if region.points.iter().any(|point| !finite_point(point)) {
+        return Err(format!(
+            "board.layout.copper.regions[{region_index}].points must contain finite coordinates."
+        ));
+    }
+    if polygon_signed_area_mm2(&region.points).abs() <= f64::EPSILON {
+        return Err(format!(
+            "board.layout.copper.regions[{region_index}].points must form a non-degenerate polygon."
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn usable_outline_segment(segment: &LayoutSegment) -> bool {
     finite_point(&segment.start)
         && finite_point(&segment.end)
@@ -93,6 +116,12 @@ pub(super) struct CopperSegmentEdgeClearance<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub(super) struct CopperRegionEdgeClearance<'a> {
+    pub(super) edge: &'a LayoutSegment,
+    pub(super) clearance_mm: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub(super) enum CopperObjectRef<'a> {
     Feature {
         feature: &'a LayoutCopperFeature,
@@ -102,6 +131,10 @@ pub(super) enum CopperObjectRef<'a> {
         segment: &'a LayoutCopperSegment,
         index: usize,
     },
+    Region {
+        region: &'a LayoutCopperRegion,
+        index: usize,
+    },
 }
 
 impl CopperObjectRef<'_> {
@@ -109,6 +142,7 @@ impl CopperObjectRef<'_> {
         match self {
             Self::Feature { feature, .. } => &feature.layer,
             Self::Segment { segment, .. } => &segment.layer,
+            Self::Region { region, .. } => &region.layer,
         }
     }
 
@@ -116,6 +150,7 @@ impl CopperObjectRef<'_> {
         match self {
             Self::Feature { .. } => "feature",
             Self::Segment { .. } => "segment",
+            Self::Region { .. } => "region",
         }
     }
 }
@@ -181,6 +216,22 @@ pub(super) fn nearest_copper_segment_edge_clearance<'a>(
         .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
 }
 
+pub(super) fn nearest_copper_region_edge_clearance<'a>(
+    region: &LayoutCopperRegion,
+    board_edges: &'a [&LayoutSegment],
+) -> Option<CopperRegionEdgeClearance<'a>> {
+    board_edges
+        .iter()
+        .filter_map(|edge| {
+            let clearance_mm =
+                polygon_to_segment_clearance_mm(&region.points, &edge.start, &edge.end);
+            clearance_mm
+                .is_finite()
+                .then_some(CopperRegionEdgeClearance { edge, clearance_mm })
+        })
+        .min_by(|first, second| first.clearance_mm.total_cmp(&second.clearance_mm))
+}
+
 pub(super) fn annular_ring_for_feature(
     drill: &LayoutDrill,
     feature: &LayoutCopperFeature,
@@ -226,6 +277,21 @@ pub(super) fn copper_object_spacing_mm(
                 - first.width_mm / 2.0
                 - second.width_mm / 2.0,
         ),
+        (CopperObjectRef::Feature { feature, .. }, CopperObjectRef::Region { region, .. })
+        | (CopperObjectRef::Region { region, .. }, CopperObjectRef::Feature { feature, .. }) => {
+            copper_feature_to_region_clearance_mm(feature, region)
+        }
+        (CopperObjectRef::Segment { segment, .. }, CopperObjectRef::Region { region, .. })
+        | (CopperObjectRef::Region { region, .. }, CopperObjectRef::Segment { segment, .. }) => {
+            Some(copper_segment_to_region_clearance_mm(segment, region))
+        }
+        (
+            CopperObjectRef::Region { region: first, .. },
+            CopperObjectRef::Region { region: second, .. },
+        ) => Some(polygon_to_polygon_clearance_mm(
+            &first.points,
+            &second.points,
+        )),
     }
     .filter(|value| value.is_finite())
 }
@@ -285,6 +351,28 @@ fn copper_feature_to_copper_segment_clearance_mm(
         .map(|clearance| clearance - segment.width_mm / 2.0)
 }
 
+fn copper_feature_to_region_clearance_mm(
+    feature: &LayoutCopperFeature,
+    region: &LayoutCopperRegion,
+) -> Option<f64> {
+    let feature_points = feature_boundary_points(feature);
+    if feature_points.is_empty() {
+        return None;
+    }
+    Some(polygon_to_polygon_clearance_mm(
+        &feature_points,
+        &region.points,
+    ))
+}
+
+fn copper_segment_to_region_clearance_mm(
+    segment: &LayoutCopperSegment,
+    region: &LayoutCopperRegion,
+) -> f64 {
+    polygon_to_segment_clearance_mm(&region.points, &segment.start, &segment.end)
+        - segment.width_mm / 2.0
+}
+
 fn copper_feature_to_segment_clearance_mm(
     feature: &LayoutCopperFeature,
     edge: &LayoutSegment,
@@ -340,6 +428,43 @@ fn sampled_feature_to_feature_distance_mm(
         }
     }
     min_distance
+}
+
+fn polygon_to_polygon_clearance_mm(first: &[LayoutPoint], second: &[LayoutPoint]) -> f64 {
+    if first
+        .iter()
+        .any(|point| point_inside_polygon(point, second))
+        || second
+            .iter()
+            .any(|point| point_inside_polygon(point, first))
+    {
+        return 0.0;
+    }
+    let mut min_distance = f64::INFINITY;
+    for first_edge in closed_edges(first) {
+        for second_edge in closed_edges(second) {
+            min_distance = min_distance.min(segment_to_segment_distance_mm(
+                first_edge.0,
+                first_edge.1,
+                second_edge.0,
+                second_edge.1,
+            ));
+        }
+    }
+    min_distance
+}
+
+fn polygon_to_segment_clearance_mm(
+    polygon: &[LayoutPoint],
+    start: &LayoutPoint,
+    end: &LayoutPoint,
+) -> f64 {
+    if point_inside_polygon(start, polygon) || point_inside_polygon(end, polygon) {
+        return 0.0;
+    }
+    closed_edges(polygon)
+        .map(|edge| segment_to_segment_distance_mm(edge.0, edge.1, start, end))
+        .fold(f64::INFINITY, f64::min)
 }
 
 fn feature_boundary_points(feature: &LayoutCopperFeature) -> Vec<LayoutPoint> {
@@ -445,6 +570,38 @@ fn point_inside_copper_feature(point: &LayoutPoint, feature: &LayoutCopperFeatur
         }
         _ => false,
     }
+}
+
+fn point_inside_polygon(point: &LayoutPoint, polygon: &[LayoutPoint]) -> bool {
+    if polygon
+        .iter()
+        .any(|vertex| point_distance_mm(point, vertex) <= f64::EPSILON)
+        || closed_edges(polygon).any(|edge| point_on_segment(point, edge.0, edge.1))
+    {
+        return true;
+    }
+    let mut inside = false;
+    let mut previous = polygon.last().expect("polygon has at least one point");
+    for current in polygon {
+        let crosses_y = (current.y_mm > point.y_mm) != (previous.y_mm > point.y_mm);
+        if crosses_y {
+            let intersection_x = (previous.x_mm - current.x_mm) * (point.y_mm - current.y_mm)
+                / (previous.y_mm - current.y_mm)
+                + current.x_mm;
+            if point.x_mm < intersection_x {
+                inside = !inside;
+            }
+        }
+        previous = current;
+    }
+    inside
+}
+
+fn polygon_signed_area_mm2(points: &[LayoutPoint]) -> f64 {
+    closed_edges(points)
+        .map(|edge| edge.0.x_mm * edge.1.y_mm - edge.1.x_mm * edge.0.y_mm)
+        .sum::<f64>()
+        / 2.0
 }
 
 fn oval_boundary_distance_mm(dx: f64, dy: f64, width_mm: f64, height_mm: f64) -> f64 {
@@ -661,7 +818,8 @@ fn orientation(first: &LayoutPoint, second: &LayoutPoint, third: &LayoutPoint) -
 }
 
 fn point_on_segment(point: &LayoutPoint, start: &LayoutPoint, end: &LayoutPoint) -> bool {
-    point.x_mm >= start.x_mm.min(end.x_mm) - f64::EPSILON
+    orientation(start, end, point).abs() <= f64::EPSILON
+        && point.x_mm >= start.x_mm.min(end.x_mm) - f64::EPSILON
         && point.x_mm <= start.x_mm.max(end.x_mm) + f64::EPSILON
         && point.y_mm >= start.y_mm.min(end.y_mm) - f64::EPSILON
         && point.y_mm <= start.y_mm.max(end.y_mm) + f64::EPSILON

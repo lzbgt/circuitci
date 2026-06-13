@@ -161,16 +161,16 @@ The runtime backbone is Rust. Python is not part of the production engine path.
   plated-barrel thickness, drill wander distributions, solder mask, fab
   compensation, copper-to-copper clearance, or net ownership.
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` uses imported anonymous Gerber copper
-  flashes/segments and board-outline centerline segments for a static 2D
-  copper-edge screen. It does not model solder mask, etch compensation,
-  panelization tabs, fab-specific clearance expansion, copper island
-  connectivity, or net ownership.
-- `COPPER_SPACING_VALID` uses imported anonymous Gerber copper flashes/segments
-  for a static same-layer 2D copper-spacing screen. It ignores different-layer
-  copper and overlapping/touching anonymous copper because current Gerber
-  evidence has no net or island ownership. It does not prove same-net intent,
-  shorts, solder-mask behavior, etch compensation, fab-specific spacing
-  expansion, or copper connectivity.
+  flashes, trace segments, and region polygons with board-outline centerline
+  segments for a static 2D copper-edge screen. It does not model solder mask,
+  etch compensation, panelization tabs, fab-specific clearance expansion,
+  copper island connectivity, or net ownership.
+- `COPPER_SPACING_VALID` uses imported anonymous Gerber copper flashes, trace
+  segments, and region polygons for a static same-layer 2D copper-spacing
+  screen. It ignores different-layer copper and overlapping/touching anonymous
+  copper because current Gerber evidence has no net or island ownership. It
+  does not prove same-net intent, shorts, solder-mask behavior, etch
+  compensation, fab-specific spacing expansion, or copper connectivity.
 - Gerber copper import currently records anonymous dark `D03` flash features
   for circle, rectangle, and oval apertures, dark linear `D01` traces for
   circular apertures, and dark single-contour linear `G36`/`G37` region

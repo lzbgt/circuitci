@@ -61,14 +61,15 @@ with Excellon drill hits for a static annular-ring screen. That rule still
 operates on anonymous fabrication geometry; it does not prove net ownership,
 thermal relief connectivity, or electrical continuity.
 
-`COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported dark flash and
-circular-aperture draw evidence together with board-outline evidence for a
-static copper-to-board-edge screen. That rule still operates on anonymous 2D
-fabrication geometry; it does not prove net ownership, copper island
-connectivity, solder-mask margin, or fab-specific etch compensation.
+`COPPER_TO_BOARD_EDGE_CLEARANCE_VALID` can consume imported dark flash,
+circular-aperture draw, and region evidence together with board-outline
+evidence for a static copper-to-board-edge screen. That rule still operates on
+anonymous 2D fabrication geometry; it does not prove net ownership, copper
+island connectivity, solder-mask margin, or fab-specific etch compensation.
 
-`COPPER_SPACING_VALID` can consume the same imported dark flash and
-circular-aperture draw evidence for a static same-layer copper-spacing screen.
-Because Gerber copper import is anonymous, the rule ignores overlapping or
-touching copper objects to avoid flagging intentionally connected copper
-primitives. Use net-aware PCB evidence for electrical short sign-off.
+`COPPER_SPACING_VALID` can consume the same imported dark flash,
+circular-aperture draw, and region evidence for a static same-layer
+copper-spacing screen. Because Gerber copper import is anonymous, the rule
+ignores overlapping or touching copper objects to avoid flagging intentionally
+connected copper primitives. Use net-aware PCB evidence for electrical short
+sign-off.

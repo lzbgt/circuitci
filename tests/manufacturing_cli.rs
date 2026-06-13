@@ -137,6 +137,25 @@ fn copper_to_board_edge_clearance_fails_for_near_trace_segment() {
 }
 
 #[test]
+fn copper_to_board_edge_clearance_fails_for_near_region() {
+    let report = run_validation("examples/bad_copper_region_to_board_edge_clearance/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_TO_BOARD_EDGE_CLEARANCE_VALID");
+    assert_eq!(failure["measured"]["copper_kind"], "region");
+    assert_eq!(failure["measured"]["copper_region_index"], 0);
+    assert_eq!(failure["measured"]["copper_region_layer"], "F.Cu");
+    assert_eq!(
+        failure["measured"]["copper_region_source_primitive"],
+        "gerber_region"
+    );
+    assert_eq!(failure["measured"]["copper_region_point_count"], 4);
+    assert_eq!(failure["measured"]["clearance_mm"], 0.1);
+    assert_eq!(failure["limit"]["min_copper_edge_clearance_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_passes_for_far_or_different_layer_copper() {
     let report = run_validation("examples/good_copper_spacing/project.yaml");
     assert_eq!(report["result"], "pass");
@@ -186,6 +205,27 @@ fn copper_spacing_fails_for_near_traces() {
     assert_eq!(failure["measured"]["second_copper_kind"], "segment");
     assert_eq!(failure["measured"]["second_copper_segment_index"], 1);
     assert_eq!(failure["measured"]["clearance_mm"], 0.19999999999999993);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn copper_spacing_fails_for_near_flash_and_region() {
+    let report = run_validation("examples/bad_copper_region_spacing/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["first_copper_feature_index"], 0);
+    assert_eq!(failure["measured"]["second_copper_kind"], "region");
+    assert_eq!(failure["measured"]["second_copper_region_index"], 0);
+    assert_eq!(
+        failure["measured"]["second_copper_region_source_primitive"],
+        "gerber_region"
+    );
+    assert_eq!(failure["measured"]["copper_layer"], "F.Cu");
+    let clearance = failure["measured"]["clearance_mm"].as_f64().unwrap();
+    assert!((clearance - 0.15).abs() < 1e-9);
     assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.25);
     assert_report_schema_valid(&report);
 }
