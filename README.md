@@ -51,7 +51,15 @@ Prerequisites:
 Build:
 
 ```bash
-cargo build
+cargo build --release
+```
+
+This creates the CLI at `target/release/circuitci`. Add it to your shell path
+or call it directly from the repository:
+
+```bash
+export PATH="$PWD/target/release:$PATH"
+circuitci --help
 ```
 
 Run tests:
@@ -66,21 +74,21 @@ cargo clippy --all-targets -- -D warnings
 Validate a Board IR project:
 
 ```bash
-cargo run -- validate examples/good_power_tree_board/project.yaml \
+circuitci validate examples/good_power_tree_board/project.yaml \
   --output out/good_power_tree
 ```
 
 Write a scenario suggestion artifact:
 
 ```bash
-cargo run -- suggest-scenarios examples/scenario_suggestions_usb_connector_protection/project.yaml \
+circuitci suggest-scenarios examples/scenario_suggestions_usb_connector_protection/project.yaml \
   --output out/scenario_suggestions.yaml
 ```
 
 Import a KiCad schematic:
 
 ```bash
-cargo run -- import-kicad-schematic path/to/root.kicad_sch \
+circuitci import-kicad-schematic path/to/root.kicad_sch \
   --mapping path/to/circuitci.kicad-map.yaml \
   --output out/imported.project.yaml
 ```
@@ -88,7 +96,7 @@ cargo run -- import-kicad-schematic path/to/root.kicad_sch \
 Enrich an imported project with KiCad PCB placement and route evidence:
 
 ```bash
-cargo run -- import-kicad-pcb path/to/board.kicad_pcb \
+circuitci import-kicad-pcb path/to/board.kicad_pcb \
   --project out/imported.project.yaml \
   --output out/imported_with_layout.project.yaml
 ```
@@ -96,7 +104,7 @@ cargo run -- import-kicad-pcb path/to/board.kicad_pcb \
 Run an acceptance suite:
 
 ```bash
-cargo run -- validate-suite suites/um_stm32l4_downloader_acceptance.yaml \
+circuitci validate-suite suites/um_stm32l4_downloader_acceptance.yaml \
   --output out/acceptance
 ```
 

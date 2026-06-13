@@ -46,7 +46,7 @@ cases and eight paired injected-error cases:
 Run command:
 
 ```bash
-cargo run -- validate-suite suites/public_typical_circuits.yaml --output out/public-typical-circuits
+circuitci validate-suite suites/public_typical_circuits.yaml --output out/public-typical-circuits
 ```
 
 ## 2026-06-13 Result

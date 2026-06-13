@@ -79,11 +79,11 @@ must stay internal to `validation`; no new crate-level API is required.
 Run:
 
 ```sh
-cargo run -- validate <example> --out <baseline-dir>
+circuitci validate <example> --out <baseline-dir>
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test
-cargo run -- validate <example> --out <after-dir>
+circuitci validate <example> --out <after-dir>
 diff -ru <baseline-dir> <after-dir>
 ```
 

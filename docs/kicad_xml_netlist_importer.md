@@ -201,7 +201,8 @@ The importer does not infer `power`, nominal voltage, powered state, or rail
 valid timing from names such as `+3V3`, `VDD`, or `VBUS`. Those semantics
 require an explicit user or design-rule mapping before checks that depend on
 power-domain behavior. Mapping-file net entries can set `kind`,
-`nominal_voltage`, `powered`, and `power_valid_at_us`.
+`nominal_voltage`, `powered`, `supply_current_limit_A`, and
+`power_valid_at_us`.
 
 ## Pin Electrical Types
 

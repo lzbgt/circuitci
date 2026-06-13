@@ -252,7 +252,8 @@ The command is conservative:
   have explicit resistor bias evidence to declared power or ground nets.
   Imported KiCad schematics can provide this automatically when pull resistors
   are mapped as SPICE resistors with `value_ohm_from: schematic_value`; see
-  `examples/import_kicad_bootstrap_bias_suggestions/`.
+  `examples/import_kicad_bootstrap_bias_suggestions/` and
+  `examples/import_kicad_esp32_wroom_32e_suggestions/`.
 - Imported KiCad schematics can also provide reset-supervisor evidence when a
   supervisor symbol is mapped to a model with `reset_supervisor` metadata; see
   `examples/import_kicad_tlv803_reset_supervisor_suggestions/`.

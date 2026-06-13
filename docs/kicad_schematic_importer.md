@@ -49,6 +49,8 @@ produce the same internal `ParsedKicadNetlist` used by the XML importer:
 - local, global, and root hierarchical labels as root sheet net names,
 - optional KiCad power symbols treated as one-pin labeled symbols.
 - explicit schematic `no_connect` markers for intentionally open symbol pins.
+- mapping-file net metadata for `kind`, `nominal_voltage`, `powered`,
+  `supply_current_limit_A`, and `power_valid_at_us`.
 
 Unsupported constructs fail closed:
 

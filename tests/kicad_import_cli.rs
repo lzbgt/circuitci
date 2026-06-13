@@ -823,6 +823,121 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
 }
 
 #[test]
+fn import_kicad_schematic_suggests_esp32_wroom_32e_power_and_boot_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_path = dir.path().join("esp32_wroom_32e.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_esp32_wroom_32e_suggestions/root.kicad_sch",
+            "--mapping",
+            "examples/import_kicad_esp32_wroom_32e_suggestions/circuitci.kicad-map.yaml",
+            "--output",
+            imported_path.to_str().unwrap(),
+            "--name",
+            "kicad_esp32_wroom_32e_suggestions",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&imported_path, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&imported_path).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["UESP"]["model"],
+        "vendor.espressif.esp32_wroom_32e"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESP"]["pins"]["3V3"],
+        "net_rail_3v3"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESP"]["pins"]["IO0"],
+        "net_esp_io0"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UESP"]["pins"]["IO2"],
+        "net_esp_io2"
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_rail_3v3"]["supply_current_limit_A"],
+        0.6
+    );
+    assert_eq!(
+        imported["board"]["components"]["RIO0_UP"]["spice"]["value_ohm"],
+        10000.0
+    );
+    assert_eq!(
+        imported["board"]["components"]["RIO0_DN"]["spice"]["value_ohm"],
+        100000.0
+    );
+
+    let suggestions_path = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            imported_path.to_str().unwrap(),
+            "--output",
+            suggestions_path.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestion_schema: Value = serde_json::from_str(include_str!(
+        "../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let suggestion_validator = jsonschema::validator_for(&suggestion_schema).unwrap();
+    assert_yaml_file_valid(&suggestions_path, &suggestion_validator);
+    let power_tree = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "power_tree_valid")
+        .expect("power-tree suggestion");
+    assert_eq!(power_tree["runnable"], true);
+    assert_eq!(power_tree["scenario"]["checks"][0], "POWER_TREE_VALID");
+    let spi_flash_bias = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_bias_valid_uesp_spi_flash")
+        .expect("ESP32 SPI flash strap-bias suggestion");
+    assert_eq!(spi_flash_bias["runnable"], true);
+    assert_eq!(
+        spi_flash_bias["scenario"]["checks"][0],
+        "BOOT_STRAP_BIAS_VALID"
+    );
+    assert_eq!(
+        spi_flash_bias["scenario"]["required_boot_mode"],
+        "spi_flash"
+    );
+    let download_defined = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "boot_strap_defined_uesp_uart_download")
+        .expect("ESP32 UART-download observed strap suggestion");
+    assert_eq!(download_defined["runnable"], false);
+    assert_eq!(
+        download_defined["scenario"]["straps"][0]["net"],
+        "net_esp_io0"
+    );
+    assert_eq!(
+        download_defined["scenario"]["straps"][1]["net"],
+        "net_esp_io2"
+    );
+}
+
+#[test]
 fn import_kicad_schematic_suggests_tpd2eusb30_usb_esd_clamps() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -1230,6 +1345,42 @@ fn import_kicad_schematic_rejects_invalid_layout_aperture_mapping() {
     assert!(
         stderr.contains("layout.entry_aperture.width_mm must be greater than zero"),
         "expected invalid layout aperture width error, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn import_kicad_schematic_rejects_invalid_net_supply_current_limit_mapping() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("invalid_supply_current.project.yaml");
+    let mapping_path = dir.path().join("invalid_supply_current.kicad-map.yaml");
+    let mapping = std::fs::read_to_string(
+        "examples/import_kicad_esp32_wroom_32e_suggestions/circuitci.kicad-map.yaml",
+    )
+    .unwrap()
+    .replace("supply_current_limit_A: 0.6", "supply_current_limit_A: 0.0");
+    std::fs::write(&mapping_path, mapping).unwrap();
+    let output_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "examples/import_kicad_esp32_wroom_32e_suggestions/root.kicad_sch",
+            "--mapping",
+            mapping_path.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "invalid_supply_current",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        !output_status.status.success(),
+        "invalid supply-current mapping unexpectedly imported"
+    );
+    let stderr = String::from_utf8(output_status.stderr).unwrap();
+    assert!(
+        stderr.contains("supply_current_limit_A must be finite and greater than zero"),
+        "expected invalid supply current limit error, got:\n{stderr}"
     );
 }
 

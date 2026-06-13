@@ -1,0 +1,35 @@
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+pin_aliases:
+  two_terminal_ab:
+    "1": A
+    "2": B
+libsource_rules:
+  - lib: Device
+    part: R
+    model: generic.analog.resistor
+    pin_alias: two_terminal_ab
+    spice:
+      primitive: resistor
+      value_ohm_from: schematic_value
+components:
+  UESP:
+    model: vendor.espressif.esp32_wroom_32e
+    part_number: ESP32-WROOM-32E-N4
+    pin_map:
+      "1": GND
+      "2": 3V3
+      "3": EN
+      "24": IO2
+      "25": IO0
+      "34": RXD0
+      "35": TXD0
+nets:
+  RAIL_3V3:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 0.6
+  GND:
+    kind: ground

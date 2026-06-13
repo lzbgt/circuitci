@@ -171,6 +171,9 @@ struct NetMapping {
     #[serde(default)]
     powered: Option<bool>,
     #[serde(default)]
+    #[serde(rename = "supply_current_limit_A")]
+    supply_current_limit_a: Option<f64>,
+    #[serde(default)]
     power_valid_at_us: Option<f64>,
 }
 
@@ -397,6 +400,9 @@ struct NetYaml {
     nominal_voltage: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     powered: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "supply_current_limit_A")]
+    supply_current_limit_a: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     power_valid_at_us: Option<f64>,
 }
@@ -733,6 +739,8 @@ fn build_project_yaml(
                     kind: mapped_net_kind(&net.name, net_mapping)?,
                     nominal_voltage: net_mapping.and_then(|item| item.nominal_voltage),
                     powered: net_mapping.and_then(|item| item.powered),
+                    supply_current_limit_a: net_mapping
+                        .and_then(|item| item.supply_current_limit_a),
                     power_valid_at_us: net_mapping.and_then(|item| item.power_valid_at_us),
                 },
             ))
@@ -1319,6 +1327,13 @@ fn validate_net_mappings(mapping: &KicadMapping) -> Result<()> {
         {
             bail!(
                 "KiCad mapping net {net_name} power_valid_at_us must be finite and non-negative."
+            );
+        }
+        if let Some(supply_current_limit_a) = net.supply_current_limit_a
+            && (!supply_current_limit_a.is_finite() || supply_current_limit_a <= 0.0)
+        {
+            bail!(
+                "KiCad mapping net {net_name} supply_current_limit_A must be finite and greater than zero."
             );
         }
     }
