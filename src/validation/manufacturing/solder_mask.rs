@@ -7,8 +7,8 @@ use serde_json::json;
 
 use super::super::common::validation_input_missing;
 use super::super::{
-    SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_OPENING_VALID,
-    SOLDER_PASTE_SPACING_VALID,
+    SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_APERTURE_SIZE_VALID,
+    SOLDER_PASTE_OPENING_VALID, SOLDER_PASTE_SPACING_VALID,
 };
 use super::geometry::{
     CopperObjectRef, copper_object_spacing_mm, feature_boundary_points, point_distance_mm,
@@ -563,6 +563,70 @@ pub(in crate::validation) fn validate_solder_paste_spacing(
     }
 }
 
+pub(in crate::validation) fn validate_solder_paste_aperture_size(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_aperture_size_mm) =
+        required_numeric_parameter(scenario, "min_solder_paste_aperture_size_mm", findings)
+    else {
+        return;
+    };
+    if min_aperture_size_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_solder_paste_aperture_size_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let paste = &bound.project.board.layout.solder_paste;
+    if paste.features.is_empty() && paste.segments.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_APERTURE_SIZE_VALID requires board.layout.solder_paste feature or segment evidence.",
+        );
+        return;
+    }
+    for (feature_index, feature) in paste.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let aperture_size_mm = feature.size.x_mm.min(feature.size.y_mm);
+        if aperture_size_mm <= min_aperture_size_mm + f64::EPSILON {
+            findings.push(solder_paste_aperture_size_finding(
+                scenario,
+                CopperObjectRef::Feature {
+                    feature,
+                    index: feature_index,
+                },
+                aperture_size_mm,
+                min_aperture_size_mm,
+            ));
+        }
+    }
+    for (segment_index, segment) in paste.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        if segment.width_mm <= min_aperture_size_mm + f64::EPSILON {
+            findings.push(solder_paste_aperture_size_finding(
+                scenario,
+                CopperObjectRef::Segment {
+                    segment,
+                    index: segment_index,
+                },
+                segment.width_mm,
+                min_aperture_size_mm,
+            ));
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct SolderMaskOpeningCandidate<'a> {
     mask_object: CopperObjectRef<'a>,
@@ -978,6 +1042,39 @@ fn solder_paste_spacing_finding(
     finding.limit.insert(
         "min_solder_paste_spacing_mm".to_string(),
         json!(min_spacing_mm),
+    );
+    finding
+}
+
+fn solder_paste_aperture_size_finding(
+    scenario: &Scenario,
+    paste_object: CopperObjectRef<'_>,
+    aperture_size_mm: f64,
+    min_aperture_size_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_APERTURE_SIZE_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-paste {} opening on {} has minimum aperture size {:.6} mm; JLCPCB stencil process requires greater than {:.6} mm.",
+            paste_object.kind(),
+            paste_object.layer(),
+            aperture_size_mm,
+            min_aperture_size_mm
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Increase the stencil aperture's narrow dimension above the selected stencil process minimum.".to_string(),
+        "Apply a package-specific paste reduction pattern only if each resulting aperture remains inside the stencil fabrication capability.".to_string(),
+    ];
+    insert_solder_paste_object_measurements(&mut finding, paste_object);
+    finding.measured.insert(
+        "solder_paste_aperture_size_mm".to_string(),
+        json!(aperture_size_mm),
+    );
+    finding.limit.insert(
+        "min_solder_paste_aperture_size_mm".to_string(),
+        json!(min_aperture_size_mm),
     );
     finding
 }

@@ -31,8 +31,8 @@ use super::common::validation_input_missing;
 
 pub(super) use annular_ring::validate_drill_annular_ring;
 pub(super) use solder_mask::{
-    validate_solder_mask_dam, validate_solder_mask_opening, validate_solder_paste_opening,
-    validate_solder_paste_spacing,
+    validate_solder_mask_dam, validate_solder_mask_opening, validate_solder_paste_aperture_size,
+    validate_solder_paste_opening, validate_solder_paste_spacing,
 };
 
 pub(super) fn validate_drill_diameter(

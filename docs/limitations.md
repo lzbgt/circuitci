@@ -244,6 +244,12 @@ without explicit imported mechanical evidence.
   vias. It does not yet evaluate multi-contour paste regions, step-stencil
   thickness, paste volume, package-specific paste reductions, or 3D
   solderability effects.
+- `SOLDER_PASTE_APERTURE_SIZE_VALID` uses imported Gerber solder-paste flash
+  and circular-aperture draw evidence for a static stencil minimum aperture-size
+  screen. Source-backed process presets can provide selected defaults,
+  currently `jlcpcb_stencil_aperture_min_2026_06` for JLCPCB's greater-than
+  0.08 mm minimum aperture size. It does not evaluate arbitrary region minimum
+  width, stencil thickness, paste release, or package-specific paste reductions.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close

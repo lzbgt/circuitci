@@ -46,6 +46,7 @@ pub(super) const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 pub(super) const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 pub(super) const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 pub(super) const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
+pub(super) const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
 pub(super) const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 pub(super) const IO_VOLTAGE_COMPATIBLE: &str = "IO_VOLTAGE_COMPATIBLE";
 pub(super) const USB_CONNECTOR_PROTECTION_VALID: &str = "USB_CONNECTOR_PROTECTION_VALID";
@@ -327,6 +328,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 SOLDER_PASTE_OPENING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_solder_paste_opening(bound, scenario, &mut findings)
                 }
+                SOLDER_PASTE_APERTURE_SIZE_VALID if scenario.scenario_type == "manufacturing" => {
+                    manufacturing::validate_solder_paste_aperture_size(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 SOLDER_PASTE_SPACING_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_solder_paste_spacing(bound, scenario, &mut findings)
                 }
@@ -364,6 +372,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | SOLDER_MASK_OPENING_VALID
                 | SOLDER_MASK_DAM_VALID
                 | SOLDER_PASTE_OPENING_VALID
+                | SOLDER_PASTE_APERTURE_SIZE_VALID
                 | SOLDER_PASTE_SPACING_VALID
                 | IO_VOLTAGE_COMPATIBLE
                 | USB_CONNECTOR_PROTECTION_VALID

@@ -292,7 +292,10 @@ The command is conservative:
   flashes and solder-mask openings are present, it emits runnable
   `SOLDER_MASK_OPENING_VALID`; when two or more solder-mask openings are
   present, it emits runnable `SOLDER_MASK_DAM_VALID`. Both use
-  `fabrication_process: jlcpcb_standard_2026_06`.
+  `fabrication_process: jlcpcb_standard_2026_06`. When solder-paste flash or
+  draw evidence is present, it emits runnable
+  `SOLDER_PASTE_APERTURE_SIZE_VALID` using
+  `fabrication_process: jlcpcb_stencil_aperture_min_2026_06`.
 - Manufacturing checks whose thresholds are not yet pinned to a named process
   preset are suggested as `runnable: false` with explicit required inputs:
   drill-to-edge clearance, slot-to-edge clearance, solder-paste area ratio, and

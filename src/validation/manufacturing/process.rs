@@ -66,6 +66,12 @@ const JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06: FabricationProcessPreset =
         numeric_defaults: &[("min_copper_edge_clearance_mm", 0.20)],
     };
 
+const JLCPCB_STENCIL_APERTURE_MIN_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_stencil_aperture_min_2026_06",
+    aliases: &["jlcpcb_stencil_aperture_min"],
+    numeric_defaults: &[("min_solder_paste_aperture_size_mm", 0.08)],
+};
+
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_STANDARD_2026_06,
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
@@ -73,6 +79,7 @@ const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_DRILL_DIAMETER_RANGE_2026_06,
     JLCPCB_1OZ_COPPER_SPACING_2026_06,
     JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06,
+    JLCPCB_STENCIL_APERTURE_MIN_2026_06,
 ];
 
 pub(super) fn required_numeric_parameter(

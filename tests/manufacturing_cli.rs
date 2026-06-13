@@ -681,6 +681,52 @@ fn solder_paste_opening_fails_for_region_opening_area() {
 }
 
 #[test]
+fn solder_paste_aperture_size_passes_with_jlc_process_default() {
+    let report =
+        run_validation("examples/good_solder_paste_aperture_size_jlc_process/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_aperture_size_fails_with_jlc_process_default() {
+    let report = run_validation("examples/bad_solder_paste_aperture_size_jlc_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 2);
+
+    let feature_failure = &report["failures"][0];
+    assert_eq!(feature_failure["id"], "SOLDER_PASTE_APERTURE_SIZE_VALID");
+    assert_eq!(feature_failure["measured"]["solder_paste_kind"], "feature");
+    assert_eq!(
+        feature_failure["measured"]["solder_paste_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        feature_failure["measured"]["solder_paste_feature_component"],
+        "U1"
+    );
+    assert_eq!(feature_failure["measured"]["solder_paste_feature_pin"], "1");
+    assert_eq!(
+        feature_failure["measured"]["solder_paste_aperture_size_mm"],
+        0.08
+    );
+    assert_eq!(
+        feature_failure["limit"]["min_solder_paste_aperture_size_mm"],
+        0.08
+    );
+
+    let segment_failure = &report["failures"][1];
+    assert_eq!(segment_failure["id"], "SOLDER_PASTE_APERTURE_SIZE_VALID");
+    assert_eq!(segment_failure["measured"]["solder_paste_kind"], "segment");
+    assert_eq!(
+        segment_failure["measured"]["solder_paste_segment_width_mm"],
+        0.07
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_spacing_passes_when_openings_are_far_enough() {
     let report = run_validation("examples/good_solder_paste_spacing/project.yaml");
     assert_eq!(report["result"], "pass");

@@ -55,6 +55,11 @@ Supported aliases for the JLCPCB routed-edge copper clearance preset:
 - `jlcpcb_routed_edge_copper_clearance`
 - `jlcpcb_routed_outline_copper_clearance_2026_06`
 
+Supported aliases for the JLCPCB stencil aperture-size preset:
+
+- `jlcpcb_stencil_aperture_min_2026_06`
+- `jlcpcb_stencil_aperture_min`
+
 Current preset defaults:
 
 | Parameter | Value | Source |
@@ -68,6 +73,7 @@ Current preset defaults:
 | `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `min_copper_spacing_mm` | `0.10` | JLCPCB PCB capability page: 1 oz minimum track width and spacing is 0.10 / 0.10 mm, and pad-to-track clearance is 0.1 mm. |
 | `min_copper_edge_clearance_mm` | `0.20` | JLCPCB PCB capability page: copper clearance from routed board edges and routed slots is at least 0.2 mm. |
+| `min_solder_paste_aperture_size_mm` | `0.08` | JLCPCB stencil capability page: minimum aperture size is greater than 0.08 mm. |
 
 Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.
@@ -76,7 +82,8 @@ Other manufacturing thresholds still require explicit scenario parameters until
 the repo has pinned source evidence for the exact process condition. The 1 oz
 copper spacing preset is a general fabrication floor for `COPPER_SPACING_VALID`;
 the routed-edge copper clearance preset applies to routed board-edge and routed
-slot copper clearance only. Package-specific SMD pad spacing, stencil aperture
-spacing, drill/slot-to-board-edge clearance, V-cut panel clearance, and
-special-order constraints still need narrower presets or explicit scenario
-parameters.
+slot copper clearance only. The stencil aperture-size preset is a laser-cut
+stencil capability floor and is not a package paste-reduction rule.
+Package-specific SMD pad spacing, stencil aperture spacing, paste area ratio,
+drill/slot-to-board-edge clearance, V-cut panel clearance, and special-order
+constraints still need narrower presets or explicit scenario parameters.

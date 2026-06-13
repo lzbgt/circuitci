@@ -12,6 +12,10 @@ Saved source artifacts:
   <https://jlcpcb.com/blog/pcb-solder-mask-expansion-guide>
 - `pcb_via_design_best_practices.html` from
   <https://jlcpcb.com/blog/pcb-via-design-best-practices>
+- `pcb_stencil_manufacturing.html` from
+  <https://jlcpcb.com/capabilities/pcb-stencil-manufacturing>
+- `opening_process_standard_of_stencil.html` from
+  <https://jlcpcb.com/help/article/opening-process-standard-of-stencil>
 
 Implemented preset:
 
@@ -21,6 +25,7 @@ Implemented preset:
 - `jlcpcb_drill_diameter_range_2026_06`
 - `jlcpcb_1oz_copper_spacing_2026_06`
 - `jlcpcb_routed_edge_copper_clearance_2026_06`
+- `jlcpcb_stencil_aperture_min_2026_06`
 
 Implemented default:
 
@@ -33,6 +38,7 @@ Implemented default:
 - `max_drill_diameter_mm: 6.30`
 - `min_copper_spacing_mm: 0.10`
 - `min_copper_edge_clearance_mm: 0.20`
+- `min_solder_paste_aperture_size_mm: 0.08`
 
 Rationale:
 
@@ -78,6 +84,18 @@ Rationale:
   `i18n_web_app_279` separately states the same 0.2 mm copper clearance from
   non-mouse-bite board edges. V-cut copper clearance is not encoded in this
   preset because V-cut panelization has different edge semantics.
+- The saved JLCPCB stencil capability page bundle resolves the stencil table:
+  `i18n_web_app_capabilities_stencil_feature_3` is "Minimum Aperture Size" and
+  `i18n_web_app_capabilities_stencil_capabilities_3` is `>0.08mm`. CircuitCI
+  encodes `min_solder_paste_aperture_size_mm: 0.08` as a narrowly named
+  laser-cut stencil aperture floor. The validator rejects apertures at or below
+  0.08 mm to preserve the source's greater-than wording.
+- The saved JLCPCB stencil opening-process standard gives package-specific
+  aperture optimization examples for ICs, BGAs, connectors, and through-hole
+  pads. CircuitCI does not encode those values as generic
+  `min_paste_area_ratio`, `max_paste_area_ratio`, or
+  `min_solder_paste_spacing_mm` defaults because they depend on package pitch,
+  pad geometry, and order instructions.
 
 Observed but not yet encoded as process defaults:
 

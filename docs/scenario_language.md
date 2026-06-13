@@ -111,6 +111,7 @@ Canonical executable check IDs:
 - `SOLDER_MASK_OPENING_VALID`
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
+- `SOLDER_PASTE_APERTURE_SIZE_VALID`
 - `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
@@ -977,6 +978,36 @@ draw, and single-contour region area-ratio evidence, including aggregate area
 for multiple co-located window apertures. It does not yet evaluate
 multi-contour paste regions, step-stencil thickness, paste volume, or
 package-specific paste reductions.
+
+Solder-paste aperture-size validation uses `SOLDER_PASTE_APERTURE_SIZE_VALID`
+when the Board IR includes Gerber solder-paste flash or circular-aperture draw
+evidence under `board.layout.solder_paste.features` or
+`board.layout.solder_paste.segments`.
+
+```yaml
+scenarios:
+  - name: solder_paste_aperture_size
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_APERTURE_SIZE_VALID
+    parameters:
+      fabrication_process: jlcpcb_stencil_aperture_min_2026_06
+```
+
+Solder-paste aperture-size algorithm:
+
+1. Require `parameters.min_solder_paste_aperture_size_mm`, or a
+   `fabrication_process` preset that supplies it.
+2. Require solder-paste flash or circular-aperture draw evidence.
+3. For flash openings, measure the smaller of `size.x_mm` and `size.y_mm`.
+4. For draw openings, measure the circular aperture draw width.
+5. Fail when the measured aperture size is less than or equal to the configured
+   minimum, matching JLCPCB's source wording that stencil apertures must be
+   greater than the minimum size.
+
+This is a static 2D stencil manufacturability screen. It intentionally does not
+apply package-specific paste reductions, paste volume rules, or arbitrary region
+minimum-width approximations.
 
 Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
 Board IR includes at least two Gerber solder-paste opening objects under

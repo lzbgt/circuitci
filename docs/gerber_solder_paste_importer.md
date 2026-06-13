@@ -55,6 +55,14 @@ windowed exposed-pad stencil patterns.
 and region opening evidence to check same-layer opening-to-opening spacing for
 static stencil manufacturability.
 
+`SOLDER_PASTE_APERTURE_SIZE_VALID` consumes solder-paste flash features and
+circular-aperture draw segments to check the narrow opening dimension against a
+stencil fabrication floor. With
+`fabrication_process: jlcpcb_stencil_aperture_min_2026_06`, apertures must be
+greater than the source-backed JLCPCB 0.08 mm minimum aperture size. Arbitrary
+region openings are not used for this minimum-width screen yet because the rule
+does not approximate polygon neck width.
+
 The importer intentionally does not infer package-specific stencil reductions,
 step-stencil process rules, paste volume, or paste-bearing pad intent from
 Gerber alone. Use pad or Gerber ownership evidence where available, and tune

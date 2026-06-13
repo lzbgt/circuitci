@@ -276,7 +276,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "scenario_suggestions_manufacturing_artifacts"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 11);
+    assert_eq!(suggested.len(), 12);
 
     let drill_diameter = suggested
         .iter()
@@ -386,6 +386,20 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
             .as_str()
             .unwrap()
             .contains("min_paste_area_ratio")
+    );
+
+    let paste_aperture = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_aperture_size_valid")
+        .expect("paste aperture suggestion");
+    assert_eq!(paste_aperture["runnable"], true);
+    assert_eq!(
+        paste_aperture["scenario"]["checks"][0],
+        "SOLDER_PASTE_APERTURE_SIZE_VALID"
+    );
+    assert_eq!(
+        paste_aperture["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_stencil_aperture_min_2026_06"
     );
 }
 

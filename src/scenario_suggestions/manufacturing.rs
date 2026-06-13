@@ -14,6 +14,7 @@ const COPPER_SPACING_VALID: &str = "COPPER_SPACING_VALID";
 const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
+const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 
 pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
@@ -197,6 +198,23 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
                 vec![
                     "Set manufacturing parameters.min_paste_area_ratio and parameters.max_paste_area_ratio from the package stencil recommendation or fabrication process.".to_string(),
                 ],
+            ),
+        );
+    }
+
+    if !layout.solder_paste.features.is_empty() || !layout.solder_paste.segments.is_empty() {
+        push_if_not_declared(
+            bound,
+            &mut suggestions,
+            SOLDER_PASTE_APERTURE_SIZE_VALID,
+            manufacturing_suggestion(
+                "solder_paste_aperture_size_valid",
+                true,
+                "Imported Gerber solder-paste flash and draw evidence can be screened against the source-backed JLCPCB stencil minimum aperture size.",
+                &format!("{project_name}_solder_paste_aperture_size"),
+                SOLDER_PASTE_APERTURE_SIZE_VALID,
+                Some(fabrication_process("jlcpcb_stencil_aperture_min_2026_06")),
+                Vec::new(),
             ),
         );
     }

@@ -1,0 +1,35 @@
+project:
+  name: good_solder_paste_aperture_size_jlc_process
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    solder_paste:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.09, y_mm: 0.20 }
+      segments:
+        - start: { x_mm: 11.0, y_mm: 10.0 }
+          end: { x_mm: 12.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 1
+          aperture: D11
+          width_mm: 0.09
+scenarios:
+  - name: solder_paste_aperture_size
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_APERTURE_SIZE_VALID
+    parameters:
+      fabrication_process: jlcpcb_stencil_aperture_min_2026_06

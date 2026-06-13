@@ -200,11 +200,11 @@ flying-probe pads, outline, top/bottom copper, top/bottom solder mask, top
 paste, aggregate PTH drills, and NPTH drills:
 
 ```text
-CircuitCI suggested 11 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions/suggestions.yaml
+CircuitCI suggested 12 scenarios for urine_monitor_jlc_assembly -> out/peer-manufacturing-suggestions-current
 CircuitCI urine_monitor_jlc_assembly: pass (critical=0, warning=0, info=0)
 ```
 
-Current split: 7 runnable preset-backed suggestions and 4 non-runnable
+Current split: 8 runnable preset-backed suggestions and 4 non-runnable
 threshold-gated suggestions.
 
 Runnable manufacturing suggestions generated from named source-backed presets:
@@ -218,6 +218,7 @@ Runnable manufacturing suggestions generated from named source-backed presets:
 | `copper_spacing_valid` | `COPPER_SPACING_VALID` | `jlcpcb_1oz_copper_spacing_2026_06` |
 | `solder_mask_opening_valid` | `SOLDER_MASK_OPENING_VALID` | `jlcpcb_standard_2026_06` |
 | `solder_mask_dam_valid` | `SOLDER_MASK_DAM_VALID` | `jlcpcb_standard_2026_06` |
+| `solder_paste_aperture_size_valid` | `SOLDER_PASTE_APERTURE_SIZE_VALID` | `jlcpcb_stencil_aperture_min_2026_06` |
 
 Non-runnable suggestions generated because the imported evidence proves the
 geometry exists but the process threshold is not yet pinned to an authoritative
@@ -235,3 +236,10 @@ a concrete manufacturing checklist automatically. The remaining gap is process
 evidence, not detection plumbing: those four non-runnable checks need exact,
 condition-scoped JLCPCB or package/stencil source values before CircuitCI should
 turn them into preset-backed runnable scenarios.
+
+The JLCPCB stencil capability source is pinned for one generic stencil
+manufacturability floor: minimum aperture size `>0.08mm`. CircuitCI therefore
+emits runnable `SOLDER_PASTE_APERTURE_SIZE_VALID` with
+`jlcpcb_stencil_aperture_min_2026_06`. The separate JLCPCB stencil opening
+standard is package- and pitch-specific, so paste area-ratio and paste-spacing
+suggestions still require explicit package/process limits.

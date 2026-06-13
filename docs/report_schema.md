@@ -532,6 +532,30 @@ optional `solder_paste_region_component`, optional
 `min_paste_area_ratio`, `max_paste_area_ratio`, and
 `max_copper_to_paste_center_offset_mm`.
 
+`SOLDER_PASTE_APERTURE_SIZE_VALID` reports are emitted by `manufacturing`
+scenarios that compare supported Gerber solder-paste openings under
+`board.layout.solder_paste` with a stencil process minimum aperture size.
+Stable measured keys include `solder_paste_kind` and
+`solder_paste_aperture_size_mm`. Feature-opening findings report
+`solder_paste_feature_index`, `solder_paste_feature_x_mm`,
+`solder_paste_feature_y_mm`, `solder_paste_feature_layer`, optional
+`solder_paste_feature_net`, optional `solder_paste_feature_owner_kind`,
+optional `solder_paste_feature_component`, optional
+`solder_paste_feature_pin`, optional `solder_paste_feature_via_index`,
+`solder_paste_feature_aperture`, `solder_paste_feature_shape`,
+`solder_paste_feature_size_x_mm`, `solder_paste_feature_size_y_mm`,
+`solder_paste_feature_source_primitive`, and
+`solder_paste_feature_source_primitive_index`. Segment-opening findings report
+`solder_paste_segment_index`, `solder_paste_segment_start`,
+`solder_paste_segment_end`, `solder_paste_segment_layer`, optional
+`solder_paste_segment_net`, optional `solder_paste_segment_owner_kind`,
+optional `solder_paste_segment_component`, optional
+`solder_paste_segment_pin`, optional `solder_paste_segment_via_index`,
+`solder_paste_segment_aperture`, `solder_paste_segment_width_mm`,
+`solder_paste_segment_source_primitive`, and
+`solder_paste_segment_source_primitive_index`. Stable limit keys include
+`min_solder_paste_aperture_size_mm`.
+
 `SOLDER_PASTE_SPACING_VALID` reports are emitted by `manufacturing` scenarios
 that compare same-layer Gerber solder-paste opening evidence under
 `board.layout.solder_paste`. Stable measured keys include
