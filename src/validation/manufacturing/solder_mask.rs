@@ -1,4 +1,6 @@
-use crate::board_ir::{LayoutCopperFeature, LayoutPoint, Scenario};
+use crate::board_ir::{
+    LayoutCopperFeature, LayoutCopperRegion, LayoutCopperSegment, LayoutPoint, Scenario,
+};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
@@ -993,6 +995,7 @@ fn insert_prefixed_solder_paste_object_measurements(
             finding
                 .measured
                 .insert(key("segment_layer"), json!(segment.layer));
+            insert_optional_artwork_segment_owner_measurements(finding, &key("segment"), segment);
             finding
                 .measured
                 .insert(key("segment_aperture"), json!(segment.aperture));
@@ -1013,6 +1016,7 @@ fn insert_prefixed_solder_paste_object_measurements(
             finding
                 .measured
                 .insert(key("region_layer"), json!(region.layer));
+            insert_optional_artwork_region_owner_measurements(finding, &key("region"), region);
             finding.measured.insert(
                 key("region_source_primitive"),
                 json!(region.source_primitive),
@@ -1105,6 +1109,11 @@ fn insert_solder_mask_object_measurements(
                 format!("{prefix}_solder_mask_segment_layer"),
                 json!(segment.layer),
             );
+            insert_optional_artwork_segment_owner_measurements(
+                finding,
+                &format!("{prefix}_solder_mask_segment"),
+                segment,
+            );
             finding.measured.insert(
                 format!("{prefix}_solder_mask_segment_aperture"),
                 json!(segment.aperture),
@@ -1130,6 +1139,11 @@ fn insert_solder_mask_object_measurements(
                 format!("{prefix}_solder_mask_region_layer"),
                 json!(region.layer),
             );
+            insert_optional_artwork_region_owner_measurements(
+                finding,
+                &format!("{prefix}_solder_mask_region"),
+                region,
+            );
             finding.measured.insert(
                 format!("{prefix}_solder_mask_region_source_primitive"),
                 json!(region.source_primitive),
@@ -1143,5 +1157,85 @@ fn insert_solder_mask_object_measurements(
                 json!(region.points.len()),
             );
         }
+    }
+}
+
+fn insert_optional_artwork_segment_owner_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    segment: &LayoutCopperSegment,
+) {
+    insert_optional_artwork_owner_measurements(
+        finding,
+        prefix,
+        ArtworkOwnerMeasurements {
+            net: segment.net.as_deref(),
+            island_id: segment.island_id.as_deref(),
+            owner_kind: segment.owner_kind.as_deref(),
+            component: segment.component.as_deref(),
+            pin: segment.pin.as_deref(),
+            via_index: segment.via_index,
+        },
+    );
+}
+
+fn insert_optional_artwork_region_owner_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    region: &LayoutCopperRegion,
+) {
+    insert_optional_artwork_owner_measurements(
+        finding,
+        prefix,
+        ArtworkOwnerMeasurements {
+            net: region.net.as_deref(),
+            island_id: region.island_id.as_deref(),
+            owner_kind: region.owner_kind.as_deref(),
+            component: region.component.as_deref(),
+            pin: region.pin.as_deref(),
+            via_index: region.via_index,
+        },
+    );
+}
+
+struct ArtworkOwnerMeasurements<'a> {
+    net: Option<&'a str>,
+    island_id: Option<&'a str>,
+    owner_kind: Option<&'a str>,
+    component: Option<&'a str>,
+    pin: Option<&'a str>,
+    via_index: Option<usize>,
+}
+
+fn insert_optional_artwork_owner_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    owner: ArtworkOwnerMeasurements<'_>,
+) {
+    if let Some(net) = owner.net {
+        finding.measured.insert(format!("{prefix}_net"), json!(net));
+    }
+    if let Some(island_id) = owner.island_id {
+        finding
+            .measured
+            .insert(format!("{prefix}_island_id"), json!(island_id));
+    }
+    if let Some(owner_kind) = owner.owner_kind {
+        finding
+            .measured
+            .insert(format!("{prefix}_owner_kind"), json!(owner_kind));
+    }
+    if let Some(component) = owner.component {
+        finding
+            .measured
+            .insert(format!("{prefix}_component"), json!(component));
+    }
+    if let Some(pin) = owner.pin {
+        finding.measured.insert(format!("{prefix}_pin"), json!(pin));
+    }
+    if let Some(via_index) = owner.via_index {
+        finding
+            .measured
+            .insert(format!("{prefix}_via_index"), json!(via_index));
     }
 }

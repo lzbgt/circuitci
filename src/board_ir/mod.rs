@@ -275,6 +275,14 @@ pub struct LayoutCopperSegment {
     pub polarity: String,
     pub net: Option<String>,
     pub island_id: Option<String>,
+    #[serde(default)]
+    pub owner_kind: Option<String>,
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default)]
+    pub pin: Option<String>,
+    #[serde(default)]
+    pub via_index: Option<usize>,
     pub source_primitive: String,
     pub source_primitive_index: usize,
     pub aperture: String,
@@ -288,6 +296,14 @@ pub struct LayoutCopperRegion {
     pub polarity: String,
     pub net: Option<String>,
     pub island_id: Option<String>,
+    #[serde(default)]
+    pub owner_kind: Option<String>,
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default)]
+    pub pin: Option<String>,
+    #[serde(default)]
+    pub via_index: Option<usize>,
     pub source_primitive: String,
     pub source_primitive_index: usize,
 }

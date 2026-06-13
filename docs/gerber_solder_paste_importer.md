@@ -16,8 +16,9 @@ Imported evidence is written under `board.layout.solder_paste.features`,
 `board.layout.solder_paste.segments`, and `board.layout.solder_paste.regions`.
 Dark solder-paste primitives are treated as stencil openings.
 
-When the input project already contains PCB layout pad evidence, flash openings
-can inherit conservative owner metadata: `net`, `owner_kind: pad`,
+When the input project already contains PCB layout pad evidence, flash, draw,
+and region openings can inherit conservative owner metadata: `net`,
+`owner_kind: pad`,
 `component`, and `pin` from a unique matching pad on the corresponding copper
 layer. Via ownership is intentionally not copied into paste openings because
 vias are not normally paste-bearing stencil features.

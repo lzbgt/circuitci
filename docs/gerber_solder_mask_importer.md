@@ -18,8 +18,8 @@ Imported evidence is written under `board.layout.solder_mask.features`,
 Dark solder-mask primitives are treated as openings in the solder-mask layer.
 Clear-polarity primitives are counted and skipped.
 
-When the input project already contains PCB layout pad or via evidence, flash
-openings can inherit conservative owner metadata:
+When the input project already contains PCB layout pad or via evidence, flash,
+draw, and region openings can inherit conservative owner metadata:
 
 - `net` plus `owner_kind: pad`, `component`, and `pin` from a unique matching
   pad on the corresponding copper layer,
@@ -47,5 +47,6 @@ imported openings leave less mask web than
 
 The importer intentionally does not infer nets, component pins, or solder-mask
 rules from Gerber alone. Owner metadata is only copied when existing PCB layout
-evidence uniquely proves the matching pad or via. Use separate PCB or
-fabrication evidence when package-specific mask semantics matter.
+evidence uniquely proves the matching pad or via for the opening geometry. Use
+separate PCB or fabrication evidence when package-specific mask semantics
+matter.

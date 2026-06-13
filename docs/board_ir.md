@@ -321,13 +321,13 @@ Board IR can carry imported copper features under
 `board.layout.copper.segments`, and imported copper regions under
 `board.layout.copper.regions`. Coordinates are in millimeters in the same
 coordinate system as placements, outlines, drills, pads, routes, and zones.
-Gerber-imported copper is anonymous by default, but any copper feature,
-segment, or region may carry optional `net` and `island_id` evidence when a
-separate importer or hand-authored project can associate fabrication copper
-with PCB/net or zone-island ownership. Copper features may also carry
-`owner_kind: pad` plus `component`/`pin`, or `owner_kind: via` plus
-`via_index`, when imported flash evidence uniquely matches existing pad or via
-layout evidence.
+Gerber-imported artwork is anonymous by default, but any copper, solder-mask,
+or solder-paste feature, segment, or region may carry optional `net` and
+`island_id` evidence when a separate importer or hand-authored project can
+associate fabrication artwork with PCB/net or zone-island ownership. Features,
+segments, and regions may also carry `owner_kind: pad` plus `component`/`pin`,
+or `owner_kind: via` plus `via_index`, when imported geometry uniquely matches
+existing pad or via layout evidence.
 
 ```yaml
 board:
@@ -354,6 +354,9 @@ board:
           polarity: dark
           net: GND
           island_id: F_Cu_GND_0
+          owner_kind: pad
+          component: J1
+          pin: "1"
           source_primitive: gerber_linear_draw
           source_primitive_index: 1
           aperture: D10

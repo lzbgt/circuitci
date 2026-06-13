@@ -106,6 +106,65 @@ fn import_gerber_solder_paste_samples_arc_draw_openings() {
     assert_eq!(segments[0]["source_primitive"], "gerber_arc_draw");
     assert_eq!(segments[0]["layer"], "F.Paste");
     assert_eq!(segments[0]["width_mm"], 0.2);
+    assert_eq!(segments[0]["net"], "GND");
+    assert_eq!(segments[0]["owner_kind"], "pad");
+    assert_eq!(segments[0]["component"], "U1");
+    assert_eq!(segments[0]["pin"], "1");
     assert_eq!(segments[6]["end"]["x_mm"], 11.0);
     assert_eq!(segments[6]["end"]["y_mm"], 11.0);
+}
+
+#[test]
+fn import_gerber_solder_paste_associates_region_opening_owner() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("region_paste.gtp");
+    let output = dir.path().join("with_region_paste.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: F.Paste*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "G36*\n",
+            "X00950000Y00950000D02*\n",
+            "X01050000Y00950000D01*\n",
+            "X01050000Y01050000D01*\n",
+            "X00950000Y01050000D01*\n",
+            "X00950000Y00950000D01*\n",
+            "G37*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-solder-paste",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_solder_paste_openings/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(command_output.status.success());
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    assert!(stdout.contains("1 region openings"));
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    let regions = imported["board"]["layout"]["solder_paste"]["regions"]
+        .as_array()
+        .unwrap();
+    assert_eq!(regions.len(), 1);
+    assert_eq!(regions[0]["layer"], "F.Paste");
+    assert_eq!(regions[0]["net"], "GND");
+    assert_eq!(regions[0]["owner_kind"], "pad");
+    assert_eq!(regions[0]["component"], "U1");
+    assert_eq!(regions[0]["pin"], "1");
 }

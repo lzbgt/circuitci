@@ -338,11 +338,29 @@ fn solder_mask_dam_fails_for_non_flash_openings() {
     assert_eq!(failure["measured"]["first_solder_mask_kind"], "segment");
     assert_eq!(failure["measured"]["first_solder_mask_segment_index"], 0);
     assert_eq!(
+        failure["measured"]["first_solder_mask_segment_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["first_solder_mask_segment_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["first_solder_mask_segment_pin"], "1");
+    assert_eq!(
         failure["measured"]["first_solder_mask_segment_width_mm"],
         0.2
     );
     assert_eq!(failure["measured"]["second_solder_mask_kind"], "region");
     assert_eq!(failure["measured"]["second_solder_mask_region_index"], 0);
+    assert_eq!(
+        failure["measured"]["second_solder_mask_region_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["second_solder_mask_region_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["second_solder_mask_region_pin"], "2");
     assert_eq!(
         failure["measured"]["second_solder_mask_region_point_count"],
         4
@@ -495,11 +513,29 @@ fn solder_paste_spacing_fails_for_non_flash_openings() {
     assert_eq!(failure["measured"]["first_solder_paste_kind"], "segment");
     assert_eq!(failure["measured"]["first_solder_paste_segment_index"], 0);
     assert_eq!(
+        failure["measured"]["first_solder_paste_segment_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["first_solder_paste_segment_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["first_solder_paste_segment_pin"], "1");
+    assert_eq!(
         failure["measured"]["first_solder_paste_segment_width_mm"],
         0.2
     );
     assert_eq!(failure["measured"]["second_solder_paste_kind"], "region");
     assert_eq!(failure["measured"]["second_solder_paste_region_index"], 0);
+    assert_eq!(
+        failure["measured"]["second_solder_paste_region_owner_kind"],
+        "pad"
+    );
+    assert_eq!(
+        failure["measured"]["second_solder_paste_region_component"],
+        "U1"
+    );
+    assert_eq!(failure["measured"]["second_solder_paste_region_pin"], "2");
     assert_eq!(
         failure["measured"]["second_solder_paste_region_point_count"],
         4

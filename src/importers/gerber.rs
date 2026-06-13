@@ -145,6 +145,10 @@ struct GerberCopperSegment {
     source_primitive_index: usize,
     net: Option<String>,
     island_id: Option<String>,
+    owner_kind: Option<String>,
+    component: Option<String>,
+    pin: Option<String>,
+    via_index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +157,10 @@ struct GerberCopperRegion {
     source_primitive_index: usize,
     net: Option<String>,
     island_id: Option<String>,
+    owner_kind: Option<String>,
+    component: Option<String>,
+    pin: Option<String>,
+    via_index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -657,6 +665,10 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                     source_primitive_index,
                     net: None,
                     island_id: None,
+                    owner_kind: None,
+                    component: None,
+                    pin: None,
+                    via_index: None,
                 });
                 source_primitive_index += 1;
             } else {
@@ -869,6 +881,10 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                                 source_primitive_index,
                                 net: None,
                                 island_id: None,
+                                owner_kind: None,
+                                component: None,
+                                pin: None,
+                                via_index: None,
                             });
                             source_primitive_index += 1;
                             segment_start = point;
@@ -883,6 +899,10 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                             source_primitive_index,
                             net: None,
                             island_id: None,
+                            owner_kind: None,
+                            component: None,
+                            pin: None,
+                            via_index: None,
                         });
                         source_primitive_index += 1;
                     }

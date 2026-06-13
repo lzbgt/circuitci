@@ -73,6 +73,14 @@ struct CopperSegmentYaml {
     net: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     island_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    via_index: Option<usize>,
     source_primitive: String,
     source_primitive_index: usize,
     aperture: String,
@@ -88,6 +96,14 @@ struct CopperRegionYaml {
     net: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     island_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    component: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    via_index: Option<usize>,
     source_primitive: String,
     source_primitive_index: usize,
 }
@@ -229,6 +245,10 @@ fn merge_layer_artwork_into_project(
                 polarity: "dark".to_string(),
                 net: segment.net.clone(),
                 island_id: segment.island_id.clone(),
+                owner_kind: segment.owner_kind.clone(),
+                component: segment.component.clone(),
+                pin: segment.pin.clone(),
+                via_index: segment.via_index,
                 source_primitive: segment.source_primitive.to_string(),
                 source_primitive_index: segment.source_primitive_index,
                 aperture: format!("D{}", segment.aperture_code),
@@ -260,6 +280,10 @@ fn merge_layer_artwork_into_project(
                 polarity: "dark".to_string(),
                 net: region.net.clone(),
                 island_id: region.island_id.clone(),
+                owner_kind: region.owner_kind.clone(),
+                component: region.component.clone(),
+                pin: region.pin.clone(),
+                via_index: region.via_index,
                 source_primitive: "gerber_region".to_string(),
                 source_primitive_index: region.source_primitive_index,
             })

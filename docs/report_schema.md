@@ -423,11 +423,20 @@ optional `first_solder_mask_feature_net`, optional
 with the `second_` prefix. Segment operands report prefixed fields such as
 `first_solder_mask_segment_index`, `first_solder_mask_segment_start`,
 `first_solder_mask_segment_end`, `first_solder_mask_segment_layer`,
+optional `first_solder_mask_segment_net`, optional
+`first_solder_mask_segment_owner_kind`, optional
+`first_solder_mask_segment_component`, optional
+`first_solder_mask_segment_pin`, optional
+`first_solder_mask_segment_via_index`,
 `first_solder_mask_segment_aperture`, `first_solder_mask_segment_width_mm`,
 `first_solder_mask_segment_source_primitive`, and
 `first_solder_mask_segment_source_primitive_index`. Region operands report
 prefixed fields such as `first_solder_mask_region_index`,
-`first_solder_mask_region_layer`, `first_solder_mask_region_source_primitive`,
+`first_solder_mask_region_layer`, optional `first_solder_mask_region_net`,
+optional `first_solder_mask_region_owner_kind`, optional
+`first_solder_mask_region_component`, optional `first_solder_mask_region_pin`,
+optional `first_solder_mask_region_via_index`,
+`first_solder_mask_region_source_primitive`,
 `first_solder_mask_region_source_primitive_index`, and
 `first_solder_mask_region_point_count`. Stable limit keys include
 `min_solder_mask_dam_mm`.
@@ -460,10 +469,17 @@ optional `solder_paste_feature_pin`, optional
 `solder_paste_feature_source_primitive_index`. Segment-opening findings report
 `solder_paste_segment_index`, `solder_paste_segment_start`,
 `solder_paste_segment_end`, `solder_paste_segment_layer`,
-`solder_paste_segment_aperture`, `solder_paste_segment_width_mm`,
+optional `solder_paste_segment_net`, optional
+`solder_paste_segment_owner_kind`, optional `solder_paste_segment_component`,
+optional `solder_paste_segment_pin`, optional
+`solder_paste_segment_via_index`, `solder_paste_segment_aperture`,
+`solder_paste_segment_width_mm`,
 `solder_paste_segment_source_primitive`, and
 `solder_paste_segment_source_primitive_index`. Region-opening findings report
-`solder_paste_region_index`, `solder_paste_region_layer`,
+`solder_paste_region_index`, `solder_paste_region_layer`, optional
+`solder_paste_region_net`, optional `solder_paste_region_owner_kind`,
+optional `solder_paste_region_component`, optional
+`solder_paste_region_pin`, optional `solder_paste_region_via_index`,
 `solder_paste_region_source_primitive`,
 `solder_paste_region_source_primitive_index`, and
 `solder_paste_region_point_count`. Stable limit keys include
@@ -490,12 +506,22 @@ optional `first_solder_paste_feature_net`, optional
 `second_...` keys for the other opening. Segment-opening findings report
 prefixed keys such as `first_solder_paste_segment_index`,
 `first_solder_paste_segment_start`, `first_solder_paste_segment_end`,
-`first_solder_paste_segment_layer`, `first_solder_paste_segment_aperture`,
+`first_solder_paste_segment_layer`, optional
+`first_solder_paste_segment_net`, optional
+`first_solder_paste_segment_owner_kind`, optional
+`first_solder_paste_segment_component`, optional
+`first_solder_paste_segment_pin`, optional
+`first_solder_paste_segment_via_index`,
+`first_solder_paste_segment_aperture`,
 `first_solder_paste_segment_width_mm`,
 `first_solder_paste_segment_source_primitive`, and
 `first_solder_paste_segment_source_primitive_index`. Region-opening findings
 report prefixed keys such as `first_solder_paste_region_index`,
-`first_solder_paste_region_layer`,
+`first_solder_paste_region_layer`, optional `first_solder_paste_region_net`,
+optional `first_solder_paste_region_owner_kind`, optional
+`first_solder_paste_region_component`, optional
+`first_solder_paste_region_pin`, optional
+`first_solder_paste_region_via_index`,
 `first_solder_paste_region_source_primitive`,
 `first_solder_paste_region_source_primitive_index`, and
 `first_solder_paste_region_point_count`. Stable limit keys include

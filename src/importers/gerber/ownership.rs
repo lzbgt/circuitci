@@ -136,6 +136,24 @@ pub(super) fn associate_solder_mask_opening_owners(mask: &mut GerberCopper, layo
             feature.via_index = owner.via_index;
         }
     }
+    for segment in &mut mask.segments {
+        if let Some(owner) = ownership.owner_for_opening_segment(segment, copper_layer, true) {
+            segment.net = Some(owner.net);
+            segment.owner_kind = owner.owner_kind.map(str::to_string);
+            segment.component = owner.component;
+            segment.pin = owner.pin;
+            segment.via_index = owner.via_index;
+        }
+    }
+    for region in &mut mask.regions {
+        if let Some(owner) = ownership.owner_for_opening_region(region, copper_layer, true) {
+            region.net = Some(owner.net);
+            region.owner_kind = owner.owner_kind.map(str::to_string);
+            region.component = owner.component;
+            region.pin = owner.pin;
+            region.via_index = owner.via_index;
+        }
+    }
 }
 
 pub(super) fn associate_solder_paste_opening_owners(
@@ -153,6 +171,24 @@ pub(super) fn associate_solder_paste_opening_owners(
             feature.component = owner.component;
             feature.pin = owner.pin;
             feature.via_index = owner.via_index;
+        }
+    }
+    for segment in &mut paste.segments {
+        if let Some(owner) = ownership.owner_for_opening_segment(segment, copper_layer, false) {
+            segment.net = Some(owner.net);
+            segment.owner_kind = owner.owner_kind.map(str::to_string);
+            segment.component = owner.component;
+            segment.pin = owner.pin;
+            segment.via_index = owner.via_index;
+        }
+    }
+    for region in &mut paste.regions {
+        if let Some(owner) = ownership.owner_for_opening_region(region, copper_layer, false) {
+            region.net = Some(owner.net);
+            region.owner_kind = owner.owner_kind.map(str::to_string);
+            region.component = owner.component;
+            region.pin = owner.pin;
+            region.via_index = owner.via_index;
         }
     }
 }
@@ -267,6 +303,71 @@ impl CopperOwnershipIndex {
                 .filter(|via| via_on_layer(via, copper_layer))
             {
                 if point_inside_feature_via(feature, via) {
+                    candidates.push(CopperNetOwner::via(&via.net, via.via_index));
+                }
+            }
+        }
+        unique_owner(candidates)
+    }
+
+    fn owner_for_opening_segment(
+        &self,
+        segment: &GerberCopperSegment,
+        copper_layer: &str,
+        include_vias: bool,
+    ) -> Option<CopperNetOwner> {
+        let mut candidates = Vec::new();
+        let radius_mm = segment.aperture.x_mm / 2.0;
+        for pad in self
+            .pads
+            .iter()
+            .filter(|pad| pad_on_layer(pad, copper_layer))
+        {
+            if point_to_segment_distance_mm(pad.at, segment.start, segment.end)
+                <= radius_mm + POINT_EPSILON_MM
+            {
+                candidates.push(CopperNetOwner::pad(&pad.net, &pad.component, &pad.pin));
+            }
+        }
+        if include_vias {
+            for via in self
+                .vias
+                .iter()
+                .filter(|via| via_on_layer(via, copper_layer))
+            {
+                if point_to_segment_distance_mm(via.at, segment.start, segment.end)
+                    <= radius_mm + via.size_mm / 2.0 + POINT_EPSILON_MM
+                {
+                    candidates.push(CopperNetOwner::via(&via.net, via.via_index));
+                }
+            }
+        }
+        unique_owner(candidates)
+    }
+
+    fn owner_for_opening_region(
+        &self,
+        region: &GerberCopperRegion,
+        copper_layer: &str,
+        include_vias: bool,
+    ) -> Option<CopperNetOwner> {
+        let mut candidates = Vec::new();
+        for pad in self
+            .pads
+            .iter()
+            .filter(|pad| pad_on_layer(pad, copper_layer))
+        {
+            if point_inside_polygon(pad.at, &region.points) {
+                candidates.push(CopperNetOwner::pad(&pad.net, &pad.component, &pad.pin));
+            }
+        }
+        if include_vias {
+            for via in self
+                .vias
+                .iter()
+                .filter(|via| via_on_layer(via, copper_layer))
+            {
+                if point_inside_polygon(via.at, &region.points) {
                     candidates.push(CopperNetOwner::via(&via.net, via.via_index));
                 }
             }

@@ -5,7 +5,9 @@ libraries:
   - ../../libs/generic
 board:
   components: {}
-  nets: {}
+  nets:
+    GND:
+      kind: ground
   layout:
     solder_paste:
       segments:
@@ -13,6 +15,10 @@ board:
           end: { x_mm: 2.0, y_mm: 1.0 }
           layer: F.Paste
           polarity: dark
+          net: GND
+          owner_kind: pad
+          component: U1
+          pin: "1"
           source_primitive: gerber_linear_draw
           source_primitive_index: 0
           aperture: D11
@@ -25,6 +31,10 @@ board:
             - { x_mm: 1.0, y_mm: 1.8 }
           layer: F.Paste
           polarity: dark
+          net: GND
+          owner_kind: pad
+          component: U1
+          pin: "2"
           source_primitive: gerber_region
           source_primitive_index: 1
 scenarios:
