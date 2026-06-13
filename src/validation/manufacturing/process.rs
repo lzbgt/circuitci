@@ -47,11 +47,21 @@ const JLCPCB_DRILL_DIAMETER_RANGE_2026_06: FabricationProcessPreset = Fabricatio
     ],
 };
 
+const JLCPCB_1OZ_COPPER_SPACING_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_1oz_copper_spacing_2026_06",
+    aliases: &[
+        "jlcpcb_1oz_copper_spacing",
+        "jlcpcb_1oz_trace_spacing_2026_06",
+    ],
+    numeric_defaults: &[("min_copper_spacing_mm", 0.10)],
+};
+
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_STANDARD_2026_06,
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
     JLCPCB_SLOT_MIN_2026_06,
     JLCPCB_DRILL_DIAMETER_RANGE_2026_06,
+    JLCPCB_1OZ_COPPER_SPACING_2026_06,
 ];
 
 pub(super) fn required_numeric_parameter(

@@ -769,6 +769,20 @@ fn copper_spacing_fails_for_near_flashes() {
 }
 
 #[test]
+fn copper_spacing_uses_jlc_1oz_fabrication_process_default() {
+    let report = run_validation("examples/bad_copper_spacing_jlc_1oz_process/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "COPPER_SPACING_VALID");
+    assert_eq!(failure["measured"]["first_copper_kind"], "feature");
+    assert_eq!(failure["measured"]["second_copper_kind"], "feature");
+    let clearance = failure["measured"]["clearance_mm"].as_f64().unwrap();
+    assert!((clearance - 0.05).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_copper_spacing_mm"], 0.1);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_overlapping_different_net_copper() {
     let report = run_validation("examples/bad_copper_different_net_overlap/project.yaml");
     assert_eq!(report["result"], "fail");

@@ -348,16 +348,14 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         .iter()
         .find(|suggestion| suggestion["id"] == "copper_spacing_valid")
         .expect("copper spacing suggestion");
-    assert_eq!(copper_spacing["runnable"], false);
+    assert_eq!(copper_spacing["runnable"], true);
     assert_eq!(
         copper_spacing["scenario"]["checks"][0],
         "COPPER_SPACING_VALID"
     );
-    assert!(
-        copper_spacing["required_inputs"][0]
-            .as_str()
-            .unwrap()
-            .contains("min_copper_spacing_mm")
+    assert_eq!(
+        copper_spacing["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_1oz_copper_spacing_2026_06"
     );
 
     let paste_opening = suggested

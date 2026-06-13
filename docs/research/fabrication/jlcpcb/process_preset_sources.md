@@ -19,6 +19,7 @@ Implemented preset:
 - `jlcpcb_double_sided_via_min_2026_06`
 - `jlcpcb_slot_min_2026_06`
 - `jlcpcb_drill_diameter_range_2026_06`
+- `jlcpcb_1oz_copper_spacing_2026_06`
 
 Implemented default:
 
@@ -29,6 +30,7 @@ Implemented default:
 - `min_non_plated_slot_width_mm: 1.00`
 - `min_drill_diameter_mm: 0.15`
 - `max_drill_diameter_mm: 6.30`
+- `min_copper_spacing_mm: 0.10`
 
 Rationale:
 
@@ -59,18 +61,27 @@ Rationale:
   0.15 mm to 6.30 mm in diameter. CircuitCI encodes those as a dedicated
   circular drill diameter range preset because routed slots and special-order
   drill processes are separate process conditions.
+- The saved JLCPCB PCB capability page bundle resolves the traces table rows in
+  `6874ee7eeb2cbc6b6a3f.js`: `i18n_web_app_232` is "Min. track width and
+  spacing (1 oz)" with capability `0.10 / 0.10 mm (4 / 4 mil)`, and
+  `i18n_web_app_244` is "Pad to track clearance" with capability `0.1mm`.
+  CircuitCI encodes `min_copper_spacing_mm: 0.10` as a narrowly named 1 oz
+  copper-spacing preset. It is intentionally not used as a package-specific SMD
+  pad-spacing or stencil-spacing rule.
 
 Observed but not yet encoded as process defaults:
 
 - The JLCPCB capability page bundle references drilling, trace, solder-mask,
-  outline, and stencil capability tables, but many visible table values are
-  resolved through runtime i18n keys rather than plaintext in the saved HTML.
+  outline, and stencil capability tables. Some values, including the 1 oz trace
+  spacing row, are available through runtime i18n keys in the saved JavaScript;
+  other current table values still need exact extraction or separate source
+  evidence before encoding.
 
 Next source work before expanding presets:
 
 - Pin exact text values for drill-to-edge, slot-to-edge,
-  copper-to-board-edge, copper-spacing, paste-area-ratio, and stencil-spacing
-  thresholds from official JLCPCB material, package stencil guidance, or an
-  exported process capability document.
+  copper-to-board-edge, paste-area-ratio, and stencil-spacing thresholds from
+  official JLCPCB material, package stencil guidance, or an exported process
+  capability document.
 - Add those values only with process-condition names precise enough to avoid
   mixing standard, multilayer, HDI, via-in-pad, stencil, or special-order rules.

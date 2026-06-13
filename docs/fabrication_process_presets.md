@@ -43,6 +43,12 @@ Supported aliases for the JLCPCB circular drill diameter range preset:
 - `jlcpcb_drill_diameter_range_2026_06`
 - `jlcpcb_drill_diameter_range`
 
+Supported aliases for the JLCPCB 1 oz copper spacing preset:
+
+- `jlcpcb_1oz_copper_spacing_2026_06`
+- `jlcpcb_1oz_copper_spacing`
+- `jlcpcb_1oz_trace_spacing_2026_06`
+
 Current preset defaults:
 
 | Parameter | Value | Source |
@@ -54,12 +60,14 @@ Current preset defaults:
 | `min_non_plated_slot_width_mm` | `1.00` | JLCPCB via article: smallest non-metallized slot routing bit is 1.0 mm. |
 | `min_drill_diameter_mm` | `0.15` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
 | `max_drill_diameter_mm` | `6.30` | JLCPCB via article: circular drill bits range from 0.15 mm to 6.30 mm in diameter. |
+| `min_copper_spacing_mm` | `0.10` | JLCPCB PCB capability page: 1 oz minimum track width and spacing is 0.10 / 0.10 mm, and pad-to-track clearance is 0.1 mm. |
 
 Unsupported process IDs fail closed when a rule needs a missing numeric
 parameter from the preset.
 
 Other manufacturing thresholds still require explicit scenario parameters until
-the repo has pinned source evidence for the exact process condition. This is
-intentional: the saved JLC capability page and assets identify many relevant
-tables, but not every current table value is available in machine-readable
-plaintext in the downloaded artifacts.
+the repo has pinned source evidence for the exact process condition. The 1 oz
+copper spacing preset is a general fabrication floor for `COPPER_SPACING_VALID`;
+package-specific SMD pad spacing, stencil aperture spacing, board-edge
+clearance, and special-order constraints still need narrower presets or explicit
+scenario parameters.

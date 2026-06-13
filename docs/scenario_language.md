@@ -810,12 +810,13 @@ scenarios:
     checks:
       - COPPER_SPACING_VALID
     parameters:
-      min_copper_spacing_mm: 0.25
+      fabrication_process: jlcpcb_1oz_copper_spacing_2026_06
 ```
 
 Copper spacing algorithm:
 
-1. Require `parameters.min_copper_spacing_mm`.
+1. Require `parameters.min_copper_spacing_mm`, or a `fabrication_process`
+   preset that supplies it.
 2. Require at least two finite copper features, copper segments, or copper
    regions.
 3. Compare same-layer copper feature/feature, feature/segment,

@@ -138,14 +138,12 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
             COPPER_SPACING_VALID,
             manufacturing_suggestion(
                 "copper_spacing_valid",
-                false,
-                "Imported same-layer Gerber copper evidence can be screened for copper spacing once the process limit is supplied.",
+                true,
+                "Imported same-layer Gerber copper evidence can be screened against the source-backed JLCPCB 1 oz copper spacing preset.",
                 &format!("{project_name}_copper_spacing"),
                 COPPER_SPACING_VALID,
-                None,
-                vec![
-                    "Set manufacturing parameters.min_copper_spacing_mm from the selected fabrication process or board specification.".to_string(),
-                ],
+                Some(fabrication_process("jlcpcb_1oz_copper_spacing_2026_06")),
+                Vec::new(),
             ),
         );
     }

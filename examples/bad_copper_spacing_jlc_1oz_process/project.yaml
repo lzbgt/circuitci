@@ -1,0 +1,36 @@
+project:
+  name: bad_copper_spacing_jlc_1oz_process
+  version: 0.1.0
+
+libraries: []
+
+board:
+  components: {}
+  nets: {}
+  layout:
+    copper:
+      features:
+        - at: { x_mm: 1.0, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+        - at: { x_mm: 1.85, y_mm: 1.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+
+scenarios:
+  - name: copper_spacing
+    type: manufacturing
+    checks:
+      - COPPER_SPACING_VALID
+    parameters:
+      fabrication_process: jlcpcb_1oz_copper_spacing_2026_06
