@@ -20,6 +20,17 @@ parser and not physical sign-off. KiCad XML contains component references,
 values, fields, and net nodes. It does not by itself prove datasheet-backed
 device models, transient stimuli, solver tolerances, or pass/fail assertions.
 
+## Implementation Split
+
+- `src/importers/kicad.rs` owns the import flow, mapping validation, Board IR
+  projection, analog scenario generation, model-file checks, and net naming.
+- `src/importers/kicad/types.rs` owns the KiCad mapping-file DTOs and emitted
+  Project YAML DTOs. Keep serde-visible shape changes there and update schema
+  or documentation in the same change.
+- `src/importers/kicad/xml.rs` owns generic XML parsing.
+- `src/importers/kicad/passive_values.rs` owns strict passive value parsing for
+  mapping-file SPICE primitives that derive values from KiCad schematic fields.
+
 ## Imported Data
 
 The importer reads:
