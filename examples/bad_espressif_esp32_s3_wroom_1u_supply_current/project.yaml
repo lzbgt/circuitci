@@ -1,0 +1,59 @@
+project:
+  name: bad_espressif_esp32_s3_wroom_1u_supply_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UESP:
+      model: vendor.espressif.esp32_s3_wroom_1u_n16r8
+      part_number: ESP32-S3-WROOM-1U-N16R8
+      power_domains:
+        3V3: rail_3v3
+      pins:
+        3V3: rail_3v3
+        GND: gnd
+        EN: esp_en
+        IO0: esp_io0
+        IO46: esp_io46
+    RIO0_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: esp_io0
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    RIO46_DN:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: esp_io46
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.3
+    gnd:
+      kind: ground
+    esp_en:
+      kind: digital_or_analog
+    esp_io0:
+      kind: digital_or_analog
+    esp_io46:
+      kind: digital_or_analog
+
+scenarios:
+  - name: esp32_s3_wroom_1u_undersized_3v3_supply
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

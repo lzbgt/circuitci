@@ -1,0 +1,90 @@
+project:
+  name: good_espressif_esp32_s3_wroom_1u_application
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    UESP:
+      model: vendor.espressif.esp32_s3_wroom_1u_n16r8
+      part_number: ESP32-S3-WROOM-1U-N16R8
+      power_domains:
+        3V3: rail_3v3
+      pins:
+        3V3: rail_3v3
+        GND: gnd
+        EN: esp_en
+        IO0: esp_io0
+        IO46: esp_io46
+        IO19: usb_dm
+        IO20: usb_dp
+        TXD0: esp_txd0
+        RXD0: esp_rxd0
+    RIO0_UP:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: rail_3v3
+        B: esp_io0
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+    RIO0_DN:
+      model: generic.analog.resistor
+      part_number: 100K
+      pins:
+        A: esp_io0
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 100000
+    RIO46_DN:
+      model: generic.analog.resistor
+      part_number: 10K
+      pins:
+        A: esp_io46
+        B: gnd
+      spice:
+        primitive: resistor
+        value_ohm: 10000
+  nets:
+    rail_3v3:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.6
+    gnd:
+      kind: ground
+    esp_en:
+      kind: digital_or_analog
+    esp_io0:
+      kind: digital_or_analog
+    esp_io46:
+      kind: digital_or_analog
+    usb_dm:
+      kind: digital_or_analog
+    usb_dp:
+      kind: digital_or_analog
+    esp_txd0:
+      kind: digital_or_analog
+    esp_rxd0:
+      kind: digital_or_analog
+
+scenarios:
+  - name: esp32_s3_wroom_1u_static_power_tree
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+  - name: esp32_s3_wroom_1u_spi_flash_boot_bias
+    type: reset_boot
+    target:
+      component: UESP
+      power_pin: 3V3
+    checks:
+      - BOOT_STRAP_BIAS_VALID
+    required_boot_mode: spi_flash
+    parameters:
+      max_strap_bias_current_A: 0.0001
