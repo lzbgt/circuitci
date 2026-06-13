@@ -59,6 +59,24 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_tps2121_typical_power_mux_passes
+    project: ../examples/good_ti_tps2121_power_mux/project.yaml
+    expect: pass
+
+  - id: ti_tps2121_output_overcurrent_detected
+    project: ../examples/bad_ti_tps2121_output_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_tps2121_input_overvoltage_detected
+    project: ../examples/bad_ti_tps2121_input_overvoltage/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: ti_tpd2eusb30_typical_usb_esd_passes
     project: ../examples/good_ti_tpd2eusb30_usb_esd/project.yaml
     expect: pass
@@ -152,6 +170,18 @@ repairs:
   - id: fix_tps2115a_output_current
     detects_case: ti_tps2115a_output_overcurrent_detected
     fixed_case: ti_tps2115a_typical_power_mux_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps2121_output_current
+    detects_case: ti_tps2121_output_overcurrent_detected
+    fixed_case: ti_tps2121_typical_power_mux_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_tps2121_input_overvoltage
+    detects_case: ti_tps2121_input_overvoltage_detected
+    fixed_case: ti_tps2121_typical_power_mux_passes
     fixes_findings:
       - POWER_TREE_VALID
 

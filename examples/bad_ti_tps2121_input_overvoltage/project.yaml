@@ -1,0 +1,81 @@
+project:
+  name: bad_ti_tps2121_input_overvoltage
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+  - models
+
+board:
+  components:
+    VADAPTER:
+      model: generic.analog.dc_voltage_source
+      part_number: ADAPTER_24V_SOURCE
+      pins:
+        P: adapter_24v
+        N: gnd
+    UMUX:
+      model: vendor.ti.tps2121
+      part_number: TPS2121RUXT
+      parameters:
+        selected_input: in1
+      power_domains:
+        IN1: adapter_24v
+        IN2: backup_5v
+        OUT: sys_5v
+      pins:
+        IN1: adapter_24v
+        IN2: backup_5v
+        OUT: sys_5v
+        GND: gnd
+        PR1: mux_pr1
+        CP2: mux_cp2
+        OV1: mux_ov1
+        OV2: mux_ov2
+        ILIM: mux_ilim
+        SS: mux_ss
+        ST: mux_status
+    ULOAD:
+      model: fixture.tps2121_nominal_load
+      part_number: NOMINAL_5V_LOAD
+      power_domains:
+        VDD: sys_5v
+      pins:
+        VDD: sys_5v
+        GND: gnd
+  nets:
+    adapter_24v:
+      kind: power
+      nominal_voltage: 24.0
+      powered: true
+    backup_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: false
+    sys_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+    mux_pr1:
+      kind: digital_or_analog
+    mux_cp2:
+      kind: digital_or_analog
+    mux_ov1:
+      kind: digital_or_analog
+    mux_ov2:
+      kind: digital_or_analog
+    mux_ilim:
+      kind: digital_or_analog
+    mux_ss:
+      kind: digital_or_analog
+    mux_status:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: tps2121_selected_input_overvoltage
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

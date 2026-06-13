@@ -1,0 +1,140 @@
+component_id: vendor.ti.tps2121
+version: 0.1.0
+category: power_mux
+ports:
+  IN1:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.8
+      operating_voltage_max_V: 22.0
+  IN2:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.8
+      operating_voltage_max_V: 22.0
+  OUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 22.0
+  GND:
+    kind: electrical_ground
+    required: true
+  PR1:
+    kind: passive
+    required: false
+  CP2:
+    kind: passive
+    required: false
+  OV1:
+    kind: passive
+    required: false
+  OV2:
+    kind: passive
+    required: false
+  ILIM:
+    kind: passive
+    required: true
+  SS:
+    kind: passive
+    required: false
+  ST:
+    kind: digital_electrical_output
+    required: false
+power_mux:
+  output_pin: OUT
+  selected_input_parameter: selected_input
+  max_output_current_A: 4.5
+  inputs:
+    - name: in1
+      input_pin: IN1
+      reverse_blocking: true
+    - name: in2
+      input_pin: IN2
+      reverse_blocking: true
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS2121RUXT
+  package: 12-pin VQFN-HR
+  polarity: two_input_one_output_power_mux_fast_switchover
+  pinout:
+    IN1: IN1
+    IN2: IN2
+    OUT: OUT
+    GND: GND
+    PR1: PR1
+    CP2: CP2
+    OV1: OV1
+    OV2: OV2
+    ILIM: ILIM
+    SS: SS
+    ST: ST
+  electrical_characteristics:
+    input_voltage_operating:
+      conditions: Recommended operating input range, IN1 and IN2.
+      min: 2.8
+      max: 22.0
+      unit: V
+    output_voltage_operating:
+      conditions: Recommended operating output range.
+      min: 0.0
+      max: 22.0
+      unit: V
+    continuous_input_current:
+      conditions: TPS2121 continuous input current.
+      max: 4.5
+      unit: A
+    current_limit_high_setting:
+      conditions: RILM = 22.1 kohm.
+      min: 4.0
+      typ: 4.5
+      max: 5.0
+      unit: A
+    fast_switchover_time:
+      conditions: TPS2121 fast switchover.
+      typ: 0.000005
+      unit: s
+    on_resistance:
+      conditions: TPS2121 typical on-state resistance.
+      typ: 0.056
+      unit: ohm
+  device_parameters:
+    source_selection:
+      conditions: PR1 and CP2 configure priority/comparator operation. Board IR must declare selected_input for static validation.
+      unit: note
+      simulation_relevance: Static validation checks that the declared selected input is powered and that inactive unpowered inputs have reverse-blocking evidence.
+    current_limit_programming:
+      conditions: ILIM resistor sets the active current limit.
+      unit: note
+      simulation_relevance: This first model uses the datasheet TPS2121 continuous/current-limit class of 4.5 A and does not derive current limit from the ILIM resistor value.
+    reverse_current_blocking:
+      conditions: TPS2121 has fast reverse-current blocking.
+      unit: note
+      simulation_relevance: Static validation treats inactive unpowered inputs as protected from output backfeed.
+  documents:
+    - title: TPS2120/TPS2121 2.8-V to 22-V Priority Power Mux with Seamless Switchover
+      path: docs/research/datasheets/ti/tps2121.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps2121.pdf
+      sha256: b2f5950f596dc2c4ca33e4ebac27fd35e4dcc68ea63e173466123e1118e91a06
+      retrieved: "2026-06-13"
+    - title: Peer urine_monitor cached TPS2121RUXT datasheet
+      path: ../urine_monitor/docs/fresh_design/lcsc_downloads/datasheets/C2156025_TPS2121RUXT.pdf
+      source_url: local_peer_project
+      sha256: 733f43f25a8c8dcba28b9cdd321ead4a604ae901a820f4fc881e8bb19c77b348
+      retrieved: "2026-06-13"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - power_mux_static_screening
+    - multi_source_power_path_screening
+  not_valid_for:
+    - switchover_transient_signoff
+    - reverse_current_magnitude_signoff
+    - ilim_resistor_current_limit_signoff
+    - thermal_signoff
+    - priority_threshold_resistor_signoff

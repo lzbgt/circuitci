@@ -27,9 +27,10 @@ sign-off.
 Initial datasheet-backed packs now exist for selected parts used by common IoT
 bring-up paths, including WCH CH340C and Silicon Labs CP2102N board-level
 USB-UART metadata, TI TXS0108E interface-protection metadata, and TI TPS22918
-load-switch metadata plus Microchip MCP73831 charger metadata. TI TPS2115A now
-covers a first datasheet-backed power-mux source-selection and reverse-blocking
-pack, TI TLV803EA29 covers a first datasheet-backed reset supervisor
+load-switch metadata plus Microchip MCP73831 charger metadata. TI TPS2115A and
+TI TPS2121 now cover datasheet-backed power-mux source-selection,
+reverse-blocking, rail-range, and output-current packs, while TI TLV803EA29
+covers a first datasheet-backed reset supervisor
 threshold/delay pack, and Diodes AP2112K-3.3 covers a common fixed 3.3 V LDO.
 Advanced Monolithic Systems AMS1117-3.3 now covers a common 1117-style 3.3 V
 LDO with its larger dropout and output-capacitance requirements. TI TPD2EUSB30
@@ -44,7 +45,7 @@ direct output-inductance screening. Espressif ESP32-WROOM-32E and
 ESP32-S3-WROOM-1U-N16R8 now cover common Wi-Fi/Bluetooth MCU-module packs for
 3.3 V rail budgeting and boot-strap screening. The gap remains broad library
 depth across other MCU/wireless modules, USB-UART bridges, debug probes,
-radios, sensors, regulators, power muxes, reset supervisors, and protection
+radios, sensors, regulators, advanced power muxes, reset supervisors, and protection
 devices.
 
 ## 2. Power-Tree Validation
