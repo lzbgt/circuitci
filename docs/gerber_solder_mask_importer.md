@@ -17,6 +17,8 @@ Imported evidence is written under `board.layout.solder_mask.features`,
 `board.layout.solder_mask.segments`, and `board.layout.solder_mask.regions`.
 Dark solder-mask primitives are treated as openings in the solder-mask layer.
 Clear-polarity primitives are counted and skipped.
+Multi-contour, nested, open, degenerate, or flashed regions fail closed rather
+than being approximated as mask openings.
 
 When the input project already contains PCB layout pad or via evidence, flash,
 draw, and region openings can inherit conservative owner metadata:

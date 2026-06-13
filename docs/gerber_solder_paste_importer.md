@@ -15,6 +15,8 @@ Supported subset:
 Imported evidence is written under `board.layout.solder_paste.features`,
 `board.layout.solder_paste.segments`, and `board.layout.solder_paste.regions`.
 Dark solder-paste primitives are treated as stencil openings.
+Multi-contour, nested, open, degenerate, or flashed regions fail closed rather
+than being approximated as stencil openings.
 
 When the input project already contains PCB layout pad evidence, flash, draw,
 and region openings can inherit conservative owner metadata: `net`,

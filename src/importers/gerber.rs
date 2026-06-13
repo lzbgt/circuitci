@@ -293,7 +293,7 @@ pub fn import_gerber_copper(
 ) -> Result<GerberCopperImportSummary> {
     let text = fs::read_to_string(&options.gerber)
         .with_context(|| format!("Failed to read Gerber copper {}", options.gerber.display()))?;
-    let mut copper = parse_gerber_copper(&text, &options.gerber)?;
+    let mut copper = parse_gerber_copper(&text, &options.gerber, "Gerber copper")?;
     let project_text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project {}",
@@ -345,7 +345,7 @@ pub fn import_gerber_solder_mask(
             options.gerber.display()
         )
     })?;
-    let mut mask = parse_gerber_copper(&text, &options.gerber)?;
+    let mut mask = parse_gerber_copper(&text, &options.gerber, "Gerber solder mask")?;
     let project_text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project YAML {}",
@@ -388,7 +388,7 @@ pub fn import_gerber_solder_paste(
             options.gerber.display()
         )
     })?;
-    let mut paste = parse_gerber_copper(&text, &options.gerber)?;
+    let mut paste = parse_gerber_copper(&text, &options.gerber, "Gerber solder paste")?;
     let project_text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project YAML {}",
@@ -570,7 +570,8 @@ fn parse_gerber_outline(text: &str, path: &Path) -> Result<GerberOutline> {
     Ok(GerberOutline { layer, segments })
 }
 
-fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
+fn parse_gerber_copper(text: &str, path: &Path, context_name: &str) -> Result<GerberCopper> {
+    let source = format!("{context_name} {}", path.display());
     let mut state = GerberState::default();
     let mut layer = "gerber_copper".to_string();
     let mut apertures = std::collections::BTreeMap::<u32, GerberAperture>::new();
@@ -780,8 +781,8 @@ fn parse_gerber_copper(text: &str, path: &Path) -> Result<GerberCopper> {
                         points.push(target);
                     } else if !points_close(points[0], target) {
                         bail!(
-                            "Gerber copper {} has multiple contours in one G36/G37 region; only single-contour regions are supported.",
-                            path.display()
+                            "{} has multiple contours in one G36/G37 region; only single-contour regions are supported.",
+                            source
                         );
                     }
                     state.current = Some(target);

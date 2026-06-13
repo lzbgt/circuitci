@@ -223,3 +223,45 @@ fn import_gerber_solder_paste_associates_region_opening_owner() {
     assert_eq!(regions[0]["component"], "U1");
     assert_eq!(regions[0]["pin"], "1");
 }
+
+#[test]
+fn import_gerber_solder_paste_rejects_multi_contour_region() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let gerber = dir.path().join("multi_contour_paste.gtp");
+    let output = dir.path().join("bad.project.yaml");
+    std::fs::write(
+        &gerber,
+        concat!(
+            "G04 Layer: F.Paste*\n",
+            "%FSLAX45Y45*%\n",
+            "%MOMM*%\n",
+            "G36*\n",
+            "X00000000Y00000000D02*\n",
+            "X01000000Y00000000D01*\n",
+            "X01000000Y01000000D01*\n",
+            "X00000000Y01000000D01*\n",
+            "X00000000Y00000000D01*\n",
+            "X02000000Y00000000D02*\n",
+            "X03000000Y00000000D01*\n",
+            "G37*\n",
+            "M02*\n",
+        ),
+    )
+    .unwrap();
+    let command_output = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-gerber-solder-paste",
+            gerber.to_str().unwrap(),
+            "--project",
+            "examples/import_gerber_solder_paste_openings/base.project.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(!command_output.status.success());
+    let stderr = String::from_utf8_lossy(&command_output.stderr);
+    assert!(stderr.contains("Gerber solder paste"));
+    assert!(stderr.contains("multiple contours in one G36/G37 region"));
+}
