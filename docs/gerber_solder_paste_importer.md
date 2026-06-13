@@ -23,11 +23,11 @@ circuitci import-gerber-solder-paste fabrication/F_Paste.gtp \
   --output out/imported_with_paste.project.yaml
 ```
 
-`SOLDER_PASTE_OPENING_VALID` currently consumes flash-opening evidence from
-`board.layout.solder_paste.features` together with Gerber copper flashes under
-`board.layout.copper.features`. It maps `F.Cu` to `F.Paste` and `B.Cu` to
-`B.Paste`, then checks that co-located paste aperture area stays within
-scenario-provided min/max area-ratio bounds.
+`SOLDER_PASTE_OPENING_VALID` currently consumes flash, circular-aperture draw,
+and single-contour region opening evidence from `board.layout.solder_paste`
+together with Gerber copper flashes under `board.layout.copper.features`. It
+maps `F.Cu` to `F.Paste` and `B.Cu` to `B.Paste`, then checks that co-located
+paste aperture area stays within scenario-provided min/max area-ratio bounds.
 
 The importer intentionally does not infer package-specific stencil reductions,
 step-stencil process rules, paste windowing for exposed pads, or paste-bearing

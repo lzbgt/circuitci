@@ -346,6 +346,14 @@ fn solder_paste_opening_passes_when_area_ratio_is_in_range() {
 }
 
 #[test]
+fn solder_paste_opening_passes_for_segment_opening() {
+    let report = run_validation("examples/good_solder_paste_opening_segment/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_opening_fails_when_opening_is_missing() {
     let report = run_validation("examples/bad_solder_paste_opening_missing/project.yaml");
     assert_eq!(report["result"], "fail");
@@ -394,6 +402,23 @@ fn solder_paste_opening_fails_when_opening_is_oversized() {
         .as_f64()
         .unwrap();
     assert!((area_ratio - 1.2375).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["max_paste_area_ratio"], 1.0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_opening_fails_for_region_opening_area() {
+    let report = run_validation("examples/bad_solder_paste_opening_region_oversized/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_OPENING_VALID");
+    assert_eq!(failure["measured"]["solder_paste_kind"], "region");
+    assert_eq!(failure["measured"]["solder_paste_region_index"], 0);
+    assert_eq!(failure["measured"]["solder_paste_region_point_count"], 4);
+    let area_ratio = failure["measured"]["solder_paste_area_ratio"]
+        .as_f64()
+        .unwrap();
+    assert!((area_ratio - 1.5).abs() < 1.0e-12);
     assert_eq!(failure["limit"]["max_paste_area_ratio"], 1.0);
     assert_report_schema_valid(&report);
 }

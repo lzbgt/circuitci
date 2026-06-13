@@ -222,12 +222,13 @@ without explicit imported mechanical evidence.
   exceptions, manufacturer-specific bridge rules, paste stencil behavior, or
   3D solderability effects.
 - `SOLDER_PASTE_OPENING_VALID` uses imported Gerber copper flashes and Gerber
-  solder-paste flash openings for a static 2D stencil-aperture screen. It
-  checks same-side `F.Cu` -> `F.Paste` and `B.Cu` -> `B.Paste` co-located
-  openings and min/max paste-to-copper area ratio. It skips copper features
-  explicitly owned by vias. It does not yet evaluate drawn or region paste
-  apertures, windowed exposed-pad stencils, step-stencil thickness, paste
-  volume, package-specific paste reductions, or 3D solderability effects.
+  solder-paste flash, circular-aperture draw, and single-contour region
+  openings for a static 2D stencil-aperture screen. It checks same-side `F.Cu`
+  -> `F.Paste` and `B.Cu` -> `B.Paste` co-located openings and min/max
+  paste-to-copper area ratio. It skips copper features explicitly owned by vias.
+  It does not yet evaluate multi-contour paste regions, windowed exposed-pad
+  stencils, step-stencil thickness, paste volume, package-specific paste
+  reductions, or 3D solderability effects.
 - Gerber copper import currently records dark `D03` flash features for circle,
   rectangle, and oval apertures, dark linear `D01` traces for circular
   apertures, and dark single-contour linear `G36`/`G37` region polygons. When

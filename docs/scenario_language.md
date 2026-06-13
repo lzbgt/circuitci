@@ -796,8 +796,9 @@ package-specific no-dam rules, or paste stencil behavior.
 
 Solder-paste opening validation uses `SOLDER_PASTE_OPENING_VALID` when the
 Board IR includes Gerber copper flash evidence under
-`board.layout.copper.features` and Gerber solder-paste flash-opening evidence
-under `board.layout.solder_paste.features`.
+`board.layout.copper.features` and Gerber solder-paste opening evidence under
+`board.layout.solder_paste.features`, `board.layout.solder_paste.segments`, or
+`board.layout.solder_paste.regions`.
 
 ```yaml
 scenarios:
@@ -816,20 +817,22 @@ Solder-paste opening algorithm:
 1. Require finite `parameters.min_paste_area_ratio` and
    `parameters.max_paste_area_ratio`.
 2. Require `max_paste_area_ratio >= min_paste_area_ratio`.
-3. Require finite Gerber copper flash features and solder-paste flash features.
+3. Require finite Gerber copper flash features and solder-paste feature,
+   segment, or region openings.
 4. Skip copper features explicitly owned by vias.
 5. Map `F.Cu` copper to `F.Paste` openings and `B.Cu` copper to `B.Paste`
    openings.
-6. For each checked copper flash, find the nearest same-layer paste opening
-   within `max_copper_to_paste_center_offset_mm`.
+6. For each checked copper flash, find the nearest same-layer paste opening by
+   feature center, segment midpoint, or region centroid within
+   `max_copper_to_paste_center_offset_mm`.
 7. Fail when no co-located opening exists.
 8. Fail when `paste_area_mm2 / copper_area_mm2` is outside the configured
    inclusive area-ratio range.
 
-This is a static 2D stencil aperture screen. It checks flash-to-flash area
-ratio evidence and does not yet evaluate drawn or region paste apertures,
-windowed exposed-pad stencils, step-stencil thickness, paste volume, or
-package-specific paste reductions.
+This is a static 2D stencil aperture screen. It checks flash, circular-aperture
+draw, and single-contour region area-ratio evidence. It does not yet evaluate
+multi-contour paste regions, windowed exposed-pad stencils, step-stencil
+thickness, paste volume, or package-specific paste reductions.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and
