@@ -30,6 +30,24 @@ cases:
       - id: POWER_TREE_VALID
         severity: critical
 
+  - id: ti_bq24075_typical_usb_charger_passes
+    project: ../examples/good_ti_bq24075_usb_charger/project.yaml
+    expect: pass
+
+  - id: ti_bq24075_usb_budget_detected
+    project: ../examples/bad_ti_bq24075_usb_budget/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
+  - id: ti_bq24075_charge_current_detected
+    project: ../examples/bad_ti_bq24075_charge_current/project.yaml
+    expect: fail
+    required_findings:
+      - id: POWER_TREE_VALID
+        severity: critical
+
   - id: ti_tps2115a_typical_power_mux_passes
     project: ../examples/good_ti_tps2115a_power_mux/project.yaml
     expect: pass
@@ -116,6 +134,18 @@ repairs:
   - id: fix_mcp73831_usb_current_budget
     detects_case: microchip_mcp73831_usb_budget_detected
     fixed_case: microchip_mcp73831_typical_usb_charger_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_bq24075_usb_current_budget
+    detects_case: ti_bq24075_usb_budget_detected
+    fixed_case: ti_bq24075_typical_usb_charger_passes
+    fixes_findings:
+      - POWER_TREE_VALID
+
+  - id: fix_bq24075_charge_current
+    detects_case: ti_bq24075_charge_current_detected
+    fixed_case: ti_bq24075_typical_usb_charger_passes
     fixes_findings:
       - POWER_TREE_VALID
 

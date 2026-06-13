@@ -12,6 +12,7 @@ audit the modeled facts without relying on chat history.
 | --- | --- | --- |
 | Diodes AP2112K 3.3 V LDO typical application | <https://www.diodes.com/datasheet/download/AP2112.pdf> | `docs/research/datasheets/diodes/ap2112.pdf` |
 | Microchip MCP73831 USB Li-Ion charger typical application | <https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf> | `docs/research/datasheets/microchip/mcp73831-family-datasheet.pdf` |
+| TI BQ24075 USB Li-Ion charger with power path typical use | <https://www.ti.com/lit/ds/symlink/bq24074.pdf> and peer `../urine_monitor` LCSC cache | `docs/research/datasheets/ti/bq24074.pdf` |
 | TI TPS2115A autoswitching power mux typical application | <https://www.ti.com/lit/ds/symlink/tps2115a.pdf> | `docs/research/datasheets/ti/tps2115a.pdf` |
 | TI TPD2EUSB30 USB ESD protection typical use | <https://www.ti.com/lit/ds/symlink/tpd2eusb30.pdf> | `docs/research/datasheets/ti/tpd2eusb30.pdf` |
 | TI TPS62162 3.3 V synchronous buck typical use | <https://www.ti.com/lit/ds/symlink/tps62160.pdf> | `docs/research/datasheets/ti/tps62160.pdf` |
@@ -24,8 +25,8 @@ under `docs/research/datasheets/`.
 
 ## Executed Suite
 
-`suites/public_typical_circuits.yaml` combines seven public-reference passing
-cases and ten paired injected-error cases:
+`suites/public_typical_circuits.yaml` combines eight public-reference passing
+cases and twelve paired injected-error cases:
 
 | Case | Fixture | Expected result | Purpose |
 | --- | --- | --- | --- |
@@ -33,6 +34,9 @@ cases and ten paired injected-error cases:
 | `diodes_ap2112k_dropout_detected` | `examples/bad_diodes_ap2112k_3v3_dropout/project.yaml` | fail | Detects insufficient nominal dropout margin. |
 | `microchip_mcp73831_typical_usb_charger_passes` | `examples/good_microchip_mcp73831_usb_charger/project.yaml` | pass | MCP73831 USB-powered 4.2 V Li-Ion charger with 100 mA programmed current. |
 | `microchip_mcp73831_usb_budget_detected` | `examples/bad_microchip_mcp73831_usb_budget/project.yaml` | fail | Detects charge current above declared USB input budget. |
+| `ti_bq24075_typical_usb_charger_passes` | `examples/good_ti_bq24075_usb_charger/project.yaml` | pass | BQ24075 USB-powered 4.2 V Li-Ion charger with 450 mA programmed current and 5.5 V system output evidence. |
+| `ti_bq24075_usb_budget_detected` | `examples/bad_ti_bq24075_usb_budget/project.yaml` | fail | Detects programmed charge current above declared USB input budget. |
+| `ti_bq24075_charge_current_detected` | `examples/bad_ti_bq24075_charge_current/project.yaml` | fail | Detects programmed charge current above the datasheet-backed 1.5 A charger maximum. |
 | `ti_tps2115a_typical_power_mux_passes` | `examples/good_ti_tps2115a_power_mux/project.yaml` | pass | TPS2115A USB-selected mux with inactive unpowered battery input. |
 | `ti_tps2115a_output_overcurrent_detected` | `examples/bad_ti_tps2115a_output_current/project.yaml` | fail | Detects output load above modeled mux current limit. |
 | `ti_tpd2eusb30_typical_usb_esd_passes` | `examples/good_ti_tpd2eusb30_usb_esd/project.yaml` | pass | TPD2EUSB30 D+/D- clamps with 5.5 V standoff and 0.7 pF line capacitance evidence. |
@@ -58,7 +62,7 @@ circuitci validate-suite suites/public_typical_circuits.yaml --output out/public
 Observed command output:
 
 ```text
-CircuitCI suite public_typical_circuits: pass (cases=17, passed=17, failed=0)
+CircuitCI suite public_typical_circuits: pass (cases=20, passed=20, failed=0)
 ```
 
 The generated suite and case reports are written under
@@ -70,6 +74,8 @@ Observed detection details:
 | --- | --- | --- |
 | `diodes_ap2112k_dropout_detected` | `POWER_TREE_VALID` | Regulator `UREG` dropout margin `0.300000 V` is below required dropout `0.400000 V`. |
 | `microchip_mcp73831_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `0.500000 A` exceeds input rail `usb_5v` current budget `0.100000 A`. |
+| `ti_bq24075_usb_budget_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.000000 A` exceeds input rail `usb_5v` current budget `0.500000 A`. |
+| `ti_bq24075_charge_current_detected` | `POWER_TREE_VALID` | Battery charger `UCHG` programmed charge current `1.800000 A` exceeds model maximum `1.500000 A`. |
 | `ti_tps2115a_output_overcurrent_detected` | `POWER_TREE_VALID` | Power mux `UMUX` worst-case output load `1.200000 A` exceeds mux limit `1.000000 A`. |
 | `ti_tpd2eusb30_capacitance_budget_detected` | `INTERFACE_PROTECTION_REVIEW` | Protection clamp `d1_plus` has `7.000e-13 F` line capacitance, above the `5.000e-13 F` interface limit. |
 | `ti_tps62162_output_overcurrent_detected` | `POWER_TREE_VALID` | Regulator `UBUCK` worst-case output load `1.200000 A` exceeds regulator limit `1.000000 A`. |
@@ -79,9 +85,9 @@ Observed detection details:
 | `espressif_esp32_s3_wroom_1u_supply_current_detected` | `POWER_TREE_VALID` | Power rail `rail_3v3` worst-case declared load `0.500000 A` exceeds supply limit `0.300000 A`. |
 | `espressif_esp32_s3_wroom_1u_gpio46_bootstrap_detected` | `BOOT_STRAP_BIAS_VALID` | Boot strap `UESP.IO46` resistor network produces `3.300000 V` on net `esp_io46`, not valid for required low state in boot mode `joint_download`. |
 
-All seven public-reference pass cases produced zero critical findings. All ten
-paired injected-error cases failed with the expected critical finding ID, and
-all ten repair-pair checks passed.
+All eight public-reference pass cases produced zero critical findings. All
+twelve paired injected-error cases failed with the expected critical finding
+ID, and all twelve repair-pair checks passed.
 
 ## Interpretation Limits
 

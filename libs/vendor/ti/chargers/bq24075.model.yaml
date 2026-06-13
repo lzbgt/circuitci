@@ -1,0 +1,145 @@
+component_id: vendor.ti.bq24075
+version: 0.1.0
+category: battery_charger
+ports:
+  IN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.35
+      operating_voltage_max_V: 6.4
+  BAT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 4.23
+  OUT:
+    kind: electrical_power
+    required: false
+    electrical:
+      operating_voltage_max_V: 5.6
+  VSS:
+    kind: electrical_ground
+    required: true
+  ISET:
+    kind: passive
+    required: true
+  ILIM:
+    kind: passive
+    required: false
+  CE:
+    kind: digital_electrical_input
+    required: false
+  EN1:
+    kind: digital_electrical_input
+    required: false
+  EN2:
+    kind: digital_electrical_input
+    required: false
+  TS:
+    kind: passive
+    required: false
+  SYSOFF:
+    kind: digital_electrical_input
+    required: false
+  CHG:
+    kind: digital_electrical_output
+    required: false
+  PGOOD:
+    kind: digital_electrical_output
+    required: false
+battery_charger:
+  input_pin: IN
+  battery_pin: BAT
+  charge_current_parameter: programmed_charge_current_A
+  min_charge_current_A: 0.15
+  max_charge_current_A: 1.5
+  regulation_voltage_V: 4.2
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: BQ24075RGTR
+  package: 16-VQFN
+  polarity: single_cell_li_ion_linear_charger_with_power_path
+  pinout:
+    IN: IN
+    BAT: BAT
+    OUT: OUT
+    VSS: VSS
+    ISET: ISET
+    ILIM: ILIM
+    CE: CE
+    EN1: EN1
+    EN2: EN2
+    TS: TS
+    SYSOFF: SYSOFF
+    CHG: CHG
+    PGOOD: PGOOD
+  electrical_characteristics:
+    input_voltage:
+      conditions: Recommended operating input range for bq24072, bq24073, bq24075, and bq24079.
+      min: 4.35
+      max: 6.4
+      unit: V
+    battery_regulation_voltage:
+      conditions: bq24075 BAT regulation option.
+      min: 4.16
+      typ: 4.2
+      max: 4.23
+      unit: V
+    system_output_voltage:
+      conditions: bq24075 OUT pin regulation.
+      min: 5.4
+      typ: 5.5
+      max: 5.6
+      unit: V
+    fast_charge_current_range:
+      conditions: CE low, EN1 low, EN2 high, RISET-programmed fast charge current.
+      min: 0.15
+      max: 1.5
+      unit: A
+    input_current_limit_usb100:
+      conditions: EN2 low, EN1 low.
+      typ: 0.1
+      unit: A
+    input_current_limit_usb500:
+      conditions: EN2 low, EN1 high.
+      max: 0.5
+      unit: A
+  device_parameters:
+    charge_current_programming:
+      conditions: Fast-charge current is programmed by a resistor from ISET to VSS; Board IR must declare programmed_charge_current_A from the schematic resistor or board configuration.
+      unit: note
+      simulation_relevance: Static power-tree validation compares programmed charge current against charger range and input-source current budget.
+    input_current_limit_programming:
+      conditions: ILIM, EN1, and EN2 set the maximum input current. CircuitCI currently uses the declared input rail supply_current_limit_A as the policy source-current budget.
+      unit: note
+      simulation_relevance: Static validation can catch programmed charge current above a USB/source current budget but does not yet derive the budget from ILIM/EN states.
+    power_path:
+      conditions: OUT powers the system load while BAT charges and can enter battery supplement mode.
+      unit: note
+      simulation_relevance: Static validation does not model DPPM, supplement-mode transient sharing, or thermal foldback.
+  documents:
+    - title: BQ2407x Standalone 1-Cell 1.5-A Linear Battery Chargers with Power Path
+      path: docs/research/datasheets/ti/bq24074.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/bq24074.pdf
+      sha256: 19bd875e3fada54e74efaca074335c13eb87d0537f895c3234bf77387cbf1dd8
+      retrieved: 2026-06-13
+    - title: Peer urine_monitor cached BQ24075RGTR datasheet
+      path: ../urine_monitor/docs/fresh_design/lcsc_downloads/datasheets/C15464_BQ24075RGTR.pdf
+      source_url: local_peer_project
+      sha256: 627fb3c9cfed26cbf19fa043734b97b04980fe34572f5368ed19b84553abd2e7
+      retrieved: 2026-06-13
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - power_tree_validation
+    - battery_charger_static_screening
+    - usb_charge_current_budget_screening
+  not_valid_for:
+    - charger_thermal_signoff
+    - battery_safety_or_chemistry_signoff
+    - charge_termination_transient_signoff
+    - dppm_or_battery_supplement_transient_signoff
+    - input_current_limit_state_derivation_from_ilim_en_pins

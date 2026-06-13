@@ -59,7 +59,8 @@ existing CircuitCI checks:
   `ESP32-S3-WROOM-1U-N16R8` static model for the peer ESP32 hub path.
 - Power-path and regulators: `BQ24075RGTR`, `TPS61023DRLT`,
   `TPS63802DLAR`, `TPS63060DSCR`, `TPS63070RNMR`, `TPS61236*`,
-  `TPS2121RUXT`, `TPS2113A*`, `TP4056`.
+  `TPS2121RUXT`, `TPS2113A*`, `TP4056`. CircuitCI now has a first
+  `BQ24075RGTR` static charger model for the peer power path.
 - Protection: `USBLC6-2SC6`, `TPD4E05U06DQAR`, `SMF5.0A`, `SM6T6V8CA`,
   resettable fuses.
 - Memory/security/I/O expanders: `W25Q32JVSSIQ`, `AT24C02C-SSHM-T`,
@@ -76,7 +77,7 @@ existing CircuitCI checks:
    Gerber/outline, and eventually `.eprj2` schematic/layout import.
 2. Add the remaining ESP32-S3-WROOM and STM32L431 component packs using the
    peer datasheets and public vendor datasheets as authoritative sources.
-3. Add power-path packs for `BQ24075`, `TPS61023`, `TPS63802`, and `TPS2121`,
+3. Add the remaining power-path packs for `TPS61023`, `TPS63802`, and `TPS2121`,
    because these improve real battery/boost/mux assessment coverage.
 4. Add memory/security/sensor packs for the fitted STM32L4 peripherals so
    scenario suggestions can recognize common pull-up, rail, and bus checks.

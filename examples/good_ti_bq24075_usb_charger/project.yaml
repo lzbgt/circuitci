@@ -1,0 +1,79 @@
+project:
+  name: good_ti_bq24075_usb_charger
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    VBUS:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    UCHG:
+      model: vendor.ti.bq24075
+      part_number: BQ24075RGTR
+      parameters:
+        programmed_charge_current_A: 0.45
+      power_domains:
+        IN: usb_5v
+        BAT: battery
+        OUT: sys_5v
+      pins:
+        IN: usb_5v
+        BAT: battery
+        OUT: sys_5v
+        VSS: gnd
+        ISET: iset
+        ILIM: ilim
+        CE: ce_n
+        EN1: en1
+        EN2: en2
+        TS: ts
+        SYSOFF: sysoff
+        CHG: charge_stat
+        PGOOD: pgood
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 0.5
+    battery:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    sys_5v:
+      kind: power
+      nominal_voltage: 5.5
+      powered: true
+    iset:
+      kind: digital_or_analog
+    ilim:
+      kind: digital_or_analog
+    ce_n:
+      kind: digital_or_analog
+    en1:
+      kind: digital_or_analog
+    en2:
+      kind: digital_or_analog
+    ts:
+      kind: digital_or_analog
+    sysoff:
+      kind: digital_or_analog
+    charge_stat:
+      kind: digital_or_analog
+    pgood:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: bq24075_usb_charge_current_budget
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID

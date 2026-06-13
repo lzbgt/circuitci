@@ -1,0 +1,55 @@
+project:
+  name: bad_ti_bq24075_charge_current
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic
+  - ../../libs/vendor
+
+board:
+  components:
+    VBUS:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_5V_SOURCE
+      pins:
+        P: usb_5v
+        N: gnd
+    UCHG:
+      model: vendor.ti.bq24075
+      part_number: BQ24075RGTR
+      parameters:
+        programmed_charge_current_A: 1.8
+      power_domains:
+        IN: usb_5v
+        BAT: battery
+        OUT: sys_5v
+      pins:
+        IN: usb_5v
+        BAT: battery
+        OUT: sys_5v
+        VSS: gnd
+        ISET: iset
+  nets:
+    usb_5v:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 2.0
+    battery:
+      kind: power
+      nominal_voltage: 4.2
+      powered: true
+    sys_5v:
+      kind: power
+      nominal_voltage: 5.5
+      powered: true
+    iset:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: bq24075_programmed_current_too_high
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
