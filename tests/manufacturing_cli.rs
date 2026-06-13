@@ -284,6 +284,31 @@ fn solder_mask_opening_fails_when_opening_is_undersized() {
 }
 
 #[test]
+fn solder_mask_dam_passes_when_openings_are_far_enough() {
+    let report = run_validation("examples/good_solder_mask_dam/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_mask_dam_fails_when_openings_leave_thin_web() {
+    let report = run_validation("examples/bad_solder_mask_dam/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_DAM_VALID");
+    assert_eq!(failure["measured"]["solder_mask_layer"], "F.Mask");
+    assert_eq!(failure["measured"]["first_solder_mask_feature_index"], 0);
+    assert_eq!(failure["measured"]["second_solder_mask_feature_index"], 1);
+    let dam_width = failure["measured"]["solder_mask_dam_width_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((dam_width - 0.08).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_mask_dam_mm"], 0.15);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn copper_spacing_fails_for_near_flashes() {
     let report = run_validation("examples/bad_copper_feature_spacing/project.yaml");
     assert_eq!(report["result"], "fail");

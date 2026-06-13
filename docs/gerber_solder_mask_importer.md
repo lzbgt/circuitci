@@ -31,6 +31,10 @@ circuitci import-gerber-solder-mask fabrication/F_Mask.gts \
 same-side mask opening or when the opening expansion is below
 `parameters.min_mask_expansion_mm`.
 
+`SOLDER_MASK_DAM_VALID` consumes same-layer flash-opening evidence from
+`board.layout.solder_mask.features`. It fails when adjacent imported openings
+leave less mask web than `parameters.min_solder_mask_dam_mm`.
+
 The importer intentionally does not infer nets, component pins, or solder-mask
 rules from Gerber alone. Use separate PCB or fabrication evidence when owner or
 package-specific mask semantics matter.

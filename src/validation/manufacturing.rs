@@ -20,6 +20,7 @@ use self::geometry::{
 use super::COPPER_SPACING_VALID;
 use super::COPPER_TO_BOARD_EDGE_CLEARANCE_VALID;
 use super::DRILL_TO_BOARD_EDGE_CLEARANCE_VALID;
+use super::SOLDER_MASK_DAM_VALID;
 use super::SOLDER_MASK_OPENING_VALID;
 use super::common::validation_input_missing;
 
@@ -398,6 +399,77 @@ pub(super) fn validate_solder_mask_opening(
     }
 }
 
+pub(super) fn validate_solder_mask_dam(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_dam_mm) = required_numeric_parameter(scenario, "min_solder_mask_dam_mm", findings)
+    else {
+        return;
+    };
+    if min_dam_mm < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_solder_mask_dam_mm must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let mask = &bound.project.board.layout.solder_mask;
+    if mask.features.len() < 2 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_MASK_DAM_VALID requires at least two board.layout.solder_mask.features entries.",
+        );
+        return;
+    }
+    let mut mask_features = Vec::new();
+    for (feature_index, feature) in mask.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        mask_features.push((feature_index, feature));
+    }
+    for (first_offset, (first_index, first_feature)) in mask_features.iter().enumerate() {
+        for (second_index, second_feature) in mask_features.iter().skip(first_offset + 1) {
+            if first_feature.layer != second_feature.layer {
+                continue;
+            }
+            let Some(dam_width_mm) = copper_object_spacing_mm(
+                CopperObjectRef::Feature {
+                    feature: first_feature,
+                    index: *first_index,
+                },
+                CopperObjectRef::Feature {
+                    feature: second_feature,
+                    index: *second_index,
+                },
+            ) else {
+                validation_input_missing(
+                    findings,
+                    scenario,
+                    "SOLDER_MASK_DAM_VALID could not compute finite solder-mask opening spacing for supported Gerber mask geometry.",
+                );
+                return;
+            };
+            if dam_width_mm + f64::EPSILON < min_dam_mm {
+                findings.push(solder_mask_dam_finding(
+                    scenario,
+                    first_feature,
+                    *first_index,
+                    second_feature,
+                    *second_index,
+                    dam_width_mm.max(0.0),
+                    min_dam_mm,
+                ));
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct SolderMaskOpeningCandidate<'a> {
     mask_feature: &'a LayoutCopperFeature,
@@ -506,6 +578,51 @@ fn solder_mask_opening_undersized_finding(
     finding
 }
 
+fn solder_mask_dam_finding(
+    scenario: &Scenario,
+    first_feature: &LayoutCopperFeature,
+    first_index: usize,
+    second_feature: &LayoutCopperFeature,
+    second_index: usize,
+    dam_width_mm: f64,
+    min_dam_mm: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_MASK_DAM_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-mask openings {first_index} and {second_index} on {} leave only {:.6} mm mask dam; required at least {:.6} mm.",
+            first_feature.layer, dam_width_mm, min_dam_mm
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Increase the solder-mask dam by reducing mask expansion, increasing pad spacing, or using a package/fabrication process that supports the smaller mask web.".to_string(),
+        "If the mask bridge is intentionally removed for fine-pitch pads, record that fabrication rule explicitly and adjust this scenario threshold.".to_string(),
+    ];
+    finding
+        .measured
+        .insert("solder_mask_layer".to_string(), json!(first_feature.layer));
+    insert_prefixed_solder_mask_feature_measurements(
+        &mut finding,
+        "first",
+        first_feature,
+        first_index,
+    );
+    insert_prefixed_solder_mask_feature_measurements(
+        &mut finding,
+        "second",
+        second_feature,
+        second_index,
+    );
+    finding
+        .measured
+        .insert("solder_mask_dam_width_mm".to_string(), json!(dam_width_mm));
+    finding
+        .limit
+        .insert("min_solder_mask_dam_mm".to_string(), json!(min_dam_mm));
+    finding
+}
+
 fn insert_solder_mask_feature_measurements(
     finding: &mut Finding,
     candidate: SolderMaskOpeningCandidate<'_>,
@@ -549,6 +666,54 @@ fn insert_solder_mask_feature_measurements(
     );
     finding.measured.insert(
         "solder_mask_feature_source_primitive_index".to_string(),
+        json!(feature.source_primitive_index),
+    );
+}
+
+fn insert_prefixed_solder_mask_feature_measurements(
+    finding: &mut Finding,
+    prefix: &str,
+    feature: &LayoutCopperFeature,
+    feature_index: usize,
+) {
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_index"),
+        json!(feature_index),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_x_mm"),
+        json!(feature.at.x_mm),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_y_mm"),
+        json!(feature.at.y_mm),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_layer"),
+        json!(feature.layer),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_aperture"),
+        json!(feature.aperture),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_shape"),
+        json!(feature.shape),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_size_x_mm"),
+        json!(feature.size.x_mm),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_size_y_mm"),
+        json!(feature.size.y_mm),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_source_primitive"),
+        json!(feature.source_primitive),
+    );
+    finding.measured.insert(
+        format!("{prefix}_solder_mask_feature_source_primitive_index"),
         json!(feature.source_primitive_index),
     );
 }

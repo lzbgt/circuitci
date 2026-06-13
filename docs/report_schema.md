@@ -399,6 +399,20 @@ with Gerber solder-mask flash-opening evidence under
 Stable limit keys include `min_mask_expansion_mm` and
 `max_copper_to_mask_center_offset_mm`.
 
+`SOLDER_MASK_DAM_VALID` reports are emitted by `manufacturing` scenarios that
+compare same-layer Gerber solder-mask flash-opening features under
+`board.layout.solder_mask.features`. Stable measured keys include
+`solder_mask_layer`, `solder_mask_dam_width_mm`, and prefixed opening fields:
+`first_solder_mask_feature_index`, `first_solder_mask_feature_x_mm`,
+`first_solder_mask_feature_y_mm`, `first_solder_mask_feature_layer`,
+`first_solder_mask_feature_aperture`, `first_solder_mask_feature_shape`,
+`first_solder_mask_feature_size_x_mm`,
+`first_solder_mask_feature_size_y_mm`,
+`first_solder_mask_feature_source_primitive`, and
+`first_solder_mask_feature_source_primitive_index`; the same keys may appear
+with the `second_` prefix. Stable limit keys include
+`min_solder_mask_dam_mm`.
+
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios
 that combine `usb_connector` metadata, VBUS clamp-only protection metadata,
 `board.layout.placements`, and `board.layout.routes`. Stable measured keys
