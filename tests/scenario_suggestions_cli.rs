@@ -268,6 +268,116 @@ fn suggest_scenarios_reports_buck_boost_switch_inductance_evidence() {
 }
 
 #[test]
+fn suggest_scenarios_derives_manufacturing_artifact_templates() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_manufacturing_artifacts/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_manufacturing_artifacts"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 11);
+
+    let drill_diameter = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "drill_diameter_valid")
+        .expect("drill diameter suggestion");
+    assert_eq!(drill_diameter["kind"], "manufacturing_drill_diameter");
+    assert_eq!(drill_diameter["runnable"], true);
+    assert_eq!(drill_diameter["scenario"]["type"], "manufacturing");
+    assert_eq!(
+        drill_diameter["scenario"]["checks"][0],
+        "DRILL_DIAMETER_VALID"
+    );
+    assert_eq!(
+        drill_diameter["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_drill_diameter_range_2026_06"
+    );
+
+    let slot_width = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "slot_width_valid")
+        .expect("slot width suggestion");
+    assert_eq!(slot_width["runnable"], true);
+    assert_eq!(slot_width["scenario"]["checks"][0], "SLOT_WIDTH_VALID");
+    assert_eq!(
+        slot_width["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_slot_min_2026_06"
+    );
+
+    let annular_ring = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "drill_annular_ring_valid")
+        .expect("annular ring suggestion");
+    assert_eq!(annular_ring["runnable"], true);
+    assert_eq!(
+        annular_ring["scenario"]["checks"][0],
+        "DRILL_ANNULAR_RING_VALID"
+    );
+    assert_eq!(
+        annular_ring["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_double_sided_via_min_2026_06"
+    );
+
+    let mask_opening = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_mask_opening_valid")
+        .expect("mask opening suggestion");
+    assert_eq!(mask_opening["runnable"], true);
+    assert_eq!(
+        mask_opening["scenario"]["checks"][0],
+        "SOLDER_MASK_OPENING_VALID"
+    );
+    assert_eq!(
+        mask_opening["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_standard_2026_06"
+    );
+
+    let mask_dam = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_mask_dam_valid")
+        .expect("mask dam suggestion");
+    assert_eq!(mask_dam["runnable"], true);
+    assert_eq!(mask_dam["scenario"]["checks"][0], "SOLDER_MASK_DAM_VALID");
+    assert_eq!(
+        mask_dam["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_standard_2026_06"
+    );
+
+    let copper_spacing = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "copper_spacing_valid")
+        .expect("copper spacing suggestion");
+    assert_eq!(copper_spacing["runnable"], false);
+    assert_eq!(
+        copper_spacing["scenario"]["checks"][0],
+        "COPPER_SPACING_VALID"
+    );
+    assert!(
+        copper_spacing["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("min_copper_spacing_mm")
+    );
+
+    let paste_opening = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_opening_valid")
+        .expect("paste opening suggestion");
+    assert_eq!(paste_opening["runnable"], false);
+    assert_eq!(
+        paste_opening["scenario"]["checks"][0],
+        "SOLDER_PASTE_OPENING_VALID"
+    );
+    assert!(
+        paste_opening["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("min_paste_area_ratio")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");

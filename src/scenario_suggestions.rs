@@ -3,6 +3,7 @@ use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use std::collections::BTreeMap;
 
 mod interface_protection;
+mod manufacturing;
 mod types;
 
 pub use types::*;
@@ -51,6 +52,7 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     suggestions.extend(reset_release_suggestions(bound));
     suggestions.extend(boot_strap_suggestions(bound));
     suggestions.extend(uart_bootloader_suggestions(bound));
+    suggestions.extend(manufacturing::manufacturing_suggestions(bound));
     ScenarioSuggestionReport {
         schema_version: "0.1.0".to_string(),
         project: bound.project.project.name.clone(),

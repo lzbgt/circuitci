@@ -72,6 +72,7 @@ Executable scenario types:
 - `interface_protection`
 - `clock`
 - `power_tree`
+- `manufacturing`
 - `analog_transient`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
@@ -102,6 +103,8 @@ Canonical executable check IDs:
 - `POWER_TREE_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
+- `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
+- `SLOT_WIDTH_VALID`
 - `DRILL_ANNULAR_RING_VALID`
 - `COPPER_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `COPPER_SPACING_VALID`

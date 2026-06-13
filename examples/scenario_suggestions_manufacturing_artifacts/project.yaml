@@ -1,0 +1,123 @@
+project:
+  name: scenario_suggestions_manufacturing_artifacts
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    outline:
+      segments:
+        - start: { x_mm: 0.0, y_mm: 0.0 }
+          end: { x_mm: 20.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 0
+          boundary_role: external
+        - start: { x_mm: 20.0, y_mm: 0.0 }
+          end: { x_mm: 20.0, y_mm: 20.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 1
+          boundary_role: external
+        - start: { x_mm: 20.0, y_mm: 20.0 }
+          end: { x_mm: 0.0, y_mm: 20.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 2
+          boundary_role: external
+        - start: { x_mm: 0.0, y_mm: 20.0 }
+          end: { x_mm: 0.0, y_mm: 0.0 }
+          layer: BoardOutlineLayer
+          source_primitive: gerber_linear
+          source_primitive_index: 3
+          boundary_role: external
+    drills:
+      - at: { x_mm: 5.0, y_mm: 5.0 }
+        drill_mm: 0.3
+        plating: plated
+        layer: PTH_Through
+        tool: T01
+        source_hit_index: 0
+    slots:
+      - start: { x_mm: 8.0, y_mm: 5.0 }
+        end: { x_mm: 10.0, y_mm: 5.0 }
+        width_mm: 0.8
+        plating: plated
+        layer: PTH_Through
+        tool: T02
+        source_slot_index: 0
+    copper:
+      features:
+        - at: { x_mm: 5.0, y_mm: 5.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: circle
+          size: { x_mm: 0.7, y_mm: 0.7 }
+        - at: { x_mm: 12.0, y_mm: 5.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D11
+          shape: rect
+          size: { x_mm: 1.0, y_mm: 0.8 }
+      segments:
+        - start: { x_mm: 13.0, y_mm: 5.0 }
+          end: { x_mm: 15.0, y_mm: 5.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_linear_draw
+          source_primitive_index: 2
+          aperture: D12
+          width_mm: 0.2
+      regions:
+        - points:
+            - { x_mm: 14.0, y_mm: 8.0 }
+            - { x_mm: 16.0, y_mm: 8.0 }
+            - { x_mm: 16.0, y_mm: 10.0 }
+            - { x_mm: 14.0, y_mm: 10.0 }
+          layer: F.Cu
+          polarity: dark
+          source_primitive: gerber_region
+          source_primitive_index: 3
+    solder_mask:
+      features:
+        - at: { x_mm: 5.0, y_mm: 5.0 }
+          layer: F.Mask
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D20
+          shape: circle
+          size: { x_mm: 0.8, y_mm: 0.8 }
+        - at: { x_mm: 12.0, y_mm: 5.0 }
+          layer: F.Mask
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D21
+          shape: rect
+          size: { x_mm: 1.1, y_mm: 0.9 }
+    solder_paste:
+      features:
+        - at: { x_mm: 5.0, y_mm: 5.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D30
+          shape: circle
+          size: { x_mm: 0.45, y_mm: 0.45 }
+        - at: { x_mm: 12.0, y_mm: 5.0 }
+          layer: F.Paste
+          polarity: dark
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D31
+          shape: rect
+          size: { x_mm: 0.7, y_mm: 0.5 }
