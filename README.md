@@ -112,6 +112,13 @@ circuitci import-jlc-assembly \
   --output out/imported_assembly.project.yaml
 ```
 
+Inspect an EasyEDA Pro `.eprj2` SQLite project envelope:
+
+```bash
+circuitci inspect-easyeda-pro path/to/project.eprj2 \
+  --output out/easyeda_pro_inspection.md
+```
+
 Enrich an imported project with Gerber board-outline evidence:
 
 ```bash

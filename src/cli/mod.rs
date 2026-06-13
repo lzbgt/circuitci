@@ -93,6 +93,11 @@ enum Command {
         #[arg(long, default_value = "generic.schematic.imported_component")]
         default_model: String,
     },
+    InspectEasyedaPro {
+        eprj2: PathBuf,
+        #[arg(long, short = 'o')]
+        output: PathBuf,
+    },
     ImportGerberOutline {
         gerber: PathBuf,
         #[arg(long)]
@@ -201,6 +206,9 @@ pub fn run() -> Result<()> {
             name,
             default_model,
         }) => run_import_jlc_assembly(bom, placement, output, name, default_model),
+        Some(Command::InspectEasyedaPro { eprj2, output }) => {
+            run_inspect_easyeda_pro(eprj2, output)
+        }
         Some(Command::ImportGerberOutline {
             gerber,
             project,
@@ -383,6 +391,33 @@ fn run_import_jlc_assembly(
         summary.components_with_placement,
         bom.display(),
         placement.display(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn run_inspect_easyeda_pro(eprj2: PathBuf, output: PathBuf) -> Result<()> {
+    let summary = crate::importers::easyeda_pro::inspect_easyeda_pro_project(
+        &crate::importers::easyeda_pro::EasyedaProInspectOptions {
+            eprj2: eprj2.clone(),
+            output: output.clone(),
+        },
+    )?;
+    println!(
+        "CircuitCI inspected EasyEDA Pro project: {} projects, {} branches, {} structures, latest ticket {}, {} boards, {} schematics, {} sheets, {} PCBs, {} encoded history payloads {} -> {}",
+        summary.projects,
+        summary.branches,
+        summary.project_structures,
+        summary
+            .latest_ticket
+            .map(|ticket| ticket.to_string())
+            .unwrap_or_else(|| "none".to_string()),
+        summary.boards,
+        summary.schematics,
+        summary.sheets,
+        summary.pcbs,
+        summary.encoded_history_payloads,
+        eprj2.display(),
         output.display()
     );
     Ok(())

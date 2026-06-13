@@ -1,4 +1,5 @@
 pub mod drill;
+pub mod easyeda_pro;
 pub mod gerber;
 pub mod jlc;
 pub mod kicad;

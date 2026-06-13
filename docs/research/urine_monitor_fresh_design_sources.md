@@ -50,6 +50,23 @@ This makes `.eprj2` layout extraction or another pad/net evidence adapter the
 next requirement before fabricated-release mask, paste, copper, and drill
 reports can reliably point back to affected component pins.
 
+`circuitci inspect-easyeda-pro` now records what the local EasyEDA Pro source
+can prove without decoding private design-object payloads. On
+`source/easyeda_pro_project_UM-STM32L4_V1.eprj2`, it finds:
+
+- `1` project and `2` branches.
+- `512` project-structure snapshots.
+- Latest structure ticket `183013`.
+- `1` board, `1` schematic, `11` sheets, and `1` PCB.
+- `642` encoded/non-JSON history payloads.
+
+The plaintext latest structure identifies board `dd654e1cf9b905cf`
+(`UM-STM32L4_V01`) and PCB `f5d31030bb8dd7c8`
+(`Voice_Agentic_PCB_V0`), but the pad/via/route/net-bearing history payloads
+are encoded. CircuitCI should therefore require an unencoded EasyEDA layout
+export or a documented decoder before claiming pin-level ownership from this
+`.eprj2` file.
+
 ## Project-Level Evidence
 
 - ESP32-S3 hub/node design:
