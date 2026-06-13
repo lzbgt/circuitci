@@ -343,7 +343,9 @@ sampled output. When imported outline segments form closed contours,
 outer board edges, `cutout` for enclosed interior holes, or `unknown` when the
 importer cannot prove a closed contour. This evidence supports nearest-edge USB
 orientation suggestions; it is not a complete mechanical outline solver and
-does not yet model arbitrary slots, panel tabs, or connector body intrusion.
+outline contours do not by themselves model routed slots, panel tabs, or
+connector body intrusion. Use `board.layout.slots` for imported routed slot
+evidence.
 
 ## Layout Pad Evidence
 

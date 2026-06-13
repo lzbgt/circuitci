@@ -264,21 +264,28 @@ startup, ESR, drive level, ppm accuracy, or layout parasitics.
 The current tool validates schematic/netlist behavior and a bounded amount of
 explicit layout evidence. KiCad `.kicad_pcb` import can now populate component
 center placements, matched footprint drawing evidence, routed segment/via
-geometry, route constraints, and copper-zone outlines plus saved filled
-polygons for matching Board IR nets, but the tool does not yet solve full PCB
-layout physics. Missing layout checks
+geometry, route constraints, copper-zone outlines, and saved filled polygons
+for matching Board IR nets. USB connector orientation, edge proximity,
+body-overhang, entry-clearance, connector/component clearance, data-route
+geometry, VBUS route geometry, same-layer return-path outline coverage,
+filled-zone coverage, filled-zone edge clearance, ground-zone contact evidence,
+and stitching-via distance are now first-class executable screens when the
+required board-specific policy is declared.
+
+The tool still does not solve full PCB layout physics. Missing layout checks
 include:
 
-- USB connector orientation, routed trace order, adjacent-plane return paths,
-  stitching-via continuity, and filled-zone continuity,
-- RF antenna matching, keepout, and 2.4 GHz layout,
-- impedance, return path, and high-speed signal integrity,
+- routed trace order and pin-1/footprint/BOM/PNP alignment,
+- adjacent-plane or stackup-aware return paths beyond same-layer zone evidence,
+- stitching-via inductance, filled-zone island impedance, and USB eye margin,
+- RF antenna matching, RF keepout, and 2.4 GHz layout,
+- controlled impedance and high-speed signal integrity,
 - thermal copper and power dissipation from layout,
-- creepage/clearance and manufacturing constraints,
-- footprint/pin-1/BOM/PNP alignment.
+- creepage/clearance beyond currently encoded fabrication/manufacturing
+  screens.
 
-These require PCB import and geometry-aware rule engines, not only schematic
-connectivity.
+These require additional PCB import evidence and geometry-aware rule engines,
+not only schematic connectivity.
 
 ## 6. Import Coverage Beyond KiCad
 
