@@ -400,9 +400,10 @@ Stable limit keys include `min_mask_expansion_mm` and
 `max_copper_to_mask_center_offset_mm`.
 
 `SOLDER_MASK_DAM_VALID` reports are emitted by `manufacturing` scenarios that
-compare same-layer Gerber solder-mask flash-opening features under
-`board.layout.solder_mask.features`. Stable measured keys include
-`solder_mask_layer`, `solder_mask_dam_width_mm`, and prefixed opening fields:
+compare same-layer Gerber solder-mask opening features, segments, and regions
+under `board.layout.solder_mask`. Stable measured keys include
+`solder_mask_layer`, `solder_mask_dam_width_mm`, `first_solder_mask_kind`, and
+`second_solder_mask_kind`. Feature operands report prefixed fields such as
 `first_solder_mask_feature_index`, `first_solder_mask_feature_x_mm`,
 `first_solder_mask_feature_y_mm`, `first_solder_mask_feature_layer`,
 `first_solder_mask_feature_aperture`, `first_solder_mask_feature_shape`,
@@ -410,7 +411,16 @@ compare same-layer Gerber solder-mask flash-opening features under
 `first_solder_mask_feature_size_y_mm`,
 `first_solder_mask_feature_source_primitive`, and
 `first_solder_mask_feature_source_primitive_index`; the same keys may appear
-with the `second_` prefix. Stable limit keys include
+with the `second_` prefix. Segment operands report prefixed fields such as
+`first_solder_mask_segment_index`, `first_solder_mask_segment_start`,
+`first_solder_mask_segment_end`, `first_solder_mask_segment_layer`,
+`first_solder_mask_segment_aperture`, `first_solder_mask_segment_width_mm`,
+`first_solder_mask_segment_source_primitive`, and
+`first_solder_mask_segment_source_primitive_index`. Region operands report
+prefixed fields such as `first_solder_mask_region_index`,
+`first_solder_mask_region_layer`, `first_solder_mask_region_source_primitive`,
+`first_solder_mask_region_source_primitive_index`, and
+`first_solder_mask_region_point_count`. Stable limit keys include
 `min_solder_mask_dam_mm`.
 
 `USB_VBUS_ROUTE_VALID` reports are emitted by `interface_protection` scenarios

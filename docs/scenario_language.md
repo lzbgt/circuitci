@@ -762,8 +762,9 @@ fab-specific mask swell, paste stencil behavior, or package-specific mask
 rules.
 
 Solder-mask dam validation uses `SOLDER_MASK_DAM_VALID` when the Board IR
-includes at least two Gerber solder-mask flash-opening features under
-`board.layout.solder_mask.features`.
+includes at least two Gerber solder-mask openings under
+`board.layout.solder_mask.features`, `board.layout.solder_mask.segments`, or
+`board.layout.solder_mask.regions`.
 
 ```yaml
 scenarios:
@@ -778,17 +779,19 @@ scenarios:
 Solder-mask dam algorithm:
 
 1. Require `parameters.min_solder_mask_dam_mm`.
-2. Require at least two finite solder-mask flash-opening features.
-3. Compare same-layer opening feature pairs using supported `circle`, `rect`,
-   and axis-aligned `oval` geometry.
+2. Require at least two finite solder-mask opening features, segments, or
+   regions.
+3. Compare same-layer opening pairs using supported `circle`, `rect`,
+   axis-aligned `oval`, circular-aperture linear draw, and single-contour
+   region geometry.
 4. Ignore different-layer opening pairs.
 5. Fail when the measured opening-to-opening gap is below
    `min_solder_mask_dam_mm`.
 
 This is a static 2D mask web screen. It can detect thin or missing mask dams
-between imported flash openings, but it does not yet evaluate mask region
-polygons, fab-specific mask bridge exceptions, package-specific no-dam rules,
-or paste stencil behavior.
+between imported flash, linear draw, and region openings, but it does not yet
+evaluate multi-contour mask regions, fab-specific mask bridge exceptions,
+package-specific no-dam rules, or paste stencil behavior.
 
 USB route geometry uses `USB_ROUTE_GEOMETRY_VALID` when the Board IR includes
 `board.layout.routes` evidence imported from PCB data. The rule checks D+ and

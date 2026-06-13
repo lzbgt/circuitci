@@ -214,10 +214,11 @@ without explicit imported mechanical evidence.
   minimum X/Y expansion. It does not yet evaluate mask region polygons, mask
   dams between adjacent pads, paste stencil openings, fab-specific mask swell,
   package-specific solder-mask-defined pad rules, or 3D solderability effects.
-- `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash openings for
-  a static same-layer 2D mask-web screen. It can detect thin or missing dams
-  between supported circle, rectangle, and axis-aligned oval openings. It does
-  not yet evaluate solder-mask region polygons, package-specific no-dam
+- `SOLDER_MASK_DAM_VALID` uses imported Gerber solder-mask flash, linear draw,
+  and region openings for a static same-layer 2D mask-web screen. It can detect
+  thin or missing dams between supported circle, rectangle, axis-aligned oval,
+  circular-aperture linear draw, and single-contour region openings. It does
+  not yet evaluate multi-contour solder-mask regions, package-specific no-dam
   exceptions, manufacturer-specific bridge rules, paste stencil behavior, or
   3D solderability effects.
 - Gerber copper import currently records dark `D03` flash features for circle,

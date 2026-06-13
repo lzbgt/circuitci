@@ -417,37 +417,51 @@ pub(super) fn validate_solder_mask_dam(
         return;
     }
     let mask = &bound.project.board.layout.solder_mask;
-    if mask.features.len() < 2 {
+    if mask.features.len() + mask.segments.len() + mask.regions.len() < 2 {
         validation_input_missing(
             findings,
             scenario,
-            "SOLDER_MASK_DAM_VALID requires at least two board.layout.solder_mask.features entries.",
+            "SOLDER_MASK_DAM_VALID requires at least two board.layout.solder_mask features, segments, or regions.",
         );
         return;
     }
-    let mut mask_features = Vec::new();
+    let mut mask_objects = Vec::new();
     for (feature_index, feature) in mask.features.iter().enumerate() {
         if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
             validation_input_missing(findings, scenario, message);
             continue;
         }
-        mask_features.push((feature_index, feature));
+        mask_objects.push(CopperObjectRef::Feature {
+            feature,
+            index: feature_index,
+        });
     }
-    for (first_offset, (first_index, first_feature)) in mask_features.iter().enumerate() {
-        for (second_index, second_feature) in mask_features.iter().skip(first_offset + 1) {
-            if first_feature.layer != second_feature.layer {
+    for (segment_index, segment) in mask.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        mask_objects.push(CopperObjectRef::Segment {
+            segment,
+            index: segment_index,
+        });
+    }
+    for (region_index, region) in mask.regions.iter().enumerate() {
+        if let Err(message) = validate_copper_region_geometry(region, region_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        mask_objects.push(CopperObjectRef::Region {
+            region,
+            index: region_index,
+        });
+    }
+    for (first_offset, first_object) in mask_objects.iter().enumerate() {
+        for second_object in mask_objects.iter().skip(first_offset + 1) {
+            if first_object.layer() != second_object.layer() {
                 continue;
             }
-            let Some(dam_width_mm) = copper_object_spacing_mm(
-                CopperObjectRef::Feature {
-                    feature: first_feature,
-                    index: *first_index,
-                },
-                CopperObjectRef::Feature {
-                    feature: second_feature,
-                    index: *second_index,
-                },
-            ) else {
+            let Some(dam_width_mm) = copper_object_spacing_mm(*first_object, *second_object) else {
                 validation_input_missing(
                     findings,
                     scenario,
@@ -458,10 +472,8 @@ pub(super) fn validate_solder_mask_dam(
             if dam_width_mm + f64::EPSILON < min_dam_mm {
                 findings.push(solder_mask_dam_finding(
                     scenario,
-                    first_feature,
-                    *first_index,
-                    second_feature,
-                    *second_index,
+                    *first_object,
+                    *second_object,
                     dam_width_mm.max(0.0),
                     min_dam_mm,
                 ));
@@ -580,10 +592,8 @@ fn solder_mask_opening_undersized_finding(
 
 fn solder_mask_dam_finding(
     scenario: &Scenario,
-    first_feature: &LayoutCopperFeature,
-    first_index: usize,
-    second_feature: &LayoutCopperFeature,
-    second_index: usize,
+    first_object: CopperObjectRef<'_>,
+    second_object: CopperObjectRef<'_>,
     dam_width_mm: f64,
     min_dam_mm: f64,
 ) -> Finding {
@@ -591,8 +601,12 @@ fn solder_mask_dam_finding(
         SOLDER_MASK_DAM_VALID,
         scenario.name.clone(),
         format!(
-            "Solder-mask openings {first_index} and {second_index} on {} leave only {:.6} mm mask dam; required at least {:.6} mm.",
-            first_feature.layer, dam_width_mm, min_dam_mm
+            "Solder-mask {} and {} openings on {} leave only {:.6} mm mask dam; required at least {:.6} mm.",
+            first_object.kind(),
+            second_object.kind(),
+            first_object.layer(),
+            dam_width_mm,
+            min_dam_mm
         ),
     );
     finding.suggested_fixes = vec![
@@ -601,19 +615,9 @@ fn solder_mask_dam_finding(
     ];
     finding
         .measured
-        .insert("solder_mask_layer".to_string(), json!(first_feature.layer));
-    insert_prefixed_solder_mask_feature_measurements(
-        &mut finding,
-        "first",
-        first_feature,
-        first_index,
-    );
-    insert_prefixed_solder_mask_feature_measurements(
-        &mut finding,
-        "second",
-        second_feature,
-        second_index,
-    );
+        .insert("solder_mask_layer".to_string(), json!(first_object.layer()));
+    insert_solder_mask_object_measurements(&mut finding, "first", first_object);
+    insert_solder_mask_object_measurements(&mut finding, "second", second_object);
     finding
         .measured
         .insert("solder_mask_dam_width_mm".to_string(), json!(dam_width_mm));
@@ -670,52 +674,117 @@ fn insert_solder_mask_feature_measurements(
     );
 }
 
-fn insert_prefixed_solder_mask_feature_measurements(
+fn insert_solder_mask_object_measurements(
     finding: &mut Finding,
     prefix: &str,
-    feature: &LayoutCopperFeature,
-    feature_index: usize,
+    object: CopperObjectRef<'_>,
 ) {
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_index"),
-        json!(feature_index),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_x_mm"),
-        json!(feature.at.x_mm),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_y_mm"),
-        json!(feature.at.y_mm),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_layer"),
-        json!(feature.layer),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_aperture"),
-        json!(feature.aperture),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_shape"),
-        json!(feature.shape),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_size_x_mm"),
-        json!(feature.size.x_mm),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_size_y_mm"),
-        json!(feature.size.y_mm),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_source_primitive"),
-        json!(feature.source_primitive),
-    );
-    finding.measured.insert(
-        format!("{prefix}_solder_mask_feature_source_primitive_index"),
-        json!(feature.source_primitive_index),
-    );
+    finding
+        .measured
+        .insert(format!("{prefix}_solder_mask_kind"), json!(object.kind()));
+    match object {
+        CopperObjectRef::Feature { feature, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_solder_mask_feature_index"), json!(index));
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_x_mm"),
+                json!(feature.at.x_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_y_mm"),
+                json!(feature.at.y_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_layer"),
+                json!(feature.layer),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_aperture"),
+                json!(feature.aperture),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_shape"),
+                json!(feature.shape),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_size_x_mm"),
+                json!(feature.size.x_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_size_y_mm"),
+                json!(feature.size.y_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_source_primitive"),
+                json!(feature.source_primitive),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_feature_source_primitive_index"),
+                json!(feature.source_primitive_index),
+            );
+        }
+        CopperObjectRef::Segment { segment, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_solder_mask_segment_index"), json!(index));
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_start"),
+                json!({
+                    "x_mm": segment.start.x_mm,
+                    "y_mm": segment.start.y_mm,
+                }),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_end"),
+                json!({
+                    "x_mm": segment.end.x_mm,
+                    "y_mm": segment.end.y_mm,
+                }),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_layer"),
+                json!(segment.layer),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_aperture"),
+                json!(segment.aperture),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_width_mm"),
+                json!(segment.width_mm),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_source_primitive"),
+                json!(segment.source_primitive),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_segment_source_primitive_index"),
+                json!(segment.source_primitive_index),
+            );
+        }
+        CopperObjectRef::Region { region, index } => {
+            finding
+                .measured
+                .insert(format!("{prefix}_solder_mask_region_index"), json!(index));
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_region_layer"),
+                json!(region.layer),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_region_source_primitive"),
+                json!(region.source_primitive),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_region_source_primitive_index"),
+                json!(region.source_primitive_index),
+            );
+            finding.measured.insert(
+                format!("{prefix}_solder_mask_region_point_count"),
+                json!(region.points.len()),
+            );
+        }
+    }
 }
 
 fn required_numeric_parameter(

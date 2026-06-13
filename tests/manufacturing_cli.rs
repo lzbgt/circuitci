@@ -298,12 +298,41 @@ fn solder_mask_dam_fails_when_openings_leave_thin_web() {
     let failure = &report["failures"][0];
     assert_eq!(failure["id"], "SOLDER_MASK_DAM_VALID");
     assert_eq!(failure["measured"]["solder_mask_layer"], "F.Mask");
+    assert_eq!(failure["measured"]["first_solder_mask_kind"], "feature");
     assert_eq!(failure["measured"]["first_solder_mask_feature_index"], 0);
+    assert_eq!(failure["measured"]["second_solder_mask_kind"], "feature");
     assert_eq!(failure["measured"]["second_solder_mask_feature_index"], 1);
     let dam_width = failure["measured"]["solder_mask_dam_width_mm"]
         .as_f64()
         .unwrap();
     assert!((dam_width - 0.08).abs() < 1.0e-12);
+    assert_eq!(failure["limit"]["min_solder_mask_dam_mm"], 0.15);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_mask_dam_fails_for_non_flash_openings() {
+    let report = run_validation("examples/bad_solder_mask_dam_segment_region/project.yaml");
+    assert_eq!(report["result"], "fail");
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_MASK_DAM_VALID");
+    assert_eq!(failure["measured"]["solder_mask_layer"], "F.Mask");
+    assert_eq!(failure["measured"]["first_solder_mask_kind"], "segment");
+    assert_eq!(failure["measured"]["first_solder_mask_segment_index"], 0);
+    assert_eq!(
+        failure["measured"]["first_solder_mask_segment_width_mm"],
+        0.2
+    );
+    assert_eq!(failure["measured"]["second_solder_mask_kind"], "region");
+    assert_eq!(failure["measured"]["second_solder_mask_region_index"], 0);
+    assert_eq!(
+        failure["measured"]["second_solder_mask_region_point_count"],
+        4
+    );
+    let dam_width = failure["measured"]["solder_mask_dam_width_mm"]
+        .as_f64()
+        .unwrap();
+    assert!((dam_width - 0.12).abs() < 1.0e-12);
     assert_eq!(failure["limit"]["min_solder_mask_dam_mm"], 0.15);
     assert_report_schema_valid(&report);
 }
