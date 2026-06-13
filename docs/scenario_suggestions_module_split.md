@@ -16,6 +16,9 @@ suggestions.
 - `src/scenario_suggestions/backdrive.rs` owns GPIO backdrive risk recognition,
   runtime-evidence gating, duplicate detection, and `GPIO_BACKDRIVE` template
   construction.
+- `src/scenario_suggestions/control_line.rs` owns
+  `board.runtime.control_line_sequences[]` projection, duplicate detection, and
+  `CONTROL_LINE_RELEASE_SEQUENCE` template construction.
 - `src/scenario_suggestions/interface_protection.rs` owns recognition for
   signal-conditioning channels and clamp-only interface-protection templates.
 - `src/scenario_suggestions/interface_protection/usb.rs` owns USB connector
