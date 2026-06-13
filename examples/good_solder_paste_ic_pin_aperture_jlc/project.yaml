@@ -30,10 +30,23 @@ board:
           aperture: D10
           shape: rect
           size: { x_mm: 0.24, y_mm: 1.10 }
+        - at: { x_mm: 15.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U2
+          pin: "1"
+          source_primitive: gerber_flash
+          source_primitive_index: 2
+          aperture: D11
+          shape: rect
+          size: { x_mm: 0.30, y_mm: 1.10 }
 scenarios:
   - name: solder_paste_ic_pin_aperture
     type: manufacturing
     checks:
       - SOLDER_PASTE_IC_PIN_APERTURE_VALID
+    target:
+      component: U1
     parameters:
       pin_pitch_mm: 0.5

@@ -1,4 +1,4 @@
-use super::{ScenarioSuggestion, SuggestedScenario, sanitized_name};
+use super::{ScenarioSuggestion, SuggestedScenario, SuggestedTarget, sanitized_name};
 use crate::board_ir::{LayoutCopper, LayoutCopperFeature};
 use crate::library::BoundBoard;
 use serde_json::{Value, json};
@@ -222,24 +222,31 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
         );
     }
 
-    if let Some(evidence) = infer_ic_pin_pitch_from_paste(&layout.solder_paste) {
-        push_if_not_declared(
+    if let Some(evidence) = infer_ic_pin_pitch_from_paste(&layout.solder_paste)
+        && !manufacturing_check_declared_for_target(
             bound,
-            &mut suggestions,
             SOLDER_PASTE_IC_PIN_APERTURE_VALID,
-            manufacturing_suggestion(
-                "solder_paste_ic_pin_aperture_valid",
-                true,
-                &format!(
-                    "Imported pad-owned solder-paste evidence for {} on {} has {} repeated {:.3} mm pin-pitch gaps matching the source-backed JLCPCB IC stencil table.",
-                    evidence.component, evidence.layer, evidence.matched_gaps, evidence.pitch_mm
-                ),
-                &format!("{project_name}_solder_paste_ic_pin_aperture"),
-                SOLDER_PASTE_IC_PIN_APERTURE_VALID,
-                Some(pin_pitch_parameter(evidence.pitch_mm)),
-                Vec::new(),
+            &evidence.component,
+        )
+    {
+        let mut suggestion = manufacturing_suggestion(
+            "solder_paste_ic_pin_aperture_valid",
+            true,
+            &format!(
+                "Imported pad-owned solder-paste evidence for {} on {} has {} repeated {:.3} mm pin-pitch gaps matching the source-backed JLCPCB IC stencil table.",
+                evidence.component, evidence.layer, evidence.matched_gaps, evidence.pitch_mm
             ),
+            &format!("{project_name}_solder_paste_ic_pin_aperture"),
+            SOLDER_PASTE_IC_PIN_APERTURE_VALID,
+            Some(pin_pitch_parameter(evidence.pitch_mm)),
+            Vec::new(),
         );
+        suggestion.scenario.target = Some(SuggestedTarget {
+            component: evidence.component,
+            power_pin: None,
+            reset_pin: None,
+        });
+        suggestions.push(suggestion);
     }
 
     if paste_objects >= 2 {
@@ -279,6 +286,21 @@ fn manufacturing_check_declared(bound: &BoundBoard<'_>, check: &str) -> bool {
     bound.project.scenarios.iter().any(|scenario| {
         scenario.scenario_type == "manufacturing"
             && scenario.checks.iter().any(|declared| declared == check)
+    })
+}
+
+fn manufacturing_check_declared_for_target(
+    bound: &BoundBoard<'_>,
+    check: &str,
+    target_component: &str,
+) -> bool {
+    bound.project.scenarios.iter().any(|scenario| {
+        scenario.scenario_type == "manufacturing"
+            && scenario.checks.iter().any(|declared| declared == check)
+            && scenario
+                .target
+                .as_ref()
+                .is_none_or(|target| target.component == target_component)
     })
 }
 

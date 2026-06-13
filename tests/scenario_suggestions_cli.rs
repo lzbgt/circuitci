@@ -411,6 +411,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         paste_ic_pin["scenario"]["checks"][0],
         "SOLDER_PASTE_IC_PIN_APERTURE_VALID"
     );
+    assert_eq!(paste_ic_pin["scenario"]["target"]["component"], "U1");
     assert_eq!(paste_ic_pin["scenario"]["parameters"]["pin_pitch_mm"], 0.5);
     assert!(
         paste_ic_pin["reason"]

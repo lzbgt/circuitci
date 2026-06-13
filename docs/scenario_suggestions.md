@@ -298,7 +298,7 @@ The command is conservative:
   `fabrication_process: jlcpcb_stencil_aperture_min_2026_06`.
   When pad-owned solder-paste flashes for one component show at least two
   repeated gaps matching a discrete source-backed JLC IC pitch row, it emits
-  runnable `SOLDER_PASTE_IC_PIN_APERTURE_VALID` with the inferred
+  runnable target-scoped `SOLDER_PASTE_IC_PIN_APERTURE_VALID` with the inferred
   `pin_pitch_mm`. Automatic pitch inference is intentionally limited to the
   discrete 0.3, 0.35, 0.4, 0.5, and 0.65 mm rows to avoid treating arbitrary
   package spacing as a stencil-rule input.

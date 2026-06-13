@@ -224,7 +224,7 @@ Runnable manufacturing suggestions generated from source-backed package evidence
 
 | Suggestion | Check | Inferred evidence |
 | --- | --- | --- |
-| `solder_paste_ic_pin_aperture_valid` | `SOLDER_PASTE_IC_PIN_APERTURE_VALID` | repeated pad-owned `0.5 mm` paste pitch |
+| `solder_paste_ic_pin_aperture_valid` | `SOLDER_PASTE_IC_PIN_APERTURE_VALID` | repeated pad-owned `0.5 mm` paste pitch on target `U19` |
 
 Non-runnable suggestions generated because the imported evidence proves the
 geometry exists but the process threshold is not yet pinned to an authoritative

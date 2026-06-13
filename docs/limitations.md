@@ -256,9 +256,12 @@ without explicit imported mechanical evidence.
 - `SOLDER_PASTE_IC_PIN_APERTURE_VALID` uses pad-owned Gerber solder-paste
   feature, draw, and region evidence for an opt-in IC pin aperture-width screen
   against the saved JLCPCB stencil opening table. It only runs for an explicit
-  `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance. It does not
-  infer package pitch or package class automatically, and it is not a generic
-  paste area-ratio, paste spacing, paste-volume, or stencil-thickness rule.
+  `pin_pitch_mm` whose pitch has source-backed JLCPCB guidance, and honors
+  `target.component` when present. `suggest-scenarios` can infer selected
+  target-scoped discrete pitch rows from repeated pad-owned paste flashes, but
+  CircuitCI does not infer arbitrary package pitch or package class
+  automatically. This is not a generic paste area-ratio, paste spacing,
+  paste-volume, or stencil-thickness rule.
 - `SOLDER_PASTE_SPACING_VALID` uses imported Gerber solder-paste flash,
   circular-aperture linear/arc draw, and single-contour region openings for a
   static same-layer 2D stencil-web screen. It can detect merged or too-close

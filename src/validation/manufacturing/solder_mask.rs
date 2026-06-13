@@ -676,6 +676,9 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
         if !paste_object_is_pad_owned(object) {
             continue;
         }
+        if !paste_object_matches_target(object, scenario) {
+            continue;
+        }
         checked_pad_owned_openings += 1;
         let aperture_width_mm = feature.size.x_mm.min(feature.size.y_mm);
         if aperture_width_out_of_range(aperture_width_mm, width_range) {
@@ -698,6 +701,9 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
             index: segment_index,
         };
         if !paste_object_is_pad_owned(object) {
+            continue;
+        }
+        if !paste_object_matches_target(object, scenario) {
             continue;
         }
         checked_pad_owned_openings += 1;
@@ -723,6 +729,9 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
         if !paste_object_is_pad_owned(object) {
             continue;
         }
+        if !paste_object_matches_target(object, scenario) {
+            continue;
+        }
         let Some(aperture_width_mm) = region_bounding_box_min_dimension_mm(region) else {
             validation_input_missing(
                 findings,
@@ -744,11 +753,18 @@ pub(in crate::validation) fn validate_solder_paste_ic_pin_aperture(
     }
 
     if checked_pad_owned_openings == 0 {
-        validation_input_missing(
-            findings,
-            scenario,
-            "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires pad-owned board.layout.solder_paste feature, segment, or region evidence.",
+        let message = scenario.target.as_ref().map_or_else(
+            || {
+                "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires pad-owned board.layout.solder_paste feature, segment, or region evidence.".to_string()
+            },
+            |target| {
+                format!(
+                    "SOLDER_PASTE_IC_PIN_APERTURE_VALID requires pad-owned board.layout.solder_paste feature, segment, or region evidence for target component {}.",
+                    target.component
+                )
+            },
         );
+        validation_input_missing(findings, scenario, message);
     }
 }
 
@@ -941,6 +957,23 @@ fn paste_object_is_pad_owned(object: CopperObjectRef<'_>) -> bool {
         CopperObjectRef::Feature { feature, .. } => feature.owner_kind.as_deref() == Some("pad"),
         CopperObjectRef::Segment { segment, .. } => segment.owner_kind.as_deref() == Some("pad"),
         CopperObjectRef::Region { region, .. } => region.owner_kind.as_deref() == Some("pad"),
+    }
+}
+
+fn paste_object_matches_target(object: CopperObjectRef<'_>, scenario: &Scenario) -> bool {
+    let Some(target) = &scenario.target else {
+        return true;
+    };
+    match object {
+        CopperObjectRef::Feature { feature, .. } => {
+            feature.component.as_deref() == Some(target.component.as_str())
+        }
+        CopperObjectRef::Segment { segment, .. } => {
+            segment.component.as_deref() == Some(target.component.as_str())
+        }
+        CopperObjectRef::Region { region, .. } => {
+            region.component.as_deref() == Some(target.component.as_str())
+        }
     }
 }
 
