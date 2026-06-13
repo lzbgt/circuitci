@@ -16,6 +16,35 @@ The runtime backbone is Rust. Python is not part of the production engine path.
 - broad firmware-in-loop MCU/peripheral machine coverage beyond the explicit
   QEMU pin-observation path
 
+## Limitation Triage
+
+Not every limitation below should become a feature. CircuitCI should remain a
+validation and evidence runtime, not a replacement for schematic capture,
+layout editing, RF/SI field solving, or vendor simulation tools. Those are
+hard non-goals unless the project changes scope.
+
+The limitations that do provide high leverage for this tool are the ones that
+increase automated board-assessment coverage while preserving fail-closed
+evidence semantics:
+
+- More datasheet-backed component packs for parts seen on real boards.
+- More importer evidence from KiCad, JLC/EasyEDA, Gerber, Excellon, and
+  eventually other EDA exports.
+- More scenario suggestions from imported evidence, especially when a check can
+  become runnable without hand-authored YAML.
+- Static manufacturability checks backed by fabrication outputs, such as
+  copper/edge/drill/annular-ring/spacing screens.
+- SPICE-backed waveform checks for board-boundary analog failures that static
+  topology cannot prove, such as transistor storage, reset release, inrush,
+  brownout, and power-mux switchover.
+- Better model metadata for common packages and connector mechanical evidence.
+
+The limitations that are useful to record but should not be chased blindly are
+full-physics or tool-replacement claims: full USB PHY/eye solving, GHz antenna
+or RF solving, DDR SI, full transistor-level MCU simulation, automatic
+datasheet-to-perfect-model generation, and general 3D enclosure/plug fit
+without explicit imported mechanical evidence.
+
 ## Current Technical Limits
 
 - Full transistor-level MCU simulation is intentionally not a CircuitCI goal.
