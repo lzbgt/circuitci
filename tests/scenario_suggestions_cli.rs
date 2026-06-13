@@ -276,7 +276,7 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "scenario_suggestions_manufacturing_artifacts"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 15);
+    assert_eq!(suggested.len(), 16);
 
     let drill_diameter = suggested
         .iter()
@@ -430,6 +430,26 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
         "jlcpcb_stencil_aperture_min_2026_06"
     );
 
+    let paste_area_ratio = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_aperture_area_ratio_valid")
+        .expect("paste aperture area ratio suggestion");
+    assert_eq!(paste_area_ratio["runnable"], false);
+    assert_eq!(
+        paste_area_ratio["scenario"]["checks"][0],
+        "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID"
+    );
+    assert_eq!(
+        paste_area_ratio["scenario"]["parameters"]["fabrication_process"],
+        "jlcpcb_stencil_area_ratio_2026_06"
+    );
+    assert!(
+        paste_area_ratio["required_inputs"][0]
+            .as_str()
+            .unwrap()
+            .contains("stencil_thickness_mm")
+    );
+
     let paste_ic_pin = suggested
         .iter()
         .find(|suggestion| suggestion["id"] == "solder_paste_ic_pin_aperture_valid")
@@ -458,7 +478,7 @@ fn suggest_scenarios_derives_broad_ic_stencil_pitch_template() {
         "scenario_suggestions_ic_stencil_broad_pitch"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 3);
+    assert_eq!(suggested.len(), 4);
 
     let paste_ic_pin = suggested
         .iter()
@@ -488,7 +508,7 @@ fn suggest_scenarios_derives_bga_stencil_pitch_template() {
         "scenario_suggestions_bga_stencil_pitch"
     );
     let suggested = suggestions["suggestions"].as_array().unwrap();
-    assert_eq!(suggested.len(), 3);
+    assert_eq!(suggested.len(), 4);
 
     let paste_bga = suggested
         .iter()

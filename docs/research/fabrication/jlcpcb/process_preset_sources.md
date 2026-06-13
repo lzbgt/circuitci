@@ -28,6 +28,7 @@ Implemented preset:
 - `jlcpcb_1oz_copper_spacing_2026_06`
 - `jlcpcb_routed_edge_copper_clearance_2026_06`
 - `jlcpcb_stencil_aperture_min_2026_06`
+- `jlcpcb_stencil_area_ratio_2026_06`
 
 Implemented default:
 
@@ -42,6 +43,7 @@ Implemented default:
 - `min_copper_spacing_mm: 0.10`
 - `min_copper_edge_clearance_mm: 0.20`
 - `min_solder_paste_aperture_size_mm: 0.08`
+- `min_solder_paste_aperture_area_ratio: 0.66`
 
 Rationale:
 
@@ -95,6 +97,13 @@ Rationale:
   encodes `min_solder_paste_aperture_size_mm: 0.08` as a narrowly named
   laser-cut stencil aperture floor. The validator rejects apertures at or below
   0.08 mm to preserve the source's greater-than wording.
+- The saved JLCPCB solder paste printing defects article says the stencil
+  aperture area-ratio minimum is `0.66` per IPC-7525, with area ratio defined
+  as aperture opening area divided by aperture wall surface area. CircuitCI
+  encodes `min_solder_paste_aperture_area_ratio: 0.66` as a narrowly named
+  stencil-release floor. `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` still
+  requires explicit `stencil_thickness_mm` because the source does not define a
+  generic stencil thickness and the metric is not paste-to-copper coverage.
 - The saved JLCPCB stencil opening-process standard gives package-specific
   aperture optimization examples for ICs, BGAs, connectors, and through-hole
   pads. CircuitCI does not encode those values as generic

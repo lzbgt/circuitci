@@ -83,6 +83,15 @@ const JLCPCB_STENCIL_APERTURE_MIN_2026_06: FabricationProcessPreset = Fabricatio
     numeric_defaults: &[("min_solder_paste_aperture_size_mm", 0.08)],
 };
 
+const JLCPCB_STENCIL_AREA_RATIO_2026_06: FabricationProcessPreset = FabricationProcessPreset {
+    id: "jlcpcb_stencil_area_ratio_2026_06",
+    aliases: &[
+        "jlcpcb_stencil_area_ratio",
+        "jlcpcb_ipc_7525_area_ratio_2026_06",
+    ],
+    numeric_defaults: &[("min_solder_paste_aperture_area_ratio", 0.66)],
+};
+
 const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_STANDARD_2026_06,
     JLCPCB_DOUBLE_SIDED_VIA_MIN_2026_06,
@@ -92,6 +101,7 @@ const FABRICATION_PROCESS_PRESETS: &[FabricationProcessPreset] = &[
     JLCPCB_1OZ_COPPER_SPACING_2026_06,
     JLCPCB_ROUTED_EDGE_COPPER_CLEARANCE_2026_06,
     JLCPCB_STENCIL_APERTURE_MIN_2026_06,
+    JLCPCB_STENCIL_AREA_RATIO_2026_06,
 ];
 
 pub(super) fn required_numeric_parameter(

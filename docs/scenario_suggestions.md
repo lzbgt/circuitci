@@ -300,6 +300,11 @@ The command is conservative:
   draw evidence is present, it emits runnable
   `SOLDER_PASTE_APERTURE_SIZE_VALID` using
   `fabrication_process: jlcpcb_stencil_aperture_min_2026_06`.
+  When any solder-paste opening evidence is present, it emits non-runnable
+  `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` using
+  `fabrication_process: jlcpcb_stencil_area_ratio_2026_06`; the template still
+  requires `stencil_thickness_mm` because stencil release area ratio depends on
+  stencil thickness.
   When pad-owned solder-paste flashes for one component show at least two
   repeated gaps matching a discrete source-backed JLC IC pitch row, it emits
   runnable target-scoped `SOLDER_PASTE_IC_PIN_APERTURE_VALID` with the inferred

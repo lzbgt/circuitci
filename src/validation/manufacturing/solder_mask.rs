@@ -7,8 +7,8 @@ use serde_json::json;
 
 use super::super::common::validation_input_missing;
 use super::super::{
-    SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_APERTURE_SIZE_VALID,
-    SOLDER_PASTE_OPENING_VALID, SOLDER_PASTE_SPACING_VALID,
+    SOLDER_MASK_DAM_VALID, SOLDER_MASK_OPENING_VALID, SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
+    SOLDER_PASTE_APERTURE_SIZE_VALID, SOLDER_PASTE_OPENING_VALID, SOLDER_PASTE_SPACING_VALID,
 };
 use super::geometry::{
     CopperObjectRef, copper_object_spacing_mm, feature_boundary_points, point_distance_mm,
@@ -627,6 +627,140 @@ pub(in crate::validation) fn validate_solder_paste_aperture_size(
     }
 }
 
+pub(in crate::validation) fn validate_solder_paste_aperture_area_ratio(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(min_area_ratio) =
+        required_numeric_parameter(scenario, "min_solder_paste_aperture_area_ratio", findings)
+    else {
+        return;
+    };
+    if min_area_ratio < 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.min_solder_paste_aperture_area_ratio must be greater than or equal to zero.",
+        );
+        return;
+    }
+    let Some(stencil_thickness_mm) =
+        required_numeric_parameter(scenario, "stencil_thickness_mm", findings)
+    else {
+        return;
+    };
+    if stencil_thickness_mm <= 0.0 {
+        validation_input_missing(
+            findings,
+            scenario,
+            "manufacturing parameters.stencil_thickness_mm must be greater than zero.",
+        );
+        return;
+    }
+    let paste = &bound.project.board.layout.solder_paste;
+    if paste.features.is_empty() && paste.segments.is_empty() && paste.regions.is_empty() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID requires board.layout.solder_paste evidence.",
+        );
+        return;
+    }
+
+    for (feature_index, feature) in paste.features.iter().enumerate() {
+        if let Err(message) = validate_copper_feature_geometry(feature, feature_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let object = CopperObjectRef::Feature {
+            feature,
+            index: feature_index,
+        };
+        check_solder_paste_aperture_area_ratio(
+            scenario,
+            findings,
+            object,
+            stencil_thickness_mm,
+            min_area_ratio,
+        );
+    }
+    for (segment_index, segment) in paste.segments.iter().enumerate() {
+        if let Err(message) = validate_copper_segment_geometry(segment, segment_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let object = CopperObjectRef::Segment {
+            segment,
+            index: segment_index,
+        };
+        check_solder_paste_aperture_area_ratio(
+            scenario,
+            findings,
+            object,
+            stencil_thickness_mm,
+            min_area_ratio,
+        );
+    }
+    for (region_index, region) in paste.regions.iter().enumerate() {
+        if let Err(message) = validate_copper_region_geometry(region, region_index) {
+            validation_input_missing(findings, scenario, message);
+            continue;
+        }
+        let object = CopperObjectRef::Region {
+            region,
+            index: region_index,
+        };
+        check_solder_paste_aperture_area_ratio(
+            scenario,
+            findings,
+            object,
+            stencil_thickness_mm,
+            min_area_ratio,
+        );
+    }
+}
+
+fn check_solder_paste_aperture_area_ratio(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+    paste_object: CopperObjectRef<'_>,
+    stencil_thickness_mm: f64,
+    min_area_ratio: f64,
+) {
+    let Some((opening_area_mm2, opening_perimeter_mm)) =
+        paste_object_area_and_perimeter_mm(paste_object)
+    else {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID could not compute finite positive area and perimeter for supported Gerber paste geometry.",
+        );
+        return;
+    };
+    let wall_area_mm2 = opening_perimeter_mm * stencil_thickness_mm;
+    if wall_area_mm2 <= 0.0 || !wall_area_mm2.is_finite() {
+        validation_input_missing(
+            findings,
+            scenario,
+            "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID could not compute finite positive aperture wall area.",
+        );
+        return;
+    }
+    let area_ratio = opening_area_mm2 / wall_area_mm2;
+    if area_ratio + f64::EPSILON < min_area_ratio {
+        findings.push(solder_paste_aperture_area_ratio_finding(
+            scenario,
+            paste_object,
+            opening_area_mm2,
+            opening_perimeter_mm,
+            stencil_thickness_mm,
+            area_ratio,
+            min_area_ratio,
+        ));
+    }
+}
+
 #[derive(Clone, Copy)]
 struct SolderMaskOpeningCandidate<'a> {
     mask_object: CopperObjectRef<'a>,
@@ -756,16 +890,53 @@ fn point_to_polygon_boundary_distance_mm(point: &LayoutPoint, polygon: &[LayoutP
 }
 
 fn paste_object_area_mm2(object: CopperObjectRef<'_>) -> Option<f64> {
+    paste_object_area_and_perimeter_mm(object).map(|(area, _)| area)
+}
+
+fn paste_object_area_and_perimeter_mm(object: CopperObjectRef<'_>) -> Option<(f64, f64)> {
     match object {
-        CopperObjectRef::Feature { feature, .. } => feature_area_mm2(feature),
+        CopperObjectRef::Feature { feature, .. } => feature_area_and_perimeter_mm(feature),
         CopperObjectRef::Segment { segment, .. } => {
             let length_mm = point_distance_mm(&segment.start, &segment.end);
             let radius_mm = segment.width_mm / 2.0;
-            Some(length_mm * segment.width_mm + std::f64::consts::PI * radius_mm * radius_mm)
+            Some((
+                length_mm * segment.width_mm + std::f64::consts::PI * radius_mm * radius_mm,
+                2.0 * length_mm + 2.0 * std::f64::consts::PI * radius_mm,
+            ))
         }
-        CopperObjectRef::Region { region, .. } => Some(polygon_area_mm2(&region.points).abs()),
+        CopperObjectRef::Region { region, .. } => Some((
+            polygon_area_mm2(&region.points).abs(),
+            polygon_perimeter_mm(&region.points),
+        )),
     }
-    .filter(|area| area.is_finite() && *area > 0.0)
+    .filter(|(area, perimeter)| {
+        area.is_finite() && *area > 0.0 && perimeter.is_finite() && *perimeter > 0.0
+    })
+}
+
+fn feature_area_and_perimeter_mm(feature: &LayoutCopperFeature) -> Option<(f64, f64)> {
+    let width = feature.size.x_mm;
+    let height = feature.size.y_mm;
+    match feature.shape.as_str() {
+        "rect" => Some((width * height, 2.0 * (width + height))),
+        "circle" => {
+            let diameter = (width + height) / 2.0;
+            Some((
+                std::f64::consts::PI * diameter * diameter / 4.0,
+                std::f64::consts::PI * diameter,
+            ))
+        }
+        "oval" => {
+            let diameter = width.min(height);
+            let straight_length = (width.max(height) - diameter).max(0.0);
+            let radius = diameter / 2.0;
+            Some((
+                straight_length * diameter + std::f64::consts::PI * radius * radius,
+                2.0 * straight_length + 2.0 * std::f64::consts::PI * radius,
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn polygon_area_mm2(points: &[LayoutPoint]) -> f64 {
@@ -773,6 +944,12 @@ fn polygon_area_mm2(points: &[LayoutPoint]) -> f64 {
         .map(|(first, second)| first.x_mm * second.y_mm - second.x_mm * first.y_mm)
         .sum::<f64>()
         / 2.0
+}
+
+fn polygon_perimeter_mm(points: &[LayoutPoint]) -> f64 {
+    closed_edges(points)
+        .map(|(first, second)| point_distance_mm(first, second))
+        .sum()
 }
 
 fn polygon_centroid(points: &[LayoutPoint]) -> Option<LayoutPoint> {
@@ -1075,6 +1252,54 @@ fn solder_paste_aperture_size_finding(
     finding.limit.insert(
         "min_solder_paste_aperture_size_mm".to_string(),
         json!(min_aperture_size_mm),
+    );
+    finding
+}
+
+fn solder_paste_aperture_area_ratio_finding(
+    scenario: &Scenario,
+    paste_object: CopperObjectRef<'_>,
+    opening_area_mm2: f64,
+    opening_perimeter_mm: f64,
+    stencil_thickness_mm: f64,
+    area_ratio: f64,
+    min_area_ratio: f64,
+) -> Finding {
+    let mut finding = Finding::critical(
+        SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
+        scenario.name.clone(),
+        format!(
+            "Solder-paste {} opening on {} has stencil aperture area ratio {:.6}; JLCPCB/IPC guidance requires at least {:.6}.",
+            paste_object.kind(),
+            paste_object.layer(),
+            area_ratio,
+            min_area_ratio
+        ),
+    );
+    finding.suggested_fixes = vec![
+        "Increase the aperture opening area, reduce stencil thickness, or use a package-specific stencil design that keeps the aperture area ratio above the selected limit.".to_string(),
+        "For windowed paste patterns, evaluate each physical aperture because paste release depends on aperture wall area, not aggregate paste-to-pad coverage.".to_string(),
+    ];
+    insert_solder_paste_object_measurements(&mut finding, paste_object);
+    finding.measured.insert(
+        "solder_paste_aperture_area_mm2".to_string(),
+        json!(opening_area_mm2),
+    );
+    finding.measured.insert(
+        "solder_paste_aperture_perimeter_mm".to_string(),
+        json!(opening_perimeter_mm),
+    );
+    finding.measured.insert(
+        "stencil_thickness_mm".to_string(),
+        json!(stencil_thickness_mm),
+    );
+    finding.measured.insert(
+        "solder_paste_aperture_area_ratio".to_string(),
+        json!(area_ratio),
+    );
+    finding.limit.insert(
+        "min_solder_paste_aperture_area_ratio".to_string(),
+        json!(min_area_ratio),
     );
     finding
 }

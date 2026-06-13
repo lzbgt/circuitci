@@ -796,6 +796,48 @@ fn solder_paste_aperture_size_fails_with_jlc_process_default() {
 }
 
 #[test]
+fn solder_paste_aperture_area_ratio_passes_with_jlc_process_default() {
+    let report = run_validation("examples/good_solder_paste_aperture_area_ratio_jlc/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_eq!(report["summary"]["critical"], 0);
+    assert_report_schema_valid(&report);
+}
+
+#[test]
+fn solder_paste_aperture_area_ratio_fails_with_jlc_process_default() {
+    let report = run_validation("examples/bad_solder_paste_aperture_area_ratio_jlc/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_eq!(report["summary"]["critical"], 1);
+
+    let failure = &report["failures"][0];
+    assert_eq!(failure["id"], "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID");
+    assert_eq!(failure["measured"]["solder_paste_kind"], "feature");
+    assert_eq!(
+        failure["measured"]["solder_paste_feature_owner_kind"],
+        "pad"
+    );
+    assert_eq!(failure["measured"]["solder_paste_feature_component"], "U1");
+    assert_eq!(failure["measured"]["solder_paste_feature_pin"], "1");
+    assert_eq!(
+        failure["measured"]["solder_paste_aperture_area_mm2"],
+        0.0144
+    );
+    assert_eq!(
+        failure["measured"]["solder_paste_aperture_perimeter_mm"],
+        0.48
+    );
+    let area_ratio = failure["measured"]["solder_paste_aperture_area_ratio"]
+        .as_f64()
+        .unwrap();
+    assert!((area_ratio - 0.3).abs() < 1.0e-12);
+    assert_eq!(
+        failure["limit"]["min_solder_paste_aperture_area_ratio"],
+        0.66
+    );
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn solder_paste_ic_pin_aperture_passes_for_jlc_pitch_width() {
     let report = run_validation("examples/good_solder_paste_ic_pin_aperture_jlc/project.yaml");
     assert_eq!(report["result"], "pass");

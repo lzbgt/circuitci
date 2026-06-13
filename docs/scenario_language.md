@@ -113,7 +113,9 @@ Canonical executable check IDs:
 - `SOLDER_MASK_DAM_VALID`
 - `SOLDER_PASTE_OPENING_VALID`
 - `SOLDER_PASTE_APERTURE_SIZE_VALID`
+- `SOLDER_PASTE_APERTURE_AREA_RATIO_VALID`
 - `SOLDER_PASTE_IC_PIN_APERTURE_VALID`
+- `SOLDER_PASTE_BGA_APERTURE_VALID`
 - `SOLDER_PASTE_SPACING_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `SPICE_TRANSIENT_ANALYSIS`
@@ -1074,6 +1076,27 @@ Solder-paste aperture-size algorithm:
 This is a static 2D stencil manufacturability screen. It intentionally does not
 apply package-specific paste reductions, paste volume rules, or arbitrary region
 minimum-width approximations.
+
+Solder-paste aperture area-ratio validation uses
+`SOLDER_PASTE_APERTURE_AREA_RATIO_VALID` when the Board IR includes Gerber
+solder-paste flash, circular-aperture draw, or single-contour region evidence.
+It checks stencil release area ratio as
+`opening_area_mm2 / (opening_perimeter_mm * stencil_thickness_mm)`. With
+`fabrication_process: jlcpcb_stencil_area_ratio_2026_06`, the minimum area
+ratio defaults to `0.66` from the saved JLCPCB/IPC-7525 source. Stencil
+thickness remains explicit because Gerber paste layers do not encode the
+physical stencil thickness.
+
+```yaml
+scenarios:
+  - name: solder_paste_aperture_area_ratio
+    type: manufacturing
+    checks:
+      - SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
+    parameters:
+      fabrication_process: jlcpcb_stencil_area_ratio_2026_06
+      stencil_thickness_mm: 0.10
+```
 
 IC pin solder-paste aperture validation uses
 `SOLDER_PASTE_IC_PIN_APERTURE_VALID` when the Board IR includes pad-owned Gerber

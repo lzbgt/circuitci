@@ -49,6 +49,8 @@ pub(super) const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 pub(super) const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 pub(super) const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
 pub(super) const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
+pub(super) const SOLDER_PASTE_APERTURE_AREA_RATIO_VALID: &str =
+    "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID";
 pub(super) const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 pub(super) const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 pub(super) const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
@@ -345,6 +347,15 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         &mut findings,
                     )
                 }
+                SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
+                    if scenario.scenario_type == "manufacturing" =>
+                {
+                    manufacturing::validate_solder_paste_aperture_area_ratio(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 SOLDER_PASTE_IC_PIN_APERTURE_VALID if scenario.scenario_type == "manufacturing" => {
                     manufacturing::validate_solder_paste_ic_pin_aperture(
                         bound,
@@ -399,6 +410,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | SOLDER_MASK_DAM_VALID
                 | SOLDER_PASTE_OPENING_VALID
                 | SOLDER_PASTE_APERTURE_SIZE_VALID
+                | SOLDER_PASTE_APERTURE_AREA_RATIO_VALID
                 | SOLDER_PASTE_IC_PIN_APERTURE_VALID
                 | SOLDER_PASTE_BGA_APERTURE_VALID
                 | SOLDER_PASTE_SPACING_VALID

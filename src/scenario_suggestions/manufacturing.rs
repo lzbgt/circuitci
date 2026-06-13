@@ -17,6 +17,7 @@ const SOLDER_MASK_OPENING_VALID: &str = "SOLDER_MASK_OPENING_VALID";
 const SOLDER_MASK_DAM_VALID: &str = "SOLDER_MASK_DAM_VALID";
 const SOLDER_PASTE_OPENING_VALID: &str = "SOLDER_PASTE_OPENING_VALID";
 const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID";
+const SOLDER_PASTE_APERTURE_AREA_RATIO_VALID: &str = "SOLDER_PASTE_APERTURE_AREA_RATIO_VALID";
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_BGA_APERTURE_VALID: &str = "SOLDER_PASTE_BGA_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
@@ -286,6 +287,25 @@ pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioS
                 SOLDER_PASTE_APERTURE_SIZE_VALID,
                 Some(fabrication_process("jlcpcb_stencil_aperture_min_2026_06")),
                 Vec::new(),
+            ),
+        );
+    }
+
+    if paste_objects > 0 {
+        push_if_not_declared(
+            bound,
+            &mut suggestions,
+            SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
+            manufacturing_suggestion(
+                "solder_paste_aperture_area_ratio_valid",
+                false,
+                "Imported Gerber solder-paste opening evidence can be screened against the source-backed JLCPCB/IPC stencil aperture area-ratio floor once stencil thickness is supplied.",
+                &format!("{project_name}_solder_paste_aperture_area_ratio"),
+                SOLDER_PASTE_APERTURE_AREA_RATIO_VALID,
+                Some(fabrication_process("jlcpcb_stencil_area_ratio_2026_06")),
+                vec![
+                    "Set manufacturing parameters.stencil_thickness_mm for the stencil used to fabricate this paste layer.".to_string(),
+                ],
             ),
         );
     }

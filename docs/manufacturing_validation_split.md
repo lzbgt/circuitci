@@ -12,7 +12,8 @@ annular-ring report construction.
 `src/validation/manufacturing/solder_mask.rs` owns
 `SOLDER_MASK_OPENING_VALID`, `SOLDER_MASK_DAM_VALID`, and
 `SOLDER_PASTE_OPENING_VALID`/`SOLDER_PASTE_APERTURE_SIZE_VALID`/
-`SOLDER_PASTE_SPACING_VALID`, including solder-mask opening/dam and
+`SOLDER_PASTE_APERTURE_AREA_RATIO_VALID`/`SOLDER_PASTE_SPACING_VALID`,
+including solder-mask opening/dam and
 solder-paste opening/aperture/spacing parameter parsing, supported mask/paste
 object validation,
 opening-selection logic, and stable mask/paste report construction.
