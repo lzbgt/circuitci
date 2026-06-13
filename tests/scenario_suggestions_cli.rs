@@ -21,6 +21,28 @@ fn run_suggest_scenarios(project: &str) -> Value {
     suggestions
 }
 
+fn run_suggest_scenarios_with_profile(project: &str, profile: &str) -> Value {
+    let dir = tempfile::tempdir().unwrap();
+    let output = dir.path().join("suggestions.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "suggest-scenarios",
+            project,
+            "--profile",
+            profile,
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let suggestions: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(output).unwrap()).unwrap();
+    assert_suggestion_schema_valid(&suggestions);
+    assert_runnable_suggestions_have_no_required_inputs(&suggestions);
+    suggestions
+}
+
 fn assert_suggestion_schema_valid(suggestions: &Value) {
     let schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
@@ -65,6 +87,48 @@ fn scenario_suggestion_schema_rejects_required_inputs_on_runnable_suggestions() 
         !errors.is_empty(),
         "schema accepted runnable suggestion with required_inputs"
     );
+}
+
+#[test]
+fn suggest_scenarios_profile_adds_missing_iot_core_templates() {
+    let suggestions = run_suggest_scenarios_with_profile(
+        "examples/good_backdrive_fixed_board/project.yaml",
+        "iot_basic_v0",
+    );
+    let profile_suggestions = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|suggestion| {
+            suggestion["id"]
+                .as_str()
+                .unwrap()
+                .starts_with("profile_iot_basic_v0_")
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        !profile_suggestions.is_empty(),
+        "expected profile remediation suggestions"
+    );
+    assert!(
+        profile_suggestions
+            .iter()
+            .all(|suggestion| suggestion["runnable"] == false)
+    );
+    assert!(profile_suggestions.iter().any(|suggestion| {
+        suggestion["scenario"]["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|check| check == "RESET_RELEASE_AFTER_POWER_VALID")
+    }));
+    assert!(!profile_suggestions.iter().any(|suggestion| {
+        suggestion["scenario"]["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|check| check == "GPIO_BACKDRIVE")
+    }));
 }
 
 fn assert_runnable_suggestions_have_no_required_inputs(suggestions: &Value) {

@@ -87,6 +87,15 @@ circuitci suggest-scenarios examples/scenario_suggestions_usb_connector_protecti
   --output out/scenario_suggestions.yaml
 ```
 
+Add profile-coverage remediation templates for missing `iot_basic_v0` core
+checks:
+
+```bash
+circuitci suggest-scenarios examples/good_backdrive_fixed_board/project.yaml \
+  --profile iot_basic_v0 \
+  --output out/profile_suggestions.yaml
+```
+
 Import a KiCad schematic:
 
 ```bash

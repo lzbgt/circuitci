@@ -147,6 +147,9 @@ limits and USB return-path budgets.
 - runtime-state suggestions such as control-line release sequences and GPIO
   backdrive become runnable only from explicit `board.runtime` evidence for the
   exact sequence or endpoint pair.
+- profile-aware suggestions are opt-in through `--profile`; for
+  `iot_basic_v0`, missing core checks become non-runnable remediation templates
+  unless ordinary evidence-driven suggestions already cover them.
 
 The suggestion engine is not a hidden validator. It never silently adds
 thresholds that are missing from the project, source documents, or Board IR.

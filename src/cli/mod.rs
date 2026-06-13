@@ -37,6 +37,8 @@ enum Command {
     },
     SuggestScenarios {
         project: PathBuf,
+        #[arg(long)]
+        profile: Option<String>,
         #[arg(long, short = 'o', default_value = "out/scenario_suggestions.yaml")]
         output: PathBuf,
     },
@@ -198,9 +200,11 @@ pub fn run() -> Result<()> {
             no_open_ui: _,
         }) => run_validate(project, profile, output, json),
         Some(Command::ValidateSuite { manifest, output }) => run_validate_suite(manifest, output),
-        Some(Command::SuggestScenarios { project, output }) => {
-            run_suggest_scenarios(project, output)
-        }
+        Some(Command::SuggestScenarios {
+            project,
+            profile,
+            output,
+        }) => run_suggest_scenarios(project, profile, output),
         Some(Command::SetManufacturingMetadata {
             project,
             output,
@@ -299,11 +303,16 @@ pub fn run() -> Result<()> {
     }
 }
 
-fn run_suggest_scenarios(project_path: PathBuf, output: PathBuf) -> Result<()> {
+fn run_suggest_scenarios(
+    project_path: PathBuf,
+    profile: Option<String>,
+    output: PathBuf,
+) -> Result<()> {
     let project = crate::board_ir::load_project(&project_path)?;
     let (library, library_findings) = crate::library::load_library(&project_path, &project);
     let bound = crate::library::bind_project(&project, library, library_findings);
-    let report = crate::scenario_suggestions::suggest_scenarios(&bound);
+    let report =
+        crate::scenario_suggestions::suggest_scenarios_for_profile(&bound, profile.as_deref());
     if let Some(parent) = output.parent() {
         std::fs::create_dir_all(parent)?;
     }

@@ -133,6 +133,13 @@ suggestion must list the missing inputs in `required_inputs`.
 suggestions must omit `required_inputs`, and serialized `required_inputs` must
 contain at least one concrete missing input.
 
+Profile-aware suggestion remediation is opt-in. `suggest-scenarios --profile
+iot_basic_v0` first emits the normal evidence-driven suggestions, then compares
+declared and already-suggested checks against the shared core profile list in
+`validation_profiles.rs`. Missing core checks become non-runnable remediation
+templates with one concrete `required_inputs` entry. Do not duplicate a profile
+template when a normal suggestion already covers the check.
+
 `set-manufacturing-metadata` is an evidence-enrichment command for board/order
 facts that cannot be inferred from Gerber, Excellon, schematic, or component
 model data. It may add or replace fields under `board.manufacturing`, but it

@@ -1,0 +1,9 @@
+pub const IOT_BASIC_V0: &str = "iot_basic_v0";
+
+pub const IOT_BASIC_CORE_PROFILE_CHECKS: &[&str] = &[
+    "POWER_TREE_VALID",
+    "RESET_RELEASE_AFTER_POWER_VALID",
+    "BOOT_STRAP_DEFINED",
+    "GPIO_BACKDRIVE",
+    "UART_BOOTLOADER_SYNC",
+];

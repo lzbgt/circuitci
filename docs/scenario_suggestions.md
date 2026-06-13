@@ -16,6 +16,16 @@ belongs in `reason` or supporting docs, not in `required_inputs`.
 circuitci suggest-scenarios project.yaml --output out/scenario_suggestions.yaml
 ```
 
+Profile-aware remediation is opt-in. Passing `--profile iot_basic_v0` keeps the
+normal evidence-driven suggestions and appends non-runnable remediation
+templates for any missing core profile checks not already declared or suggested:
+
+```bash
+circuitci suggest-scenarios project.yaml \
+  --profile iot_basic_v0 \
+  --output out/profile_suggestions.yaml
+```
+
 The command is conservative:
 
 - It emits runnable `power_tree` suggestions when a project declares power nets

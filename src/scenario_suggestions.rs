@@ -2,7 +2,8 @@ use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
 use crate::charger_programming::derive_charge_current_from_programming_resistor;
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use crate::power_mux_selection::derive_selected_power_mux_input_from_powered_nets;
-use std::collections::BTreeMap;
+use crate::validation_profiles::{IOT_BASIC_CORE_PROFILE_CHECKS, IOT_BASIC_V0};
+use std::collections::{BTreeMap, BTreeSet};
 
 mod backdrive;
 mod control_line;
@@ -35,6 +36,13 @@ pub(super) const CONTROL_LINE_RELEASE_SEQUENCE: &str = "CONTROL_LINE_RELEASE_SEQ
 pub(super) const UART_BOOTLOADER_SYNC: &str = "UART_BOOTLOADER_SYNC";
 
 pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
+    suggest_scenarios_for_profile(bound, None)
+}
+
+pub fn suggest_scenarios_for_profile(
+    bound: &BoundBoard<'_>,
+    profile: Option<&str>,
+) -> ScenarioSuggestionReport {
     let mut suggestions = Vec::new();
     if should_suggest_power_tree(bound.project) {
         suggestions.push(power_tree_suggestion(bound));
@@ -52,6 +60,7 @@ pub fn suggest_scenarios(bound: &BoundBoard<'_>) -> ScenarioSuggestionReport {
     suggestions.extend(control_line::control_line_sequence_suggestions(bound));
     suggestions.extend(reset_boot::uart_bootloader_suggestions(bound));
     suggestions.extend(manufacturing::manufacturing_suggestions(bound));
+    extend_profile_remediation_suggestions(bound, profile, &mut suggestions);
     ScenarioSuggestionReport {
         schema_version: "0.1.0".to_string(),
         project: bound.project.project.name.clone(),
@@ -73,6 +82,116 @@ fn should_suggest_power_tree(project: &BoardProject) -> bool {
                 .any(|check| check == POWER_TREE_VALID)
     });
     has_power_net && !already_declared
+}
+
+fn extend_profile_remediation_suggestions(
+    bound: &BoundBoard<'_>,
+    profile: Option<&str>,
+    suggestions: &mut Vec<ScenarioSuggestion>,
+) {
+    if profile != Some(IOT_BASIC_V0) {
+        return;
+    }
+    let covered_checks = declared_and_suggested_checks(bound.project, suggestions);
+    for check in IOT_BASIC_CORE_PROFILE_CHECKS {
+        let check = *check;
+        if covered_checks.contains(check) {
+            continue;
+        }
+        suggestions.push(profile_remediation_suggestion(bound, check));
+    }
+}
+
+fn declared_and_suggested_checks(
+    project: &BoardProject,
+    suggestions: &[ScenarioSuggestion],
+) -> BTreeSet<String> {
+    let mut checks = project
+        .scenarios
+        .iter()
+        .flat_map(|scenario| scenario.checks.iter().cloned())
+        .collect::<BTreeSet<_>>();
+    checks.extend(
+        suggestions
+            .iter()
+            .flat_map(|suggestion| suggestion.scenario.checks.iter().cloned()),
+    );
+    checks
+}
+
+fn profile_remediation_suggestion(bound: &BoundBoard<'_>, check: &str) -> ScenarioSuggestion {
+    let (kind, required_input) = match check {
+        POWER_TREE_VALID => (
+            "power_tree",
+            "Add explicit power-tree scenario evidence: powered rails, regulator/switch/charger limits, and selected source states for critical power paths.",
+        ),
+        RESET_RELEASE_AFTER_POWER_VALID => (
+            "reset_boot",
+            "Add reset target, target rail power-valid timing, and reset release timing from RC, runtime, or datasheet-backed supervisor evidence.",
+        ),
+        BOOT_STRAP_DEFINED => (
+            "reset_boot",
+            "Add required boot mode and strap observations proving each sampled boot pin state during reset release.",
+        ),
+        GPIO_BACKDRIVE => (
+            "gpio_backdrive",
+            "Add GPIO runtime or scenario evidence proving driver/victim modes, driver state, endpoint pair, and series resistance.",
+        ),
+        UART_BOOTLOADER_SYNC => (
+            "serial_programming",
+            "Add UART sender/target endpoints, bootloader sync byte/response, reset timing, and required boot-mode proof.",
+        ),
+        _ => (
+            "unknown",
+            "Add explicit scenario evidence for this profile check.",
+        ),
+    };
+    ScenarioSuggestion {
+        id: format!(
+            "profile_iot_basic_v0_{}",
+            sanitized_name(&check.to_ascii_lowercase())
+        ),
+        kind: kind.to_string(),
+        confidence: "medium".to_string(),
+        runnable: false,
+        reason: format!("{IOT_BASIC_V0} core coverage is missing {check}."),
+        scenario: empty_suggested_scenario(
+            format!(
+                "{}_{}",
+                sanitized_name(&bound.project.project.name),
+                sanitized_name(&check.to_ascii_lowercase())
+            ),
+            kind,
+            check,
+        ),
+        required_inputs: vec![required_input.to_string()],
+    }
+}
+
+fn empty_suggested_scenario(name: String, scenario_type: &str, check: &str) -> SuggestedScenario {
+    SuggestedScenario {
+        name,
+        scenario_type: scenario_type.to_string(),
+        checks: vec![check.to_string()],
+        parameters: None,
+        target: None,
+        timing: None,
+        required_boot_mode: None,
+        straps: Vec::new(),
+        bootloader: None,
+        control_effects: Vec::new(),
+        events: Vec::new(),
+        conditioning: None,
+        protection_clamps: Vec::new(),
+        usb_connectors: Vec::new(),
+        usb_routes: Vec::new(),
+        usb_route_pairs: Vec::new(),
+        clocks: Vec::new(),
+        reset_supervisors: Vec::new(),
+        regulators: Vec::new(),
+        pin_states: Vec::new(),
+        paths: Vec::new(),
+    }
 }
 
 fn power_tree_suggestion(bound: &BoundBoard<'_>) -> ScenarioSuggestion {

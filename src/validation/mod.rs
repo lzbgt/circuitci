@@ -22,6 +22,7 @@ mod uart_bootloader;
 use crate::board_ir::BoardProject;
 use crate::library::BoundBoard;
 use crate::reports::{Finding, Limitation};
+use crate::validation_profiles::{IOT_BASIC_CORE_PROFILE_CHECKS, IOT_BASIC_V0};
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -91,16 +92,8 @@ pub struct ValidationOutcome {
     pub waveforms: Vec<String>,
 }
 
-const IOT_BASIC_CORE_PROFILE_CHECKS: &[&str] = &[
-    POWER_TREE_VALID,
-    RESET_RELEASE_AFTER_POWER_VALID,
-    BOOT_STRAP_DEFINED,
-    GPIO_BACKDRIVE,
-    UART_BOOTLOADER_SYNC,
-];
-
 pub fn profile_coverage_limitations(profile: &str, project: &BoardProject) -> Vec<Limitation> {
-    if profile != "iot_basic_v0" {
+    if profile != IOT_BASIC_V0 {
         return Vec::new();
     }
 

@@ -97,6 +97,12 @@ boot-strap, UART bootloader, GPIO backdrive, and interface-protection scenario
 templates before profile validation. Suggestions are not automatically treated
 as passing validation evidence.
 
+Use `circuitci suggest-scenarios --profile iot_basic_v0` to append remediation
+templates for missing core profile checks. These profile remediation templates
+are non-runnable until the required scenario evidence is supplied, unless the
+normal evidence-driven suggestion pass already produced a complete suggestion
+for that check.
+
 ## Rule Completion Standard
 
 A validation rule is complete only when it has:

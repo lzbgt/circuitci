@@ -8,3 +8,4 @@ pub mod reports;
 pub mod scenario_suggestions;
 pub mod suite;
 pub mod validation;
+pub mod validation_profiles;
