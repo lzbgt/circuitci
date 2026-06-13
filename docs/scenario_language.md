@@ -1048,8 +1048,10 @@ This is not a generic stencil capability preset. It represents JLCPCB's
 package-specific IC stencil optimization table and should only be used for the
 IC pin group whose pitch is declared by the scenario. `suggest-scenarios` can
 infer a target-scoped `pin_pitch_mm` from repeated pad-owned paste flashes for
-selected discrete source rows, but the validator itself does not infer package
-class, step-stencil thickness, or order remarks automatically.
+selected discrete source rows. Representative exact pitches inside the broad
+0.8-1.27 mm source row require stronger repeated-gap evidence than the narrow
+rows. The validator itself does not infer package class, step-stencil
+thickness, or order remarks automatically.
 
 Solder-paste spacing validation uses `SOLDER_PASTE_SPACING_VALID` when the
 Board IR includes at least two Gerber solder-paste opening objects under

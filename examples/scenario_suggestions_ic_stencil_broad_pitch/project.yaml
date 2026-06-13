@@ -1,0 +1,55 @@
+project:
+  name: scenario_suggestions_ic_stencil_broad_pitch
+  version: 0.1.0
+libraries:
+  - ../../libs/generic
+board:
+  components: {}
+  nets: {}
+  layout:
+    solder_paste:
+      features:
+        - at: { x_mm: 10.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "1"
+          source_primitive: gerber_flash
+          source_primitive_index: 0
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.50, y_mm: 1.10 }
+        - at: { x_mm: 11.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "2"
+          source_primitive: gerber_flash
+          source_primitive_index: 1
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.50, y_mm: 1.10 }
+        - at: { x_mm: 12.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "3"
+          source_primitive: gerber_flash
+          source_primitive_index: 2
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.50, y_mm: 1.10 }
+        - at: { x_mm: 13.0, y_mm: 10.0 }
+          layer: F.Paste
+          polarity: dark
+          owner_kind: pad
+          component: U1
+          pin: "4"
+          source_primitive: gerber_flash
+          source_primitive_index: 3
+          aperture: D10
+          shape: rect
+          size: { x_mm: 0.50, y_mm: 1.10 }

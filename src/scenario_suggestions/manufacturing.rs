@@ -18,7 +18,40 @@ const SOLDER_PASTE_APERTURE_SIZE_VALID: &str = "SOLDER_PASTE_APERTURE_SIZE_VALID
 const SOLDER_PASTE_IC_PIN_APERTURE_VALID: &str = "SOLDER_PASTE_IC_PIN_APERTURE_VALID";
 const SOLDER_PASTE_SPACING_VALID: &str = "SOLDER_PASTE_SPACING_VALID";
 const IC_PIN_PITCH_INFERENCE_TOLERANCE_MM: f64 = 0.01;
-const JLC_DISCRETE_IC_PIN_PITCHES_MM: &[f64] = &[0.3, 0.35, 0.4, 0.5, 0.65];
+const JLC_IC_PIN_PITCH_INFERENCE_CANDIDATES: &[IcPinPitchInferenceCandidate] = &[
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.3,
+        min_matched_gaps: 2,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.35,
+        min_matched_gaps: 2,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.4,
+        min_matched_gaps: 2,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.5,
+        min_matched_gaps: 2,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.65,
+        min_matched_gaps: 2,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 0.8,
+        min_matched_gaps: 3,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 1.0,
+        min_matched_gaps: 3,
+    },
+    IcPinPitchInferenceCandidate {
+        pitch_mm: 1.27,
+        min_matched_gaps: 3,
+    },
+];
 
 pub(super) fn manufacturing_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {
     let layout = &bound.project.board.layout;
@@ -365,6 +398,11 @@ struct IcPinPitchEvidence {
     matched_gaps: usize,
 }
 
+struct IcPinPitchInferenceCandidate {
+    pitch_mm: f64,
+    min_matched_gaps: usize,
+}
+
 fn infer_ic_pin_pitch_from_paste(paste: &LayoutCopper) -> Option<IcPinPitchEvidence> {
     let mut features_by_component_layer: BTreeMap<(String, String), Vec<&LayoutCopperFeature>> =
         BTreeMap::new();
@@ -386,25 +424,27 @@ fn infer_ic_pin_pitch_from_paste(paste: &LayoutCopper) -> Option<IcPinPitchEvide
         if features.len() < 3 {
             continue;
         }
-        for &pitch_mm in JLC_DISCRETE_IC_PIN_PITCHES_MM {
+        for candidate_pitch in JLC_IC_PIN_PITCH_INFERENCE_CANDIDATES {
             let mut matched_gaps = 0;
             for (index, first) in features.iter().enumerate() {
                 for second in features.iter().skip(index + 1) {
                     let dx = first.at.x_mm - second.at.x_mm;
                     let dy = first.at.y_mm - second.at.y_mm;
                     let distance_mm = (dx * dx + dy * dy).sqrt();
-                    if (distance_mm - pitch_mm).abs() <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM {
+                    if (distance_mm - candidate_pitch.pitch_mm).abs()
+                        <= IC_PIN_PITCH_INFERENCE_TOLERANCE_MM
+                    {
                         matched_gaps += 1;
                     }
                 }
             }
-            if matched_gaps < 2 {
+            if matched_gaps < candidate_pitch.min_matched_gaps {
                 continue;
             }
             let candidate = IcPinPitchEvidence {
                 component: component.clone(),
                 layer: layer.clone(),
-                pitch_mm,
+                pitch_mm: candidate_pitch.pitch_mm,
                 matched_gaps,
             };
             if best

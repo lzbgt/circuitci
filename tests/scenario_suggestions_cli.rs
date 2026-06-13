@@ -422,6 +422,36 @@ fn suggest_scenarios_derives_manufacturing_artifact_templates() {
 }
 
 #[test]
+fn suggest_scenarios_derives_broad_ic_stencil_pitch_template() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_ic_stencil_broad_pitch/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_ic_stencil_broad_pitch"
+    );
+    let suggested = suggestions["suggestions"].as_array().unwrap();
+    assert_eq!(suggested.len(), 3);
+
+    let paste_ic_pin = suggested
+        .iter()
+        .find(|suggestion| suggestion["id"] == "solder_paste_ic_pin_aperture_valid")
+        .expect("IC pin paste aperture suggestion");
+    assert_eq!(paste_ic_pin["runnable"], true);
+    assert_eq!(
+        paste_ic_pin["scenario"]["checks"][0],
+        "SOLDER_PASTE_IC_PIN_APERTURE_VALID"
+    );
+    assert_eq!(paste_ic_pin["scenario"]["target"]["component"], "U1");
+    assert_eq!(paste_ic_pin["scenario"]["parameters"]["pin_pitch_mm"], 1.0);
+    assert!(
+        paste_ic_pin["reason"]
+            .as_str()
+            .unwrap()
+            .contains("3 repeated 1.000 mm")
+    );
+}
+
+#[test]
 fn suggest_scenarios_derives_gpio_backdrive_template() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_backdrive/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_backdrive");
