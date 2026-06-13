@@ -760,10 +760,10 @@ Solder-mask opening algorithm:
 6. Fail when the opening expands the copper flash by less than
    `min_mask_expansion_mm`.
 
-This is a static 2D solder-mask aperture screen. It checks flash-to-flash
-opening evidence and does not yet solve mask regions, mask dams between pads,
-fab-specific mask swell, paste stencil behavior, or package-specific mask
-rules.
+This is a static 2D solder-mask aperture screen. It checks Gerber mask flash,
+circular-aperture draw, and single-contour region openings. It does not solve
+multi-contour mask regions, fab-specific mask swell, paste stencil behavior, or
+package-specific mask rules.
 
 Solder-mask dam validation uses `SOLDER_MASK_DAM_VALID` when the Board IR
 includes at least two Gerber solder-mask openings under
