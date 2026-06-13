@@ -7,9 +7,9 @@ use crate::reports::Finding;
 
 use super::required_scenario_numeric_parameter;
 use super::usb_connector::{
-    UsbConnectorSignal, placement_is_finite, valid_component_placement,
-    valid_protection_clamps_for_net,
+    UsbConnectorSignal, valid_component_placement, valid_protection_clamps_for_net,
 };
+use super::usb_connector_geometry::placement_is_finite;
 use crate::validation::common::validation_input_missing;
 
 mod findings;

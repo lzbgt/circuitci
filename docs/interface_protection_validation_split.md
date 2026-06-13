@@ -9,6 +9,10 @@ toward the repository line-count guard:
 - `src/validation/interface_protection/usb_connector_findings.rs` owns report
   construction for USB connector coverage, component-clearance, and USB
   protection placement findings.
+- `src/validation/interface_protection/usb_connector_geometry.rs` owns
+  board-edge/body-overhang evidence types and shared pure footprint/outline
+  geometry helpers used by USB connector placement, entry-clearance, and
+  component-clearance rules.
 - `src/validation/interface_protection/usb_connector_clearance.rs` owns
   `USB_CONNECTOR_COMPONENT_CLEARANCE_VALID` orchestration and its local
   connector-to-component footprint/placement clearance geometry.
@@ -20,7 +24,7 @@ toward the repository line-count guard:
   `USB_CONNECTOR_ORIENTATION_VALID`, and
   `USB_CONNECTOR_EDGE_PROXIMITY_VALID`, and
   `USB_CONNECTOR_BODY_OVERHANG_VALID` orchestration plus shared USB connector
-  placement/protection/layout helpers.
+  placement/protection helpers.
 - `src/validation/interface_protection/usb_route.rs` owns
   `USB_ROUTE_GEOMETRY_VALID`, `USB_VBUS_ROUTE_VALID`, and
   `USB_RETURN_PATH_VALID` orchestration.

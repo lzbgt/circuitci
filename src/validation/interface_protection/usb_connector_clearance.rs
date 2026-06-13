@@ -3,14 +3,14 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 
 use super::super::common::validation_input_missing;
-use super::usb_connector::{
-    footprint_arc_points, footprint_circle_points, mechanical_footprint_kind, placement_is_finite,
-    point_is_finite, point_to_segment_distance_mm, rectangle_corners,
-    required_usb_connector_nonnegative_parameter, segment_length_mm,
-    segment_to_segment_distance_mm,
-};
+use super::usb_connector::required_usb_connector_nonnegative_parameter;
 use super::usb_connector_findings::{
     usb_component_clearance_finding, usb_component_clearance_metadata_finding,
+};
+use super::usb_connector_geometry::{
+    footprint_arc_points, footprint_circle_points, mechanical_footprint_kind, placement_is_finite,
+    point_is_finite, point_to_segment_distance_mm, rectangle_corners, segment_length_mm,
+    segment_to_segment_distance_mm,
 };
 
 pub(super) fn validate_usb_connector_component_clearance(

@@ -4,12 +4,12 @@ use serde_json::json;
 
 use super::placement_side_name;
 use super::usb_connector::{
-    ResolvedUsbProtection, UsbBoardEdgeDistanceEvidence, UsbBodyOverhangEvidence,
-    UsbConnectorSignal, UsbPlacementDistanceEvidence,
+    ResolvedUsbProtection, UsbConnectorSignal, UsbPlacementDistanceEvidence,
 };
 use super::usb_connector_clearance::{
     UsbComponentClearanceEvidence, UsbComponentClearanceReference,
 };
+use super::usb_connector_geometry::{UsbBoardEdgeDistanceEvidence, UsbBodyOverhangEvidence};
 use crate::board_ir::ComponentPlacement;
 use crate::validation::{
     USB_CONNECTOR_BODY_OVERHANG_VALID, USB_CONNECTOR_COMPONENT_CLEARANCE_VALID,

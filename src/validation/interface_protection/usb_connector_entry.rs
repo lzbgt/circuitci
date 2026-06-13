@@ -10,7 +10,7 @@ use super::super::USB_CONNECTOR_ENTRY_CLEARANCE_VALID;
 use super::super::common::validation_input_missing;
 use super::{
     required_scenario_numeric_parameter, scenario_numeric_parameter,
-    usb_connector::{
+    usb_connector_geometry::{
         footprint_arc_points, footprint_circle_points, mechanical_footprint_kind,
         placement_is_finite, point_is_finite, rectangle_corners, segment_length_mm,
         segment_to_segment_distance_mm,

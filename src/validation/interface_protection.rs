@@ -10,6 +10,7 @@ mod usb_connector;
 mod usb_connector_clearance;
 mod usb_connector_entry;
 mod usb_connector_findings;
+mod usb_connector_geometry;
 mod usb_route;
 
 use super::INTERFACE_PROTECTION_REVIEW;
