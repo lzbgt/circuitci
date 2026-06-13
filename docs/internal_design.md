@@ -148,6 +148,14 @@ they become runnable. Connectivity and power-state metadata can identify a risk,
 but `board.runtime.gpio_backdrive[]` must prove the high driver state, input
 victim mode, and schematic series resistance for the exact endpoint pair.
 
+Interface-protection channel suggestions are runnable only for non-generic
+datasheet-backed models with complete channel direction, supply-pin,
+supply-power-state, active supply-constraint voltage, and unpowered-isolation
+metadata. If a declared enable/OE pin is directly tied to a powered rail or
+ground in the disabled state, suggestions may include that pin-state evidence.
+Generic models and incomplete channel metadata must remain non-runnable review
+templates.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

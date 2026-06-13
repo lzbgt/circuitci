@@ -441,10 +441,13 @@ for a validation fixture that proves aperture metadata changes the checked
 entry corridor.
 
 `circuitci suggest-scenarios` uses `signal_conditioning` metadata to emit
-non-runnable `interface_protection` review templates. It does not treat the
-metadata alone as proof that a level shifter prevents backdrive; agents must
-confirm datasheet conditions, OE/reset state, and any unpowered-side behavior
-before sign-off.
+`interface_protection` review templates. Generic or incomplete channel metadata
+stays non-runnable. A channel template becomes runnable only when a non-generic
+datasheet-backed model supplies complete direction, supply pin, rail powered
+state, supply-constraint, and unpowered-isolation metadata. A runnable template
+still does not prove that a level shifter prevents backdrive; it makes the
+static `INTERFACE_PROTECTION_REVIEW` executable so the rule can pass or fail
+from the modeled datasheet facts and any direct OE/reset pin-state evidence.
 `INTERFACE_PROTECTION_REVIEW` accepts a powered-to-unpowered channel only when
 the model declares `unpowered_isolation: true`, or when the scenario observes
 the declared `enable_pin` in its `disabled_state`. It also checks declared

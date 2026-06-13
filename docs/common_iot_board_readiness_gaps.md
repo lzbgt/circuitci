@@ -161,7 +161,10 @@ observations still need real evidence. Matching
 runnable by supplying the runtime driver state, victim mode, and schematic
 series resistance. It also emits
 interface-protection review templates when component models declare explicit
-`signal_conditioning.channels`, and includes regulator input/output rail,
+`signal_conditioning.channels`; datasheet-backed channel templates are runnable
+when complete rail, supply-constraint, isolation, and direct disable-state
+evidence is available, while generic or incomplete channel templates remain
+review prompts. It also includes regulator input/output rail,
 dropout/current/startup/capacitance requirements plus measured support-capacitor
 evidence, reset-supervisor monitored rail, reset output, and threshold evidence
 in power-tree suggestions. It marks

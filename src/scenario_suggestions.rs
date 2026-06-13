@@ -191,7 +191,10 @@ fn load_switch_power_tree_inputs(bound: &BoundBoard<'_>) -> (Vec<SuggestedPinSta
     (pin_states, required_inputs)
 }
 
-fn inferred_logic_state_from_net(project: &BoardProject, net_name: &str) -> Option<&'static str> {
+pub(super) fn inferred_logic_state_from_net(
+    project: &BoardProject,
+    net_name: &str,
+) -> Option<&'static str> {
     let net = project.board.nets.get(net_name)?;
     match net.kind {
         NetKind::Ground => Some("low"),

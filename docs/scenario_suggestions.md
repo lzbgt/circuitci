@@ -84,9 +84,13 @@ The command is conservative:
 - It emits interface-protection templates for component models that declare
   `signal_conditioning.channels`, such as level shifters, protection devices,
   series resistors, or bus switches.
-- Channel-style interface-protection templates are marked `runnable: false`;
-  they are review prompts for datasheet direction, voltage-domain, enable/OE,
-  and unpowered-isolation evidence.
+- Channel-style interface-protection templates become runnable only when a
+  non-generic datasheet-backed model provides complete direction,
+  voltage-domain, supply-power-state, supply-constraint, and
+  unpowered-isolation metadata. If the declared enable/OE pin is directly tied
+  to a powered rail or ground in the disabled state, the suggestion includes
+  that pin-state evidence. Generic or incomplete channel models remain
+  `runnable: false` review prompts.
 - It emits clamp-only interface-protection templates for component models that
   declare `signal_conditioning.protection_clamps`, such as USB ESD arrays. The
   template includes `parameters.clamp` plus `scenario.protection_clamps[]`

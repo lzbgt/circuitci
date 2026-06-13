@@ -41,5 +41,10 @@ The same check enforces `vcca_lte_vccb` whenever both VCCA and VCCB rails are
 powered. For example, a board that connects VCCA to a `5.0 V` rail and VCCB to a
 `3.3 V` rail fails with measured `lower_nominal_voltage_V > upper_nominal_voltage_V`.
 
+`suggest-scenarios` can emit runnable `INTERFACE_PROTECTION_REVIEW` templates
+for TXS0108E channels because this model is datasheet-backed and carries the
+required direction, supply, isolation, OE, and supply-order metadata. When OE is
+directly tied to ground, the suggestion includes an `OE` low pin-state entry.
+
 The model is not a SPICE model and is not valid for high-speed signal-integrity
 or analog edge-rate sign-off.

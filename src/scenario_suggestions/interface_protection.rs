@@ -1,12 +1,12 @@
 use super::{
     INTERFACE_PROTECTION_REVIEW, ScenarioSuggestion, SuggestedConditioning,
-    SuggestedConditioningSide, SuggestedPlacement, SuggestedProtectionClamp, SuggestedScenario,
-    SuggestedTarget, sanitized_name,
+    SuggestedConditioningSide, SuggestedPinState, SuggestedPlacement, SuggestedProtectionClamp,
+    SuggestedScenario, SuggestedTarget, inferred_logic_state_from_net, sanitized_name,
 };
-use crate::board_ir::{BoardProject, ComponentPlacement, ComponentSpec, PlacementSide};
+use crate::board_ir::{BoardProject, ComponentPlacement, ComponentSpec, NetKind, PlacementSide};
 use crate::library::{
     BoundBoard, ComponentModel, ProtectionClamp, ProtectionReference, SignalConditioningChannel,
-    SignalConditioningKind,
+    SignalConditioningKind, SignalSupplyRelation,
 };
 use std::collections::BTreeMap;
 
@@ -45,6 +45,8 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
             else {
                 continue;
             };
+            let evidence =
+                channel_suggestion_evidence(bound, component_id, component, model, channel);
             suggestions.push(ScenarioSuggestion {
                 id: format!(
                     "interface_protection_{}_{}",
@@ -52,8 +54,8 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     sanitized_name(&channel.name)
                 ),
                 kind: "interface_protection".to_string(),
-                confidence: "medium".to_string(),
-                runnable: false,
+                confidence: evidence.confidence.to_string(),
+                runnable: evidence.runnable,
                 reason: format!(
                     "Component {component_id} model declares signal-conditioning channel {}, but no interface protection review scenario covers it.",
                     channel.name
@@ -89,14 +91,10 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
                     clocks: Vec::new(),
                     reset_supervisors: Vec::new(),
                     regulators: Vec::new(),
-                    pin_states: Vec::new(),
+                    pin_states: evidence.pin_states,
                     paths: Vec::new(),
                 },
-                required_inputs: vec![
-                    "Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.".to_string(),
-                    "Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.".to_string(),
-                    "Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.".to_string(),
-                ],
+                required_inputs: evidence.required_inputs,
             });
         }
         for clamp in &model.signal_conditioning.protection_clamps {
@@ -241,6 +239,157 @@ pub(super) fn interface_protection_suggestions(bound: &BoundBoard<'_>) -> Vec<Sc
         }
     }
     suggestions
+}
+
+struct ChannelSuggestionEvidence {
+    runnable: bool,
+    confidence: &'static str,
+    pin_states: Vec<SuggestedPinState>,
+    required_inputs: Vec<String>,
+}
+
+fn channel_suggestion_evidence(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    channel: &SignalConditioningChannel,
+) -> ChannelSuggestionEvidence {
+    let pin_states = direct_disable_pin_state(bound, component_id, component, channel)
+        .into_iter()
+        .collect();
+    if datasheet_backed_channel_metadata_complete(bound, component, model, channel) {
+        return ChannelSuggestionEvidence {
+            runnable: true,
+            confidence: "high",
+            pin_states,
+            required_inputs: Vec::new(),
+        };
+    }
+    ChannelSuggestionEvidence {
+        runnable: false,
+        confidence: "medium",
+        pin_states,
+        required_inputs: vec![
+            "Confirm the signal-conditioning part datasheet supports this direction, voltage range, and unpowered-side behavior.".to_string(),
+            "Fill enable/OE/reset-state evidence when the part can disconnect or leave either side high impedance.".to_string(),
+            "Add analog_transient or GPIO_BACKDRIVE scenarios for any datasheet condition that does not guarantee isolation.".to_string(),
+        ],
+    }
+}
+
+fn datasheet_backed_channel_metadata_complete(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+    channel: &SignalConditioningChannel,
+) -> bool {
+    if model.model_quality.source.trim() != "datasheet"
+        || model.model_quality.confidence.trim() == "low"
+        || channel.direction.is_none()
+        || channel.unpowered_isolation.is_none()
+        || !model.ports.contains_key(&channel.side_a_pin)
+        || !model.ports.contains_key(&channel.side_b_pin)
+        || !channel_supply_ready(bound, component, channel.side_a_supply_pin.as_deref())
+        || !channel_supply_ready(bound, component, channel.side_b_supply_pin.as_deref())
+    {
+        return false;
+    }
+    supply_constraints_ready(bound, component, model)
+}
+
+fn channel_supply_ready(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    supply_pin: Option<&str>,
+) -> bool {
+    let Some(supply_pin) = supply_pin else {
+        return false;
+    };
+    let Some(supply_net_name) = component
+        .power_domains
+        .get(supply_pin)
+        .or_else(|| component.pins.get(supply_pin))
+    else {
+        return false;
+    };
+    let Some(supply_net) = bound.project.board.nets.get(supply_net_name) else {
+        return false;
+    };
+    supply_net.kind == NetKind::Power && supply_net.powered.is_some()
+}
+
+fn supply_constraints_ready(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    model: &ComponentModel,
+) -> bool {
+    model
+        .signal_conditioning
+        .supply_constraints
+        .iter()
+        .all(|constraint| {
+            let Some(lower) = constraint_supply(bound, component, &constraint.lower_supply_pin)
+            else {
+                return false;
+            };
+            let Some(upper) = constraint_supply(bound, component, &constraint.upper_supply_pin)
+            else {
+                return false;
+            };
+            match constraint.relation {
+                SignalSupplyRelation::LessThanOrEqual => {
+                    !lower.powered
+                        || !upper.powered
+                        || (lower.nominal_voltage && upper.nominal_voltage)
+                }
+            }
+        })
+}
+
+struct ConstraintSupply {
+    powered: bool,
+    nominal_voltage: bool,
+}
+
+fn constraint_supply(
+    bound: &BoundBoard<'_>,
+    component: &ComponentSpec,
+    supply_pin: &str,
+) -> Option<ConstraintSupply> {
+    let supply_net_name = component
+        .power_domains
+        .get(supply_pin)
+        .or_else(|| component.pins.get(supply_pin))?;
+    let supply_net = bound.project.board.nets.get(supply_net_name)?;
+    if supply_net.kind != NetKind::Power {
+        return None;
+    }
+    Some(ConstraintSupply {
+        powered: supply_net.powered?,
+        nominal_voltage: supply_net.nominal_voltage.is_some(),
+    })
+}
+
+fn direct_disable_pin_state(
+    bound: &BoundBoard<'_>,
+    component_id: &str,
+    component: &ComponentSpec,
+    channel: &SignalConditioningChannel,
+) -> Option<SuggestedPinState> {
+    let enable_pin = channel.enable_pin.as_ref()?;
+    let disabled_state = channel.disabled_state.as_deref()?;
+    let enable_net = component.pins.get(enable_pin)?;
+    let actual = inferred_logic_state_from_net(bound.project, enable_net)?;
+    if actual != disabled_state.trim().to_ascii_lowercase() {
+        return None;
+    }
+    Some(SuggestedPinState {
+        component: component_id.to_string(),
+        pin: enable_pin.clone(),
+        mode: "input".to_string(),
+        state: Some(actual.to_string()),
+    })
 }
 
 fn suggested_conditioning(

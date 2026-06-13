@@ -1,0 +1,39 @@
+project:
+  name: scenario_suggestions_txs0108e_channel
+  version: 0.1.0
+
+libraries:
+  - ../../libs/vendor/ti/level_shifters
+
+board:
+  components:
+    U3:
+      model: vendor.ti.txs0108e
+      part_number: TXS0108E
+      power_domains:
+        VCCA: rail_a
+        VCCB: rail_b
+      pins:
+        VCCA: rail_a
+        VCCB: rail_b
+        GND: gnd
+        OE: gnd
+        A1: mcu_rx
+        B1: usb_uart_tx
+  nets:
+    rail_a:
+      kind: power
+      nominal_voltage: 3.3
+      powered: false
+    rail_b:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+    gnd:
+      kind: ground
+    mcu_rx:
+      kind: digital_or_analog
+    usb_uart_tx:
+      kind: digital_or_analog
+
+scenarios: []

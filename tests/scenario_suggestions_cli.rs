@@ -830,6 +830,42 @@ fn suggest_scenarios_derives_interface_protection_template() {
 }
 
 #[test]
+fn suggest_scenarios_makes_datasheet_channel_review_runnable() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_txs0108e_channel/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_txs0108e_channel"
+    );
+    let protection = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "interface_protection_u3_ch1")
+        .expect("interface protection suggestion");
+    assert_eq!(protection["kind"], "interface_protection");
+    assert_eq!(protection["runnable"], true);
+    assert_eq!(protection["confidence"], "high");
+    assert!(protection["required_inputs"].is_null());
+    assert_eq!(protection["scenario"]["type"], "interface_protection");
+    assert_eq!(
+        protection["scenario"]["checks"][0],
+        "INTERFACE_PROTECTION_REVIEW"
+    );
+    assert_eq!(protection["scenario"]["target"]["component"], "U3");
+    assert_eq!(protection["scenario"]["parameters"]["channel"], "ch1");
+    let conditioning = &protection["scenario"]["conditioning"];
+    assert_eq!(conditioning["component"], "U3");
+    assert_eq!(conditioning["channel"], "ch1");
+    assert_eq!(conditioning["direction"], "bidirectional");
+    assert_eq!(conditioning["unpowered_isolation"], false);
+    assert_eq!(protection["scenario"]["pin_states"][0]["component"], "U3");
+    assert_eq!(protection["scenario"]["pin_states"][0]["pin"], "OE");
+    assert_eq!(protection["scenario"]["pin_states"][0]["mode"], "input");
+    assert_eq!(protection["scenario"]["pin_states"][0]["state"], "low");
+}
+
+#[test]
 fn suggest_scenarios_derives_usb_esd_clamp_templates() {
     let suggestions = run_suggest_scenarios("examples/scenario_suggestions_usb_esd/project.yaml");
     assert_eq!(suggestions["project"], "scenario_suggestions_usb_esd");
