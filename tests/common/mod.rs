@@ -128,6 +128,29 @@ pub fn assert_suite_report_schema_valid(report: &Value) {
     assert!(errors.is_empty(), "suite report schema errors: {errors:#?}");
 }
 
+pub fn assert_suggestion_report_schema_valid(report: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../../schemas/scenario_suggestion_report.schema.json"
+    ))
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(report)
+        .map(|error| format!("{} at {}", error, error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "scenario suggestion report schema errors: {errors:#?}"
+    );
+}
+
+pub fn read_suggestion_report(path: &std::path::Path) -> Value {
+    let yaml = std::fs::read_to_string(path).unwrap();
+    let value: Value = serde_yaml_ng::from_str(&yaml).unwrap();
+    assert_suggestion_report_schema_valid(&value);
+    value
+}
+
 pub fn assert_no_generated_solver_artifacts(report: &Value) {
     let artifacts = report["artifacts"].as_array().unwrap();
     for suffix in [

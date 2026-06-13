@@ -1,7 +1,8 @@
 mod common;
 
 use common::{
-    assert_report_schema_valid, assert_yaml_file_valid, binary_available, run_validation,
+    assert_report_schema_valid, assert_yaml_file_valid, binary_available, read_suggestion_report,
+    run_validation,
 };
 use serde_json::Value;
 use std::process::Command;
@@ -243,8 +244,7 @@ fn import_kicad_schematic_suggests_bootstrap_bias_from_mapped_resistors() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -353,8 +353,7 @@ fn import_kicad_schematic_suggests_reset_release_from_mapped_rc() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -447,8 +446,7 @@ fn import_kicad_schematic_suggests_tlv803_reset_supervisor_evidence() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -548,8 +546,7 @@ fn import_kicad_schematic_suggests_ap2112_regulator_evidence() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -647,8 +644,7 @@ fn import_kicad_schematic_suggests_ams1117_regulator_evidence() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -780,8 +776,7 @@ fn import_kicad_schematic_suggests_tps62162_regulator_evidence() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -889,8 +884,7 @@ fn import_kicad_schematic_suggests_esp32_wroom_32e_power_and_boot_evidence() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -997,8 +991,7 @@ fn import_kicad_schematic_suggests_tpd2eusb30_usb_esd_clamps() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -1103,8 +1096,7 @@ fn import_kicad_schematic_suggests_prtr5v0u2x_usb_esd_clamps() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))
@@ -1246,8 +1238,7 @@ fn import_kicad_schematic_suggests_usb_connector_protection() {
         .unwrap();
     assert!(status.success());
 
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let suggestion_schema: Value = serde_json::from_str(include_str!(
         "../schemas/scenario_suggestion_report.schema.json"
     ))

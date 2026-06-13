@@ -1,6 +1,6 @@
 mod common;
 
-use common::{assert_report_schema_valid, assert_yaml_file_valid};
+use common::{assert_report_schema_valid, assert_yaml_file_valid, read_suggestion_report};
 use serde_json::Value;
 use std::path::Path;
 use std::process::Command;
@@ -262,8 +262,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .status()
         .unwrap();
     assert!(suggest_status.success());
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     let connector = suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -789,10 +788,7 @@ fn import_kicad_pcb_adds_layout_placements_for_suggestions() {
         .status()
         .unwrap();
     assert!(status.success());
-    let mapped_aperture_suggestions: Value = serde_yaml_ng::from_str(
-        &std::fs::read_to_string(&mapped_aperture_suggestions_path).unwrap(),
-    )
-    .unwrap();
+    let mapped_aperture_suggestions = read_suggestion_report(&mapped_aperture_suggestions_path);
     let mapped_entry_clearance = mapped_aperture_suggestions["suggestions"]
         .as_array()
         .unwrap()
@@ -1591,8 +1587,7 @@ fn import_kicad_pcb_rewrites_relative_libraries_for_output_location() {
         .status()
         .unwrap();
     assert!(suggest_status.success());
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     assert_eq!(suggestions["suggestions"].as_array().unwrap().len(), 14);
     assert!(
         suggestions["suggestions"]
@@ -2050,8 +2045,7 @@ fn import_kicad_pcb_cutout_edges_are_not_usb_entry_edges() {
         .status()
         .unwrap();
     assert!(suggest_status.success());
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_orientation_j1");
     assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_edge_proximity_j1");
     assert_cutout_suggestion_uses_external_edge(&suggestions, "usb_connector_body_overhang_j1");
@@ -2175,8 +2169,7 @@ fn assert_sampled_usb_board_edge_fixture(
         .status()
         .unwrap();
     assert!(suggest_status.success());
-    let suggestions: Value =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(&suggestions_path).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_path);
     assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_orientation_j1", &expected);
     assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_edge_proximity_j1", &expected);
     assert_suggestion_uses_sampled_edge(&suggestions, "usb_connector_body_overhang_j1", &expected);

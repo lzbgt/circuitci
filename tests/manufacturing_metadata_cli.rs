@@ -1,4 +1,6 @@
-use serde_json::Value as JsonValue;
+mod common;
+
+use common::read_suggestion_report;
 use serde_yaml_ng::Value;
 use std::process::Command;
 
@@ -78,8 +80,7 @@ fn set_manufacturing_metadata_makes_artifact_suggestions_runnable() {
         .status()
         .unwrap();
     assert!(suggest_status.success());
-    let suggestions: JsonValue =
-        serde_yaml_ng::from_str(&std::fs::read_to_string(suggestions_output).unwrap()).unwrap();
+    let suggestions = read_suggestion_report(&suggestions_output);
     assert_runnable(&suggestions, "drill_to_board_edge_clearance");
     assert_runnable(&suggestions, "slot_to_board_edge_clearance");
     assert_runnable(&suggestions, "solder_paste_opening_valid");
@@ -133,7 +134,7 @@ fn remove_board_manufacturing(project_yaml: &mut Value) {
     board.remove(Value::String("manufacturing".to_string()));
 }
 
-fn assert_runnable(suggestions: &JsonValue, id: &str) {
+fn assert_runnable(suggestions: &serde_json::Value, id: &str) {
     let suggestion = suggestions["suggestions"]
         .as_array()
         .unwrap()
