@@ -133,6 +133,11 @@ become runnable only when the sender endpoint is proven output-capable, reset
 timing is derived from explicit evidence, and any required boot mode is proven
 by direct strap state rather than assumed firmware behavior.
 
+GPIO backdrive suggestions likewise require explicit runtime evidence before
+they become runnable. Connectivity and power-state metadata can identify a risk,
+but `board.runtime.gpio_backdrive[]` must prove the high driver state, input
+victim mode, and schematic series resistance for the exact endpoint pair.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

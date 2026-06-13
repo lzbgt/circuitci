@@ -1,4 +1,6 @@
-use crate::board_ir::{BoardProject, ComponentSpec, NetKind, SpicePrimitive};
+use crate::board_ir::{
+    BoardProject, ComponentSpec, NetKind, PinLogicState, PinMode, SpicePrimitive,
+};
 use crate::charger_programming::derive_charge_current_from_programming_resistor;
 use crate::library::{BoundBoard, ComponentModel, PortKind, PowerSwitchState};
 use crate::power_mux_selection::derive_selected_power_mux_input_from_powered_nets;
@@ -641,6 +643,7 @@ fn gpio_backdrive_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion>
                         continue;
                     }
                     suggestions.push(backdrive_suggestion(
+                        bound,
                         driver_component_id,
                         driver_pin,
                         victim_component_id,
@@ -655,12 +658,25 @@ fn gpio_backdrive_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion>
 }
 
 fn backdrive_suggestion(
+    bound: &BoundBoard<'_>,
     driver_component: &str,
     driver_pin: &str,
     victim_component: &str,
     victim_pin: &str,
     net: &str,
 ) -> ScenarioSuggestion {
+    let runtime_evidence = gpio_backdrive_runtime_evidence(
+        bound,
+        driver_component,
+        driver_pin,
+        victim_component,
+        victim_pin,
+    );
+    let series_resistance_ohm = runtime_evidence
+        .as_ref()
+        .and_then(|evidence| evidence.series_resistance_ohm)
+        .unwrap_or(0.0);
+    let runnable = runtime_evidence.is_some();
     ScenarioSuggestion {
         id: format!(
             "gpio_backdrive_{}_{}_to_{}_{}",
@@ -670,8 +686,8 @@ fn backdrive_suggestion(
             sanitized_name(victim_pin)
         ),
         kind: "gpio_backdrive".to_string(),
-        confidence: "medium".to_string(),
-        runnable: false,
+        confidence: if runnable { "high" } else { "medium" }.to_string(),
+        runnable,
         reason: format!(
             "Powered output {driver_component}.{driver_pin} shares net {net} with unpowered input {victim_component}.{victim_pin}, but no GPIO_BACKDRIVE scenario covers that path."
         ),
@@ -722,14 +738,44 @@ fn backdrive_suggestion(
                     pin: victim_pin.to_string(),
                 },
                 net: Some(net.to_string()),
-                series_resistance_ohm: 0.0,
+                series_resistance_ohm,
             }],
         },
-        required_inputs: vec![
-            "Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.".to_string(),
-            "Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.".to_string(),
-        ],
+        required_inputs: if runnable {
+            Vec::new()
+        } else {
+            vec![
+                "Add board.runtime.gpio_backdrive evidence confirming the driver can be high while the victim rail is unpowered.".to_string(),
+                "Fill board.runtime.gpio_backdrive[].series_resistance_ohm from the schematic protection path; use 0 only when there is no series resistor, switch, or protection element.".to_string(),
+            ]
+        },
     }
+}
+
+fn gpio_backdrive_runtime_evidence<'a>(
+    bound: &'a BoundBoard<'_>,
+    driver_component: &str,
+    driver_pin: &str,
+    victim_component: &str,
+    victim_pin: &str,
+) -> Option<&'a crate::board_ir::GpioBackdriveRuntimeEvidence> {
+    bound
+        .project
+        .board
+        .runtime
+        .gpio_backdrive
+        .iter()
+        .find(|evidence| {
+            evidence.driver.component == driver_component
+                && evidence.driver.pin == driver_pin
+                && evidence.victim.component == victim_component
+                && evidence.victim.pin == victim_pin
+                && evidence.driver_state == Some(PinLogicState::High)
+                && evidence.victim_mode == Some(PinMode::Input)
+                && evidence
+                    .series_resistance_ohm
+                    .is_some_and(|value| value.is_finite() && value >= 0.0)
+        })
 }
 
 fn clock_source_suggestions(bound: &BoundBoard<'_>) -> Vec<ScenarioSuggestion> {

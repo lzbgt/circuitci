@@ -149,7 +149,9 @@ direct rail/ground strap. It emits non-runnable templates for reset release
 without RC evidence, observed boot-strap states, UART bootloader sync without
 complete timing/strap/sender proof, and first-slice GPIO backdrive hot-plug
 risks when model/connectivity evidence is present but observations still need
-real evidence. It also emits
+real evidence. Matching `board.runtime.gpio_backdrive[]` evidence makes those
+GPIO backdrive templates runnable by supplying the runtime driver state,
+victim mode, and schematic series resistance. It also emits
 interface-protection review templates when component models declare explicit
 `signal_conditioning.channels`, and includes regulator input/output rail,
 dropout/current/startup/capacitance requirements plus measured support-capacitor

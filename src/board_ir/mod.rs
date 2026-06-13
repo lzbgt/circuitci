@@ -32,6 +32,8 @@ pub struct Board {
     #[serde(default)]
     pub manufacturing: BoardManufacturing,
     #[serde(default)]
+    pub runtime: BoardRuntime,
+    #[serde(default)]
     pub layout: BoardLayout,
 }
 
@@ -49,6 +51,26 @@ pub struct BoardManufacturing {
     pub max_paste_area_ratio: Option<f64>,
     #[serde(default)]
     pub min_solder_paste_spacing_mm: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BoardRuntime {
+    #[serde(default)]
+    pub gpio_backdrive: Vec<GpioBackdriveRuntimeEvidence>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GpioBackdriveRuntimeEvidence {
+    pub driver: Endpoint,
+    pub victim: Endpoint,
+    #[serde(default)]
+    pub driver_state: Option<PinLogicState>,
+    #[serde(default)]
+    pub victim_mode: Option<PinMode>,
+    #[serde(default)]
+    pub series_resistance_ohm: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

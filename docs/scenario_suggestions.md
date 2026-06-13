@@ -62,9 +62,10 @@ The command is conservative:
 - It emits GPIO backdrive templates when a powered output-capable pin shares a
   net with an unpowered input-capable pin, model electrical metadata is present,
   and no existing `GPIO_BACKDRIVE` scenario covers that driver/victim path.
-- GPIO backdrive templates are marked `runnable: false` until the agent confirms
-  the driver can be high while the victim rail is unpowered and fills the actual
-  protection-path series resistance.
+- GPIO backdrive templates become runnable only when matching
+  `board.runtime.gpio_backdrive[]` evidence confirms the driver can be high
+  while the victim rail is unpowered and supplies the actual protection-path
+  series resistance.
 - It emits interface-protection templates for component models that declare
   `signal_conditioning.channels`, such as level shifters, protection devices,
   series resistors, or bus switches.
@@ -594,8 +595,8 @@ suggestions:
       - Fill strap actual states for boot mode bootloader: U1.BOOT0=high.
   - id: gpio_backdrive_u2_txd_to_u1_rx
     kind: gpio_backdrive
-    confidence: medium
-    runnable: false
+    confidence: high
+    runnable: true
     reason: Powered output U2.TXD shares net uart_rx with unpowered input U1.RX, but no GPIO_BACKDRIVE scenario covers that path.
     scenario:
       name: u2_to_u1_backdrive
@@ -614,10 +615,7 @@ suggestions:
         - driver: { component: U2, pin: TXD }
           victim: { component: U1, pin: RX }
           net: uart_rx
-          series_resistance_ohm: 0
-    required_inputs:
-      - Confirm the driver can be high while the victim rail is unpowered, using firmware, host, reset-state, or hot-plug evidence.
-      - Fill paths[].series_resistance_ohm from the schematic protection path; keep 0 only when there is no series resistor, switch, or protection element.
+          series_resistance_ohm: 1000
   - id: interface_protection_u3_ch1
     kind: interface_protection
     confidence: medium
@@ -734,6 +732,10 @@ suggestions:
           to: { component: U1, pin: RX }
           bytes: [127]
 ```
+
+Without matching `board.runtime.gpio_backdrive[]` evidence, the GPIO backdrive
+template stays non-runnable and asks for runtime-state proof plus the schematic
+series resistance.
 
 UART bootloader suggestions stay non-runnable unless the target has a proven
 output-capable sender, explicit reset/boot timing evidence, and, when the model

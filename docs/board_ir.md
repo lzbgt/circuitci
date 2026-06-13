@@ -733,3 +733,26 @@ For the first slice, `gpio_backdrive` scenarios must declare `pin_states` and `p
 - `series_resistance_ohm`, default `0`
 
 The driver and victim pins must be connected to the same net in the board IR.
+
+## Runtime Evidence
+
+`board.runtime` stores explicit operating-state evidence that is not layout or
+manufacturing policy. The first runtime evidence object is
+`board.runtime.gpio_backdrive[]`:
+
+```yaml
+board:
+  runtime:
+    gpio_backdrive:
+      - driver: { component: U2, pin: TXD }
+        victim: { component: U1, pin: RX }
+        driver_state: high
+        victim_mode: input
+        series_resistance_ohm: 1000
+        source: hot_plug_idle_state_review
+```
+
+`suggest-scenarios` only makes a `GPIO_BACKDRIVE` template runnable when this
+runtime evidence exactly matches the detected driver/victim path, declares the
+driver high, declares the victim input, and provides a nonnegative schematic
+series resistance. Without that evidence, the template stays non-runnable.

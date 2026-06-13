@@ -130,6 +130,34 @@
           },
           "additionalProperties": true
         },
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "gpio_backdrive": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "driver",
+                  "victim",
+                  "driver_state",
+                  "victim_mode",
+                  "series_resistance_ohm"
+                ],
+                "properties": {
+                  "driver": { "$ref": "#/$defs/endpoint" },
+                  "victim": { "$ref": "#/$defs/endpoint" },
+                  "driver_state": { "enum": ["high", "low", "z"] },
+                  "victim_mode": { "enum": ["input", "output", "high_z"] },
+                  "series_resistance_ohm": { "type": "number", "minimum": 0 },
+                  "source": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "layout": {
           "type": "object",
           "properties": {

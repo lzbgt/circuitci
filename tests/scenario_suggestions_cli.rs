@@ -709,7 +709,40 @@ fn suggest_scenarios_derives_gpio_backdrive_template() {
         backdrive["required_inputs"][0]
             .as_str()
             .unwrap()
-            .contains("driver can be high")
+            .contains("board.runtime.gpio_backdrive")
+    );
+}
+
+#[test]
+fn suggest_scenarios_makes_gpio_backdrive_runnable_from_runtime_evidence() {
+    let suggestions =
+        run_suggest_scenarios("examples/scenario_suggestions_backdrive_runtime/project.yaml");
+    assert_eq!(
+        suggestions["project"],
+        "scenario_suggestions_backdrive_runtime"
+    );
+    let backdrive = suggestions["suggestions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|suggestion| suggestion["id"] == "gpio_backdrive_u2_txd_to_u1_rx")
+        .expect("gpio backdrive suggestion");
+    assert_eq!(backdrive["kind"], "gpio_backdrive");
+    assert_eq!(backdrive["runnable"], true);
+    assert_eq!(backdrive["confidence"], "high");
+    assert!(backdrive["required_inputs"].is_null());
+    assert_eq!(backdrive["scenario"]["type"], "gpio_backdrive");
+    assert_eq!(backdrive["scenario"]["checks"][0], "GPIO_BACKDRIVE");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["component"], "U2");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["pin"], "TXD");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["mode"], "output");
+    assert_eq!(backdrive["scenario"]["pin_states"][0]["state"], "high");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["component"], "U1");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["pin"], "RX");
+    assert_eq!(backdrive["scenario"]["pin_states"][1]["mode"], "input");
+    assert_eq!(
+        backdrive["scenario"]["paths"][0]["series_resistance_ohm"],
+        1000.0
     );
 }
 
