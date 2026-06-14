@@ -1,0 +1,65 @@
+component_id: vendor.sipeed.licheerv_nano_w
+version: 0.1.0
+category: linux_som
+ports:
+  5V:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.75
+      operating_voltage_max_V: 5.25
+      max_supply_current_A: 1.0
+  GND:
+    kind: electrical_ground
+    required: true
+  UART0_TX_A16:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  UART0_RX_A17:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  GPIOA14_MOTION_EN:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  GPIOA15_FAULT_IRQ:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+datasheet:
+  manufacturer: Sipeed
+  part_number: LicheeRV-Nano-W
+  package: module
+  documents:
+    - title: LicheeRV Nano Introduction
+      path: docs/research/smart_robot/sources/licheerv_nano_intro.html
+      source_url: https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
+      sha256: 7b8a90dbe05c8f03c0b9036ad9204ef851fcdd4256b982870592b00e2bccecf3
+      retrieved: "2026-06-14"
+    - title: LicheeRV Nano 70405 Schematic
+      path: docs/research/smart_robot/sources/licheerv_nano_70405_schematic.pdf
+      source_url: https://cn.dl.sipeed.com/fileList/LICHEE/LicheeRV_Nano/02_Schematic/LicheeRV_Nano-70405_Schematic.pdf
+      sha256: b09ec99069e7f696498b3501785f5296fd0ecaed6d1895d16de2c2e057c2fd19
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - module_power_budget
+    - uart_motion_link_level_check
+  not_valid_for:
+    - linux_boot_power_transient
+    - high_speed_mipi_or_usb_layout
+    - exact_header_pin_numbering_without_pcb_symbol_review

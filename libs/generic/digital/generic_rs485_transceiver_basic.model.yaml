@@ -1,0 +1,50 @@
+component_id: generic.rs485_transceiver.basic
+version: 0.1.0
+category: rs485_transceiver
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.08
+  GND:
+    kind: electrical_ground
+    required: true
+  DI:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RO:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DE:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - static_power_tree
+    - mcu_side_io_voltage_screening
+  not_valid_for:
+    - rs485_signal_integrity
+    - fail_safe_bias_or_termination_design
+    - exact_transceiver_selection

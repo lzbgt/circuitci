@@ -1,0 +1,1260 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-Hans">
+    
+<head>
+    <meta charset="utf-8" >
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>雅特力科技 : 32位微控制器的创新领导者!</title>
+
+    <!-- Change the author and description -->
+    <meta name="author" content="arterytek.com">
+    <meta name="description" content="雅特力科技(Artery Technology)于2016年成立，是一家致力于推动全球市场32位微控制器创新趋势的芯片(MCU)设计公司，专攻32位 ARM Cortex®-M4/M0+ MCU产品，拥有高端芯片研发技术、完整硅智财产及专业设计整合经验，致力成为32位MCU的创新领导者!">
+
+    <!-- CSS files -->
+    <link rel="stylesheet" href="../../inc/bootstrap/css/bootstrap.min.css">
+    <link rel='stylesheet' href='http://fonts.googleapis.com/css?family=Open+Sans:300,400,400italic,600,700|Raleway:300,400,500,600'>
+    <link rel="stylesheet" href="../../inc/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../../inc/animate.css">
+
+    <link rel="stylesheet" href="../../inc/rs-plugin/css/settings.css" media="screen">
+
+    <!-- Main Stylesheets -->
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/artery.css">
+
+    <!-- Favicons -->
+    <link rel="shortcut icon" href="../../images/favicon.ico">
+    <link rel="apple-touch-icon" href="../../images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="../../images/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="../../images/apple-touch-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="../../images/apple-touch-icon-144x144.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P31HYSCW9V"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-P31HYSCW9V');
+    </script>
+    <!-- End Global site tag (gtag.js) - Google Analytics -->
+
+</head>
+    <body>
+        <!-- Google Tag Manager -->
+        <script>(function (w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start':
+                    new Date().getTime(), event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-WGF59X6');</script>
+        <!-- End Google Tag Manager -->
+
+        <!-- Google Tag Manager (noscript) -->
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WGF59X6"
+                    height="0" width="0" style="display:none;visibility:hidden"></iframe>
+        </noscript>
+        <!-- End Google Tag Manager (noscript) -->
+
+        <!-- Global Wrapper -->
+        <div id="wrapper">
+            
+
+<script src="/inc/jquery/jquery-2.1.0.min.js"></script>
+<style type="text/css"> .menu > li > a {
+    padding: 25px 10px 25px 10px !important;
+    font-size: 13px;
+    font-weight: 400;
+    text-decoration: none;
+    display: inline-block;
+    color: #778888;
+    text-transform: uppercase;
+    position: relative;
+}
+
+@media (min-width: 768px) {
+    .navbar-right {
+        display: flex;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .navbar-right ul.menu {
+        display: flex;
+        justify-content: flex-start;
+        width: auto; /* 或保留 100% 也可 */
+    }
+
+    .menu > li > a::before, .menu .current > a::before {
+        position: absolute;
+        height: 2em;
+        top: 25px;
+        left: 10px !important;
+        overflow: hidden;
+        max-width: 0;
+        color: rgb(34, 171, 166);
+        content: attr(data-hover); /*-webkit-transition: max-width 1s ease-out;*/ /*transition: max-width 1s ease-out;*/
+    }
+
+    .menu > li > a:hover::before, .menu > li > a:focus::selection, .menu > .active > a {
+        max-width: 100%;
+        -webkit-transition: max-width 1s ease-out; /*transition: max-width 1s ease-out;*/
+    }
+}
+
+@media (max-width: 767px) {
+    /* menu 本體顯示（漢堡在這） */
+    .navbar-right .menu {
+        display: block;
+    }
+
+    /* 預設只顯示漢堡 */
+    .navbar-right .menu > li:not(.toggle-menu) {
+        display: none;
+    }
+
+    /* 點漢堡後，顯示其他項目 */
+    .navbar-right .menu.show > li {
+        display: block;
+    }
+
+    /* 確保手機版時，hover 不會觸發任何動作 */
+    .menu li:hover > .submenu {
+        display: none;
+    }
+
+    /* 初始隱藏子選單 */
+    .submenu {
+        display: none;
+        position: static;
+        width: 100%;
+    }
+
+    /*.menu li.open > .submenu {*/
+    /* display: block;*/
+    /*}*/
+    .navbar-right ul.menu {
+        flex-direction: column;
+    }
+
+    .menu > li > a {
+        padding: 12px 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .submenu li a {
+        padding-left: 30px;
+        font-size: 14px;
+    }
+    .navbar-collapse {
+        z-index: 10001; /* 比 chatbot 的 9999 高 */
+        position: relative; /* 確保 z-index 生效 */
+    }
+}
+</style>
+
+<!-- Header -->
+<header class="header-wrapper top-border">
+    <div class="main-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12 visible-xs">
+                    <a href="/cn/index.jsp">
+                        <img src="/images/logo_m.png" alt="Artery" width="100" height="40" style="margin-top: 20px;;margin-left: 30px">
+                    </a>
+                    <tr>
+                        <a href="https://bbs.21ic.com/iclist-1004-1.html" target="_blank"><img src="../../images/21ic_logo.png" alt="21ic" width="42" height="42" style="margin-top: 20px; float:right;"/></a>
+                        <a href="https://list.szlcsc.com/brand/12248.html" target="_blank"><img src="../../images/Szlcsc_logo.png" alt="Artery_SZLCSC" width="45" height="45" style="margin-top: 20px;float:right; "/></a>
+                        <a href="https://artery.tmall.com/shop/view_shop.htm?spm=pc_detail.27183998.202202.1.ed3d7dd66eXhcP" target="_blank"><img src="../../images/Tmall_logo.png" alt="Artery_Tmall" width="38" height="38" style="margin-top: 20px; float:right; "/></a>
+                    </tr>
+                </div>
+                <div class="col-sm-12 col-md-3 hidden-xs">
+                    <a href="/cn/index.jsp"></a>
+                    <ul class="menu">
+                        <table width="1183" border="0">
+                            <tbody>
+                                <tr>
+                                    <th width="342" rowspan="3" scope="col">
+                                        <a href="/cn/index.jsp"><img src="/images/logo.png" alt="" width="266" height="89" align="top"/></a>
+                                    </th>
+                                    <th width="698" rowspan="3" scope="col">&nbsp;</th>
+                                    <th width="43" height="20" scope="col">
+                                        <a href="https://bbs.21ic.com/iclist-1004-1.html" target="_blank"></a></th>
+                                </tr>
+
+                                <tr>
+                                    <th height="9" scope="col">
+                                        <a href="https://bbs.21ic.com/iclist-1004-1.html" target="_blank"><img src="../../images/21ic_logo.png" alt="21ic" width="39" height="40" align="right"/></a>
+                                    </th>
+                                    <th height="9" scope="col">
+                                        <a href="https://list.szlcsc.com/brand/12248.html" target="_blank"><img src="../../images/Szlcsc_logo.png" alt="Artery_SZLCSC" width="35" height="36" style="display:block; margin:auto;"/></a>
+                                    </th>
+                                    <th height="9" scope="col">
+                                        <a href="https://artery.tmall.com/shop/view_shop.htm?spm=pc_detail.27183998.202202.1.ed3d7dd66eXhcP" target="_blank"><img src="../../images/Tmall_logo.png" alt="Artery_Tmall" width="35" height="36"/></a>
+                                    </th>
+                                </tr>
+
+                                <tr>
+                                    <th height="20" colspan="3" scope="col">&nbsp;</th>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </ul>
+                </div>
+                <div class="col-sm-12 col-md-8">
+                    <nav class="navbar-right">
+                        <ul class="menu">
+                            <!-- Toggle Menu - For Mobile Devices -->
+                            <li class="toggle-menu">
+                                <span class="title"></span>
+                                <span class="icon">
+                                        <i></i>
+                                        <i></i>
+                                        <i></i>
+                                    </span>
+                            </li>
+                            <!-- END Toggle Menu -->
+                            <!-- 产品讯息 -->
+                            <li>
+                                <a href="/cn/product/index.jsp" data-hover="产品讯息">产品讯息</a>
+                                <ul class="submenu">
+                                    <li><a href="/cn/product/index.jsp#low-power-mcu">低功耗 MCU</a>
+                                        <ul class="submenu">
+                                            <li><a href="/cn/product/AT32L021.jsp">AT32L021 系列</a></li>
+                                        </ul>
+                                    </li>
+                                    <li><a href="/cn/product/index.jsp#value-mcu">超值型 MCU</a>
+                                        <ul class="submenu">
+                                            <li><a href="/cn/product/AT32F011.jsp">AT32F011
+                                                系列<img src="../../images/new_icon.png" width="27" height="15" align="right"></a>
+                                            </li>
+                                            <li><a href="/cn/product/AT32F415.jsp">AT32F415 系列</a></li>
+                                            <li><a href="/cn/product/AT32F421.jsp">AT32F421 系列</a></li>
+                                            <li><a href="/cn/product/AT32F4212.jsp">AT32F4212 系列</a></li>
+                                            <li><a href="/cn/product/AT32F422.jsp">AT32F422
+                                                系列<img src="../../images/new_icon.png" width="27" height="15" align="right"></a>
+                                            </li>
+                                            <li><a href="/cn/product/AT32F423.jsp">AT32F423 系列</a></li>
+                                            <li><a href="/cn/product/AT32F425.jsp">AT32F425 系列</a></li>
+                                            <li><a href="/cn/product/AT32F426.jsp">AT32F426
+                                                系列<img src="../../images/new_icon.png" width="27" height="15" align="right"></a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li><a href="/cn/product/index.jsp#mainstream-mcu">主流型 MCU</a>
+                                        <ul class="submenu" style="column-count: 2; -webkit-column-count: 2; -moz-column-count: 2;"
+                                            column-gap: 20px; min-width: 600px;
+                                        ">
+                                    <li>
+                                        <a href="/cn/product/AT32F402.jsp" style="display: inline-block; min-width: 150px;">AT32F402
+                                            系列</a></li>
+                                    <li><a href="/cn/product/AT32F403.jsp">AT32F403 系列</a></li>
+                                    <li><a href="/cn/product/AT32F403A.jsp">AT32F403A 系列</a></li>
+                                    <li><a href="/cn/product/AT32F405.jsp">AT32F405 系列</a></li>
+                                    <li><a href="/cn/product/AT32F407.jsp">AT32F407 系列</a></li>
+                                    <li><a href="/cn/product/AT32F413.jsp">AT32F413 系列</a></li>
+                                    <li><a href="/cn/product/AT32F455.jsp">AT32F455
+                                        系列<img src="../../images/new_icon.png" width="27" height="15" align="right">
+                                    </li>
+                                    </a>
+                                    <li><a href="/cn/product/AT32F456.jsp">AT32F456
+                                        系列<img src="../../images/new_icon.png" width="27" height="15" align="right">
+                                    </li>
+                                    </a>
+                                    <li><a href="/cn/product/AT32F457.jsp">AT32F457
+                                        系列<img src="../../images/new_icon.png" width="27" height="15" align="right">
+                                    </li>
+                                    </a>
+                                    <li><a href="/cn/product/AT32F490.jsp">AT32F490
+                                        系列<img src="../../images/new_icon.png" width="27" height="10" align="right">
+                                    </li>
+                                    </a>
+                                </ul>
+                            </li>
+                            <li><a href="/cn/product/index.jsp#high-performance-mcu">高性能 MCU</a>
+                                <ul class="submenu">
+                                    <li><a href="/cn/product/AT32F435.jsp">AT32F435 系列</a></li>
+                                    <li><a href="/cn/product/AT32F437.jsp">AT32F437 系列</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="/cn/product/index.jsp#automotive-mcu">车载 MCU</a>
+                                <ul class="submenu">
+                                    <li><a href="/cn/product/AT32A403A.jsp">AT32A403A 系列</a></li>
+                                    <li><a href="/cn/product/AT32A423.jsp">AT32A423 系列</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="/cn/product/index.jsp#motor-control-mcu">电机专用 MCU</a>
+                                <ul class="submenu">
+                                    <li><a href="/cn/product/AT32M412.jsp">AT32M412
+                                        系列<img src="../../images/new_icon.png" width="27" height="15" align="right">
+                                    </li>
+                                    </a>
+                                    <li><a href="/cn/product/AT32M416.jsp">AT32M416
+                                        系列<img src="../../images/new_icon.png" width="27" height="15" align="right">
+                                    </li>
+                                    </a>
+                                </ul>
+                            </li>
+                            <li><a href="/cn/product/index.jsp#bluetooth-mcu">蓝牙BLE MCU</a>
+                                <ul class="submenu">
+                                    <li><a href="/cn/product/AT32WB415.jsp">AT32WB415 系列</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                        </li>
+                        <!-- END 产品讯息 -->
+                        <!-- 技术与开发支援 -->
+                        <li>
+                            <a href="/cn/support/index.jsp" data-hover="技术与开发支持">技术与开发支持</a>
+                            <ul class="submenu">
+                                <li><a href="/cn/support/index.jsp?index=0">设计资源</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/support/index.jsp?index=0">FAQ</a></li>
+                                        <li><a href="/cn/support/index.jsp?index=1">应用笔记</a></li>
+                                        <li><a href="/cn/support/index.jsp?index=2">应用例程</a></li>
+                                    </ul>
+                                </li>
+                                <li><a href="/cn/support/tools.jsp?index=0">开发工具</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/support/tools.jsp?index=0">AT32 Workbench</a></li>
+                                        <li><a href="/cn/support/tools.jsp?index=1">AT32 IDE</a></li>
+                                        <li><a href="/cn/support/tools.jsp?index=2">开发板</a></li>
+                                        <li><a href="/cn/support/tools.jsp?index=3">编程调试工具</a></li>
+                                        <li><a href="/cn/support/tools.jsp?index=4">USB工具和驱动</a></li>
+                                        <li><a href="/cn/support/tools.jsp?index=5">第三方编程工具</a></li>
+                                    </ul>
+                                </li>
+                                <li><a href="/cn/support/motor_control.jsp?index=0">电机控制</a></li>
+                                <li><a href="/cn/support/motor_control.jsp?index=1">USB应用</a></li>
+                                <li><a href="/cn/support/motor_control.jsp?index=2">以太网应用</a></li>
+                                <li><a href="/cn/class/index.jsp">在线培训</a></li>
+                            </ul>
+                        </li>
+                        <!-- END 技术与开发支援 -->
+                        <!-- 应用方案 -->
+                        <li>
+                            <a href="/cn/applications/index.jsp" data-hover="应用">应用方案</a>
+                            <ul class="submenu">
+                                <li><a href="/cn/applications/index.jsp">电机驱动</a></li>
+                            </ul>
+                        </li>
+                        <!-- END 应用方案 -->
+                        <!-- 关于雅特力 -->
+                        <li>
+                            <a href="/cn/about/index.jsp" data-hover="关于雅特力">关于雅特力</a>
+                            <ul class="submenu">
+                                <li><a href="/cn/about/index.jsp">公司简介</a></li>
+                                <li><a href="/cn/about/Milestones.jsp">沿革与发展</a></li>
+                                <li><a href="/cn/about/QualityManagement.jsp">品质政策</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/about/QualityManagement.jsp">质量系统</a></li>
+                                        <li><a href="/cn/about/ProductReliability.jsp">产品可靠度</a></li>
+                                        <li><a href="/cn/about/CustomerServiceEngineering.jsp">客户服务工程</a></li>
+                                    </ul>
+                                </li>
+                                <li><a href="/cn/news/index.jsp">新闻中心
+                                    <img src="../../images/new_icon.png" width="27" height="15" style="vertical-align: middle; position: relative; top: -3px;">
+                                </li>
+                                </a>
+                                <li><a href="/about/cn/contactUs">联系我们</a>
+                                    <ul class="submenu">
+                                        <li><a href="/about/cn/contactUs">一般咨询</a></li>
+                                        <li><a href="/cn/contact-us/IDH.jsp">IDH招商</a></li>
+                                    </ul>
+                                </li>
+                                <li><a href="/cn/careers/career.jsp">人力资源</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/careers/career.jsp">人才招募</a></li>
+                                        <li><a href="/cn/careers/employeewelfare.jsp">员工福利</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- END 关于雅特力 -->
+                        <!-- 企业永续 -->
+                        <li>
+                            <a href="/cn/about/CorporationGovernance.jsp" data-hover="企业永续">企业永续</a>
+                            <ul class="submenu">
+                                <li><a href="/cn/about/CorporationGovernance.jsp" data-hover="公司治理">公司治理</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/about/CorporationGovernance.jsp">治理方针</a></li>
+                                        <li><a href="/cn/about/EthicalManagement.jsp">诚信经营</a></li>
+                                        <li><a href="/cn/about/IntellectualProperty.jsp">智慧财产管理</a></li>
+                                        <li><a href="/cn/about/RiskManagement.jsp">风险管理</a></li>
+                                        <li><a href="/cn/about/InformationSecurity.jsp">信息安全</a></li>
+                                    </ul>
+                                </li>
+                                <li><a href="/cn/about/CorporateSustainability.jsp" data-hover="社会责任">社会责任</a>
+                                    <ul class="submenu">
+                                        <li><a href="/cn/about/CorporateSustainability.jsp">永续委员会</a></li>
+                                        <li><a href="/cn/about/StakeholderEngagement.jsp">利害关系人</a></li>
+                                        <li><a href="/cn/about/Partners.jsp">伙伴共荣</a></li>
+                                        <li><a href="/cn/about/EnvironmentalSustainability.jsp">环境永续</a></li>
+                                        <li><a href="/cn/about/FriendlyWorkplace.jsp">员工关怀</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- END 企业永续 -->
+
+                        <!--<li>
+                            <a href="/cn/search.jsp"><i class="fa fa-search"></i></a>
+                        </li><-->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <!-- END Container -->
+    </div>
+    <!-- END Main-Header -->
+</header>
+<!-- END Header -->
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("select[name='localLanguage']").each(function () {
+            $(this).val('cn');
+            console.log($(this).val());
+        });
+
+    });
+    $(function () {
+        var MOBILE_WIDTH = 768;
+
+        function isMobile() {
+            return $(window).width() < MOBILE_WIDTH;
+        }
+
+        /* 1. 漢堡選單開關 */
+        $('.toggle-menu').on('click', function (e) {
+            if (!isMobile()) return;
+            e.preventDefault();
+            $('.navbar-right .menu').toggleClass('show');
+        });
+
+        /* 2. 多層子選單處理 (支援第一層、第二層、甚至更多層) */
+        $('.menu').on('click', 'li a', function (e) {
+            if (!isMobile()) return;
+
+            var $this = $(this);
+            var $li = $this.parent('li');
+            var $submenu = $li.children('.submenu');
+
+            // 如果點擊的這一項下面有子選單
+            if ($submenu.length > 0) {
+                e.preventDefault(); // 阻止跳轉
+                e.stopPropagation(); // 阻止事件冒泡到父層
+
+                if ($li.hasClass('open')) {
+                    // 如果已經是開的，就收起來
+                    $li.removeClass('open');
+                    $submenu.stop(true, true).slideUp(200);
+                    // 同時收起下面所有的子子選單
+                    $submenu.find('li.open').removeClass('open');
+                    $submenu.find('.submenu').hide();
+                } else {
+                    // 關閉同層級的其他選單
+                    $li.siblings('.open').removeClass('open').children('.submenu').stop(true, true).slideUp(200);
+
+                    // 展開當前選單
+                    $li.addClass('open');
+                    $submenu.stop(true, true).slideDown(200);
+                }
+            } else {
+                // 如果沒有子選單，代表是最終連結
+                // 點擊後收起整個選單（解決你上一個問題：跳轉或點擊後選單沒關閉）
+                setTimeout(function () {
+                    $('.navbar-right .menu').removeClass('show');
+                    $('.menu li.open').removeClass('open').children('.submenu').hide();
+                }, 300);
+            }
+        });
+
+        /* 3. 點擊外面自動關閉 */
+        $(document).on('click', function (e) {
+            if (!isMobile()) return;
+            if ($(e.target).closest('.navbar-right').length) return;
+            $('.navbar-right .menu').removeClass('show');
+            $('.menu li.open').removeClass('open').children('.submenu').hide();
+        });
+    });
+</script>
+            <!-- Page Header -->
+            <header class="titlebar titlebar1">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-12 col-md-12" style="margin-left:20px;">
+                            <h3 class="page-title pull-left">电机专用 Cortex<sup>®</sup>-M4F 180MHz CPU, 128KB Flash, 16KB SRAM, 1KB OTP, 4OP(支持PGA模式), 2CMP, CAN-FD, 2ADC微控制器</h3>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- END Page Header -->
+
+            <section id="AT32F403S" class="section-4">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-12 col-md-12" style="margin-left:20px;">
+                            <h2 class="section-title-2">AT32M416 系列</h2>
+                            <div align="right">
+                                <p>
+                                    <a href="#Feature" class="btn voyo-btn">主要特性</a>&nbsp;
+                                    <a href="#ProuductSelection" class="btn voyo-btn">产品列表</a>&nbsp;
+                                    <a href="#Resource" class="btn voyo-btn">下载资源</a>&nbsp;
+                                    <a href="https://www.arterytek.com/cn/support/index.jsp?index=0" class="btn voyo-btn">技术与开发支持</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb15">
+                        <div class="col-sm-12 col-md-12" style="margin-left:20px;">
+                            <p>雅特力科技AT32M416(M:Motor)电机专用系列ARM<sup>®</sup> Cortex<sup>®</sup>-M4微控制器，高达180MHz的CPU运算速度，内建单精度浮点运算单元(FPU)与数字信号处理器(DSP)，多达128KB闪存(Flash)和16KB SRAM，启动程序代码区(28KB)除可作启动加载程序(Bootloader)外，也可一次性配置成一般用户程序和数据区，达到128+28KB存储器的最大空间使用，另有1KB OTP数据存储空间。片上集成丰富的外设资源，包含2个USART、1个CAN-FD、2个I²C、2个SPI/I²S、6个16位通用定时器(包括1个用于电机控制的PWM高级定时器)、2个基本定时器、和1个低功耗ERTC，同时还拓展了2个采样率高达2.5Msps的12位18通道高速ADC、2个6位DAC、2个比较器(CMP)和4个运算放大器(OP)(支持PGA模式)，多达46个快速GPIO端口。片内提供多数外设之间丰富的互连功能，使得AT32M416系列产品特别适用于电机驱动应用。</p>
+                            <p>AT32M416可运行于工业级温度范围-40~105°C，供电电压2.4V至3.6V。并因应多样的内存使用需求，提供一系列芯片供选用，其系列产品间引脚兼容，便于在不同性能等级的产品应用中提升效能和开发效率。可广泛适用于电动两/三轮车、电摩，洗衣机、冰箱压缩机，伺服控制器、风机、水泵和园林工具等应用。</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-1 col-md-1"></div>
+                        <div class="col-sm-10 col-md-10">
+                            <img src="../../images/product/product_AT32M416.svg" width="1200"/>
+                        </div>
+                        <div class="col-sm-1 col-md-1"></div>
+                    </div>
+                    <div class="col-sm-1 col-md-1"></div>
+                    <div class="col-sm-1 col-md-1"></div>
+                </div>
+            </section>
+            <section id="Feature" class="section-4" style="background-color:rgb(240,240,240);">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-12 common-div" style="margin-left:20px;">
+                            <h3>主要特性</h3>
+                            <div class="content">
+                                <div class="row">
+                                    <div class="col-sm-6 col-md-6 xs-box">
+                                        <ul>
+                                            <li><strong>效能/性能</strong></li>
+                                            <ul>
+                                                <li>ARM<sup>®</sup> Cortex<sup>®</sup>-M4主频最高180MHz</li>
+                                                <li>单精度浮点运算单元</li>
+                                                <li>支持DSP指令集</li>
+                                                <li>2.4V ~ 3.6V供电电压</li>
+                                                <li>I/Os可承受5V电平</li>
+                                                <li>温度范围-40 ~ +105°C</li>
+                                            </ul>
+                                            <li><strong>內存</strong></li>
+                                            <ul>
+                                                <li>高达128KB闪存</li>
+                                                <li>16KB SRAM</li>
+                                                <li>1KB OTP</li>
+                                                <li>sLib：将指定之主存储区设为执行代码安全库区(仅能调用无法读取)</li>
+                                            </ul>
+                                            <li><strong>时钟</strong></li>
+                                            <ul>
+                                                <li>PLL(180MHz输出)</li>
+                                                <li>外部高速4 ~ 25MHz晶体振荡器</li>
+                                                <li>内部高速48MHz RC振荡器(-40°C ~ 105°C)</li>
+                                                <li>带自动时钟校准功能(ACC)(25 °C达1 %精度，-40 °C ~ 105 °C达2.5%精度)</li>
+                                                <li>外部低速32.768kHz RTC晶体振荡器</li>
+                                                <li>内部低速40kHz RC振荡器</li>
+                                            </ul>
+                                            <li><strong>复位和电源管理</strong>
+                                                <ul>
+                                                    <li>睡眠、深睡眠、和待机模式</li>
+                                                    <li>上电/断电复位(POR/LVR)</li>
+                                                    <li>可编程电压监测器(PVM)</li>
+                                                    <li>支持20个32位的电池供电寄存器(BPR)</li>
+                                                </ul>
+                                            <li><strong>模拟高性能外设</strong></li>
+                                            <ul>
+                                                <li>2个比较器</li>
+                                                <li>4个运算放大器(支持PGA模式)</li>
+                                                <li>2组2.5M采样速率12位A/D转换器(18通道)</li>
+                                                <li>2个6位D/A转换器与CMP和OP互连</li>
+                                            </ul>
+                                        </ul>
+                                    </div>
+                                    <div class="col-sm-6 col-md-6 xs-box">
+                                        <ul>
+                                            <li><strong>定时器</strong></li>
+                                            <ul>
+                                                <li>1个16位8通道高级定时器，可组成4对互补通道PWM输出，带死区控制和紧急双向剎车功能</li>
+                                                <li>多达5个16位定时器，每个定时器最多达4个用于输入捕获/输出比较/PWM或脉冲计数的通道和增量编码器输入</li>
+                                                <li>2个16位基本定时器</li>
+                                                <li>2个看门狗定时器(独立和窗口型)</li>
+                                                <li>1个系统时间定时器: 24位自减型</li>
+                                            </ul>
+                                            <li><strong>ERTC：增强型RTC，具有闹钟、亚秒级精度、及硬件日历</strong></li>
+                                            <li><strong>外设接口</strong></li>
+                                            <ul>
+                                                <li>2 x I²C (支持SMBus/PMBus)</li>
+                                                <li>2 x SPI / I²S</li>
+                                                <li>2 x USART (支持ISO7816，LIN，IrDA接口和调制解调控制)</li>
+                                                <li>1 x CAN-FD</li>
+                                                <li>红外发射器</li>
+                                            </ul>
+                                            <li><strong>DMA</strong></li>
+                                            <ul>
+                                                <li>7通道，支持定时器、ADC、DAC、I²S、SPI、I²C和USART等</li>
+                                            </ul>
+                                            <li><strong>快速I/O端口</strong></li>
+                                            <ul>
+                                                <li>多达46个I/O端口, 所有I/O口可映像到16个外部中断； 几乎所有I/O口可容忍5V输入信号</li>
+                                                <li>所有I/O口均为快速I/O，寄存器访问速度最高fᴀʜʙ</li>
+                                            </ul>
+                                            <li><strong>封装</strong></li>
+                                            <ul>
+                                                <li>LQFP48 7 x 7 mm</li>
+                                                <li>QFN48 6 x 6 mm</li>
+                                                <li>LQFP32 7 x 7 mm</li>
+                                                <li>QFN32 4 x 4 mm</li>
+                                                <li>TSSOP24 7.8 x 4.4 mm</li>
+                                            </ul>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="ProuductSelection" class="section-4">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-14 common-div" style="margin-left:20px;">
+                            <h3>ARM Cortex<sup>®</sup>-M4F AT32M416 系列 产品列表</h3>
+                            <div class="table-responsive product-table">
+                                <table width="70%" class="table table-bordered" style="white-space:nowrap;">
+                                    <thead class="box-content">
+                                        <tr>
+                                            <th width="10%" colspan="2" rowspan="2" class="active">Part Number</th>
+                                            <th height="15" colspan="2" class="box-icon">AT32M416<br>xxP7</th>
+                                            <th height="15" colspan="2" class="box-icon">AT32M416<br>xxU7-4</th>
+                                            <th height="15" colspan="2" class="box-icon">AT32M416<br>xxT7</th>
+                                            <th height="15" colspan="2" class="box-icon">AT32M416<br>xxU7</th>
+                                            <th height="15" colspan="2" class="box-icon">AT32M416<br>xxT7</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="box-icon fixed-td">E8</th>
+                                            <th class="box-icon fixed-td">EB</th>
+                                            <th class="box-icon fixed-td">K8</th>
+                                            <th class="box-icon fixed-td">KB</th>
+                                            <th class="box-icon fixed-td">K8</th>
+                                            <th class="box-icon fixed-td">KB</th>
+                                            <th class="box-icon fixed-td">C8</th>
+                                            <th class="box-icon fixed-td">CB</th>
+                                            <th class="box-icon fixed-td">C8</th>
+                                            <th class="box-icon fixed-td">CB</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>频率 (MHz)</strong></td>
+                                            <td colspan="10">180</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>闪存 (KB)</strong></td>
+                                            <td class="fixed-td">64</td>
+                                            <td class="fixed-td">128</td>
+                                            <td class="fixed-td">64</td>
+                                            <td class="fixed-td">128</td>
+                                            <td class="fixed-td">64</td>
+                                            <td class="fixed-td">128</td>
+                                            <td class="fixed-td">64</td>
+                                            <td class="fixed-td">128</td>
+                                            <td class="fixed-td">64</td>
+                                            <td class="fixed-td">128</td>     
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>SRAM (KB)</strong></td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>
+                                            <td class="fixed-td">16</td>    
+                                        </tr>
+                                        <tr>
+                                            <td width="45" rowspan="7" class="active"><strong>定时器</strong></td>
+                                            <td width="136" class="active"><strong>高级</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>16 位通用</strong></td>
+                                            <td colspan="2">5</td>
+                                            <td colspan="2">5</td>
+                                            <td colspan="2">5</td>
+                                            <td colspan="2">5</td>
+                                            <td colspan="2">5</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>基本</strong></td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>Systick</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>WDT</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>WWDT</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>ERTC</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active" rowspan="6"><strong>通信接口</strong></td>
+                                            <td class="active"><strong>I²C</strong></td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>SPI<sup>(1)</sup></strong></td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>I²S（半双工）<sup>(1)</sup></strong></td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>USART</strong></td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                            <td colspan="2">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>CAN-FD</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>红外发射器</strong></td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                            <td colspan="2">1</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active" rowspan="5"><strong>模拟接口</strong></td>
+                                            <td rowspan="2" class="active"><strong>12位ADC转换器<br>通道数 </strong></td>
+                                            <td colspan="10">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2">9</td>
+                                            <td colspan="2">12</td>
+                                            <td colspan="2">12</td>
+                                            <td colspan="2">18</td>
+                                            <td colspan="2">18</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>6位DAC转换器</strong></td>
+                                            <td colspan="10">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>CMP</strong></td>
+                                            <td colspan="10">2</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="active"><strong>OP</strong></td>
+                                            <td colspan="2">3<sup>(2)</sup></td>
+                                            <td colspan="2">3<sup>(3)</sup></td>
+                                            <td colspan="2">3<sup>(3)</sup></td>
+                                            <td colspan="2">4</td>  
+                                            <td colspan="2">4</td> 
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>GPIO</strong></td>
+                                            <td colspan="2">22</td>
+                                            <td colspan="2">31</td>
+                                            <td colspan="2">30</td>
+                                            <td colspan="2">46</td>
+                                            <td colspan="2">46</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>工作温度</strong></td>
+                                            <td colspan="10">-40°C ~ 105°C</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" class="active"><strong>封装形式</strong></td>
+                                            <td colspan="2">TSSOP24<br>7.8x4.4 mm</td>
+                                            <td colspan="2">QFN32<br>4x4 mm</td>
+                                            <td colspan="2">LQFP32<br>7x7 mm</td>
+                                            <td colspan="2">QFN48<br>6x6 mm</td>
+                                            <td colspan="2">LQFP48<br>7x7 mm</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <p>&nbsp;</p>
+                                <h5 style="color: rgb(34,171,166)">Note</h5>
+                                <ol>
+                                    <li>半双工I²S和SPI功能复用。</li>
+                                    <li>TSSOP24封装OP3没有负端输入外部引脚，没有OP4。</li>
+                                    <li>QFN32和LQFP32封装没有OP4。</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="Resource" class="section-4" style="background-color:rgb(240,240,240);">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-12 common-div" style="margin-left:20px;">
+                            <h3>下载资源</h3>
+
+                            
+
+<!-- PSG -->
+    <div class="panel panel-5">
+        <div class="panel-heading">
+            <h4 class="panel-title">Product Select Guide</h4>
+        </div>
+        <div class="panel-body">
+            <div class="table-responsive product-table">
+                <table class="table table-bordered" id="productPSGData">
+                </table>
+            </div>
+        </div>
+    </div>	
+    <div class="panel panel-5">
+        <div class="panel-heading">
+            <h4 class="panel-title">Cross Reference Table</h4>
+        </div>
+        <div class="panel-body">
+            <div class="table-responsive product-table">
+                <table width="70%" class="table table-bordered" style="white-space:nowrap;" >
+                    <thead class="box-colored-G">
+                        <tr bgcolor="#898989">
+                            <th style="width: 40%;">简介</th>
+                            <th style="width: 20%;">中文文档</th>
+                            <th style="width: 20%;">英文(EN)文档</th>
+                            <th style="width: 10%;">版本</th>
+                            <th style="width: 10%;">日期</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr bgcolor="#FFFFFF">
+                            <td>AT32与Sxx32/Gx32替换对照表</td>
+                            <td><a href="/download/ARTERY_AT32_MCU_Cross_Reference_Table_CH_V202011.xlsx" target="_blank"><strong><i class="fa fa-file-pdf-o"></i>&nbsp;&nbsp; AT32 MCU</strong></a></td>
+                            <td>/</td>
+                            <td>V202011</td>
+                            <td>2020.11.03</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>	    
+    <div class="panel panel-5">
+        <div class="panel-body">
+        </div>
+    </div>
+
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Datasheet</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" style="width: 100%"id="productDsData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Reference Manual</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" style="width: 100%"id="productRmData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Evaluation Board (开发板)</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" style="width: 100%"id="productEvaluationBoardData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Component Library (元器件库)</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" style="width: 100%"id="productComponentLibraryData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">BSP</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" style="width: 100%"id="productBspData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--Pack-->
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Pack</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" id="packDataTable">
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--end Pack-->
+                            <div class="panel panel-5">
+                                <div class="panel-heading">
+                                    <h4 class="panel-title">Application Note (应用手册)</h4>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive product-table">
+                                        <table class="table table-bordered" id="productApNoteData"></table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="section page-contact" style="padding-bottom:90px;">
+                <div class="container">
+                    <div class="row" style="padding:0px 20px;">
+                        
+
+<!-- support -->
+    <div class ="col-sm-12 col-md-12">
+        <h3>技术与开发支持</h3>
+        <p class="mb25 color-default">雅特力提供完整及广泛的技术支持，包括开发板，各种开发工具，与硬件与数据库的咨询服务，帮助客户加快产品研发，缩短产品上市周期。<br>请进一步与我们联系，我们将安排专人为您服务。</p>
+        <p class="color-default">
+            <!-- http://fontawesome.io/icons/ -->
+            <i class="fa fa-wrench"></i><span><a href="../support/index.jsp">&nbsp;下载资源</a></span>｜
+            <i class="fa fa-envelope-o"></i>
+            <span><a href="mailto:support_artery@arterytek.com">&nbsp;更多问题请与我们联系</a></span>
+        </p>
+    </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- END Global Wrapper -->
+        
+<!-- Main Stylesheets -->
+	<link rel="stylesheet" href="../../css/style.css">
+	<style type="text/css">
+	body,td,th {
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	}
+	body {
+		background-color: #262525;
+	}
+
+	/* LOGO 调整 */
+	.footer-logo {
+		width: 130px; 
+		height: auto; /* 保持比例 */
+		margin-top: 10px; /* 与上方保持距离 */
+		margin-left: 0; /* 确保与左侧文字对齐 */
+		margin-bottom: 20px; /* 在 LOGO 下方增加空白 */
+	}
+
+	/* Social Media Icons 调整 */
+	.social-media-icons {
+		position: absolute;
+		right: 30px;
+		top: 10px;
+		display: flex;
+		align-items: center;
+		gap: 7px; /* 调整图标间距 */
+		flex-wrap: wrap; /* 允许换行 */
+	}
+
+	.social-media-icons img {
+		cursor: pointer;
+		transition: transform 0.3s ease;
+	}
+
+	.social-media-icons img:hover {
+		transform: scale(1.1); /* 悬停效果 */
+	}
+
+	/* 手机排版调整 */
+	@media (max-width: 768px) {
+		.social-media-icons {
+			position: absolute; /* 继续靠右 */
+			right: 15px; /* 保持靠右对齐 */
+			top: auto; /* 避免干扰其他样式 */
+			display: grid; /* 使用网格布局 */
+			grid-template-columns: repeat(3, auto); /* 每行三个图标 */
+			gap: 10px; /* 增加图标间距 */
+		}
+		.social-media-icons img {
+        transform: scale(0.9); /* 缩小至原来的 90% */
+    	}
+	}
+
+
+    </style>
+<!-- Footer Wrapper -->
+	<footer class="footer-wrapper">
+		<div class="main-footer">
+			<div class="container">
+				<div class="row align-items-center" style="margin-left: 15px; margin-right: 15px; position: relative;">
+					<!-- Logo -->
+					<div class="col-sm-6 d-flex align-items-center">
+						<a href="/cn/index.jsp">
+							<img src="/images/logo_w.svg" alt="Artery" class="footer-logo">
+						</a>
+					</div>
+	
+					<!-- Social Media Icons -->
+					<div class="social-media-icons" style="position: absolute; right: 30px; top: 10px;">
+						<a href="../../images/ARTERY_QRcode.JPG" target="_blank">
+							<img src="../../images/logo_wechat.png" alt="Wechat" width="35" height="35" />
+						</a>
+						<a href="../../images/QQ_qrcode.jpg" target="_blank">
+							<img src="../../images/logo_qq.png" alt="QQ" width="35" height="35" />
+						</a>
+						<a href="https://space.bilibili.com/690188844?spm_id_from=333.337.0.0" target="_blank">
+							<img src="../../images/logo_bilibili.png" alt="bilibili" width="35" height="35" />
+						</a>
+						<a href="https://github.com/ArteryTek" target="_blank">
+							<img src="../../images/logo_Github.png" alt="GitHub" width="35" height="35" />
+						</a>
+						<a href="https://gitee.com/arterytek" target="_blank">
+							<img src="../../images/logo_gitee.png" alt="gitee" width="35" height="35" />
+						</a>
+					</div>
+				</div><!-- END Footer Widget Keep in touch -->
+			        <section>
+				        <div class="container" style="margin-top: 8px;">
+							<!-- 产品讯息 -->
+							<div class="col-sm-12 col-md-2">
+						        <div class="row">
+							        <div class="col-sm-12 col-md-11">
+								        <div class="footer-widget">
+									        <h4 class="widget-title-G"><a href="/cn/product/index.jsp">产品讯息</a></h4>
+									        <p class="mb25">
+												<a href="/cn/product/index.jsp#low-power-mcu">低功耗 MCU</a><br>
+												<a href="/cn/product/index.jsp#value-mcu">超值型 MCU</a> <br>
+                                                <a href="/cn/product/index.jsp#mainstream-mcu">主流型 MCU</a><br>
+												<a href="/cn/product/index.jsp#high-performance-mcu">高性能 MCU</a><br>
+                                                <a href="/cn/product/index.jsp#automotive-mcu">车载 MCU</a><br>
+										        <a href="/cn/product/index.jsp#motor-control-mcu">电机专用 MCU</a><br>
+										        <a href="/cn/product/index.jsp#bluetooth-mcu">无线型蓝牙 MCU</a><br>
+                                            </p>
+								        </div>
+							        </div>
+						        </div>
+					        </div>
+							 <!-- 技术与开发支援  -->	
+                            <div class="col-sm-12 col-md-2">
+						        <div class="row">
+							        <div class="col-sm-12 col-md-11">
+								        <div class="footer-widget">
+									        <h4 class="widget-title-G"><a href="/cn/support/index.jsp">技术与开发支持</a></h4>
+									        <p class="mb25">
+                                                <a href="/cn/support/index.jsp?index=0">设计资源</a><br>
+												<a href="/cn/support/tools.jsp?index=0">开发工具<br>
+                                                <a href="/cn/support/motor_control.jsp?index=0">电机控制</a><br>
+                                                <a href="/cn/support/motor_control.jsp?index=1">USB应用</a><br>
+                                                <a href="/cn/support/motor_control.jsp?index=2">以太网应用</a><br>
+										        <a href="/cn/class/index.jsp">在线培训</a>
+											</p>
+								        </div> 
+									</div>
+								</div>
+					        </div>
+							<!-- 应用方案  -->	
+					        <div class="col-sm-12 col-md-2">
+						        <div class="row">
+							        <div class="col-sm-12 col-md-11">
+								        <div class="footer-widget">
+									        <h4 class="widget-title-G"><a href="/cn/applications/index.jsp">应用方案</a></h4>
+									        <p class="mb25">
+                                                <a href="/cn/applications/index.jsp">电机驱动</a><br>
+											</p>
+										</div> 
+									</div>
+								</div>
+							</div>
+							<!-- 关于雅特力  -->	
+					        <div class="col-sm-12 col-md-2">
+						        <div class="row">
+							        <div class="col-sm-12 col-md-11">
+								        <div class="footer-widget">
+									        <h4 class="widget-title-G"><a href="/cn/about/index.jsp">关于雅特力</a></h4>
+									        <p class="mb25">
+                                                <a href="/cn/about/index.jsp">公司简介</a><br>
+												<a href="/cn/about/Milestones.jsp">沿革与发展</a><br>
+												<a href="/cn/about/QualityManagement.jsp">品质政策</a><br>
+                                                <a href="/cn/news/index.jsp">新闻中心</a><br>
+                                                <a href="/about/cn/contactUs">联系我们</a><br>
+                                                <a href="/cn/careers/career.jsp">人力资源<br>
+									        </p>						
+								        </div> 
+							        </div>
+						        </div>
+					        </div>
+							<!-- 企业永续  -->	
+					        <div class="col-sm-12 col-md-2">
+						        <div class="row">
+							        <div class="col-sm-12 col-md-11">
+								        <div class="footer-widget">
+									        <h4 class="widget-title-G"><a href="/cn/about/CorporationGovernance.jsp">企业永续</a></h4>
+									        <p class="mb25">
+                                                <a href="/cn/about/CorporationGovernance.jsp">公司治理</a><br>
+												<a href="/cn/about/CorporateSustainability.jsp">社会责任</a><br>
+									        </p>						
+								        </div> 
+							        </div>
+						        </div>
+					        </div>
+							<!-- END Footer  -->
+							</div>
+							</div>  
+					</section>  
+				</div>
+			</div>  
+            <div class="row">
+				<div class="col-sm-12">
+					<hr class="footer-hr">
+				</div>
+			</div>
+            <div class="row" style="margin-left:15px;margin-right:15px;">
+				<div class="col-sm-12">
+					<center>
+						Copyright 2025 Artery Technology. All rights reserved ｜ 备案/许可证号：<a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank">渝ICP备18002410号</a> <div style="width:300px;margin:0 auto; padding:20px 0;">
+                                   <a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=50010702503092" style="display:inline-block;text-decoration:none;height:20px;line-height:20px;"><img src="../../images/50010702503092.png" style="float:left;"/>
+									<p style="float:left;height:20px;line-height:20px;margin: 0px 0px 0px 5px; color:#939393;">渝公网安备 50010702503092号</p></a></div></a>
+                    </center>
+				</div>
+            </div>
+            <div class="mb20"></div>                              
+		</div>
+    </footer>
+    <!-- END Main Footer -->
+<script language="JavaScript" type="text/javascript" src="/suspend/breakService.js"></script>
+
+<!-- END Footer -->
+
+        <!-- Javascript files -->
+        
+<!-- JQuery dataTables -->
+<script src="../../inc/jquery/jquery-3.5.1.js"></script>
+<script src="../../inc/jquery/jquery.dataTables.min.js"></script>
+<script src="../../inc/jquery.validate.min.js"></script>
+<script src="../../inc/bootstrap/js/bootstrap.min.js"></script>
+<script src="../../inc/rs-plugin/js/jquery.themepunch.tools.min.js"></script>
+<script src="../../inc/rs-plugin/js/jquery.themepunch.revolution.min.js"></script>
+<script src="../../inc/jquery.appear.js"></script>
+<script src="../../inc/jquery/datatables.mark.js"></script>
+<script src="../../inc/jquery/jquery.mark.js"></script>
+<script src="../../inc/retina.min.js"></script>
+
+<!-- Main javascript file -->
+<script src="../../js/script.js"></script>
+<script src="../../js/initCnProduct.js"></script>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var $tpBanners = jQuery('.artery-tp-banner');
+        if ($tpBanners) {
+            $tpBanners.each(function () {
+                var $tpBanner = $(this);
+                $tpBanner.revolution({
+                    delay: 9000,
+                    startwidth: 1170,
+                    startheight: 550,
+                    minHeight: 280,
+                    hideThumbs: 10,
+                    fullWidth: "on",
+                    spinner: "spinner4",
+                    navigationStyle: "round",
+                    hideCaptionAtLimit: 1,
+                    hideAllCaptionAtLimit: 1,
+                    hideSliderAtLimit: 1,
+                    stopAtSlide: 1,
+                    stopAfterLoops: 1
+                });
+            });
+        }
+    });
+</script>
+    </body>
+</html>

@@ -1,0 +1,74 @@
+component_id: vendor.tdk.icm42688p
+version: 0.1.0
+category: imu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.71
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.005
+  VDDIO:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.71
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.001
+  GND:
+    kind: electrical_ground
+    required: true
+  SCLK:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  SDI:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  SDO:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 80
+  CS:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  INT1:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 80
+datasheet:
+  manufacturer: TDK InvenSense
+  part_number: ICM-42688-P
+  package: 2.5mm x 3mm x 0.91mm LGA-14
+  documents:
+    - title: ICM-42688-P Datasheet
+      path: docs/research/smart_robot/sources/icm42688p_datasheet.pdf
+      source_url: https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf
+      sha256: 9663bf7d68e1ecc67486f452c9c62f0b85e1c22c569845ea7f66b4d91fee04a1
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - imu_power_tree
+    - spi_interrupt_io_voltage_screening
+  not_valid_for:
+    - sensor_noise_budget
+    - imu_layout_vibration_analysis
+    - sensor_fusion_accuracy

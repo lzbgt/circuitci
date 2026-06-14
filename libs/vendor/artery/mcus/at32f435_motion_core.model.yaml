@@ -1,0 +1,125 @@
+component_id: vendor.artery.at32f435_motion_core
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.6
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.12
+  GND:
+    kind: electrical_ground
+    required: true
+  LRV_UART_RX:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  LRV_UART_TX:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  LRV_MOTION_EN:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  MOTION_FAULT_IRQ:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  ICM_SPI_SCK:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  ICM_SPI_MOSI:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  ICM_SPI_MISO:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  ICM_SPI_CS:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  ICM_INT1:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  CAN_TX:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  CAN_RX:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RS485_TX:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  RS485_RX:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RS485_DE:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+datasheet:
+  manufacturer: Artery
+  part_number: AT32F435
+  package: motion-core-selected-package-tbd
+  documents:
+    - title: AT32F435 Product Page
+      path: docs/research/smart_robot/sources/at32f435_product.html
+      source_url: https://www.arterytek.com/cn/product/AT32F435.jsp
+      sha256: ff88d97074371dcfa1f677d6df7422dee2158488d81fea6deac9399117921bd7
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - motion_core_pin_budget
+    - static_power_tree
+    - io_voltage_screening
+  not_valid_for:
+    - exact_package_pin_assignment
+    - firmware_timing
+    - motor_control_loop_stability

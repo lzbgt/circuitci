@@ -1,0 +1,147 @@
+project:
+  name: smart_robot_motion_core_v0
+  version: 0.1.0
+
+libraries:
+  - ../../../../libs/vendor/sipeed/modules
+  - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/tdk/imu
+  - ../../../../libs/generic/digital
+
+board:
+  components:
+    MOD1:
+      model: vendor.sipeed.licheerv_nano_w
+      part_number: LicheeRV-Nano-W
+      power_domains:
+        5V: 5v_sys
+      pins:
+        5V: 5v_sys
+        GND: gnd
+        UART0_TX_A16: lrv_uart_tx_to_mcu_rx
+        UART0_RX_A17: lrv_uart_rx_from_mcu_tx
+        GPIOA14_MOTION_EN: lrv_motion_en
+        GPIOA15_FAULT_IRQ: motion_fault_irq
+    U1:
+      model: vendor.artery.at32f435_motion_core
+      part_number: AT32F435
+      power_domains:
+        VDD: 3v3_logic
+      pins:
+        VDD: 3v3_logic
+        GND: gnd
+        LRV_UART_RX: lrv_uart_tx_to_mcu_rx
+        LRV_UART_TX: lrv_uart_rx_from_mcu_tx
+        LRV_MOTION_EN: lrv_motion_en
+        MOTION_FAULT_IRQ: motion_fault_irq
+        ICM_SPI_SCK: icm_spi_sck
+        ICM_SPI_MOSI: icm_spi_mosi
+        ICM_SPI_MISO: icm_spi_miso
+        ICM_SPI_CS: icm_spi_cs
+        ICM_INT1: icm_int1
+        CAN_TX: robot_can_tx
+        CAN_RX: robot_can_rx
+        RS485_TX: rs485_servo_tx
+        RS485_RX: rs485_servo_rx
+        RS485_DE: rs485_servo_de
+    U2:
+      model: vendor.tdk.icm42688p
+      part_number: ICM-42688-P
+      power_domains:
+        VDD: 3v3_imu
+        VDDIO: 3v3_imu
+      pins:
+        VDD: 3v3_imu
+        VDDIO: 3v3_imu
+        GND: gnd
+        SCLK: icm_spi_sck
+        SDI: icm_spi_mosi
+        SDO: icm_spi_miso
+        CS: icm_spi_cs
+        INT1: icm_int1
+    U3:
+      model: generic.can_transceiver.basic
+      part_number: CAN_TRANSCEIVER_TBD
+      power_domains:
+        VCC: 3v3_logic
+      pins:
+        VCC: 3v3_logic
+        GND: gnd
+        TXD: robot_can_tx
+        RXD: robot_can_rx
+        CANH: robot_canh
+        CANL: robot_canl
+    U4:
+      model: generic.rs485_transceiver.basic
+      part_number: RS485_TRANSCEIVER_TBD
+      power_domains:
+        VCC: 3v3_logic
+      pins:
+        VCC: 3v3_logic
+        GND: gnd
+        DI: rs485_servo_tx
+        RO: rs485_servo_rx
+        DE: rs485_servo_de
+        A: rs485_servo_a
+        B: rs485_servo_b
+  nets:
+    5v_sys:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 2.0
+    3v3_logic:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.5
+    3v3_imu:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.05
+    gnd:
+      kind: ground
+    lrv_uart_tx_to_mcu_rx:
+      kind: digital_or_analog
+    lrv_uart_rx_from_mcu_tx:
+      kind: digital_or_analog
+    lrv_motion_en:
+      kind: digital_or_analog
+    motion_fault_irq:
+      kind: digital_or_analog
+    icm_spi_sck:
+      kind: digital_or_analog
+    icm_spi_mosi:
+      kind: digital_or_analog
+    icm_spi_miso:
+      kind: digital_or_analog
+    icm_spi_cs:
+      kind: digital_or_analog
+    icm_int1:
+      kind: digital_or_analog
+    robot_can_tx:
+      kind: digital_or_analog
+    robot_can_rx:
+      kind: digital_or_analog
+    robot_canh:
+      kind: digital_or_analog
+    robot_canl:
+      kind: digital_or_analog
+    rs485_servo_tx:
+      kind: digital_or_analog
+    rs485_servo_rx:
+      kind: digital_or_analog
+    rs485_servo_de:
+      kind: digital_or_analog
+    rs485_servo_a:
+      kind: digital_or_analog
+    rs485_servo_b:
+      kind: digital_or_analog
+
+scenarios:
+  - name: motion_core_static_power_and_io
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+      - IO_VOLTAGE_COMPATIBLE
