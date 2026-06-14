@@ -4,6 +4,7 @@ project:
 
 libraries:
   - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/jst/connectors
   - ../../../../libs/vendor/nxp/pwm_drivers
   - ../models
 
@@ -71,6 +72,34 @@ board:
         VCC: vservo_sw
         GND: gnd
         PWM: servo3_pwm
+    JSV0:
+      model: vendor.jst.xh_3pin_servo_header
+      part_number: S3B-XH-A_SERVO0
+      pins:
+        VCC: vservo_sw
+        GND: gnd
+        SIG: servo0_pwm
+    JSV1:
+      model: vendor.jst.xh_3pin_servo_header
+      part_number: S3B-XH-A_SERVO1
+      pins:
+        VCC: vservo_sw
+        GND: gnd
+        SIG: servo1_pwm
+    JSV2:
+      model: vendor.jst.xh_3pin_servo_header
+      part_number: S3B-XH-A_SERVO2
+      pins:
+        VCC: vservo_sw
+        GND: gnd
+        SIG: servo2_pwm
+    JSV3:
+      model: vendor.jst.xh_3pin_servo_header
+      part_number: S3B-XH-A_SERVO3
+      pins:
+        VCC: vservo_sw
+        GND: gnd
+        SIG: servo3_pwm
   nets:
     3v3_logic:
       kind: power
@@ -105,3 +134,43 @@ scenarios:
     checks:
       - POWER_TREE_VALID
       - IO_VOLTAGE_COMPATIBLE
+  - name: servo0_connector_current_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: SV0
+      power_pin: VCC
+    parameters:
+      connector_component: JSV0
+      min_connector_current_margin_ratio: 1.5
+  - name: servo1_connector_current_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: SV1
+      power_pin: VCC
+    parameters:
+      connector_component: JSV1
+      min_connector_current_margin_ratio: 1.5
+  - name: servo2_connector_current_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: SV2
+      power_pin: VCC
+    parameters:
+      connector_component: JSV2
+      min_connector_current_margin_ratio: 1.5
+  - name: servo3_connector_current_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: SV3
+      power_pin: VCC
+    parameters:
+      connector_component: JSV3
+      min_connector_current_margin_ratio: 1.5

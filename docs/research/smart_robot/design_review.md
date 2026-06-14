@@ -125,10 +125,12 @@ low-load servo/payload hub:
   rail.
 - Static 3.3 V I2C and PWM logic-level compatibility.
 - Static `VSERVO` budget of four 1 A low-load servo envelopes.
+- Four JST XH-style 3-pin servo connectors checked against the modeled 1 A
+  low-load servo envelopes with 1.5x current margin.
 
 This is suitable for camera pitch, screen tilt, head, or light payload motion.
 It is not suitable for balance-critical mass-shift control unless selected
 servos provide position/current/thermal feedback or the board changes to an
 RS485 smart-servo/local actuator architecture. Before layout, choose actual
-servo connectors and servo models, then validate stall current, regeneration,
-connector heating, and `VSERVO` transient behavior.
+servo models and cable assemblies, then validate stall current, regeneration,
+connector heating, wire gauge/crimp evidence, and `VSERVO` transient behavior.

@@ -779,6 +779,14 @@ limit keys include `bridge_reference_current_A`,
 `motor_connector_current_rating_A`, `phase_shunt_power_rating_W`,
 `min_shunt_power_margin_ratio`, and `max_shunt_sense_voltage_V`.
 
+`LOAD_CONNECTOR_CURRENT_VALID` reports are emitted by `load_budget` scenarios
+that declare the check. They compare one load power-pin current budget against
+an explicit connector current rating or a connector model rating. Stable
+measured keys include `connector_component`, `load_net`, and `load_current_A`.
+Stable limit keys include `required_connector_current_A`,
+`connector_current_rating_A`, `min_connector_current_margin_ratio`, and
+`connector_voltage_rating_V` when voltage screening fails.
+
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus
 matching `CIRCUITCI_PIN` observations for every declared expected board-facing

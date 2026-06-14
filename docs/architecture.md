@@ -37,6 +37,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
 | `validation::motor_drive` | Static motor bridge budget rules over explicit current, shunt, connector, and gate-timing scenario inputs. |
+| `validation::load_budget` | Static load-to-connector current and voltage budget rules over explicit load and connector metadata. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
@@ -115,6 +116,13 @@ declared motor/load component model with `motor_load` current evidence, so a
 robot actuator bridge can fail closed on missing or undersized first-pass
 values before schematic capture. They do not imply switching-loss, FOC, SOA,
 thermal, or PCB copper sign-off.
+
+Load-budget rules are static connector/load screens. `load_budget` scenarios
+target a load power pin and compare its declared `max_supply_current_A` against
+an explicit connector rating or a connector component model with `connector`
+metadata. This is useful for reusable robot payload connectors before CAD
+capture; it does not prove cable assembly quality, vibration retention, thermal
+rise, or pulsed-load behavior.
 
 ## Process Presets
 

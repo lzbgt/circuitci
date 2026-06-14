@@ -1,0 +1,51 @@
+component_id: vendor.jst.xh_3pin_servo_header
+version: 0.1.0
+category: connector
+ports:
+  VCC:
+    kind: passive
+    required: true
+  GND:
+    kind: passive
+    required: true
+  SIG:
+    kind: passive
+    required: true
+connector:
+  current_rating_A: 3.0
+  voltage_rating_V: 250.0
+  source: docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf
+datasheet:
+  manufacturer: JST
+  part_number: XH-3-circuit
+  package: 2.5mm_pitch_wire_to_board_header
+  polarity: 3_pin_servo_power_signal_connector
+  pinout:
+    VCC: VCC
+    GND: GND
+    SIG: SIG
+  electrical_characteristics:
+    current_rating:
+      conditions: XH connector specification, AWG #22.
+      max: 3.0
+      unit: A
+    voltage_rating:
+      conditions: XH connector specification.
+      max: 250.0
+      unit: V
+  documents:
+    - title: JST XH Connector datasheet
+      path: docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf
+      source_url: https://www.jst-mfg.com/product/pdf/eng/eXH.pdf
+      sha256: 9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_connector_current_screening
+    - low_load_pwm_servo_connector_budget
+  not_valid_for:
+    - connector_temperature_rise_signoff
+    - cable_assembly_quality_signoff
+    - vibration_or_retention_signoff

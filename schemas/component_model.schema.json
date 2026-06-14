@@ -166,6 +166,15 @@
       },
       "additionalProperties": false
     },
+    "connector": {
+      "type": "object",
+      "properties": {
+        "current_rating_A": { "type": "number", "exclusiveMinimum": 0 },
+        "voltage_rating_V": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "signal_conditioning": {
       "type": "object",
       "properties": {

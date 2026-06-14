@@ -119,6 +119,23 @@ These fields are load-budget evidence, not a dynamic motor model. Use
 datasheet- or measurement-backed values for a selected motor before treating
 the actuator bridge as fabrication-ready.
 
+Connector models can declare static electrical ratings used by `load_budget`
+scenarios:
+
+```yaml
+connector:
+  current_rating_A: 3.0
+  voltage_rating_V: 250.0
+  source: docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf
+```
+
+`LOAD_CONNECTOR_CURRENT_VALID` uses this metadata when a scenario declares
+`parameters.connector_component`. Scenario parameters
+`connector_current_rating_A` and `connector_voltage_rating_V` can override the
+model for a board-specific cable or derated assembly. This is static connector
+budget evidence; temperature rise, crimp quality, wire gauge, vibration, and
+pulsed-load behavior need separate validation evidence.
+
 Regulator and power-converter models may also declare static conversion
 metadata:
 

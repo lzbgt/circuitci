@@ -118,6 +118,18 @@ thermal paths, current-sense accuracy, regeneration clamps, and PCB copper
 temperature rise need source-backed model data or separate validation rules
 before they are treated as sign-off.
 
+## Load Connector Budgets
+
+`src/validation/load_budget.rs` owns deterministic first-pass load connector
+budget checks. The rule consumes one target load power pin, its model-declared
+`max_supply_current_A`, and either explicit connector rating parameters or a
+bound connector component model with `connector` metadata.
+
+Keep this module limited to static current and nominal-voltage budget screens.
+Wire gauge, cable assembly quality, contact heating, pulsed current, vibration,
+regeneration, and hot-plug behavior need separate source-backed evidence before
+they are treated as sign-off.
+
 ## Process Presets
 
 Process presets live in `validation::manufacturing::process`. They are named

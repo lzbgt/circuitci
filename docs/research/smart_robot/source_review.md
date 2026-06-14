@@ -23,6 +23,7 @@ robot control-stack design pass.
 | TI CSD88599Q5DC datasheet | `docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf` | `193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65` |
 | NXP PCA9685 product page | `docs/research/smart_robot/sources/pca9685_product.html` | `28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468` |
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
+| JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
 
 ## Confirmed Facts
 
@@ -64,6 +65,11 @@ robot control-stack design pass.
   and totem-pole output capability of 25 mA sink / 10 mA source at 5 V. That is
   enough for static 3.3 V servo-signal screening, but not enough to sign off
   servo stall, regeneration, or balance-critical actuator feedback.
+- The saved JST XH connector datasheet is used as the source for the first
+  low-load servo connector model. The CircuitCI model records a 3.0 A current
+  rating and 250 V voltage rating for static screening. Treat that as connector
+  budget evidence only; selected wire gauge, crimp, cable assembly, vibration,
+  and temperature rise still need separate evidence.
 
 ## Design Review Notes
 
@@ -104,9 +110,11 @@ robot control-stack design pass.
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four
   low-load PWM-servo design envelopes on the separate `VSERVO` rail, and static
-  3.3 V I2C/PWM compatibility.
+  3.3 V I2C/PWM compatibility. It also checks four JST XH-style servo
+  connector current budgets with 1.5x margin against the modeled 1 A low-load
+  servo envelopes.
 - The servo/payload slice is for camera/head/light payload servos only. It does
   not prove selected servo stall current, regeneration into `VSERVO`, connector
-  heating, mechanical torque/speed, or position feedback. Balance-critical
-  mass-shift actuation should use RS485 smart servos or a local actuator board
-  with feedback.
+  heating, cable assembly quality, mechanical torque/speed, or position
+  feedback. Balance-critical mass-shift actuation should use RS485 smart servos
+  or a local actuator board with feedback.

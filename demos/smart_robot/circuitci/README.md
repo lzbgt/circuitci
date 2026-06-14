@@ -43,6 +43,8 @@ board:
   `VSERVO` rail.
 - Static 3.3 V I2C/PWM logic-level compatibility.
 - Static `VSERVO` budget of four 1 A low-load servo envelopes.
+- JST XH-style 3-pin servo connector current screening with 1.5x current
+  margin against each low-load servo envelope.
 
 Validation command:
 
@@ -76,7 +78,8 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
   MOSFET SOA, switching loss, thermal, regeneration clamp, and layout copper.
 - Selected servo model, stall current, regeneration, position feedback,
-  connector heating, and balance-critical actuator control.
+  connector heating, cable assembly quality, and balance-critical actuator
+  control.
 - True 6-phase motor/inverter control. The current wheel slice is 3-phase BLDC
   with six PWM gate-control signals.
 

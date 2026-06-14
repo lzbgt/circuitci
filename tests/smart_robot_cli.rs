@@ -29,6 +29,103 @@ fn smart_robot_servo_payload_passes() {
 }
 
 #[test]
+fn smart_robot_servo_payload_fails_undersized_connector() {
+    let (dir, project) = mutated_servo_payload_project(
+        "connector_component: JSV0\n      min_connector_current_margin_ratio: 1.5",
+        "connector_component: JSV0\n      connector_current_rating_A: 0.5\n      min_connector_current_margin_ratio: 1.5",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let connector_findings = findings_with_id(&report, "LOAD_CONNECTOR_CURRENT_VALID");
+    assert!(
+        connector_findings
+            .iter()
+            .any(|finding| finding["component"] == "SV0"
+                && finding["limit"]["connector_current_rating_A"] == 0.5),
+        "expected SV0 connector current failure, got {connector_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_servo_payload_fails_low_connector_voltage_rating() {
+    let (dir, project) = mutated_servo_payload_project(
+        "connector_component: JSV0\n      min_connector_current_margin_ratio: 1.5",
+        "connector_component: JSV0\n      connector_voltage_rating_V: 1.0\n      min_connector_current_margin_ratio: 1.5",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let connector_findings = findings_with_id(&report, "LOAD_CONNECTOR_CURRENT_VALID");
+    assert!(
+        connector_findings
+            .iter()
+            .any(|finding| finding["component"] == "SV0"
+                && finding["measured"]["load_voltage_V"] == 7.4
+                && finding["limit"]["connector_voltage_rating_V"] == 1.0),
+        "expected SV0 connector voltage failure, got {connector_findings:#?}"
+    );
+}
+
+fn mutated_servo_payload_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let repo = std::env::current_dir().unwrap();
+    let source = std::fs::read_to_string("demos/smart_robot/circuitci/servo_payload/project.yaml")
+        .unwrap()
+        .replace(
+            "../../../../libs/vendor/artery/mcus",
+            &repo.join("libs/vendor/artery/mcus").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/jst/connectors",
+            &repo.join("libs/vendor/jst/connectors").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/nxp/pwm_drivers",
+            &repo.join("libs/vendor/nxp/pwm_drivers").to_string_lossy(),
+        )
+        .replace(
+            "../models",
+            &repo
+                .join("demos/smart_robot/circuitci/models")
+                .to_string_lossy(),
+        )
+        .replace(from, to);
+    let project = dir.path().join("project.yaml");
+    std::fs::write(&project, source).unwrap();
+    (dir, project)
+}
+
+#[test]
 fn smart_robot_wheel_bridge_budget_fails_undersized_shunt() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

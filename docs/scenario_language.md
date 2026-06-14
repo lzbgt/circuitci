@@ -75,6 +75,7 @@ Executable scenario types:
 - `manufacturing`
 - `analog_transient`
 - `motor_drive`
+- `load_budget`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -1707,6 +1708,50 @@ robot motor-board mistakes such as an undersized shunt, connector, or bridge
 current class before schematic capture. It does not replace gate-driver
 datasheet timing review, switching-loss calculation, current-sense accuracy,
 regen clamp design, thermal modeling, or PCB copper-temperature validation.
+
+## Load Budget Scenario Shape
+
+`load_budget` scenarios validate explicit load-to-connector current and
+optional voltage budgets. They are deterministic schematic-budget checks for
+payload connectors and harness interfaces, not cable assembly, temperature-rise,
+or transient-load sign-off.
+
+```yaml
+scenarios:
+  - name: servo0_connector_current_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: SV0
+      power_pin: VCC
+    parameters:
+      connector_component: JSV0
+      min_connector_current_margin_ratio: 1.5
+```
+
+`LOAD_CONNECTOR_CURRENT_VALID` checks:
+
+1. `target.component` names an existing load component.
+2. `target.power_pin` names an `electrical_power` port on the load component
+   model.
+3. The target power port declares finite positive `max_supply_current_A`.
+4. Connector current rating comes from explicit
+   `parameters.connector_current_rating_A`, or from
+   `parameters.connector_component` bound to a component model with
+   `connector.current_rating_A`.
+5. `min_connector_current_margin_ratio` is optional and defaults to `1.0`;
+   when declared it must be finite and at least `1.0`.
+6. The load current multiplied by the margin must fit the connector current
+   rating.
+7. If the load rail nominal voltage and connector voltage rating are both
+   available, the rail voltage must fit the connector voltage rating.
+
+Missing or non-finite required values produce critical
+`VALIDATION_INPUT_MISSING` findings. This rule catches first-order mistakes
+such as using a signal connector for a servo or actuator current path. It does
+not prove contact temperature rise, crimp quality, wire gauge, vibration
+retention, duty-cycle heating, surge current, or regeneration behavior.
 
 ## Firmware Update Scenario Shape
 
