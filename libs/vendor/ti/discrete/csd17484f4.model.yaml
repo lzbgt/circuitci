@@ -1,0 +1,112 @@
+component_id: vendor.ti.csd17484f4
+version: 0.1.0
+category: mosfet_n
+ports:
+  D:
+    kind: passive
+  G:
+    kind: passive
+  S:
+    kind: passive
+  B:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: CSD17484F4
+  package: FemtoFET 0402 LGA
+  polarity: n_channel_power_mosfet
+  pinout:
+    "1": G
+    "2": S
+    "3": D
+  absolute_maximum_ratings:
+    VDSS:
+      value: 30
+      unit: V
+    VGSS_continuous:
+      value: 12
+      unit: V
+    ID_continuous:
+      value: 3
+      unit: A
+    ID_pulsed:
+      value: 18
+      unit: A
+      conditions: Pulse width less than or equal to 100 us, duty cycle less than or equal to 1 percent.
+    IG_continuous:
+      value: 0.035
+      unit: A
+    PD:
+      value: 0.5
+      unit: W
+      conditions: TA=25C.
+  electrical_characteristics:
+    VGSth:
+      conditions: VDS=VGS, ID=250uA
+      min: 0.45
+      typ: 0.75
+      max: 1.1
+      unit: V
+    RDSon_1V8:
+      conditions: VGS=1.8V, ID=1A
+      typ: 0.083
+      max: 0.111
+      unit: ohm
+    RDSon_2V5:
+      conditions: VGS=2.5V, ID=1A
+      typ: 0.063
+      max: 0.078
+      unit: ohm
+    RDSon_4V5:
+      conditions: VGS=4.5V, ID=1A
+      typ: 0.052
+      max: 0.063
+      unit: ohm
+  device_parameters:
+    Qg_4V5:
+      conditions: VDS=15V, ID=1A, VGS=4.5V
+      typ: 0.92
+      max: 1.2
+      unit: nC
+      simulation_relevance: Gate charge affects required driver current and switching time.
+    Qgd:
+      conditions: VDS=15V, ID=1A, VGS=4.5V
+      typ: 0.16
+      unit: nC
+      simulation_relevance: Miller charge affects drain transition coupling into the gate drive.
+    Ciss:
+      conditions: VDS=15V, VGS=0V, f=1MHz
+      typ: 160
+      max: 210
+      unit: pF
+      simulation_relevance: Gate input capacitance affects digital-drive edge loading.
+    Coss:
+      conditions: VDS=15V, VGS=0V, f=1MHz
+      typ: 26
+      max: 34
+      unit: pF
+      simulation_relevance: Drain-node capacitance affects switch release and settling.
+    Crss:
+      conditions: VDS=15V, VGS=0V, f=1MHz
+      typ: 13
+      max: 17
+      unit: pF
+      simulation_relevance: Reverse-transfer capacitance couples drain transitions back to the gate.
+  documents:
+    - title: CSD17484F4 30-V N-Channel FemtoFET MOSFET
+      path: docs/research/datasheets/ti/csd17484f4.pdf
+      source_url: https://www.ti.com/lit/gpn/CSD17484F4
+      sha256: b9fb6128120a0901624bc9cb4454d797c20b39b44b106628389d00f853efb5e0
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - component_binding
+    - mosfet_static_rating_screening
+    - preliminary_low_side_switch_review
+  not_valid_for:
+    - analog_transient_signoff_without_vendor_or_bench_calibrated_spice_model
+    - gate_drive_waveform_signoff
+    - laser_pulse_soa_or_thermal_signoff

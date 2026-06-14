@@ -1,0 +1,77 @@
+component_id: vendor.onsemi.nl27wz17
+version: 0.1.0
+category: logic_buffer
+ports:
+  1A:
+    kind: digital_electrical_input
+    required: false
+  1Y:
+    kind: digital_electrical_output
+    required: false
+  2A:
+    kind: digital_electrical_input
+    required: false
+  2Y:
+    kind: digital_electrical_output
+    required: false
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.65
+      operating_voltage_max_V: 5.5
+  GND:
+    kind: electrical_ground
+    required: true
+datasheet:
+  manufacturer: onsemi
+  part_number: NL27WZ17
+  package: SC-88 / SOT-363
+  polarity: dual_non_inverting_schmitt_trigger_buffer
+  pinout:
+    "1": 1A
+    "2": GND
+    "3": 2A
+    "4": 2Y
+    "5": VCC
+    "6": 1Y
+  absolute_maximum_ratings:
+    VCC:
+      value: 7
+      unit: V
+    input_voltage:
+      value: 7
+      unit: V
+      conditions: Input voltage with respect to GND.
+    output_voltage:
+      value: 7
+      unit: V
+      conditions: Output voltage with respect to GND.
+  electrical_characteristics:
+    VCC_operating:
+      conditions: Recommended operating supply voltage range.
+      min: 1.65
+      max: 5.5
+      unit: V
+  device_parameters:
+    function:
+      conditions: Dual non-inverting Schmitt-trigger buffer.
+      unit: note
+      simulation_relevance: The part can prove buffer topology and direction, but CircuitCI still needs waveform or timing evidence for gate-drive sign-off.
+  documents:
+    - title: NL27WZ17 Dual Non-Inverting Schmitt Trigger Buffer
+      path: docs/research/datasheets/onsemi/nl27wz17.pdf
+      source_url: https://www.onsemi.com/download/data-sheet/pdf/nl27wz17-d.pdf
+      sha256: 64e38515090ece6b098f6e7f8ec9790e8cc447a4d165a9c2732312f43e736dd5
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - component_binding
+    - logic_buffer_static_connectivity
+    - gate_driver_evidence_binding
+  not_valid_for:
+    - mosfet_modeling
+    - output_drive_waveform_signoff
+    - laser_pulse_switching_signoff
