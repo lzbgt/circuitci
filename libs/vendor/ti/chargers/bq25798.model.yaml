@@ -1,0 +1,116 @@
+component_id: vendor.ti.bq25798
+version: 0.1.0
+category: battery_charger
+ports:
+  VBUS:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.6
+      operating_voltage_max_V: 24.0
+  SYS:
+    kind: electrical_power
+    required: false
+  BAT:
+    kind: electrical_power
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+  SCL:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  SDA:
+    kind: digital_electrical_io
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  INT:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 1000
+  CE:
+    kind: digital_electrical_input
+    required: false
+  QON:
+    kind: digital_electrical_input
+    required: false
+  TS:
+    kind: passive
+    required: false
+battery_charger:
+  input_pin: VBUS
+  battery_pin: BAT
+  charge_current_parameter: programmed_charge_current_A
+  max_charge_current_A: 5.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: BQ25798
+  package: QFN
+  polarity: i2c_controlled_1_to_4_cell_buck_boost_charger
+  pinout:
+    VBUS: VBUS
+    SYS: SYS
+    BAT: BAT
+    GND: GND
+    SCL: SCL
+    SDA: SDA
+    INT: INT
+    CE: CE
+    QON: QON
+    TS: TS
+  electrical_characteristics:
+    input_voltage:
+      conditions: BQ25798EVM product page describes 1-series to 4-series Li-ion/Li-polymer use from 3.6-V to 24-V input.
+      min: 3.6
+      max: 24.0
+      unit: V
+    charge_current:
+      conditions: TI product page and datasheet title identify the device as a 5-A buck-boost charger.
+      max: 5.0
+      unit: A
+    battery_cell_count:
+      conditions: TI product page and datasheet identify 1-4 cell Li-ion/Li-polymer support.
+      min: 1
+      max: 4
+      unit: cells
+  device_parameters:
+    programmed_charge_current_A:
+      conditions: Host-configured charge-current policy for static CircuitCI screening.
+      unit: A
+      simulation_relevance: POWER_TREE_VALID checks the configured current against the charger maximum and the declared input-source current budget.
+    system_power_path:
+      conditions: Device uses NVDC power-path management with integrated switching MOSFETs and BATFET.
+      unit: note
+      simulation_relevance: Static validation checks connectivity and current budgets only; it does not simulate DPM, supplement mode, thermal foldback, or charge-state transitions.
+  documents:
+    - title: BQ25798 product page
+      path: docs/research/smart_robot/sources/bq25798_product.html
+      source_url: https://www.ti.com/product/BQ25798
+      sha256: ef6f404d190782132bf993cc98e4476dddb6f5711f53502a1d0ef59dfe3268be
+      retrieved: "2026-06-14"
+    - title: BQ25798 I2C Controlled, 1- to 4-Cell, 5-A Buck-Boost Battery Charger
+      path: docs/research/smart_robot/sources/bq25798_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/bq25798.pdf
+      sha256: 631d541679512116b5cf7ade0516000e78bc95f060b8b958e726c1b6eb74c27f
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - pmu_static_power_tree
+    - battery_charger_current_budget_screening
+    - charger_input_voltage_screening
+  not_valid_for:
+    - battery_safety_or_chemistry_signoff
+    - charger_register_configuration_signoff
+    - nvdc_power_path_transient_signoff
+    - charger_thermal_signoff
+    - usb_pd_negotiation_signoff

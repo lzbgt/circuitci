@@ -1,0 +1,23 @@
+component_id: demo.smart_robot.wheel_rail_load
+version: 0.1.0
+category: rail_load
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 8.4
+      max_supply_current_A: 8.0
+  GND:
+    kind: electrical_ground
+    required: true
+model_quality:
+  source: design_requirement
+  confidence: low
+  intended_use:
+    - pmu_wheel_rail_budget_screening
+  not_valid_for:
+    - motor_stall_or_regeneration_signoff
+    - connector_temperature_signoff
+    - h_bridge_thermal_signoff

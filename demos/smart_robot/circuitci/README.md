@@ -3,7 +3,7 @@
 This folder contains machine-checkable logical schematics for the reusable smart
 robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
 
-## Current Slice
+## Current Slices
 
 `motion_core/project.yaml` models the first reusable motion-core board:
 
@@ -14,17 +14,27 @@ robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
 - MCU-side RS485 smart-servo interface.
 - Static rail budget and 3.3 V logic-level compatibility.
 
+`pmu/project.yaml` models the first reusable PMU board:
+
+- BQ25798 charger input/battery current-budget screening.
+- TPS54331 5 V buck static voltage/current screening.
+- TPS62162 3.3 V buck support inductor/capacitor screening.
+- Design-policy e-stop switch placeholders for servo and wheel rails.
+
 Validation command:
 
 ```sh
 cargo run -- validate demos/smart_robot/circuitci/motion_core/project.yaml \
   --output out/smart_robot_motion_core_validate
+cargo run -- validate demos/smart_robot/circuitci/pmu/project.yaml \
+  --output out/smart_robot_pmu_validate
 ```
 
 Expected result:
 
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
+CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
 ```
 
 ## What This Does Not Yet Prove
@@ -32,7 +42,8 @@ CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 - Exact AT32F435 package pin assignment.
 - Exact LicheeRV Nano header pin numbers and mechanical footprint.
 - CAN/RS485 transceiver part choice, termination, common-mode range, and ESD.
-- PMU rails, charging interlock, battery safety, and e-stop hardware.
+- High-current servo/wheel e-stop switch part selection, inrush, thermal,
+  reverse-current behavior, connector heating, and battery safety.
 - Wheel actuator BLDC gate-driver current sense, MOSFET SOA, thermal, and
   layout.
 

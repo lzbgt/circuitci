@@ -1,0 +1,238 @@
+project:
+  name: smart_robot_pmu_v0
+  version: 0.1.0
+
+libraries:
+  - ../../../../libs/generic
+  - ../../../../libs/vendor/ti/chargers
+  - ../../../../libs/vendor/ti/regulators
+  - ../../../../libs/vendor/sipeed/modules
+  - ../../../../libs/vendor/artery/mcus
+  - ../models
+
+board:
+  components:
+    VPD:
+      model: generic.analog.dc_voltage_source
+      part_number: USB_C_PD_20V_SOURCE
+      pins:
+        P: vbus_pd
+        N: gnd
+    VBAT:
+      model: generic.analog.dc_voltage_source
+      part_number: PROTECTED_2S_LI_ION_PACK
+      pins:
+        P: vbat_2s
+        N: gnd
+    UCHG:
+      model: vendor.ti.bq25798
+      part_number: BQ25798
+      parameters:
+        programmed_charge_current_A: 2.0
+      power_domains:
+        VBUS: vbus_pd
+        BAT: vbat_2s
+        SYS: sys_pmu
+      pins:
+        VBUS: vbus_pd
+        BAT: vbat_2s
+        SYS: sys_pmu
+        GND: gnd
+        SCL: pmu_i2c_scl
+        SDA: pmu_i2c_sda
+        INT: pmu_chg_int
+        CE: charger_ce_n
+        QON: pmu_qon
+        TS: battery_ntc
+    U5V:
+      model: vendor.ti.tps54331_5v
+      part_number: TPS54331
+      power_domains:
+        VIN: sys_pmu
+        VSENSE: 5v_sys
+      pins:
+        VIN: sys_pmu
+        VSENSE: 5v_sys
+        PH: buck_5v_sw
+        BOOT: buck_5v_boot
+        EN: buck_5v_en
+        COMP: buck_5v_comp
+        SS: buck_5v_ss
+        GND: gnd
+    U3V3:
+      model: vendor.ti.tps62162_3v3
+      part_number: TPS62162DSG
+      power_domains:
+        VIN: 5v_sys
+        VOS: 3v3_logic
+      pins:
+        VIN: 5v_sys
+        VOS: 3v3_logic
+        SW: buck_3v3_sw
+        EN: buck_3v3_en
+        PG: buck_3v3_pg
+        GND: gnd
+    L3V3:
+      model: generic.analog.inductor
+      part_number: 2.2uH
+      pins:
+        A: buck_3v3_sw
+        B: 3v3_logic
+      spice:
+        primitive: inductor
+        value_h: 0.0000022
+    C3V3_IN:
+      model: generic.analog.capacitor
+      part_number: 10uF
+      pins:
+        A: 5v_sys
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000010
+    C3V3_OUT:
+      model: generic.analog.capacitor
+      part_number: 22uF
+      pins:
+        A: 3v3_logic
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000022
+    U_SERVO_SW:
+      model: demo.smart_robot.estop_power_switch_policy
+      part_number: SERVO_ESTOP_SWITCH_TBD
+      power_domains:
+        VIN: vbat_2s
+        VOUT: vservo_sw
+      pins:
+        VIN: vbat_2s
+        VOUT: vservo_sw
+        EN: estop_power_enable
+        GND: gnd
+    U_WHEEL_SW:
+      model: demo.smart_robot.estop_power_switch_policy
+      part_number: WHEEL_ESTOP_SWITCH_TBD
+      power_domains:
+        VIN: vbat_2s
+        VOUT: vwheel_sw
+      pins:
+        VIN: vbat_2s
+        VOUT: vwheel_sw
+        EN: estop_power_enable
+        GND: gnd
+    MOD1_LOAD:
+      model: vendor.sipeed.licheerv_nano_w
+      part_number: LicheeRV-Nano-W-load-budget
+      power_domains:
+        5V: 5v_sys
+      pins:
+        5V: 5v_sys
+        GND: gnd
+    UMCU_LOAD:
+      model: vendor.artery.at32f435_motion_core
+      part_number: AT32F435-motion-core-load-budget
+      power_domains:
+        VDD: 3v3_logic
+      pins:
+        VDD: 3v3_logic
+        GND: gnd
+    SERVO_LOAD:
+      model: demo.smart_robot.servo_rail_load
+      part_number: SERVO_RAIL_BUDGET
+      power_domains:
+        VCC: vservo_sw
+      pins:
+        VCC: vservo_sw
+        GND: gnd
+    WHEEL_LOAD:
+      model: demo.smart_robot.wheel_rail_load
+      part_number: WHEEL_RAIL_BUDGET
+      power_domains:
+        VCC: vwheel_sw
+      pins:
+        VCC: vwheel_sw
+        GND: gnd
+  nets:
+    vbus_pd:
+      kind: power
+      nominal_voltage: 20.0
+      powered: true
+      supply_current_limit_A: 3.0
+    vbat_2s:
+      kind: power
+      nominal_voltage: 7.4
+      powered: true
+      supply_current_limit_A: 12.0
+    sys_pmu:
+      kind: power
+      nominal_voltage: 7.4
+      powered: true
+      supply_current_limit_A: 6.0
+    5v_sys:
+      kind: power
+      nominal_voltage: 5.0
+      powered: true
+      supply_current_limit_A: 3.0
+    3v3_logic:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 1.0
+    vservo_sw:
+      kind: power
+      nominal_voltage: 7.4
+      powered: true
+      supply_current_limit_A: 4.0
+    vwheel_sw:
+      kind: power
+      nominal_voltage: 7.4
+      powered: true
+      supply_current_limit_A: 8.0
+    gnd:
+      kind: ground
+    pmu_i2c_scl:
+      kind: digital_or_analog
+    pmu_i2c_sda:
+      kind: digital_or_analog
+    pmu_chg_int:
+      kind: digital_or_analog
+    charger_ce_n:
+      kind: digital_or_analog
+    pmu_qon:
+      kind: digital_or_analog
+    battery_ntc:
+      kind: digital_or_analog
+    buck_5v_sw:
+      kind: digital_or_analog
+    buck_5v_boot:
+      kind: digital_or_analog
+    buck_5v_en:
+      kind: digital_or_analog
+    buck_5v_comp:
+      kind: digital_or_analog
+    buck_5v_ss:
+      kind: digital_or_analog
+    buck_3v3_sw:
+      kind: digital_or_analog
+    buck_3v3_en:
+      kind: digital_or_analog
+    buck_3v3_pg:
+      kind: digital_or_analog
+    estop_power_enable:
+      kind: digital_or_analog
+
+scenarios:
+  - name: pmu_2s_charging_and_estop_enabled
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+    pin_states:
+      - component: U_SERVO_SW
+        pin: EN
+        mode: input
+        state: high
+      - component: U_WHEEL_SW
+        pin: EN
+        mode: input
+        state: high

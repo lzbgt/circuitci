@@ -1,0 +1,42 @@
+component_id: demo.smart_robot.estop_power_switch_policy
+version: 0.1.0
+category: load_switch
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 12.6
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 12.6
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  GND:
+    kind: electrical_ground
+    required: true
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: EN
+  enabled_state: high
+  max_output_current_A: 12.0
+model_quality:
+  source: design_requirement
+  confidence: low
+  intended_use:
+    - pmu_estop_interlock_policy_screening
+    - switched_rail_current_budget_placeholder
+  not_valid_for:
+    - fabrication_part_selection
+    - mosfet_or_efuse_thermal_signoff
+    - inrush_or_reverse_current_signoff
+    - safety_certification

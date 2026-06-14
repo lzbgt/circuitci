@@ -1,0 +1,94 @@
+component_id: vendor.ti.tps54331_5v
+version: 0.1.0
+category: regulator
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.5
+      operating_voltage_max_V: 28.0
+  VSENSE:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 4.9
+      operating_voltage_max_V: 5.1
+  GND:
+    kind: electrical_ground
+    required: true
+  PH:
+    kind: passive
+    required: true
+  BOOT:
+    kind: passive
+    required: true
+  EN:
+    kind: digital_electrical_input
+    required: false
+  COMP:
+    kind: passive
+    required: false
+  SS:
+    kind: passive
+    required: false
+power_conversion:
+  input_pin: VIN
+  output_pin: VSENSE
+  switch_pin: PH
+  max_output_current_A: 3.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS54331
+  package: SOIC-8
+  polarity: adjustable_step_down_converter_configured_5v
+  pinout:
+    VIN: VIN
+    VSENSE: VSENSE
+    GND: GND
+    PH: PH
+    BOOT: BOOT
+    EN: EN
+    COMP: COMP
+    SS: SS
+  electrical_characteristics:
+    input_voltage:
+      conditions: Datasheet feature list.
+      min: 3.5
+      max: 28.0
+      unit: V
+    output_current:
+      conditions: Datasheet feature list and product family table.
+      max: 3.0
+      unit: A
+    output_voltage:
+      conditions: Adjustable output configured for a 5-V system rail by the feedback divider.
+      typ: 5.0
+      unit: V
+    switching_frequency:
+      conditions: Datasheet feature list.
+      typ: 570
+      unit: kHz
+  device_parameters:
+    feedback_divider:
+      conditions: TPS54331 regulates the output through VSENSE; this model treats the VSENSE-connected rail as the regulated output for static validation.
+      unit: note
+      simulation_relevance: POWER_TREE_VALID checks input/output voltage range and output-current budget only.
+  documents:
+    - title: TPS54331 3-A, 28-V Input, Step Down DC-DC Converter With Eco-mode
+      path: docs/research/smart_robot/sources/tps54331_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps54331.pdf
+      sha256: 3867bc82cb0f8e3e898de7c0d220d01cd2a30d0281178d17d10eeb5b866439a3
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - pmu_5v_static_power_tree
+    - buck_regulator_voltage_current_screening
+  not_valid_for:
+    - inductor_saturation_current_signoff
+    - compensation_or_loop_stability_signoff
+    - ripple_or_transient_signoff
+    - regulator_thermal_signoff
+    - pcb_layout_or_emi_signoff

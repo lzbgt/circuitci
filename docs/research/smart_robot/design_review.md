@@ -63,3 +63,21 @@ should encode:
 - Charging interlock that disables motor/servo power unless an explicit debug
   override is modeled.
 - INA226 or equivalent current monitor on motor rail.
+
+## PMU Slice Status
+
+`demos/smart_robot/circuitci/pmu/project.yaml` now models the first PMU pass:
+
+- 20 V USB-C PD input budget to BQ25798.
+- Protected 2S battery pack assumption.
+- 2 A configured charge current, checked against the BQ25798 5 A class and the
+  declared 20 V input-source current budget.
+- TPS54331 5 V system buck candidate.
+- TPS62162 3.3 V logic buck with explicit 2.2 uH inductor, 10 uF input
+  capacitor, and 22 uF output capacitor.
+- Servo and wheel switched rails behind explicit e-stop policy placeholders.
+
+The placeholder e-stop switches are not fabrication-ready components. Before
+layout, replace them with source-backed high-current eFuse/load-switch or
+MOSFET-driver models and validate current limit, thermal, inrush, reverse
+current, and connector ratings.
