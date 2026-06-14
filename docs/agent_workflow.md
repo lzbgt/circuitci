@@ -1,6 +1,9 @@
 # Agent Workflow
 
 CircuitCI exists so hardware-design agents can iterate safely before fabrication.
+For the prioritized project gaps that make this workflow broader and more
+automatic, see
+[agent_validation_usefulness_backlog.md](agent_validation_usefulness_backlog.md).
 
 ## Required Loop
 
