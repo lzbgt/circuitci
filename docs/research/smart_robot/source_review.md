@@ -17,6 +17,8 @@ robot control-stack design pass.
 | TI BQ25798 product page | `docs/research/smart_robot/sources/bq25798_product.html` | `ef6f404d190782132bf993cc98e4476dddb6f5711f53502a1d0ef59dfe3268be` |
 | TI BQ25798 datasheet | `docs/research/smart_robot/sources/bq25798_datasheet.pdf` | `631d541679512116b5cf7ade0516000e78bc95f060b8b958e726c1b6eb74c27f` |
 | TI TPS54331 datasheet | `docs/research/smart_robot/sources/tps54331_datasheet.pdf` | `3867bc82cb0f8e3e898de7c0d220d01cd2a30d0281178d17d10eeb5b866439a3` |
+| TI DRV8323 product page | `docs/research/smart_robot/sources/drv8323_product.html` | `58097fe705d14a8c40b82d6404a500c2db99e6d1a1330da6191fdbc929c8feed` |
+| TI DRV8323 datasheet | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` | `dd8386c972e8d0a57278e432da6e9d8b2bc2f73768dd97eac69594da20d24208` |
 
 ## Confirmed Facts
 
@@ -41,6 +43,11 @@ robot control-stack design pass.
 - TI's TPS54331 datasheet identifies a 3.5 V to 28 V input, 3 A step-down
   converter. That makes it a reasonable first 2S-pack-to-5V_SYS candidate for
   the reusable PMU, pending detailed compensation, thermal, and layout review.
+- TI's DRV8323 product page and datasheet identify a 6 V to 60 V three-phase
+  smart gate-driver family with current shunt amplifier support and nFAULT/SPI
+  diagnostics. That fits the first wheel-board direction better than a true
+  6-phase inverter because it keeps the first fabrication to one 3-phase bridge
+  while still allowing six independent PWM gate-control signals.
 
 ## Design Review Notes
 
@@ -63,3 +70,9 @@ robot control-stack design pass.
   parts, and e-stop rail gating policy. The high-current servo/wheel switch
   model is a design-policy placeholder, not a fabrication-ready MOSFET/eFuse
   selection.
+- The first wheel-actuator validation slice is
+  `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
+  AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
+  inputs, CAN transceiver MCU-side logic, and rail budgets. It does not yet
+  validate MOSFET SOA, shunt values, gate charge, dead time, thermal behavior,
+  or motor-control loop stability.

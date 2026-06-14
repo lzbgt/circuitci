@@ -1,0 +1,41 @@
+component_id: demo.smart_robot.encoder_hall_3v3
+version: 0.1.0
+category: sensor_interface
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.03
+  GND:
+    kind: electrical_ground
+    required: true
+  A:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 100
+  B:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 100
+  Z:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 100
+model_quality:
+  source: design_requirement
+  confidence: low
+  intended_use:
+    - wheel_encoder_hall_io_voltage_screening
+  not_valid_for:
+    - encoder_signal_integrity
+    - hall_sensor_timing_or_phase_order
+    - connector_esd_signoff

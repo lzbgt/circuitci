@@ -1,0 +1,33 @@
+component_id: demo.smart_robot.wheel_mosfet_bridge_load
+version: 0.1.0
+category: motor_power_stage_placeholder
+ports:
+  VM:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 12.6
+      max_supply_current_A: 6.0
+  GND:
+    kind: electrical_ground
+    required: true
+  PHASE_U:
+    kind: passive
+    required: false
+  PHASE_V:
+    kind: passive
+    required: false
+  PHASE_W:
+    kind: passive
+    required: false
+model_quality:
+  source: design_requirement
+  confidence: low
+  intended_use:
+    - wheel_power_stage_budget_placeholder
+  not_valid_for:
+    - fabrication_part_selection
+    - mosfet_rds_on_or_soa_signoff
+    - shunt_power_or_current_sense_signoff
+    - bridge_layout_or_thermal_signoff

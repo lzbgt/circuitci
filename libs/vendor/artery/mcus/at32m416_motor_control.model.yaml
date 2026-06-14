@@ -1,0 +1,166 @@
+component_id: vendor.artery.at32m416_motor_control
+version: 0.1.0
+category: mcu
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.6
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.12
+  GND:
+    kind: electrical_ground
+    required: true
+  CAN_TX:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  CAN_RX:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  PWM_UH:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PWM_UL:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PWM_VH:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PWM_VL:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PWM_WH:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  PWM_WL:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DRV_EN:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DRV_NFAULT:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  DRV_SPI_SCK:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DRV_SPI_MOSI:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DRV_SPI_MISO:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  DRV_SPI_CS:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  CUR_U:
+    kind: passive
+    required: false
+  CUR_V:
+    kind: passive
+    required: false
+  CUR_W:
+    kind: passive
+    required: false
+  ENC_A:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  ENC_B:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  ENC_Z:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  ENABLE_IN:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  FAULT_OUT:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+datasheet:
+  manufacturer: Artery
+  part_number: AT32M416
+  package: wheel-board-selected-package-tbd
+  documents:
+    - title: AT32M416 Product Page
+      path: docs/research/smart_robot/sources/at32m416_product.html
+      source_url: https://www.arterytek.com/cn/product/AT32M416.jsp
+      sha256: 1d100588bde163e80f3d6b715b1e76ff6e8c8717e1582510b41169b1b17967ce
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - wheel_actuator_pin_budget
+    - static_power_tree
+    - motor_driver_io_voltage_screening
+  not_valid_for:
+    - exact_package_pin_assignment
+    - foc_timing_or_control_loop_stability
+    - adc_noise_or_current_reconstruction_accuracy
+    - mosfet_bridge_deadtime_signoff

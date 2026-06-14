@@ -1,0 +1,175 @@
+project:
+  name: smart_robot_wheel_actuator_v0
+  version: 0.1.0
+
+libraries:
+  - ../../../../libs/generic
+  - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/ti/motor_drivers
+  - ../models
+
+board:
+  components:
+    U1:
+      model: vendor.artery.at32m416_motor_control
+      part_number: AT32M416
+      power_domains:
+        VDD: 3v3_logic
+      pins:
+        VDD: 3v3_logic
+        GND: gnd
+        CAN_TX: wheel_can_tx
+        CAN_RX: wheel_can_rx
+        PWM_UH: drv_inha
+        PWM_UL: drv_inla
+        PWM_VH: drv_inhb
+        PWM_VL: drv_inlb
+        PWM_WH: drv_inhc
+        PWM_WL: drv_inlc
+        DRV_EN: drv_enable
+        DRV_NFAULT: drv_nfault
+        DRV_SPI_SCK: drv_spi_sck
+        DRV_SPI_MOSI: drv_spi_mosi
+        DRV_SPI_MISO: drv_spi_miso
+        DRV_SPI_CS: drv_spi_cs
+        CUR_U: cur_u
+        CUR_V: cur_v
+        CUR_W: cur_w
+        ENC_A: enc_a
+        ENC_B: enc_b
+        ENC_Z: enc_z
+        ENABLE_IN: enable_in
+        FAULT_OUT: fault_out
+    U2:
+      model: vendor.ti.drv8323
+      part_number: DRV8323
+      power_domains:
+        VM: vwheel_sw
+        DVDD: 3v3_logic
+      pins:
+        VM: vwheel_sw
+        DVDD: 3v3_logic
+        GND: gnd
+        INHA: drv_inha
+        INLA: drv_inla
+        INHB: drv_inhb
+        INLB: drv_inlb
+        INHC: drv_inhc
+        INLC: drv_inlc
+        ENABLE: drv_enable
+        NFAULT: drv_nfault
+        SCLK: drv_spi_sck
+        SDI: drv_spi_mosi
+        SDO: drv_spi_miso
+        NCS: drv_spi_cs
+        SOA: cur_u
+        SOB: cur_v
+        SOC: cur_w
+    U3:
+      model: generic.can_transceiver.basic
+      part_number: CAN_TRANSCEIVER_TBD
+      power_domains:
+        VCC: 3v3_logic
+      pins:
+        VCC: 3v3_logic
+        GND: gnd
+        TXD: wheel_can_tx
+        RXD: wheel_can_rx
+        CANH: robot_canh
+        CANL: robot_canl
+    ENC1:
+      model: demo.smart_robot.encoder_hall_3v3
+      part_number: ENCODER_OR_HALL_3V3
+      power_domains:
+        VCC: 3v3_logic
+      pins:
+        VCC: 3v3_logic
+        GND: gnd
+        A: enc_a
+        B: enc_b
+        Z: enc_z
+    PWR_STAGE:
+      model: demo.smart_robot.wheel_mosfet_bridge_load
+      part_number: MOSFET_BRIDGE_TBD
+      power_domains:
+        VM: vwheel_sw
+      pins:
+        VM: vwheel_sw
+        GND: gnd
+        PHASE_U: phase_u
+        PHASE_V: phase_v
+        PHASE_W: phase_w
+  nets:
+    vwheel_sw:
+      kind: power
+      nominal_voltage: 7.4
+      powered: true
+      supply_current_limit_A: 8.0
+    3v3_logic:
+      kind: power
+      nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.5
+    gnd:
+      kind: ground
+    wheel_can_tx:
+      kind: digital_or_analog
+    wheel_can_rx:
+      kind: digital_or_analog
+    robot_canh:
+      kind: digital_or_analog
+    robot_canl:
+      kind: digital_or_analog
+    drv_inha:
+      kind: digital_or_analog
+    drv_inla:
+      kind: digital_or_analog
+    drv_inhb:
+      kind: digital_or_analog
+    drv_inlb:
+      kind: digital_or_analog
+    drv_inhc:
+      kind: digital_or_analog
+    drv_inlc:
+      kind: digital_or_analog
+    drv_enable:
+      kind: digital_or_analog
+    drv_nfault:
+      kind: digital_or_analog
+    drv_spi_sck:
+      kind: digital_or_analog
+    drv_spi_mosi:
+      kind: digital_or_analog
+    drv_spi_miso:
+      kind: digital_or_analog
+    drv_spi_cs:
+      kind: digital_or_analog
+    cur_u:
+      kind: digital_or_analog
+    cur_v:
+      kind: digital_or_analog
+    cur_w:
+      kind: digital_or_analog
+    enc_a:
+      kind: digital_or_analog
+    enc_b:
+      kind: digital_or_analog
+    enc_z:
+      kind: digital_or_analog
+    enable_in:
+      kind: digital_or_analog
+    fault_out:
+      kind: digital_or_analog
+    phase_u:
+      kind: digital_or_analog
+    phase_v:
+      kind: digital_or_analog
+    phase_w:
+      kind: digital_or_analog
+
+scenarios:
+  - name: wheel_actuator_static_power_and_io
+    type: power_tree
+    checks:
+      - POWER_TREE_VALID
+      - IO_VOLTAGE_COMPATIBLE

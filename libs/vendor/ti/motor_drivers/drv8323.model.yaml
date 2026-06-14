@@ -1,0 +1,165 @@
+component_id: vendor.ti.drv8323
+version: 0.1.0
+category: gate_driver
+ports:
+  VM:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 60.0
+      max_supply_current_A: 0.05
+  DVDD:
+    kind: electrical_power
+    required: false
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.03
+  GND:
+    kind: electrical_ground
+    required: true
+  INHA:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  INLA:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  INHB:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  INLB:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  INHC:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  INLC:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  ENABLE:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  NFAULT:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 1000
+  SCLK:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  SDI:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  SDO:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  NCS:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+  SOA:
+    kind: passive
+    required: false
+  SOB:
+    kind: passive
+    required: false
+  SOC:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: DRV8323
+  package: selected-package-tbd
+  polarity: three_phase_smart_gate_driver_with_current_shunt_amplifiers
+  pinout:
+    VM: VM
+    DVDD: DVDD
+    GND: GND
+    INHA: INHA
+    INLA: INLA
+    INHB: INHB
+    INLB: INLB
+    INHC: INHC
+    INLC: INLC
+    ENABLE: ENABLE
+    NFAULT: nFAULT
+    SCLK: SCLK
+    SDI: SDI
+    SDO: SDO
+    NCS: nCS
+    SOA: SOA
+    SOB: SOB
+    SOC: SOC
+  electrical_characteristics:
+    motor_supply_voltage:
+      conditions: DRV832x datasheet title and product family.
+      min: 6.0
+      max: 60.0
+      unit: V
+    current_sense_amplifiers:
+      conditions: DRV8323 variants integrate three low-side current shunt amplifiers.
+      typ: 3
+      unit: channels
+  device_parameters:
+    three_phase_gate_drive:
+      conditions: Drives high-side and low-side N-channel MOSFETs for a three-phase bridge.
+      unit: note
+      simulation_relevance: Static validation checks MCU-side power and logic compatibility only; MOSFET gate charge, dead time, overcurrent thresholds, and bridge thermal behavior need later source-backed models.
+  documents:
+    - title: DRV8323 product page
+      path: docs/research/smart_robot/sources/drv8323_product.html
+      source_url: https://www.ti.com/product/DRV8323
+      sha256: 58097fe705d14a8c40b82d6404a500c2db99e6d1a1330da6191fdbc929c8feed
+      retrieved: "2026-06-14"
+    - title: DRV832x 6 to 60-V Three-Phase Smart Gate Driver
+      path: docs/research/smart_robot/sources/drv8323_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/drv8323.pdf
+      sha256: dd8386c972e8d0a57278e432da6e9d8b2bc2f73768dd97eac69594da20d24208
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - wheel_actuator_gate_driver_io_screening
+    - static_power_tree
+    - current_sense_interface_presence
+  not_valid_for:
+    - mosfet_selection_or_soa_signoff
+    - gate_charge_or_deadtime_signoff
+    - bridge_thermal_signoff
+    - current_sense_accuracy_or_adc_noise_signoff
+    - motor_control_loop_stability

@@ -81,3 +81,27 @@ The placeholder e-stop switches are not fabrication-ready components. Before
 layout, replace them with source-backed high-current eFuse/load-switch or
 MOSFET-driver models and validate current limit, thermal, inrush, reverse
 current, and connector ratings.
+
+## Wheel Actuator Slice Status
+
+`demos/smart_robot/circuitci/wheel_actuator/project.yaml` now models the first
+left/right reusable wheel controller pass:
+
+- AT32M416 motor-control MCU.
+- DRV8323 three-phase smart gate driver.
+- Six MCU PWM outputs for a standard 3-phase BLDC bridge (`UH/UL`, `VH/VL`,
+  `WH/WL`).
+- DRV8323 SPI and nFAULT interface.
+- 3.3 V encoder/Hall signal compatibility.
+- Generic CAN transceiver MCU-side compatibility.
+- Wheel power-stage load-budget placeholder on the PMU switched wheel rail.
+
+Do not change the first fabrication to a true 6-phase motor/inverter unless
+there is a sourced motor requirement. True 6-phase can reduce torque ripple or
+add redundancy, but it doubles the inverter, current sensing, firmware timing,
+layout, and validation burden. For balancing robots, the better first target is
+standard 3-phase FOC with encoder/Hall feedback and enough control-loop rate.
+
+Before layout, replace `MOSFET_BRIDGE_TBD` with selected MOSFETs, shunts, and
+gate resistors, then validate SOA, shunt dissipation, current-sense gain,
+dead-time/gate charge, connector current, thermal paths, and regeneration.
