@@ -52,6 +52,27 @@ SPICE model required for physical transient validation was not available.
 This is the correct behavior. Using the Altium generic `MOSFET-N` symbol as a
 physical model would hide the actual Q2 drive problem.
 
+Interpretation:
+
+- `CSD17484F4` is the original `Q2` identity extracted from the design files.
+- CircuitCI did not validate `CSD17484F4` as an electrically sufficient Q2
+  candidate for the laser switch.
+- The tool instead reported that the original Q2 path cannot be physically
+  trusted with the generic Altium `NMOS` model and needs sourced model or
+  waveform evidence.
+
+Replacement MOSFET lookup:
+
+- User-provided memory: possible replacement text `VBQF1308`.
+- Direct web search for exact `VBQF1308` plus `LCSC`, `datasheet`, and
+  `VBsemi Elec` returned no exact downloadable source in this session.
+- A nearby VBsemi family part, `VBQF1310`, is listed by LCSC as an N-channel
+  `30 V`, `30 A`, `DFN3x3-8` MOSFET, which shows the `VBQF13xx` family is
+  plausible, but it is not evidence that `VBQF1308` was the installed Q2.
+- Do not add a `VBQF1308` component model or treat it as the working Q2
+  replacement until the exact part number is confirmed from a package marking,
+  invoice/BOM, photo, or datasheet PDF.
+
 Issues identified for the original circuit review:
 
 1. `Q2` must be validated as TI `CSD17484F4`, not as a generic NMOS.
