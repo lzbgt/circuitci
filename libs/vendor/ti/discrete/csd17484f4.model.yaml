@@ -34,6 +34,8 @@ datasheet:
       value: 18
       unit: A
       conditions: Pulse width less than or equal to 100 us, duty cycle less than or equal to 1 percent.
+      pulse_width_us: 100
+      duty_cycle_max: 0.01
     IG_continuous:
       value: 0.035
       unit: A
@@ -41,6 +43,8 @@ datasheet:
       value: 0.5
       unit: W
       conditions: TA=25C.
+      derate_above_c: 25
+      derating_per_c: 0.004
   electrical_characteristics:
     VGSth:
       conditions: VDS=VGS, ID=250uA
@@ -99,14 +103,27 @@ datasheet:
       source_url: https://www.ti.com/lit/gpn/CSD17484F4
       sha256: b9fb6128120a0901624bc9cb4454d797c20b39b44b106628389d00f853efb5e0
       retrieved: "2026-06-14"
+simulation:
+  spice:
+    model_name: TI_CSD17484F4
+    model_type: mosfet_n
+    model_path: models/spice/ti/csd17484f4.lib
+    provenance: datasheet_fit
+    body_pin_policy: tie_to_source_when_absent
+    valid_operating_notes:
+      - Level-1 datasheet fit for generated-deck plumbing and preliminary low-side switch checks.
+      - The fit uses datasheet VGS(th), RDS(on), gate charge, and capacitance values only as a coarse behavioral approximation.
+      - Replace with vendor or bench-calibrated model before final physical sign-off.
 model_quality:
   source: datasheet
   confidence: medium
   intended_use:
     - component_binding
+    - board_ir_spice_generation
     - mosfet_static_rating_screening
+    - mosfet_switch_preliminary_simulation
     - preliminary_low_side_switch_review
   not_valid_for:
-    - analog_transient_signoff_without_vendor_or_bench_calibrated_spice_model
+    - final_analog_transient_signoff_without_vendor_or_bench_calibrated_spice_model
     - gate_drive_waveform_signoff
     - laser_pulse_soa_or_thermal_signoff

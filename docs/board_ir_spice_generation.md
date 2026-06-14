@@ -63,6 +63,11 @@ R8:
   spice: {primitive: resistor, value_ohm: 10000}
 ```
 
+Capacitors may optionally declare `initial_v`. Generated ngspice wrappers add
+`UIC` automatically when any selected generated capacitor has an initial
+condition, so precharged storage-capacitor pulse circuits can be represented
+without a hand-authored raw netlist.
+
 Discrete semiconductors should derive their SPICE model name/type/path from the
 component model's `simulation.spice` metadata. The scenario still declares
 `model_files` with SHA-256 pins so a physical result is tied to exact model
@@ -140,6 +145,12 @@ paired `VDS`/`ID` envelope checking against hand-digitized screening points.
 
 - `examples/good_mosfet_low_side_switch` proves generated N-channel MOSFET `M`
   device emission with a SHA-pinned datasheet-fit NDS7002A model.
+- `examples/good_csd17484f4_low_side_switch` proves generated N-channel MOSFET
+  `M` device emission with the SHA-pinned TI CSD17484F4 datasheet-fit model
+  under a TOF-style `21.8 V`, `30 ns`, `30 kHz` trigger condition.
+- `examples/good_csd17484f4_vcsel_capacitor_discharge` proves generated
+  capacitor `IC=` emission and `tran ... uic` execution for a precharged
+  C27-style VCSEL pulse-discharge path through the same Q2 model.
 - `examples/good_pmos_high_side_switch` proves generated P-channel MOSFET `M`
   device emission with a SHA-pinned datasheet-fit BSS84 model.
 - `examples/good_subckt_rc_delay` proves generated subcircuit `X` device

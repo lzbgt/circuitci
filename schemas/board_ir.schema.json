@@ -69,6 +69,7 @@
                   },
                   "value_ohm": { "type": "number", "exclusiveMinimum": 0 },
                   "value_f": { "type": "number", "exclusiveMinimum": 0 },
+                  "initial_v": { "type": "number" },
                   "value_h": { "type": "number", "exclusiveMinimum": 0 },
                   "dc_v": { "type": "number" },
                   "pulse": {

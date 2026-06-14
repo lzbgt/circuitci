@@ -27,12 +27,26 @@ binding and preliminary static MOSFET review:
 
 ## Validation Use
 
-This pack is intentionally not a SPICE model. It lets CircuitCI bind an imported
-component to the real `CSD17484F4` and carry the correct ratings into reports,
-but transient switching, laser-pulse SOA, gate-drive waveform, and thermal
-sign-off still require a sourced SPICE model or measured waveform evidence.
+This pack includes a coarse Level-1 datasheet-fit SPICE card at
+`models/spice/ti/csd17484f4.lib`. It lets CircuitCI bind an imported component
+to the real `CSD17484F4`, generate preliminary low-side switch decks, and carry
+the correct datasheet ratings into operating-limit reports.
+
+The SPICE card is not a final physical model. Transient switching,
+laser-pulse SOA, gate-drive waveform, and thermal sign-off still require a
+sourced vendor model, a bench-calibrated fit, or measured waveform evidence.
 
 The TOF-R5001 Q2 analysis uses this model to avoid treating the Altium generic
-`MOSFET-N` symbol as physical evidence. Without a sourced `CSD17484F4` model or
-bench waveform, the correct result is fail-closed rather than simulated false
-confidence.
+`MOSFET-N` symbol as physical evidence. A generated-deck pass with this
+datasheet fit is only preliminary; the original Q2 issue still needs load,
+pulse, replacement-part, or waveform evidence before root-cause sign-off.
+
+Two generated-deck fixtures cover the reusable plumbing:
+
+- `examples/good_csd17484f4_low_side_switch` is a simple resistive-load smoke
+  test.
+- `examples/good_csd17484f4_vcsel_capacitor_discharge` models a TOF-style
+  precharged C27 storage capacitor discharging through Q2 under the `21.8 V`,
+  `30 ns`, `30 kHz` trigger condition. It proves the Board IR can represent the
+  capacitor-pulse topology, but still uses a resistor proxy for VCSEL dynamic
+  behavior.

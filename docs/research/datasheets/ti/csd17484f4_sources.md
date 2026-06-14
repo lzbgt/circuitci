@@ -14,8 +14,13 @@ CircuitCI model:
 Use notes:
 
 - The model records datasheet ratings and switching-related parameters for exact part binding and preliminary static checks.
+- `ID_pulsed = 18 A` is encoded with the datasheet condition
+  `pulse_width_us = 100` and `duty_cycle_max = 0.01`.
+- `PD = 0.5 W` at `TA = 25 C` is encoded with linear derating
+  `derating_per_c = 0.004`, derived from derating to zero at `150 C`.
+- `models/spice/ti/csd17484f4.lib` is a coarse Level-1 datasheet-fit card for generated-deck plumbing and preliminary low-side switch checks.
 - No vendor or bench-calibrated SPICE model is stored with this source snapshot.
-- Analog transient, gate-drive waveform, laser pulse SOA, and thermal sign-off must remain fail-closed unless a sourced SPICE model or measured waveform evidence is supplied.
+- Gate-drive waveform, laser pulse SOA, and thermal sign-off must remain non-final unless a sourced vendor model, bench-calibrated fit, or measured waveform evidence is supplied.
 
 TOF-R5001 relevance:
 

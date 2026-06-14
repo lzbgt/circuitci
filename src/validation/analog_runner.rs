@@ -85,7 +85,8 @@ pub(super) fn run_ngspice(
     })?;
     artifacts.push(wrapper.clone());
 
-    let embedded_commands = EmbeddedCommands::new(scenario, &waveform, operating_probe_expressions);
+    let embedded_commands =
+        EmbeddedCommands::new(bound, scenario, &waveform, operating_probe_expressions);
     let output = run_solver_with_timeout(
         backend,
         &wrapper,
@@ -170,7 +171,12 @@ struct EmbeddedCommands {
 }
 
 impl EmbeddedCommands {
-    fn new(scenario: &Scenario, waveform: &Path, operating_probe_expressions: &[String]) -> Self {
+    fn new(
+        bound: &BoundBoard<'_>,
+        scenario: &Scenario,
+        waveform: &Path,
+        operating_probe_expressions: &[String],
+    ) -> Self {
         let analog = scenario
             .analog
             .as_ref()
@@ -188,8 +194,13 @@ impl EmbeddedCommands {
             wrdata.push(' ');
             wrdata.push_str(expression);
         }
+        let uic = if uses_capacitor_initial_conditions(bound, scenario) {
+            " uic"
+        } else {
+            ""
+        };
         Self {
-            tran: format!("tran {:.12e} {:.12e}", step_s, stop_s),
+            tran: format!("tran {:.12e} {:.12e}{uic}", step_s, stop_s),
             wrdata,
         }
     }
@@ -666,10 +677,15 @@ fn build_ngspice_wrapper(
     }
     let step_s = analog.analysis.max_step_us / 1_000_000.0;
     let stop_s = analog.analysis.stop_time_us / 1_000_000.0;
+    let uic = if uses_capacitor_initial_conditions(bound, scenario) {
+        " uic"
+    } else {
+        ""
+    };
     text.push_str(".control\n");
     text.push_str("set wr_vecnames\n");
     text.push_str("set wr_singlescale\n");
-    text.push_str(&format!("tran {:.12e} {:.12e}\n", step_s, stop_s));
+    text.push_str(&format!("tran {:.12e} {:.12e}{uic}\n", step_s, stop_s));
     text.push_str("wrdata ");
     text.push_str(&waveform.to_string_lossy());
     for probe in &analog.probes {
@@ -685,6 +701,27 @@ fn build_ngspice_wrapper(
     }
     text.push_str("\n.endc\n.end\n");
     Ok(text)
+}
+
+fn uses_capacitor_initial_conditions(bound: &BoundBoard<'_>, scenario: &Scenario) -> bool {
+    let Some(analog) = &scenario.analog else {
+        return false;
+    };
+    let Some(generated) = &analog.generated else {
+        return false;
+    };
+    generated.components.iter().any(|component_id| {
+        bound
+            .project
+            .board
+            .components
+            .get(component_id)
+            .and_then(|component| component.spice.as_ref())
+            .is_some_and(|spice| {
+                matches!(spice.primitive, crate::board_ir::SpicePrimitive::Capacitor)
+                    && spice.initial_v.is_some()
+            })
+    })
 }
 
 fn rewrite_include_line(line: &str, source_dir: &Path) -> String {

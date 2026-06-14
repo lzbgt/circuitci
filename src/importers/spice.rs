@@ -89,6 +89,8 @@ struct ComponentSpiceYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     value_f: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    initial_v: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     value_h: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_v: Option<f64>,
@@ -645,6 +647,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "resistor".to_string(),
                 value_ohm: Some(*value_ohm),
                 value_f: None,
+                initial_v: None,
                 value_h: None,
                 dc_v: None,
                 pulse: None,
@@ -653,6 +656,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "capacitor".to_string(),
                 value_ohm: None,
                 value_f: Some(*value_f),
+                initial_v: None,
                 value_h: None,
                 dc_v: None,
                 pulse: None,
@@ -661,6 +665,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "inductor".to_string(),
                 value_ohm: None,
                 value_f: None,
+                initial_v: None,
                 value_h: Some(*value_h),
                 dc_v: None,
                 pulse: None,
@@ -669,6 +674,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "dc_voltage_source".to_string(),
                 value_ohm: None,
                 value_f: None,
+                initial_v: None,
                 value_h: None,
                 dc_v: Some(*dc_v),
                 pulse: None,
@@ -677,6 +683,7 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 primitive: "pulse_voltage_source".to_string(),
                 value_ohm: None,
                 value_f: None,
+                initial_v: None,
                 value_h: None,
                 dc_v: None,
                 pulse: Some(PulseSpec {

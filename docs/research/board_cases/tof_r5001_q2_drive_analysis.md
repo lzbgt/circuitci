@@ -21,6 +21,12 @@ Known bench/user facts:
 - The original `Q2` drive path had a real drive issue.
 - The circuit works after replacing `Q2` with a different MOSFET. The working
   replacement MOSFET part number is currently unknown.
+- The trigger signal is a pulse from about `7 kHz` to `30 kHz`, with about
+  `30 ns` pulse width and an upward triangular edge shape. At the `30 kHz`
+  worst case, `30 ns` corresponds to `0.09%` duty cycle.
+- The VCSEL is powered by the C27/C28 pulse-storage network. That means the
+  original Q2 path must be analyzed as a precharged-capacitor pulse-discharge
+  switch, not as a DC or steady resistive load.
 
 Extracted design evidence:
 
@@ -28,6 +34,11 @@ Extracted design evidence:
 - `Q2` is in the `LED-TX-` low-side switch path.
 - `Q9` appears in the PCB document as `AO3400A`, but the project variation file contains no mounted/DNP variation data. The user-supplied not-mounted fact must therefore override the PCB component listing.
 - The design text contains stale `VLD-28.5V` labeling, while the measured/known rail for validation is `VLD = 21.8 V`.
+- The LD driver section includes `C27`, documented in the extracted schematic
+  text as `0402 22pF 1% 50V`, and `C28`, documented as
+  `NC/0402 56pF 1% 50V`. The user-supplied circuit fact says the VCSEL is
+  powered by C27/C28, but C28's mounted state must still be confirmed from BOM
+  or assembly evidence because the schematic comment marks it `NC`.
 - The supplied schematic text contains `U5 = NL27WZ17DFT2G`. This identifies a
   dual Schmitt-trigger buffer in the design, not the `Q2` MOSFET replacement.
 
@@ -47,19 +58,38 @@ Tool result on the reduced local evidence:
 CircuitCI tof_r5001_original_q2_drive_evidence: fail (critical=1, warning=0, info=0)
 ```
 
-The critical finding was `ANALOG_MODEL_UNAVAILABLE`: the real `CSD17484F4`
-SPICE model required for physical transient validation was not available.
-This is the correct behavior. Using the Altium generic `MOSFET-N` symbol as a
-physical model would hide the actual Q2 drive problem.
+The first tool run emitted `ANALOG_MODEL_UNAVAILABLE`: a real `CSD17484F4`
+SPICE model required for physical transient validation was not available. That
+was the correct behavior before a CSD17484F4 model face existed. Using the
+Altium generic `MOSFET-N` symbol as a physical model would hide the actual Q2
+drive problem.
+
+The library now includes `models/spice/ti/csd17484f4.lib`, a coarse Level-1
+datasheet-fit card. CircuitCI also gained generated-deck support for capacitor
+initial conditions, so the C27 pulse-storage topology can be represented
+directly instead of approximating the VCSEL path as a steady load. This improves
+preliminary generated-deck verification but does not make `CSD17484F4` a final
+validated Q2 candidate for the laser switch. Final root-cause work still needs
+the confirmed mounted C27/C28 values and topology, a sourced vendor or
+bench-calibrated Q2 model, measured gate/drain/current waveforms, or the
+confirmed working replacement MOSFET identity.
 
 Interpretation:
 
 - `CSD17484F4` is the original `Q2` identity extracted from the design files.
 - CircuitCI did not validate `CSD17484F4` as an electrically sufficient Q2
   candidate for the laser switch.
-- The tool instead reported that the original Q2 path cannot be physically
+- The tool first reported that the original Q2 path cannot be physically
   trusted with the generic Altium `NMOS` model and needs sourced model or
   waveform evidence.
+- The added datasheet-fit CSD17484F4 model can support preliminary screening,
+  but it does not close the original root-cause question by itself.
+- Because the VCSEL pulse is powered from C27/C28, the key dynamic stress is
+  pulsed capacitor discharge. With C27 alone, the ideal stored energy at
+  `21.8 V` is `0.5 * 22 pF * 21.8^2 = 5.23 nJ`. If C28 is also mounted, the
+  documented nominal capacitance would be `78 pF`, or `18.54 nJ`. The C28
+  contribution should not be used for sign-off until its mounted state is
+  proven.
 
 Replacement MOSFET lookup:
 
@@ -80,12 +110,14 @@ Issues identified for the original circuit review:
 3. `VLD` must be validated at `21.8 V`; the stale `VLD-28.5V` label should not drive analysis.
 4. The supplied design includes `NL27WZ17DFT2G`, which is a dual non-inverting Schmitt-trigger buffer, not a MOSFET and not the replacement `Q2` part.
 5. The working replacement `Q2` MOSFET part number is not yet known.
-6. The exact pre-fix Q2 drive failure still needs either the older schematic, the replacement MOSFET identity, a sourced CSD17484F4 SPICE model, or measured gate/drain/current waveforms to prove the dynamic failure mode.
+6. The exact pre-fix Q2 drive failure still needs either the older schematic, the replacement MOSFET identity, a vendor/bench-calibrated CSD17484F4 SPICE model, mounted C27/C28 evidence, or measured gate/drain/current waveforms to prove the dynamic failure mode.
 
 Follow-up evidence that would make the diagnosis stronger:
 
 - The pre-fix schematic/layout revision and the working replacement `Q2`
   MOSFET part number.
 - Laser/LED pulse current, pulse width, and duty cycle.
+- C27/C28 mounted state and exact connectivity around VCSEL anode/cathode and
+  `LED-TX-`.
 - Q2 gate waveform, drain waveform, and load current waveform from the failing original circuit.
 - A sourced vendor or bench-calibrated SPICE model for `CSD17484F4`.

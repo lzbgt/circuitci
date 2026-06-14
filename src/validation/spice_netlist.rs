@@ -109,13 +109,24 @@ fn generate_component_line(
                 pin_node(component_id, component, node_by_net, "B")?,
                 positive(spice.value_ohm, component_id, "spice.value_ohm")?
             )),
-            SpicePrimitive::Capacitor => Ok(format!(
-                "{} {} {} {}",
-                element_name("C", component_id),
-                pin_node(component_id, component, node_by_net, "A")?,
-                pin_node(component_id, component, node_by_net, "B")?,
-                positive(spice.value_f, component_id, "spice.value_f")?
-            )),
+            SpicePrimitive::Capacitor => {
+                let mut line = format!(
+                    "{} {} {} {}",
+                    element_name("C", component_id),
+                    pin_node(component_id, component, node_by_net, "A")?,
+                    pin_node(component_id, component, node_by_net, "B")?,
+                    positive(spice.value_f, component_id, "spice.value_f")?
+                );
+                if let Some(initial_v) = spice.initial_v {
+                    if !initial_v.is_finite() {
+                        return Err(format!(
+                            "Component {component_id} spice.initial_v must be finite."
+                        ));
+                    }
+                    line.push_str(&format!(" IC={initial_v}"));
+                }
+                Ok(line)
+            }
             SpicePrimitive::Inductor => Ok(format!(
                 "{} {} {} {}",
                 element_name("L", component_id),

@@ -1,0 +1,150 @@
+project:
+  name: good_csd17484f4_vcsel_capacitor_discharge
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+  - ../../libs/vendor/ti/discrete
+
+board:
+  components:
+    VLD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: vld_21v8
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 21.8
+    RCHARGE:
+      model: generic.analog.resistor
+      pins:
+        A: vld_21v8
+        B: vcsel_storage
+      spice:
+        primitive: resistor
+        value_ohm: 10000000
+    C27:
+      model: generic.analog.capacitor
+      pins:
+        A: vcsel_storage
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 0.000000000022
+        initial_v: 21.8
+    RVCSEL_PROXY:
+      model: generic.analog.resistor
+      pins:
+        A: vcsel_storage
+        B: led_tx_minus
+      spice:
+        primitive: resistor
+        value_ohm: 2200
+    VGATE:
+      model: generic.analog.pulse_voltage_source
+      pins:
+        P: gate_drive
+        N: gnd
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0
+          pulsed_v: 3.3
+          delay_us: 10
+          rise_us: 0.03
+          fall_us: 0.03
+          width_us: 0.03
+          period_us: 33.333333
+    Q2:
+      model: vendor.ti.csd17484f4
+      part_number: CSD17484F4
+      pins:
+        D: led_tx_minus
+        G: gate_drive
+        S: gnd
+  nets:
+    vld_21v8:
+      kind: power
+      nominal_voltage: 21.8
+      powered: true
+    gnd:
+      kind: ground
+    vcsel_storage:
+      kind: digital_or_analog
+    gate_drive:
+      kind: digital_or_analog
+    led_tx_minus:
+      kind: digital_or_analog
+
+scenarios:
+  - name: csd17484f4_c27_vcsel_capacitor_discharge
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VLD
+          - RCHARGE
+          - C27
+          - RVCSEL_PROXY
+          - VGATE
+          - Q2
+      model_files:
+        - path: ../../models/spice/ti/csd17484f4.lib
+          sha256: 0ebdb5dea3c86bf3e9aa72bba67c2da974a9d096b20042e63b51c4be52b994ab
+      node_bindings:
+        - node: vld
+          net: vld_21v8
+        - node: "0"
+          net: gnd
+        - node: storage
+          net: vcsel_storage
+        - node: gate
+          net: gate_drive
+        - node: led_minus
+          net: led_tx_minus
+      pin_bindings:
+        - node: storage
+          endpoint:
+            component: C27
+            pin: A
+        - node: "0"
+          endpoint:
+            component: C27
+            pin: B
+        - node: gate
+          endpoint:
+            component: Q2
+            pin: G
+        - node: led_minus
+          endpoint:
+            component: Q2
+            pin: D
+        - node: "0"
+          endpoint:
+            component: Q2
+            pin: S
+      analysis:
+        type: tran
+        stop_time_us: 10.08
+        max_step_us: 0.0005
+      operating_conditions:
+        ambient_temperature_c: 25
+        allow_pulse_ratings: true
+      stimuli:
+        - name: tof_trigger_worst_case
+          description: Gate drive uses a 30 ns pulse at the 30 kHz worst-case repetition rate; C27 starts precharged to the measured 21.8 V VLD rail.
+      probes:
+        - name: vcsel_storage
+          expression: V(storage)
+      assertions:
+        - name: c27_storage_voltage_discharge_after_trigger
+          probe: vcsel_storage
+          at_us: 10.065
+          relation: below
+          threshold_v: 12.0
