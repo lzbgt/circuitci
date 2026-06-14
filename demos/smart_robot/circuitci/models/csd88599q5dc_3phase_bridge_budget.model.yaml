@@ -1,0 +1,78 @@
+component_id: demo.smart_robot.csd88599q5dc_3phase_bridge_budget
+version: 0.1.0
+category: motor_power_stage_preliminary
+ports:
+  VM:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 12.6
+      max_supply_current_A: 6.0
+  GND:
+    kind: electrical_ground
+    required: true
+  PHASE_U:
+    kind: passive
+    required: false
+  PHASE_V:
+    kind: passive
+    required: false
+  PHASE_W:
+    kind: passive
+    required: false
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: CSD88599Q5DC
+  package: SON 5 mm x 6 mm Dual-Cool power block
+  polarity: n_channel_half_bridge_power_block
+  electrical_characteristics:
+    drain_source_voltage_class:
+      conditions: TI product page description.
+      max: 60.0
+      unit: V
+    product_current_class:
+      conditions: TI product page description.
+      typ: 40.0
+      unit: A
+    reference_power_loss:
+      conditions: TI product page feature list states 3.0 W PLoss at 30 A.
+      typ: 3.0
+      unit: W
+    boostxl_drv8323_reference_stage_current:
+      conditions: TI product page related EVM description for BOOSTXL-DRV8323RH/RS.
+      typ: 15.0
+      unit: A
+  device_parameters:
+    bridge_count:
+      value: 3
+      unit: half_bridges
+      simulation_relevance: Three CSD88599Q5DC half-bridge power blocks implement one 3-phase wheel inverter candidate.
+    board_current_budget:
+      value: 6.0
+      unit: A
+      simulation_relevance: CircuitCI uses this conservative first-pass wheel-board load budget until motor current, thermal stack, and shunt selection are sourced.
+  documents:
+    - title: CSD88599Q5DC product page
+      path: docs/research/smart_robot/sources/csd88599q5dc_product.html
+      source_url: https://www.ti.com/product/CSD88599Q5DC
+      sha256: 7b0c6ddf956afd16edf5980d99069782a5ed7517053a7ba063defa8427b02aab
+      retrieved: "2026-06-14"
+    - title: CSD88599Q5DC 60V Half-Bridge NexFET Power Block datasheet
+      path: docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf
+      source_url: https://www.ti.com/lit/gpn/csd88599q5dc
+      sha256: 193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - wheel_power_stage_candidate_budget
+    - static_power_tree
+    - drv8323_reference_bridge_candidate
+  not_valid_for:
+    - mosfet_rds_on_or_soa_signoff
+    - final_fabrication_without_motor_current_profile
+    - shunt_power_or_current_sense_signoff
+    - bridge_layout_or_thermal_signoff
+    - gate_resistor_deadtime_or_switching_loss_signoff

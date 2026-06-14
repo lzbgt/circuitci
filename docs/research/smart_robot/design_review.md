@@ -94,7 +94,8 @@ left/right reusable wheel controller pass:
 - DRV8323 SPI and nFAULT interface.
 - 3.3 V encoder/Hall signal compatibility.
 - Generic CAN transceiver MCU-side compatibility.
-- Wheel power-stage load-budget placeholder on the PMU switched wheel rail.
+- Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
+  switched wheel rail.
 
 Do not change the first fabrication to a true 6-phase motor/inverter unless
 there is a sourced motor requirement. True 6-phase can reduce torque ripple or
@@ -102,6 +103,7 @@ add redundancy, but it doubles the inverter, current sensing, firmware timing,
 layout, and validation burden. For balancing robots, the better first target is
 standard 3-phase FOC with encoder/Hall feedback and enough control-loop rate.
 
-Before layout, replace `MOSFET_BRIDGE_TBD` with selected MOSFETs, shunts, and
-gate resistors, then validate SOA, shunt dissipation, current-sense gain,
-dead-time/gate charge, connector current, thermal paths, and regeneration.
+Before layout, treat CSD88599Q5DC as a sourced preliminary bridge candidate.
+The next validation slice must add motor current profiles, shunt values, gate
+resistors, dead-time/gate-charge checks, connector current, thermal paths, and
+regeneration behavior before fabrication sign-off.

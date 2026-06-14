@@ -29,7 +29,7 @@ board:
 - Six independent PWM lines for a normal 3-phase BLDC bridge.
 - 3.3 V encoder/Hall input compatibility.
 - CAN command-link MCU-side compatibility.
-- Wheel power-stage load-budget placeholder.
+- Preliminary 3x CSD88599Q5DC half-bridge wheel power-stage budget.
 
 Validation command:
 
@@ -57,8 +57,8 @@ CircuitCI smart_robot_wheel_actuator_v0: pass (critical=0, warning=0, info=0)
 - CAN/RS485 transceiver part choice, termination, common-mode range, and ESD.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
-- Wheel actuator MOSFET selection, shunt values, gate-charge/dead-time,
-  current-sense accuracy, MOSFET SOA, thermal, and layout.
+- Wheel actuator motor current profile, shunt values, gate-resistor/dead-time
+  tuning, current-sense accuracy, MOSFET SOA, thermal, and layout.
 - True 6-phase motor/inverter control. The current wheel slice is 3-phase BLDC
   with six PWM gate-control signals.
 

@@ -89,8 +89,8 @@ board:
         B: enc_b
         Z: enc_z
     PWR_STAGE:
-      model: demo.smart_robot.wheel_mosfet_bridge_load
-      part_number: MOSFET_BRIDGE_TBD
+      model: demo.smart_robot.csd88599q5dc_3phase_bridge_budget
+      part_number: 3x_CSD88599Q5DC_PRELIMINARY
       power_domains:
         VM: vwheel_sw
       pins:

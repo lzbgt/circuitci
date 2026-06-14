@@ -19,6 +19,8 @@ robot control-stack design pass.
 | TI TPS54331 datasheet | `docs/research/smart_robot/sources/tps54331_datasheet.pdf` | `3867bc82cb0f8e3e898de7c0d220d01cd2a30d0281178d17d10eeb5b866439a3` |
 | TI DRV8323 product page | `docs/research/smart_robot/sources/drv8323_product.html` | `58097fe705d14a8c40b82d6404a500c2db99e6d1a1330da6191fdbc929c8feed` |
 | TI DRV8323 datasheet | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` | `dd8386c972e8d0a57278e432da6e9d8b2bc2f73768dd97eac69594da20d24208` |
+| TI CSD88599Q5DC product page | `docs/research/smart_robot/sources/csd88599q5dc_product.html` | `7b0c6ddf956afd16edf5980d99069782a5ed7517053a7ba063defa8427b02aab` |
+| TI CSD88599Q5DC datasheet | `docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf` | `193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65` |
 
 ## Confirmed Facts
 
@@ -48,6 +50,12 @@ robot control-stack design pass.
   diagnostics. That fits the first wheel-board direction better than a true
   6-phase inverter because it keeps the first fabrication to one 3-phase bridge
   while still allowing six independent PWM gate-control signals.
+- TI's CSD88599Q5DC product page identifies a 60 V, 40 A N-channel half-bridge
+  NexFET power block in a 5 mm x 6 mm Dual-Cool package. TI also lists
+  BOOSTXL-DRV8323RH/RS as 15 A, 3-phase BLDC drive stages based on DRV8323 and
+  CSD88599Q5DC power blocks. That makes three CSD88599Q5DC devices a sourced
+  preliminary bridge candidate for the 2S wheel actuator board, not a final SOA
+  or thermal sign-off.
 
 ## Design Review Notes
 
@@ -73,6 +81,7 @@ robot control-stack design pass.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
-  inputs, CAN transceiver MCU-side logic, and rail budgets. It does not yet
-  validate MOSFET SOA, shunt values, gate charge, dead time, thermal behavior,
-  or motor-control loop stability.
+  inputs, CAN transceiver MCU-side logic, rail budgets, and a preliminary
+  3x CSD88599Q5DC wheel bridge candidate. It does not yet validate MOSFET SOA,
+  shunt values, gate charge, dead time, thermal behavior, or motor-control loop
+  stability.
