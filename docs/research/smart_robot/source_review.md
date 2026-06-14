@@ -21,6 +21,8 @@ robot control-stack design pass.
 | TI DRV8323 datasheet | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` | `dd8386c972e8d0a57278e432da6e9d8b2bc2f73768dd97eac69594da20d24208` |
 | TI CSD88599Q5DC product page | `docs/research/smart_robot/sources/csd88599q5dc_product.html` | `7b0c6ddf956afd16edf5980d99069782a5ed7517053a7ba063defa8427b02aab` |
 | TI CSD88599Q5DC datasheet | `docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf` | `193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65` |
+| NXP PCA9685 product page | `docs/research/smart_robot/sources/pca9685_product.html` | `28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468` |
+| NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 
 ## Confirmed Facts
 
@@ -56,6 +58,12 @@ robot control-stack design pass.
   CSD88599Q5DC power blocks. That makes three CSD88599Q5DC devices a sourced
   preliminary bridge candidate for the 2S wheel actuator board, not a final SOA
   or thermal sign-off.
+- NXP's PCA9685 page and datasheet identify a 16-channel, 12-bit PWM
+  Fast-mode Plus I2C LED controller. The saved datasheet states 2.3 V to 5.5 V
+  supply operation, 5.5 V tolerant inputs/outputs, Fm+ operation up to 1 MHz,
+  and totem-pole output capability of 25 mA sink / 10 mA source at 5 V. That is
+  enough for static 3.3 V servo-signal screening, but not enough to sign off
+  servo stall, regeneration, or balance-critical actuator feedback.
 
 ## Design Review Notes
 
@@ -92,3 +100,13 @@ robot control-stack design pass.
 - The wheel slice does not yet validate MOSFET SOA, gate charge, switching
   loss, current-sense accuracy, thermal behavior, regeneration clamp energy,
   PCB copper temperature rise, or motor-control loop stability.
+- The first servo/payload validation slice is
+  `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
+  AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four
+  low-load PWM-servo design envelopes on the separate `VSERVO` rail, and static
+  3.3 V I2C/PWM compatibility.
+- The servo/payload slice is for camera/head/light payload servos only. It does
+  not prove selected servo stall current, regeneration into `VSERVO`, connector
+  heating, mechanical torque/speed, or position feedback. Balance-critical
+  mass-shift actuation should use RS485 smart servos or a local actuator board
+  with feedback.

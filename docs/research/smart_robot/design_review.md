@@ -113,3 +113,22 @@ validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
 with selected motor datasheet or measurement evidence, then add
 gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
 clamp behavior, and PCB copper-temperature validation.
+
+## Servo Payload Slice Status
+
+`demos/smart_robot/circuitci/servo_payload/project.yaml` now models the first
+low-load servo/payload hub:
+
+- AT32F435 I2C2 host pins from the motion-core model.
+- NXP PCA9685 16-channel, 12-bit I2C PWM driver at 3.3 V.
+- Four PWM-servo design-load channels on the separate 6.0 V to 8.4 V `VSERVO`
+  rail.
+- Static 3.3 V I2C and PWM logic-level compatibility.
+- Static `VSERVO` budget of four 1 A low-load servo envelopes.
+
+This is suitable for camera pitch, screen tilt, head, or light payload motion.
+It is not suitable for balance-critical mass-shift control unless selected
+servos provide position/current/thermal feedback or the board changes to an
+RS485 smart-servo/local actuator architecture. Before layout, choose actual
+servo connectors and servo models, then validate stall current, regeneration,
+connector heating, and `VSERVO` transient behavior.

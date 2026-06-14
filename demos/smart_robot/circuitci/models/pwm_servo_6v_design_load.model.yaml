@@ -1,0 +1,32 @@
+component_id: demo.smart_robot.pwm_servo_6v_design_load
+version: 0.1.0
+category: actuator
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 8.4
+      max_supply_current_A: 1.0
+  GND:
+    kind: electrical_ground
+    required: true
+  PWM:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+model_quality:
+  source: design_requirement
+  confidence: low
+  intended_use:
+    - low_load_pwm_servo_payload_board_screening
+    - vservo_rail_budget_screening
+  not_valid_for:
+    - balance_critical_mass_arm_control
+    - servo_stall_or_regeneration_signoff
+    - connector_temperature_signoff
+    - mechanical_torque_or_speed_signoff

@@ -18,6 +18,17 @@ fn smart_robot_wheel_bridge_budget_passes() {
 }
 
 #[test]
+fn smart_robot_servo_payload_passes() {
+    let report = run_validation("demos/smart_robot/circuitci/servo_payload/project.yaml");
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+    assert!(
+        report["failures"].as_array().unwrap().is_empty(),
+        "servo payload board should not emit critical findings: {report:#?}"
+    );
+}
+
+#[test]
 fn smart_robot_wheel_bridge_budget_fails_undersized_shunt() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

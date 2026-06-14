@@ -35,6 +35,15 @@ board:
   8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
   20 kHz PWM.
 
+`servo_payload/project.yaml` models the reusable low-load servo/payload hub:
+
+- AT32F435 I2C2 host pins.
+- NXP PCA9685 16-channel, 12-bit I2C PWM driver at 3.3 V.
+- Four 6.0 V to 8.4 V PWM-servo design-load channels on the separate
+  `VSERVO` rail.
+- Static 3.3 V I2C/PWM logic-level compatibility.
+- Static `VSERVO` budget of four 1 A low-load servo envelopes.
+
 Validation command:
 
 ```sh
@@ -44,6 +53,8 @@ cargo run -- validate demos/smart_robot/circuitci/pmu/project.yaml \
   --output out/smart_robot_pmu_validate
 cargo run -- validate demos/smart_robot/circuitci/wheel_actuator/project.yaml \
   --output out/smart_robot_wheel_actuator_validate
+cargo run -- validate demos/smart_robot/circuitci/servo_payload/project.yaml \
+  --output out/smart_robot_servo_payload_validate
 ```
 
 Expected result:
@@ -52,6 +63,7 @@ Expected result:
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_wheel_actuator_v0: pass (critical=0, warning=0, info=0)
+CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
 ## What This Does Not Yet Prove
@@ -63,6 +75,8 @@ CircuitCI smart_robot_wheel_actuator_v0: pass (critical=0, warning=0, info=0)
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
   MOSFET SOA, switching loss, thermal, regeneration clamp, and layout copper.
+- Selected servo model, stall current, regeneration, position feedback,
+  connector heating, and balance-critical actuator control.
 - True 6-phase motor/inverter control. The current wheel slice is 3-phase BLDC
   with six PWM gate-control signals.
 

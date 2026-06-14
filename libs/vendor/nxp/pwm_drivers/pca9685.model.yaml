@@ -1,0 +1,124 @@
+component_id: vendor.nxp.pca9685
+version: 0.1.0
+category: pwm_driver
+ports:
+  VDD:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.3
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.01
+  VSS:
+    kind: electrical_ground
+    required: true
+  SCL:
+    kind: digital_electrical_io
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      vih_min_V: 2.31
+      vil_max_V: 0.8
+      source_impedance_ohm: 50
+      injection_current_limit_A: 0.0001
+  SDA:
+    kind: digital_electrical_io
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      vih_min_V: 2.31
+      vil_max_V: 0.8
+      source_impedance_ohm: 50
+      injection_current_limit_A: 0.0001
+  OE:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.31
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  PWM0:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 330
+  PWM1:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 330
+  PWM2:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 330
+  PWM3:
+    kind: digital_electrical_output
+    required: false
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 330
+datasheet:
+  manufacturer: NXP Semiconductors
+  part_number: PCA9685
+  package: selected-package-tbd
+  polarity: 16_channel_12_bit_i2c_pwm_driver
+  pinout:
+    VDD: VDD
+    VSS: VSS
+    SCL: SCL
+    SDA: SDA
+    OE: OE
+  electrical_characteristics:
+    supply_voltage:
+      conditions: Product overview and datasheet operating supply range.
+      min: 2.3
+      max: 5.5
+      unit: V
+    output_source_current:
+      conditions: Datasheet summary states totem-pole outputs can source 10 mA at 5 V.
+      max: 10
+      unit: mA
+    output_sink_current:
+      conditions: Datasheet summary states totem-pole outputs can sink 25 mA at 5 V.
+      max: 25
+      unit: mA
+    supply_current:
+      conditions: Static-characteristics table, operating mode, no load, fSCL = 1 MHz.
+      typ: 6
+      max: 10
+      unit: mA
+    pwm_resolution:
+      conditions: Product overview and datasheet feature summary.
+      typ: 12
+      unit: bit
+    i2c_bus_speed:
+      conditions: Fast-mode Plus family support.
+      max: 1
+      unit: MHz
+  documents:
+    - title: PCA9685 16-channel, 12-bit PWM Fm+ I2C-bus LED controller
+      path: docs/research/smart_robot/sources/pca9685_datasheet.pdf
+      source_url: https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf
+      sha256: 237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585
+      retrieved: "2026-06-14"
+    - title: PCA9685 product page
+      path: docs/research/smart_robot/sources/pca9685_product.html
+      source_url: https://www.nxp.com/products/power-drivers/lighting-driver-and-controller-ics/led-drivers/16-channel-12-bit-pwm-fm-plus-ic-bus-led-driver:PCA9685
+      sha256: 28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468
+      retrieved: "2026-06-14"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_power_tree
+    - i2c_logic_voltage_screening
+    - low_load_pwm_servo_signal_screening
+  not_valid_for:
+    - servo_position_feedback_signoff
+    - servo_stall_or_regeneration_signoff
+    - i2c_pullup_rise_time_signoff
+    - led_or_servo_output_current_thermal_signoff
