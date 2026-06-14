@@ -106,10 +106,11 @@ add fail-closed importer coverage before adding an approximation.
 ## Motor Drive Budgets
 
 `src/validation/motor_drive.rs` owns deterministic first-pass motor bridge
-budget checks. The rule consumes explicit scenario parameters, not inferred
-motor behavior. Required current, connector, shunt, gate-resistor, dead-time,
-and PWM values must be finite and positive where appropriate; unknown values
-produce `VALIDATION_INPUT_MISSING`.
+budget checks. The rule consumes explicit scenario parameters and optional
+`parameters.motor_component` evidence from a bound component model with
+`motor_load`; it does not infer motor behavior from topology. Required current,
+connector, shunt, gate-resistor, dead-time, and PWM values must be finite and
+positive where appropriate; unknown values produce `VALIDATION_INPUT_MISSING`.
 
 Keep this module limited to checks that can be evaluated from declared design
 budget numbers and component binding evidence. MOSFET SOA, switching loss,

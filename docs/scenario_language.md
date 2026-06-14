@@ -1659,9 +1659,7 @@ scenarios:
     target:
       component: PWR_STAGE
     parameters:
-      motor_phase_peak_current_A: 10.0
-      motor_phase_rms_current_A: 6.0
-      max_regen_current_A: 6.0
+      motor_component: M1
       bridge_reference_current_A: 15.0
       bridge_device_current_class_A: 40.0
       phase_shunt_resistance_ohm: 0.005
@@ -1679,22 +1677,28 @@ scenarios:
 1. `target.component` names an existing bridge or power-stage component.
 2. The target component is bound to a component model, so the scenario is not
    checking an anonymous schematic placeholder.
-3. `motor_phase_rms_current_A` may not exceed
+3. Motor current evidence comes from explicit scenario parameters
+   `motor_phase_peak_current_A`, `motor_phase_rms_current_A`, and
+   `max_regen_current_A`, or from `parameters.motor_component` bound to a
+   component model with `motor_load.phase_peak_current_A`,
+   `motor_load.phase_rms_current_A`, and `motor_load.max_regen_current_A`.
+   Scenario numeric parameters override motor-component model evidence.
+4. `motor_phase_rms_current_A` may not exceed
    `motor_phase_peak_current_A`.
-4. `motor_phase_rms_current_A` must fit the declared
+5. `motor_phase_rms_current_A` must fit the declared
    `bridge_reference_current_A`.
-5. `motor_phase_peak_current_A` must fit the declared
+6. `motor_phase_peak_current_A` must fit the declared
    `bridge_device_current_class_A`.
-6. Motor phase RMS current and maximum regeneration current must fit
+7. Motor phase RMS current and maximum regeneration current must fit
    `motor_connector_current_rating_A`.
-7. Phase shunt dissipation is computed as
+8. Phase shunt dissipation is computed as
    `motor_phase_rms_current_A^2 * phase_shunt_resistance_ohm`; multiplied by
    `min_shunt_power_margin_ratio`, it must not exceed
    `phase_shunt_power_rating_W`.
-8. If `max_shunt_sense_voltage_V` is supplied, peak shunt sense voltage is
+9. If `max_shunt_sense_voltage_V` is supplied, peak shunt sense voltage is
    computed as `motor_phase_peak_current_A * phase_shunt_resistance_ohm` and
    must fit that range.
-9. `gate_resistor_ohm`, `dead_time_ns`, and `pwm_frequency_Hz` must be finite
+10. `gate_resistor_ohm`, `dead_time_ns`, and `pwm_frequency_Hz` must be finite
    positive design inputs so the schematic has an explicit gate-timing budget.
 
 Missing or non-finite required values produce critical

@@ -1,0 +1,30 @@
+component_id: demo.smart_robot.wheel_motor_design_envelope
+version: 0.1.0
+category: bldc_motor_design_envelope
+ports:
+  PHASE_U:
+    kind: passive
+    required: true
+  PHASE_V:
+    kind: passive
+    required: true
+  PHASE_W:
+    kind: passive
+    required: true
+motor_load:
+  phase_peak_current_A: 10.0
+  phase_rms_current_A: 6.0
+  max_regen_current_A: 6.0
+  source: docs/research/smart_robot/design_review.md
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - reusable_small_robot_wheel_bridge_budget
+    - placeholder_until_motor_selected
+  not_valid_for:
+    - final_motor_selection
+    - motor_thermal_signoff
+    - stall_current_signoff
+    - regeneration_energy_signoff
+    - control_loop_stability

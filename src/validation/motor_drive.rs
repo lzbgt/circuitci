@@ -1,5 +1,5 @@
 use crate::board_ir::Scenario;
-use crate::library::BoundBoard;
+use crate::library::{BoundBoard, MotorLoad};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -40,16 +40,39 @@ pub(super) fn validate_motor_bridge_budget(
         return;
     }
 
-    let Some(peak_current_a) = required_positive(scenario, "motor_phase_peak_current_A", findings)
-    else {
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+
+    let Some(peak_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_peak_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "motor_load.phase_peak_current_A",
+        findings,
+    ) else {
         return;
     };
-    let Some(rms_current_a) = required_positive(scenario, "motor_phase_rms_current_A", findings)
-    else {
+    let Some(rms_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_rms_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_rms_current_a),
+        "motor_load.phase_rms_current_A",
+        findings,
+    ) else {
         return;
     };
-    let Some(regen_current_a) = required_non_negative(scenario, "max_regen_current_A", findings)
-    else {
+    let Some(regen_current_a) = required_non_negative_with_fallback(
+        scenario,
+        "max_regen_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.max_regen_current_a),
+        "motor_load.max_regen_current_A",
+        findings,
+    ) else {
         return;
     };
     let Some(bridge_reference_current_a) =
@@ -178,6 +201,11 @@ pub(super) fn validate_motor_bridge_budget(
             ),
         );
         finding.component = Some(target.component.clone());
+        if let Some(evidence) = &motor_load {
+            finding
+                .measured
+                .insert("motor_component".to_string(), json!(evidence.component_id));
+        }
         finding
             .measured
             .insert("phase_shunt_power_W".to_string(), json!(shunt_power_w));
@@ -246,6 +274,40 @@ fn required_positive(scenario: &Scenario, name: &str, findings: &mut Vec<Finding
     }
 }
 
+fn required_positive_with_fallback(
+    scenario: &Scenario,
+    name: &str,
+    fallback: Option<f64>,
+    fallback_name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if scenario.parameters.contains_key(name) {
+        return required_positive(scenario, name, findings);
+    }
+    let Some(value) = fallback else {
+        missing_input(
+            scenario,
+            name,
+            &format!(
+                "Add motor_drive parameters.{name}, or set parameters.motor_component to a component model with {fallback_name}."
+            ),
+            findings,
+        );
+        return None;
+    };
+    if value.is_finite() && value > 0.0 {
+        Some(value)
+    } else {
+        missing_input(
+            scenario,
+            fallback_name,
+            &format!("Set {fallback_name} to a finite value greater than zero."),
+            findings,
+        );
+        None
+    }
+}
+
 fn required_non_negative(
     scenario: &Scenario,
     name: &str,
@@ -259,6 +321,40 @@ fn required_non_negative(
             scenario,
             name,
             &format!("Set motor_drive parameters.{name} to a finite non-negative value."),
+            findings,
+        );
+        None
+    }
+}
+
+fn required_non_negative_with_fallback(
+    scenario: &Scenario,
+    name: &str,
+    fallback: Option<f64>,
+    fallback_name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if scenario.parameters.contains_key(name) {
+        return required_non_negative(scenario, name, findings);
+    }
+    let Some(value) = fallback else {
+        missing_input(
+            scenario,
+            name,
+            &format!(
+                "Add motor_drive parameters.{name}, or set parameters.motor_component to a component model with {fallback_name}."
+            ),
+            findings,
+        );
+        return None;
+    };
+    if value.is_finite() && value >= 0.0 {
+        Some(value)
+    } else {
+        missing_input(
+            scenario,
+            fallback_name,
+            &format!("Set {fallback_name} to a finite non-negative value."),
             findings,
         );
         None
@@ -339,6 +435,59 @@ fn required_number(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>)
         );
         None
     }
+}
+
+struct MotorLoadEvidence<'a> {
+    component_id: String,
+    load: &'a MotorLoad,
+}
+
+fn motor_load_evidence<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<MotorLoadEvidence<'a>> {
+    let raw = scenario.parameters.get("motor_component")?;
+    let Some(component_id) = raw.as_str() else {
+        missing_input(
+            scenario,
+            "motor_component",
+            "Set motor_drive parameters.motor_component to a component id string.",
+            findings,
+        );
+        return None;
+    };
+    let Some(component) = bound.project.board.components.get(component_id) else {
+        missing_input(
+            scenario,
+            "motor_component",
+            "Set motor_drive parameters.motor_component to an existing motor/load component.",
+            findings,
+        );
+        return None;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        missing_input(
+            scenario,
+            "motor_component.model",
+            "Bind the motor/load component to a component model.",
+            findings,
+        );
+        return None;
+    };
+    let Some(load) = model.motor_load.as_ref() else {
+        missing_input(
+            scenario,
+            "motor_component.motor_load",
+            "Use a motor/load component model that declares motor_load current evidence.",
+            findings,
+        );
+        return None;
+    };
+    Some(MotorLoadEvidence {
+        component_id: component_id.to_string(),
+        load,
+    })
 }
 
 fn missing_input(scenario: &Scenario, input: &str, fix: &str, findings: &mut Vec<Finding>) {

@@ -110,7 +110,8 @@ IC/BGA stencil aperture rows, and paste spacing. Shared geometry lives in
 focused modules so source files stay below the 2000-line guard.
 
 Motor-drive rules are static design-budget screens. `motor_drive` scenarios
-require explicit current, connector, shunt, and gate-timing parameters so a
+require explicit current, connector, shunt, and gate-timing parameters, or a
+declared motor/load component model with `motor_load` current evidence, so a
 robot actuator bridge can fail closed on missing or undersized first-pass
 values before schematic capture. They do not imply switching-loss, FOC, SOA,
 thermal, or PCB copper sign-off.

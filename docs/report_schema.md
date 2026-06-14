@@ -772,7 +772,7 @@ metadata is present. Stable measured keys include `driver_high_voltage_V`,
 declare the check. They compare explicit first-pass motor bridge budget values,
 not simulated FOC behavior. Stable measured keys include
 `motor_phase_peak_current_A`, `motor_phase_rms_current_A`,
-`max_regen_current_A`, `phase_shunt_power_W`, and
+`max_regen_current_A`, `motor_component`, `phase_shunt_power_W`, and
 `phase_shunt_sense_voltage_V` when the corresponding comparison fails. Stable
 limit keys include `bridge_reference_current_A`,
 `bridge_device_current_class_A`, `motor_phase_peak_current_A`,

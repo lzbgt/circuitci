@@ -99,6 +99,13 @@ board:
         PHASE_U: phase_u
         PHASE_V: phase_v
         PHASE_W: phase_w
+    M1:
+      model: demo.smart_robot.wheel_motor_design_envelope
+      part_number: WHEEL_MOTOR_DESIGN_ENVELOPE
+      pins:
+        PHASE_U: phase_u
+        PHASE_V: phase_v
+        PHASE_W: phase_w
   nets:
     vwheel_sw:
       kind: power
@@ -180,9 +187,7 @@ scenarios:
     target:
       component: PWR_STAGE
     parameters:
-      motor_phase_peak_current_A: 10.0
-      motor_phase_rms_current_A: 6.0
-      max_regen_current_A: 6.0
+      motor_component: M1
       bridge_reference_current_A: 15.0
       bridge_device_current_class_A: 40.0
       phase_shunt_resistance_ohm: 0.005

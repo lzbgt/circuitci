@@ -246,6 +246,16 @@
       },
       "additionalProperties": false
     },
+    "motor_load": {
+      "type": "object",
+      "properties": {
+        "phase_peak_current_A": { "type": "number", "exclusiveMinimum": 0 },
+        "phase_rms_current_A": { "type": "number", "exclusiveMinimum": 0 },
+        "max_regen_current_A": { "type": "number", "minimum": 0 },
+        "source": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "model_faces": { "type": "object" },
     "datasheet": {
       "type": "object",

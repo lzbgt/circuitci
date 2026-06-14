@@ -38,6 +38,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub crystal: Option<Crystal>,
     #[serde(default)]
+    pub motor_load: Option<MotorLoad>,
+    #[serde(default)]
     pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
 }
@@ -257,6 +259,18 @@ pub struct Crystal {
     pub load_capacitance_f: f64,
     #[serde(default, rename = "load_capacitance_tolerance_F")]
     pub load_capacitance_tolerance_f: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MotorLoad {
+    #[serde(default, rename = "phase_peak_current_A")]
+    pub phase_peak_current_a: Option<f64>,
+    #[serde(default, rename = "phase_rms_current_A")]
+    pub phase_rms_current_a: Option<f64>,
+    #[serde(default, rename = "max_regen_current_A")]
+    pub max_regen_current_a: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

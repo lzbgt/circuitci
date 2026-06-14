@@ -104,6 +104,21 @@ computes effective load capacitance as `C1*C2/(C1+C2) + stray_capacitance_F`
 and compares that to the crystal load target. This is a static support-network
 screen, not oscillator startup or gain-margin sign-off.
 
+Motor and actuator load-envelope models can declare current evidence used by
+`motor_drive` scenarios:
+
+```yaml
+motor_load:
+  phase_peak_current_A: 10.0
+  phase_rms_current_A: 6.0
+  max_regen_current_A: 6.0
+  source: docs/research/smart_robot/design_review.md
+```
+
+These fields are load-budget evidence, not a dynamic motor model. Use
+datasheet- or measurement-backed values for a selected motor before treating
+the actuator bridge as fabrication-ready.
+
 Regulator and power-converter models may also declare static conversion
 metadata:
 

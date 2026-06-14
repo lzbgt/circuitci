@@ -72,6 +72,12 @@ fn smart_robot_wheel_bridge_budget_fails_undersized_shunt() {
             .any(|finding| finding["measured"]["phase_shunt_power_W"] == 0.18),
         "expected phase shunt power failure, got {bridge_findings:#?}"
     );
+    assert!(
+        bridge_findings
+            .iter()
+            .any(|finding| finding["measured"]["motor_component"] == "M1"),
+        "expected motor-load evidence to identify M1, got {bridge_findings:#?}"
+    );
 }
 
 fn findings_with_id<'a>(report: &'a Value, id: &str) -> Vec<&'a Value> {
