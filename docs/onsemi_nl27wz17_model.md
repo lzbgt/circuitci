@@ -27,6 +27,7 @@ It is not a MOSFET model and does not by itself prove output-drive waveform,
 switching edge rate, or laser pulse behavior.
 
 For TOF-R5001, the supplied schematic text contains `U5 = NL27WZ17DFT2G`, which
-indicates the available design files include the buffer-based Q2 driver
-revision. Validating the original pre-fix drive failure still requires the
-older schematic or measured dynamic evidence.
+identifies a dual Schmitt-trigger buffer in the available design files. It is
+not the replacement `Q2` MOSFET. Validating the original pre-fix drive failure
+still requires the older schematic, the working replacement MOSFET identity, or
+measured dynamic evidence.

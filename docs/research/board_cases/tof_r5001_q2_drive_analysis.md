@@ -19,7 +19,8 @@ Known bench/user facts:
 - `VLD` is actually `21.8 V`.
 - `Q9` is not mounted.
 - The original `Q2` drive path had a real drive issue.
-- The circuit works after the driver revision using `NL27WZ17`.
+- The circuit works after replacing `Q2` with a different MOSFET. The working
+  replacement MOSFET part number is currently unknown.
 
 Extracted design evidence:
 
@@ -27,7 +28,8 @@ Extracted design evidence:
 - `Q2` is in the `LED-TX-` low-side switch path.
 - `Q9` appears in the PCB document as `AO3400A`, but the project variation file contains no mounted/DNP variation data. The user-supplied not-mounted fact must therefore override the PCB component listing.
 - The design text contains stale `VLD-28.5V` labeling, while the measured/known rail for validation is `VLD = 21.8 V`.
-- The supplied schematic text contains `U5 = NL27WZ17DFT2G`, so these files appear to include the buffer-based revision rather than a clean pre-fix-only schematic.
+- The supplied schematic text contains `U5 = NL27WZ17DFT2G`. This identifies a
+  dual Schmitt-trigger buffer in the design, not the `Q2` MOSFET replacement.
 
 Source-backed component models added:
 
@@ -55,12 +57,14 @@ Issues identified for the original circuit review:
 1. `Q2` must be validated as TI `CSD17484F4`, not as a generic NMOS.
 2. `Q9` must be excluded from the mounted circuit because the board fact says it is not mounted.
 3. `VLD` must be validated at `21.8 V`; the stale `VLD-28.5V` label should not drive analysis.
-4. The supplied design includes `NL27WZ17DFT2G`, which is a dual non-inverting Schmitt-trigger buffer, not a MOSFET.
-5. The exact pre-fix Q2 drive failure still needs either the older schematic, a sourced CSD17484F4 SPICE model, or measured gate/drain/current waveforms to prove the dynamic failure mode.
+4. The supplied design includes `NL27WZ17DFT2G`, which is a dual non-inverting Schmitt-trigger buffer, not a MOSFET and not the replacement `Q2` part.
+5. The working replacement `Q2` MOSFET part number is not yet known.
+6. The exact pre-fix Q2 drive failure still needs either the older schematic, the replacement MOSFET identity, a sourced CSD17484F4 SPICE model, or measured gate/drain/current waveforms to prove the dynamic failure mode.
 
 Follow-up evidence that would make the diagnosis stronger:
 
-- The pre-fix schematic/layout revision before the `NL27WZ17` driver change.
+- The pre-fix schematic/layout revision and the working replacement `Q2`
+  MOSFET part number.
 - Laser/LED pulse current, pulse width, and duty cycle.
 - Q2 gate waveform, drain waveform, and load current waveform from the failing original circuit.
 - A sourced vendor or bench-calibrated SPICE model for `CSD17484F4`.

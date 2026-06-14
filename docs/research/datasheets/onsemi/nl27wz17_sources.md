@@ -20,4 +20,5 @@ Use notes:
 TOF-R5001 relevance:
 
 - The supplied TOF-R5001 schematic text contains `U5 = NL27WZ17DFT2G`.
-- That indicates the supplied design files include a buffer-based drive revision, not only the unfixed generic MOSFET path.
+- That identifies a dual Schmitt-trigger buffer in the supplied design files.
+- It is not the replacement `Q2` MOSFET; the working replacement MOSFET part number is currently unknown.
