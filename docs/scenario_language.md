@@ -74,6 +74,7 @@ Executable scenario types:
 - `power_tree`
 - `manufacturing`
 - `analog_transient`
+- `motor_drive`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -105,6 +106,7 @@ Canonical executable check IDs:
 - `INTERFACE_PROTECTION_REVIEW`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
+- `MOTOR_BRIDGE_BUDGET_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -1641,6 +1643,66 @@ VIH, or a 5 V output overdriving a lower-voltage receiver clamp. Load-transient
 stability, inrush, load-dependent dropout, loop stability, thermal behavior,
 and real ramp waveform shape still require datasheet-backed dynamic models or
 `analog_transient` scenarios.
+
+## Motor Drive Scenario Shape
+
+`motor_drive` scenarios validate explicit motor-controller and bridge budget
+inputs. They are deterministic schematic-budget checks for the first design
+pass, not FOC simulation, MOSFET SOA, thermal, or layout sign-off.
+
+```yaml
+scenarios:
+  - name: wheel_bridge_budget
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_BUDGET_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_phase_peak_current_A: 10.0
+      motor_phase_rms_current_A: 6.0
+      max_regen_current_A: 6.0
+      bridge_reference_current_A: 15.0
+      bridge_device_current_class_A: 40.0
+      phase_shunt_resistance_ohm: 0.005
+      phase_shunt_power_rating_W: 1.0
+      min_shunt_power_margin_ratio: 2.0
+      max_shunt_sense_voltage_V: 0.15
+      motor_connector_current_rating_A: 8.0
+      gate_resistor_ohm: 10.0
+      dead_time_ns: 200.0
+      pwm_frequency_Hz: 20000.0
+```
+
+`MOTOR_BRIDGE_BUDGET_VALID` checks:
+
+1. `target.component` names an existing bridge or power-stage component.
+2. The target component is bound to a component model, so the scenario is not
+   checking an anonymous schematic placeholder.
+3. `motor_phase_rms_current_A` may not exceed
+   `motor_phase_peak_current_A`.
+4. `motor_phase_rms_current_A` must fit the declared
+   `bridge_reference_current_A`.
+5. `motor_phase_peak_current_A` must fit the declared
+   `bridge_device_current_class_A`.
+6. Motor phase RMS current and maximum regeneration current must fit
+   `motor_connector_current_rating_A`.
+7. Phase shunt dissipation is computed as
+   `motor_phase_rms_current_A^2 * phase_shunt_resistance_ohm`; multiplied by
+   `min_shunt_power_margin_ratio`, it must not exceed
+   `phase_shunt_power_rating_W`.
+8. If `max_shunt_sense_voltage_V` is supplied, peak shunt sense voltage is
+   computed as `motor_phase_peak_current_A * phase_shunt_resistance_ohm` and
+   must fit that range.
+9. `gate_resistor_ohm`, `dead_time_ns`, and `pwm_frequency_Hz` must be finite
+   positive design inputs so the schematic has an explicit gate-timing budget.
+
+Missing or non-finite required values produce critical
+`VALIDATION_INPUT_MISSING` findings. This rule is intended to catch first-order
+robot motor-board mistakes such as an undersized shunt, connector, or bridge
+current class before schematic capture. It does not replace gate-driver
+datasheet timing review, switching-loss calculation, current-sense accuracy,
+regen clamp design, thermal modeling, or PCB copper-temperature validation.
 
 ## Firmware Update Scenario Shape
 

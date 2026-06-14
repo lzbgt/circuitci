@@ -36,6 +36,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `scenario_suggestions` | Inspect bound board evidence and propose runnable or non-runnable scenario YAML templates. |
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
+| `validation::motor_drive` | Static motor bridge budget rules over explicit current, shunt, connector, and gate-timing scenario inputs. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
@@ -107,6 +108,12 @@ edge/spacing, solder-mask openings/dams, solder-paste openings/size/area ratio,
 IC/BGA stencil aperture rows, and paste spacing. Shared geometry lives in
 `validation::manufacturing::geometry`; larger rule families are split into
 focused modules so source files stay below the 2000-line guard.
+
+Motor-drive rules are static design-budget screens. `motor_drive` scenarios
+require explicit current, connector, shunt, and gate-timing parameters so a
+robot actuator bridge can fail closed on missing or undersized first-pass
+values before schematic capture. They do not imply switching-loss, FOC, SOA,
+thermal, or PCB copper sign-off.
 
 ## Process Presets
 

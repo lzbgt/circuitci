@@ -103,6 +103,20 @@ regions. The rules intentionally stay static and two-dimensional:
 If a new geometry primitive cannot be represented precisely enough for the rule,
 add fail-closed importer coverage before adding an approximation.
 
+## Motor Drive Budgets
+
+`src/validation/motor_drive.rs` owns deterministic first-pass motor bridge
+budget checks. The rule consumes explicit scenario parameters, not inferred
+motor behavior. Required current, connector, shunt, gate-resistor, dead-time,
+and PWM values must be finite and positive where appropriate; unknown values
+produce `VALIDATION_INPUT_MISSING`.
+
+Keep this module limited to checks that can be evaluated from declared design
+budget numbers and component binding evidence. MOSFET SOA, switching loss,
+thermal paths, current-sense accuracy, regeneration clamps, and PCB copper
+temperature rise need source-backed model data or separate validation rules
+before they are treated as sign-off.
+
 ## Process Presets
 
 Process presets live in `validation::manufacturing::process`. They are named

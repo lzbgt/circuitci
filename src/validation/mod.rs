@@ -12,6 +12,7 @@ mod firmware_functional;
 mod interface_protection;
 mod io_voltage;
 mod manufacturing;
+mod motor_drive;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;
@@ -70,6 +71,7 @@ pub(super) const USB_VBUS_ROUTE_VALID: &str = "USB_VBUS_ROUTE_VALID";
 pub(super) const USB_RETURN_PATH_VALID: &str = "USB_RETURN_PATH_VALID";
 pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
+pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "gpio_backdrive",
     "reset_boot",
@@ -82,6 +84,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "control_line_sequence",
     "clock",
     "analog_transient",
+    "motor_drive",
 ];
 
 #[derive(Debug, Default)]
@@ -428,6 +431,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                         output,
                     )
                 }
+                MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
+                    motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
+                }
                 GPIO_BACKDRIVE
                 | INTERFACE_PROTECTION_REVIEW
                 | RESET_RELEASE_AFTER_POWER_VALID
@@ -467,7 +473,8 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | USB_ROUTE_GEOMETRY_VALID
                 | USB_VBUS_ROUTE_VALID
                 | USB_RETURN_PATH_VALID
-                | SPICE_TRANSIENT_ANALYSIS => findings.push(Finding::critical(
+                | SPICE_TRANSIENT_ANALYSIS
+                | MOTOR_BRIDGE_BUDGET_VALID => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,
                     format!(

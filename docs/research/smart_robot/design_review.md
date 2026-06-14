@@ -96,6 +96,9 @@ left/right reusable wheel controller pass:
 - Generic CAN transceiver MCU-side compatibility.
 - Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
   switched wheel rail.
+- First-pass motor bridge budget: 10 A phase peak, 6 A phase RMS, 6 A
+  regeneration, 5 mohm / 1 W phase shunts with 2x power margin, 8 A motor
+  connector rating, 10 ohm gate resistors, 200 ns dead time, and 20 kHz PWM.
 
 Do not change the first fabrication to a true 6-phase motor/inverter unless
 there is a sourced motor requirement. True 6-phase can reduce torque ripple or
@@ -103,7 +106,8 @@ add redundancy, but it doubles the inverter, current sensing, firmware timing,
 layout, and validation burden. For balancing robots, the better first target is
 standard 3-phase FOC with encoder/Hall feedback and enough control-loop rate.
 
-Before layout, treat CSD88599Q5DC as a sourced preliminary bridge candidate.
-The next validation slice must add motor current profiles, shunt values, gate
-resistors, dead-time/gate-charge checks, connector current, thermal paths, and
-regeneration behavior before fabrication sign-off.
+Before layout, treat CSD88599Q5DC as a sourced preliminary bridge candidate
+with a checked static budget, not final power-stage sign-off. The next
+validation slice must replace the policy current envelope with selected motor
+evidence, then add gate-charge/switching-loss checks, MOSFET SOA, thermal
+paths, regeneration clamp behavior, and PCB copper-temperature validation.

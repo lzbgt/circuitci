@@ -82,6 +82,12 @@ robot control-stack design pass.
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
   inputs, CAN transceiver MCU-side logic, rail budgets, and a preliminary
-  3x CSD88599Q5DC wheel bridge candidate. It does not yet validate MOSFET SOA,
-  shunt values, gate charge, dead time, thermal behavior, or motor-control loop
-  stability.
+  3x CSD88599Q5DC wheel bridge candidate.
+- The wheel actuator now also checks an explicit first-pass bridge budget:
+  10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
+  8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
+  20 kHz PWM. These values are design-policy inputs for a reusable small robot
+  actuator, not sourced motor characterization.
+- The wheel slice does not yet validate MOSFET SOA, gate charge, switching
+  loss, current-sense accuracy, thermal behavior, regeneration clamp energy,
+  PCB copper temperature rise, or motor-control loop stability.

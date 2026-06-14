@@ -173,3 +173,23 @@ scenarios:
     checks:
       - POWER_TREE_VALID
       - IO_VOLTAGE_COMPATIBLE
+  - name: wheel_actuator_bridge_budget
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_BUDGET_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_phase_peak_current_A: 10.0
+      motor_phase_rms_current_A: 6.0
+      max_regen_current_A: 6.0
+      bridge_reference_current_A: 15.0
+      bridge_device_current_class_A: 40.0
+      phase_shunt_resistance_ohm: 0.005
+      phase_shunt_power_rating_W: 1.0
+      min_shunt_power_margin_ratio: 2.0
+      max_shunt_sense_voltage_V: 0.15
+      motor_connector_current_rating_A: 8.0
+      gate_resistor_ohm: 10.0
+      dead_time_ns: 200.0
+      pwm_frequency_Hz: 20000.0

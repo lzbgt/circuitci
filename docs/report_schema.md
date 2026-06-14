@@ -116,6 +116,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
+- `MOTOR_BRIDGE_BUDGET_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -766,6 +767,17 @@ metadata is present. Stable measured keys include `driver_high_voltage_V`,
 `receiver_rail_voltage_V`, `source_impedance_ohm`, `diode_drop_V`, and
 `injection_current_A`. Stable limit keys include `receiver_vih_min_V` and
 `injection_current_A`.
+
+`MOTOR_BRIDGE_BUDGET_VALID` reports are emitted by `motor_drive` scenarios that
+declare the check. They compare explicit first-pass motor bridge budget values,
+not simulated FOC behavior. Stable measured keys include
+`motor_phase_peak_current_A`, `motor_phase_rms_current_A`,
+`max_regen_current_A`, `phase_shunt_power_W`, and
+`phase_shunt_sense_voltage_V` when the corresponding comparison fails. Stable
+limit keys include `bridge_reference_current_A`,
+`bridge_device_current_class_A`, `motor_phase_peak_current_A`,
+`motor_connector_current_rating_A`, `phase_shunt_power_rating_W`,
+`min_shunt_power_margin_ratio`, and `max_shunt_sense_voltage_V`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus
