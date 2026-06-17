@@ -28,8 +28,9 @@ placement scenarios from imported CAD geometry, plus first-pass phase and
 for the selected wheel current envelope. The logical wheel model also runs a
 first-pass CSD88599Q5DC bridge loss/thermal budget screen from the sourced
 reference-loss point and a first-pass explicit `REGEN1` regeneration absorber
-budget screen; these are not final SOA, switching-loss, repeated-pulse regen,
-or selected absorber sign-off.
+budget screen, plus a static shunt/gain/ADC current-sense accuracy screen;
+these are not final SOA, switching-loss, PWM sampling, repeated-pulse regen, or
+selected absorber/amplifier sign-off.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.
 

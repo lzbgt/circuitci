@@ -337,6 +337,11 @@ without explicit imported mechanical evidence.
   explicit A/mm policy. It does not compute copper temperature rise, current
   sharing across pours, thermal-via effectiveness, MOSFET SOA, switching loss,
   or regeneration transient energy.
+- `MOTOR_CURRENT_SENSE_ACCURACY_VALID` sums declared shunt tolerance, gain
+  error, input offset, and ADC quantization into a static worst-case current
+  error budget, and checks peak ADC range plus minimum-current ADC counts. It
+  does not prove PWM sample timing, common-mode rejection, amplifier bandwidth,
+  ADC aperture behavior, calibration firmware, or thermal drift.
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID` compares phase-shunt placement and
   current-sense route distances against explicit layout policy. It does not
   compute shunt parasitics, amplifier gain/offset/noise, ADC resolution, PWM

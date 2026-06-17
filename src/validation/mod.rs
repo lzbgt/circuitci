@@ -78,6 +78,7 @@ pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
 pub(super) const MOTOR_REGEN_CLAMP_VALID: &str = "MOTOR_REGEN_CLAMP_VALID";
 pub(super) const MOTOR_ROUTE_CURRENT_VALID: &str = "MOTOR_ROUTE_CURRENT_VALID";
+pub(super) const MOTOR_CURRENT_SENSE_ACCURACY_VALID: &str = "MOTOR_CURRENT_SENSE_ACCURACY_VALID";
 pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
@@ -464,6 +465,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 MOTOR_ROUTE_CURRENT_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_route_current(bound, scenario, &mut findings)
                 }
+                MOTOR_CURRENT_SENSE_ACCURACY_VALID if scenario.scenario_type == "motor_drive" => {
+                    motor_drive::validate_motor_current_sense_accuracy(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 MOTOR_CURRENT_SENSE_PLACEMENT_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_current_sense_placement(
                         bound,
@@ -520,6 +528,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_REGEN_CLAMP_VALID
                 | MOTOR_ROUTE_CURRENT_VALID
+                | MOTOR_CURRENT_SENSE_ACCURACY_VALID
                 | MOTOR_CURRENT_SENSE_PLACEMENT_VALID
                 | LOAD_CONNECTOR_CURRENT_VALID => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",

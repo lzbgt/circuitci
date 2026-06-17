@@ -124,14 +124,17 @@ explicit board thermal-budget parameters. The only built-in loss model is
 source-reference scaling by RMS phase current. Regeneration clamp checks consume
 an explicit single-event energy envelope, bus capacitance, voltage window, and
 named absorber component; they do not derive rotor energy from topology or
-motor guesses. Keep SOA curves, switching transition loss, gate-charge timing,
-transient thermal impedance, repeated-pulse clamp heating, and measured
+motor guesses. Current-sense accuracy checks consume explicit shunt, gain,
+ADC, offset, and tolerance budgets, then compute peak ADC range, minimum-current
+ADC counts, and conservative worst-case current error. Keep SOA curves,
+switching transition loss, gate-charge timing, transient thermal impedance,
+PWM sampling/common-mode behavior, repeated-pulse clamp heating, and measured
 temperature as separate evidence-backed rules.
 
 Keep this module limited to checks that can be evaluated from declared design
 budget numbers, component binding evidence, and explicit layout geometry.
-MOSFET SOA, switching loss, thermal paths, current-sense accuracy, selected
-regeneration absorber behavior, and PCB copper temperature rise need
+MOSFET SOA, switching loss, thermal paths, current-sense waveform behavior,
+selected regeneration absorber behavior, and PCB copper temperature rise need
 source-backed model data or separate validation rules before they are treated
 as sign-off.
 

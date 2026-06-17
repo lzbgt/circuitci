@@ -47,6 +47,12 @@ fn smart_robot_wheel_bridge_budget_passes() {
             }),
         "wheel actuator must expose the demo regen-clamp limitation: {report:#?}"
     );
+    assert!(
+        !findings_with_id(&report, "MOTOR_CURRENT_SENSE_ACCURACY_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "wheel actuator current-sense accuracy budget should pass: {report:#?}"
+    );
 }
 
 #[test]
@@ -611,6 +617,41 @@ fn smart_robot_wheel_current_sense_placement_fails_remote_shunt() {
                 && finding["limit"]["max_shunt_to_reference_distance_mm"] == 1.0
         }),
         "expected remote phase-shunt placement failure, got {placement_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_current_sense_accuracy_fails_low_gain() {
+    let (dir, project) =
+        mutated_wheel_actuator_project("sense_gain_V_per_V: 20.0", "sense_gain_V_per_V: 2.0");
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let accuracy_findings = findings_with_id(&report, "MOTOR_CURRENT_SENSE_ACCURACY_VALID");
+    assert!(
+        accuracy_findings.iter().any(|finding| {
+            let counts = finding["measured"]["adc_counts_at_min_current"]
+                .as_f64()
+                .unwrap();
+            finding["component"] == "PWR_STAGE"
+                && (counts - 6.204545454545455).abs() < 1e-9
+                && finding["limit"]["min_adc_counts_at_min_current"] == 20.0
+        }),
+        "expected low-gain current-sense resolution failure, got {accuracy_findings:#?}"
     );
 }
 

@@ -828,6 +828,16 @@ measured keys include `route_current_A`, `route_current_source`,
 Stable limit keys include `max_current_density_A_per_mm` and
 `required_route_width_mm`.
 
+`MOTOR_CURRENT_SENSE_ACCURACY_VALID` reports are emitted by `motor_drive`
+scenarios that declare shunt, gain, ADC, offset, tolerance, and error-budget
+parameters. Stable measured keys include `peak_sense_output_voltage_V`,
+`adc_counts_at_min_current`, `total_current_error_A`,
+`quantization_error_A`, `offset_error_A`, `shunt_tolerance_error_A`,
+`gain_error_A`, `adc_lsb_voltage_V`, and `motor_component`, depending on which
+comparison fails. Stable limit keys include
+`effective_adc_input_max_voltage_V`, `min_adc_counts_at_min_current`, and
+`max_total_current_error_A`.
+
 `MOTOR_CURRENT_SENSE_PLACEMENT_VALID` reports are emitted by `motor_drive`
 scenarios that declare phase-shunt placements, paired phase routes, paired
 sense routes, and explicit distance limits. Stable measured keys include

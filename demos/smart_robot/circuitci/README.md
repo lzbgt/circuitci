@@ -74,6 +74,11 @@ board:
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID` first-pass shunt and current-sense
   route placement checks for the three phase shunts near the bridge and phase
   copper.
+- `MOTOR_CURRENT_SENSE_ACCURACY_VALID` first-pass static measurement-chain
+  screen: 5 mohm shunt, 1% shunt tolerance, 20 V/V gain, 0.5% gain error,
+  100 uV input offset, 3.3 V 12-bit ADC reference, 3.0 V usable ADC input
+  range, at least 20 ADC counts at 0.5 A, and 0.25 A maximum worst-case static
+  current error.
 - JST VH 8-pin actuator-bus connector screening for the switched wheel rail
   with 1.5x current margin.
 
@@ -122,7 +127,8 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
   accuracy, true MOSFET SOA, switching transition loss, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
   assembly evidence, and final routed layout copper beyond the first-pass
-  bridge-loss, regen-envelope, route-width, and shunt-placement checks.
+  bridge-loss, regen-envelope, route-width, shunt-placement, and
+  current-sense static-accuracy checks.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

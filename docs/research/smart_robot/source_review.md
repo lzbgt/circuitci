@@ -192,11 +192,15 @@ robot control-stack design pass.
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.
 - The wheel slice now validates first-pass phase-shunt placement and
-  current-sense route distances from explicit layout evidence. It does not yet
-  validate true MOSFET SOA, gate charge, switching transition loss,
-  current-sense electrical accuracy, transient thermal impedance, selected
-  regeneration absorber repeated-pulse behavior, PCB copper temperature rise,
-  or motor-control loop stability.
+  current-sense route distances from explicit layout evidence. It also validates
+  a first-pass static current-sense accuracy budget: 5 mohm shunt, 1% shunt
+  tolerance, 20 V/V gain, 0.5% gain error, 100 uV input offset, 3.3 V 12-bit
+  ADC reference, 3.0 V usable ADC input range, at least 20 ADC counts at 0.5 A,
+  and 0.25 A maximum worst-case static current error. It does not yet validate
+  true MOSFET SOA, gate charge, switching transition loss, selected amplifier
+  bandwidth/common-mode behavior, PWM sampling, transient thermal impedance,
+  selected regeneration absorber repeated-pulse behavior, PCB copper
+  temperature rise, or motor-control loop stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four

@@ -81,9 +81,9 @@ evidence. The imported route widths now also drive the wheel actuator CAN
 placement checks and first-pass motor phase/`VBAT_SW` route-current checks. It
 also drives the first-pass phase-shunt and current-sense route placement
 checks. It is still not a final layout sign-off: it does not prove MOSFET
-SOA/thermal margins, current-sense accuracy, copper temperature rise,
-selected regeneration absorber behavior, repeated-pulse heating, EMC, or
-manufacturing DRC.
+SOA/thermal margins, dynamic current-sense waveform behavior, copper
+temperature rise, selected regeneration absorber behavior, repeated-pulse
+heating, EMC, or manufacturing DRC.
 
 ## PMU
 

@@ -113,6 +113,7 @@ Canonical executable check IDs:
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
 - `MOTOR_REGEN_CLAMP_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
+- `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -1957,6 +1958,53 @@ shunt-to-route distance for the paired phase and sense nets, and total
 current-sense route length. This is a layout evidence guard for keeping shunts
 and Kelvin/sense traces compact; it does not prove current-sense gain,
 offset/noise, ADC range, copper temperature rise, or PWM common-mode rejection.
+
+`MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks a declared shunt/gain/ADC accuracy
+budget:
+
+```yaml
+scenarios:
+  - name: wheel_current_sense_accuracy
+    type: motor_drive
+    checks:
+      - MOTOR_CURRENT_SENSE_ACCURACY_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      phase_shunt_resistance_ohm: 0.005
+      shunt_tolerance_ratio: 0.01
+      sense_gain_V_per_V: 20.0
+      gain_error_ratio: 0.005
+      input_offset_voltage_V: 0.0001
+      adc_reference_voltage_V: 3.3
+      adc_input_max_voltage_V: 3.0
+      adc_resolution_bits: 12
+      min_current_measurement_A: 0.5
+      min_adc_counts_at_min_current: 20.0
+      max_total_current_error_A: 0.25
+```
+
+Required evidence:
+
+- `target.component` names the motor bridge or current-sense owner.
+- Motor peak/RMS current comes from explicit scenario parameters, or from
+  `parameters.motor_component` bound to a model with `motor_load`.
+- `phase_shunt_resistance_ohm`, `shunt_tolerance_ratio`,
+  `sense_gain_V_per_V`, `gain_error_ratio`, `input_offset_voltage_V`,
+  `adc_reference_voltage_V`, `adc_input_max_voltage_V`, and
+  `adc_resolution_bits` define the measurement chain.
+- `min_current_measurement_A` and `min_adc_counts_at_min_current` define the
+  minimum current resolution policy.
+- `max_total_current_error_A` defines the allowed worst-case static current
+  error.
+
+The validator checks peak current output voltage against the usable ADC input
+range, checks ADC counts at the declared minimum measurable current, and sums
+worst-case quantization, input-offset, shunt-tolerance, and gain errors at the
+declared RMS current. This is a static budget screen; it does not prove PWM
+sample timing, common-mode rejection, amplifier bandwidth/slew, ADC aperture
+jitter, calibration implementation, thermal drift, or firmware filtering.
 
 ## Load Budget Scenario Shape
 

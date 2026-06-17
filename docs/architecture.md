@@ -120,9 +120,10 @@ undersized first-pass values before schematic capture.
 thermal-budget screen from component `motor_bridge` metadata.
 `MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event
 regeneration envelope against bus capacitance and a named absorber/clamp
-component. These rules still do not imply FOC, true MOSFET SOA,
-switching-waveform, repeated-pulse thermal, firmware regeneration-control, or
-PCB copper-temperature sign-off.
+component. `MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks declared shunt, gain,
+ADC, offset, tolerance, and error budgets. These rules still do not imply FOC,
+true MOSFET SOA, switching-waveform, PWM sampling behavior, repeated-pulse
+thermal, firmware regeneration-control, or PCB copper-temperature sign-off.
 
 Load-budget rules are static connector/load screens. `load_budget` scenarios
 target a load power pin and compare its declared `max_supply_current_A` against

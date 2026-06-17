@@ -4,7 +4,7 @@ use crate::reports::Finding;
 use serde_json::json;
 
 use super::{
-    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID,
+    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_CURRENT_SENSE_ACCURACY_VALID,
     MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_REGEN_CLAMP_VALID, MOTOR_ROUTE_CURRENT_VALID,
 };
 
@@ -866,6 +866,202 @@ pub(super) fn validate_motor_current_sense_placement(
     }
 }
 
+pub(super) fn validate_motor_current_sense_accuracy(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    if !bound
+        .project
+        .board
+        .components
+        .contains_key(&target.component)
+    {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(peak_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_peak_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "motor_load.phase_peak_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(rms_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_rms_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_rms_current_a),
+        "motor_load.phase_rms_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(shunt_resistance_ohm) =
+        required_positive(scenario, "phase_shunt_resistance_ohm", findings)
+    else {
+        return;
+    };
+    let Some(shunt_tolerance_ratio) =
+        required_non_negative(scenario, "shunt_tolerance_ratio", findings)
+    else {
+        return;
+    };
+    let Some(sense_gain) = required_positive(scenario, "sense_gain_V_per_V", findings) else {
+        return;
+    };
+    let Some(gain_error_ratio) = required_non_negative(scenario, "gain_error_ratio", findings)
+    else {
+        return;
+    };
+    let Some(input_offset_voltage_v) =
+        required_non_negative(scenario, "input_offset_voltage_V", findings)
+    else {
+        return;
+    };
+    let Some(adc_reference_voltage_v) =
+        required_positive(scenario, "adc_reference_voltage_V", findings)
+    else {
+        return;
+    };
+    let Some(adc_input_max_voltage_v) =
+        required_positive(scenario, "adc_input_max_voltage_V", findings)
+    else {
+        return;
+    };
+    let Some(adc_resolution_bits) = required_resolution_bits(scenario, findings) else {
+        return;
+    };
+    let Some(min_current_measurement_a) =
+        required_positive(scenario, "min_current_measurement_A", findings)
+    else {
+        return;
+    };
+    let Some(min_adc_counts_at_min_current) =
+        required_positive(scenario, "min_adc_counts_at_min_current", findings)
+    else {
+        return;
+    };
+    let Some(max_total_current_error_a) =
+        required_positive(scenario, "max_total_current_error_A", findings)
+    else {
+        return;
+    };
+
+    let peak_output_voltage_v = peak_current_a * shunt_resistance_ohm * sense_gain;
+    let effective_adc_input_max_v = adc_input_max_voltage_v.min(adc_reference_voltage_v);
+    if peak_output_voltage_v > effective_adc_input_max_v {
+        current_sense_accuracy_finding(
+            scenario,
+            &target.component,
+            CurrentSenseAccuracyComparison {
+                measured_name: "peak_sense_output_voltage_V",
+                limit_name: "effective_adc_input_max_voltage_V",
+                measured: peak_output_voltage_v,
+                limit: effective_adc_input_max_v,
+                message: "Peak motor current drives the current-sense output beyond the usable ADC input range.",
+                fix: "Reduce shunt resistance or current-sense gain, increase the ADC input range, or lower the motor peak-current limit.",
+            },
+            findings,
+        );
+    }
+
+    let adc_full_scale_codes = 2_f64.powi(adc_resolution_bits as i32) - 1.0;
+    let adc_lsb_voltage_v = adc_reference_voltage_v / adc_full_scale_codes;
+    let min_current_output_voltage_v =
+        min_current_measurement_a * shunt_resistance_ohm * sense_gain;
+    let adc_counts_at_min_current = min_current_output_voltage_v / adc_lsb_voltage_v;
+    if adc_counts_at_min_current < min_adc_counts_at_min_current {
+        current_sense_accuracy_finding(
+            scenario,
+            &target.component,
+            CurrentSenseAccuracyComparison {
+                measured_name: "adc_counts_at_min_current",
+                limit_name: "min_adc_counts_at_min_current",
+                measured: adc_counts_at_min_current,
+                limit: min_adc_counts_at_min_current,
+                message: "Declared minimum measurable phase current produces too few ADC counts.",
+                fix: "Increase current-sense gain, use a larger shunt if thermal budget allows, improve ADC resolution/reference range, or raise the minimum trustworthy current threshold.",
+            },
+            findings,
+        );
+    }
+
+    let quantization_error_a = 0.5 * adc_lsb_voltage_v / (shunt_resistance_ohm * sense_gain);
+    let offset_error_a = input_offset_voltage_v / shunt_resistance_ohm;
+    let shunt_tolerance_error_a = rms_current_a * shunt_tolerance_ratio;
+    let gain_error_a = rms_current_a * gain_error_ratio;
+    let total_current_error_a =
+        quantization_error_a + offset_error_a + shunt_tolerance_error_a + gain_error_a;
+    if total_current_error_a > max_total_current_error_a {
+        let mut finding = Finding::critical(
+            MOTOR_CURRENT_SENSE_ACCURACY_VALID,
+            &scenario.name,
+            format!(
+                "Worst-case current-sense error {total_current_error_a:.6} A exceeds {max_total_current_error_a:.6} A."
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        finding.measured.insert(
+            "total_current_error_A".to_string(),
+            json!(total_current_error_a),
+        );
+        finding.measured.insert(
+            "quantization_error_A".to_string(),
+            json!(quantization_error_a),
+        );
+        finding
+            .measured
+            .insert("offset_error_A".to_string(), json!(offset_error_a));
+        finding.measured.insert(
+            "shunt_tolerance_error_A".to_string(),
+            json!(shunt_tolerance_error_a),
+        );
+        finding
+            .measured
+            .insert("gain_error_A".to_string(), json!(gain_error_a));
+        finding
+            .measured
+            .insert("adc_lsb_voltage_V".to_string(), json!(adc_lsb_voltage_v));
+        if let Some(evidence) = &motor_load {
+            finding
+                .measured
+                .insert("motor_component".to_string(), json!(evidence.component_id));
+        }
+        finding.limit.insert(
+            "max_total_current_error_A".to_string(),
+            json!(max_total_current_error_a),
+        );
+        finding.suggested_fixes = vec![
+            "Use a tighter shunt, lower-offset amplifier, calibrated gain path, or higher-resolution ADC.".to_string(),
+            "Rebalance shunt value and gain while keeping peak ADC range and shunt thermal limits valid.".to_string(),
+            "Treat this as a static worst-case screen; validate PWM common-mode rejection and sampled waveform behavior separately.".to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
 fn required_route_nets(scenario: &Scenario, findings: &mut Vec<Finding>) -> Vec<String> {
     let Some(raw) = scenario.parameters.get("route_nets") else {
         missing_input(
@@ -1281,6 +1477,38 @@ fn current_sense_distance_finding(
     findings.push(finding);
 }
 
+struct CurrentSenseAccuracyComparison<'a> {
+    measured_name: &'a str,
+    limit_name: &'a str,
+    measured: f64,
+    limit: f64,
+    message: &'a str,
+    fix: &'a str,
+}
+
+fn current_sense_accuracy_finding(
+    scenario: &Scenario,
+    component: &str,
+    comparison: CurrentSenseAccuracyComparison<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        MOTOR_CURRENT_SENSE_ACCURACY_VALID,
+        &scenario.name,
+        comparison.message,
+    );
+    finding.component = Some(component.to_string());
+    finding.measured.insert(
+        comparison.measured_name.to_string(),
+        json!(comparison.measured),
+    );
+    finding
+        .limit
+        .insert(comparison.limit_name.to_string(), json!(comparison.limit));
+    finding.suggested_fixes = vec![comparison.fix.to_string()];
+    findings.push(finding);
+}
+
 fn positive_bridge_value(
     scenario: &Scenario,
     name: &str,
@@ -1303,6 +1531,38 @@ fn positive_bridge_value(
             scenario,
             name,
             &format!("Set {name} to a finite value greater than zero."),
+            findings,
+        );
+        None
+    }
+}
+
+fn required_resolution_bits(scenario: &Scenario, findings: &mut Vec<Finding>) -> Option<u32> {
+    let Some(raw) = scenario.parameters.get("adc_resolution_bits") else {
+        missing_input(
+            scenario,
+            "adc_resolution_bits",
+            "Add motor_drive parameters.adc_resolution_bits.",
+            findings,
+        );
+        return None;
+    };
+    let Some(bits) = raw.as_u64() else {
+        missing_input(
+            scenario,
+            "adc_resolution_bits",
+            "Set motor_drive parameters.adc_resolution_bits to an integer.",
+            findings,
+        );
+        return None;
+    };
+    if (1..=30).contains(&bits) {
+        Some(bits as u32)
+    } else {
+        missing_input(
+            scenario,
+            "adc_resolution_bits",
+            "Set motor_drive parameters.adc_resolution_bits between 1 and 30.",
             findings,
         );
         None

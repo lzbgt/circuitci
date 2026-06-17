@@ -148,6 +148,10 @@ left/right reusable wheel controller pass:
 - First-pass phase-shunt/current-sense placement contract from explicit layout
   evidence, keeping the three phase shunts close to the bridge, phase copper,
   and sense traces.
+- First-pass current-sense static accuracy contract: 5 mohm shunt, 1% shunt
+  tolerance, 20 V/V gain, 0.5% gain error, 100 uV input offset, 3.3 V 12-bit
+  ADC reference, 3.0 V usable ADC input range, at least 20 ADC counts at 0.5 A,
+  and 0.25 A maximum worst-case static current error.
 
 Do not change the first fabrication to a true 6-phase motor/inverter unless
 there is a sourced motor requirement. True 6-phase can reduce torque ripple or
@@ -161,9 +165,9 @@ The next validation slice must replace
 `demo.smart_robot.wheel_motor_design_envelope` with selected motor datasheet or
 measurement evidence, then add true SOA curves, switching transition loss,
 gate-charge timing, transient thermal paths, selected regeneration absorber
-behavior, repeated-pulse clamp heating, current-sense electrical accuracy,
-imported final layout evidence, cable assembly evidence, and PCB
-copper-temperature validation.
+behavior, repeated-pulse clamp heating, selected current-sense amplifier/ADC
+part behavior, PWM sampling/common-mode rejection, imported final layout
+evidence, cable assembly evidence, and PCB copper-temperature validation.
 
 ## Servo Payload Slice Status
 
