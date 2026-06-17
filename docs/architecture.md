@@ -36,6 +36,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `scenario_suggestions` | Inspect bound board evidence and propose runnable or non-runnable scenario YAML templates. |
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
+| `validation::interface_protection` | Static signal-protection, routed-interface, and topology-scoped bus termination rules. |
 | `validation::motor_drive` | Static motor bridge budget rules over explicit current, shunt, connector, and gate-timing scenario inputs. |
 | `validation::load_budget` | Static load-to-connector current and voltage budget rules over explicit load and connector metadata. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
@@ -123,6 +124,13 @@ an explicit connector rating or a connector component model with `connector`
 metadata. This is useful for reusable robot payload connectors before CAD
 capture; it does not prove cable assembly quality, vibration retention, thermal
 rise, or pulsed-load behavior.
+
+Interface-protection rules cover clamp devices, level shifters, USB connector
+mechanics/routing, and explicit bus termination. `BUS_TERMINATION_VALID` is
+topology-scoped: it requires the scenario to declare endpoint role, bus nets,
+expected resistance, tolerance, and a specific resistor with `spice.value_ohm`.
+It intentionally does not infer that every CAN/RS485 board should carry local
+termination.
 
 ## Process Presets
 

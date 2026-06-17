@@ -105,6 +105,7 @@ Canonical executable check IDs:
 - `CONTROL_LINE_RELEASE_SEQUENCE`
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
+- `BUS_TERMINATION_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
@@ -322,6 +323,42 @@ Clamp review algorithm:
 6. If the model declares `line_capacitance_F` and the scenario declares
    `max_line_capacitance_F`, require the clamp capacitance to fit the interface
    budget.
+
+Bus termination review uses `BUS_TERMINATION_VALID` with explicit topology
+metadata. It does not infer that every CAN/RS485 node should be terminated.
+Endpoint role, resistor component, expected resistance, and tolerance must be
+declared by the scenario.
+
+```yaml
+scenarios:
+  - name: can_endpoint_termination
+    type: interface_protection
+    checks:
+      - BUS_TERMINATION_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      board_is_bus_endpoint: true
+      termination_component: RT_CAN
+      expected_termination_ohm: 120.0
+      termination_tolerance_percent: 5.0
+```
+
+Bus termination algorithm:
+
+1. Require `line_a_net`, `line_b_net`, `board_is_bus_endpoint`,
+   `expected_termination_ohm`, and `termination_tolerance_percent`.
+2. Require both bus nets to be declared and distinct.
+3. When `board_is_bus_endpoint` is true, require
+   `termination_component`.
+4. Resolve that component, require `spice.primitive: resistor`, require
+   positive `spice.value_ohm`, and require the resistor to connect directly
+   across the two declared bus nets.
+5. Require the resistor value to fit `expected_termination_ohm` within
+   `termination_tolerance_percent`.
+6. When `board_is_bus_endpoint` is false, a supplied termination component
+   connected across the two nets is a critical finding, because non-endpoint
+   nodes must not add local termination in a two-endpoint bus topology.
 
 USB connector coverage uses `USB_CONNECTOR_PROTECTION_VALID` against a connector
 model that declares `usb_connector` pin metadata. The rule verifies that D+ and

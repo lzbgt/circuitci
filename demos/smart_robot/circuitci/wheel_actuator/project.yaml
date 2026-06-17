@@ -90,6 +90,15 @@ board:
         CANH: robot_canh
         CANL: robot_canl
         GND: gnd
+    RT_CAN1:
+      model: generic.analog.resistor
+      part_number: 120R_CAN_TERM_ENDPOINT_OPTION
+      pins:
+        A: robot_canh
+        B: robot_canl
+      spice:
+        primitive: resistor
+        value_ohm: 120.0
     ENC1:
       model: demo.smart_robot.encoder_hall_3v3
       part_number: ENCODER_OR_HALL_3V3
@@ -256,3 +265,14 @@ scenarios:
       component: UCAN_ESD1
     parameters:
       clamp: canl
+  - name: wheel_actuator_can_endpoint_termination
+    type: interface_protection
+    checks:
+      - BUS_TERMINATION_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      board_is_bus_endpoint: true
+      termination_component: RT_CAN1
+      expected_termination_ohm: 120.0
+      termination_tolerance_percent: 5.0

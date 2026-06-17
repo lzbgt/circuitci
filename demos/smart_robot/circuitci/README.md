@@ -15,6 +15,7 @@ robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
 - TI THVD1450 3.3 V RS485 smart-servo transceiver rail and MCU-side
   interface.
 - TI ESDS552 static RS485 A/B clamp presence and ground-reference review.
+- Explicit 120 ohm endpoint termination resistor checks for CAN and RS485.
 - Static rail budget and 3.3 V logic-level compatibility.
 
 `pmu/project.yaml` models the first reusable PMU board:
@@ -33,6 +34,8 @@ board:
 - 3.3 V encoder/Hall input compatibility.
 - TI TCAN3413 3.3 V CAN command-link rail and MCU-side compatibility.
 - TI ESD2CAN24-Q1 static CANH/CANL clamp presence and ground-reference review.
+- Explicit 120 ohm endpoint termination resistor check for the CAN endpoint
+  population option.
 - Preliminary 3x CSD88599Q5DC half-bridge wheel power-stage budget.
 - `M1` motor-load design envelope feeding the bridge budget: 10 A phase peak,
   6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
@@ -78,13 +81,14 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 
 - Exact AT32F435 package pin assignment.
 - Exact LicheeRV Nano header pin numbers and mechanical footprint.
-- CAN/RS485 termination, cable length, common-mode range, connector pinout,
-  TVS placement/stub length, surge-energy policy, and EMC/layout behavior.
+- CAN/RS485 cable length, common-mode range, connector pinout, TVS and
+  termination placement/stub length, surge-energy policy, and EMC/layout
+  behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
   MOSFET SOA, switching loss, thermal, regeneration clamp, CAN/RS485 bus
-  termination/layout, cable assembly evidence, and layout copper.
+  layout, cable assembly evidence, and layout copper.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

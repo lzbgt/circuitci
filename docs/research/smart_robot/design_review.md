@@ -24,8 +24,9 @@ validated independently.
 - Use TCAN3413 for the first 3.3 V CAN control-bus pass, ESD2CAN24-Q1 for the
   first static CANH/CANL clamp review, and THVD1450 for the first 3.3 V RS485
   smart-servo bus pass with ESDS552 for the first static RS485 A/B clamp
-  review. Keep cable length, termination, connector pinout, surge-energy target,
-  EMC, and routed layout as open board-level constraints.
+  review. Use explicit endpoint-population metadata before installing 120 ohm
+  CAN/RS485 termination. Keep cable length, connector pinout,
+  surge-energy target, EMC, and routed layout as open board-level constraints.
 - Keep PMU/charger design separate from the motion core. Battery charging and
   e-stop hardware must not depend on Linux software.
 - Do not proceed to fabrication from the high-level Markdown alone. The first
@@ -101,8 +102,8 @@ left/right reusable wheel controller pass:
 - 3.3 V encoder/Hall signal compatibility.
 - TCAN3413 3.3 V CAN transceiver rail and MCU-side compatibility.
 - ESD2CAN24-Q1 CANH/CANL clamp presence and ground-reference review.
-- THVD1450 3.3 V RS485 transceiver rail and MCU-side compatibility.
-- ESDS552 RS485 A/B clamp presence and ground-reference review.
+- 120 ohm CAN endpoint termination resistor evidence checked within explicit
+  5% tolerance for the current endpoint-population variant.
 - Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
   switched wheel rail.
 - JST VH 8-pin actuator-bus connector current and voltage budget for the
@@ -124,8 +125,8 @@ with a checked static budget, not final power-stage sign-off. The next
 validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
 with selected motor datasheet or measurement evidence, then add
 gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
-clamp behavior, CAN/RS485 termination and layout placement, cable assembly
-evidence, and PCB copper-temperature validation.
+clamp behavior, CAN layout placement, cable assembly evidence, and PCB
+copper-temperature validation.
 
 ## Servo Payload Slice Status
 

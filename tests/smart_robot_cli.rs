@@ -194,6 +194,68 @@ fn smart_robot_motion_core_fails_rs485_esd_not_ground_referenced() {
     );
 }
 
+#[test]
+fn smart_robot_motion_core_fails_wrong_can_termination_value() {
+    let (dir, project) = mutated_motion_core_project("value_ohm: 120.0", "value_ohm: 100.0");
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let termination_findings = findings_with_id(&report, "BUS_TERMINATION_VALID");
+    assert!(
+        termination_findings.iter().any(|finding| {
+            finding["component"] == "RT_CAN1"
+                && finding["measured"]["termination_ohm"] == 100.0
+                && finding["limit"]["expected_termination_ohm"] == 120.0
+        }),
+        "expected CAN termination value failure, got {termination_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_fails_wrong_can_termination_value() {
+    let (dir, project) = mutated_wheel_actuator_project("value_ohm: 120.0", "value_ohm: 100.0");
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let termination_findings = findings_with_id(&report, "BUS_TERMINATION_VALID");
+    assert!(
+        termination_findings.iter().any(|finding| {
+            finding["component"] == "RT_CAN1"
+                && finding["measured"]["termination_ohm"] == 100.0
+                && finding["limit"]["expected_termination_ohm"] == 120.0
+        }),
+        "expected wheel CAN termination value failure, got {termination_findings:#?}"
+    );
+}
+
 fn mutated_motion_core_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -227,6 +289,10 @@ fn mutated_motion_core_project(from: &str, to: &str) -> (tempfile::TempDir, std:
             &repo
                 .join("libs/vendor/ti/rs485_transceivers")
                 .to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/generic/analog",
+            &repo.join("libs/generic/analog").to_string_lossy(),
         )
         .replace(
             "../../../../libs/generic/digital",

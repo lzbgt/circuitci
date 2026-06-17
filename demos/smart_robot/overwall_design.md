@@ -66,6 +66,7 @@ TCAN3413 CAN transceiver
 THVD1450 RS485 transceiver
 ESD2CAN24-Q1 CANH/CANL TVS near connector
 ESDS552 RS485 A/B TVS near connector
+120R CAN/RS485 endpoint terminators as explicit population options
 PCA9685 optional
 power monitors
 watchdog / e-stop logic
@@ -160,6 +161,7 @@ wheel encoder / Hall input
 local jump servo / jump actuator output
 TCAN3413 CAN bus
 ESD2CAN24-Q1 CANH/CANL TVS near connector
+120R CAN endpoint terminator as explicit population option
 local fault protection
 ```
 

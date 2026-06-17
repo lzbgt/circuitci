@@ -9,6 +9,7 @@ libraries:
   - ../../../../libs/vendor/ti/can_transceivers
   - ../../../../libs/vendor/ti/esd_protection
   - ../../../../libs/vendor/ti/rs485_transceivers
+  - ../../../../libs/generic/analog
   - ../../../../libs/generic/digital
 
 board:
@@ -105,6 +106,24 @@ board:
         A: rs485_servo_a
         B: rs485_servo_b
         GND: gnd
+    RT_CAN1:
+      model: generic.analog.resistor
+      part_number: 120R_CAN_TERM
+      pins:
+        A: robot_canh
+        B: robot_canl
+      spice:
+        primitive: resistor
+        value_ohm: 120.0
+    RT_RS4851:
+      model: generic.analog.resistor
+      part_number: 120R_RS485_TERM
+      pins:
+        A: rs485_servo_a
+        B: rs485_servo_b
+      spice:
+        primitive: resistor
+        value_ohm: 120.0
   nets:
     5v_sys:
       kind: power
@@ -198,3 +217,25 @@ scenarios:
       component: U485_ESD1
     parameters:
       clamp: b
+  - name: motion_core_can_endpoint_termination
+    type: interface_protection
+    checks:
+      - BUS_TERMINATION_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      board_is_bus_endpoint: true
+      termination_component: RT_CAN1
+      expected_termination_ohm: 120.0
+      termination_tolerance_percent: 5.0
+  - name: motion_core_rs485_endpoint_termination
+    type: interface_protection
+    checks:
+      - BUS_TERMINATION_VALID
+    parameters:
+      line_a_net: rs485_servo_a
+      line_b_net: rs485_servo_b
+      board_is_bus_endpoint: true
+      termination_component: RT_RS4851
+      expected_termination_ohm: 120.0
+      termination_tolerance_percent: 5.0

@@ -215,6 +215,13 @@ ground in the disabled state, suggestions may include that pin-state evidence.
 Generic models and incomplete channel metadata must remain non-runnable review
 templates.
 
+`BUS_TERMINATION_VALID` is scenario-driven rather than inferred from a net name
+or protocol. The validator requires explicit endpoint-role metadata, declared
+line nets, declared expected resistance/tolerance, and a specific resistor
+component with `spice.value_ohm`. This keeps reusable boards from being
+incorrectly treated as always-terminated when only some harness population
+variants should install the 120 ohm resistor.
+
 ## Reports
 
 Reports are a stable API. New findings should include:
