@@ -15,7 +15,7 @@ solver, or general-purpose analog simulator.
 | Area | Current support | Boundary |
 | --- | --- | --- |
 | CLI | Default `circuitci` binary for import, suggestion, validation, suites, and report generation. | Primary automation surface for CI and agents. |
-| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, project loading, visual Board IR component/net graph inspection, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, simulation artifact observation, and report viewing. | Workflow and observation shell; canvas schematic editing, structured write-back property forms, and advanced waveform analysis are future stages. |
+| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, project loading, visual Board IR component/net graph inspection, structured scalar editing for existing component/net properties, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, simulation artifact observation, and report viewing. | Workflow and observation shell; canvas schematic editing, graph add/remove/rewire operations, and advanced waveform analysis are future stages. |
 
 ## Evidence Import
 

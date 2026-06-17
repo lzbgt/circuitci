@@ -38,8 +38,9 @@ form:
 - Import: import native KiCad schematic evidence into Board IR, or enrich an
   imported Board IR project with KiCad PCB placement/routing evidence.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
-  an inspector for component bindings and net connections, and a raw Board IR
-  YAML editor with parse-validated save.
+  an inspector for component bindings and net connections, structured scalar
+  edits for existing component and net properties, and a raw Board IR YAML
+  editor with parse-validated save.
 - Library: shows library bindings and scenario suggestion YAML.
 - Simulation: runs validation through the engine, plots emitted CSV waveforms,
   and lists generated SPICE decks, artifacts, findings, and limitations.
@@ -60,14 +61,17 @@ The supported desktop simulation path is:
 
 1. load Board IR or import KiCad schematic/PCB evidence,
 2. inspect the imported/sketched component and net graph,
-3. edit Board IR YAML evidence when the project needs a correction,
-4. bind sourced component models,
-5. run declared validation and `analog_transient` scenarios,
-6. observe generated decks, plotted CSV waveforms, findings, and report
+3. edit selected component model/part-number and net kind/voltage/powered
+   fields through structured controls,
+4. edit Board IR YAML evidence when the project needs a correction outside the
+   structured controls,
+5. bind sourced component models,
+6. run declared validation and `analog_transient` scenarios,
+7. observe generated decks, plotted CSV waveforms, findings, and report
    artifacts,
-7. edit the project/model evidence and rerun.
+8. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, structured write-back property forms, advanced
+Full schematic-canvas editing, add/remove/rewire graph operations, advanced
 waveform cursors/measurements, automatic arbitrary schematic-to-SPICE
 conversion, and vendor macromodel acquisition are future GUI stages. They must
 reuse the existing Board IR, importer, model, and validation contracts instead

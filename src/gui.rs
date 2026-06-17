@@ -691,7 +691,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn sketch_inspector(&self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+    fn sketch_inspector(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         ui.vertical(|ui| {
             ui.set_min_width(260.0);
             ui.heading("Inspector");
@@ -703,10 +703,18 @@ impl CircuitCiApp {
                         .find(|item| &item.id == id)
                     {
                         ui.strong(&component.id);
-                        ui.label(format!("model: {}", component.model));
-                        if let Some(part_number) = &component.part_number {
-                            ui.label(format!("part: {part_number}"));
+                        let mut model = component.model.clone();
+                        ui.label("Model");
+                        if ui.text_edit_singleline(&mut model).changed() {
+                            self.apply_component_model_edit(&component.id, &model);
                         }
+
+                        let mut part_number = component.part_number.clone().unwrap_or_default();
+                        ui.label("Part number");
+                        if ui.text_edit_singleline(&mut part_number).changed() {
+                            self.apply_component_part_number_edit(&component.id, &part_number);
+                        }
+
                         ui.label(format!("pins: {}", component.pins.len()));
                         egui::ScrollArea::vertical()
                             .max_height(230.0)
@@ -720,13 +728,70 @@ impl CircuitCiApp {
                 Some(SketchSelection::Net(id)) => {
                     if let Some(net) = snapshot.nets_detail.iter().find(|item| &item.id == id) {
                         ui.strong(&net.id);
-                        ui.label(format!("kind: {}", net.kind));
-                        if let Some(voltage) = net.nominal_voltage {
-                            ui.label(format!("nominal: {voltage:.3} V"));
+                        let mut kind = net.kind.clone();
+                        egui::ComboBox::from_label("Kind")
+                            .selected_text(&kind)
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut kind, "power".to_string(), "power");
+                                ui.selectable_value(&mut kind, "ground".to_string(), "ground");
+                                ui.selectable_value(
+                                    &mut kind,
+                                    "digital_or_analog".to_string(),
+                                    "digital_or_analog",
+                                );
+                            });
+                        if kind != net.kind {
+                            self.apply_net_kind_edit(&net.id, &kind);
                         }
-                        if let Some(powered) = net.powered {
-                            ui.label(format!("powered: {powered}"));
+
+                        ui.horizontal(|ui| {
+                            ui.label("Nominal voltage");
+                            if let Some(voltage) = net.nominal_voltage {
+                                let mut edited = voltage;
+                                if ui
+                                    .add(egui::DragValue::new(&mut edited).speed(0.1).suffix(" V"))
+                                    .changed()
+                                {
+                                    self.apply_net_nominal_voltage_edit(&net.id, Some(edited));
+                                }
+                                if ui.button("Clear").clicked() {
+                                    self.apply_net_nominal_voltage_edit(&net.id, None);
+                                }
+                            } else if ui.button("Set").clicked() {
+                                self.apply_net_nominal_voltage_edit(&net.id, Some(0.0));
+                            }
+                        });
+
+                        let mut powered = match net.powered {
+                            Some(true) => "true",
+                            Some(false) => "false",
+                            None => "unset",
                         }
+                        .to_string();
+                        egui::ComboBox::from_label("Powered")
+                            .selected_text(&powered)
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut powered, "unset".to_string(), "unset");
+                                ui.selectable_value(&mut powered, "true".to_string(), "true");
+                                ui.selectable_value(&mut powered, "false".to_string(), "false");
+                            });
+                        if powered
+                            != match net.powered {
+                                Some(true) => "true",
+                                Some(false) => "false",
+                                None => "unset",
+                            }
+                        {
+                            self.apply_net_powered_edit(
+                                &net.id,
+                                match powered.as_str() {
+                                    "true" => Some(true),
+                                    "false" => Some(false),
+                                    _ => None,
+                                },
+                            );
+                        }
+
                         ui.label(format!("connections: {}", net.connections.len()));
                         egui::ScrollArea::vertical()
                             .max_height(230.0)
@@ -752,6 +817,56 @@ impl CircuitCiApp {
                 }
             }
         });
+    }
+
+    fn apply_component_model_edit(&mut self, component_id: &str, model: &str) {
+        match edit_component_model(&self.project_yaml, component_id, model) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, "Component model updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_component_part_number_edit(&mut self, component_id: &str, part_number: &str) {
+        match edit_component_part_number(&self.project_yaml, component_id, part_number) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(updated, "Component part number updated.")
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_net_kind_edit(&mut self, net_id: &str, kind: &str) {
+        match edit_net_kind(&self.project_yaml, net_id, kind) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, "Net kind updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_net_nominal_voltage_edit(&mut self, net_id: &str, voltage: Option<f64>) {
+        match edit_net_nominal_voltage(&self.project_yaml, net_id, voltage) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, "Net nominal voltage updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_net_powered_edit(&mut self, net_id: &str, powered: Option<bool>) {
+        match edit_net_powered(&self.project_yaml, net_id, powered) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, "Net powered flag updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_edited_project_yaml(&mut self, updated: String, message: &str) {
+        match load_project_snapshot_from_yaml(&updated) {
+            Ok(snapshot) => {
+                self.project_yaml = updated;
+                self.project_yaml_dirty = true;
+                self.project_snapshot = Some(snapshot);
+                self.status = message.to_string();
+                self.push_diagnostic(message);
+            }
+            Err(error) => self.record_error(error),
+        }
     }
 
     fn waveform_view(&mut self, ui: &mut egui::Ui) {
@@ -883,6 +998,16 @@ struct WaveformProbe {
 
 fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
     let project = crate::board_ir::load_project(path)?;
+    Ok(project_snapshot_from_project(project))
+}
+
+fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnapshot> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    Ok(project_snapshot_from_project(project))
+}
+
+fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
     let components_detail: Vec<_> = project
         .board
         .components
@@ -916,13 +1041,13 @@ fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
         .iter()
         .map(|(id, net)| SketchNet {
             id: id.clone(),
-            kind: format!("{:?}", net.kind),
+            kind: net_kind_label(&net.kind).to_string(),
             nominal_voltage: net.nominal_voltage,
             powered: net.powered,
             connections: connections_by_net.remove(id).unwrap_or_default(),
         })
         .collect();
-    Ok(ProjectSnapshot {
+    ProjectSnapshot {
         name: project.project.name,
         components: project.board.components.len(),
         nets: project.board.nets.len(),
@@ -934,13 +1059,161 @@ fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
             .collect(),
         components_detail,
         nets_detail,
-    })
+    }
 }
 
 fn validate_board_ir_yaml_text(text: &str) -> Result<()> {
     let _project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
     Ok(())
+}
+
+fn net_kind_label(kind: &crate::board_ir::NetKind) -> &'static str {
+    match kind {
+        crate::board_ir::NetKind::Power => "power",
+        crate::board_ir::NetKind::Ground => "ground",
+        crate::board_ir::NetKind::DigitalOrAnalog => "digital_or_analog",
+    }
+}
+
+fn edit_component_model(text: &str, component_id: &str, model: &str) -> Result<String> {
+    edit_component_field(
+        text,
+        component_id,
+        "model",
+        Some(serde_yaml_ng::Value::String(model.trim().to_string())),
+    )
+}
+
+fn edit_component_part_number(text: &str, component_id: &str, part_number: &str) -> Result<String> {
+    let part_number = part_number.trim();
+    edit_component_field(
+        text,
+        component_id,
+        "part_number",
+        if part_number.is_empty() {
+            None
+        } else {
+            Some(serde_yaml_ng::Value::String(part_number.to_string()))
+        },
+    )
+}
+
+fn edit_net_kind(text: &str, net_id: &str, kind: &str) -> Result<String> {
+    let kind = match kind {
+        "power" | "ground" | "digital_or_analog" => kind,
+        _ => anyhow::bail!("Unsupported net kind {kind}."),
+    };
+    edit_net_field(
+        text,
+        net_id,
+        "kind",
+        Some(serde_yaml_ng::Value::String(kind.to_string())),
+    )
+}
+
+fn edit_net_nominal_voltage(text: &str, net_id: &str, voltage: Option<f64>) -> Result<String> {
+    edit_net_field(
+        text,
+        net_id,
+        "nominal_voltage",
+        voltage
+            .map(serde_yaml_ng::to_value)
+            .transpose()
+            .context("Failed to encode net nominal voltage.")?,
+    )
+}
+
+fn edit_net_powered(text: &str, net_id: &str, powered: Option<bool>) -> Result<String> {
+    edit_net_field(
+        text,
+        net_id,
+        "powered",
+        powered
+            .map(serde_yaml_ng::to_value)
+            .transpose()
+            .context("Failed to encode net powered flag.")?,
+    )
+}
+
+fn edit_component_field(
+    text: &str,
+    component_id: &str,
+    field: &str,
+    value: Option<serde_yaml_ng::Value>,
+) -> Result<String> {
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let component = named_child_mapping_mut(components, component_id, "component")?;
+        set_or_remove_yaml_field(component, field, value);
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+fn edit_net_field(
+    text: &str,
+    net_id: &str,
+    field: &str,
+    value: Option<serde_yaml_ng::Value>,
+) -> Result<String> {
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let nets = board_child_mapping_mut(&mut yaml, "nets")?;
+        let net = named_child_mapping_mut(nets, net_id, "net")?;
+        set_or_remove_yaml_field(net, field, value);
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+fn board_child_mapping_mut<'a>(
+    yaml: &'a mut serde_yaml_ng::Value,
+    field: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    yaml.as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?
+        .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+        .context("Board IR project is missing board.")?
+        .as_mapping_mut()
+        .context("Board IR field board must be an object.")?
+        .get_mut(serde_yaml_ng::Value::String(field.to_string()))
+        .with_context(|| format!("Board IR board is missing {field}."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR board.{field} must be an object."))
+}
+
+fn named_child_mapping_mut<'a>(
+    mapping: &'a mut serde_yaml_ng::Mapping,
+    id: &str,
+    label: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    mapping
+        .get_mut(serde_yaml_ng::Value::String(id.to_string()))
+        .with_context(|| format!("Board IR {label} {id} was not found."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR {label} {id} must be an object."))
+}
+
+fn set_or_remove_yaml_field(
+    mapping: &mut serde_yaml_ng::Mapping,
+    field: &str,
+    value: Option<serde_yaml_ng::Value>,
+) {
+    let key = serde_yaml_ng::Value::String(field.to_string());
+    if let Some(value) = value {
+        mapping.insert(key, value);
+    } else {
+        mapping.remove(&key);
+    }
+}
+
+fn encode_edited_project_yaml(yaml: serde_yaml_ng::Value) -> Result<String> {
+    let text =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    validate_board_ir_yaml_text(&text)?;
+    Ok(text)
 }
 
 fn optional_path(text: &str) -> Option<std::path::PathBuf> {
@@ -1423,11 +1696,31 @@ fn display_path(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, egui, layout_sketch_graph,
-        optional_path, parse_waveform_csv_text, sanitized_project_name,
+        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, edit_component_model,
+        edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
+        egui, layout_sketch_graph, optional_path, parse_waveform_csv_text, sanitized_project_name,
         validate_board_ir_yaml_text,
     };
     use std::path::Path;
+
+    fn editable_project_yaml() -> &'static str {
+        "project:
+  name: gui_editor_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+        B: gnd
+  nets:
+    net_a:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+"
+    }
 
     #[test]
     fn board_ir_editor_accepts_minimal_project_yaml() {
@@ -1452,6 +1745,27 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("Board IR"));
+    }
+
+    #[test]
+    fn board_ir_component_form_edits_emit_valid_yaml() {
+        let edited =
+            edit_component_model(editable_project_yaml(), "R1", "vendor.test.resistor").unwrap();
+        let edited = edit_component_part_number(&edited, "R1", "RC0603FR-0710KL").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("vendor.test.resistor"));
+        assert!(edited.contains("RC0603FR-0710KL"));
+    }
+
+    #[test]
+    fn board_ir_net_form_edits_emit_valid_yaml() {
+        let edited = edit_net_kind(editable_project_yaml(), "net_a", "power").unwrap();
+        let edited = edit_net_nominal_voltage(&edited, "net_a", Some(3.3)).unwrap();
+        let edited = edit_net_powered(&edited, "net_a", Some(true)).unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("kind: power"));
+        assert!(edited.contains("nominal_voltage: 3.3"));
+        assert!(edited.contains("powered: true"));
     }
 
     #[test]
