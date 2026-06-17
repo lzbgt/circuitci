@@ -35,6 +35,8 @@ form:
 
 - Project: choose a Board IR project and output directory, then load or
   validate it.
+- Import: import native KiCad schematic evidence into Board IR, or enrich an
+  imported Board IR project with KiCad PCB placement/routing evidence.
 - Sketch: shows the imported/sketched board graph summary and provides a raw
   Board IR YAML editor with parse-validated save.
 - Library: shows library bindings and scenario suggestion YAML.
@@ -55,7 +57,7 @@ missing.
 
 The supported desktop simulation path is:
 
-1. load or import board evidence,
+1. load Board IR or import KiCad schematic/PCB evidence,
 2. edit Board IR YAML evidence when the imported/sketched project needs a
    correction,
 3. bind sourced component models,

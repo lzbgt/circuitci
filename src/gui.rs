@@ -20,6 +20,7 @@ pub fn run() -> eframe::Result<()> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Stage {
     Project,
+    Import,
     Sketch,
     Library,
     Simulation,
@@ -27,8 +28,9 @@ enum Stage {
 }
 
 impl Stage {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::Project,
+        Self::Import,
         Self::Sketch,
         Self::Library,
         Self::Simulation,
@@ -38,6 +40,7 @@ impl Stage {
     fn label(self) -> &'static str {
         match self {
             Self::Project => "Project",
+            Self::Import => "Import",
             Self::Sketch => "Sketch",
             Self::Library => "Library",
             Self::Simulation => "Simulation",
@@ -50,6 +53,14 @@ pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
     profile: String,
+    import_schematic_path: String,
+    import_mapping_path: String,
+    import_output_path: String,
+    import_project_name: String,
+    import_default_model: String,
+    import_pcb_path: String,
+    import_pcb_project_path: String,
+    import_pcb_output_path: String,
     stage: Stage,
     status: String,
     diagnostics: Vec<String>,
@@ -70,6 +81,19 @@ impl Default for CircuitCiApp {
             project_path: "demos/smart_robot/circuitci/wheel_actuator/project.yaml".to_string(),
             output_dir: "out/gui".to_string(),
             profile: "default".to_string(),
+            import_schematic_path: "demos/smart_robot/kicad/wheel_actuator/root.kicad_sch"
+                .to_string(),
+            import_mapping_path: "demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml"
+                .to_string(),
+            import_output_path: "out/gui_import/wheel_actuator_imported.project.yaml".to_string(),
+            import_project_name: String::new(),
+            import_default_model: "generic.schematic.imported_component".to_string(),
+            import_pcb_path: "demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb"
+                .to_string(),
+            import_pcb_project_path: "out/gui_import/wheel_actuator_imported.project.yaml"
+                .to_string(),
+            import_pcb_output_path: "out/gui_import/wheel_actuator_with_pcb.project.yaml"
+                .to_string(),
             stage: Stage::Project,
             status: "Ready".to_string(),
             diagnostics: Vec::new(),
@@ -101,6 +125,14 @@ impl CircuitCiApp {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("Import KiCad Schematic").clicked() {
+                        self.import_kicad_schematic();
+                        ui.close();
+                    }
+                    if ui.button("Import KiCad PCB").clicked() {
+                        self.import_kicad_pcb();
+                        ui.close();
+                    }
                     if ui.button("Load Project").clicked() {
                         self.load_project_summary();
                         ui.close();
@@ -226,6 +258,7 @@ impl CircuitCiApp {
     fn central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| match self.stage {
             Stage::Project => self.project_stage(ui),
+            Stage::Import => self.import_stage(ui),
             Stage::Sketch => self.sketch_stage(ui),
             Stage::Library => self.library_stage(ui),
             Stage::Simulation => self.simulation_stage(ui),
@@ -250,6 +283,74 @@ impl CircuitCiApp {
         ui.add_space(8.0);
         ui.label("Recommended flow");
         ui.label("Import or sketch -> bind library -> simulate/validate -> inspect reports -> revise design evidence.");
+    }
+
+    fn import_stage(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Import");
+        ui.separator();
+        ui.label("Import external CAD evidence into Board IR, then edit and validate the generated project.");
+        ui.add_space(8.0);
+
+        ui.group(|ui| {
+            ui.strong("KiCad Schematic To Board IR");
+            egui::Grid::new("kicad_schematic_import_grid")
+                .num_columns(2)
+                .spacing([12.0, 6.0])
+                .show(ui, |ui| {
+                    ui.label("Schematic");
+                    ui.text_edit_singleline(&mut self.import_schematic_path);
+                    ui.end_row();
+                    ui.label("Mapping");
+                    ui.text_edit_singleline(&mut self.import_mapping_path);
+                    ui.end_row();
+                    ui.label("Output project");
+                    ui.text_edit_singleline(&mut self.import_output_path);
+                    ui.end_row();
+                    ui.label("Project name");
+                    ui.text_edit_singleline(&mut self.import_project_name);
+                    ui.end_row();
+                    ui.label("Default model");
+                    ui.text_edit_singleline(&mut self.import_default_model);
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Import Schematic").clicked() {
+                    self.import_kicad_schematic();
+                }
+                if ui.button("Use As Project").clicked() {
+                    self.project_path = self.import_output_path.clone();
+                    self.load_project_summary();
+                }
+            });
+        });
+
+        ui.add_space(10.0);
+        ui.group(|ui| {
+            ui.strong("KiCad PCB Layout Evidence");
+            egui::Grid::new("kicad_pcb_import_grid")
+                .num_columns(2)
+                .spacing([12.0, 6.0])
+                .show(ui, |ui| {
+                    ui.label("PCB");
+                    ui.text_edit_singleline(&mut self.import_pcb_path);
+                    ui.end_row();
+                    ui.label("Input project");
+                    ui.text_edit_singleline(&mut self.import_pcb_project_path);
+                    ui.end_row();
+                    ui.label("Output project");
+                    ui.text_edit_singleline(&mut self.import_pcb_output_path);
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Import PCB Evidence").clicked() {
+                    self.import_kicad_pcb();
+                }
+                if ui.button("Use As Project").clicked() {
+                    self.project_path = self.import_pcb_output_path.clone();
+                    self.load_project_summary();
+                }
+            });
+        });
     }
 
     fn sketch_stage(&mut self, ui: &mut egui::Ui) {
@@ -395,6 +496,54 @@ impl CircuitCiApp {
                     self.load_project_yaml();
                 }
                 self.push_diagnostic(&format!("Project summary loaded for {loaded_name}."));
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn import_kicad_schematic(&mut self) {
+        let schematic = Path::new(&self.import_schematic_path).to_path_buf();
+        let output = Path::new(&self.import_output_path).to_path_buf();
+        let mapping = optional_path(&self.import_mapping_path);
+        let name = if self.import_project_name.trim().is_empty() {
+            sanitized_project_name(&schematic, "imported_kicad_project")
+        } else {
+            self.import_project_name.trim().to_string()
+        };
+        let options = crate::importers::kicad::KicadImportOptions {
+            input: schematic,
+            output: output.clone(),
+            name,
+            default_model: self.import_default_model.trim().to_string(),
+            mapping,
+        };
+        match crate::importers::kicad_sch::import_kicad_schematic(&options) {
+            Ok(()) => {
+                self.project_path = output.to_string_lossy().into_owned();
+                self.import_pcb_project_path = self.project_path.clone();
+                self.status = "KiCad schematic imported.".to_string();
+                self.push_diagnostic("KiCad schematic imported to Board IR.");
+                self.load_project_summary();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn import_kicad_pcb(&mut self) {
+        let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
+            input: Path::new(&self.import_pcb_path).to_path_buf(),
+            project: Path::new(&self.import_pcb_project_path).to_path_buf(),
+            output: Path::new(&self.import_pcb_output_path).to_path_buf(),
+        };
+        match crate::importers::kicad_pcb::import_kicad_pcb_placements(&options) {
+            Ok(summary) => {
+                self.project_path = self.import_pcb_output_path.clone();
+                self.status = "KiCad PCB evidence imported.".to_string();
+                self.push_diagnostic(&format!(
+                    "KiCad PCB imported: {} placements, {} pads, {} route segments, {} vias.",
+                    summary.placements, summary.pads, summary.route_segments, summary.route_vias
+                ));
+                self.load_project_summary();
             }
             Err(error) => self.record_error(error),
         }
@@ -582,6 +731,35 @@ fn validate_board_ir_yaml_text(text: &str) -> Result<()> {
     let _project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
     Ok(())
+}
+
+fn optional_path(text: &str) -> Option<std::path::PathBuf> {
+    let text = text.trim();
+    if text.is_empty() {
+        None
+    } else {
+        Some(Path::new(text).to_path_buf())
+    }
+}
+
+fn sanitized_project_name(path: &Path, fallback: &str) -> String {
+    path.file_stem()
+        .and_then(|stem| stem.to_str())
+        .map(sanitize_identifier)
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+fn sanitize_identifier(value: &str) -> String {
+    let mut result = String::new();
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' || character == '-' {
+            result.push(character);
+        } else if !result.ends_with('_') {
+            result.push('_');
+        }
+    }
+    result.trim_matches('_').to_string()
 }
 
 fn validate_from_gui(
@@ -877,7 +1055,10 @@ fn display_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_waveform_csv_text, validate_board_ir_yaml_text};
+    use super::{
+        optional_path, parse_waveform_csv_text, sanitized_project_name, validate_board_ir_yaml_text,
+    };
+    use std::path::Path;
 
     #[test]
     fn board_ir_editor_accepts_minimal_project_yaml() {
@@ -902,6 +1083,27 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("Board IR"));
+    }
+
+    #[test]
+    fn optional_path_ignores_blank_mapping_path() {
+        assert!(optional_path("  ").is_none());
+        assert_eq!(
+            optional_path("mapping.yaml").unwrap(),
+            Path::new("mapping.yaml").to_path_buf()
+        );
+    }
+
+    #[test]
+    fn sanitized_project_name_uses_file_stem() {
+        assert_eq!(
+            sanitized_project_name(Path::new("some dir/root.kicad_sch"), "fallback"),
+            "root"
+        );
+        assert_eq!(
+            sanitized_project_name(Path::new("bad name!.kicad_sch"), "fallback"),
+            "bad_name"
+        );
     }
 
     #[test]
