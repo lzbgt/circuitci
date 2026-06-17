@@ -2,12 +2,13 @@ mod common;
 
 use common::{assert_report_schema_valid, run_validation};
 use serde_json::Value;
+use serde_yaml_ng::Value as YamlValue;
 use std::process::Command;
 
 #[test]
-fn smart_robot_wheel_bridge_budgets_fail_closed_without_soa_curve() {
+fn smart_robot_wheel_bridge_budgets_pass() {
     let report = run_validation("demos/smart_robot/circuitci/wheel_actuator/project.yaml");
-    assert_eq!(report["result"], "fail");
+    assert_eq!(report["result"], "pass");
     assert_report_schema_valid(&report);
     assert!(
         !findings_with_id(&report, "MOTOR_BRIDGE_BUDGET_VALID")
@@ -59,16 +60,11 @@ fn smart_robot_wheel_bridge_budgets_fail_closed_without_soa_curve() {
             .any(|finding| finding["severity"] == "critical"),
         "wheel actuator switching budget should pass: {report:#?}"
     );
-    let soa_findings = findings_with_id(&report, "MOTOR_BRIDGE_SOA_VALID");
     assert!(
-        soa_findings.iter().any(|finding| {
-            finding["component"] == "PWR_STAGE"
-                && finding["measured"]["model"]
-                    == "demo.smart_robot.csd88599q5dc_3phase_bridge_budget"
-                && finding["measured"]["soa_metadata_error"]
-                    == "missing safe_operating_area.vds_id_curves"
-        }),
-        "wheel actuator must fail closed until the bridge model has sourced SOA curves: {report:#?}"
+        !findings_with_id(&report, "MOTOR_BRIDGE_SOA_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "wheel actuator system SOA budget should pass: {report:#?}"
     );
 }
 
@@ -574,39 +570,8 @@ fn smart_robot_wheel_bridge_switching_fails_low_loss_budget() {
 }
 
 #[test]
-fn smart_robot_wheel_bridge_soa_static_budget_passes_with_source_curve() {
-    let (dir, project) = wheel_actuator_project_with_static_soa_curve(None);
-    let output = dir.path().join("report");
-    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
-        .args([
-            "validate",
-            project.to_str().unwrap(),
-            "--output",
-            output.to_str().unwrap(),
-        ])
-        .status()
-        .unwrap();
-    assert!(status.success());
-
-    let report: Value =
-        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
-            .unwrap();
-    assert_eq!(report["result"], "pass");
-    assert_report_schema_valid(&report);
-    assert!(
-        !findings_with_id(&report, "MOTOR_BRIDGE_SOA_VALID")
-            .into_iter()
-            .any(|finding| finding["severity"] == "critical"),
-        "SOA-backed wheel bridge fixture should pass: {report:#?}"
-    );
-}
-
-#[test]
-fn smart_robot_wheel_bridge_soa_static_budget_fails_low_curve_margin() {
-    let (dir, project) = wheel_actuator_project_with_static_soa_curve(Some((
-        "min_soa_current_margin_ratio: 2.0",
-        "min_soa_current_margin_ratio: 6.0",
-    )));
+fn smart_robot_wheel_bridge_soa_fails_without_source_curve() {
+    let (dir, project) = wheel_actuator_project_without_system_soa();
     let output = dir.path().join("report");
     let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -627,14 +592,51 @@ fn smart_robot_wheel_bridge_soa_static_budget_fails_low_curve_margin() {
     let soa_findings = findings_with_id(&report, "MOTOR_BRIDGE_SOA_VALID");
     assert!(
         soa_findings.iter().any(|finding| {
-            let margin = finding["measured"]["soa_current_margin_ratio"]
+            finding["component"] == "PWR_STAGE"
+                && finding["measured"]["model"]
+                    == "demo.smart_robot.csd88599q5dc_3phase_bridge_budget_no_soa"
+                && finding["measured"]["soa_metadata_error"]
+                    == "missing safe_operating_area.vds_id_curves"
+        }),
+        "expected missing SOA metadata failure, got {soa_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_bridge_soa_static_budget_fails_low_system_margin() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "min_soa_current_margin_ratio: 2.0",
+        "min_soa_current_margin_ratio: 5.0",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let soa_findings = findings_with_id(&report, "MOTOR_BRIDGE_SOA_VALID");
+    assert!(
+        soa_findings.iter().any(|finding| {
+            let margin = finding["measured"]["system_soa_current_margin_ratio"]
                 .as_f64()
                 .unwrap();
             finding["component"] == "PWR_STAGE"
-                && (margin - 5.564142314645005).abs() < 1e-9
-                && finding["limit"]["min_soa_current_margin_ratio"] == 6.0
+                && (margin - 4.0).abs() < 1e-9
+                && finding["limit"]["min_soa_current_margin_ratio"] == 5.0
+                && finding["limit"]["system_soa_curve"] == "figure_4_3_typical_board_temperature"
         }),
-        "expected low SOA margin failure, got {soa_findings:#?}"
+        "expected low system SOA margin failure, got {soa_findings:#?}"
     );
 }
 
@@ -784,43 +786,39 @@ fn mutated_wheel_actuator_project(from: &str, to: &str) -> (tempfile::TempDir, s
     (dir, project)
 }
 
-fn wheel_actuator_project_with_static_soa_curve(
-    project_replace: Option<(&str, &str)>,
-) -> (tempfile::TempDir, std::path::PathBuf) {
+fn wheel_actuator_project_without_system_soa() -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let model_dir = dir.path().join("models");
     std::fs::create_dir_all(&model_dir).unwrap();
-    let model = std::fs::read_to_string(
-        "demos/smart_robot/circuitci/models/csd88599q5dc_3phase_bridge_budget.model.yaml",
+    let mut model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/csd88599q5dc_3phase_bridge_budget.model.yaml",
+        )
+        .unwrap(),
     )
-    .unwrap()
-    .replace(
-        "component_id: demo.smart_robot.csd88599q5dc_3phase_bridge_budget",
-        "component_id: demo.smart_robot.csd88599q5dc_3phase_bridge_budget_with_soa",
-    )
-    .replace(
-        "  electrical_characteristics:",
-        "  safe_operating_area:\n    vds_id_curves:\n      - name: static_100us\n        pulse_width_us: 100.0\n        duty_cycle_max: 0.02\n        temperature_c: 25.0\n        source_document: tests/smart_robot_cli.rs\n        source_figure: synthetic static SOA fixture\n        digitization:\n          method: regression_fixture\n          confidence: high\n          note: Test-only curve shape used to prove MOTOR_BRIDGE_SOA_VALID behavior.\n        points:\n          - vds_v: 1.0\n            id_a: 100.0\n          - vds_v: 20.0\n            id_a: 50.0\n          - vds_v: 60.0\n            id_a: 20.0\n  electrical_characteristics:",
-    );
+    .unwrap();
+    model["component_id"] =
+        YamlValue::String("demo.smart_robot.csd88599q5dc_3phase_bridge_budget_no_soa".to_string());
+    model["motor_bridge"]
+        .as_mapping_mut()
+        .unwrap()
+        .remove(YamlValue::String("system_soa".to_string()));
     std::fs::write(
-        model_dir.join("csd88599q5dc_3phase_bridge_budget_with_soa.model.yaml"),
-        model,
+        model_dir.join("csd88599q5dc_3phase_bridge_budget_no_soa.model.yaml"),
+        serde_yaml_ng::to_string(&model).unwrap(),
     )
     .unwrap();
 
-    let mut source = wheel_actuator_project_source()
+    let source = wheel_actuator_project_source()
         .replace(
             "libraries:\n",
             &format!("libraries:\n  - {}\n", model_dir.to_string_lossy()),
         )
         .replace(
             "demo.smart_robot.csd88599q5dc_3phase_bridge_budget",
-            "demo.smart_robot.csd88599q5dc_3phase_bridge_budget_with_soa",
+            "demo.smart_robot.csd88599q5dc_3phase_bridge_budget_no_soa",
         );
-    if let Some((from, to)) = project_replace {
-        source = source.replace(from, to);
-    }
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();
     (dir, project)

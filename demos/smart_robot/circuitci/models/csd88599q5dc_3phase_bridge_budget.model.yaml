@@ -74,6 +74,33 @@ motor_bridge:
   gate_charge_voltage_V: 10.0
   rise_time_s: 0.000000020
   fall_time_s: 0.000000003
+  system_soa:
+    output_current_temperature_curves:
+      - name: figure_4_3_typical_board_temperature
+        temperature_node: board
+        current_kind: output_current
+        source_document: docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf
+        source_figure: Figure 4-3. Typical Safe Operating Area
+        test_conditions: VIN = 36 V, VDD = 10 V, duty cycle = 50%, fSW = 20 kHz, L = 480 uH, 2 oz copper, 6 copper layers, TJ = 125 C.
+        digitization:
+          method: manual_digitization_from_rendered_datasheet_page_5
+          confidence: medium
+          note: The TI curve is a system-level power-block SOA boundary, not a VDS/ID pulsed MOSFET curve. Points are intentionally sparse and conservative for first-pass board-temperature screening.
+        points:
+          - temperature_C: 100.0
+            output_current_A: 40.0
+          - temperature_C: 120.0
+            output_current_A: 40.0
+          - temperature_C: 121.0
+            output_current_A: 36.0
+          - temperature_C: 122.0
+            output_current_A: 31.0
+          - temperature_C: 123.0
+            output_current_A: 24.0
+          - temperature_C: 124.0
+            output_current_A: 13.0
+          - temperature_C: 124.5
+            output_current_A: 0.5
   source: TI CSD88599Q5DC product page/datasheet; product page identifies 60 V, 40 A, and the model source notes retain the 3.0 W at 30 A reference-loss point. Datasheet page 4 lists max total gate charge 56 nC at 10 V, 20 ns rise time, and 3 ns fall time.
 model_quality:
   source: datasheet

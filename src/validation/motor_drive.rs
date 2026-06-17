@@ -1,5 +1,5 @@
 use crate::board_ir::Scenario;
-use crate::library::BoundBoard;
+use crate::library::{BoundBoard, MotorBridgeTemperatureSoaCurve};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -719,11 +719,25 @@ pub(super) fn validate_motor_bridge_soa(
         );
         return;
     };
-    if model.motor_bridge.is_none() {
+    let Some(bridge) = model.motor_bridge.as_ref() else {
         missing_input(
             scenario,
             "component.model.motor_bridge",
             "Use a motor bridge component model with source-backed motor_bridge metadata.",
+            findings,
+        );
+        return;
+    };
+
+    if let Some(system_soa) = &bridge.system_soa
+        && !system_soa.output_current_temperature_curves.is_empty()
+    {
+        validate_motor_bridge_system_soa(
+            bound,
+            scenario,
+            &target.component,
+            model.component_id.as_str(),
+            &system_soa.output_current_temperature_curves,
             findings,
         );
         return;
@@ -754,7 +768,7 @@ pub(super) fn validate_motor_bridge_soa(
                 .limit
                 .insert("valid_soa_curve_required".to_string(), json!(true));
             finding.suggested_fixes = vec![
-                "Add sourced safe_operating_area.vds_id_curves metadata for the selected bridge, including pulse width, duty cycle, source document, source figure, and digitization method.".to_string(),
+                "Add sourced motor_bridge.system_soa.output_current_temperature_curves or safe_operating_area.vds_id_curves metadata for the selected bridge, including source document, source figure, and digitization method.".to_string(),
                 "Use measured motor current and switching waveforms if datasheet SOA curves are unavailable or too generic for the operating point.".to_string(),
             ];
             findings.push(finding);
@@ -891,6 +905,303 @@ pub(super) fn validate_motor_bridge_soa(
         "Replace this static SOA screen with measured motor/switch-node waveforms and transient thermal evidence before fabrication sign-off.".to_string(),
     ];
     findings.push(finding);
+}
+
+fn validate_motor_bridge_system_soa(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    bridge_component: &str,
+    model_id: &str,
+    curves: &[MotorBridgeTemperatureSoaCurve],
+    findings: &mut Vec<Finding>,
+) {
+    let Some(curves) =
+        validated_temperature_soa_curves(scenario, bridge_component, model_id, curves, findings)
+    else {
+        return;
+    };
+    let Some(board_temperature_c) = required_number(scenario, "board_temperature_C", findings)
+    else {
+        return;
+    };
+    let Some(current_source) = required_string(scenario, "current_source", findings) else {
+        return;
+    };
+    let Some(min_soa_current_margin_ratio) =
+        required_at_least(scenario, "min_soa_current_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let current_fallback = match current_source.as_str() {
+        "phase_peak" => motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "phase_rms" | "output_current" => motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_rms_current_a),
+        _ => {
+            missing_input(
+                scenario,
+                "current_source",
+                "Use current_source: phase_peak, phase_rms, or output_current.",
+                findings,
+            );
+            return;
+        }
+    };
+    let Some(output_current_a) = required_positive_with_fallback(
+        scenario,
+        "soa_output_current_A",
+        current_fallback,
+        match current_source.as_str() {
+            "phase_peak" => "motor_load.phase_peak_current_A",
+            _ => "motor_load.phase_rms_current_A",
+        },
+        findings,
+    ) else {
+        return;
+    };
+
+    let curve = curves
+        .iter()
+        .copied()
+        .find(|curve| curve.temperature_node == "board")
+        .unwrap_or(curves[0]);
+    let limit = temperature_soa_current_limit(curve, board_temperature_c);
+    let soa_current_margin_ratio = limit.allowed_current_a / output_current_a;
+    let required_current_a = output_current_a * min_soa_current_margin_ratio;
+    let violates = limit.temperature_above_curve_range
+        || soa_current_margin_ratio < min_soa_current_margin_ratio;
+    if !violates {
+        return;
+    }
+
+    let mut finding = Finding::critical(
+        MOTOR_BRIDGE_SOA_VALID,
+        &scenario.name,
+        format!(
+            "Motor bridge system SOA curve {} allows {:.6} A at {:.6} C; required {:.6} A including {:.3}x margin.",
+            curve.name,
+            limit.allowed_current_a,
+            board_temperature_c,
+            required_current_a,
+            min_soa_current_margin_ratio
+        ),
+    );
+    finding.component = Some(bridge_component.to_string());
+    finding
+        .measured
+        .insert("temperature_C".to_string(), json!(board_temperature_c));
+    finding
+        .measured
+        .insert("output_current_A".to_string(), json!(output_current_a));
+    finding
+        .measured
+        .insert("current_source".to_string(), json!(current_source));
+    finding.measured.insert(
+        "system_soa_current_margin_ratio".to_string(),
+        json!(soa_current_margin_ratio),
+    );
+    finding.measured.insert(
+        "temperature_above_curve_range".to_string(),
+        json!(limit.temperature_above_curve_range),
+    );
+    if let Some(evidence) = &motor_load {
+        finding
+            .measured
+            .insert("motor_component".to_string(), json!(evidence.component_id));
+    }
+    finding.limit.insert(
+        "output_current_limit_A".to_string(),
+        json!(limit.allowed_current_a),
+    );
+    finding.limit.insert(
+        "required_output_current_A".to_string(),
+        json!(required_current_a),
+    );
+    finding
+        .limit
+        .insert("system_soa_curve".to_string(), json!(curve.name));
+    finding.limit.insert(
+        "curve_temperature_node".to_string(),
+        json!(curve.temperature_node),
+    );
+    finding
+        .limit
+        .insert("curve_current_kind".to_string(), json!(curve.current_kind));
+    finding.limit.insert(
+        "min_soa_current_margin_ratio".to_string(),
+        json!(min_soa_current_margin_ratio),
+    );
+    finding
+        .limit
+        .insert("interpolation".to_string(), json!("linear"));
+    finding
+        .limit
+        .insert("source_document".to_string(), json!(curve.source_document));
+    finding
+        .limit
+        .insert("source_figure".to_string(), json!(curve.source_figure));
+    if let Some(test_conditions) = &curve.test_conditions {
+        finding
+            .limit
+            .insert("test_conditions".to_string(), json!(test_conditions));
+    }
+    finding.limit.insert(
+        "digitization_method".to_string(),
+        json!(curve.digitization.method),
+    );
+    finding.limit.insert(
+        "digitization_confidence".to_string(),
+        json!(curve.digitization.confidence),
+    );
+    if let Some(note) = &curve.digitization.note {
+        finding
+            .limit
+            .insert("digitization_warning".to_string(), json!(note));
+    }
+    finding.suggested_fixes = vec![
+        "Lower motor current, improve bridge cooling, reduce allowable board temperature, or select a bridge whose sourced system SOA curve covers the operating point with margin.".to_string(),
+        "Validate this static system SOA screen with measured bridge case/board temperature and motor current before fabrication sign-off.".to_string(),
+    ];
+    findings.push(finding);
+}
+
+fn validated_temperature_soa_curves<'a>(
+    scenario: &Scenario,
+    component_id: &str,
+    model_id: &str,
+    curves: &'a [MotorBridgeTemperatureSoaCurve],
+    findings: &mut Vec<Finding>,
+) -> Option<Vec<&'a MotorBridgeTemperatureSoaCurve>> {
+    let mut valid = Vec::new();
+    for curve in curves {
+        let error = temperature_soa_curve_error(curve);
+        if let Some(message) = error {
+            let mut finding = Finding::critical(
+                MOTOR_BRIDGE_SOA_VALID,
+                &scenario.name,
+                format!(
+                    "Motor bridge component {component_id} model {model_id} has invalid system SOA metadata: {message}."
+                ),
+            );
+            finding.component = Some(component_id.to_string());
+            finding
+                .measured
+                .insert("component".to_string(), json!(component_id));
+            finding
+                .measured
+                .insert("model".to_string(), json!(model_id));
+            finding
+                .measured
+                .insert("soa_metadata_error".to_string(), json!(message));
+            finding
+                .limit
+                .insert("valid_system_soa_curve_required".to_string(), json!(true));
+            finding.suggested_fixes = vec![
+                "Use positive, strictly increasing temperature points with positive output-current limits and source/digitization metadata.".to_string(),
+            ];
+            findings.push(finding);
+            return None;
+        }
+        valid.push(curve);
+    }
+    Some(valid)
+}
+
+fn temperature_soa_curve_error(curve: &MotorBridgeTemperatureSoaCurve) -> Option<String> {
+    if curve.name.trim().is_empty() {
+        return Some("empty curve name".to_string());
+    }
+    if !matches!(curve.temperature_node.as_str(), "board" | "top_case") {
+        return Some(format!(
+            "unsupported temperature_node {}",
+            curve.temperature_node
+        ));
+    }
+    if !matches!(
+        curve.current_kind.as_str(),
+        "output_current" | "phase_peak" | "phase_rms"
+    ) {
+        return Some(format!("unsupported current_kind {}", curve.current_kind));
+    }
+    if curve.source_document.trim().is_empty()
+        || curve.source_figure.trim().is_empty()
+        || curve.digitization.method.trim().is_empty()
+        || curve.digitization.confidence.trim().is_empty()
+    {
+        return Some("missing source or digitization metadata".to_string());
+    }
+    if curve.points.len() < 2 {
+        return Some("fewer than two points".to_string());
+    }
+    let mut previous_temperature = f64::NEG_INFINITY;
+    for point in &curve.points {
+        if !point.temperature_c.is_finite()
+            || !point.output_current_a.is_finite()
+            || point.output_current_a <= 0.0
+        {
+            return Some("nonfinite or nonpositive point".to_string());
+        }
+        if point.temperature_c <= previous_temperature {
+            return Some("temperature points are not strictly increasing".to_string());
+        }
+        previous_temperature = point.temperature_c;
+    }
+    None
+}
+
+struct TemperatureSoaLimit {
+    allowed_current_a: f64,
+    temperature_above_curve_range: bool,
+}
+
+fn temperature_soa_current_limit(
+    curve: &MotorBridgeTemperatureSoaCurve,
+    temperature_c: f64,
+) -> TemperatureSoaLimit {
+    let first = curve
+        .points
+        .first()
+        .expect("validated system SOA curves have at least two points");
+    let last = curve
+        .points
+        .last()
+        .expect("validated system SOA curves have at least two points");
+    if temperature_c <= first.temperature_c {
+        return TemperatureSoaLimit {
+            allowed_current_a: first.output_current_a,
+            temperature_above_curve_range: false,
+        };
+    }
+    if temperature_c > last.temperature_c {
+        return TemperatureSoaLimit {
+            allowed_current_a: last.output_current_a,
+            temperature_above_curve_range: true,
+        };
+    }
+    for pair in curve.points.windows(2) {
+        let left = &pair[0];
+        let right = &pair[1];
+        if temperature_c <= right.temperature_c {
+            let span = right.temperature_c - left.temperature_c;
+            let t = if span > 0.0 {
+                (temperature_c - left.temperature_c) / span
+            } else {
+                0.0
+            };
+            return TemperatureSoaLimit {
+                allowed_current_a: left.output_current_a
+                    + t * (right.output_current_a - left.output_current_a),
+                temperature_above_curve_range: false,
+            };
+        }
+    }
+    TemperatureSoaLimit {
+        allowed_current_a: last.output_current_a,
+        temperature_above_curve_range: false,
+    }
 }
 
 pub(super) fn validate_motor_regen_clamp(

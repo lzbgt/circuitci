@@ -189,10 +189,13 @@ robot control-stack design pass.
   not final waveform, SOA, peak gate-current, ringing, or measured
   board-temperature sign-off.
 - The wheel actuator now declares `MOTOR_BRIDGE_SOA_VALID` for the
-  CSD88599Q5DC bridge. It currently fails closed because the preliminary model
-  has no sourced, digitized `datasheet.safe_operating_area.vds_id_curves`
-  metadata. This is intentional: the bridge should not be treated as
-  fabrication-ready from reference-loss and switching screens alone.
+  CSD88599Q5DC bridge. The preliminary model encodes TI datasheet Figure 4-3
+  as a system SOA curve: output current versus board temperature under the
+  datasheet's stated 36 V, 10 V gate-drive, 50% duty-cycle, 20 kHz, 480 uH,
+  2 oz, 6-layer test conditions. The wheel screen checks 115 C board
+  temperature, 10 A phase-peak current, and 2x margin. This closes the
+  previous missing-SOA metadata finding, but it remains a typical static curve
+  screen rather than final measured waveform/thermal sign-off.
 - The wheel actuator now also checks `REGEN1`, a first-pass regeneration
   absorber design envelope, with `MOTOR_REGEN_CLAMP_VALID`: 1 J single-event
   energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V clamp window,

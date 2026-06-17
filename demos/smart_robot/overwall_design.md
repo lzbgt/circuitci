@@ -31,10 +31,9 @@ reference-loss point and a first-pass explicit `REGEN1` regeneration absorber
 budget screen. It also runs a first-pass CSD88599Q5DC switching screen from
 source-backed gate charge/rise/fall timing, plus a static shunt/gain/ADC
 current-sense accuracy screen. `MOTOR_BRIDGE_SOA_VALID` is also declared and
-currently fails closed because the preliminary CSD88599Q5DC model has no
-sourced, digitized SOA curves; this is intentional until selected bridge SOA
-or measured switching/current/thermal evidence is added. These checks are not
-final measured switching waveform, PWM sampling, repeated-pulse regen, or
+uses TI Figure 4-3 as a typical system SOA curve, screening 115 C board
+temperature, 10 A phase-peak current, and 2x current margin. These checks are
+not final measured switching waveform, PWM sampling, repeated-pulse regen, or
 selected absorber/amplifier sign-off.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.

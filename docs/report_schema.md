@@ -828,15 +828,22 @@ fails. Stable limit keys include `max_total_switching_loss_W`,
 `min_switching_loss_margin_ratio`, and `max_average_gate_drive_current_A`.
 
 `MOTOR_BRIDGE_SOA_VALID` reports are emitted by `motor_drive` scenarios that
-declare a motor bridge, explicit pulse width/duty-cycle/bus-voltage stress, and
-source-backed `datasheet.safe_operating_area.vds_id_curves` metadata on the
-bridge model. Missing or invalid SOA metadata is reported as a critical
-fail-closed finding with stable measured keys `component`, `model`, and
-`soa_metadata_error`, plus limit key `valid_soa_curve_required`. Curve stress
-failures include measured keys `vds_v`, `id_a`, `pulse_width_us`,
-`pulse_duty_cycle`, `soa_current_margin_ratio`,
-`duration_covered_by_curve`, `vds_above_curve_range`, and
-`motor_component` when motor-load evidence is used. Stable limit keys include
+declare a motor bridge and source-backed SOA metadata. System-SOA failures for
+power blocks include measured keys `temperature_C`, `output_current_A`,
+`current_source`, `system_soa_current_margin_ratio`,
+`temperature_above_curve_range`, and `motor_component` when motor-load
+evidence is used. Stable limit keys include `output_current_limit_A`,
+`required_output_current_A`, `system_soa_curve`, `curve_temperature_node`,
+`curve_current_kind`, `min_soa_current_margin_ratio`, `interpolation`,
+`source_document`, `source_figure`, `test_conditions`,
+`digitization_method`, `digitization_confidence`, and optional
+`digitization_warning`. Missing or invalid SOA metadata is reported as a
+critical fail-closed finding with stable measured keys `component`, `model`,
+and `soa_metadata_error`, plus limit key `valid_soa_curve_required` or
+`valid_system_soa_curve_required`. VDS/ID curve stress failures include
+measured keys `vds_v`, `id_a`, `pulse_width_us`, `pulse_duty_cycle`,
+`soa_current_margin_ratio`, `duration_covered_by_curve`,
+`vds_above_curve_range`, and `motor_component`; stable limit keys include
 `id_limit_a`, `required_id_a`, `soa_curve`, `curve_pulse_width_us`,
 `curve_duty_cycle_max`, `min_soa_current_margin_ratio`, `interpolation`,
 `source_document`, `source_figure`, `digitization_method`,

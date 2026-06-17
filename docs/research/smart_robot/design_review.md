@@ -134,9 +134,8 @@ left/right reusable wheel controller pass:
 - `M1` is still a generic low-confidence design envelope, not selected motor
   evidence. The wheel validation report is expected to retain the non-blocking
   `LOW_CONFIDENCE_MODEL` limitation for
-  `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` and now
-  fail on the blocking CSD88599Q5DC SOA-evidence gap until sourced SOA curves
-  or measured switching/current/thermal evidence are added.
+  `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until
+  selected motor evidence replaces it.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.
@@ -146,11 +145,12 @@ left/right reusable wheel controller pass:
   six switching/gate-charge events per PWM cycle, 0.5 W switching budget with
   2x margin, and 20 mA average gate-drive charge-current budget. This remains a
   static screen, not final waveform or SOA proof.
-- CSD88599Q5DC SOA validation is now explicit and blocking:
-  `MOTOR_BRIDGE_SOA_VALID` is declared, but the preliminary bridge model does
-  not yet include sourced, digitized SOA curves. The wheel actuator validation
-  should fail until that SOA evidence or measured switching/current/thermal
-  evidence is added.
+- CSD88599Q5DC SOA validation is now explicit:
+  `MOTOR_BRIDGE_SOA_VALID` consumes the TI Figure 4-3 typical system SOA curve
+  digitized as output current versus board temperature. The current wheel
+  screen checks 115 C board temperature, 10 A phase-peak current, and 2x
+  current margin. This is not a substitute for measured switching/current/
+  thermal evidence on the final routed board.
 - `REGEN1` first-pass regeneration absorber envelope: 1 J single-event energy,
   1 mF wheel-bus capacitance, 12.6 V nominal-to-16 V clamp window, 10 A clamp
   current envelope, 1.5 J clamp energy envelope, and 1.5x current/energy

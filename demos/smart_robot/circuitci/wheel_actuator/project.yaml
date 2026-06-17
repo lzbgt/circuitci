@@ -402,9 +402,8 @@ scenarios:
       component: PWR_STAGE
     parameters:
       motor_component: M1
-      bus_voltage_max_V: 12.6
-      pulse_width_us: 100.0
-      pulse_duty_cycle: 0.01
+      current_source: phase_peak
+      board_temperature_C: 115.0
       min_soa_current_margin_ratio: 2.0
   - name: wheel_actuator_regen_clamp_budget
     type: motor_drive

@@ -310,7 +310,36 @@ pub struct MotorBridge {
     #[serde(default, rename = "fall_time_s")]
     pub fall_time_s: Option<f64>,
     #[serde(default)]
+    pub system_soa: Option<MotorBridgeSystemSoa>,
+    #[serde(default)]
     pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MotorBridgeSystemSoa {
+    #[serde(default)]
+    pub output_current_temperature_curves: Vec<MotorBridgeTemperatureSoaCurve>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MotorBridgeTemperatureSoaCurve {
+    pub name: String,
+    pub temperature_node: String,
+    pub current_kind: String,
+    pub source_document: String,
+    pub source_figure: String,
+    #[serde(default)]
+    pub test_conditions: Option<String>,
+    pub digitization: SoaDigitization,
+    pub points: Vec<MotorBridgeTemperatureSoaPoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MotorBridgeTemperatureSoaPoint {
+    #[serde(rename = "temperature_C")]
+    pub temperature_c: f64,
+    #[serde(rename = "output_current_A")]
+    pub output_current_a: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

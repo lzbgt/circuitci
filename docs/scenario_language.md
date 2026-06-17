@@ -1879,7 +1879,9 @@ dead-time, diode reverse recovery, switch-node ringing, PWM sampling, MOSFET
 SOA, or measured switching temperature.
 
 `MOTOR_BRIDGE_SOA_VALID` checks a static motor bridge stress point against
-source-backed MOSFET SOA metadata:
+source-backed SOA metadata. For motor power blocks whose datasheets publish
+current-versus-temperature system SOA curves, prefer
+`motor_bridge.system_soa.output_current_temperature_curves`:
 
 ```yaml
 scenarios:
@@ -1891,34 +1893,37 @@ scenarios:
       component: PWR_STAGE
     parameters:
       motor_component: M1
-      bus_voltage_max_V: 12.6
-      pulse_width_us: 100.0
-      pulse_duty_cycle: 0.01
+      current_source: phase_peak
+      board_temperature_C: 115.0
       min_soa_current_margin_ratio: 2.0
 ```
 
 Required evidence:
 
 - `target.component` must bind to a component model with `motor_bridge`.
-- The same component model must declare
-  `datasheet.safe_operating_area.vds_id_curves` with positive, strictly
-  increasing VDS/ID points, pulse width, duty-cycle limit, source document,
-  source figure, and digitization metadata.
-- Motor peak current comes from explicit scenario parameters or from
+- For system SOA, the bridge model must declare
+  `motor_bridge.system_soa.output_current_temperature_curves` with positive,
+  strictly increasing temperature points, positive current limits, source
+  document, source figure, and digitization metadata.
+- `current_source` chooses `phase_peak`, `phase_rms`, or `output_current`.
+  Current comes from explicit `soa_output_current_A` or from
   `parameters.motor_component` bound to a model with `motor_load`.
-- `bus_voltage_max_V`, `pulse_width_us`, `pulse_duty_cycle`, and
-  `min_soa_current_margin_ratio` are explicit board/control inputs.
+- `board_temperature_C` and `min_soa_current_margin_ratio` are explicit
+  board/control inputs.
 
-The validator selects the shortest SOA curve whose pulse width covers
-`pulse_width_us`, uses log-log VDS/ID interpolation, and requires
-`id_limit_a / motor_phase_peak_current_A >= min_soa_current_margin_ratio`.
-It also fails if the requested pulse width is longer than all available curves,
-if `pulse_duty_cycle` exceeds the curve duty-cycle limit, or if
-`bus_voltage_max_V` is above the curve VDS range. Missing or invalid SOA
-metadata is a critical fail-closed finding, not a warning. This is still a
-static screen; final sign-off needs selected motor evidence, measured
-switch-node/current waveforms, transient thermal analysis, and board
-temperature validation.
+The system-SOA path linearly interpolates allowable output current versus
+temperature and requires
+`output_current_limit_A / output_current_A >= min_soa_current_margin_ratio`.
+It also fails if the requested board temperature is beyond the curve range.
+
+If a bridge model does not declare system SOA, the validator falls back to
+classic `datasheet.safe_operating_area.vds_id_curves`: it selects the shortest
+curve whose pulse width covers `pulse_width_us`, uses log-log VDS/ID
+interpolation, and checks `bus_voltage_max_V`, `pulse_duty_cycle`, and current
+margin. Missing or invalid SOA metadata remains a critical fail-closed finding,
+not a warning. Both paths are static screens; final sign-off needs selected
+motor evidence, measured switch-node/current waveforms, transient thermal
+analysis, and board temperature validation.
 
 `MOTOR_REGEN_CLAMP_VALID` checks a declared single-event regeneration absorber
 budget:

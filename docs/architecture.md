@@ -125,9 +125,10 @@ thermal-budget screen from component `motor_bridge` metadata.
 `MOTOR_BRIDGE_SWITCHING_VALID` adds a source-backed static transition-loss and
 average gate-charge screen from bridge rise/fall and total gate-charge
 metadata.
-`MOTOR_BRIDGE_SOA_VALID` adds a fail-closed static SOA screen that consumes
-source-backed `datasheet.safe_operating_area.vds_id_curves`, explicit
-bus-voltage/current stress, pulse width, duty cycle, and margin policy.
+`MOTOR_BRIDGE_SOA_VALID` adds a fail-closed static SOA screen. It can consume
+power-block system SOA curves from `motor_bridge.system_soa` as
+current-versus-temperature limits, or fall back to classic
+`datasheet.safe_operating_area.vds_id_curves` for VDS/ID pulse curves.
 `MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event
 regeneration envelope against bus capacitance and a named absorber/clamp
 component. `MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks declared shunt, gain,
