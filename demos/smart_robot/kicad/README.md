@@ -53,10 +53,12 @@ absorber envelope, and JST VH actuator-bus connector.
 pins back to the source-backed models used by
 `../circuitci/wheel_actuator/project.yaml`. It also carries the
 `MODEL_QUALITY_REQUIRED` sign-off scenario for `M1` and `REGEN1`, plus the
-`LOAD_CABLE_CURRENT_VALID` and `LOAD_CABLE_THERMAL_DERATING_VALID`
-and `LOAD_CABLE_VOLTAGE_DROP_VALID` actuator-bus harness gates. Validating the
-imported schematic blocks fabrication until those placeholder envelopes and
-cable evidence are replaced by selected datasheet or measured evidence.
+`LOAD_CABLE_CURRENT_VALID`, `LOAD_CABLE_THERMAL_DERATING_VALID`, and
+`LOAD_CABLE_VOLTAGE_DROP_VALID` actuator-bus harness gates. The imported
+schematic carries selected JST VH/AWG16 harness current and loop-resistance
+evidence, but still blocks fabrication until the placeholder motor/regen
+envelopes and cable temperature-rise evidence are replaced by selected
+datasheet or measured evidence.
 
 `wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
 bridge. It is a compact placement/routing artifact for import testing: it

@@ -1,0 +1,69 @@
+component_id: demo.smart_robot.jst_vh_awg16_0p5m_actuator_harness
+version: 0.1.0
+category: actuator_bus_cable_assembly
+ports:
+  VBAT_SRC:
+    kind: passive
+    required: true
+  VBAT_LOAD:
+    kind: passive
+    required: true
+  GND_SRC:
+    kind: passive
+    required: true
+  GND_LOAD:
+    kind: passive
+    required: true
+cable_assembly:
+  current_rating_A: 10.0
+  voltage_rating_V: 250.0
+  loop_resistance_ohm: 0.01506
+  source: docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf; docs/research/smart_robot/sources/national_wire_ul_awm_1015.pdf
+datasheet:
+  manufacturer: JST and National Wire & Cable
+  part_number: JST_VH_AWG16_0P5M_ACTUATOR_HARNESS
+  package: 0.5m_two_wire_loop_awg16_vh_actuator_power_harness
+  polarity: bidirectional_power_harness
+  pinout:
+    VBAT_SRC: PMU-side switched wheel rail conductor
+    VBAT_LOAD: actuator-side switched wheel rail conductor
+    GND_SRC: PMU-side return conductor
+    GND_LOAD: actuator-side return conductor
+  electrical_characteristics:
+    current_rating:
+      conditions: JST VH connector specification, AWG #16.
+      max: 10.0
+      unit: A
+    voltage_rating:
+      conditions: JST VH connector specification.
+      max: 250.0
+      unit: V
+    conductor_resistance:
+      conditions: National Wire UL AWM 1015 table, AWG 16 N600-2630U stranded construction, DC resistance at 20 C.
+      max: 4.59
+      unit: ohm_per_1000_ft
+    loop_resistance:
+      conditions: 0.5 m source-to-load length with one AWG16 supply conductor and one AWG16 return conductor, using 4.59 ohm per 1000 ft.
+      max: 0.01506
+      unit: ohm
+  documents:
+    - title: JST VH Connector datasheet
+      path: docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf
+      source_url: https://www.jst-mfg.com/product/pdf/eng/eVH.pdf
+      sha256: d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c
+    - title: National Wire UL AWM 1015 datasheet
+      path: docs/research/smart_robot/sources/national_wire_ul_awm_1015.pdf
+      source_url: https://www.nationalwire.com/pdf/UL-AWM-1015.pdf
+      sha256: 8b98c03ef1dac8985a36ca275badda37587a2d8d674c0a5725fbbb698fa635ea
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - smart_robot_actuator_bus_cable_current_screen
+    - smart_robot_actuator_bus_cable_voltage_drop_screen
+  not_valid_for:
+    - final_harness_temperature_rise_signoff
+    - vibration_or_crimp_pullout_signoff
+    - flex_life_signoff
+    - bundled_harness_derating
+    - wet_or_contaminated_environment_signoff

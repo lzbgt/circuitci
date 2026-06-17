@@ -35,6 +35,7 @@ robot control-stack design pass.
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
 | JST VH connector datasheet | `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf` | `d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c` |
+| National Wire UL AWM 1015 datasheet | `docs/research/smart_robot/sources/national_wire_ul_awm_1015.pdf` | `8b98c03ef1dac8985a36ca275badda37587a2d8d674c0a5725fbbb698fa635ea` |
 
 ## Confirmed Facts
 
@@ -114,19 +115,20 @@ robot control-stack design pass.
   switched wheel rail. Treat this as a connector budget check only; cable
   assembly, wire gauge, crimp pullout, vibration, temperature rise, CAN
   termination, and surge/ESD protection remain separate checks.
-- The wheel actuator now has a separate `LOAD_CABLE_CURRENT_VALID` gate for
-  actuator-bus harness evidence. It intentionally reports
-  `VALIDATION_INPUT_MISSING` until the project selects a cable assembly, wire
-  gauge/crimp combination, or measured harness rating. The JST VH header
-  rating is not enough to sign off the cable path.
+- The wheel actuator now uses `JACT1_CABLE`, a selected first-pass JST
+  VH/AWG16, 0.5 m actuator-bus harness model. Its current rating comes from the
+  JST VH AWG16 specification, and its loop resistance comes from the National
+  Wire UL AWM 1015 AWG16 N600-2630U table. This clears the cable-current and
+  cable-voltage-drop gates for the current 6 A load and 1.5x margin, but it is
+  still not final harness sign-off.
 - The wheel actuator also has a separate `LOAD_CABLE_THERMAL_DERATING_VALID`
   gate for actuator-bus harness temperature-rise evidence. It intentionally
   reports `VALIDATION_INPUT_MISSING` until the project selects a cable assembly
   with test-current/rise evidence or measures the final harness.
 - The wheel actuator also has a separate `LOAD_CABLE_VOLTAGE_DROP_VALID` gate
-  for actuator-bus harness loop-resistance evidence. It intentionally reports
-  `VALIDATION_INPUT_MISSING` until the project selects a cable assembly with
-  sourced resistance/drop evidence or measures the final harness.
+  for actuator-bus harness loop-resistance evidence. The selected first-pass
+  harness now clears this gate with 0.01506 ohm loop resistance for a 0.5 m
+  two-wire AWG16 path.
 
 ## Design Review Notes
 
@@ -199,16 +201,15 @@ robot control-stack design pass.
   wheel report must fail sign-off while those two critical load/absorber
   components remain generic design envelopes.
 - The wheel actuator also declares a blocking `LOAD_CABLE_CURRENT_VALID`
-  harness-current screen. The current report must fail until selected
-  actuator-bus cable current evidence is supplied; connector metadata does not
-  prove wire gauge, crimp quality, harness routing, or thermal derating.
+  harness-current screen. The selected JST VH/AWG16 0.5 m actuator harness now
+  clears the current screen with source-backed 10 A evidence.
 - The wheel actuator also declares a blocking
   `LOAD_CABLE_THERMAL_DERATING_VALID` harness-temperature screen. The current
   report must fail until selected actuator-bus cable temperature-rise evidence
   is supplied.
 - The wheel actuator also declares a blocking `LOAD_CABLE_VOLTAGE_DROP_VALID`
-  harness-drop screen. The current report must fail until selected actuator-bus
-  cable loop-resistance evidence is supplied.
+  harness-drop screen. The selected harness now clears the drop screen using
+  0.01506 ohm loop resistance for a 0.5 m two-wire AWG16 path.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A

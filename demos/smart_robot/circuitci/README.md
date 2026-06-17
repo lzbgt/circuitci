@@ -137,7 +137,7 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=3, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
@@ -147,12 +147,11 @@ sign-off: downstream switched capacitance, PCB copper thermal behavior,
 fault/retry waveforms, and measured rail droop still need layout or bench
 evidence.
 
-The wheel actuator failure is expected until `M1`, `REGEN1`, and the
-actuator-bus cable assembly are replaced by source-backed selected components,
-ratings, temperature-rise data, loop-resistance data, or measured
-load/absorber/harness evidence. The lower level bridge, CAN, connector, route,
-current-sense, SOA, switching, and regen budget checks should still remain
-clean.
+The wheel actuator failure is expected until `M1`, `REGEN1`, and actuator-bus
+cable temperature-rise evidence are replaced by source-backed selected
+components or measured evidence. The lower level bridge, CAN, connector, cable
+current, cable voltage-drop, route, current-sense, SOA, switching, and regen
+budget checks should still remain clean.
 
 ## What This Does Not Yet Prove
 

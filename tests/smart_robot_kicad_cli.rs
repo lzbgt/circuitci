@@ -179,6 +179,7 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
                     && scenario["checks"][0] == "LOAD_CABLE_CURRENT_VALID"
                     && scenario["target"]["component"] == "PWR_STAGE"
                     && scenario["target"]["power_pin"] == "VM"
+                    && scenario["parameters"]["cable_component"] == "JACT1_CABLE"
             }),
         "wheel KiCad import should preserve the cable-current sign-off gate: {imported:#?}"
     );
@@ -192,6 +193,7 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
                     && scenario["checks"][0] == "LOAD_CABLE_THERMAL_DERATING_VALID"
                     && scenario["target"]["component"] == "PWR_STAGE"
                     && scenario["target"]["power_pin"] == "VM"
+                    && scenario["parameters"]["cable_component"] == "JACT1_CABLE"
             }),
         "wheel KiCad import should preserve the cable-thermal sign-off gate: {imported:#?}"
     );
@@ -205,6 +207,7 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
                     && scenario["checks"][0] == "LOAD_CABLE_VOLTAGE_DROP_VALID"
                     && scenario["target"]["component"] == "PWR_STAGE"
                     && scenario["target"]["power_pin"] == "VM"
+                    && scenario["parameters"]["cable_component"] == "JACT1_CABLE"
             }),
         "wheel KiCad import should preserve the cable voltage-drop sign-off gate: {imported:#?}"
     );
@@ -254,19 +257,19 @@ fn smart_robot_wheel_actuator_kicad_schematic_validates_model_quality_gate() {
     assert_eq!(model_quality_components, vec!["M1", "REGEN1"]);
     assert!(failures.iter().any(|finding| {
         finding["id"] == "VALIDATION_INPUT_MISSING"
-            && finding["scenario"] == "wheel_actuator_bus_cable_budget"
-            && finding["limit"]["required_input"] == "cable_current_rating_A"
-    }));
-    assert!(failures.iter().any(|finding| {
-        finding["id"] == "VALIDATION_INPUT_MISSING"
             && finding["scenario"] == "wheel_actuator_bus_cable_thermal_derating"
             && finding["limit"]["required_input"] == "cable_temperature_rise_test_current_A"
     }));
-    assert!(failures.iter().any(|finding| {
-        finding["id"] == "VALIDATION_INPUT_MISSING"
-            && finding["scenario"] == "wheel_actuator_bus_cable_voltage_drop"
-            && finding["limit"]["required_input"] == "cable_loop_resistance_ohm"
-    }));
+    assert!(
+        !failures.iter().any(|finding| {
+            matches!(
+                finding["scenario"].as_str(),
+                Some("wheel_actuator_bus_cable_budget")
+                    | Some("wheel_actuator_bus_cable_voltage_drop")
+            )
+        }),
+        "imported wheel schematic should clear selected cable current/drop evidence gates: {failures:#?}"
+    );
 }
 
 #[test]

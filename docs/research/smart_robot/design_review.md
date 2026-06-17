@@ -137,14 +137,14 @@ left/right reusable wheel controller pass:
 - JST VH 8-pin actuator-bus connector current and voltage budget for the
   switched wheel rail, checked with 1.5x margin against the preliminary bridge
   load.
-- A separate actuator-bus cable-current sign-off gate is declared and
-  intentionally fails closed until selected wire, crimp, cable assembly, or
-  measured harness current evidence is supplied.
+- A separate actuator-bus cable-current sign-off gate is declared. The selected
+  first-pass JST VH/AWG16 0.5 m actuator harness now clears this current gate.
 - A separate actuator-bus cable thermal-derating gate is also declared and
   intentionally fails closed until selected cable temperature-rise evidence is
   supplied.
-- A separate actuator-bus cable voltage-drop gate is declared and intentionally
-  fails closed until selected cable loop-resistance evidence is supplied.
+- A separate actuator-bus cable voltage-drop gate is declared. The selected
+  first-pass harness now clears this drop gate with source-backed
+  loop-resistance evidence.
 - `M1` motor-load design envelope feeding the first-pass bridge budget:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
@@ -160,17 +160,16 @@ left/right reusable wheel controller pass:
   fail until the motor load and regeneration absorber are backed by selected
   datasheets or measured evidence.
 - The wheel validation also declares `LOAD_CABLE_CURRENT_VALID` for the
-  actuator-bus harness. It must keep failing with `VALIDATION_INPUT_MISSING`
-  until the selected cable assembly or explicit harness rating is added; the
-  JST VH connector rating alone is not wire/crimp evidence.
+  actuator-bus harness. It now uses `JACT1_CABLE`, a selected JST VH/AWG16
+  0.5 m harness model, to clear cable-current evidence for the current
+  first-pass design envelope.
 - The wheel validation also declares `LOAD_CABLE_THERMAL_DERATING_VALID` for
   the actuator-bus harness. It must keep failing until selected harness
   temperature-rise evidence is added; the rule only scales from declared test
   data and does not infer ampacity from generic wire gauge assumptions.
 - The wheel validation also declares `LOAD_CABLE_VOLTAGE_DROP_VALID` for the
-  actuator-bus harness. It must keep failing until selected harness
-  loop-resistance evidence is added; the rule computes DC drop and optional
-  harness power loss and does not infer resistance from generic wire tables.
+  actuator-bus harness. It now uses the selected harness loop-resistance model
+  to clear the first-pass DC drop and harness power-loss screen.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.

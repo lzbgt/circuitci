@@ -90,11 +90,10 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
     );
     let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
     assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "wheel_actuator_bus_cable_budget"
-                && finding["limit"]["required_input"] == "cable_current_rating_A"
-        }),
-        "wheel actuator must fail sign-off until actuator-bus cable current evidence is selected: {missing_inputs:#?}"
+        !findings_with_id(&report, "LOAD_CABLE_CURRENT_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "selected actuator-bus harness current evidence should clear cable-current sign-off: {report:#?}"
     );
     assert!(
         missing_inputs.iter().any(|finding| {
@@ -104,11 +103,10 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         "wheel actuator must fail sign-off until actuator-bus cable thermal evidence is selected: {missing_inputs:#?}"
     );
     assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "wheel_actuator_bus_cable_voltage_drop"
-                && finding["limit"]["required_input"] == "cable_loop_resistance_ohm"
-        }),
-        "wheel actuator must fail sign-off until actuator-bus cable loop resistance evidence is selected: {missing_inputs:#?}"
+        !findings_with_id(&report, "LOAD_CABLE_VOLTAGE_DROP_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "selected actuator-bus harness loop-resistance evidence should clear cable voltage-drop sign-off: {report:#?}"
     );
 }
 

@@ -175,6 +175,14 @@ board:
         ENABLE: enable_in
         FAULT: fault_out
         SYNC: sync_in
+    JACT1_CABLE:
+      model: demo.smart_robot.jst_vh_awg16_0p5m_actuator_harness
+      part_number: JST_VH_AWG16_0P5M_ACTUATOR_HARNESS
+      pins:
+        VBAT_SRC: vwheel_sw
+        VBAT_LOAD: vwheel_sw
+        GND_SRC: gnd
+        GND_LOAD: gnd
   nets:
     vwheel_sw:
       kind: power
@@ -505,6 +513,7 @@ scenarios:
       component: PWR_STAGE
       power_pin: VM
     parameters:
+      cable_component: JACT1_CABLE
       min_cable_current_margin_ratio: 1.5
   - name: wheel_actuator_bus_cable_thermal_derating
     type: load_budget
@@ -514,6 +523,7 @@ scenarios:
       component: PWR_STAGE
       power_pin: VM
     parameters:
+      cable_component: JACT1_CABLE
       thermal_current_margin_ratio: 1.5
   - name: wheel_actuator_bus_cable_voltage_drop
     type: load_budget
@@ -523,6 +533,7 @@ scenarios:
       component: PWR_STAGE
       power_pin: VM
     parameters:
+      cable_component: JACT1_CABLE
       max_cable_voltage_drop_V: 0.3
       max_cable_power_loss_W: 2.0
       drop_current_margin_ratio: 1.5

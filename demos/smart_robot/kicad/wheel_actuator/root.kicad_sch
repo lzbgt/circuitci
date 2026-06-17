@@ -90,7 +90,12 @@
       (pin passive line (at 0 40 0) (length 2.54) (number "AUX_5V"))
       (pin passive line (at 0 50 0) (length 2.54) (number "ENABLE"))
       (pin passive line (at 0 60 0) (length 2.54) (number "FAULT"))
-      (pin passive line (at 0 70 0) (length 2.54) (number "SYNC"))))
+      (pin passive line (at 0 70 0) (length 2.54) (number "SYNC")))
+    (symbol "CircuitCI:Actuator_Bus_Cable"
+      (pin passive line (at 0 0 0) (length 2.54) (number "VBAT_SRC"))
+      (pin passive line (at 0 10 0) (length 2.54) (number "VBAT_LOAD"))
+      (pin passive line (at 0 20 0) (length 2.54) (number "GND_SRC"))
+      (pin passive line (at 0 30 0) (length 2.54) (number "GND_LOAD"))))
 
   (symbol (lib_id "CircuitCI:AT32M416_Motor_Control") (at 0 0 0)
     (property "Reference" "U1")
@@ -154,6 +159,15 @@
     (property "Value" "B8P-VH_ACTUATOR_BUS")
     (pin "VBAT") (pin "GND") (pin "CANH") (pin "CANL") (pin "AUX_5V")
     (pin "ENABLE") (pin "FAULT") (pin "SYNC"))
+  (symbol (lib_id "CircuitCI:Actuator_Bus_Cable") (at 225 0 0)
+    (property "Reference" "JACT1_CABLE")
+    (property "Value" "JST_VH_AWG16_0P5M_ACTUATOR_HARNESS")
+    (pin "VBAT_SRC") (pin "VBAT_LOAD") (pin "GND_SRC") (pin "GND_LOAD"))
+
+  (wire (pts (xy 225 0) (xy 233 0))) (label "vwheel_sw" (at 233 0 0))
+  (wire (pts (xy 225 10) (xy 233 10))) (label "vwheel_sw" (at 233 10 0))
+  (wire (pts (xy 225 20) (xy 233 20))) (label "gnd" (at 233 20 0))
+  (wire (pts (xy 225 30) (xy 233 30))) (label "gnd" (at 233 30 0))
 
   (wire (pts (xy 0 0) (xy 8 0))) (label "3v3_logic" (at 8 0 0))
   (wire (pts (xy 0 10) (xy 8 10))) (label "gnd" (at 8 10 0))
