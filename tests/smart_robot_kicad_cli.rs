@@ -356,6 +356,63 @@ fn smart_robot_pmu_kicad_schematic_imports_connectivity() {
         imported["board"]["components"]["U3V3"]["source"]["board_pin_electrical_types"]["PG"],
         "output"
     );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "pmu_estop_switch_selected_part_gate"
+                    && scenario["checks"][0] == "MODEL_QUALITY_REQUIRED"
+                    && scenario["parameters"]["components"][0] == "U_SERVO_SW"
+                    && scenario["parameters"]["components"][1] == "U_WHEEL_SW"
+            }),
+        "PMU KiCad import should preserve the e-stop switch selected-part gate: {imported:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_project = dir.path().join("pmu_imported.project.yaml");
+    let import_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/pmu/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/pmu/circuitci.kicad-map.yaml",
+            "--output",
+            imported_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(import_status.success());
+
+    let report_dir = dir.path().join("pmu_report");
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            imported_project.to_str().unwrap(),
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let failures = report["failures"].as_array().unwrap();
+    let model_quality_components = failures
+        .iter()
+        .filter(|finding| finding["id"] == "MODEL_QUALITY_REQUIRED")
+        .map(|finding| finding["component"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(model_quality_components, vec!["U_SERVO_SW", "U_WHEEL_SW"]);
 }
 
 #[test]

@@ -191,3 +191,13 @@ nets:
     kind: digital_or_analog
   estop_power_enable:
     kind: digital_or_analog
+
+scenarios:
+  - name: pmu_estop_switch_selected_part_gate
+    type: model_quality
+    checks:
+      - MODEL_QUALITY_REQUIRED
+    parameters:
+      components: [U_SERVO_SW, U_WHEEL_SW]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium

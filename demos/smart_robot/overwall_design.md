@@ -311,6 +311,11 @@ Battery pack + BMS/protection
 
 For the charger IC, the clean high-quality choice is **BQ25798**. It is a 1–4 cell, 5 A buck-boost charger intended for USB PD-type input and integrates four switching MOSFETs and BATFET. ([Texas Instruments][4])
 
+CircuitCI currently models the PMU charger, 5 V buck, 3.3 V buck, and switched
+servo/wheel rails. The switched rails intentionally fail fabrication sign-off
+until the `U_SERVO_SW` and `U_WHEEL_SW` placeholders are replaced by
+source-backed high-current eFuse, load-switch, or MOSFET-driver parts.
+
 For USB-C PD negotiation, use either:
 
 ```text
@@ -526,6 +531,11 @@ E_STOP button
 
 The e-stop must not depend only on Linux software.
 
+The first validation model treats the e-stop rail switches as safety-critical
+selected parts, not generic policy boxes. `MODEL_QUALITY_REQUIRED` must stay
+blocking until datasheet-backed or measured switch models prove the real
+current, thermal, inrush, reverse-current, and SOA behavior.
+
 ## Wheel driver enable chain
 
 ```text
@@ -660,7 +670,8 @@ For the first LC EasyEDA fabrication, build:
   battery-pack/BMS connector
   5V_SYS buck
   VSERVO buck/BEC connector
-  VBAT_SW high-side switch
+  source-backed VBAT_SW high-side switch/eFuse
+  source-backed VSERVO switch/eFuse
   INA226 current monitor
   e-stop chain
 

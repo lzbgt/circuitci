@@ -99,11 +99,15 @@ should encode:
 - TPS62162 3.3 V logic buck with explicit 2.2 uH inductor, 10 uF input
   capacitor, and 22 uF output capacitor.
 - Servo and wheel switched rails behind explicit e-stop policy placeholders.
+- Blocking `MODEL_QUALITY_REQUIRED` gate on `U_SERVO_SW` and `U_WHEEL_SW`, so
+  PMU validation cannot pass fabrication sign-off while those safety-critical
+  switches remain low-confidence design-policy models.
 
-The placeholder e-stop switches are not fabrication-ready components. Before
-layout, replace them with source-backed high-current eFuse/load-switch or
-MOSFET-driver models and validate current limit, thermal, inrush, reverse
-current, and connector ratings.
+The placeholder e-stop switches are not fabrication-ready components. The PMU
+report intentionally fails until they are replaced with source-backed
+high-current eFuse/load-switch or MOSFET-driver models. After selection, add
+checks for current limit, thermal, inrush, reverse current, SOA, and connector
+ratings.
 
 ## Wheel Actuator Slice Status
 

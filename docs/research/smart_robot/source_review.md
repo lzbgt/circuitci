@@ -169,8 +169,10 @@ robot control-stack design pass.
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
   parts, and e-stop rail gating policy. The high-current servo/wheel switch
-  model is a design-policy placeholder, not a fabrication-ready MOSFET/eFuse
-  selection.
+  models are design-policy placeholders, not fabrication-ready MOSFET/eFuse
+  selections. The PMU slice now carries a blocking `MODEL_QUALITY_REQUIRED`
+  gate for `U_SERVO_SW` and `U_WHEEL_SW`, so the report must fail until
+  source-backed selected switch models replace those placeholders.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall

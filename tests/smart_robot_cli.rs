@@ -141,6 +141,40 @@ fn smart_robot_wheel_model_quality_gate_passes_with_source_backed_loads() {
 }
 
 #[test]
+fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
+    let report = run_validation("demos/smart_robot/circuitci/pmu/project.yaml");
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    assert!(
+        !findings_with_id(&report, "POWER_TREE_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "PMU power-tree checks should remain clean while selected switch evidence is blocked: {report:#?}"
+    );
+    let model_quality_findings = findings_with_id(&report, "MODEL_QUALITY_REQUIRED");
+    assert!(
+        model_quality_findings.iter().any(|finding| {
+            finding["component"] == "U_SERVO_SW"
+                && finding["measured"]["model_source"] == "design_requirement"
+                && finding["measured"]["model_confidence"] == "low"
+                && finding["limit"]["allowed_sources"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&Value::String("datasheet".to_string()))
+        }),
+        "PMU must fail sign-off on placeholder servo e-stop switch evidence: {model_quality_findings:#?}"
+    );
+    assert!(
+        model_quality_findings.iter().any(|finding| {
+            finding["component"] == "U_WHEEL_SW"
+                && finding["measured"]["model_source"] == "design_requirement"
+                && finding["measured"]["model_confidence"] == "low"
+        }),
+        "PMU must fail sign-off on placeholder wheel e-stop switch evidence: {model_quality_findings:#?}"
+    );
+}
+
+#[test]
 fn smart_robot_servo_payload_passes() {
     let report = run_validation("demos/smart_robot/circuitci/servo_payload/project.yaml");
     assert_eq!(report["result"], "pass");

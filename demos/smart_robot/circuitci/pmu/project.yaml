@@ -223,6 +223,14 @@ board:
       kind: digital_or_analog
 
 scenarios:
+  - name: pmu_estop_switch_selected_part_gate
+    type: model_quality
+    checks:
+      - MODEL_QUALITY_REQUIRED
+    parameters:
+      components: [U_SERVO_SW, U_WHEEL_SW]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium
   - name: pmu_2s_charging_and_estop_enabled
     type: power_tree
     checks:

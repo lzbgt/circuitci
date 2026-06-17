@@ -33,6 +33,9 @@ layout sign-off.
 - TPS54331 5 V buck static voltage/current screening.
 - TPS62162 3.3 V buck support inductor/capacitor screening.
 - Design-policy e-stop switch placeholders for servo and wheel rails.
+- `MODEL_QUALITY_REQUIRED` fabrication gate for `U_SERVO_SW` and `U_WHEEL_SW`,
+  so the PMU cannot be signed off while the high-current switched-rail parts
+  are still low-confidence design-policy placeholders.
 
 `wheel_actuator/project.yaml` models the reusable left/right wheel actuator
 board:
@@ -131,10 +134,15 @@ Expected result:
 
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
+CircuitCI smart_robot_pmu_v0: fail (critical=2, warning=0, info=0)
 CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
+
+The PMU failure is expected until `U_SERVO_SW` and `U_WHEEL_SW` are replaced
+by source-backed selected high-current eFuse, load-switch, or MOSFET-driver
+evidence. The lower level BQ25798, TPS54331, TPS62162, and power-tree checks
+should still remain clean.
 
 The wheel actuator failure is expected until `M1`, `REGEN1`, and the
 actuator-bus cable assembly are replaced by source-backed selected components,
@@ -150,7 +158,10 @@ clean.
 - CAN/RS485 cable length, common-mode range, connector pinout,
   imported-final-layout route evidence, surge-energy policy, and EMC behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
-  reverse-current behavior, connector heating, and battery safety.
+  reverse-current behavior, connector heating, and battery safety. The current
+  PMU slice blocks sign-off on selected switch evidence, but does not yet
+  validate the selected switch current limit, SOA, thermal, or transient
+  behavior.
 - Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
   curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
