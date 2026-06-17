@@ -6,10 +6,11 @@ use std::path::Path;
 mod sketch;
 
 use sketch::{
-    ProjectSnapshot, SketchSelection, add_component, add_net, draw_sketch_node,
-    edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
-    edit_net_powered, layout_sketch_graph, load_project_snapshot, load_project_snapshot_from_yaml,
-    remove_component, remove_net, validate_board_ir_yaml_text,
+    ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
+    draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
+    edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph, load_project_snapshot,
+    load_project_snapshot_from_yaml, remove_component, remove_component_pin, remove_net,
+    validate_board_ir_yaml_text,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -82,6 +83,8 @@ pub struct CircuitCiApp {
     new_component_model: String,
     new_net_id: String,
     new_net_kind: String,
+    pin_edit_id: String,
+    pin_edit_net: String,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     waveforms: Vec<WaveformView>,
@@ -120,6 +123,8 @@ impl Default for CircuitCiApp {
             new_component_model: "generic.schematic.imported_component".to_string(),
             new_net_id: "net_new".to_string(),
             new_net_kind: "digital_or_analog".to_string(),
+            pin_edit_id: "P1".to_string(),
+            pin_edit_net: String::new(),
             project_snapshot: None,
             selected_sketch_item: None,
             waveforms: Vec::new(),
@@ -785,6 +790,39 @@ impl CircuitCiApp {
                                     ui.monospace(format!("{} -> {}", pin.pin, pin.net));
                                 }
                             });
+                        ui.separator();
+                        ui.label("Pin assignment");
+                        if self.pin_edit_net.is_empty()
+                            && let Some(net) = snapshot.nets_detail.first()
+                        {
+                            self.pin_edit_net = net.id.clone();
+                        }
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut self.pin_edit_id);
+                            egui::ComboBox::from_id_salt("pin_edit_net")
+                                .selected_text(if self.pin_edit_net.is_empty() {
+                                    "select net"
+                                } else {
+                                    &self.pin_edit_net
+                                })
+                                .show_ui(ui, |ui| {
+                                    for net in &snapshot.nets_detail {
+                                        ui.selectable_value(
+                                            &mut self.pin_edit_net,
+                                            net.id.clone(),
+                                            &net.id,
+                                        );
+                                    }
+                                });
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Assign Pin").clicked() {
+                                self.apply_assign_component_pin(&component.id);
+                            }
+                            if ui.button("Remove Pin").clicked() {
+                                self.apply_remove_component_pin(&component.id);
+                            }
+                        });
                         if ui.button("Remove Component").clicked() {
                             self.apply_remove_component(&component.id);
                         }
@@ -930,6 +968,38 @@ impl CircuitCiApp {
             Ok(updated) => {
                 self.apply_edited_project_yaml(updated, "Component part number updated.")
             }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_assign_component_pin(&mut self, component_id: &str) {
+        match assign_component_pin(
+            &self.project_yaml,
+            component_id,
+            &self.pin_edit_id,
+            &self.pin_edit_net,
+        ) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component {component_id} pin {} assigned to {}.",
+                    self.pin_edit_id.trim(),
+                    self.pin_edit_net.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_component_pin(&mut self, component_id: &str) {
+        match remove_component_pin(&self.project_yaml, component_id, &self.pin_edit_id) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component {component_id} pin {} removed.",
+                    self.pin_edit_id.trim()
+                ),
+            ),
             Err(error) => self.record_error(error),
         }
     }

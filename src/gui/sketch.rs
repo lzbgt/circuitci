@@ -195,6 +195,51 @@ pub(super) fn remove_component(text: &str, component_id: &str) -> Result<String>
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn assign_component_pin(
+    text: &str,
+    component_id: &str,
+    pin_id: &str,
+    net_id: &str,
+) -> Result<String> {
+    let pin_id = validated_graph_id(pin_id, "pin")?;
+    let net_id = validated_graph_id(net_id, "net")?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let nets = board_child_mapping_mut(&mut yaml, "nets")?;
+        let net_key = serde_yaml_ng::Value::String(net_id.to_string());
+        if !nets.contains_key(&net_key) {
+            anyhow::bail!("Board IR net {net_id} was not found.");
+        }
+    }
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let component = named_child_mapping_mut(components, component_id, "component")?;
+        let pins = ensure_child_mapping_mut(component, "pins", "component pins")?;
+        pins.insert(
+            serde_yaml_ng::Value::String(pin_id.to_string()),
+            serde_yaml_ng::Value::String(net_id.to_string()),
+        );
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn remove_component_pin(text: &str, component_id: &str, pin_id: &str) -> Result<String> {
+    let pin_id = validated_graph_id(pin_id, "pin")?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let component = named_child_mapping_mut(components, component_id, "component")?;
+        let pins = child_mapping_mut(component, "pins", "component pins")?;
+        let pin_key = serde_yaml_ng::Value::String(pin_id.to_string());
+        if pins.remove(&pin_key).is_none() {
+            anyhow::bail!("Board IR component {component_id} pin {pin_id} was not found.");
+        }
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn edit_component_part_number(
     text: &str,
     component_id: &str,
@@ -389,6 +434,37 @@ fn named_child_mapping_mut<'a>(
         .with_context(|| format!("Board IR {label} {id} was not found."))?
         .as_mapping_mut()
         .with_context(|| format!("Board IR {label} {id} must be an object."))
+}
+
+fn ensure_child_mapping_mut<'a>(
+    mapping: &'a mut serde_yaml_ng::Mapping,
+    field: &str,
+    label: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    let key = serde_yaml_ng::Value::String(field.to_string());
+    if !mapping.contains_key(&key) {
+        mapping.insert(
+            key.clone(),
+            serde_yaml_ng::Value::Mapping(Default::default()),
+        );
+    }
+    mapping
+        .get_mut(&key)
+        .expect("field was inserted when absent")
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR {label} must be an object."))
+}
+
+fn child_mapping_mut<'a>(
+    mapping: &'a mut serde_yaml_ng::Mapping,
+    field: &str,
+    label: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    mapping
+        .get_mut(serde_yaml_ng::Value::String(field.to_string()))
+        .with_context(|| format!("Board IR {label} field {field} was not found."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR {label} must be an object."))
 }
 
 fn set_or_remove_yaml_field(
@@ -593,7 +669,8 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        add_component, add_net, remove_component, remove_net, validate_board_ir_yaml_text,
+        add_component, add_net, assign_component_pin, remove_component, remove_component_pin,
+        remove_net, validate_board_ir_yaml_text,
     };
 
     fn editable_project_yaml() -> &'static str {
@@ -647,6 +724,25 @@ board:
     fn remove_referenced_net_fails_closed() {
         let error = remove_net(editable_project_yaml(), "net_a").unwrap_err();
         assert!(error.to_string().contains("R1.A"));
+    }
+
+    #[test]
+    fn assign_and_remove_component_pin_emit_valid_yaml() {
+        let edited = add_net(editable_project_yaml(), "sense_new", "digital_or_analog").unwrap();
+        let edited = assign_component_pin(&edited, "R1", "SENSE", "sense_new").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("SENSE: sense_new"));
+
+        let edited = remove_component_pin(&edited, "R1", "SENSE").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(!edited.contains("SENSE: sense_new"));
+    }
+
+    #[test]
+    fn assign_component_pin_rejects_missing_net() {
+        let error = assign_component_pin(editable_project_yaml(), "R1", "SENSE", "missing_net")
+            .unwrap_err();
+        assert!(error.to_string().contains("missing_net"));
     }
 
     #[test]

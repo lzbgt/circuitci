@@ -33,7 +33,7 @@ dependencies unless `--features gui` is explicitly enabled.
 and waveform observation. `src/gui/sketch.rs` owns the Board IR graph snapshot,
 sketch graph layout/drawing helpers, and structured scalar YAML edit helpers
 for selected components and nets, including conservative add/remove operations
-for components and unreferenced nets.
+for components and unreferenced nets plus validated component pin assignment.
 
 ## Workflow Shell
 
@@ -47,8 +47,8 @@ form:
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   an inspector for component bindings and net connections, structured scalar
   edits for existing component and net properties, add/remove controls for
-  components and unreferenced nets, and a raw Board IR YAML editor with
-  parse-validated save.
+  components and unreferenced nets, pin-to-net assignment/removal for selected
+  components, and a raw Board IR YAML editor with parse-validated save.
 - Library: shows library bindings and scenario suggestion YAML.
 - Simulation: runs validation through the engine, plots emitted CSV waveforms,
   and lists generated SPICE decks, artifacts, findings, and limitations.
@@ -73,15 +73,16 @@ The supported desktop simulation path is:
    fields through structured controls,
 4. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
-5. edit Board IR YAML evidence when the project needs a correction outside the
+5. assign or remove selected component pin bindings to existing nets,
+6. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-6. bind sourced component models,
-7. run declared validation and `analog_transient` scenarios,
-8. observe generated decks, plotted CSV waveforms, findings, and report
+7. bind sourced component models,
+8. run declared validation and `analog_transient` scenarios,
+9. observe generated decks, plotted CSV waveforms, findings, and report
    artifacts,
-9. edit the project/model evidence and rerun.
+10. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, pin rewiring, advanced waveform
+Full schematic-canvas editing, visual wire routing, advanced waveform
 cursors/measurements, automatic arbitrary schematic-to-SPICE conversion, and
 vendor macromodel acquisition are future GUI stages. They must reuse the
 existing Board IR, importer, model, and validation contracts instead of creating

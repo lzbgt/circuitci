@@ -24,10 +24,12 @@ routing, validation/report calls, and waveform observation. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, and structured
 scalar YAML edit helpers for existing components and nets. It may add or remove
 component entries and may remove only nets that are not referenced by component
-pins. Pin rewiring must stay fail-closed until the GUI can present the affected
-component and net context clearly. New graph editing features should extend the
-sketch module or introduce another focused GUI submodule before `src/gui.rs`
-approaches the 2000-line guard again.
+pins. It may assign or remove component pin bindings only when the component
+exists and any assigned target net exists. Visual wire routing should keep using
+these Board IR mutation helpers rather than introducing a parallel connection
+model. New graph editing features should extend the sketch module or introduce
+another focused GUI submodule before `src/gui.rs` approaches the 2000-line
+guard again.
 
 ## Evidence Model
 
