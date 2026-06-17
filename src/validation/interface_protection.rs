@@ -6,6 +6,7 @@ use crate::library::{
 use crate::reports::Finding;
 use serde_json::json;
 
+mod bus_placement;
 mod bus_termination;
 mod usb_connector;
 mod usb_connector_clearance;
@@ -47,6 +48,14 @@ pub(super) fn validate_bus_termination(
     findings: &mut Vec<Finding>,
 ) {
     bus_termination::validate_bus_termination(bound, scenario, findings);
+}
+
+pub(super) fn validate_bus_protection_placement(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    bus_placement::validate_bus_protection_placement(bound, scenario, findings);
 }
 
 pub(super) fn validate_usb_connector_orientation(

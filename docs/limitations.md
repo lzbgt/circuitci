@@ -88,6 +88,11 @@ without explicit imported mechanical evidence.
   clamp coverage. It does not prove trace order, trace length, via count,
   parasitic inductance, shield strategy, return-path continuity, differential
   impedance, ESD pulse survival, or USB signal integrity.
+- `BUS_PROTECTION_PLACEMENT_VALID` checks explicit CAN/RS485-style bus line
+  route evidence and component placements against declared route-distance and
+  off-route limits. It requires ordered continuous route polylines and does not
+  prove surge-current sharing, stub inductance, cable EMC, common-mode behavior,
+  or differential signal integrity.
 - `USB_CONNECTOR_ORIENTATION_VALID` checks imported connector placement
   `rotation_deg` against an explicit expected rotation and tolerance. It does
   not prove enclosure entry direction, connector keepout, cable clearance, or

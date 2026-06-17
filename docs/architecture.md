@@ -126,11 +126,14 @@ capture; it does not prove cable assembly quality, vibration retention, thermal
 rise, or pulsed-load behavior.
 
 Interface-protection rules cover clamp devices, level shifters, USB connector
-mechanics/routing, and explicit bus termination. `BUS_TERMINATION_VALID` is
-topology-scoped: it requires the scenario to declare endpoint role, bus nets,
-expected resistance, tolerance, and a specific resistor with `spice.value_ohm`.
-It intentionally does not infer that every CAN/RS485 board should carry local
-termination.
+mechanics/routing, explicit bus termination, and explicit bus protection
+placement. `BUS_TERMINATION_VALID` is topology-scoped: it requires the scenario
+to declare endpoint role, bus nets, expected resistance, tolerance, and a
+specific resistor with `spice.value_ohm`. It intentionally does not infer that
+every CAN/RS485 board should carry local termination.
+`BUS_PROTECTION_PLACEMENT_VALID` consumes board layout placements and ordered
+route polylines for both bus lines, then checks declared TVS or termination
+components against project-specific distance limits.
 
 ## Process Presets
 

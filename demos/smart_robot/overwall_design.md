@@ -67,6 +67,7 @@ THVD1450 RS485 transceiver
 ESD2CAN24-Q1 CANH/CANL TVS near connector
 ESDS552 RS485 A/B TVS near connector
 120R CAN/RS485 endpoint terminators as explicit population options
+explicit CAN/RS485 TVS and terminator route-placement contracts
 PCA9685 optional
 power monitors
 watchdog / e-stop logic
@@ -162,6 +163,7 @@ local jump servo / jump actuator output
 TCAN3413 CAN bus
 ESD2CAN24-Q1 CANH/CANL TVS near connector
 120R CAN endpoint terminator as explicit population option
+explicit CAN TVS and terminator route-placement contracts
 local fault protection
 ```
 

@@ -214,6 +214,37 @@ board:
       kind: digital_or_analog
     phase_w:
       kind: digital_or_analog
+  layout:
+    placements:
+      JACT1:
+        x_mm: 10.0
+        y_mm: 12.0
+        side: top
+      UCAN_ESD1:
+        x_mm: 13.0
+        y_mm: 12.0
+        side: top
+      RT_CAN1:
+        x_mm: 17.0
+        y_mm: 12.0
+        side: top
+      U3:
+        x_mm: 22.0
+        y_mm: 12.0
+        side: top
+    routes:
+      robot_canh:
+        segments:
+          - start: { x_mm: 10.0, y_mm: 11.8 }
+            end: { x_mm: 22.0, y_mm: 11.8 }
+            width_mm: 0.18
+            layer: F.Cu
+      robot_canl:
+        segments:
+          - start: { x_mm: 10.0, y_mm: 12.2 }
+            end: { x_mm: 22.0, y_mm: 12.2 }
+            width_mm: 0.18
+            layer: F.Cu
 
 scenarios:
   - name: wheel_actuator_static_power_and_io
@@ -276,3 +307,25 @@ scenarios:
       termination_component: RT_CAN1
       expected_termination_ohm: 120.0
       termination_tolerance_percent: 5.0
+  - name: wheel_actuator_can_esd_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      reference_component: JACT1
+      checked_component: UCAN_ESD1
+      max_reference_to_checked_route_distance_mm: 5.0
+      max_component_to_route_distance_mm: 0.25
+  - name: wheel_actuator_can_termination_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      reference_component: JACT1
+      checked_component: RT_CAN1
+      max_reference_to_checked_route_distance_mm: 8.0
+      max_component_to_route_distance_mm: 0.25

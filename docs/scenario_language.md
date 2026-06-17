@@ -106,6 +106,7 @@ Canonical executable check IDs:
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
 - `BUS_TERMINATION_VALID`
+- `BUS_PROTECTION_PLACEMENT_VALID`
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
@@ -359,6 +360,43 @@ Bus termination algorithm:
 6. When `board_is_bus_endpoint` is false, a supplied termination component
    connected across the two nets is a critical finding, because non-endpoint
    nodes must not add local termination in a two-endpoint bus topology.
+
+Bus protection placement uses `BUS_PROTECTION_PLACEMENT_VALID` with explicit
+layout evidence. It is intended for CAN/RS485-style bus TVS and termination
+placement checks where a project has a chosen layout policy, not for generic
+signal-integrity sign-off.
+
+```yaml
+scenarios:
+  - name: can_esd_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      reference_component: JACT1
+      checked_component: UCAN_ESD1
+      max_reference_to_checked_route_distance_mm: 5.0
+      max_component_to_route_distance_mm: 0.25
+```
+
+Bus placement algorithm:
+
+1. Require `line_a_net`, `line_b_net`, `reference_component`,
+   `checked_component`, `max_reference_to_checked_route_distance_mm`, and
+   `max_component_to_route_distance_mm`.
+2. Require the two line nets to be declared and distinct.
+3. Require `board.layout.placements` entries for the reference and checked
+   components with finite coordinates.
+4. Require `board.layout.routes` entries for both line nets. Each route must
+   have positive-width segments, non-empty layers, finite endpoints, and an
+   ordered continuous polyline.
+5. Project both component coordinates onto each line route. Both projections
+   must be within `max_component_to_route_distance_mm`.
+6. Require the route distance between the projected reference and checked
+   component on both lines to fit
+   `max_reference_to_checked_route_distance_mm`.
 
 USB connector coverage uses `USB_CONNECTOR_PROTECTION_VALID` against a connector
 model that declares `usb_connector` pin metadata. The rule verifies that D+ and

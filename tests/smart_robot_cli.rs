@@ -256,6 +256,76 @@ fn smart_robot_wheel_actuator_fails_wrong_can_termination_value() {
     );
 }
 
+#[test]
+fn smart_robot_motion_core_fails_can_esd_route_placement_limit() {
+    let (dir, project) = mutated_motion_core_project(
+        "checked_component: UCAN_ESD1\n      max_reference_to_checked_route_distance_mm: 5.0",
+        "checked_component: UCAN_ESD1\n      max_reference_to_checked_route_distance_mm: 1.0",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let placement_findings = findings_with_id(&report, "BUS_PROTECTION_PLACEMENT_VALID");
+    assert!(
+        placement_findings.iter().any(|finding| {
+            finding["component"] == "UCAN_ESD1"
+                && finding["measured"]["reference_component"] == "U3"
+                && finding["measured"]["line_a_route_distance_mm"] == 3.0
+                && finding["limit"]["max_reference_to_checked_route_distance_mm"] == 1.0
+        }),
+        "expected CAN ESD route-placement failure, got {placement_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_fails_can_termination_route_placement_limit() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "checked_component: RT_CAN1\n      max_reference_to_checked_route_distance_mm: 8.0",
+        "checked_component: RT_CAN1\n      max_reference_to_checked_route_distance_mm: 3.0",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let placement_findings = findings_with_id(&report, "BUS_PROTECTION_PLACEMENT_VALID");
+    assert!(
+        placement_findings.iter().any(|finding| {
+            finding["component"] == "RT_CAN1"
+                && finding["measured"]["reference_component"] == "JACT1"
+                && finding["measured"]["line_b_route_distance_mm"] == 7.0
+                && finding["limit"]["max_reference_to_checked_route_distance_mm"] == 3.0
+        }),
+        "expected wheel CAN termination route-placement failure, got {placement_findings:#?}"
+    );
+}
+
 fn mutated_motion_core_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

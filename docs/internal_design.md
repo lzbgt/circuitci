@@ -222,6 +222,14 @@ component with `spice.value_ohm`. This keeps reusable boards from being
 incorrectly treated as always-terminated when only some harness population
 variants should install the 120 ohm resistor.
 
+`BUS_PROTECTION_PLACEMENT_VALID` is also scenario-driven. It requires explicit
+bus line nets, a reference component, a checked protection or termination
+component, finite placement coordinates, and ordered continuous route evidence
+for both lines. The validator projects each component onto each line route and
+checks both off-route tolerance and route distance. It is a deterministic layout
+evidence guard; it does not model ESD surge current, parasitic inductance, cable
+EMC, or differential signal integrity.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

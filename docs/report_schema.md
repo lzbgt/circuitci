@@ -106,6 +106,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `FUNCTIONAL_MCU_FIRMWARE`
 - `INTERFACE_PROTECTION_REVIEW`
 - `BUS_TERMINATION_VALID`
+- `BUS_PROTECTION_PLACEMENT_VALID`
 - `USB_CONNECTOR_PROTECTION_VALID`
 - `USB_PROTECTION_PLACEMENT_VALID`
 - `USB_CONNECTOR_ORIENTATION_VALID`
@@ -170,6 +171,16 @@ measured keys include `line_a_net`, `line_b_net`, and `termination_ohm`.
 Stable limit keys include `expected_termination_ohm` and
 `termination_tolerance_percent`. The rule is intentionally topology-scoped: it
 does not infer that all CAN/RS485 nodes should be terminated.
+
+`BUS_PROTECTION_PLACEMENT_VALID` reports are emitted by
+`interface_protection` scenarios that explicitly declare a differential bus
+pair, a reference component, a checked protection or termination component, and
+ordered `board.layout.routes` evidence for both lines. Stable measured keys
+include `line_a_net`, `line_b_net`, `reference_component`,
+`line_a_route_distance_mm`, and `line_b_route_distance_mm`; off-route findings
+include `net` and `reference_component`. Stable limit keys include
+`max_reference_to_checked_route_distance_mm` and
+`max_component_to_route_distance_mm`.
 
 `USB_CONNECTOR_PROTECTION_VALID` reports are emitted by `interface_protection`
 scenarios that target a component model with `usb_connector` metadata. Stable

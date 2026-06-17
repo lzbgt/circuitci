@@ -92,7 +92,11 @@ robot control-stack design pass.
 - TI's RS-485 and CAN termination source material supports using explicit
   endpoint topology before validating 120 ohm line termination. CircuitCI now
   checks the smart-robot endpoint-population variants by requiring a declared
-  resistor across the exact bus nets and a declared tolerance.
+  resistor across the exact bus nets and a declared tolerance. The demos also
+  add explicit `board.layout.placements` and ordered route evidence to check
+  first-pass TVS and termination route distance. This is not a replacement for
+  imported final CAD, surge-energy, EMC, common-mode, or signal-integrity
+  validation.
 - NXP's PCA9685 page and datasheet identify a 16-channel, 12-bit PWM
   Fast-mode Plus I2C LED controller. The saved datasheet states 2.3 V to 5.5 V
   supply operation, 5.5 V tolerant inputs/outputs, Fm+ operation up to 1 MHz,
@@ -128,8 +132,10 @@ robot control-stack design pass.
   ESDS552 clamp review on A/B. These verify rail, MCU-side I/O, and static bus
   clamp presence/reference. The first endpoint-population scenarios also check
   120 ohm CAN/RS485 termination components within explicit 5% tolerance.
-  Cable length, connector pinout, EMC, and routed-bus layout still require
-  board-level evidence.
+  First-pass route-placement contracts now check selected TVS and termination
+  components against explicit layout placements/routes. Cable length, connector
+  pinout, EMC, and imported final routed-bus layout still require board-level
+  evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
@@ -141,8 +147,9 @@ robot control-stack design pass.
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
   inputs, TCAN3413 CAN transceiver rail and MCU-side logic, ESD2CAN24-Q1
   CANH/CANL clamp presence/reference, explicit 120 ohm CAN endpoint termination
-  evidence for the endpoint-population option, rail budgets, and a preliminary
-  3x CSD88599Q5DC wheel bridge candidate.
+  evidence for the endpoint-population option, CAN TVS/termination
+  route-placement contracts, rail budgets, and a preliminary 3x CSD88599Q5DC
+  wheel bridge candidate.
 - The wheel actuator now also checks `M1`, a modeled first-pass motor-load
   design envelope: 10 A phase peak, 6 A phase RMS, 6 A regeneration,
   5 mohm / 1 W phase shunts, 8 A motor connector rating, 10 ohm gate

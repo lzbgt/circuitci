@@ -178,6 +178,57 @@ board:
       kind: digital_or_analog
     rs485_servo_b:
       kind: digital_or_analog
+  layout:
+    placements:
+      U3:
+        x_mm: 20.0
+        y_mm: 10.0
+        side: top
+      UCAN_ESD1:
+        x_mm: 23.0
+        y_mm: 10.0
+        side: top
+      RT_CAN1:
+        x_mm: 27.0
+        y_mm: 10.0
+        side: top
+      U4:
+        x_mm: 20.0
+        y_mm: 18.0
+        side: top
+      U485_ESD1:
+        x_mm: 23.0
+        y_mm: 18.0
+        side: top
+      RT_RS4851:
+        x_mm: 27.0
+        y_mm: 18.0
+        side: top
+    routes:
+      robot_canh:
+        segments:
+          - start: { x_mm: 20.0, y_mm: 9.8 }
+            end: { x_mm: 27.0, y_mm: 9.8 }
+            width_mm: 0.18
+            layer: F.Cu
+      robot_canl:
+        segments:
+          - start: { x_mm: 20.0, y_mm: 10.2 }
+            end: { x_mm: 27.0, y_mm: 10.2 }
+            width_mm: 0.18
+            layer: F.Cu
+      rs485_servo_a:
+        segments:
+          - start: { x_mm: 20.0, y_mm: 17.8 }
+            end: { x_mm: 27.0, y_mm: 17.8 }
+            width_mm: 0.18
+            layer: F.Cu
+      rs485_servo_b:
+        segments:
+          - start: { x_mm: 20.0, y_mm: 18.2 }
+            end: { x_mm: 27.0, y_mm: 18.2 }
+            width_mm: 0.18
+            layer: F.Cu
 
 scenarios:
   - name: motion_core_static_power_and_io
@@ -228,6 +279,28 @@ scenarios:
       termination_component: RT_CAN1
       expected_termination_ohm: 120.0
       termination_tolerance_percent: 5.0
+  - name: motion_core_can_esd_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      reference_component: U3
+      checked_component: UCAN_ESD1
+      max_reference_to_checked_route_distance_mm: 5.0
+      max_component_to_route_distance_mm: 0.25
+  - name: motion_core_can_termination_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: robot_canh
+      line_b_net: robot_canl
+      reference_component: U3
+      checked_component: RT_CAN1
+      max_reference_to_checked_route_distance_mm: 8.0
+      max_component_to_route_distance_mm: 0.25
   - name: motion_core_rs485_endpoint_termination
     type: interface_protection
     checks:
@@ -239,3 +312,25 @@ scenarios:
       termination_component: RT_RS4851
       expected_termination_ohm: 120.0
       termination_tolerance_percent: 5.0
+  - name: motion_core_rs485_esd_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: rs485_servo_a
+      line_b_net: rs485_servo_b
+      reference_component: U4
+      checked_component: U485_ESD1
+      max_reference_to_checked_route_distance_mm: 5.0
+      max_component_to_route_distance_mm: 0.25
+  - name: motion_core_rs485_termination_route_placement
+    type: interface_protection
+    checks:
+      - BUS_PROTECTION_PLACEMENT_VALID
+    parameters:
+      line_a_net: rs485_servo_a
+      line_b_net: rs485_servo_b
+      reference_component: U4
+      checked_component: RT_RS4851
+      max_reference_to_checked_route_distance_mm: 8.0
+      max_component_to_route_distance_mm: 0.25
