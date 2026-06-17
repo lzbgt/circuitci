@@ -120,6 +120,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `IO_VOLTAGE_COMPATIBLE`
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
+- `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -805,6 +806,16 @@ measured keys include `route_current_A`, `route_current_source`,
 `min_route_width_mm`, and `motor_component` when motor-load evidence is used.
 Stable limit keys include `max_current_density_A_per_mm` and
 `required_route_width_mm`.
+
+`MOTOR_CURRENT_SENSE_PLACEMENT_VALID` reports are emitted by `motor_drive`
+scenarios that declare phase-shunt placements, paired phase routes, paired
+sense routes, and explicit distance limits. Stable measured keys include
+`shunt_to_reference_distance_mm`, `shunt_to_phase_route_distance_mm`,
+`shunt_to_sense_route_distance_mm`, and `sense_route_length_mm`, depending on
+which comparison fails. Stable limit keys include
+`max_shunt_to_reference_distance_mm`,
+`max_shunt_to_phase_route_distance_mm`,
+`max_shunt_to_sense_route_distance_mm`, and `max_sense_route_length_mm`.
 
 `LOAD_CONNECTOR_CURRENT_VALID` reports are emitted by `load_budget` scenarios
 that declare the check. They compare one load power-pin current budget against

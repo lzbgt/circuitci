@@ -132,7 +132,9 @@ robot control-stack design pass.
   TVS and endpoint-termination placement scenarios can be overlaid onto the
   imported CAD project and validated without manual layout metadata. It also
   preserves the phase and switched-battery route widths used by
-  `MOTOR_ROUTE_CURRENT_VALID` for a first-pass route-current screen.
+  `MOTOR_ROUTE_CURRENT_VALID` for a first-pass route-current screen, plus
+  phase-shunt placement and current-sense routes used by
+  `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`.
 - The first verifiable slice is
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,
@@ -147,8 +149,9 @@ robot control-stack design pass.
   components against explicit layout placements/routes. The wheel actuator PCB
   bridge proves that path with imported KiCad PCB evidence. The same PCB bridge
   now proves first-pass motor route-width checks for phase and switched-battery
-  routes. Cable length, connector pinout, EMC, copper temperature rise, and
-  final routed layout still require board-level evidence.
+  routes, and first-pass phase-shunt/current-sense placement checks. Cable
+  length, connector pinout, EMC, copper temperature rise, current-sense
+  accuracy, and final routed layout still require board-level evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
@@ -172,9 +175,11 @@ robot control-stack design pass.
 - The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.
-- The wheel slice does not yet validate MOSFET SOA, gate charge, switching
-  loss, current-sense accuracy, thermal behavior, regeneration clamp energy,
-  PCB copper temperature rise, or motor-control loop stability.
+- The wheel slice now validates first-pass phase-shunt placement and
+  current-sense route distances from explicit layout evidence. It does not yet
+  validate MOSFET SOA, gate charge, switching loss, current-sense electrical
+  accuracy, thermal behavior, regeneration clamp energy, PCB copper temperature
+  rise, or motor-control loop stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four

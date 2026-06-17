@@ -76,6 +76,7 @@ pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_ROUTE_CURRENT_VALID: &str = "MOTOR_ROUTE_CURRENT_VALID";
+pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "gpio_backdrive",
@@ -455,6 +456,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 MOTOR_ROUTE_CURRENT_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_route_current(bound, scenario, &mut findings)
                 }
+                MOTOR_CURRENT_SENSE_PLACEMENT_VALID if scenario.scenario_type == "motor_drive" => {
+                    motor_drive::validate_motor_current_sense_placement(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 LOAD_CONNECTOR_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_load_connector_current(bound, scenario, &mut findings)
                 }
@@ -502,6 +510,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | SPICE_TRANSIENT_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_ROUTE_CURRENT_VALID
+                | MOTOR_CURRENT_SENSE_PLACEMENT_VALID
                 | LOAD_CONNECTOR_CURRENT_VALID => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

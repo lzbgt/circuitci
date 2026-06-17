@@ -121,6 +121,33 @@ board:
         PHASE_U: phase_u
         PHASE_V: phase_v
         PHASE_W: phase_w
+    RSHUNT_U:
+      model: generic.analog.resistor
+      part_number: 5mR_1W_PHASE_SHUNT_U
+      pins:
+        A: phase_u
+        B: cur_u
+      spice:
+        primitive: resistor
+        value_ohm: 0.005
+    RSHUNT_V:
+      model: generic.analog.resistor
+      part_number: 5mR_1W_PHASE_SHUNT_V
+      pins:
+        A: phase_v
+        B: cur_v
+      spice:
+        primitive: resistor
+        value_ohm: 0.005
+    RSHUNT_W:
+      model: generic.analog.resistor
+      part_number: 5mR_1W_PHASE_SHUNT_W
+      pins:
+        A: phase_w
+        B: cur_w
+      spice:
+        primitive: resistor
+        value_ohm: 0.005
     M1:
       model: demo.smart_robot.wheel_motor_design_envelope
       part_number: WHEEL_MOTOR_DESIGN_ENVELOPE
@@ -232,6 +259,22 @@ board:
         x_mm: 22.0
         y_mm: 12.0
         side: top
+      PWR_STAGE:
+        x_mm: 61.0
+        y_mm: 29.0
+        side: top
+      RSHUNT_U:
+        x_mm: 66.0
+        y_mm: 27.1
+        side: top
+      RSHUNT_V:
+        x_mm: 66.0
+        y_mm: 29.0
+        side: top
+      RSHUNT_W:
+        x_mm: 66.0
+        y_mm: 30.9
+        side: top
     routes:
       robot_canh:
         segments:
@@ -272,6 +315,24 @@ board:
           - start: { x_mm: 64.0, y_mm: 31.0 }
             end: { x_mm: 81.5, y_mm: 30.0 }
             width_mm: 1.20
+            layer: F.Cu
+      cur_u:
+        segments:
+          - start: { x_mm: 66.0, y_mm: 27.1 }
+            end: { x_mm: 45.0, y_mm: 23.2 }
+            width_mm: 0.15
+            layer: F.Cu
+      cur_v:
+        segments:
+          - start: { x_mm: 66.0, y_mm: 29.0 }
+            end: { x_mm: 45.0, y_mm: 24.0 }
+            width_mm: 0.15
+            layer: F.Cu
+      cur_w:
+        segments:
+          - start: { x_mm: 66.0, y_mm: 30.9 }
+            end: { x_mm: 45.0, y_mm: 24.8 }
+            width_mm: 0.15
             layer: F.Cu
 
 scenarios:
@@ -320,6 +381,21 @@ scenarios:
       current_source: max_regen
       route_nets: [vwheel_sw]
       max_current_density_A_per_mm: 4.0
+  - name: wheel_actuator_current_sense_placement
+    type: motor_drive
+    checks:
+      - MOTOR_CURRENT_SENSE_PLACEMENT_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      reference_component: PWR_STAGE
+      shunt_components: [RSHUNT_U, RSHUNT_V, RSHUNT_W]
+      phase_route_nets: [phase_u, phase_v, phase_w]
+      sense_route_nets: [cur_u, cur_v, cur_w]
+      max_shunt_to_reference_distance_mm: 6.0
+      max_shunt_to_phase_route_distance_mm: 0.5
+      max_shunt_to_sense_route_distance_mm: 0.2
+      max_sense_route_length_mm: 24.0
   - name: wheel_actuator_bus_connector_budget
     type: load_budget
     checks:

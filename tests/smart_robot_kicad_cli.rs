@@ -108,6 +108,18 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
         "net_phase_u"
     );
     assert_eq!(
+        imported["board"]["components"]["RSHUNT_U"]["pins"]["A"],
+        "net_phase_u"
+    );
+    assert_eq!(
+        imported["board"]["components"]["RSHUNT_U"]["pins"]["B"],
+        "net_cur_u"
+    );
+    assert_eq!(
+        imported["board"]["components"]["RSHUNT_U"]["spice"]["value_ohm"],
+        0.005
+    );
+    assert_eq!(
         imported["board"]["components"]["M1"]["pins"]["PHASE_U"],
         "net_phase_u"
     );
@@ -373,6 +385,10 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
         "net_vwheel_sw"
     );
     assert_eq!(
+        imported["board"]["layout"]["pads"]["RSHUNT_U"]["B"]["net"],
+        "net_cur_u"
+    );
+    assert_eq!(
         imported["board"]["layout"]["pads"]["M1"]["PHASE_U"]["net"],
         "net_phase_u"
     );
@@ -395,6 +411,14 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
     assert_eq!(
         imported["board"]["layout"]["routes"]["net_phase_u"]["segments"][0]["width_mm"],
         1.20
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_cur_u"]["segments"][0]["start"]["x_mm"],
+        66.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_cur_u"]["segments"][0]["width_mm"],
+        0.15
     );
     assert_eq!(
         imported["board"]["layout"]["constraints"]["net_rules"]["net_robot_canh"]["diff_pair_gap_mm"],
@@ -477,11 +501,12 @@ fn smart_robot_wheel_actuator_kicad_pcb_validates_layout_scenarios() {
                     | Some("wheel_actuator_can_termination_route_placement")
                     | Some("wheel_actuator_phase_route_current")
                     | Some("wheel_actuator_vbat_regen_route_current")
+                    | Some("wheel_actuator_current_sense_placement")
             )
         })
         .cloned()
         .collect();
-    assert_eq!(bus_layout_scenarios.len(), 5);
+    assert_eq!(bus_layout_scenarios.len(), 6);
     for scenario in &mut bus_layout_scenarios {
         let parameters = scenario["parameters"].as_object_mut().unwrap();
         if parameters.get("line_a_net").is_some() {
@@ -503,6 +528,15 @@ fn smart_robot_wheel_actuator_kicad_pcb_validates_layout_scenarios() {
             for route_net in route_nets {
                 if let Some(net) = route_net.as_str() {
                     *route_net = Value::String(format!("net_{net}"));
+                }
+            }
+        }
+        for list_name in ["phase_route_nets", "sense_route_nets"] {
+            if let Some(route_nets) = parameters.get_mut(list_name).and_then(Value::as_array_mut) {
+                for route_net in route_nets {
+                    if let Some(net) = route_net.as_str() {
+                        *route_net = Value::String(format!("net_{net}"));
+                    }
                 }
             }
         }

@@ -37,7 +37,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
 | `validation::interface_protection` | Static signal-protection, routed-interface, and topology-scoped bus termination rules. |
-| `validation::motor_drive` | Static motor bridge budget rules over explicit current, shunt, connector, and gate-timing scenario inputs. |
+| `validation::motor_drive` | Static motor bridge budget, route-current, and current-sense placement rules over explicit current, shunt, connector, gate-timing, and layout evidence. |
 | `validation::load_budget` | Static load-to-connector current and voltage budget rules over explicit load and connector metadata. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
@@ -140,6 +140,10 @@ Motor-drive route checks consume the same `board.layout.routes` evidence.
 select current evidence, and declare an explicit A/mm route-width policy. It
 compares imported segment widths against that policy without claiming MOSFET
 SOA, switching-loss, copper-temperature, or regeneration-transient sign-off.
+`MOTOR_CURRENT_SENSE_PLACEMENT_VALID` consumes `board.layout.placements` plus
+phase and sense routes to keep phase shunts near the bridge, phase copper, and
+current-sense traces. It is a deterministic layout-distance guard; it does not
+prove amplifier accuracy, Kelvin parasitics, thermal drift, or ADC noise.
 
 ## Process Presets
 

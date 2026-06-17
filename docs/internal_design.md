@@ -105,18 +105,25 @@ add fail-closed importer coverage before adding an approximation.
 
 ## Motor Drive Budgets
 
-`src/validation/motor_drive.rs` owns deterministic first-pass motor bridge
-budget checks. The rule consumes explicit scenario parameters and optional
-`parameters.motor_component` evidence from a bound component model with
-`motor_load`; it does not infer motor behavior from topology. Required current,
-connector, shunt, gate-resistor, dead-time, and PWM values must be finite and
-positive where appropriate; unknown values produce `VALIDATION_INPUT_MISSING`.
+`src/validation/motor_drive.rs` owns deterministic first-pass motor bridge,
+route-current, and current-sense placement checks. The bridge-budget rule
+consumes explicit scenario parameters and optional `parameters.motor_component`
+evidence from a bound component model with `motor_load`; it does not infer motor
+behavior from topology. Required current, connector, shunt, gate-resistor,
+dead-time, and PWM values must be finite and positive where appropriate;
+unknown values produce `VALIDATION_INPUT_MISSING`.
+
+Current-sense placement checks consume only component placements and route
+polylines already present in `board.layout`. They compare phase shunts against
+declared reference-component, phase-route, sense-route, and sense-route-length
+limits. They deliberately avoid calculating shunt parasitics, amplifier gain
+error, ADC quantization/noise, PWM rejection, or thermal drift.
 
 Keep this module limited to checks that can be evaluated from declared design
-budget numbers and component binding evidence. MOSFET SOA, switching loss,
-thermal paths, current-sense accuracy, regeneration clamps, and PCB copper
-temperature rise need source-backed model data or separate validation rules
-before they are treated as sign-off.
+budget numbers, component binding evidence, and explicit layout geometry.
+MOSFET SOA, switching loss, thermal paths, current-sense accuracy, regeneration
+clamps, and PCB copper temperature rise need source-backed model data or
+separate validation rules before they are treated as sign-off.
 
 ## Load Connector Budgets
 
@@ -237,6 +244,11 @@ source, and `max_current_density_A_per_mm`. The validator then compares that
 policy to the minimum imported segment width for each route. This gives CAD
 imports an executable first-pass guard while leaving SOA, switching loss,
 temperature rise, thermal vias, and shared copper pours to later evidence.
+
+`MOTOR_CURRENT_SENSE_PLACEMENT_VALID` follows the same explicit-evidence
+pattern for shunt placement and sense routes. It requires component placement
+records and route polylines; it does not derive Kelvin quality from schematic
+net names or infer current-sense accuracy from shunt value alone.
 
 ## Reports
 

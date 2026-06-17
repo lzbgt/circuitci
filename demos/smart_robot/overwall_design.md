@@ -24,7 +24,8 @@ exercise placement, pad, route, via, zone, and net-rule import before full
 fabrication layout work. The wheel PCB bridge now also round-trips enough CAN
 route evidence for CircuitCI to validate the selected CAN TVS and termination
 placement scenarios from imported CAD geometry, plus first-pass phase and
-`VBAT_SW` route-width checks for the selected wheel current envelope.
+`VBAT_SW` route-width checks and phase-shunt/current-sense placement checks
+for the selected wheel current envelope.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.
 

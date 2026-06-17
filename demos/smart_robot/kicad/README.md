@@ -46,8 +46,8 @@ added.
 the reusable left/right wheel actuator board. It uses local `CircuitCI:*`
 symbols for the motor-control MCU, DRV8323 gate driver, CAN transceiver and TVS,
 endpoint termination option, encoder/Hall input, preliminary CSD88599Q5DC
-three-phase bridge candidate, motor-load envelope, and JST VH actuator-bus
-connector.
+three-phase bridge candidate, phase shunts, motor-load envelope, and JST VH
+actuator-bus connector.
 
 `wheel_actuator/circuitci.kicad-map.yaml` binds those schematic references and
 pins back to the source-backed models used by
@@ -56,8 +56,9 @@ pins back to the source-backed models used by
 `wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
 bridge. It is a compact placement/routing artifact for import testing: it
 contains component placements, JACT1 CAN and power pads, CAN ESD/termination
-placement, preliminary motor bridge and motor pads, CAN routes, motor power and
-phase routes, a ground zone, and explicit net-class constraints.
+placement, preliminary motor bridge, phase-shunt and motor pads, CAN routes,
+motor power/phase routes, current-sense routes, a ground zone, and explicit
+net-class constraints.
 
 Import check:
 
@@ -78,9 +79,10 @@ connectivity and model binding only. The PCB-enriched Board IR additionally
 proves first-pass placement, pad, route, via, outline, zone, and routing-rule
 evidence. The imported route widths now also drive the wheel actuator CAN
 placement checks and first-pass motor phase/`VBAT_SW` route-current checks. It
-is still not a final layout sign-off: it does not prove MOSFET SOA/thermal
-margins, copper temperature rise, regeneration handling, EMC, or manufacturing
-DRC.
+also drives the first-pass phase-shunt and current-sense route placement
+checks. It is still not a final layout sign-off: it does not prove MOSFET
+SOA/thermal margins, current-sense accuracy, copper temperature rise,
+regeneration handling, EMC, or manufacturing DRC.
 
 ## PMU
 

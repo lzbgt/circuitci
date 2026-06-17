@@ -474,6 +474,40 @@ fn smart_robot_wheel_route_current_fails_undersized_phase_width() {
     );
 }
 
+#[test]
+fn smart_robot_wheel_current_sense_placement_fails_remote_shunt() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "max_shunt_to_reference_distance_mm: 6.0",
+        "max_shunt_to_reference_distance_mm: 1.0",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let placement_findings = findings_with_id(&report, "MOTOR_CURRENT_SENSE_PLACEMENT_VALID");
+    assert!(
+        placement_findings.iter().any(|finding| {
+            finding["component"] == "RSHUNT_V"
+                && finding["measured"]["shunt_to_reference_distance_mm"] == 5.0
+                && finding["limit"]["max_shunt_to_reference_distance_mm"] == 1.0
+        }),
+        "expected remote phase-shunt placement failure, got {placement_findings:#?}"
+    );
+}
+
 fn mutated_wheel_actuator_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

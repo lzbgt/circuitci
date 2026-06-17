@@ -131,6 +131,9 @@ left/right reusable wheel controller pass:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
   200 ns dead time, and 20 kHz PWM.
+- First-pass phase-shunt/current-sense placement contract from explicit layout
+  evidence, keeping the three phase shunts close to the bridge, phase copper,
+  and sense traces.
 
 Do not change the first fabrication to a true 6-phase motor/inverter unless
 there is a sourced motor requirement. True 6-phase can reduce torque ripple or
@@ -143,8 +146,8 @@ with a checked static budget, not final power-stage sign-off. The next
 validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
 with selected motor datasheet or measurement evidence, then add
 gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
-clamp behavior, imported final CAN layout evidence, cable assembly evidence,
-and PCB copper-temperature validation.
+clamp behavior, current-sense electrical accuracy, imported final layout
+evidence, cable assembly evidence, and PCB copper-temperature validation.
 
 ## Servo Payload Slice Status
 

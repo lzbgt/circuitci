@@ -104,6 +104,33 @@ components:
       PHASE_U: PHASE_U
       PHASE_V: PHASE_V
       PHASE_W: PHASE_W
+  RSHUNT_U:
+    model: generic.analog.resistor
+    part_number: 5mR_1W_PHASE_SHUNT_U
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 0.005
+  RSHUNT_V:
+    model: generic.analog.resistor
+    part_number: 5mR_1W_PHASE_SHUNT_V
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 0.005
+  RSHUNT_W:
+    model: generic.analog.resistor
+    part_number: 5mR_1W_PHASE_SHUNT_W
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 0.005
   M1:
     model: demo.smart_robot.wheel_motor_design_envelope
     part_number: WHEEL_MOTOR_DESIGN_ENVELOPE

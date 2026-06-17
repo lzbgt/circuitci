@@ -55,6 +55,9 @@ board:
 - `MOTOR_ROUTE_CURRENT_VALID` first-pass route-width policies for the
   1.2 mm phase routes and 1.5 mm switched-battery route. These are explicit
   A/mm layout-policy checks, not copper-temperature or SOA proof.
+- `MOTOR_CURRENT_SENSE_PLACEMENT_VALID` first-pass shunt and current-sense
+  route placement checks for the three phase shunts near the bridge and phase
+  copper.
 - JST VH 8-pin actuator-bus connector screening for the switched wheel rail
   with 1.5x current margin.
 
@@ -99,10 +102,10 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
   imported-final-layout route evidence, surge-energy policy, and EMC behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
-- Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
-  MOSFET SOA, switching loss, thermal, regeneration clamp energy, cable
-  assembly evidence, and final routed layout copper beyond the first-pass
-  route-width checks.
+- Selected wheel motor datasheet/measurement evidence, current-sense electrical
+  accuracy, MOSFET SOA, switching loss, thermal, regeneration clamp energy,
+  cable assembly evidence, and final routed layout copper beyond the first-pass
+  route-width and shunt-placement checks.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

@@ -111,6 +111,7 @@ Canonical executable check IDs:
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
+- `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -1823,6 +1824,47 @@ the minimum imported `board.layout.routes.<net>.segments[].width_mm` for every
 named route. This is a deterministic route-width guard; it does not model
 MOSFET SOA, switching loss, copper temperature rise, thermal vias, pour sharing,
 or transient regeneration behavior.
+
+`MOTOR_CURRENT_SENSE_PLACEMENT_VALID` checks imported or explicit phase-shunt,
+phase-route, and current-sense route placement evidence:
+
+```yaml
+scenarios:
+  - name: wheel_current_sense_placement
+    type: motor_drive
+    checks:
+      - MOTOR_CURRENT_SENSE_PLACEMENT_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      reference_component: PWR_STAGE
+      shunt_components: [RSHUNT_U, RSHUNT_V, RSHUNT_W]
+      phase_route_nets: [phase_u, phase_v, phase_w]
+      sense_route_nets: [cur_u, cur_v, cur_w]
+      max_shunt_to_reference_distance_mm: 6.0
+      max_shunt_to_phase_route_distance_mm: 0.5
+      max_shunt_to_sense_route_distance_mm: 0.2
+      max_sense_route_length_mm: 24.0
+```
+
+Required parameters:
+
+- `reference_component`: bridge, gate-driver, or current-sense reference
+  component used as the local placement origin.
+- `shunt_components`: non-empty list of phase shunt component references.
+- `phase_route_nets`: same-length list of routed phase nets beside each shunt.
+- `sense_route_nets`: same-length list of routed shunt sense nets.
+- `max_shunt_to_reference_distance_mm`
+- `max_shunt_to_phase_route_distance_mm`
+- `max_shunt_to_sense_route_distance_mm`
+- `max_sense_route_length_mm`
+
+The validator requires matching component placements and route polylines in
+`board.layout`. It measures Euclidean shunt-to-reference distance, shortest
+shunt-to-route distance for the paired phase and sense nets, and total
+current-sense route length. This is a layout evidence guard for keeping shunts
+and Kelvin/sense traces compact; it does not prove current-sense gain,
+offset/noise, ADC range, copper temperature rise, or PWM common-mode rejection.
 
 ## Load Budget Scenario Shape
 

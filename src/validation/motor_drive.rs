@@ -1,9 +1,11 @@
-use crate::board_ir::{NetRoute, Scenario};
+use crate::board_ir::{ComponentPlacement, LayoutPoint, NetRoute, RouteSegment, Scenario};
 use crate::library::{BoundBoard, MotorLoad};
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::{MOTOR_BRIDGE_BUDGET_VALID, MOTOR_ROUTE_CURRENT_VALID};
+use super::{
+    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_ROUTE_CURRENT_VALID,
+};
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
 
@@ -334,6 +336,146 @@ pub(super) fn validate_motor_route_current(
     }
 }
 
+pub(super) fn validate_motor_current_sense_placement(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(reference_component) = required_string(scenario, "reference_component", findings)
+    else {
+        return;
+    };
+    let Some(reference_placement) =
+        placement_evidence(bound, scenario, &reference_component, findings)
+    else {
+        return;
+    };
+    let shunt_components = required_string_list(scenario, "shunt_components", findings);
+    let phase_route_nets = required_string_list(scenario, "phase_route_nets", findings);
+    let sense_route_nets = required_string_list(scenario, "sense_route_nets", findings);
+    if shunt_components.is_empty() || phase_route_nets.is_empty() || sense_route_nets.is_empty() {
+        return;
+    }
+    if shunt_components.len() != phase_route_nets.len()
+        || shunt_components.len() != sense_route_nets.len()
+    {
+        missing_input(
+            scenario,
+            "shunt_components/phase_route_nets/sense_route_nets",
+            "Use equal-length shunt_components, phase_route_nets, and sense_route_nets lists.",
+            findings,
+        );
+        return;
+    }
+    let Some(max_shunt_to_reference_distance_mm) =
+        required_positive(scenario, "max_shunt_to_reference_distance_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_shunt_to_phase_route_distance_mm) =
+        required_positive(scenario, "max_shunt_to_phase_route_distance_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_shunt_to_sense_route_distance_mm) =
+        required_positive(scenario, "max_shunt_to_sense_route_distance_mm", findings)
+    else {
+        return;
+    };
+    let Some(max_sense_route_length_mm) =
+        required_positive(scenario, "max_sense_route_length_mm", findings)
+    else {
+        return;
+    };
+
+    for ((shunt_component, phase_net), sense_net) in shunt_components
+        .iter()
+        .zip(phase_route_nets.iter())
+        .zip(sense_route_nets.iter())
+    {
+        let Some(shunt_placement) = placement_evidence(bound, scenario, shunt_component, findings)
+        else {
+            continue;
+        };
+        let Some(phase_route) = route_evidence(bound, scenario, phase_net, findings) else {
+            continue;
+        };
+        let Some(sense_route) = route_evidence(bound, scenario, sense_net, findings) else {
+            continue;
+        };
+        let shunt_point = PlacementPoint::from(shunt_placement);
+        let reference_distance_mm =
+            point_distance_mm(shunt_point, PlacementPoint::from(reference_placement));
+        if reference_distance_mm > max_shunt_to_reference_distance_mm {
+            current_sense_distance_finding(
+                scenario,
+                shunt_component,
+                "shunt_to_reference_distance_mm",
+                reference_distance_mm,
+                "max_shunt_to_reference_distance_mm",
+                max_shunt_to_reference_distance_mm,
+                findings,
+            );
+        }
+        let Some(phase_distance_mm) = distance_to_route_mm(phase_route, shunt_point) else {
+            missing_input(
+                scenario,
+                "phase_route_nets",
+                &format!(
+                    "Add non-empty positive-width route evidence for phase route {phase_net}."
+                ),
+                findings,
+            );
+            continue;
+        };
+        if phase_distance_mm > max_shunt_to_phase_route_distance_mm {
+            current_sense_distance_finding(
+                scenario,
+                shunt_component,
+                "shunt_to_phase_route_distance_mm",
+                phase_distance_mm,
+                "max_shunt_to_phase_route_distance_mm",
+                max_shunt_to_phase_route_distance_mm,
+                findings,
+            );
+        }
+        let Some(sense_distance_mm) = distance_to_route_mm(sense_route, shunt_point) else {
+            missing_input(
+                scenario,
+                "sense_route_nets",
+                &format!(
+                    "Add non-empty positive-width route evidence for sense route {sense_net}."
+                ),
+                findings,
+            );
+            continue;
+        };
+        if sense_distance_mm > max_shunt_to_sense_route_distance_mm {
+            current_sense_distance_finding(
+                scenario,
+                shunt_component,
+                "shunt_to_sense_route_distance_mm",
+                sense_distance_mm,
+                "max_shunt_to_sense_route_distance_mm",
+                max_shunt_to_sense_route_distance_mm,
+                findings,
+            );
+        }
+        let sense_route_length_mm = route_length_mm(sense_route);
+        if sense_route_length_mm > max_sense_route_length_mm {
+            current_sense_distance_finding(
+                scenario,
+                shunt_component,
+                "sense_route_length_mm",
+                sense_route_length_mm,
+                "max_sense_route_length_mm",
+                max_sense_route_length_mm,
+                findings,
+            );
+        }
+    }
+}
+
 fn required_route_nets(scenario: &Scenario, findings: &mut Vec<Finding>) -> Vec<String> {
     let Some(raw) = scenario.parameters.get("route_nets") else {
         missing_input(
@@ -387,6 +529,95 @@ fn required_route_nets(scenario: &Scenario, findings: &mut Vec<Finding>) -> Vec<
         );
     }
     nets
+}
+
+fn required_string(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<String> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Add motor_drive parameters.{name}."),
+            findings,
+        );
+        return None;
+    };
+    let Some(value) = raw.as_str() else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set motor_drive parameters.{name} to a string."),
+            findings,
+        );
+        return None;
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set motor_drive parameters.{name} to a non-blank string."),
+            findings,
+        );
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
+fn required_string_list(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Vec<String> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Add motor_drive parameters.{name} as a non-empty string list."),
+            findings,
+        );
+        return Vec::new();
+    };
+    let Some(values) = raw.as_sequence() else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set motor_drive parameters.{name} to a list of strings."),
+            findings,
+        );
+        return Vec::new();
+    };
+    let mut strings = Vec::new();
+    for value in values {
+        let Some(raw_string) = value.as_str() else {
+            missing_input(
+                scenario,
+                name,
+                &format!("Each motor_drive parameters.{name} entry must be a string."),
+                findings,
+            );
+            return Vec::new();
+        };
+        let trimmed = raw_string.trim();
+        if trimmed.is_empty() {
+            missing_input(
+                scenario,
+                name,
+                &format!("Motor-drive parameters.{name} entries must not be blank."),
+                findings,
+            );
+            return Vec::new();
+        }
+        strings.push(trimmed.to_string());
+    }
+    if strings.is_empty() {
+        missing_input(
+            scenario,
+            name,
+            &format!("Add at least one motor_drive parameters.{name} entry."),
+            findings,
+        );
+    }
+    strings
 }
 
 struct RouteCurrentEvidence {
@@ -509,6 +740,44 @@ fn route_evidence<'a>(
     Some(route)
 }
 
+fn placement_evidence<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    component_id: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<&'a ComponentPlacement> {
+    if !bound.project.board.components.contains_key(component_id) {
+        missing_input(
+            scenario,
+            "component",
+            &format!("Declare motor-drive component {component_id} in board.components."),
+            findings,
+        );
+        return None;
+    }
+    let Some(placement) = bound.project.board.layout.placements.get(component_id) else {
+        missing_input(
+            scenario,
+            "board.layout.placements",
+            &format!(
+                "Add board.layout.placements evidence for motor-drive component {component_id}."
+            ),
+            findings,
+        );
+        return None;
+    };
+    if !placement.x_mm.is_finite() || !placement.y_mm.is_finite() {
+        missing_input(
+            scenario,
+            "board.layout.placements",
+            &format!("Use finite placement coordinates for motor-drive component {component_id}."),
+            findings,
+        );
+        return None;
+    }
+    Some(placement)
+}
+
 fn min_route_width_mm(route: &NetRoute) -> Option<f64> {
     route
         .segments
@@ -521,6 +790,105 @@ fn min_route_width_mm(route: &NetRoute) -> Option<f64> {
             }
         })
         .min_by(|left, right| left.total_cmp(right))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PlacementPoint {
+    x_mm: f64,
+    y_mm: f64,
+}
+
+impl From<&ComponentPlacement> for PlacementPoint {
+    fn from(placement: &ComponentPlacement) -> Self {
+        Self {
+            x_mm: placement.x_mm,
+            y_mm: placement.y_mm,
+        }
+    }
+}
+
+impl From<&LayoutPoint> for PlacementPoint {
+    fn from(point: &LayoutPoint) -> Self {
+        Self {
+            x_mm: point.x_mm,
+            y_mm: point.y_mm,
+        }
+    }
+}
+
+fn distance_to_route_mm(route: &NetRoute, point: PlacementPoint) -> Option<f64> {
+    route
+        .segments
+        .iter()
+        .filter(|segment| segment.width_mm.is_finite() && segment.width_mm > 0.0)
+        .filter_map(|segment| distance_to_segment_mm(segment, point))
+        .min_by(|left, right| left.total_cmp(right))
+}
+
+fn route_length_mm(route: &NetRoute) -> f64 {
+    route
+        .segments
+        .iter()
+        .filter(|segment| segment.width_mm.is_finite() && segment.width_mm > 0.0)
+        .map(segment_length_mm)
+        .sum()
+}
+
+fn distance_to_segment_mm(segment: &RouteSegment, point: PlacementPoint) -> Option<f64> {
+    let start = PlacementPoint::from(&segment.start);
+    let end = PlacementPoint::from(&segment.end);
+    let dx = end.x_mm - start.x_mm;
+    let dy = end.y_mm - start.y_mm;
+    let length_squared = dx * dx + dy * dy;
+    if !length_squared.is_finite() || length_squared <= f64::EPSILON {
+        return None;
+    }
+    let raw_t = ((point.x_mm - start.x_mm) * dx + (point.y_mm - start.y_mm) * dy) / length_squared;
+    let t = raw_t.clamp(0.0, 1.0);
+    let projected = PlacementPoint {
+        x_mm: start.x_mm + t * dx,
+        y_mm: start.y_mm + t * dy,
+    };
+    Some(point_distance_mm(point, projected))
+}
+
+fn segment_length_mm(segment: &RouteSegment) -> f64 {
+    point_distance_mm(
+        PlacementPoint::from(&segment.start),
+        PlacementPoint::from(&segment.end),
+    )
+}
+
+fn point_distance_mm(left: PlacementPoint, right: PlacementPoint) -> f64 {
+    (left.x_mm - right.x_mm).hypot(left.y_mm - right.y_mm)
+}
+
+fn current_sense_distance_finding(
+    scenario: &Scenario,
+    component_id: &str,
+    measured_name: &str,
+    measured: f64,
+    limit_name: &str,
+    limit: f64,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        MOTOR_CURRENT_SENSE_PLACEMENT_VALID,
+        &scenario.name,
+        format!(
+            "Motor current-sense component {component_id} has {measured_name} {measured:.6} mm, limit {limit:.6} mm."
+        ),
+    );
+    finding.component = Some(component_id.to_string());
+    finding
+        .measured
+        .insert(measured_name.to_string(), json!(measured));
+    finding.limit.insert(limit_name.to_string(), json!(limit));
+    finding.suggested_fixes = vec![
+        "Move the phase shunt closer to the bridge and routed phase copper, or update the scenario limit with sourced layout policy.".to_string(),
+        "Keep the Kelvin/current-sense route short and explicitly represented in board.layout.routes before fabrication review.".to_string(),
+    ];
+    findings.push(finding);
 }
 
 fn required_positive(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<f64> {
