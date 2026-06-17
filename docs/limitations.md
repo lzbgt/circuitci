@@ -335,6 +335,11 @@ without explicit imported mechanical evidence.
   bundle derating, airflow, enclosure contact, intermittent duty cycle, flex
   aging, crimp heating, connector heating, or measured routed-harness
   temperature.
+- `LOAD_CABLE_VOLTAGE_DROP_VALID` estimates voltage drop and harness power
+  loss from one declared loop resistance. It does not model connector contact
+  resistance drift, temperature-dependent copper resistance, PWM ripple,
+  intermittent load duty cycle, return-path sharing, or measured in-system
+  voltage transients.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` scales a source-backed bridge reference
   loss point against declared motor RMS current and explicit board thermal
   budget. It does not compute MOSFET SOA, switching transition loss,

@@ -156,11 +156,15 @@ cable current rule uses the same target load evidence, but requires explicit
 cable ratings or a bound cable assembly model with `cable_assembly` metadata.
 The cable thermal rule requires a declared temperature-rise test point and
 maximum allowed rise, then scales rise by I^2 from the test current.
+The cable voltage-drop rule requires declared loop resistance and an allowed
+drop limit, then computes DC voltage drop and optional power loss at the
+declared margin current.
 
-Keep this module limited to static current and nominal-voltage budget screens.
+Keep this module limited to static current, nominal-voltage, thermal-rise, and
+DC voltage-drop budget screens.
 Connector contact heating, wire gauge derating, crimp quality, harness routing,
-pulsed current, vibration, regeneration, and hot-plug behavior need more
-specific source-backed evidence before they are treated as sign-off.
+pulsed current, PWM ripple, vibration, regeneration, and hot-plug behavior need
+more specific source-backed evidence before they are treated as sign-off.
 
 ## Process Presets
 

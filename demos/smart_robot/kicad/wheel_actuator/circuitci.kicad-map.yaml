@@ -259,3 +259,14 @@ scenarios:
       power_pin: VM
     parameters:
       thermal_current_margin_ratio: 1.5
+  - name: wheel_actuator_bus_cable_voltage_drop
+    type: load_budget
+    checks:
+      - LOAD_CABLE_VOLTAGE_DROP_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      max_cable_voltage_drop_V: 0.3
+      max_cable_power_loss_W: 2.0
+      drop_current_margin_ratio: 1.5

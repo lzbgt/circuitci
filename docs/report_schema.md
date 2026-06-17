@@ -129,6 +129,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MODEL_QUALITY_REQUIRED`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
+- `LOAD_CABLE_VOLTAGE_DROP_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -918,6 +919,14 @@ keys include `cable_component`, `load_net`, `load_current_A`,
 `temperature_rise_at_test_current_C`, and `estimated_temperature_rise_C`.
 Stable limit keys include `max_cable_temperature_rise_C` and
 `thermal_current_margin_ratio`.
+
+`LOAD_CABLE_VOLTAGE_DROP_VALID` reports are emitted by `load_budget` scenarios
+that declare a cable assembly voltage-drop screen. Stable measured keys include
+`cable_component`, `load_net`, `load_current_A`, `drop_current_A`,
+`cable_loop_resistance_ohm`, `estimated_voltage_drop_V`, and
+`estimated_power_loss_W`. Stable limit keys include
+`max_cable_voltage_drop_V`, optional `max_cable_power_loss_W`, and
+`drop_current_margin_ratio`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus

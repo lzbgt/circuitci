@@ -38,7 +38,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
 | `validation::interface_protection` | Static signal-protection, routed-interface, and topology-scoped bus termination rules. |
 | `validation::motor_drive` | Static motor bridge budget, loss/thermal, regen-clamp, route-current, and current-sense rules over explicit current, shunt, connector, gate-timing, layout, and ADC evidence. |
-| `validation::load_budget` | Static load-to-connector and load-to-cable current/voltage/thermal-rise budget rules over explicit load, connector, and cable metadata. |
+| `validation::load_budget` | Static load-to-connector and load-to-cable current/voltage/thermal-rise/voltage-drop budget rules over explicit load, connector, and cable metadata. |
 | `validation::model_quality` | Fabrication sign-off gates that require selected components to use source-backed component models with explicit confidence thresholds. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
@@ -144,10 +144,12 @@ an explicit connector rating or a connector component model with `connector`
 metadata. `LOAD_CABLE_CURRENT_VALID` applies the same current evidence to
 explicit cable ratings or `cable_assembly` metadata.
 `LOAD_CABLE_THERMAL_DERATING_VALID` estimates cable temperature rise by I^2
-scaling from explicit harness test evidence. These checks are useful for
-reusable robot payload and actuator connectors before CAD capture; they do not
-prove crimp quality, vibration retention, harness routing, bundle derating, or
-pulsed-load behavior.
+scaling from explicit harness test evidence. `LOAD_CABLE_VOLTAGE_DROP_VALID`
+estimates DC harness voltage drop and power loss from explicit loop-resistance
+evidence. These checks are useful for reusable robot payload and actuator
+connectors before CAD capture; they do not prove crimp quality, vibration
+retention, harness routing, bundle derating, PWM ripple, or pulsed-load
+behavior.
 
 Model-quality rules are explicit sign-off gates. `MODEL_QUALITY_REQUIRED` turns
 selected component model provenance into critical findings when a fabrication

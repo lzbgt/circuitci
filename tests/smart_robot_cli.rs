@@ -103,6 +103,13 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         }),
         "wheel actuator must fail sign-off until actuator-bus cable thermal evidence is selected: {missing_inputs:#?}"
     );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "wheel_actuator_bus_cable_voltage_drop"
+                && finding["limit"]["required_input"] == "cable_loop_resistance_ohm"
+        }),
+        "wheel actuator must fail sign-off until actuator-bus cable loop resistance evidence is selected: {missing_inputs:#?}"
+    );
 }
 
 #[test]
@@ -314,6 +321,44 @@ fn smart_robot_wheel_actuator_fails_hot_actuator_bus_cable() {
                 && finding["limit"]["max_cable_temperature_rise_C"] == 30.0
         }),
         "expected actuator-bus cable thermal derating failure, got {thermal_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_fails_lossy_actuator_bus_cable() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "max_cable_voltage_drop_V: 0.3\n      max_cable_power_loss_W: 2.0\n      drop_current_margin_ratio: 1.5",
+        "cable_loop_resistance_ohm: 0.05\n      max_cable_voltage_drop_V: 0.3\n      max_cable_power_loss_W: 2.0\n      drop_current_margin_ratio: 1.5",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let drop_findings = findings_with_id(&report, "LOAD_CABLE_VOLTAGE_DROP_VALID");
+    assert!(
+        drop_findings.iter().any(|finding| {
+            finding["component"] == "PWR_STAGE"
+                && finding["measured"]["drop_current_A"] == 9.0
+                && finding["measured"]["cable_loop_resistance_ohm"] == 0.05
+                && finding["measured"]["estimated_voltage_drop_V"] == 0.45
+                && finding["measured"]["estimated_power_loss_W"] == 4.05
+                && finding["limit"]["max_cable_voltage_drop_V"] == 0.3
+                && finding["limit"]["max_cable_power_loss_W"] == 2.0
+        }),
+        "expected actuator-bus cable voltage-drop failure, got {drop_findings:#?}"
     );
 }
 
@@ -1021,6 +1066,10 @@ fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir
         .replace(
             "thermal_current_margin_ratio: 1.5",
             "cable_temperature_rise_test_current_A: 12.0\n      cable_temperature_rise_at_test_current_C: 20.0\n      max_cable_temperature_rise_C: 30.0\n      thermal_current_margin_ratio: 1.5",
+        )
+        .replace(
+            "max_cable_voltage_drop_V: 0.3\n      max_cable_power_loss_W: 2.0\n      drop_current_margin_ratio: 1.5",
+            "cable_loop_resistance_ohm: 0.02\n      max_cable_voltage_drop_V: 0.3\n      max_cable_power_loss_W: 2.0\n      drop_current_margin_ratio: 1.5",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();

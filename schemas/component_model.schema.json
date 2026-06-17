@@ -180,6 +180,9 @@
       "properties": {
         "current_rating_A": { "type": "number", "exclusiveMinimum": 0 },
         "voltage_rating_V": { "type": "number", "exclusiveMinimum": 0 },
+        "loop_resistance_ohm": { "type": "number", "exclusiveMinimum": 0 },
+        "max_voltage_drop_V": { "type": "number", "exclusiveMinimum": 0 },
+        "max_power_loss_W": { "type": "number", "exclusiveMinimum": 0 },
         "temperature_rise_test_current_A": { "type": "number", "exclusiveMinimum": 0 },
         "temperature_rise_at_test_current_C": { "type": "number", "minimum": 0 },
         "max_temperature_rise_C": { "type": "number", "exclusiveMinimum": 0 },

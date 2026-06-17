@@ -195,6 +195,19 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
             }),
         "wheel KiCad import should preserve the cable-thermal sign-off gate: {imported:#?}"
     );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "wheel_actuator_bus_cable_voltage_drop"
+                    && scenario["checks"][0] == "LOAD_CABLE_VOLTAGE_DROP_VALID"
+                    && scenario["target"]["component"] == "PWR_STAGE"
+                    && scenario["target"]["power_pin"] == "VM"
+            }),
+        "wheel KiCad import should preserve the cable voltage-drop sign-off gate: {imported:#?}"
+    );
 }
 
 #[test]
@@ -248,6 +261,11 @@ fn smart_robot_wheel_actuator_kicad_schematic_validates_model_quality_gate() {
         finding["id"] == "VALIDATION_INPUT_MISSING"
             && finding["scenario"] == "wheel_actuator_bus_cable_thermal_derating"
             && finding["limit"]["required_input"] == "cable_temperature_rise_test_current_A"
+    }));
+    assert!(failures.iter().any(|finding| {
+        finding["id"] == "VALIDATION_INPUT_MISSING"
+            && finding["scenario"] == "wheel_actuator_bus_cable_voltage_drop"
+            && finding["limit"]["required_input"] == "cable_loop_resistance_ohm"
     }));
 }
 

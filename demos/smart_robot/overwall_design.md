@@ -37,9 +37,10 @@ not final measured switching waveform, PWM sampling, repeated-pulse regen, or
 selected absorber/amplifier sign-off. The logical wheel model now also includes
 a blocking `MODEL_QUALITY_REQUIRED` gate for `M1` and `REGEN1`, plus a
 `LOAD_CABLE_CURRENT_VALID` gate and `LOAD_CABLE_THERMAL_DERATING_VALID` gate
-for actuator-bus harness evidence. The actuator board remains intentionally
-non-fabrication-ready until the motor, regen absorber, and cable assembly are
-selected from datasheets or measured evidence.
+and `LOAD_CABLE_VOLTAGE_DROP_VALID` gate for actuator-bus harness evidence.
+The actuator board remains intentionally non-fabrication-ready until the motor,
+regen absorber, and cable assembly are selected from datasheets or measured
+evidence.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.
 

@@ -54,9 +54,9 @@ pins back to the source-backed models used by
 `../circuitci/wheel_actuator/project.yaml`. It also carries the
 `MODEL_QUALITY_REQUIRED` sign-off scenario for `M1` and `REGEN1`, plus the
 `LOAD_CABLE_CURRENT_VALID` and `LOAD_CABLE_THERMAL_DERATING_VALID`
-actuator-bus harness gates. Validating the imported schematic blocks
-fabrication until those placeholder envelopes and cable evidence are replaced
-by selected datasheet or measured evidence.
+and `LOAD_CABLE_VOLTAGE_DROP_VALID` actuator-bus harness gates. Validating the
+imported schematic blocks fabrication until those placeholder envelopes and
+cable evidence are replaced by selected datasheet or measured evidence.
 
 `wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
 bridge. It is a compact placement/routing artifact for import testing: it
@@ -88,7 +88,7 @@ also drives the first-pass phase-shunt and current-sense route placement
 checks. It is still not a final layout sign-off: it does not prove MOSFET
 SOA/thermal margins, dynamic current-sense waveform behavior, copper
 temperature rise, selected regeneration absorber behavior, repeated-pulse
-heating, selected cable assembly current/thermal behavior, EMC, or
+heating, selected cable assembly current/thermal/drop behavior, EMC, or
 manufacturing DRC.
 
 ## PMU

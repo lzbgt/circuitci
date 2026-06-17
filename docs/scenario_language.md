@@ -121,6 +121,7 @@ Canonical executable check IDs:
 - `MODEL_QUALITY_REQUIRED`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
+- `LOAD_CABLE_VOLTAGE_DROP_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -233,6 +234,37 @@ temperature rise by I^2 scaling from a declared test point:
 from a `parameters.cable_component` model with matching `cable_assembly`
 metadata. Missing thermal evidence is a critical `VALIDATION_INPUT_MISSING`
 finding.
+
+## Load Cable Voltage Drop
+
+Use `load_budget` scenarios with `LOAD_CABLE_VOLTAGE_DROP_VALID` when a load
+current must be checked against selected cable or harness loop resistance,
+voltage-drop, and optional power-loss limits.
+
+```yaml
+scenarios:
+  - name: wheel_actuator_bus_cable_voltage_drop
+    type: load_budget
+    checks:
+      - LOAD_CABLE_VOLTAGE_DROP_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      cable_component: WHEEL_CABLE1
+      max_cable_voltage_drop_V: 0.3
+      max_cable_power_loss_W: 2.0
+      drop_current_margin_ratio: 1.5
+```
+
+The check derives load current from `target.power_pin.max_supply_current_A`,
+multiplies it by `drop_current_margin_ratio` when present, and computes
+`voltage_drop = current * loop_resistance` and
+`power_loss = current^2 * loop_resistance`. Loop resistance can come from
+`parameters.cable_loop_resistance_ohm` or `cable_assembly.loop_resistance_ohm`.
+Voltage-drop and power-loss limits can be scenario parameters or selected
+`cable_assembly` metadata. Missing loop-resistance or voltage-drop evidence is
+a critical `VALIDATION_INPUT_MISSING` finding.
 
 ## Reset/Boot Scenario Shape
 
@@ -2199,7 +2231,8 @@ jitter, calibration implementation, thermal drift, or firmware filtering.
 ## Load Budget Scenario Shape
 
 `load_budget` scenarios validate explicit load-to-connector current, cable
-current, cable temperature-rise, and optional voltage budgets. They are
+current, cable temperature-rise, cable voltage-drop/power-loss, and optional
+voltage budgets. They are
 deterministic schematic-budget checks for payload connectors and harness
 interfaces, not crimp-process, bundle-derating, flex-life, or transient-load
 sign-off.

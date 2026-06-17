@@ -123,6 +123,10 @@ robot control-stack design pass.
   gate for actuator-bus harness temperature-rise evidence. It intentionally
   reports `VALIDATION_INPUT_MISSING` until the project selects a cable assembly
   with test-current/rise evidence or measures the final harness.
+- The wheel actuator also has a separate `LOAD_CABLE_VOLTAGE_DROP_VALID` gate
+  for actuator-bus harness loop-resistance evidence. It intentionally reports
+  `VALIDATION_INPUT_MISSING` until the project selects a cable assembly with
+  sourced resistance/drop evidence or measures the final harness.
 
 ## Design Review Notes
 
@@ -197,6 +201,9 @@ robot control-stack design pass.
   `LOAD_CABLE_THERMAL_DERATING_VALID` harness-temperature screen. The current
   report must fail until selected actuator-bus cable temperature-rise evidence
   is supplied.
+- The wheel actuator also declares a blocking `LOAD_CABLE_VOLTAGE_DROP_VALID`
+  harness-drop screen. The current report must fail until selected actuator-bus
+  cable loop-resistance evidence is supplied.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
@@ -238,8 +245,8 @@ robot control-stack design pass.
   true MOSFET SOA, peak gate current, switch-node ringing, selected amplifier
   bandwidth/common-mode behavior, PWM sampling, transient thermal impedance,
   selected regeneration absorber repeated-pulse behavior, PCB copper
-  temperature rise, final harness temperature rise, or motor-control loop
-  stability.
+  temperature rise, final harness temperature rise, final harness voltage
+  transients, or motor-control loop stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four
