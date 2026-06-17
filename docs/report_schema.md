@@ -923,8 +923,9 @@ include `required_switch_current_A`, `switch_max_output_current_A`,
 
 `POWER_SWITCH_REVERSE_CURRENT_VALID` reports are emitted by `load_budget`
 scenarios that require a selected switch to block e-stop rail backfeed. Stable
-measured keys include `reverse_current_blocking`, `switch_output_net`, and
-`load_net`. Stable limit keys include `reverse_current_blocking_required`.
+measured keys include `reverse_current_blocking_mode`, `switch_output_net`, and
+`load_net`. Stable limit keys include
+`reverse_current_blocking_mode_required`.
 
 `POWER_SWITCH_INRUSH_VALID` reports are emitted by `load_budget` scenarios that
 declare a switched-rail soft-start/inrush screen. Stable measured keys include

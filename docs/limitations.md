@@ -333,9 +333,9 @@ without explicit imported mechanical evidence.
   waveform, reverse current, short-circuit SOA, repeated surge, or PCB copper
   temperature.
 - `POWER_SWITCH_REVERSE_CURRENT_VALID` only checks a declared
-  reverse-current-blocking capability. It does not model body-diode timing,
-  back-to-back FET gate behavior, upstream clamp energy, or measured backfeed
-  waveforms.
+  reverse-current-blocking mode (`always`, `when_disabled`, or `none`). It does
+  not model body-diode timing, back-to-back FET gate behavior, upstream clamp
+  energy, or measured backfeed waveforms.
 - `POWER_SWITCH_INRUSH_VALID` estimates capacitive turn-on current from a
   declared capacitance and soft-start time. It does not model nonlinear
   capacitance, load startup behavior, upstream source droop, eFuse retry

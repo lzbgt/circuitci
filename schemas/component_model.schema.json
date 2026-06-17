@@ -85,6 +85,9 @@
         },
         "max_junction_temperature_C": { "type": "number", "exclusiveMinimum": 0 },
         "reverse_current_blocking": { "type": "boolean" },
+        "reverse_current_blocking_mode": {
+          "enum": ["always", "when_disabled", "none"]
+        },
         "max_inrush_current_A": { "type": "number", "exclusiveMinimum": 0 },
         "soft_start_time_us": { "type": "number", "exclusiveMinimum": 0 }
       },

@@ -55,6 +55,7 @@ power_switch:
   thermal_resistance_junction_to_ambient_C_per_W: 33.4
   max_junction_temperature_C: 125.0
   reverse_current_blocking: true
+  reverse_current_blocking_mode: always
   max_inrush_current_A: 8.0
   soft_start_time_us: 7040.0
 datasheet:

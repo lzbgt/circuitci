@@ -282,6 +282,7 @@ power_switch:
   thermal_resistance_junction_to_ambient_C_per_W: 80.0
   max_junction_temperature_C: 150.0
   reverse_current_blocking: true
+  reverse_current_blocking_mode: always
   max_inrush_current_A: 1.0
   soft_start_time_us: 1000.0
 ```
@@ -302,8 +303,10 @@ power_switch:
   `thermal_resistance_junction_to_ambient_C_per_W`, and
   `max_junction_temperature_C` are used by `POWER_SWITCH_BUDGET_VALID` for
   selected eFuse/load-switch/MOSFET-path sign-off gates.
-- `reverse_current_blocking` is used by
-  `POWER_SWITCH_REVERSE_CURRENT_VALID`.
+- `reverse_current_blocking_mode` is used by
+  `POWER_SWITCH_REVERSE_CURRENT_VALID` and can be `always`,
+  `when_disabled`, or `none`. Legacy `reverse_current_blocking: true` is
+  interpreted as `always`; `false` is interpreted as `none`.
 - `max_inrush_current_A` and `soft_start_time_us` are used by
   `POWER_SWITCH_INRUSH_VALID` together with scenario-declared switched
   capacitance.

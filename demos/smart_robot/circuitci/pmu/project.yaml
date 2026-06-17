@@ -255,7 +255,7 @@ scenarios:
       power_pin: VCC
     parameters:
       switch_component: U_SERVO_SW
-      reverse_current_blocking_required: true
+      reverse_current_blocking_mode_required: always
   - name: pmu_servo_switch_inrush
     type: load_budget
     checks:
@@ -290,7 +290,7 @@ scenarios:
       power_pin: VCC
     parameters:
       switch_component: U_WHEEL_SW
-      reverse_current_blocking_required: true
+      reverse_current_blocking_mode_required: when_disabled
   - name: pmu_wheel_switch_inrush
     type: load_budget
     checks:

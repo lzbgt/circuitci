@@ -104,10 +104,20 @@ pub struct PowerSwitch {
     pub max_junction_temperature_c: Option<f64>,
     #[serde(default)]
     pub reverse_current_blocking: Option<bool>,
+    #[serde(default)]
+    pub reverse_current_blocking_mode: Option<PowerSwitchReverseCurrentBlockingMode>,
     #[serde(default, rename = "max_inrush_current_A")]
     pub max_inrush_current_a: Option<f64>,
     #[serde(default, rename = "soft_start_time_us")]
     pub soft_start_time_us: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PowerSwitchReverseCurrentBlockingMode {
+    Always,
+    WhenDisabled,
+    None,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -39,7 +39,7 @@ layout sign-off.
   1 mF switched-capacitance envelope.
 - The same gates intentionally fail closed for `U_WHEEL_SW` until a selected
   high-current wheel switch declares current-limit, static thermal,
-  reverse-current, and inrush evidence.
+  off-state reverse-current isolation, and inrush evidence.
 
 `wheel_actuator/project.yaml` models the reusable left/right wheel actuator
 board:
@@ -138,14 +138,14 @@ Expected result:
 
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_pmu_v0: fail (critical=8, warning=0, info=0)
+CircuitCI smart_robot_pmu_v0: fail (critical=4, warning=0, info=0)
 CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
 The PMU failure is expected until `U_WHEEL_SW` is replaced by source-backed
 selected high-current eFuse, load-switch, or MOSFET-driver evidence with
-current-limit, static thermal, reverse-current, soft-start, and
+current-limit, static thermal, off-state reverse-current isolation, soft-start, and
 switched-capacitance metadata. The lower level BQ25798, TPS54331, TPS62162,
 TPS25948 servo switch, and power-tree checks should still remain clean.
 
@@ -163,11 +163,12 @@ clean.
 - CAN/RS485 cable length, common-mode range, connector pinout,
   imported-final-layout route evidence, surge-energy policy, and EMC behavior.
 - High-current wheel e-stop switch part selection, inrush, thermal,
-  reverse-current behavior, connector heating, and battery safety. The current
-  PMU slice blocks sign-off on the remaining wheel switch evidence and static
-  current/thermal/reverse-current/inrush metadata. The selected TPS25948 servo
-  switch still needs final downstream capacitance from CAD/BOM plus measured
-  upstream rail droop/current-limit transient evidence before fabrication.
+  off-state reverse-current isolation, connector heating, and battery safety.
+  The current PMU slice blocks sign-off on the remaining wheel switch evidence
+  and static current/thermal/reverse-mode/inrush metadata. The selected
+  TPS25948 servo switch still needs final downstream capacitance from CAD/BOM
+  plus measured upstream rail droop/current-limit transient evidence before
+  fabrication.
 - Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
   curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable

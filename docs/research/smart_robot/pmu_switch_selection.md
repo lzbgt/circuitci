@@ -30,8 +30,8 @@ Datasheet facts encoded in the model:
   125 C.
 - Junction-to-ambient thermal resistance: 33.4 C/W on TI's custom 2s2p board.
 - Recommended junction temperature range: -40 C to 125 C.
-- True reverse-current blocking is supported by the integrated back-to-back
-  FET path.
+- `reverse_current_blocking_mode: always` is supported by the integrated
+  back-to-back FET path.
 - With `CdVdt = 3.3 nF`, the datasheet switching-characteristics table gives
   7.04 ms rise time at 12 V.
 
@@ -65,8 +65,8 @@ Useful source facts:
   board.
 - Adjustable inrush control through the `DVDT` pin.
 
-It is not selected for `U_WHEEL_SW` yet because the cached datasheet text does
-not expose the same explicit true reverse-current blocking feature that the PMU
-validation contract currently requires. The wheel switched rail therefore
-remains blocked on selected switch model quality, static switch budget,
-reverse-current evidence, and inrush evidence.
+It is not selected for `U_WHEEL_SW` yet because the cached datasheet/product
+source review does not prove the required off-state reverse-current isolation
+mode for the wheel e-stop rail. The wheel switched rail therefore remains
+blocked on selected switch model quality, static switch budget, reverse-current
+mode evidence, and inrush evidence.

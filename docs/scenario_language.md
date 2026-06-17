@@ -2305,8 +2305,14 @@ inrush energy, short-circuit waveform, reverse current, repeated surge, or PCB
 copper temperature.
 
 `POWER_SWITCH_REVERSE_CURRENT_VALID` checks that a selected switch model
-declares `power_switch.reverse_current_blocking: true` when
-`reverse_current_blocking_required` is true or omitted. Missing selected-switch
+declares a reverse-current blocking mode that satisfies the scenario
+requirement. `reverse_current_blocking_mode_required` can be `always`,
+`when_disabled`, or `none`; if it is omitted, legacy
+`reverse_current_blocking_required: true` means `always`. A model with
+`power_switch.reverse_current_blocking_mode: always` satisfies both `always`
+and `when_disabled`; `when_disabled` only satisfies off-state isolation
+requirements. Legacy `power_switch.reverse_current_blocking: true` is treated
+as `always`, and `false` is treated as `none`. Missing selected-switch
 reverse-current data produces a critical `VALIDATION_INPUT_MISSING` finding.
 This is a static capability gate for e-stop rails and does not prove the
 reverse-current transient waveform or upstream energy absorption.

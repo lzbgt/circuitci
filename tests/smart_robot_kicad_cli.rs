@@ -499,7 +499,8 @@ fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
         failures.iter().any(|finding| {
             finding["id"] == "VALIDATION_INPUT_MISSING"
                 && finding["scenario"] == "pmu_wheel_switch_reverse_current"
-                && finding["limit"]["required_input"] == "power_switch.reverse_current_blocking"
+                && finding["limit"]["required_input"]
+                    == "power_switch.reverse_current_blocking_mode"
         }),
         "imported PMU schematic must preserve the wheel switch reverse-current blocker: {failures:#?}"
     );

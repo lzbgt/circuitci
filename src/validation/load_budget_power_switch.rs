@@ -1,5 +1,7 @@
 use crate::board_ir::Scenario;
-use crate::library::{BoundBoard, ComponentModel, PortKind};
+use crate::library::{
+    BoundBoard, ComponentModel, PortKind, PowerSwitch, PowerSwitchReverseCurrentBlockingMode,
+};
 use crate::reports::Finding;
 use serde_json::json;
 
@@ -482,40 +484,37 @@ pub(super) fn validate_power_switch_reverse_current(
         ];
         findings.push(finding);
     }
-    let Some(reverse_current_required) =
-        optional_bool_parameter(scenario, "reverse_current_blocking_required", findings)
-    else {
+    let Some(required_mode) = reverse_current_blocking_required_mode(scenario, findings) else {
         return;
     };
-    if !reverse_current_required {
-        return;
-    }
-    let Some(reverse_current_blocking) = power_switch.reverse_current_blocking else {
+    let Some(actual_mode) = reverse_current_blocking_mode(power_switch) else {
         missing_input(
             scenario,
-            "power_switch.reverse_current_blocking",
-            "Set power_switch.reverse_current_blocking from selected switch datasheet or measured reverse-current behavior.",
+            "power_switch.reverse_current_blocking_mode",
+            "Set power_switch.reverse_current_blocking_mode from selected switch datasheet or measured reverse-current behavior.",
             findings,
         );
         return;
     };
-    if !reverse_current_blocking {
+    if !reverse_current_mode_satisfies(actual_mode, required_mode) {
         let mut finding = Finding::critical(
             POWER_SWITCH_REVERSE_CURRENT_VALID,
             &scenario.name,
-            "Selected switch does not declare reverse-current blocking for the e-stop switched rail.",
+            "Selected switch reverse-current blocking mode does not satisfy the switched-rail requirement.",
         );
         finding.component = Some(switch_component_id);
-        finding
-            .measured
-            .insert("reverse_current_blocking".to_string(), json!(false));
-        finding
-            .limit
-            .insert("reverse_current_blocking_required".to_string(), json!(true));
+        finding.measured.insert(
+            "reverse_current_blocking_mode".to_string(),
+            json!(reverse_current_mode_name(actual_mode)),
+        );
+        finding.limit.insert(
+            "reverse_current_blocking_mode_required".to_string(),
+            json!(reverse_current_mode_name(required_mode)),
+        );
         finding.suggested_fixes = vec![
-            "Select an eFuse/load switch with reverse-current blocking or add a validated back-to-back MOSFET path."
+            "Select an eFuse/load switch with the required reverse-current blocking mode or add a validated back-to-back MOSFET path."
                 .to_string(),
-            "If backfeed is intentionally allowed, remove the reverse-current blocking requirement and validate the upstream energy path."
+            "If backfeed is intentionally allowed, set the weaker mode explicitly and validate the upstream energy path."
                 .to_string(),
         ];
         findings.push(finding);
@@ -879,6 +878,87 @@ fn optional_bool_parameter(
         return None;
     };
     Some(value)
+}
+
+fn reverse_current_blocking_required_mode(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<PowerSwitchReverseCurrentBlockingMode> {
+    if let Some(raw) = scenario
+        .parameters
+        .get("reverse_current_blocking_mode_required")
+    {
+        let Some(value) = raw.as_str() else {
+            missing_input(
+                scenario,
+                "reverse_current_blocking_mode_required",
+                "Set load_budget parameters.reverse_current_blocking_mode_required to always, when_disabled, or none.",
+                findings,
+            );
+            return None;
+        };
+        return match value {
+            "always" => Some(PowerSwitchReverseCurrentBlockingMode::Always),
+            "when_disabled" => Some(PowerSwitchReverseCurrentBlockingMode::WhenDisabled),
+            "none" => None,
+            _ => {
+                missing_input(
+                    scenario,
+                    "reverse_current_blocking_mode_required",
+                    "Set load_budget parameters.reverse_current_blocking_mode_required to always, when_disabled, or none.",
+                    findings,
+                );
+                None
+            }
+        };
+    }
+
+    let reverse_current_required =
+        optional_bool_parameter(scenario, "reverse_current_blocking_required", findings)?;
+    if reverse_current_required {
+        Some(PowerSwitchReverseCurrentBlockingMode::Always)
+    } else {
+        None
+    }
+}
+
+fn reverse_current_blocking_mode(
+    power_switch: &PowerSwitch,
+) -> Option<PowerSwitchReverseCurrentBlockingMode> {
+    if let Some(mode) = power_switch.reverse_current_blocking_mode {
+        return Some(mode);
+    }
+    match power_switch.reverse_current_blocking {
+        Some(true) => Some(PowerSwitchReverseCurrentBlockingMode::Always),
+        Some(false) => Some(PowerSwitchReverseCurrentBlockingMode::None),
+        None => None,
+    }
+}
+
+fn reverse_current_mode_satisfies(
+    actual: PowerSwitchReverseCurrentBlockingMode,
+    required: PowerSwitchReverseCurrentBlockingMode,
+) -> bool {
+    matches!(
+        (actual, required),
+        (PowerSwitchReverseCurrentBlockingMode::Always, _)
+            | (
+                PowerSwitchReverseCurrentBlockingMode::WhenDisabled,
+                PowerSwitchReverseCurrentBlockingMode::WhenDisabled
+            )
+            | (
+                PowerSwitchReverseCurrentBlockingMode::None,
+                PowerSwitchReverseCurrentBlockingMode::None
+            )
+    )
+}
+
+fn reverse_current_mode_name(mode: PowerSwitchReverseCurrentBlockingMode) -> &'static str {
+    match mode {
+        PowerSwitchReverseCurrentBlockingMode::Always => "always",
+        PowerSwitchReverseCurrentBlockingMode::WhenDisabled => "when_disabled",
+        PowerSwitchReverseCurrentBlockingMode::None => "none",
+    }
 }
 
 fn parameter_value(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<f64> {

@@ -105,7 +105,7 @@ preserves the selected TPS25948 model for `U_SERVO_SW` and the
 `MODEL_QUALITY_REQUIRED` gate for the remaining `U_WHEEL_SW` placeholder. It
 also preserves the `POWER_SWITCH_BUDGET_VALID`, reverse-current, and inrush
 gates, so imported schematics cannot bypass selected-part current-limit,
-static thermal, backfeed, and soft-start evidence requirements.
+static thermal, reverse-mode, and soft-start evidence requirements.
 
 Import check:
 

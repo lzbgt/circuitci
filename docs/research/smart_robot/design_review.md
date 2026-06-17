@@ -108,8 +108,8 @@ should encode:
 - Blocking `POWER_SWITCH_BUDGET_VALID`, reverse-current, and inrush gates now
   remain only on the wheel switched rail. The downloaded TPS25985 is a useful
   high-current candidate, but it is not selected because the cached datasheet
-  review did not prove the reverse-current blocking required by the current PMU
-  switch contract.
+  review did not prove the off-state reverse-current isolation required by the
+  current PMU switch contract.
 
 The servo switch selection is still first-pass. The scenario currently uses a
 1 mF switched-capacitance envelope for `VSERVO`; replace it with actual
