@@ -307,3 +307,116 @@ fn smart_robot_servo_payload_kicad_schematic_imports_connectivity() {
         "input"
     );
 }
+
+#[test]
+fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let schematic_project = dir.path().join("wheel_actuator_imported.project.yaml");
+    let enriched_project = dir.path().join("wheel_actuator_with_pcb.project.yaml");
+
+    let schematic_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/wheel_actuator/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml",
+            "--output",
+            schematic_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(schematic_status.success());
+
+    let pcb_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-pcb",
+            "demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb",
+            "--project",
+            schematic_project.to_str().unwrap(),
+            "--output",
+            enriched_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(pcb_status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&enriched_project, &validator);
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["layout"]["placements"]["JACT1"]["x_mm"],
+        7.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["placements"]["PWR_STAGE"]["x_mm"],
+        61.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["placements"]["M1"]["side"],
+        "top"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["JACT1"]["CANH"]["net"],
+        "net_robot_canh"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["JACT1"]["CANH"]["kind"],
+        "thru_hole"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["PWR_STAGE"]["VM"]["net"],
+        "net_vwheel_sw"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["pads"]["M1"]["PHASE_U"]["net"],
+        "net_phase_u"
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_robot_canh"]["segments"][0]["width_mm"],
+        0.20
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_robot_canh"]["segments"][2]["end"]["x_mm"],
+        21.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_vwheel_sw"]["segments"][0]["width_mm"],
+        1.50
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_vwheel_sw"]["vias"][0]["drill_mm"],
+        0.35
+    );
+    assert_eq!(
+        imported["board"]["layout"]["routes"]["net_phase_u"]["segments"][0]["width_mm"],
+        1.20
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["net_rules"]["net_robot_canh"]["diff_pair_gap_mm"],
+        0.20
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["net_rules"]["net_robot_canh"]["length_max_mm"],
+        80.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["constraints"]["net_rules"]["net_vwheel_sw"]["track_width_mm"],
+        1.50
+    );
+    assert_eq!(
+        imported["board"]["layout"]["zones"]["gnd"][0]["filled_polygons"][0][2]["x_mm"],
+        92.0
+    );
+    assert_eq!(
+        imported["board"]["layout"]["outline"]["segments"]
+            .as_array()
+            .unwrap()
+            .len(),
+        4
+    );
+}

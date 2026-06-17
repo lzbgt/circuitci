@@ -150,6 +150,7 @@ pin-1/BOM/PNP alignment.
 
 Fixture coverage:
 
+- `demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb`
 - `examples/import_kicad_usb_connector_protection_suggestions/board.kicad_pcb`
 - `examples/import_kicad_usb_curved_board_edge_suggestions/`
 - `examples/import_kicad_usb_cutout_board_edge_suggestions/`

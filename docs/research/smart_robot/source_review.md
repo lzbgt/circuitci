@@ -124,6 +124,10 @@ robot control-stack design pass.
   symbol/footprint work. The first KiCad skeletons for all current smart-robot
   board slices are now tracked under `demos/smart_robot/kicad/` and import back
   through CircuitCI as connectivity artifacts.
+- The first PCB-layout evidence bridge is
+  `demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb`. It is a
+  compact import fixture for placement, pad, route, via, zone, outline, and
+  net-rule evidence, not a fabrication-ready motor-drive layout.
 - The first verifiable slice is
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,

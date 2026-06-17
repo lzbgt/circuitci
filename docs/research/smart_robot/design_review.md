@@ -22,6 +22,12 @@ yet the validation source of truth: the matching
 scenario, and pre-layout route-placement evidence that native KiCad import does
 not round-trip yet.
 
+The first PCB-layout bridge is
+`demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb`. It imports
+component placements, pads, CAN routes, motor power/phase routes, a ground
+zone, board outline, and net-class constraints into Board IR. It is an evidence
+fixture for the CAD/import loop, not final power-stage layout sign-off.
+
 ## Corrections And Constraints
 
 - Use the Sipeed LicheeRV Nano source docs, not memory, for module facts. The

@@ -53,6 +53,12 @@ connector.
 pins back to the source-backed models used by
 `../circuitci/wheel_actuator/project.yaml`.
 
+`wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
+bridge. It is a compact placement/routing artifact for import testing: it
+contains component placements, JACT1 CAN and power pads, CAN ESD/termination
+placement, preliminary motor bridge and motor pads, CAN routes, motor power and
+phase routes, a ground zone, and explicit net-class constraints.
+
 Import check:
 
 ```sh
@@ -60,12 +66,19 @@ circuitci import-kicad-schematic \
   demos/smart_robot/kicad/wheel_actuator/root.kicad_sch \
   --mapping demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml \
   --output out/smart_robot_wheel_actuator_imported.project.yaml
+
+circuitci import-kicad-pcb \
+  demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb \
+  --project out/smart_robot_wheel_actuator_imported.project.yaml \
+  --output out/smart_robot_wheel_actuator_with_pcb.project.yaml
 ```
 
-As with the motion-core bridge, the imported Board IR proves connectivity and
-model binding only. It does not yet round-trip the motor-drive validation
-scenario, current/load budgets, connector-current policy, layout placement
-contracts, or routed PCB evidence.
+As with the motion-core bridge, the imported schematic Board IR proves
+connectivity and model binding only. The PCB-enriched Board IR additionally
+proves first-pass placement, pad, route, via, outline, zone, and routing-rule
+evidence, but it is still not a final layout sign-off: it does not prove
+MOSFET SOA/thermal margins, copper temperature rise, regeneration handling,
+EMC, or manufacturing DRC.
 
 ## PMU
 

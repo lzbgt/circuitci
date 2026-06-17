@@ -6,6 +6,9 @@ The first KiCad connectivity skeletons for all current board slices are tracked
 under `../kicad/` and import back through CircuitCI, but this folder remains
 the validation source of truth until CAD import round-trips all power-domain,
 scenario, and routed-layout evidence.
+`../kicad/wheel_actuator/wheel_actuator.kicad_pcb` is the first PCB bridge for
+layout evidence import; it is still a compact evidence fixture, not fabrication
+layout sign-off.
 
 ## Current Slices
 
