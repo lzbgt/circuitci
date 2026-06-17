@@ -4,6 +4,20 @@ This document is for agents and maintainers changing CircuitCI internals. It
 records the current seams between importers, Board IR, scenario suggestions,
 validation rules, reports, and verification.
 
+## Frontend Boundary
+
+The default runtime remains the CLI/library engine. The optional
+`circuitci-gui` binary is enabled only by the `gui` feature and must call the
+same Board IR, library binding, scenario suggestion, validation, and report
+APIs used by the CLI. It must not grow a second project model, a second
+validation dispatcher, or an in-house analog solver.
+
+The GUI stages are allowed to organize user workflow around project loading,
+sketch/model review, library suggestions, simulation artifact observation, and
+report viewing. Schematic-canvas editing and waveform plotting should still
+persist through Board IR, importer metadata, generated SPICE decks, and report
+artifacts so headless agents can reproduce GUI actions.
+
 ## Evidence Model
 
 Board IR is the only data model consumed by validation. Importers may add or

@@ -74,6 +74,18 @@ cargo test
 cargo clippy --all-targets -- -D warnings
 ```
 
+Optional native desktop GUI:
+
+```bash
+cargo run --features gui --bin circuitci-gui
+```
+
+The GUI is a Rust `egui`/`eframe` desktop shell with EDA-style workflow stages
+for project loading, sketch/model review, scenario suggestions, validation,
+simulation artifact observation, and report viewing. It uses the same engine as
+the CLI and does not compile into default CLI builds. See
+[docs/gui_frontend.md](docs/gui_frontend.md).
+
 ## CLI
 
 Validate a Board IR project:
@@ -229,6 +241,7 @@ Important contracts:
 - [docs/component_model_contract.md](docs/component_model_contract.md)
 - [docs/scenario_language.md](docs/scenario_language.md)
 - [docs/fabrication_process_presets.md](docs/fabrication_process_presets.md)
+- [docs/gui_frontend.md](docs/gui_frontend.md)
 - [docs/report_schema.md](docs/report_schema.md)
 - [docs/scenario_suggestions.md](docs/scenario_suggestions.md)
 
@@ -238,6 +251,7 @@ Important contracts:
 src/
   board_ir/       Board IR parsing and normalized project types
   cli/            Command-line entry points
+  gui.rs          Optional Rust desktop frontend behind the gui feature
   importers/      KiCad, SPICE, and layout-evidence importers
   library/        Component model loading and binding
   reports/        JSON and Markdown report generation

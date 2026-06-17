@@ -1,6 +1,8 @@
 pub mod board_ir;
 pub mod charger_programming;
 pub mod cli;
+#[cfg(feature = "gui")]
+pub mod gui;
 pub mod importers;
 pub mod library;
 pub mod power_mux_selection;

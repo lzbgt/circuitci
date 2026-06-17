@@ -2,12 +2,20 @@
 
 Date: 2026-06-18
 
-CircuitCI is a headless board-validation runtime. It imports board evidence,
-binds component models, runs deterministic validation scenarios, and emits
+CircuitCI is primarily a board-validation runtime with both a headless CLI and
+an optional native Rust desktop frontend. It imports board evidence, binds
+component models, runs deterministic validation scenarios, and emits
 machine-readable reports for agents and engineers before fabrication.
 
-It is not a schematic editor, PCB layout editor, full EDA suite, RF/SI solver,
-or general-purpose analog simulator.
+It is not yet a full schematic editor, PCB layout editor, full EDA suite, RF/SI
+solver, or general-purpose analog simulator.
+
+## Frontends
+
+| Area | Current support | Boundary |
+| --- | --- | --- |
+| CLI | Default `circuitci` binary for import, suggestion, validation, suites, and report generation. | Primary automation surface for CI and agents. |
+| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for project loading, sketch/model review, library suggestions, simulation artifact observation, and report viewing. | Workflow and observation shell; canvas schematic editing and waveform plotting are future stages. |
 
 ## Evidence Import
 

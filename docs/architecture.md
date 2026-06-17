@@ -1,10 +1,11 @@
 # CircuitCI Architecture
 
-CircuitCI is a headless board-assessment runtime for embedded electronics. It
-normalizes design and fabrication artifacts into Board IR, binds component
-models, runs explicit scenarios, and emits deterministic JSON/Markdown reports
-with measured evidence and limits. The product boundary is pre-fabrication and
-release-artifact validation; CircuitCI is not a schematic editor, PCB router, or
+CircuitCI is a board-assessment runtime for embedded electronics with a
+headless CLI and an optional native Rust desktop frontend. It normalizes design
+and fabrication artifacts into Board IR, binds component models, runs explicit
+scenarios, and emits deterministic JSON/Markdown reports with measured evidence
+and limits. The product boundary is pre-fabrication and release-artifact
+validation; CircuitCI is not yet a full schematic editor, PCB router, or
 replacement for RF/SI/thermal solvers.
 
 ## Runtime Flow
@@ -42,6 +43,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation::model_quality` | Fabrication sign-off gates that require selected components to use source-backed component models with explicit confidence thresholds. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
+| `gui` | Optional `egui`/`eframe` desktop shell for project loading, staged review, validation, simulation artifact observation, and report viewing. |
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
 
 ## Core Contracts
