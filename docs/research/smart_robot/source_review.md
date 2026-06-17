@@ -28,6 +28,7 @@ robot control-stack design pass.
 | NXP PCA9685 product page | `docs/research/smart_robot/sources/pca9685_product.html` | `28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468` |
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
+| JST VH connector datasheet | `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf` | `d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c` |
 
 ## Confirmed Facts
 
@@ -83,6 +84,12 @@ robot control-stack design pass.
   rating and 250 V voltage rating for static screening. Treat that as connector
   budget evidence only; selected wire gauge, crimp, cable assembly, vibration,
   and temperature rise still need separate evidence.
+- The saved JST VH connector datasheet is used as the source for the first
+  wheel-actuator power/control connector model. The CircuitCI model records a
+  10.0 A current rating and 250 V voltage rating for static screening of the
+  switched wheel rail. Treat this as a connector budget check only; cable
+  assembly, wire gauge, crimp pullout, vibration, temperature rise, CAN
+  termination, and surge/ESD protection remain separate checks.
 
 ## Design Review Notes
 
@@ -116,6 +123,9 @@ robot control-stack design pass.
   resistors, 200 ns dead time, and 20 kHz PWM. These values are design-policy
   inputs for a reusable small robot actuator, not sourced motor
   characterization.
+- The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
+  and validates the preliminary CSD88599Q5DC bridge load against that connector
+  with 1.5x current margin.
 - The wheel slice does not yet validate MOSFET SOA, gate charge, switching
   loss, current-sense accuracy, thermal behavior, regeneration clamp energy,
   PCB copper temperature rise, or motor-control loop stability.

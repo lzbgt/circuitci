@@ -35,6 +35,8 @@ board:
   6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
   8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
   20 kHz PWM.
+- JST VH 8-pin actuator-bus connector screening for the switched wheel rail
+  with 1.5x current margin.
 
 `servo_payload/project.yaml` models the reusable low-load servo/payload hub:
 
@@ -78,7 +80,8 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
-  MOSFET SOA, switching loss, thermal, regeneration clamp, and layout copper.
+  MOSFET SOA, switching loss, thermal, regeneration clamp, CAN/RS485 bus
+  termination/protection, cable assembly evidence, and layout copper.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

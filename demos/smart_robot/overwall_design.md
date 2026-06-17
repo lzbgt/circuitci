@@ -91,6 +91,10 @@ ICM-42688-P is suitable as the main IMU: TDK lists SPI/I2C/I3C host interface, 2
 #### J2 — Robot CAN actuator bus
 
 Use this for wheel boards, arm boards, future joint boards.
+First-pass connector family: JST VH, because it gives a source-backed
+10 A / 250 V static connector budget for the switched wheel rail. Validate the
+selected cable, crimp, temperature rise, vibration, termination, and protection
+separately before fabrication.
 
 ```text
 1  VBAT_SW

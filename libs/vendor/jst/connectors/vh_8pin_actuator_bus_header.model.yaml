@@ -1,0 +1,73 @@
+component_id: vendor.jst.vh_8pin_actuator_bus_header
+version: 0.1.0
+category: connector
+ports:
+  VBAT:
+    kind: passive
+    required: true
+  GND:
+    kind: passive
+    required: true
+  CANH:
+    kind: passive
+    required: true
+  CANL:
+    kind: passive
+    required: true
+  AUX_5V:
+    kind: passive
+    required: false
+  ENABLE:
+    kind: passive
+    required: false
+  FAULT:
+    kind: passive
+    required: false
+  SYNC:
+    kind: passive
+    required: false
+connector:
+  current_rating_A: 10.0
+  voltage_rating_V: 250.0
+  source: docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf
+datasheet:
+  manufacturer: JST
+  part_number: VH-8-circuit
+  package: 3.96mm_pitch_wire_to_board_header
+  polarity: 8_pin_power_control_actuator_bus_connector
+  pinout:
+    VBAT: VBAT_SW
+    GND: GND_POWER
+    CANH: CANH
+    CANL: CANL
+    AUX_5V: 5V_AUX
+    ENABLE: ENABLE
+    FAULT: FAULT
+    SYNC: SYNC
+  electrical_characteristics:
+    current_rating:
+      conditions: VH connector specification, AWG #16.
+      max: 10.0
+      unit: A
+    voltage_rating:
+      conditions: VH connector specification.
+      max: 250.0
+      unit: V
+  documents:
+    - title: JST VH Connector datasheet
+      path: docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf
+      source_url: https://www.jst-mfg.com/product/pdf/eng/eVH.pdf
+      sha256: d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_connector_current_screening
+    - smart_robot_actuator_bus_connector_budget
+  not_valid_for:
+    - connector_temperature_rise_signoff
+    - cable_assembly_quality_signoff
+    - vibration_or_retention_signoff
+    - can_termination_or_signal_integrity_signoff
+    - surge_or_esd_protection_signoff

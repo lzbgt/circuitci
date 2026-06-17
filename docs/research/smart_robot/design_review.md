@@ -44,7 +44,8 @@ validated independently.
    - AT32M416
    - gate driver and MOSFET bridge
    - current sense and encoder/Hall
-   - CAN input and local fault/enable
+   - JST VH actuator-bus input with CAN, switched wheel power, local fault,
+     enable, and sync
 3. Right wheel actuator board:
    - same schematic as left wheel board, with address/side strapping
 4. PMU board:
@@ -98,6 +99,9 @@ left/right reusable wheel controller pass:
 - TCAN3413 3.3 V CAN transceiver rail and MCU-side compatibility.
 - Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
   switched wheel rail.
+- JST VH 8-pin actuator-bus connector current and voltage budget for the
+  switched wheel rail, checked with 1.5x margin against the preliminary bridge
+  load.
 - `M1` motor-load design envelope feeding the first-pass bridge budget:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
@@ -114,7 +118,8 @@ with a checked static budget, not final power-stage sign-off. The next
 validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
 with selected motor datasheet or measurement evidence, then add
 gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
-clamp behavior, and PCB copper-temperature validation.
+clamp behavior, CAN termination/protection, cable assembly evidence, and PCB
+copper-temperature validation.
 
 ## Servo Payload Slice Status
 

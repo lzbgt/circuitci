@@ -5,6 +5,7 @@ project:
 libraries:
   - ../../../../libs/generic
   - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/jst/connectors
   - ../../../../libs/vendor/ti/can_transceivers
   - ../../../../libs/vendor/ti/motor_drivers
   - ../models
@@ -110,6 +111,18 @@ board:
         PHASE_U: phase_u
         PHASE_V: phase_v
         PHASE_W: phase_w
+    JACT1:
+      model: vendor.jst.vh_8pin_actuator_bus_header
+      part_number: B8P-VH_ACTUATOR_BUS
+      pins:
+        VBAT: vwheel_sw
+        GND: gnd
+        CANH: robot_canh
+        CANL: robot_canl
+        AUX_5V: 5v_aux
+        ENABLE: enable_in
+        FAULT: fault_out
+        SYNC: sync_in
   nets:
     vwheel_sw:
       kind: power
@@ -119,6 +132,11 @@ board:
     3v3_logic:
       kind: power
       nominal_voltage: 3.3
+      powered: true
+      supply_current_limit_A: 0.5
+    5v_aux:
+      kind: power
+      nominal_voltage: 5.0
       powered: true
       supply_current_limit_A: 0.5
     gnd:
@@ -171,6 +189,8 @@ board:
       kind: digital_or_analog
     fault_out:
       kind: digital_or_analog
+    sync_in:
+      kind: digital_or_analog
     phase_u:
       kind: digital_or_analog
     phase_v:
@@ -202,3 +222,13 @@ scenarios:
       gate_resistor_ohm: 10.0
       dead_time_ns: 200.0
       pwm_frequency_Hz: 20000.0
+  - name: wheel_actuator_bus_connector_budget
+    type: load_budget
+    checks:
+      - LOAD_CONNECTOR_CURRENT_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      connector_component: JACT1
+      min_connector_current_margin_ratio: 1.5
