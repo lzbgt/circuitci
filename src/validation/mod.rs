@@ -12,6 +12,7 @@ mod firmware_functional;
 mod interface_protection;
 mod io_voltage;
 mod load_budget;
+mod load_budget_power_switch;
 mod manufacturing;
 mod model_quality;
 mod motor_drive;
@@ -501,17 +502,25 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     load_budget::validate_load_connector_current(bound, scenario, &mut findings)
                 }
                 POWER_SWITCH_BUDGET_VALID if scenario.scenario_type == "load_budget" => {
-                    load_budget::validate_power_switch_budget(bound, scenario, &mut findings)
+                    load_budget_power_switch::validate_power_switch_budget(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
                 }
                 POWER_SWITCH_REVERSE_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
-                    load_budget::validate_power_switch_reverse_current(
+                    load_budget_power_switch::validate_power_switch_reverse_current(
                         bound,
                         scenario,
                         &mut findings,
                     )
                 }
                 POWER_SWITCH_INRUSH_VALID if scenario.scenario_type == "load_budget" => {
-                    load_budget::validate_power_switch_inrush(bound, scenario, &mut findings)
+                    load_budget_power_switch::validate_power_switch_inrush(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
                 }
                 LOAD_CABLE_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_load_cable_current(bound, scenario, &mut findings)

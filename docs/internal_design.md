@@ -149,22 +149,25 @@ as sign-off.
 ## Load Connector And Cable Budgets
 
 `src/validation/load_budget.rs` owns deterministic first-pass load connector
-power-switch, and cable budget checks. The connector rule consumes one target
-load power pin, its model-declared `max_supply_current_A`, and either explicit
-connector rating parameters or a bound connector component model with
-`connector` metadata. The power-switch rule consumes the same load evidence and
-a bound `power_switch` component, then checks switched-rail connectivity,
-voltage rating, output-current rating, current-limit setting, and static
-conduction thermal budget. The reverse-current and inrush rules use the same
-target/switch binding but require explicit backfeed-blocking and soft-start
-evidence before e-stop rails can be signed off. The cable current rule uses the
-same target load evidence, but requires explicit cable ratings or a bound cable
-assembly model with `cable_assembly` metadata.
+and cable budget checks. The connector rule consumes one target load power pin,
+its model-declared `max_supply_current_A`, and either explicit connector rating
+parameters or a bound connector component model with `connector` metadata. The
+cable current rule uses the same target load evidence, but requires explicit
+cable ratings or a bound cable assembly model with `cable_assembly` metadata.
 The cable thermal rule requires a declared temperature-rise test point and
 maximum allowed rise, then scales rise by I^2 from the test current.
 The cable voltage-drop rule requires declared loop resistance and an allowed
 drop limit, then computes DC voltage drop and optional power loss at the
 declared margin current.
+
+`src/validation/load_budget_power_switch.rs` owns selected power-switch gates
+for the same `load_budget` scenario type. The static budget rule consumes one
+target load power pin and a bound `power_switch` component, then checks
+switched-rail connectivity, voltage rating, output-current rating,
+current-limit setting, and static conduction thermal budget. The
+reverse-current and inrush rules use the same target/switch binding but require
+explicit backfeed-blocking and soft-start evidence before e-stop rails can be
+signed off.
 
 Keep this module limited to static current, nominal-voltage, thermal-rise, and
 DC voltage-drop budget screens.

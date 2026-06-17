@@ -157,6 +157,13 @@ connectors before CAD capture; they do not prove crimp quality, vibration
 retention, harness routing, bundle derating, PWM ripple, or pulsed-load
 behavior.
 
+Validator entry points are split by ownership:
+`validation::load_budget` owns connector and cable rules, while
+`validation::load_budget_power_switch` owns selected switch budget,
+reverse-current, and inrush rules. They share only small parsing/finding
+helpers so adding more switch-specific checks does not grow the connector/cable
+module.
+
 Model-quality rules are explicit sign-off gates. `MODEL_QUALITY_REQUIRED` turns
 selected component model provenance into critical findings when a fabrication
 review must not rely on `generic`, `estimated`, or low-confidence envelopes.
