@@ -21,7 +21,9 @@ evidence.
 `demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb` is the first
 PCB-layout evidence bridge for the highest-risk actuator board; it exists to
 exercise placement, pad, route, via, zone, and net-rule import before full
-fabrication layout work.
+fabrication layout work. The wheel PCB bridge now also round-trips enough CAN
+route evidence for CircuitCI to validate the selected CAN TVS and termination
+placement scenarios from imported CAD geometry.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.
 

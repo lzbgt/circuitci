@@ -127,7 +127,10 @@ robot control-stack design pass.
 - The first PCB-layout evidence bridge is
   `demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb`. It is a
   compact import fixture for placement, pad, route, via, zone, outline, and
-  net-rule evidence, not a fabrication-ready motor-drive layout.
+  net-rule evidence, not a fabrication-ready motor-drive layout. It now
+  preserves compact ordered CANH/CANL route evidence so the wheel actuator CAN
+  TVS and endpoint-termination placement scenarios can be overlaid onto the
+  imported CAD project and validated without manual layout metadata.
 - The first verifiable slice is
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,
@@ -139,8 +142,9 @@ robot control-stack design pass.
   clamp presence/reference. The first endpoint-population scenarios also check
   120 ohm CAN/RS485 termination components within explicit 5% tolerance.
   First-pass route-placement contracts now check selected TVS and termination
-  components against explicit layout placements/routes. Cable length, connector
-  pinout, EMC, and imported final routed-bus layout still require board-level
+  components against explicit layout placements/routes. The wheel actuator PCB
+  bridge proves that path with imported KiCad PCB evidence. Cable length,
+  connector pinout, EMC, and final routed-bus layout still require board-level
   evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and

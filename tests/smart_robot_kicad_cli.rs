@@ -1,6 +1,6 @@
 mod common;
 
-use common::assert_yaml_file_valid;
+use common::{assert_report_schema_valid, assert_yaml_file_valid};
 use serde_json::Value;
 use std::process::Command;
 
@@ -350,7 +350,7 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
         serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
     assert_eq!(
         imported["board"]["layout"]["placements"]["JACT1"]["x_mm"],
-        7.0
+        10.0
     );
     assert_eq!(
         imported["board"]["layout"]["placements"]["PWR_STAGE"]["x_mm"],
@@ -382,7 +382,7 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
     );
     assert_eq!(
         imported["board"]["layout"]["routes"]["net_robot_canh"]["segments"][2]["end"]["x_mm"],
-        21.0
+        22.0
     );
     assert_eq!(
         imported["board"]["layout"]["routes"]["net_vwheel_sw"]["segments"][0]["width_mm"],
@@ -418,5 +418,108 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
             .unwrap()
             .len(),
         4
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_kicad_pcb_validates_bus_layout_scenarios() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let schematic_project = dir.path().join("wheel_actuator_imported.project.yaml");
+    let enriched_project = dir.path().join("wheel_actuator_with_pcb.project.yaml");
+    let layout_validation_project = dir
+        .path()
+        .join("wheel_actuator_with_pcb_bus_layout_scenarios.project.yaml");
+    let report_dir = dir.path().join("report");
+
+    let schematic_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/wheel_actuator/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml",
+            "--output",
+            schematic_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(schematic_status.success());
+
+    let pcb_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-pcb",
+            "demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb",
+            "--project",
+            schematic_project.to_str().unwrap(),
+            "--output",
+            enriched_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(pcb_status.success());
+
+    let mut imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&enriched_project).unwrap()).unwrap();
+    let source: Value = serde_yaml_ng::from_str(
+        &std::fs::read_to_string("demos/smart_robot/circuitci/wheel_actuator/project.yaml")
+            .unwrap(),
+    )
+    .unwrap();
+    let mut bus_layout_scenarios: Vec<Value> = source["scenarios"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|scenario| {
+            matches!(
+                scenario["name"].as_str(),
+                Some("wheel_actuator_can_endpoint_termination")
+                    | Some("wheel_actuator_can_esd_route_placement")
+                    | Some("wheel_actuator_can_termination_route_placement")
+            )
+        })
+        .cloned()
+        .collect();
+    assert_eq!(bus_layout_scenarios.len(), 3);
+    for scenario in &mut bus_layout_scenarios {
+        let parameters = scenario["parameters"].as_object_mut().unwrap();
+        if parameters.get("line_a_net").is_some() {
+            parameters.insert(
+                "line_a_net".to_string(),
+                Value::String("net_robot_canh".into()),
+            );
+        }
+        if parameters.get("line_b_net").is_some() {
+            parameters.insert(
+                "line_b_net".to_string(),
+                Value::String("net_robot_canl".into()),
+            );
+        }
+    }
+    imported["scenarios"] = Value::Array(bus_layout_scenarios);
+    std::fs::write(
+        &layout_validation_project,
+        serde_yaml_ng::to_string(&imported).unwrap(),
+    )
+    .unwrap();
+
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            layout_validation_project.to_str().unwrap(),
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+    assert!(
+        report["failures"].as_array().unwrap().is_empty(),
+        "CAD-derived CAN layout scenarios should validate cleanly: {report:#?}"
     );
 }
