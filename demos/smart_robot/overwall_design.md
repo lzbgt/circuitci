@@ -134,6 +134,8 @@ First-pass connector family: JST VH, because it gives a source-backed
 10 A / 250 V static connector budget for the switched wheel rail. Validate the
 selected cable assembly, wire gauge, crimp, temperature rise, vibration,
 termination, and protection separately before fabrication.
+The current JST VH/AWG16 source audit closes connector-current and
+voltage-drop inputs, but does not close final-harness temperature rise.
 
 ```text
 1  VBAT_SW

@@ -35,6 +35,7 @@ robot control-stack design pass.
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
 | JST VH connector datasheet | `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf` | `d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c` |
+| JST handling precautions for terminals and connectors | `docs/research/smart_robot/sources/jst_handling_precautions_terminals_connectors.pdf` | `c0f1b065990fe550066f77576dc7a16b8c83fcde9a364b29475497bc334cd8c4` |
 | National Wire UL AWM 1015 datasheet | `docs/research/smart_robot/sources/national_wire_ul_awm_1015.pdf` | `8b98c03ef1dac8985a36ca275badda37587a2d8d674c0a5725fbbb698fa635ea` |
 | Vishay Dale RH/NH aluminum-housed resistor datasheet | `docs/research/smart_robot/sources/vishay_rh_nh_aluminum_housed_resistors.pdf` | `b4741aa9ec7437a150fd8aaea5218dbbf3cde96428fa358712e5c7c0b25bb500` |
 
@@ -126,6 +127,11 @@ robot control-stack design pass.
   gate for actuator-bus harness temperature-rise evidence. It intentionally
   reports `VALIDATION_INPUT_MISSING` until the project selects a cable assembly
   with test-current/rise evidence or measures the final harness.
+- The reviewed JST VH, JST handling, and National Wire sources support
+  connector current, voltage, resistance, and the need to avoid inferred
+  current sharing across connector circuits, but they do not provide a numeric
+  temperature-rise test vector for the final JST VH/AWG16 harness. See
+  `docs/research/smart_robot/wheel_actuator_harness_evidence_audit.md`.
 - The wheel actuator also has a separate `LOAD_CABLE_VOLTAGE_DROP_VALID` gate
   for actuator-bus harness loop-resistance evidence. The selected first-pass
   harness now clears this gate with 0.01506 ohm loop resistance for a 0.5 m
@@ -211,7 +217,9 @@ robot control-stack design pass.
 - The wheel actuator also declares a blocking
   `LOAD_CABLE_THERMAL_DERATING_VALID` harness-temperature screen. The current
   report must fail until selected actuator-bus cable temperature-rise evidence
-  is supplied.
+  is supplied. The 2026-06-17 source audit confirmed that the current JST VH,
+  JST handling, and National Wire sources do not supply the required numeric
+  test-current/rise evidence.
 - The wheel actuator also declares a blocking `LOAD_CABLE_VOLTAGE_DROP_VALID`
   harness-drop screen. The selected harness now clears the drop screen using
   0.01506 ohm loop resistance for a 0.5 m two-wire AWG16 path.

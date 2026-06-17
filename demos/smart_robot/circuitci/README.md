@@ -99,14 +99,15 @@ board:
 - JST VH 8-pin actuator-bus connector screening for the switched wheel rail
   with 1.5x current margin.
 - `LOAD_CABLE_CURRENT_VALID` is declared for the actuator-bus harness and is
-  intentionally missing cable evidence until a selected wire/crimp/cable
-  assembly rating is sourced.
+  now cleared by the selected first-pass JST VH/AWG16 0.5 m harness model.
 - `LOAD_CABLE_THERMAL_DERATING_VALID` is also declared for actuator-bus
   harness temperature rise and intentionally fails closed until selected
-  cable temperature-rise evidence is sourced.
+  cable temperature-rise evidence is sourced. Current source files support
+  connector current and AWG16 resistance, but not a numeric final-harness
+  temperature-rise test point.
 - `LOAD_CABLE_VOLTAGE_DROP_VALID` is declared for actuator-bus harness loop
-  resistance, voltage drop, and power loss, and intentionally fails closed
-  until selected harness resistance evidence is sourced.
+  resistance, voltage drop, and power loss, and is now cleared by the selected
+  first-pass harness loop-resistance evidence.
 
 `servo_payload/project.yaml` models the reusable low-load servo/payload hub:
 

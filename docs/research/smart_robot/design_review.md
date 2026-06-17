@@ -141,7 +141,9 @@ left/right reusable wheel controller pass:
   first-pass JST VH/AWG16 0.5 m actuator harness now clears this current gate.
 - A separate actuator-bus cable thermal-derating gate is also declared and
   intentionally fails closed until selected cable temperature-rise evidence is
-  supplied.
+  supplied. The current source audit found connector current and wire
+  resistance evidence, but no numeric final-harness temperature-rise test
+  vector.
 - A separate actuator-bus cable voltage-drop gate is declared. The selected
   first-pass harness now clears this drop gate with source-backed
   loop-resistance evidence.
@@ -169,7 +171,8 @@ left/right reusable wheel controller pass:
 - The wheel validation also declares `LOAD_CABLE_THERMAL_DERATING_VALID` for
   the actuator-bus harness. It must keep failing until selected harness
   temperature-rise evidence is added; the rule only scales from declared test
-  data and does not infer ampacity from generic wire gauge assumptions.
+  data and does not infer ampacity from generic wire gauge assumptions. See
+  `docs/research/smart_robot/wheel_actuator_harness_evidence_audit.md`.
 - The wheel validation also declares `LOAD_CABLE_VOLTAGE_DROP_VALID` for the
   actuator-bus harness. It now uses the selected harness loop-resistance model
   to clear the first-pass DC drop and harness power-loss screen.
