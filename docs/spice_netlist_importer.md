@@ -37,6 +37,7 @@ The importer understands common SPICE element prefixes:
 | --- | --- | --- |
 | `R` | `A`, `B` | `generic.analog.resistor` |
 | `C` | `A`, `B` | `generic.analog.capacitor` |
+| `I` | `P`, `N` | `generic.analog.imported_spice_device` |
 | `V` | `P`, `N` | `generic.analog.imported_spice_device` |
 | `D` | `A`, `K` | `generic.analog.imported_spice_device` |
 | `Q` | `C`, `B`, `E`, optional `S` | `generic.analog.imported_spice_device` |
@@ -44,7 +45,8 @@ The importer understands common SPICE element prefixes:
 | `X` | `P1..PN` | `generic.analog.imported_spice_device` |
 | other two-terminal sources/passives | `A`, `B` | `generic.analog.imported_spice_device` |
 
-Imported elements keep their simulator behavior in the original deck.
+Imported independent voltage and current sources preserve DC and `PULSE(...)`
+primitive metadata in Board IR. Imported elements keep their simulator behavior in the original deck.
 CircuitCI does not invent datasheet-backed device metadata for them during
 import. Primitive values are preserved in Board IR where they can be represented
 losslessly, but `netlist_source: file` still makes the deck the solver source

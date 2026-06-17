@@ -64,7 +64,9 @@
                       "capacitor",
                       "inductor",
                       "dc_voltage_source",
-                      "pulse_voltage_source"
+                      "pulse_voltage_source",
+                      "dc_current_source",
+                      "pulse_current_source"
                     ]
                   },
                   "value_ohm": { "type": "number", "exclusiveMinimum": 0 },
@@ -72,6 +74,7 @@
                   "initial_v": { "type": "number" },
                   "value_h": { "type": "number", "exclusiveMinimum": 0 },
                   "dc_v": { "type": "number" },
+                  "dc_a": { "type": "number" },
                   "pulse": {
                     "type": "object",
                     "required": [
@@ -86,6 +89,28 @@
                     "properties": {
                       "initial_v": { "type": "number" },
                       "pulsed_v": { "type": "number" },
+                      "delay_us": { "type": "number", "minimum": 0 },
+                      "rise_us": { "type": "number", "minimum": 0 },
+                      "fall_us": { "type": "number", "minimum": 0 },
+                      "width_us": { "type": "number", "exclusiveMinimum": 0 },
+                      "period_us": { "type": "number", "exclusiveMinimum": 0 }
+                    },
+                    "additionalProperties": false
+                  },
+                  "current_pulse": {
+                    "type": "object",
+                    "required": [
+                      "initial_a",
+                      "pulsed_a",
+                      "delay_us",
+                      "rise_us",
+                      "fall_us",
+                      "width_us",
+                      "period_us"
+                    ],
+                    "properties": {
+                      "initial_a": { "type": "number" },
+                      "pulsed_a": { "type": "number" },
                       "delay_us": { "type": "number", "minimum": 0 },
                       "rise_us": { "type": "number", "minimum": 0 },
                       "fall_us": { "type": "number", "minimum": 0 },

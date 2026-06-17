@@ -1,0 +1,20 @@
+component_id: generic.analog.dc_current_source
+version: 0.1.0
+category: current_source
+ports:
+  P:
+    kind: passive
+    required: true
+  N:
+    kind: passive
+    required: true
+model_quality:
+  source: generic
+  confidence: medium
+  intended_use:
+    - board_ir_spice_generation
+    - deterministic_test_load
+    - current_sink_or_source_transient
+  not_valid_for:
+    - battery_or_load_dynamic_impedance_modeling
+    - current_limit_or_compliance_voltage_signoff

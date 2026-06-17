@@ -165,6 +165,82 @@ fn import_kicad_netlist_applies_explicit_model_and_net_mapping() {
 }
 
 #[test]
+fn import_kicad_netlist_preserves_current_source_mapping() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let mapping = dir.path().join("current_sources.kicad-map.yaml");
+    let output = dir.path().join("current_sources.project.yaml");
+    let repo = std::env::current_dir().unwrap();
+    std::fs::write(
+        &mapping,
+        format!(
+            r#"
+libraries:
+  - {}
+components:
+  R1:
+    model: generic.analog.dc_current_source
+    pin_map: {{ "1": P, "2": N }}
+    spice: {{ primitive: dc_current_source, dc_a: 0.001 }}
+  C1:
+    model: generic.analog.pulse_current_source
+    pin_map: {{ "1": P, "2": N }}
+    spice:
+      primitive: pulse_current_source
+      current_pulse:
+        initial_a: 0.0
+        pulsed_a: 0.002
+        delay_us: 1.0
+        rise_us: 0.1
+        fall_us: 0.1
+        width_us: 2.0
+        period_us: 10.0
+"#,
+            repo.join("libs/generic/analog").display()
+        ),
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-netlist",
+            "examples/import_kicad_xml/board.net",
+            "--mapping",
+            mapping.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "kicad_current_sources",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["R1"]["spice"]["primitive"],
+        "dc_current_source"
+    );
+    assert_eq!(
+        imported["board"]["components"]["R1"]["spice"]["dc_a"],
+        0.001
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["spice"]["primitive"],
+        "pulse_current_source"
+    );
+    assert_eq!(
+        imported["board"]["components"]["C1"]["spice"]["current_pulse"]["pulsed_a"],
+        0.002
+    );
+}
+
+#[test]
 fn import_kicad_netlist_preserves_pin_electrical_types() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("typed.net");

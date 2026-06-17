@@ -50,6 +50,8 @@ enum SpicePrimitiveSpec {
     Inductor { value_h: f64 },
     DcVoltageSource { dc_v: f64 },
     PulseVoltageSource { pulse: PulseSpec },
+    DcCurrentSource { dc_a: f64 },
+    PulseCurrentSource { pulse: CurrentPulseSpec },
 }
 
 #[derive(Debug, Serialize)]
@@ -95,13 +97,28 @@ struct ComponentSpiceYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     dc_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    dc_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pulse: Option<PulseSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current_pulse: Option<CurrentPulseSpec>,
 }
 
 #[derive(Debug, Serialize)]
 struct PulseSpec {
     initial_v: f64,
     pulsed_v: f64,
+    delay_us: f64,
+    rise_us: f64,
+    fall_us: f64,
+    width_us: f64,
+    period_us: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct CurrentPulseSpec {
+    initial_a: f64,
+    pulsed_a: f64,
     delay_us: f64,
     rise_us: f64,
     fall_us: f64,
@@ -356,6 +373,7 @@ fn parse_element(tokens: &[String], line: &str) -> Result<ParsedElement> {
             SpicePrimitiveSpec::Inductor { value_h: value }
         }),
         'V' => parse_voltage_source(tokens),
+        'I' => parse_current_source(tokens),
         'D' => parse_fixed_pins(
             tokens,
             3,
@@ -453,6 +471,40 @@ fn parse_voltage_source(tokens: &[String]) -> Result<ParsedElement> {
     })
 }
 
+fn parse_current_source(tokens: &[String]) -> Result<ParsedElement> {
+    if tokens.len() < 4 {
+        bail!(
+            "Malformed current-source SPICE element line: {}",
+            tokens.join(" ")
+        );
+    }
+    let spec = tokens[3..].join(" ");
+    let spice = if spec.trim_start().to_ascii_uppercase().starts_with("PULSE") {
+        SpicePrimitiveSpec::PulseCurrentSource {
+            pulse: parse_current_pulse(&spec)?,
+        }
+    } else {
+        let value_token = if tokens[3].eq_ignore_ascii_case("DC") && tokens.len() >= 5 {
+            &tokens[4]
+        } else {
+            &tokens[3]
+        };
+        SpicePrimitiveSpec::DcCurrentSource {
+            dc_a: parse_spice_number(value_token)
+                .with_context(|| format!("Could not parse current source value {value_token}"))?,
+        }
+    };
+    Ok(ParsedElement {
+        name: tokens[0].clone(),
+        model: "generic.analog.imported_spice_device".to_string(),
+        pins: vec![
+            ("P".to_string(), tokens[1].clone()),
+            ("N".to_string(), tokens[2].clone()),
+        ],
+        spice: Some(spice),
+    })
+}
+
 fn parse_fixed_pins(
     tokens: &[String],
     min_tokens: usize,
@@ -509,6 +561,19 @@ fn parse_pulse(spec: &str) -> Result<PulseSpec> {
         fall_us: values[4] * 1_000_000.0,
         width_us: values[5] * 1_000_000.0,
         period_us: values[6] * 1_000_000.0,
+    })
+}
+
+fn parse_current_pulse(spec: &str) -> Result<CurrentPulseSpec> {
+    let pulse = parse_pulse(spec)?;
+    Ok(CurrentPulseSpec {
+        initial_a: pulse.initial_v,
+        pulsed_a: pulse.pulsed_v,
+        delay_us: pulse.delay_us,
+        rise_us: pulse.rise_us,
+        fall_us: pulse.fall_us,
+        width_us: pulse.width_us,
+        period_us: pulse.period_us,
     })
 }
 
@@ -650,7 +715,9 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 initial_v: None,
                 value_h: None,
                 dc_v: None,
+                dc_a: None,
                 pulse: None,
+                current_pulse: None,
             },
             SpicePrimitiveSpec::Capacitor { value_f } => Self {
                 primitive: "capacitor".to_string(),
@@ -659,7 +726,9 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 initial_v: None,
                 value_h: None,
                 dc_v: None,
+                dc_a: None,
                 pulse: None,
+                current_pulse: None,
             },
             SpicePrimitiveSpec::Inductor { value_h } => Self {
                 primitive: "inductor".to_string(),
@@ -668,7 +737,9 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 initial_v: None,
                 value_h: Some(*value_h),
                 dc_v: None,
+                dc_a: None,
                 pulse: None,
+                current_pulse: None,
             },
             SpicePrimitiveSpec::DcVoltageSource { dc_v } => Self {
                 primitive: "dc_voltage_source".to_string(),
@@ -677,7 +748,9 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 initial_v: None,
                 value_h: None,
                 dc_v: Some(*dc_v),
+                dc_a: None,
                 pulse: None,
+                current_pulse: None,
             },
             SpicePrimitiveSpec::PulseVoltageSource { pulse } => Self {
                 primitive: "pulse_voltage_source".to_string(),
@@ -686,9 +759,41 @@ impl From<&SpicePrimitiveSpec> for ComponentSpiceYaml {
                 initial_v: None,
                 value_h: None,
                 dc_v: None,
+                dc_a: None,
                 pulse: Some(PulseSpec {
                     initial_v: pulse.initial_v,
                     pulsed_v: pulse.pulsed_v,
+                    delay_us: pulse.delay_us,
+                    rise_us: pulse.rise_us,
+                    fall_us: pulse.fall_us,
+                    width_us: pulse.width_us,
+                    period_us: pulse.period_us,
+                }),
+                current_pulse: None,
+            },
+            SpicePrimitiveSpec::DcCurrentSource { dc_a } => Self {
+                primitive: "dc_current_source".to_string(),
+                value_ohm: None,
+                value_f: None,
+                initial_v: None,
+                value_h: None,
+                dc_v: None,
+                dc_a: Some(*dc_a),
+                pulse: None,
+                current_pulse: None,
+            },
+            SpicePrimitiveSpec::PulseCurrentSource { pulse } => Self {
+                primitive: "pulse_current_source".to_string(),
+                value_ohm: None,
+                value_f: None,
+                initial_v: None,
+                value_h: None,
+                dc_v: None,
+                dc_a: None,
+                pulse: None,
+                current_pulse: Some(CurrentPulseSpec {
+                    initial_a: pulse.initial_a,
+                    pulsed_a: pulse.pulsed_a,
                     delay_us: pulse.delay_us,
                     rise_us: pulse.rise_us,
                     fall_us: pulse.fall_us,

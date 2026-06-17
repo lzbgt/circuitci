@@ -582,7 +582,11 @@ pub struct ComponentSpiceSpec {
     #[serde(default)]
     pub dc_v: Option<f64>,
     #[serde(default)]
+    pub dc_a: Option<f64>,
+    #[serde(default)]
     pub pulse: Option<SpicePulseSpec>,
+    #[serde(default)]
+    pub current_pulse: Option<SpiceCurrentPulseSpec>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -593,12 +597,25 @@ pub enum SpicePrimitive {
     Inductor,
     DcVoltageSource,
     PulseVoltageSource,
+    DcCurrentSource,
+    PulseCurrentSource,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpicePulseSpec {
     pub initial_v: f64,
     pub pulsed_v: f64,
+    pub delay_us: f64,
+    pub rise_us: f64,
+    pub fall_us: f64,
+    pub width_us: f64,
+    pub period_us: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpiceCurrentPulseSpec {
+    pub initial_a: f64,
+    pub pulsed_a: f64,
     pub delay_us: f64,
     pub rise_us: f64,
     pub fall_us: f64,

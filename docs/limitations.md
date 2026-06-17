@@ -4,6 +4,9 @@ CircuitCI is a validation runtime, not a full EDA suite.
 
 The runtime backbone is Rust. Python is not part of the production engine path.
 
+For a current feature matrix and the analog-simulation boundary, see
+[docs/current_capabilities.md](current_capabilities.md).
+
 ## Not Implemented
 
 - schematic editing

@@ -80,7 +80,9 @@ fn validate_component_spice_shape(
             if spice.value_f.is_some()
                 || spice.value_h.is_some()
                 || spice.dc_v.is_some()
+                || spice.dc_a.is_some()
                 || spice.pulse.is_some()
+                || spice.current_pulse.is_some()
             {
                 bail!(
                     "KiCad mapping for component {} primitive resistor may declare only spice.value_ohm.",
@@ -93,7 +95,9 @@ fn validate_component_spice_shape(
             if spice.value_ohm.is_some()
                 || spice.value_h.is_some()
                 || spice.dc_v.is_some()
+                || spice.dc_a.is_some()
                 || spice.pulse.is_some()
+                || spice.current_pulse.is_some()
             {
                 bail!(
                     "KiCad mapping for component {} primitive capacitor may declare only spice.value_f.",
@@ -106,7 +110,9 @@ fn validate_component_spice_shape(
             if spice.value_ohm.is_some()
                 || spice.value_f.is_some()
                 || spice.dc_v.is_some()
+                || spice.dc_a.is_some()
                 || spice.pulse.is_some()
+                || spice.current_pulse.is_some()
             {
                 bail!(
                     "KiCad mapping for component {} primitive inductor may declare only spice.value_h.",
@@ -119,7 +125,9 @@ fn validate_component_spice_shape(
             if spice.value_ohm.is_some()
                 || spice.value_f.is_some()
                 || spice.value_h.is_some()
+                || spice.dc_a.is_some()
                 || spice.pulse.is_some()
+                || spice.current_pulse.is_some()
             {
                 bail!(
                     "KiCad mapping for component {} primitive dc_voltage_source may declare only spice.dc_v.",
@@ -133,6 +141,8 @@ fn validate_component_spice_shape(
                 || spice.value_f.is_some()
                 || spice.value_h.is_some()
                 || spice.dc_v.is_some()
+                || spice.dc_a.is_some()
+                || spice.current_pulse.is_some()
             {
                 bail!(
                     "KiCad mapping for component {} primitive pulse_voltage_source may declare only spice.pulse.",
@@ -142,6 +152,41 @@ fn validate_component_spice_shape(
             if spice.pulse.is_none() {
                 bail!(
                     "KiCad mapping for component {} primitive pulse_voltage_source requires spice.pulse.",
+                    component.refdes
+                );
+            }
+        }
+        SpicePrimitiveYaml::DcCurrentSource => {
+            if spice.value_ohm.is_some()
+                || spice.value_f.is_some()
+                || spice.value_h.is_some()
+                || spice.dc_v.is_some()
+                || spice.pulse.is_some()
+                || spice.current_pulse.is_some()
+            {
+                bail!(
+                    "KiCad mapping for component {} primitive dc_current_source may declare only spice.dc_a.",
+                    component.refdes
+                );
+            }
+            finite_spice_field(component, spice.dc_a, "spice.dc_a")?;
+        }
+        SpicePrimitiveYaml::PulseCurrentSource => {
+            if spice.value_ohm.is_some()
+                || spice.value_f.is_some()
+                || spice.value_h.is_some()
+                || spice.dc_v.is_some()
+                || spice.dc_a.is_some()
+                || spice.pulse.is_some()
+            {
+                bail!(
+                    "KiCad mapping for component {} primitive pulse_current_source may declare only spice.current_pulse.",
+                    component.refdes
+                );
+            }
+            if spice.current_pulse.is_none() {
+                bail!(
+                    "KiCad mapping for component {} primitive pulse_current_source requires spice.current_pulse.",
                     component.refdes
                 );
             }

@@ -133,7 +133,11 @@ pub(super) struct ComponentSpiceYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) dc_v: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) dc_a: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) pulse: Option<PulseSpecYaml>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) current_pulse: Option<CurrentPulseSpecYaml>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -144,6 +148,8 @@ pub(super) enum SpicePrimitiveYaml {
     Inductor,
     DcVoltageSource,
     PulseVoltageSource,
+    DcCurrentSource,
+    PulseCurrentSource,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -157,6 +163,18 @@ pub(super) enum SpiceValueSourceYaml {
 pub(super) struct PulseSpecYaml {
     pub(super) initial_v: f64,
     pub(super) pulsed_v: f64,
+    pub(super) delay_us: f64,
+    pub(super) rise_us: f64,
+    pub(super) fall_us: f64,
+    pub(super) width_us: f64,
+    pub(super) period_us: f64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CurrentPulseSpecYaml {
+    pub(super) initial_a: f64,
+    pub(super) pulsed_a: f64,
     pub(super) delay_us: f64,
     pub(super) rise_us: f64,
     pub(super) fall_us: f64,

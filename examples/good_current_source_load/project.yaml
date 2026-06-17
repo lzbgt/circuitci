@@ -1,0 +1,93 @@
+project:
+  name: good_current_source_load
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  components:
+    VDD:
+      model: generic.analog.dc_voltage_source
+      pins:
+        P: rail_5v
+        N: gnd
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: rail_5v
+        B: load_node
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+    ILOAD:
+      model: generic.analog.dc_current_source
+      pins:
+        P: load_node
+        N: gnd
+      spice:
+        primitive: dc_current_source
+        dc_a: 0.001
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    load_node:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: generated_current_source_load
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components:
+          - VDD
+          - R1
+          - ILOAD
+      model_files: []
+      node_bindings:
+        - node: vdd
+          net: rail_5v
+        - node: load
+          net: load_node
+        - node: "0"
+          net: gnd
+      pin_bindings:
+        - node: vdd
+          endpoint: { component: VDD, pin: P }
+        - node: "0"
+          endpoint: { component: VDD, pin: N }
+        - node: load
+          endpoint: { component: ILOAD, pin: P }
+        - node: "0"
+          endpoint: { component: ILOAD, pin: N }
+      analysis:
+        type: tran
+        stop_time_us: 100
+        max_step_us: 1
+      stimuli: []
+      probes:
+        - name: load_voltage
+          expression: V(load)
+      assertions:
+        - name: load_node_below_expected_upper_bound
+          probe: load_voltage
+          at_us: 50
+          relation: below
+          threshold_v: 4.1
+        - name: load_node_above_expected_lower_bound
+          probe: load_voltage
+          at_us: 50
+          relation: above
+          threshold_v: 3.9

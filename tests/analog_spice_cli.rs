@@ -148,6 +148,27 @@ fn generated_csd17484f4_vcsel_capacitor_discharge_uses_initial_condition() {
 }
 
 #[test]
+fn generated_current_source_load_passes_when_ngspice_available() {
+    let report = run_validation("examples/good_current_source_load/project.yaml");
+    if binary_available("ngspice") {
+        assert_eq!(report["result"], "pass");
+        assert_eq!(report["summary"]["critical"], 0);
+        assert!(report["failures"].as_array().unwrap().is_empty());
+        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        let artifacts = report["artifacts"].as_array().unwrap();
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| { artifact.as_str().unwrap().ends_with("generated_board.cir") })
+        );
+    } else {
+        assert_eq!(report["result"], "fail");
+        assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
+    }
+    assert_report_schema_valid(&report);
+}
+
+#[test]
 fn import_spice_generates_schema_valid_file_backed_project() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -209,6 +230,59 @@ fn import_spice_generates_schema_valid_file_backed_project() {
         assert_eq!(report["failures"][0]["id"], "ANALOG_BACKEND_UNAVAILABLE");
     }
     assert_report_schema_valid(&report);
+}
+
+#[test]
+fn import_spice_preserves_current_source_primitives() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let deck = dir.path().join("current_sources.cir");
+    let output = dir.path().join("imported.project.yaml");
+    std::fs::write(
+        &deck,
+        "I1 load 0 DC 1m\nI2 load 0 PULSE(0 2m 1u 0.1u 0.1u 2u 10u)\nR1 load 0 1k\n.tran 0.1u 20u\n.end\n",
+    )
+    .unwrap();
+
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-spice",
+            deck.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--name",
+            "import_spice_current_sources",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(
+        imported["board"]["components"]["I1"]["spice"]["primitive"],
+        "dc_current_source"
+    );
+    assert!(
+        (imported["board"]["components"]["I1"]["spice"]["dc_a"]
+            .as_f64()
+            .unwrap()
+            - 0.001)
+            .abs()
+            < 1.0e-12
+    );
+    assert_eq!(
+        imported["board"]["components"]["I2"]["spice"]["primitive"],
+        "pulse_current_source"
+    );
+    assert_eq!(
+        imported["board"]["components"]["I2"]["spice"]["current_pulse"]["pulsed_a"],
+        0.002
+    );
 }
 
 #[test]

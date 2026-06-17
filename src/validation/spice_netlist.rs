@@ -145,7 +145,22 @@ fn generate_component_line(
                 let pulse = spice.pulse.as_ref().ok_or_else(|| {
                     format!("Component {component_id} pulse_voltage_source requires spice.pulse.")
                 })?;
-                pulse_line(component_id, component, node_by_net, pulse)
+                voltage_pulse_line(component_id, component, node_by_net, pulse)
+            }
+            SpicePrimitive::DcCurrentSource => Ok(format!(
+                "{} {} {} DC {}",
+                element_name("I", component_id),
+                pin_node(component_id, component, node_by_net, "P")?,
+                pin_node(component_id, component, node_by_net, "N")?,
+                finite(spice.dc_a, component_id, "spice.dc_a")?
+            )),
+            SpicePrimitive::PulseCurrentSource => {
+                let pulse = spice.current_pulse.as_ref().ok_or_else(|| {
+                    format!(
+                        "Component {component_id} pulse_current_source requires spice.current_pulse."
+                    )
+                })?;
+                current_pulse_line(component_id, component, node_by_net, pulse)
             }
         };
     }
@@ -253,7 +268,7 @@ fn subckt_line(
     Ok(line)
 }
 
-fn pulse_line(
+fn voltage_pulse_line(
     component_id: &str,
     component: &ComponentSpec,
     node_by_net: &BTreeMap<String, String>,
@@ -285,6 +300,46 @@ fn pulse_line(
         pin_node(component_id, component, node_by_net, "N")?,
         pulse.initial_v,
         pulse.pulsed_v,
+        pulse.delay_us,
+        pulse.rise_us,
+        pulse.fall_us,
+        pulse.width_us,
+        pulse.period_us
+    ))
+}
+
+fn current_pulse_line(
+    component_id: &str,
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<String, String>,
+    pulse: &crate::board_ir::SpiceCurrentPulseSpec,
+) -> Result<String, String> {
+    let fields = [
+        ("initial_a", pulse.initial_a),
+        ("pulsed_a", pulse.pulsed_a),
+        ("delay_us", pulse.delay_us),
+        ("rise_us", pulse.rise_us),
+        ("fall_us", pulse.fall_us),
+        ("width_us", pulse.width_us),
+        ("period_us", pulse.period_us),
+    ];
+    for (field, value) in fields {
+        if !value.is_finite()
+            || (field.ends_with("_us") && value < 0.0)
+            || matches!(field, "width_us" | "period_us") && value <= 0.0
+        {
+            return Err(format!(
+                "Component {component_id} spice.current_pulse.{field} must be finite and in range."
+            ));
+        }
+    }
+    Ok(format!(
+        "{} {} {} PULSE({} {} {}u {}u {}u {}u {}u)",
+        element_name("I", component_id),
+        pin_node(component_id, component, node_by_net, "P")?,
+        pin_node(component_id, component, node_by_net, "N")?,
+        pulse.initial_a,
+        pulse.pulsed_a,
         pulse.delay_us,
         pulse.rise_us,
         pulse.fall_us,

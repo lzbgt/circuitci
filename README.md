@@ -224,6 +224,7 @@ project.yaml / KiCad / SPICE
 
 Important contracts:
 
+- [docs/current_capabilities.md](docs/current_capabilities.md)
 - [docs/board_ir.md](docs/board_ir.md)
 - [docs/component_model_contract.md](docs/component_model_contract.md)
 - [docs/scenario_language.md](docs/scenario_language.md)

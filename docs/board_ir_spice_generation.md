@@ -17,8 +17,11 @@ scope:
 
 - resistor,
 - capacitor,
+- inductor,
 - independent DC voltage source,
 - independent pulse voltage source,
+- independent DC current source,
+- independent pulse current source,
 - diode backed by `simulation.spice`,
 - BJT NPN/PNP backed by `simulation.spice`,
 - N-channel and P-channel MOSFETs backed by `simulation.spice`,
@@ -61,6 +64,18 @@ R8:
   model: generic.analog.resistor
   pins: {A: nrst, B: vdd_3v3}
   spice: {primitive: resistor, value_ohm: 10000}
+```
+
+Current-source primitives use SPICE's positive-current convention from `P` to
+`N`. Use `dc_current_source` with `dc_a` for static loads and
+`pulse_current_source` with `current_pulse` for pulsed loads or stress
+stimuli:
+
+```yaml
+ILOAD:
+  model: generic.analog.dc_current_source
+  pins: {P: rail_3v3, N: gnd}
+  spice: {primitive: dc_current_source, dc_a: 0.1}
 ```
 
 Capacitors may optionally declare `initial_v`. Generated ngspice wrappers add
