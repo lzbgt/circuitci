@@ -37,7 +37,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |
 | `validation::interface_protection` | Static signal-protection, routed-interface, and topology-scoped bus termination rules. |
-| `validation::motor_drive` | Static motor bridge budget, route-current, and current-sense placement rules over explicit current, shunt, connector, gate-timing, and layout evidence. |
+| `validation::motor_drive` | Static motor bridge budget, loss/thermal, regen-clamp, route-current, and current-sense rules over explicit current, shunt, connector, gate-timing, layout, and ADC evidence. |
 | `validation::load_budget` | Static load-to-connector current and voltage budget rules over explicit load and connector metadata. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
@@ -116,6 +116,10 @@ require explicit current, connector, shunt, gate-timing, regeneration, and
 layout parameters, or a declared motor/load component model with `motor_load`
 current evidence, so a robot actuator bridge can fail closed on missing or
 undersized first-pass values before schematic capture.
+Validator entry points live in `validation::motor_drive`; shared parameter
+parsing, motor-load evidence, route/placement geometry, and common finding
+builders live in `validation::motor_drive_common` so more motor checks do not
+grow one monolithic source file.
 `MOTOR_BRIDGE_LOSS_THERMAL_VALID` adds a source-backed reference-loss
 thermal-budget screen from component `motor_bridge` metadata.
 `MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event

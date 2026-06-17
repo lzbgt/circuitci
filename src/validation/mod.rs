@@ -14,6 +14,7 @@ mod io_voltage;
 mod load_budget;
 mod manufacturing;
 mod motor_drive;
+mod motor_drive_common;
 mod power_tree;
 mod resident_protocol;
 mod spice_netlist;

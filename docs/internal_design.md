@@ -105,29 +105,34 @@ add fail-closed importer coverage before adding an approximation.
 
 ## Motor Drive Budgets
 
-`src/validation/motor_drive.rs` owns deterministic first-pass motor bridge,
-route-current, and current-sense placement checks. The bridge-budget rule
-consumes explicit scenario parameters and optional `parameters.motor_component`
-evidence from a bound component model with `motor_load`; it does not infer motor
-behavior from topology. Required current, connector, shunt, gate-resistor,
-dead-time, and PWM values must be finite and positive where appropriate;
-unknown values produce `VALIDATION_INPUT_MISSING`.
+`src/validation/motor_drive.rs` owns deterministic first-pass motor-drive
+validator entry points: bridge budget, bridge loss/thermal, regen clamp,
+route-current, current-sense placement, and current-sense accuracy.
+`src/validation/motor_drive_common.rs` owns shared parameter parsing,
+motor-load evidence resolution, route/placement geometry helpers, and common
+finding builders. The bridge-budget rule consumes explicit scenario parameters
+and optional `parameters.motor_component` evidence from a bound component model
+with `motor_load`; it does not infer motor behavior from topology. Required
+current, connector, shunt, gate-resistor, dead-time, and PWM values must be
+finite and positive where appropriate; unknown values produce
+`VALIDATION_INPUT_MISSING`.
 
 Current-sense placement checks consume only component placements and route
 polylines already present in `board.layout`. They compare phase shunts against
 declared reference-component, phase-route, sense-route, and sense-route-length
-limits. They deliberately avoid calculating shunt parasitics, amplifier gain
-error, ADC quantization/noise, PWM rejection, or thermal drift.
+limits. Current-sense accuracy checks consume explicit shunt, gain, ADC,
+offset, and tolerance budgets, then compute peak ADC range,
+minimum-current ADC counts, and conservative worst-case current error. They
+deliberately avoid calculating shunt parasitics, PWM rejection, thermal drift,
+or dynamic current-loop stability.
 
 Bridge loss/thermal checks consume typed `motor_bridge` model metadata and
 explicit board thermal-budget parameters. The only built-in loss model is
 source-reference scaling by RMS phase current. Regeneration clamp checks consume
 an explicit single-event energy envelope, bus capacitance, voltage window, and
 named absorber component; they do not derive rotor energy from topology or
-motor guesses. Current-sense accuracy checks consume explicit shunt, gain,
-ADC, offset, and tolerance budgets, then compute peak ADC range, minimum-current
-ADC counts, and conservative worst-case current error. Keep SOA curves,
-switching transition loss, gate-charge timing, transient thermal impedance,
+motor guesses. Keep SOA curves, switching transition loss, gate-charge timing,
+transient thermal impedance,
 PWM sampling/common-mode behavior, repeated-pulse clamp heating, and measured
 temperature as separate evidence-backed rules.
 
