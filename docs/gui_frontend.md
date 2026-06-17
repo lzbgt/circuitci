@@ -32,7 +32,8 @@ dependencies unless `--features gui` is explicitly enabled.
 `src/gui.rs` owns the application shell, stage routing, validation/report calls,
 and waveform observation. `src/gui/sketch.rs` owns the Board IR graph snapshot,
 sketch graph layout/drawing helpers, and structured scalar YAML edit helpers
-for selected components and nets.
+for selected components and nets, including conservative add/remove operations
+for components and unreferenced nets.
 
 ## Workflow Shell
 
@@ -45,8 +46,9 @@ form:
   imported Board IR project with KiCad PCB placement/routing evidence.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   an inspector for component bindings and net connections, structured scalar
-  edits for existing component and net properties, and a raw Board IR YAML
-  editor with parse-validated save.
+  edits for existing component and net properties, add/remove controls for
+  components and unreferenced nets, and a raw Board IR YAML editor with
+  parse-validated save.
 - Library: shows library bindings and scenario suggestion YAML.
 - Simulation: runs validation through the engine, plots emitted CSV waveforms,
   and lists generated SPICE decks, artifacts, findings, and limitations.
@@ -69,16 +71,18 @@ The supported desktop simulation path is:
 2. inspect the imported/sketched component and net graph,
 3. edit selected component model/part-number and net kind/voltage/powered
    fields through structured controls,
-4. edit Board IR YAML evidence when the project needs a correction outside the
+4. add components, add nets, or remove selected components and unreferenced
+   nets through validated graph controls,
+5. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-5. bind sourced component models,
-6. run declared validation and `analog_transient` scenarios,
-7. observe generated decks, plotted CSV waveforms, findings, and report
+6. bind sourced component models,
+7. run declared validation and `analog_transient` scenarios,
+8. observe generated decks, plotted CSV waveforms, findings, and report
    artifacts,
-8. edit the project/model evidence and rerun.
+9. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, add/remove/rewire graph operations, advanced
-waveform cursors/measurements, automatic arbitrary schematic-to-SPICE
-conversion, and vendor macromodel acquisition are future GUI stages. They must
-reuse the existing Board IR, importer, model, and validation contracts instead
-of creating a parallel EDA model.
+Full schematic-canvas editing, pin rewiring, advanced waveform
+cursors/measurements, automatic arbitrary schematic-to-SPICE conversion, and
+vendor macromodel acquisition are future GUI stages. They must reuse the
+existing Board IR, importer, model, and validation contracts instead of creating
+a parallel EDA model.

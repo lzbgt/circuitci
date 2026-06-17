@@ -6,10 +6,10 @@ use std::path::Path;
 mod sketch;
 
 use sketch::{
-    ProjectSnapshot, SketchSelection, draw_sketch_node, edit_component_model,
-    edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-    layout_sketch_graph, load_project_snapshot, load_project_snapshot_from_yaml,
-    validate_board_ir_yaml_text,
+    ProjectSnapshot, SketchSelection, add_component, add_net, draw_sketch_node,
+    edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
+    edit_net_powered, layout_sketch_graph, load_project_snapshot, load_project_snapshot_from_yaml,
+    remove_component, remove_net, validate_board_ir_yaml_text,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -78,6 +78,10 @@ pub struct CircuitCiApp {
     suggestions_yaml: String,
     project_yaml: String,
     project_yaml_dirty: bool,
+    new_component_id: String,
+    new_component_model: String,
+    new_net_id: String,
+    new_net_kind: String,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     waveforms: Vec<WaveformView>,
@@ -112,6 +116,10 @@ impl Default for CircuitCiApp {
             suggestions_yaml: String::new(),
             project_yaml: String::new(),
             project_yaml_dirty: false,
+            new_component_id: "U_NEW".to_string(),
+            new_component_model: "generic.schematic.imported_component".to_string(),
+            new_net_id: "net_new".to_string(),
+            new_net_kind: "digital_or_analog".to_string(),
             project_snapshot: None,
             selected_sketch_item: None,
             waveforms: Vec::new(),
@@ -383,6 +391,8 @@ impl CircuitCiApp {
             });
         }
         if let Some(snapshot) = self.project_snapshot.clone() {
+            ui.separator();
+            self.sketch_edit_toolbar(ui);
             ui.separator();
             ui.horizontal(|ui| {
                 self.draw_board_graph(ui, &snapshot);
@@ -662,6 +672,49 @@ impl CircuitCiApp {
         self.diagnostics.push(message.to_string());
     }
 
+    fn sketch_edit_toolbar(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Graph Edits", |ui| {
+            egui::Grid::new("sketch_graph_edit_grid")
+                .num_columns(4)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Component");
+                    ui.text_edit_singleline(&mut self.new_component_id);
+                    ui.text_edit_singleline(&mut self.new_component_model);
+                    if ui.button("Add Component").clicked() {
+                        self.apply_add_component();
+                    }
+                    ui.end_row();
+
+                    ui.label("Net");
+                    ui.text_edit_singleline(&mut self.new_net_id);
+                    egui::ComboBox::from_id_salt("new_net_kind")
+                        .selected_text(&self.new_net_kind)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.new_net_kind,
+                                "digital_or_analog".to_string(),
+                                "digital_or_analog",
+                            );
+                            ui.selectable_value(
+                                &mut self.new_net_kind,
+                                "power".to_string(),
+                                "power",
+                            );
+                            ui.selectable_value(
+                                &mut self.new_net_kind,
+                                "ground".to_string(),
+                                "ground",
+                            );
+                        });
+                    if ui.button("Add Net").clicked() {
+                        self.apply_add_net();
+                    }
+                    ui.end_row();
+                });
+        });
+    }
+
     fn draw_board_graph(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         let desired_size = egui::vec2((ui.available_width() * 0.64).max(460.0), 340.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -732,6 +785,9 @@ impl CircuitCiApp {
                                     ui.monospace(format!("{} -> {}", pin.pin, pin.net));
                                 }
                             });
+                        if ui.button("Remove Component").clicked() {
+                            self.apply_remove_component(&component.id);
+                        }
                     }
                 }
                 Some(SketchSelection::Net(id)) => {
@@ -809,6 +865,9 @@ impl CircuitCiApp {
                                     ui.monospace(connection);
                                 }
                             });
+                        if ui.button("Remove Net").clicked() {
+                            self.apply_remove_net(&net.id);
+                        }
                     }
                 }
                 Some(SketchSelection::Overflow(label)) => {
@@ -835,10 +894,62 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_component(&mut self) {
+        match add_component(
+            &self.project_yaml,
+            &self.new_component_id,
+            &self.new_component_model,
+        ) {
+            Ok(updated) => {
+                let component_id = self.new_component_id.trim().to_string();
+                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Component {component_id} added."),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_component(&mut self, component_id: &str) {
+        match remove_component(&self.project_yaml, component_id) {
+            Ok(updated) => {
+                self.selected_sketch_item = None;
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Component {component_id} removed."),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_component_part_number_edit(&mut self, component_id: &str, part_number: &str) {
         match edit_component_part_number(&self.project_yaml, component_id, part_number) {
             Ok(updated) => {
                 self.apply_edited_project_yaml(updated, "Component part number updated.")
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_net(&mut self) {
+        match add_net(&self.project_yaml, &self.new_net_id, &self.new_net_kind) {
+            Ok(updated) => {
+                let net_id = self.new_net_id.trim().to_string();
+                self.selected_sketch_item = Some(SketchSelection::Net(net_id.clone()));
+                self.apply_edited_project_yaml(updated, &format!("Net {net_id} added."));
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_net(&mut self, net_id: &str) {
+        match remove_net(&self.project_yaml, net_id) {
+            Ok(updated) => {
+                self.selected_sketch_item = None;
+                self.apply_edited_project_yaml(updated, &format!("Net {net_id} removed."));
             }
             Err(error) => self.record_error(error),
         }

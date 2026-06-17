@@ -157,6 +157,44 @@ pub(super) fn edit_component_model(text: &str, component_id: &str, model: &str) 
     )
 }
 
+pub(super) fn add_component(text: &str, component_id: &str, model: &str) -> Result<String> {
+    let component_id = validated_graph_id(component_id, "component")?;
+    let model = model.trim();
+    if model.is_empty() {
+        anyhow::bail!("Component model must not be blank.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let components = ensure_board_child_mapping_mut(&mut yaml, "components")?;
+        let key = serde_yaml_ng::Value::String(component_id.to_string());
+        if components.contains_key(&key) {
+            anyhow::bail!("Board IR component {component_id} already exists.");
+        }
+        let mut component = serde_yaml_ng::Mapping::new();
+        component.insert(
+            serde_yaml_ng::Value::String("model".to_string()),
+            serde_yaml_ng::Value::String(model.to_string()),
+        );
+        components.insert(key, serde_yaml_ng::Value::Mapping(component));
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn remove_component(text: &str, component_id: &str) -> Result<String> {
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let key = serde_yaml_ng::Value::String(component_id.to_string());
+        if components.remove(&key).is_none() {
+            anyhow::bail!("Board IR component {component_id} was not found.");
+        }
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn edit_component_part_number(
     text: &str,
     component_id: &str,
@@ -175,11 +213,63 @@ pub(super) fn edit_component_part_number(
     )
 }
 
+pub(super) fn add_net(text: &str, net_id: &str, kind: &str) -> Result<String> {
+    let net_id = validated_graph_id(net_id, "net")?;
+    let kind = normalized_net_kind(kind)?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let nets = ensure_board_child_mapping_mut(&mut yaml, "nets")?;
+        let key = serde_yaml_ng::Value::String(net_id.to_string());
+        if nets.contains_key(&key) {
+            anyhow::bail!("Board IR net {net_id} already exists.");
+        }
+        let mut net = serde_yaml_ng::Mapping::new();
+        net.insert(
+            serde_yaml_ng::Value::String("kind".to_string()),
+            serde_yaml_ng::Value::String(kind.to_string()),
+        );
+        nets.insert(key, serde_yaml_ng::Value::Mapping(net));
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn remove_net(text: &str, net_id: &str) -> Result<String> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let references: Vec<_> = project
+        .board
+        .components
+        .iter()
+        .flat_map(|(component_id, component)| {
+            component
+                .pins
+                .iter()
+                .filter(move |(_, pin_net)| pin_net.as_str() == net_id)
+                .map(move |(pin_id, _)| format!("{component_id}.{pin_id}"))
+        })
+        .collect();
+    if !references.is_empty() {
+        anyhow::bail!(
+            "Board IR net {net_id} is still referenced by {}.",
+            references.join(", ")
+        );
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let nets = board_child_mapping_mut(&mut yaml, "nets")?;
+        let key = serde_yaml_ng::Value::String(net_id.to_string());
+        if nets.remove(&key).is_none() {
+            anyhow::bail!("Board IR net {net_id} was not found.");
+        }
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn edit_net_kind(text: &str, net_id: &str, kind: &str) -> Result<String> {
-    let kind = match kind {
-        "power" | "ground" | "digital_or_analog" => kind,
-        _ => anyhow::bail!("Unsupported net kind {kind}."),
-    };
+    let kind = normalized_net_kind(kind)?;
     edit_net_field(
         text,
         net_id,
@@ -264,6 +354,31 @@ fn board_child_mapping_mut<'a>(
         .with_context(|| format!("Board IR board.{field} must be an object."))
 }
 
+fn ensure_board_child_mapping_mut<'a>(
+    yaml: &'a mut serde_yaml_ng::Value,
+    field: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    let board = yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?
+        .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+        .context("Board IR project is missing board.")?
+        .as_mapping_mut()
+        .context("Board IR field board must be an object.")?;
+    let key = serde_yaml_ng::Value::String(field.to_string());
+    if !board.contains_key(&key) {
+        board.insert(
+            key.clone(),
+            serde_yaml_ng::Value::Mapping(Default::default()),
+        );
+    }
+    board
+        .get_mut(&key)
+        .expect("field was inserted when absent")
+        .as_mapping_mut()
+        .with_context(|| format!("Board IR board.{field} must be an object."))
+}
+
 fn named_child_mapping_mut<'a>(
     mapping: &'a mut serde_yaml_ng::Mapping,
     id: &str,
@@ -294,6 +409,29 @@ fn encode_edited_project_yaml(yaml: serde_yaml_ng::Value) -> Result<String> {
         serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
     validate_board_ir_yaml_text(&text)?;
     Ok(text)
+}
+
+fn validated_graph_id<'a>(id: &'a str, label: &str) -> Result<&'a str> {
+    let id = id.trim();
+    if id.is_empty() {
+        anyhow::bail!("Board IR {label} id must not be blank.");
+    }
+    if !id
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.'))
+    {
+        anyhow::bail!(
+            "Board IR {label} id {id} contains unsupported characters for GUI graph editing."
+        );
+    }
+    Ok(id)
+}
+
+fn normalized_net_kind(kind: &str) -> Result<&str> {
+    match kind {
+        "power" | "ground" | "digital_or_analog" => Ok(kind),
+        _ => anyhow::bail!("Unsupported net kind {kind}."),
+    }
 }
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
@@ -450,4 +588,75 @@ fn compact_label(value: &str, max_chars: usize) -> String {
         .collect::<String>();
     text.push_str("...");
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        add_component, add_net, remove_component, remove_net, validate_board_ir_yaml_text,
+    };
+
+    fn editable_project_yaml() -> &'static str {
+        "project:
+  name: gui_graph_edit_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+        B: gnd
+  nets:
+    net_a:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+"
+    }
+
+    #[test]
+    fn add_and_remove_component_emit_valid_yaml() {
+        let edited = add_component(
+            editable_project_yaml(),
+            "U2",
+            "generic.schematic.imported_component",
+        )
+        .unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("U2:"));
+        assert!(edited.contains("generic.schematic.imported_component"));
+
+        let edited = remove_component(&edited, "U2").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(!edited.contains("U2:"));
+    }
+
+    #[test]
+    fn add_and_remove_unreferenced_net_emit_valid_yaml() {
+        let edited = add_net(editable_project_yaml(), "sense_new", "digital_or_analog").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("sense_new:"));
+
+        let edited = remove_net(&edited, "sense_new").unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(!edited.contains("sense_new:"));
+    }
+
+    #[test]
+    fn remove_referenced_net_fails_closed() {
+        let error = remove_net(editable_project_yaml(), "net_a").unwrap_err();
+        assert!(error.to_string().contains("R1.A"));
+    }
+
+    #[test]
+    fn add_component_rejects_unsafe_gui_id() {
+        let error = add_component(
+            editable_project_yaml(),
+            "bad id",
+            "generic.schematic.imported_component",
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("unsupported characters"));
+    }
 }

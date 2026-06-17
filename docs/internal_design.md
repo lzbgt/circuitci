@@ -22,9 +22,12 @@ GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, menus, stage
 routing, validation/report calls, and waveform observation. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, and structured
-scalar YAML edit helpers for existing components and nets. New graph editing
-features should extend that sketch module or introduce another focused GUI
-submodule before `src/gui.rs` approaches the 2000-line guard again.
+scalar YAML edit helpers for existing components and nets. It may add or remove
+component entries and may remove only nets that are not referenced by component
+pins. Pin rewiring must stay fail-closed until the GUI can present the affected
+component and net context clearly. New graph editing features should extend the
+sketch module or introduce another focused GUI submodule before `src/gui.rs`
+approaches the 2000-line guard again.
 
 ## Evidence Model
 
