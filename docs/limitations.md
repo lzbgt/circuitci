@@ -322,6 +322,11 @@ without explicit imported mechanical evidence.
   nominal rail voltage against declared connector ratings. It does not prove
   crimp quality, wire gauge, contact temperature rise, vibration retention,
   pulsed current, hot-plug behavior, or regeneration into the load rail.
+- `MOTOR_BRIDGE_LOSS_THERMAL_VALID` scales a source-backed bridge reference
+  loss point against declared motor RMS current and explicit board thermal
+  budget. It does not compute MOSFET SOA, switching transition loss,
+  gate-charge timing, transient thermal impedance, regeneration energy, or
+  measured PCB temperature.
 - `MOTOR_ROUTE_CURRENT_VALID` compares imported route segment widths against an
   explicit A/mm policy. It does not compute copper temperature rise, current
   sharing across pours, thermal-via effectiveness, MOSFET SOA, switching loss,

@@ -110,6 +110,7 @@ Canonical executable check IDs:
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
+- `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `DRILL_DIAMETER_VALID`
@@ -1785,6 +1786,46 @@ robot motor-board mistakes such as an undersized shunt, connector, or bridge
 current class before schematic capture. It does not replace gate-driver
 datasheet timing review, switching-loss calculation, current-sense accuracy,
 regen clamp design, thermal modeling, or PCB copper-temperature validation.
+
+`MOTOR_BRIDGE_LOSS_THERMAL_VALID` checks a first-pass bridge voltage/current
+rating and scaled reference-loss thermal budget:
+
+```yaml
+scenarios:
+  - name: wheel_bridge_loss_thermal
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_LOSS_THERMAL_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_max_V: 12.6
+      max_total_bridge_loss_W: 2.0
+      min_loss_margin_ratio: 2.0
+```
+
+Required evidence:
+
+- `target.component` must bind to a component model with `motor_bridge`.
+- `motor_bridge.voltage_rating_V` and `motor_bridge.current_rating_A` provide
+  the static device class.
+- `motor_bridge.reference_loss_W`,
+  `motor_bridge.reference_current_A`, and `motor_bridge.reference_loss_scope`
+  provide a source-backed reference loss point. `per_half_bridge` reference
+  loss additionally requires `motor_bridge.switching_devices`.
+- Motor current evidence comes from explicit scenario parameters or from
+  `parameters.motor_component` bound to a model with `motor_load`.
+- `bus_voltage_max_V`, `max_total_bridge_loss_W`, and
+  `min_loss_margin_ratio` are explicit board design inputs.
+
+The estimated loss is
+`reference_loss_W * (motor_phase_rms_current_A / reference_current_A)^2`,
+multiplied by `switching_devices` when the reference loss is per half-bridge.
+That estimate times `min_loss_margin_ratio` must fit
+`max_total_bridge_loss_W`. This is a source-backed screening calculation; it
+does not replace MOSFET SOA curves, switching transition loss, gate-charge
+timing, thermal impedance, regeneration energy, or measured board temperature.
 
 `MOTOR_ROUTE_CURRENT_VALID` checks imported or explicit motor-drive route
 width evidence against an explicit current-density policy:

@@ -42,6 +42,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub motor_load: Option<MotorLoad>,
     #[serde(default)]
+    pub motor_bridge: Option<MotorBridge>,
+    #[serde(default)]
     pub datasheet: Option<Datasheet>,
     pub model_quality: ModelQuality,
 }
@@ -281,6 +283,24 @@ pub struct MotorLoad {
     pub phase_rms_current_a: Option<f64>,
     #[serde(default, rename = "max_regen_current_A")]
     pub max_regen_current_a: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MotorBridge {
+    #[serde(default, rename = "voltage_rating_V")]
+    pub voltage_rating_v: Option<f64>,
+    #[serde(default, rename = "current_rating_A")]
+    pub current_rating_a: Option<f64>,
+    #[serde(default, rename = "reference_loss_W")]
+    pub reference_loss_w: Option<f64>,
+    #[serde(default, rename = "reference_current_A")]
+    pub reference_current_a: Option<f64>,
+    #[serde(default)]
+    pub reference_loss_scope: Option<String>,
+    #[serde(default, rename = "switching_devices")]
+    pub switching_devices: Option<usize>,
     #[serde(default)]
     pub source: Option<String>,
 }

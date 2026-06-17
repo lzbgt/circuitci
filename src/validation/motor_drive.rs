@@ -1,10 +1,11 @@
 use crate::board_ir::{ComponentPlacement, LayoutPoint, NetRoute, RouteSegment, Scenario};
-use crate::library::{BoundBoard, MotorLoad};
+use crate::library::{BoundBoard, MotorBridge, MotorLoad};
 use crate::reports::Finding;
 use serde_json::json;
 
 use super::{
-    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_ROUTE_CURRENT_VALID,
+    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID,
+    MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_ROUTE_CURRENT_VALID,
 };
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
@@ -258,6 +259,206 @@ pub(super) fn validate_motor_bridge_budget(
             "Use finite gate resistor, dead-time, and PWM frequency values.",
             findings,
         );
+    }
+}
+
+pub(super) fn validate_motor_bridge_loss_thermal(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        missing_input(
+            scenario,
+            "component.model",
+            "Bind the motor bridge component to a source-backed component model.",
+            findings,
+        );
+        return;
+    };
+    let Some(bridge) = model.motor_bridge.as_ref() else {
+        missing_input(
+            scenario,
+            "component.model.motor_bridge",
+            "Use a motor bridge component model with source-backed motor_bridge loss and rating metadata.",
+            findings,
+        );
+        return;
+    };
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(peak_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_peak_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "motor_load.phase_peak_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(rms_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_rms_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_rms_current_a),
+        "motor_load.phase_rms_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(bus_voltage_max_v) = required_positive(scenario, "bus_voltage_max_V", findings) else {
+        return;
+    };
+    let Some(max_total_bridge_loss_w) =
+        required_positive(scenario, "max_total_bridge_loss_W", findings)
+    else {
+        return;
+    };
+    let Some(min_loss_margin_ratio) =
+        required_at_least(scenario, "min_loss_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+
+    let Some(voltage_rating_v) = positive_bridge_value(
+        scenario,
+        "motor_bridge.voltage_rating_V",
+        bridge.voltage_rating_v,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(current_rating_a) = positive_bridge_value(
+        scenario,
+        "motor_bridge.current_rating_A",
+        bridge.current_rating_a,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(reference_loss_w) = positive_bridge_value(
+        scenario,
+        "motor_bridge.reference_loss_W",
+        bridge.reference_loss_w,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(reference_current_a) = positive_bridge_value(
+        scenario,
+        "motor_bridge.reference_current_A",
+        bridge.reference_current_a,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(loss_multiplier) = bridge_loss_multiplier(scenario, bridge, findings) else {
+        return;
+    };
+
+    if bus_voltage_max_v > voltage_rating_v {
+        bridge_loss_finding(
+            scenario,
+            &target.component,
+            BridgeLossComparison {
+                measured_name: "bus_voltage_max_V",
+                limit_name: "motor_bridge_voltage_rating_V",
+                measured: bus_voltage_max_v,
+                limit: voltage_rating_v,
+                message: "Motor bridge maximum bus voltage exceeds the bridge voltage rating.",
+                fix: "Select a higher-voltage bridge or lower the declared maximum wheel bus voltage.",
+            },
+            findings,
+        );
+    }
+    if peak_current_a > current_rating_a {
+        bridge_loss_finding(
+            scenario,
+            &target.component,
+            BridgeLossComparison {
+                measured_name: "motor_phase_peak_current_A",
+                limit_name: "motor_bridge_current_rating_A",
+                measured: peak_current_a,
+                limit: current_rating_a,
+                message: "Motor phase peak current exceeds the bridge current rating.",
+                fix: "Select a higher-current bridge, reduce the motor current limit, or add sourced pulse/SOA evidence for the operating point.",
+            },
+            findings,
+        );
+    }
+
+    let estimated_total_loss_w =
+        reference_loss_w * (rms_current_a / reference_current_a).powi(2) * loss_multiplier;
+    if estimated_total_loss_w * min_loss_margin_ratio > max_total_bridge_loss_w {
+        let mut finding = Finding::critical(
+            MOTOR_BRIDGE_LOSS_THERMAL_VALID,
+            &scenario.name,
+            format!(
+                "Estimated bridge loss {estimated_total_loss_w:.6} W with {min_loss_margin_ratio:.3}x margin exceeds {max_total_bridge_loss_w:.6} W board thermal budget."
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        finding.measured.insert(
+            "estimated_total_bridge_loss_W".to_string(),
+            json!(estimated_total_loss_w),
+        );
+        finding.measured.insert(
+            "motor_phase_rms_current_A".to_string(),
+            json!(rms_current_a),
+        );
+        finding
+            .measured
+            .insert("reference_loss_W".to_string(), json!(reference_loss_w));
+        finding.measured.insert(
+            "reference_current_A".to_string(),
+            json!(reference_current_a),
+        );
+        finding
+            .measured
+            .insert("loss_multiplier".to_string(), json!(loss_multiplier));
+        if let Some(source) = bridge.source.as_deref() {
+            finding
+                .measured
+                .insert("motor_bridge_source".to_string(), json!(source));
+        }
+        if let Some(evidence) = &motor_load {
+            finding
+                .measured
+                .insert("motor_component".to_string(), json!(evidence.component_id));
+        }
+        finding.limit.insert(
+            "max_total_bridge_loss_W".to_string(),
+            json!(max_total_bridge_loss_w),
+        );
+        finding.limit.insert(
+            "min_loss_margin_ratio".to_string(),
+            json!(min_loss_margin_ratio),
+        );
+        finding.suggested_fixes = vec![
+            "Lower the wheel current target, improve the thermal design, or select a lower-loss bridge.".to_string(),
+            "Replace this first-pass scaled-loss screen with sourced SOA/switching-loss/thermal evidence before final fabrication sign-off.".to_string(),
+        ];
+        findings.push(finding);
     }
 }
 
@@ -888,6 +1089,108 @@ fn current_sense_distance_finding(
         "Move the phase shunt closer to the bridge and routed phase copper, or update the scenario limit with sourced layout policy.".to_string(),
         "Keep the Kelvin/current-sense route short and explicitly represented in board.layout.routes before fabrication review.".to_string(),
     ];
+    findings.push(finding);
+}
+
+fn positive_bridge_value(
+    scenario: &Scenario,
+    name: &str,
+    value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let Some(value) = value else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Add source-backed {name} metadata to the motor bridge component model."),
+            findings,
+        );
+        return None;
+    };
+    if value.is_finite() && value > 0.0 {
+        Some(value)
+    } else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set {name} to a finite value greater than zero."),
+            findings,
+        );
+        None
+    }
+}
+
+fn bridge_loss_multiplier(
+    scenario: &Scenario,
+    bridge: &MotorBridge,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let scope = bridge.reference_loss_scope.as_deref().unwrap_or("");
+    match scope {
+        "three_phase_bridge" => Some(1.0),
+        "per_half_bridge" => {
+            let Some(devices) = bridge.switching_devices else {
+                missing_input(
+                    scenario,
+                    "motor_bridge.switching_devices",
+                    "Declare motor_bridge.switching_devices when reference_loss_scope is per_half_bridge.",
+                    findings,
+                );
+                return None;
+            };
+            if devices > 0 {
+                Some(devices as f64)
+            } else {
+                missing_input(
+                    scenario,
+                    "motor_bridge.switching_devices",
+                    "Set motor_bridge.switching_devices to at least one.",
+                    findings,
+                );
+                None
+            }
+        }
+        _ => {
+            missing_input(
+                scenario,
+                "motor_bridge.reference_loss_scope",
+                "Use motor_bridge.reference_loss_scope: per_half_bridge or three_phase_bridge.",
+                findings,
+            );
+            None
+        }
+    }
+}
+
+struct BridgeLossComparison<'a> {
+    measured_name: &'a str,
+    limit_name: &'a str,
+    measured: f64,
+    limit: f64,
+    message: &'a str,
+    fix: &'a str,
+}
+
+fn bridge_loss_finding(
+    scenario: &Scenario,
+    component: &str,
+    comparison: BridgeLossComparison<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding = Finding::critical(
+        MOTOR_BRIDGE_LOSS_THERMAL_VALID,
+        &scenario.name,
+        comparison.message,
+    );
+    finding.component = Some(component.to_string());
+    finding.measured.insert(
+        comparison.measured_name.to_string(),
+        json!(comparison.measured),
+    );
+    finding
+        .limit
+        .insert(comparison.limit_name.to_string(), json!(comparison.limit));
+    finding.suggested_fixes = vec![comparison.fix.to_string()];
     findings.push(finding);
 }
 

@@ -63,6 +63,14 @@ datasheet:
       source_url: https://www.ti.com/lit/gpn/csd88599q5dc
       sha256: 193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65
       retrieved: "2026-06-14"
+motor_bridge:
+  voltage_rating_V: 60.0
+  current_rating_A: 40.0
+  reference_loss_W: 3.0
+  reference_current_A: 30.0
+  reference_loss_scope: per_half_bridge
+  switching_devices: 3
+  source: TI CSD88599Q5DC product page/datasheet; product page identifies 60 V, 40 A, and the model source notes retain the 3.0 W at 30 A reference-loss point.
 model_quality:
   source: datasheet
   confidence: medium

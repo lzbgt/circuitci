@@ -265,6 +265,21 @@
       },
       "additionalProperties": false
     },
+    "motor_bridge": {
+      "type": "object",
+      "properties": {
+        "voltage_rating_V": { "type": "number", "exclusiveMinimum": 0 },
+        "current_rating_A": { "type": "number", "exclusiveMinimum": 0 },
+        "reference_loss_W": { "type": "number", "exclusiveMinimum": 0 },
+        "reference_current_A": { "type": "number", "exclusiveMinimum": 0 },
+        "reference_loss_scope": {
+          "enum": ["per_half_bridge", "three_phase_bridge"]
+        },
+        "switching_devices": { "type": "integer", "minimum": 1 },
+        "source": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "model_faces": { "type": "object" },
     "datasheet": {
       "type": "object",

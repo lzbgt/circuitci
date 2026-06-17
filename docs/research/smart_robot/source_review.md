@@ -172,14 +172,19 @@ robot control-stack design pass.
   resistors, 200 ns dead time, and 20 kHz PWM. These values are design-policy
   inputs for a reusable small robot actuator, not sourced motor
   characterization.
+- The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
+  with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
+  class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
+  RMS design envelope against an explicit 2 W board thermal budget with 2x
+  margin.
 - The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.
 - The wheel slice now validates first-pass phase-shunt placement and
   current-sense route distances from explicit layout evidence. It does not yet
-  validate MOSFET SOA, gate charge, switching loss, current-sense electrical
-  accuracy, thermal behavior, regeneration clamp energy, PCB copper temperature
-  rise, or motor-control loop stability.
+  validate true MOSFET SOA, gate charge, switching transition loss,
+  current-sense electrical accuracy, transient thermal impedance, regeneration
+  clamp energy, PCB copper temperature rise, or motor-control loop stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four

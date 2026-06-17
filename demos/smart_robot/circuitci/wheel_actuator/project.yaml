@@ -359,6 +359,17 @@ scenarios:
       gate_resistor_ohm: 10.0
       dead_time_ns: 200.0
       pwm_frequency_Hz: 20000.0
+  - name: wheel_actuator_bridge_loss_thermal
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_LOSS_THERMAL_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_max_V: 12.6
+      max_total_bridge_loss_W: 2.0
+      min_loss_margin_ratio: 2.0
   - name: wheel_actuator_phase_route_current
     type: motor_drive
     checks:

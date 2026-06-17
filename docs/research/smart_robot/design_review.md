@@ -131,6 +131,9 @@ left/right reusable wheel controller pass:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
   200 ns dead time, and 20 kHz PWM.
+- CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
+  bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
+  checked against a 2 W board thermal budget with 2x margin.
 - First-pass phase-shunt/current-sense placement contract from explicit layout
   evidence, keeping the three phase shunts close to the bridge, phase copper,
   and sense traces.
@@ -142,12 +145,13 @@ layout, and validation burden. For balancing robots, the better first target is
 standard 3-phase FOC with encoder/Hall feedback and enough control-loop rate.
 
 Before layout, treat CSD88599Q5DC as a sourced preliminary bridge candidate
-with a checked static budget, not final power-stage sign-off. The next
-validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
-with selected motor datasheet or measurement evidence, then add
-gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
-clamp behavior, current-sense electrical accuracy, imported final layout
-evidence, cable assembly evidence, and PCB copper-temperature validation.
+with checked static and reference-loss budgets, not final power-stage sign-off.
+The next validation slice must replace
+`demo.smart_robot.wheel_motor_design_envelope` with selected motor datasheet or
+measurement evidence, then add true SOA curves, switching transition loss,
+gate-charge timing, transient thermal paths, regeneration clamp behavior,
+current-sense electrical accuracy, imported final layout evidence, cable
+assembly evidence, and PCB copper-temperature validation.
 
 ## Servo Payload Slice Status
 
