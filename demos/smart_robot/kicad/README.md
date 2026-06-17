@@ -91,3 +91,28 @@ The imported Board IR proves PMU connectivity and passive values only. It does
 not yet round-trip the BQ25798 configured charge current, power-domain metadata,
 e-stop pin states, validation scenarios, regulator layout contracts, or routed
 PCB evidence.
+
+## Servo Payload
+
+`servo_payload/root.kicad_sch` is the KiCad connectivity skeleton for the
+low-load PWM servo/payload board. It uses local `CircuitCI:*` symbols for the
+AT32F435 I2C/OE host pins, PCA9685 PWM driver, four low-load servo design
+loads, and four JST XH servo headers.
+
+`servo_payload/circuitci.kicad-map.yaml` binds those schematic references and
+pins back to the source-backed models used by
+`../circuitci/servo_payload/project.yaml`.
+
+Import check:
+
+```sh
+circuitci import-kicad-schematic \
+  demos/smart_robot/kicad/servo_payload/root.kicad_sch \
+  --mapping demos/smart_robot/kicad/servo_payload/circuitci.kicad-map.yaml \
+  --output out/smart_robot_servo_payload_imported.project.yaml
+```
+
+The imported Board IR proves I2C, OE, PWM fanout, servo power, and connector
+signal connectivity only. It does not yet round-trip connector-current budget
+scenarios, servo stall/regeneration assumptions, cable derating, or routed PCB
+evidence.

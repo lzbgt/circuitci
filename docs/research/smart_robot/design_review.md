@@ -14,15 +14,13 @@ wheel-actuator boards. This reduces fabrication risk because charger/battery
 safety, Linux IO, IMU/CAN/servo logic, and high-current BLDC switching can be
 validated independently.
 
-The first KiCad CAD bridges are
-`demos/smart_robot/kicad/motion_core/root.kicad_sch`,
-`demos/smart_robot/kicad/wheel_actuator/root.kicad_sch`, and
-`demos/smart_robot/kicad/pmu/root.kicad_sch`, each with a
-`circuitci.kicad-map.yaml`. They import through CircuitCI as schematic
-connectivity source artifacts, but they are not yet the validation source of
-truth: the matching `demos/smart_robot/circuitci/*/project.yaml` files still
-carry power-domain, scenario, and pre-layout route-placement evidence that
-native KiCad import does not round-trip yet.
+The first KiCad CAD bridges for all current board slices live under
+`demos/smart_robot/kicad/`, each with a `circuitci.kicad-map.yaml`. They import
+through CircuitCI as schematic connectivity source artifacts, but they are not
+yet the validation source of truth: the matching
+`demos/smart_robot/circuitci/*/project.yaml` files still carry power-domain,
+scenario, and pre-layout route-placement evidence that native KiCad import does
+not round-trip yet.
 
 ## Corrections And Constraints
 

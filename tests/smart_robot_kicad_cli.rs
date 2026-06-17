@@ -226,3 +226,84 @@ fn smart_robot_pmu_kicad_schematic_imports_connectivity() {
         "output"
     );
 }
+
+#[test]
+fn smart_robot_servo_payload_kicad_schematic_imports_connectivity() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("servo_payload_imported.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/servo_payload/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/servo_payload/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["U1"]["model"],
+        "vendor.artery.at32f435_motion_core"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U2"]["model"],
+        "vendor.nxp.pca9685"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["pins"]["I2C2_SCL"],
+        "net_pca9685_scl"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U2"]["pins"]["SCL"],
+        "net_pca9685_scl"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U2"]["pins"]["PWM0"],
+        "net_servo0_pwm"
+    );
+    assert_eq!(
+        imported["board"]["components"]["SV0"]["pins"]["PWM"],
+        "net_servo0_pwm"
+    );
+    assert_eq!(
+        imported["board"]["components"]["JSV0"]["pins"]["SIG"],
+        "net_servo0_pwm"
+    );
+    assert_eq!(
+        imported["board"]["components"]["SV3"]["pins"]["VCC"],
+        "net_vservo_sw"
+    );
+    assert_eq!(
+        imported["board"]["components"]["JSV3"]["pins"]["SIG"],
+        "net_servo3_pwm"
+    );
+    assert_eq!(imported["board"]["nets"]["net_3v3_logic"]["kind"], "power");
+    assert_eq!(
+        imported["board"]["nets"]["net_vservo_sw"]["supply_current_limit_A"],
+        4.0
+    );
+    assert_eq!(
+        imported["board"]["components"]["U1"]["source"]["board_pin_electrical_types"]["I2C2_SDA"],
+        "bidirectional"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U2"]["source"]["board_pin_electrical_types"]["PWM3"],
+        "output"
+    );
+    assert_eq!(
+        imported["board"]["components"]["SV0"]["source"]["board_pin_electrical_types"]["PWM"],
+        "input"
+    );
+}

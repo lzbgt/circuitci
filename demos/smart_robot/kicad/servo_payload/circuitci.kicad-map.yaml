@@ -1,0 +1,113 @@
+libraries:
+  - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/jst/connectors
+  - ../../../../libs/vendor/nxp/pwm_drivers
+  - ../../circuitci/models
+
+components:
+  U1:
+    model: vendor.artery.at32f435_motion_core
+    part_number: AT32F435-motion-core-payload-i2c-budget
+    pin_map:
+      VDD: VDD
+      GND: GND
+      I2C2_SCL: I2C2_SCL
+      I2C2_SDA: I2C2_SDA
+      SERVO_PWM_OE: SERVO_PWM_OE
+  U2:
+    model: vendor.nxp.pca9685
+    part_number: PCA9685
+    pin_map:
+      VDD: VDD
+      VSS: VSS
+      SCL: SCL
+      SDA: SDA
+      OE: OE
+      PWM0: PWM0
+      PWM1: PWM1
+      PWM2: PWM2
+      PWM3: PWM3
+  SV0:
+    model: demo.smart_robot.pwm_servo_6v_design_load
+    part_number: LOW_LOAD_PWM_SERVO_0
+    pin_map:
+      VCC: VCC
+      GND: GND
+      PWM: PWM
+  SV1:
+    model: demo.smart_robot.pwm_servo_6v_design_load
+    part_number: LOW_LOAD_PWM_SERVO_1
+    pin_map:
+      VCC: VCC
+      GND: GND
+      PWM: PWM
+  SV2:
+    model: demo.smart_robot.pwm_servo_6v_design_load
+    part_number: LOW_LOAD_PWM_SERVO_2
+    pin_map:
+      VCC: VCC
+      GND: GND
+      PWM: PWM
+  SV3:
+    model: demo.smart_robot.pwm_servo_6v_design_load
+    part_number: LOW_LOAD_PWM_SERVO_3
+    pin_map:
+      VCC: VCC
+      GND: GND
+      PWM: PWM
+  JSV0:
+    model: vendor.jst.xh_3pin_servo_header
+    part_number: S3B-XH-A_SERVO0
+    pin_map:
+      VCC: VCC
+      GND: GND
+      SIG: SIG
+  JSV1:
+    model: vendor.jst.xh_3pin_servo_header
+    part_number: S3B-XH-A_SERVO1
+    pin_map:
+      VCC: VCC
+      GND: GND
+      SIG: SIG
+  JSV2:
+    model: vendor.jst.xh_3pin_servo_header
+    part_number: S3B-XH-A_SERVO2
+    pin_map:
+      VCC: VCC
+      GND: GND
+      SIG: SIG
+  JSV3:
+    model: vendor.jst.xh_3pin_servo_header
+    part_number: S3B-XH-A_SERVO3
+    pin_map:
+      VCC: VCC
+      GND: GND
+      SIG: SIG
+
+nets:
+  3v3_logic:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 0.5
+  vservo_sw:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 4.0
+  gnd:
+    kind: ground
+  pca9685_scl:
+    kind: digital_or_analog
+  pca9685_sda:
+    kind: digital_or_analog
+  pca9685_oe:
+    kind: digital_or_analog
+  servo0_pwm:
+    kind: digital_or_analog
+  servo1_pwm:
+    kind: digital_or_analog
+  servo2_pwm:
+    kind: digital_or_analog
+  servo3_pwm:
+    kind: digital_or_analog

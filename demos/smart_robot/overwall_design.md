@@ -11,9 +11,8 @@ Reusable smart-robot stack
 └─ PMU / battery-charge board: USB-C PD + charger + BMS/protection + rails
 ```
 
-The first KiCad CAD bridges live in `demos/smart_robot/kicad/motion_core/`,
-`demos/smart_robot/kicad/wheel_actuator/`, and
-`demos/smart_robot/kicad/pmu/`. They are schematic connectivity skeletons that
+The first KiCad CAD bridges for all current board slices live under
+`demos/smart_robot/kicad/`. They are schematic connectivity skeletons that
 import back through CircuitCI with source-backed model mappings. The richer
 validation sources of truth are still the matching
 `demos/smart_robot/circuitci/*/project.yaml` files until the CAD import path
