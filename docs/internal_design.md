@@ -128,10 +128,13 @@ or dynamic current-loop stability.
 
 Bridge loss/thermal checks consume typed `motor_bridge` model metadata and
 explicit board thermal-budget parameters. The only built-in loss model is
-source-reference scaling by RMS phase current. Regeneration clamp checks consume
+source-reference scaling by RMS phase current. Bridge switching checks consume
+typed `motor_bridge` gate-charge/rise/fall metadata and explicit gate-drive/PWM
+scenario budgets to estimate transition loss and average gate-drive charge
+current. Regeneration clamp checks consume
 an explicit single-event energy envelope, bus capacitance, voltage window, and
 named absorber component; they do not derive rotor energy from topology or
-motor guesses. Keep SOA curves, switching transition loss, gate-charge timing,
+motor guesses. Keep SOA curves, peak gate-current timing, switch-node ringing,
 transient thermal impedance,
 PWM sampling/common-mode behavior, repeated-pulse clamp heating, and measured
 temperature as separate evidence-backed rules.

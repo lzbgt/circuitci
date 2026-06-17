@@ -70,7 +70,11 @@ motor_bridge:
   reference_current_A: 30.0
   reference_loss_scope: per_half_bridge
   switching_devices: 3
-  source: TI CSD88599Q5DC product page/datasheet; product page identifies 60 V, 40 A, and the model source notes retain the 3.0 W at 30 A reference-loss point.
+  gate_charge_total_C: 0.000000056
+  gate_charge_voltage_V: 10.0
+  rise_time_s: 0.000000020
+  fall_time_s: 0.000000003
+  source: TI CSD88599Q5DC product page/datasheet; product page identifies 60 V, 40 A, and the model source notes retain the 3.0 W at 30 A reference-loss point. Datasheet page 4 lists max total gate charge 56 nC at 10 V, 20 ns rise time, and 3 ns fall time.
 model_quality:
   source: datasheet
   confidence: medium
@@ -83,4 +87,4 @@ model_quality:
     - final_fabrication_without_motor_current_profile
     - shunt_power_or_current_sense_signoff
     - bridge_layout_or_thermal_signoff
-    - gate_resistor_deadtime_or_switching_loss_signoff
+    - final_switching_waveform_or_peak_gate_current_signoff

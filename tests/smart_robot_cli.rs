@@ -53,6 +53,12 @@ fn smart_robot_wheel_bridge_budget_passes() {
             .any(|finding| finding["severity"] == "critical"),
         "wheel actuator current-sense accuracy budget should pass: {report:#?}"
     );
+    assert!(
+        !findings_with_id(&report, "MOTOR_BRIDGE_SWITCHING_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "wheel actuator switching budget should pass: {report:#?}"
+    );
 }
 
 #[test]
@@ -515,6 +521,44 @@ fn smart_robot_wheel_bridge_loss_thermal_fails_low_board_budget() {
                 && finding["limit"]["min_loss_margin_ratio"] == 2.0
         }),
         "expected motor bridge thermal budget failure, got {thermal_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_bridge_switching_fails_low_loss_budget() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "max_total_switching_loss_W: 0.5",
+        "max_total_switching_loss_W: 0.05",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let switching_findings = findings_with_id(&report, "MOTOR_BRIDGE_SWITCHING_VALID");
+    assert!(
+        switching_findings.iter().any(|finding| {
+            let estimated_loss = finding["measured"]["estimated_total_switching_loss_W"]
+                .as_f64()
+                .unwrap();
+            finding["component"] == "PWR_STAGE"
+                && (estimated_loss - 0.17387999999999998).abs() < 1e-9
+                && finding["limit"]["max_total_switching_loss_W"] == 0.05
+                && finding["limit"]["min_switching_loss_margin_ratio"] == 2.0
+        }),
+        "expected motor bridge switching-loss budget failure, got {switching_findings:#?}"
     );
 }
 

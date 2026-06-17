@@ -378,6 +378,22 @@ scenarios:
       bus_voltage_max_V: 12.6
       max_total_bridge_loss_W: 2.0
       min_loss_margin_ratio: 2.0
+  - name: wheel_actuator_bridge_switching_budget
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_SWITCHING_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_max_V: 12.6
+      pwm_frequency_Hz: 20000.0
+      gate_drive_voltage_V: 10.0
+      switching_events_per_pwm_cycle: 6.0
+      gate_charge_events_per_pwm_cycle: 6.0
+      max_total_switching_loss_W: 0.5
+      min_switching_loss_margin_ratio: 2.0
+      max_average_gate_drive_current_A: 0.02
   - name: wheel_actuator_regen_clamp_budget
     type: motor_drive
     checks:

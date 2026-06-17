@@ -120,6 +120,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `IO_VOLTAGE_COMPATIBLE`
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
+- `MOTOR_BRIDGE_SWITCHING_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
@@ -810,6 +811,18 @@ board thermal budget inputs. Stable measured keys include `bus_voltage_max_V`,
 which comparison fails. Stable limit keys include
 `motor_bridge_voltage_rating_V`, `motor_bridge_current_rating_A`,
 `max_total_bridge_loss_W`, and `min_loss_margin_ratio`.
+
+`MOTOR_BRIDGE_SWITCHING_VALID` reports are emitted by `motor_drive` scenarios
+that declare source-backed bridge gate-charge/rise/fall metadata and explicit
+gate-drive/PWM budget inputs. Stable measured keys include
+`estimated_total_switching_loss_W`, `bus_voltage_max_V`,
+`motor_phase_peak_current_A`, `rise_time_s`, `fall_time_s`,
+`pwm_frequency_Hz`, `switching_events_per_pwm_cycle`,
+`average_gate_drive_current_A`, `gate_charge_total_C`,
+`gate_charge_events_per_pwm_cycle`, `gate_drive_power_W`,
+`gate_charge_voltage_V`, and `motor_component`, depending on which comparison
+fails. Stable limit keys include `max_total_switching_loss_W`,
+`min_switching_loss_margin_ratio`, and `max_average_gate_drive_current_A`.
 
 `MOTOR_REGEN_CLAMP_VALID` reports are emitted by `motor_drive` scenarios that
 declare a motor bridge, a named regeneration clamp/absorber component, explicit

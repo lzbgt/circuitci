@@ -122,11 +122,15 @@ builders live in `validation::motor_drive_common` so more motor checks do not
 grow one monolithic source file.
 `MOTOR_BRIDGE_LOSS_THERMAL_VALID` adds a source-backed reference-loss
 thermal-budget screen from component `motor_bridge` metadata.
+`MOTOR_BRIDGE_SWITCHING_VALID` adds a source-backed static transition-loss and
+average gate-charge screen from bridge rise/fall and total gate-charge
+metadata.
 `MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event
 regeneration envelope against bus capacitance and a named absorber/clamp
 component. `MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks declared shunt, gain,
 ADC, offset, tolerance, and error budgets. These rules still do not imply FOC,
-true MOSFET SOA, switching-waveform, PWM sampling behavior, repeated-pulse
+true MOSFET SOA, switching-waveform, PWM sampling behavior, peak gate-current
+behavior, repeated-pulse
 thermal, firmware regeneration-control, or PCB copper-temperature sign-off.
 
 Load-budget rules are static connector/load screens. `load_budget` scenarios

@@ -111,6 +111,7 @@ Canonical executable check IDs:
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
+- `MOTOR_BRIDGE_SWITCHING_VALID`
 - `MOTOR_REGEN_CLAMP_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
@@ -1828,6 +1829,53 @@ That estimate times `min_loss_margin_ratio` must fit
 `max_total_bridge_loss_W`. This is a source-backed screening calculation; it
 does not replace MOSFET SOA curves, switching transition loss, gate-charge
 timing, thermal impedance, regeneration energy, or measured board temperature.
+
+`MOTOR_BRIDGE_SWITCHING_VALID` checks a first-pass transition-loss and
+average gate-charge budget from source-backed bridge switching metadata:
+
+```yaml
+scenarios:
+  - name: wheel_bridge_switching_budget
+    type: motor_drive
+    checks:
+      - MOTOR_BRIDGE_SWITCHING_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_max_V: 12.6
+      pwm_frequency_Hz: 20000.0
+      gate_drive_voltage_V: 10.0
+      switching_events_per_pwm_cycle: 6.0
+      gate_charge_events_per_pwm_cycle: 6.0
+      max_total_switching_loss_W: 0.5
+      min_switching_loss_margin_ratio: 2.0
+      max_average_gate_drive_current_A: 0.02
+```
+
+Required evidence:
+
+- `target.component` must bind to a component model with `motor_bridge`.
+- `motor_bridge.gate_charge_total_C`, `motor_bridge.rise_time_s`, and
+  `motor_bridge.fall_time_s` must be positive source-backed metadata.
+- Motor peak current comes from explicit scenario parameters or from
+  `parameters.motor_component` bound to a model with `motor_load`.
+- `bus_voltage_max_V`, `pwm_frequency_Hz`, `gate_drive_voltage_V`,
+  `switching_events_per_pwm_cycle`, `gate_charge_events_per_pwm_cycle`,
+  `max_total_switching_loss_W`, `min_switching_loss_margin_ratio`, and
+  `max_average_gate_drive_current_A` are explicit board/gate-drive inputs.
+
+The transition-loss estimate is
+`0.5 * bus_voltage_max_V * motor_phase_peak_current_A *
+(rise_time_s + fall_time_s) * pwm_frequency_Hz *
+switching_events_per_pwm_cycle`. That value times
+`min_switching_loss_margin_ratio` must fit `max_total_switching_loss_W`.
+Average gate-drive charge current is
+`gate_charge_total_C * pwm_frequency_Hz * gate_charge_events_per_pwm_cycle`;
+it must fit `max_average_gate_drive_current_A`. This is a static screening
+calculation. It does not prove peak gate source/sink current, Miller behavior,
+dead-time, diode reverse recovery, switch-node ringing, PWM sampling, MOSFET
+SOA, or measured switching temperature.
 
 `MOTOR_REGEN_CLAMP_VALID` checks a declared single-event regeneration absorber
 budget:

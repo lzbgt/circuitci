@@ -130,15 +130,21 @@ motor_bridge:
   reference_current_A: 30.0
   reference_loss_scope: per_half_bridge
   switching_devices: 3
+  gate_charge_total_C: 0.000000056
+  gate_charge_voltage_V: 10.0
+  rise_time_s: 0.000000020
+  fall_time_s: 0.000000003
   source: docs/research/smart_robot/sources/csd88599q5dc_product.html
 ```
 
 `reference_loss_scope` is either `per_half_bridge` or `three_phase_bridge`.
 When it is `per_half_bridge`, `switching_devices` is required so the validator
 can scale the total bridge loss. This is a static source-backed reference-loss
-screen. It is not a replacement for MOSFET SOA curves, switching waveform
-simulation, gate-charge timing, thermal impedance, or measured board
-temperature.
+screen. Optional `gate_charge_total_C`, `gate_charge_voltage_V`,
+`rise_time_s`, and `fall_time_s` feed static switching-budget checks when they
+are source-backed. These fields are not a replacement for MOSFET SOA curves,
+switching waveform simulation, peak gate-current timing, thermal impedance, or
+measured board temperature.
 
 Connector models can declare static electrical ratings used by `load_budget`
 scenarios:

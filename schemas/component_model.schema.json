@@ -276,6 +276,10 @@
           "enum": ["per_half_bridge", "three_phase_bridge"]
         },
         "switching_devices": { "type": "integer", "minimum": 1 },
+        "gate_charge_total_C": { "type": "number", "exclusiveMinimum": 0 },
+        "gate_charge_voltage_V": { "type": "number", "exclusiveMinimum": 0 },
+        "rise_time_s": { "type": "number", "exclusiveMinimum": 0 },
+        "fall_time_s": { "type": "number", "exclusiveMinimum": 0 },
         "source": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false

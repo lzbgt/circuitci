@@ -59,6 +59,10 @@ board:
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` first-pass CSD88599Q5DC bridge screening:
   12.6 V max bus, 40 A current class, and scaled 3 W at 30 A reference-loss
   evidence against a 2 W board thermal budget with 2x margin.
+- `MOTOR_BRIDGE_SWITCHING_VALID` first-pass CSD88599Q5DC switching screening:
+  56 nC max total gate charge at 10 V, 20 ns rise, 3 ns fall, 20 kHz PWM,
+  six switching/gate-charge events per PWM cycle, 0.5 W switching-loss budget
+  with 2x margin, and 20 mA average gate-drive charge-current budget.
 - `MOTOR_REGEN_CLAMP_VALID` first-pass regeneration absorber screening for
   `REGEN1`: 1 J single-event energy envelope, 1 mF wheel-bus capacitance,
   12.6 V nominal-to-16 V clamp window, 10 A clamp current envelope, 1.5 J clamp
@@ -124,10 +128,10 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense electrical
-  accuracy, true MOSFET SOA, switching transition loss, transient thermal
+  accuracy, true MOSFET SOA, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
   assembly evidence, and final routed layout copper beyond the first-pass
-  bridge-loss, regen-envelope, route-width, shunt-placement, and
+  bridge-loss, switching, regen-envelope, route-width, shunt-placement, and
   current-sense static-accuracy checks.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator

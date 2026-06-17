@@ -180,6 +180,14 @@ robot control-stack design pass.
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
   RMS design envelope against an explicit 2 W board thermal budget with 2x
   margin.
+- The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
+  with `MOTOR_BRIDGE_SWITCHING_VALID`: cached TI datasheet page 4 exposes
+  56 nC maximum total gate charge at 10 V, 20 ns rise time, and 3 ns fall
+  time. The current screen uses 12.6 V bus, 10 A phase peak, 20 kHz PWM,
+  six switching/gate-charge events per PWM cycle, 0.5 W switching budget with
+  2x margin, and 20 mA average gate-drive charge-current budget. This is still
+  not final waveform, SOA, peak gate-current, ringing, or measured
+  board-temperature sign-off.
 - The wheel actuator now also checks `REGEN1`, a first-pass regeneration
   absorber design envelope, with `MOTOR_REGEN_CLAMP_VALID`: 1 J single-event
   energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V clamp window,
@@ -197,7 +205,7 @@ robot control-stack design pass.
   tolerance, 20 V/V gain, 0.5% gain error, 100 uV input offset, 3.3 V 12-bit
   ADC reference, 3.0 V usable ADC input range, at least 20 ADC counts at 0.5 A,
   and 0.25 A maximum worst-case static current error. It does not yet validate
-  true MOSFET SOA, gate charge, switching transition loss, selected amplifier
+  true MOSFET SOA, peak gate current, switch-node ringing, selected amplifier
   bandwidth/common-mode behavior, PWM sampling, transient thermal impedance,
   selected regeneration absorber repeated-pulse behavior, PCB copper
   temperature rise, or motor-control loop stability.

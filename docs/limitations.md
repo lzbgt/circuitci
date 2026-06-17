@@ -327,6 +327,11 @@ without explicit imported mechanical evidence.
   budget. It does not compute MOSFET SOA, switching transition loss,
   gate-charge timing, transient thermal impedance, regeneration energy, or
   measured PCB temperature.
+- `MOTOR_BRIDGE_SWITCHING_VALID` estimates transition loss from source-backed
+  rise/fall timing and checks average gate-charge current from source-backed
+  total gate charge. It does not prove MOSFET SOA, peak gate source/sink
+  current, Miller plateau behavior, switch-node ringing, dead-time, diode
+  reverse recovery, transient thermal impedance, or measured waveforms.
 - `MOTOR_REGEN_CLAMP_VALID` checks explicit single-event regeneration current,
   energy, bus capacitance, voltage window, and clamp/absorber current-energy
   limits. It does not infer motor inertia or speed, prove repeated-pulse

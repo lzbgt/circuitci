@@ -301,6 +301,14 @@ pub struct MotorBridge {
     pub reference_loss_scope: Option<String>,
     #[serde(default, rename = "switching_devices")]
     pub switching_devices: Option<usize>,
+    #[serde(default, rename = "gate_charge_total_C")]
+    pub gate_charge_total_c: Option<f64>,
+    #[serde(default, rename = "gate_charge_voltage_V")]
+    pub gate_charge_voltage_v: Option<f64>,
+    #[serde(default, rename = "rise_time_s")]
+    pub rise_time_s: Option<f64>,
+    #[serde(default, rename = "fall_time_s")]
+    pub fall_time_s: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

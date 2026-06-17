@@ -5,8 +5,8 @@ use serde_json::json;
 
 use super::motor_drive_common::*;
 use super::{
-    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_CURRENT_SENSE_ACCURACY_VALID,
-    MOTOR_REGEN_CLAMP_VALID, MOTOR_ROUTE_CURRENT_VALID,
+    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_BRIDGE_SWITCHING_VALID,
+    MOTOR_CURRENT_SENSE_ACCURACY_VALID, MOTOR_REGEN_CLAMP_VALID, MOTOR_ROUTE_CURRENT_VALID,
 };
 
 pub(super) fn validate_motor_bridge_budget(
@@ -456,6 +456,230 @@ pub(super) fn validate_motor_bridge_loss_thermal(
         finding.suggested_fixes = vec![
             "Lower the wheel current target, improve the thermal design, or select a lower-loss bridge.".to_string(),
             "Replace this first-pass scaled-loss screen with sourced SOA/switching-loss/thermal evidence before final fabrication sign-off.".to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
+pub(super) fn validate_motor_bridge_switching(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        missing_input(
+            scenario,
+            "component.model",
+            "Bind the motor bridge component to a source-backed component model.",
+            findings,
+        );
+        return;
+    };
+    let Some(bridge) = model.motor_bridge.as_ref() else {
+        missing_input(
+            scenario,
+            "component.model.motor_bridge",
+            "Use a motor bridge component model with source-backed motor_bridge switching metadata.",
+            findings,
+        );
+        return;
+    };
+
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(peak_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_peak_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "motor_load.phase_peak_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(bus_voltage_max_v) = required_positive(scenario, "bus_voltage_max_V", findings) else {
+        return;
+    };
+    let Some(pwm_frequency_hz) = required_positive(scenario, "pwm_frequency_Hz", findings) else {
+        return;
+    };
+    let Some(gate_drive_voltage_v) = required_positive(scenario, "gate_drive_voltage_V", findings)
+    else {
+        return;
+    };
+    let Some(switching_events_per_cycle) =
+        required_at_least(scenario, "switching_events_per_pwm_cycle", 1.0, findings)
+    else {
+        return;
+    };
+    let Some(gate_charge_events_per_cycle) =
+        required_at_least(scenario, "gate_charge_events_per_pwm_cycle", 1.0, findings)
+    else {
+        return;
+    };
+    let Some(max_total_switching_loss_w) =
+        required_positive(scenario, "max_total_switching_loss_W", findings)
+    else {
+        return;
+    };
+    let Some(min_switching_loss_margin_ratio) =
+        required_at_least(scenario, "min_switching_loss_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+    let Some(max_average_gate_drive_current_a) =
+        required_positive(scenario, "max_average_gate_drive_current_A", findings)
+    else {
+        return;
+    };
+
+    let Some(gate_charge_total_c) = positive_bridge_value(
+        scenario,
+        "motor_bridge.gate_charge_total_C",
+        bridge.gate_charge_total_c,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(rise_time_s) = positive_bridge_value(
+        scenario,
+        "motor_bridge.rise_time_s",
+        bridge.rise_time_s,
+        findings,
+    ) else {
+        return;
+    };
+    let Some(fall_time_s) = positive_bridge_value(
+        scenario,
+        "motor_bridge.fall_time_s",
+        bridge.fall_time_s,
+        findings,
+    ) else {
+        return;
+    };
+
+    let estimated_total_switching_loss_w = 0.5
+        * bus_voltage_max_v
+        * peak_current_a
+        * (rise_time_s + fall_time_s)
+        * pwm_frequency_hz
+        * switching_events_per_cycle;
+    let required_switching_loss_budget_w =
+        estimated_total_switching_loss_w * min_switching_loss_margin_ratio;
+    if required_switching_loss_budget_w > max_total_switching_loss_w {
+        let mut finding = Finding::critical(
+            MOTOR_BRIDGE_SWITCHING_VALID,
+            &scenario.name,
+            format!(
+                "Estimated bridge switching loss {estimated_total_switching_loss_w:.6} W with {min_switching_loss_margin_ratio:.3}x margin exceeds {max_total_switching_loss_w:.6} W budget."
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        finding.measured.insert(
+            "estimated_total_switching_loss_W".to_string(),
+            json!(estimated_total_switching_loss_w),
+        );
+        finding
+            .measured
+            .insert("bus_voltage_max_V".to_string(), json!(bus_voltage_max_v));
+        finding.measured.insert(
+            "motor_phase_peak_current_A".to_string(),
+            json!(peak_current_a),
+        );
+        finding
+            .measured
+            .insert("rise_time_s".to_string(), json!(rise_time_s));
+        finding
+            .measured
+            .insert("fall_time_s".to_string(), json!(fall_time_s));
+        finding
+            .measured
+            .insert("pwm_frequency_Hz".to_string(), json!(pwm_frequency_hz));
+        finding.measured.insert(
+            "switching_events_per_pwm_cycle".to_string(),
+            json!(switching_events_per_cycle),
+        );
+        if let Some(evidence) = &motor_load {
+            finding
+                .measured
+                .insert("motor_component".to_string(), json!(evidence.component_id));
+        }
+        finding.limit.insert(
+            "max_total_switching_loss_W".to_string(),
+            json!(max_total_switching_loss_w),
+        );
+        finding.limit.insert(
+            "min_switching_loss_margin_ratio".to_string(),
+            json!(min_switching_loss_margin_ratio),
+        );
+        finding.suggested_fixes = vec![
+            "Reduce PWM frequency, edge count, bus voltage, or peak current; or choose a bridge with faster sourced switching data.".to_string(),
+            "Replace this static transition estimate with measured switching waveforms before final fabrication sign-off.".to_string(),
+        ];
+        findings.push(finding);
+    }
+
+    let average_gate_drive_current_a =
+        gate_charge_total_c * pwm_frequency_hz * gate_charge_events_per_cycle;
+    if average_gate_drive_current_a > max_average_gate_drive_current_a {
+        let mut finding = Finding::critical(
+            MOTOR_BRIDGE_SWITCHING_VALID,
+            &scenario.name,
+            format!(
+                "Average gate-drive charge current {average_gate_drive_current_a:.6} A exceeds {max_average_gate_drive_current_a:.6} A budget."
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        finding.measured.insert(
+            "average_gate_drive_current_A".to_string(),
+            json!(average_gate_drive_current_a),
+        );
+        finding.measured.insert(
+            "gate_charge_total_C".to_string(),
+            json!(gate_charge_total_c),
+        );
+        finding
+            .measured
+            .insert("pwm_frequency_Hz".to_string(), json!(pwm_frequency_hz));
+        finding.measured.insert(
+            "gate_charge_events_per_pwm_cycle".to_string(),
+            json!(gate_charge_events_per_cycle),
+        );
+        finding.measured.insert(
+            "gate_drive_power_W".to_string(),
+            json!(average_gate_drive_current_a * gate_drive_voltage_v),
+        );
+        if let Some(gate_charge_voltage_v) = bridge.gate_charge_voltage_v {
+            finding.measured.insert(
+                "gate_charge_voltage_V".to_string(),
+                json!(gate_charge_voltage_v),
+            );
+        }
+        finding.limit.insert(
+            "max_average_gate_drive_current_A".to_string(),
+            json!(max_average_gate_drive_current_a),
+        );
+        finding.suggested_fixes = vec![
+            "Reduce PWM frequency or switching edge count, select a lower-gate-charge bridge, or verify the gate driver supply/current budget.".to_string(),
+            "Treat average gate-drive charge as a static budget only; validate peak source/sink current and waveform ringing separately.".to_string(),
         ];
         findings.push(finding);
     }
