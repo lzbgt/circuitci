@@ -104,6 +104,12 @@ components:
       PHASE_U: PHASE_U
       PHASE_V: PHASE_V
       PHASE_W: PHASE_W
+  REGEN1:
+    model: demo.smart_robot.regen_clamp_design_envelope
+    part_number: REGEN_CLAMP_DESIGN_ENVELOPE
+    pin_map:
+      BUS: BUS
+      GND: GND
   RSHUNT_U:
     model: generic.analog.resistor
     part_number: 5mR_1W_PHASE_SHUNT_U
@@ -225,3 +231,13 @@ nets:
     kind: digital_or_analog
   phase_w:
     kind: digital_or_analog
+
+scenarios:
+  - name: wheel_actuator_selected_load_evidence_gate
+    type: model_quality
+    checks:
+      - MODEL_QUALITY_REQUIRED
+    parameters:
+      components: [M1, REGEN1]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium

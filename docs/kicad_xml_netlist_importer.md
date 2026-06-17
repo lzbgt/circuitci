@@ -101,6 +101,14 @@ nets:
     power_valid_at_us: 1500
   GND:
     kind: ground
+scenarios:
+  - name: selected_model_quality_gate
+    type: model_quality
+    checks: [MODEL_QUALITY_REQUIRED]
+    parameters:
+      components: [M1]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium
 ```
 
 Mapping files are strictly parsed. Unknown keys, invalid net kinds, unknown
@@ -143,10 +151,18 @@ Mapping-provided entry aperture metadata is lower precedence than explicit
 KiCad PCB footprint properties named `CircuitCI_EntryAperture*`, but higher
 precedence than component-model aperture defaults.
 
+## Scenario Passthrough
+
+Mapping files may also declare generic `scenarios`. These entries are copied
+into the emitted Board IR project unchanged. Use this for schematic/import
+bridges that must carry validation gates such as `MODEL_QUALITY_REQUIRED`,
+`BUS_TERMINATION_VALID`, or other checks that do not require importer-generated
+analog bindings.
+
 ## Generated Analog Scenarios
 
-Mapping files may also declare `analog_scenarios`. This is the only KiCad import
-path that emits a validation scenario:
+Mapping files may also declare `analog_scenarios`. These entries generate
+`analog_transient` validation scenarios with derived node and pin bindings:
 
 ```yaml
 components:

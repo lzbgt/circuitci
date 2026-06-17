@@ -108,6 +108,14 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
         "net_phase_u"
     );
     assert_eq!(
+        imported["board"]["components"]["REGEN1"]["model"],
+        "demo.smart_robot.regen_clamp_design_envelope"
+    );
+    assert_eq!(
+        imported["board"]["components"]["REGEN1"]["pins"]["BUS"],
+        "net_vwheel_sw"
+    );
+    assert_eq!(
         imported["board"]["components"]["RSHUNT_U"]["pins"]["A"],
         "net_phase_u"
     );
@@ -148,6 +156,63 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
         imported["board"]["components"]["U2"]["source"]["board_pin_electrical_types"]["INHA"],
         "input"
     );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "wheel_actuator_selected_load_evidence_gate"
+                    && scenario["checks"][0] == "MODEL_QUALITY_REQUIRED"
+                    && scenario["parameters"]["components"][0] == "M1"
+                    && scenario["parameters"]["components"][1] == "REGEN1"
+            }),
+        "wheel KiCad import should preserve the model-quality sign-off gate: {imported:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_kicad_schematic_validates_model_quality_gate() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let imported_project = dir.path().join("wheel_actuator_imported.project.yaml");
+    let report_dir = dir.path().join("report");
+    let import_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/wheel_actuator/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml",
+            "--output",
+            imported_project.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(import_status.success());
+
+    let validate_status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            imported_project.to_str().unwrap(),
+            "--output",
+            report_dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(validate_status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(report_dir.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let failures = report["failures"].as_array().unwrap();
+    let model_quality_components = failures
+        .iter()
+        .filter(|finding| finding["id"] == "MODEL_QUALITY_REQUIRED")
+        .map(|finding| finding["component"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(model_quality_components, vec!["M1", "REGEN1"]);
 }
 
 #[test]

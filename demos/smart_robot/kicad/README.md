@@ -46,12 +46,15 @@ added.
 the reusable left/right wheel actuator board. It uses local `CircuitCI:*`
 symbols for the motor-control MCU, DRV8323 gate driver, CAN transceiver and TVS,
 endpoint termination option, encoder/Hall input, preliminary CSD88599Q5DC
-three-phase bridge candidate, phase shunts, motor-load envelope, and JST VH
-actuator-bus connector.
+three-phase bridge candidate, phase shunts, motor-load envelope, regeneration
+absorber envelope, and JST VH actuator-bus connector.
 
 `wheel_actuator/circuitci.kicad-map.yaml` binds those schematic references and
 pins back to the source-backed models used by
-`../circuitci/wheel_actuator/project.yaml`.
+`../circuitci/wheel_actuator/project.yaml`. It also carries the
+`MODEL_QUALITY_REQUIRED` sign-off scenario for `M1` and `REGEN1`, so validating
+the imported schematic blocks fabrication until those placeholder envelopes are
+replaced by selected datasheet or measured evidence.
 
 `wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
 bridge. It is a compact placement/routing artifact for import testing: it

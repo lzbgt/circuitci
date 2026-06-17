@@ -35,6 +35,8 @@ pub(super) struct KicadMapping {
     #[serde(default)]
     pub(super) nets: BTreeMap<String, NetMapping>,
     #[serde(default)]
+    pub(super) scenarios: Vec<serde_yaml_ng::Value>,
+    #[serde(default)]
     pub(super) analog_scenarios: Vec<AnalogScenarioMapping>,
 }
 
@@ -222,7 +224,7 @@ pub(super) struct ProjectYaml {
     pub(super) project: ProjectMetaYaml,
     pub(super) libraries: Vec<String>,
     pub(super) board: BoardYaml,
-    pub(super) scenarios: Vec<ScenarioYaml>,
+    pub(super) scenarios: Vec<serde_yaml_ng::Value>,
 }
 
 #[derive(Debug, Serialize)]

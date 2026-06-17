@@ -273,7 +273,8 @@ fn build_project_yaml(
         .collect::<Result<_>>()?;
     let import_models =
         load_import_models(&libraries_for_project(mapping, &loaded_mapping.base_dir))?;
-    let scenarios = build_analog_scenarios(
+    let mut scenarios = mapping.scenarios.clone();
+    scenarios.extend(build_analog_scenarios(
         parsed,
         mapping,
         &loaded_mapping.base_dir,
@@ -281,7 +282,7 @@ fn build_project_yaml(
         &nets,
         &net_names,
         &import_models,
-    )?;
+    )?);
     Ok(ProjectYaml {
         project: ProjectMetaYaml {
             name: options.name.clone(),
@@ -362,7 +363,7 @@ fn build_analog_scenarios(
     nets: &BTreeMap<String, NetYaml>,
     net_names: &[String],
     models: &BTreeMap<String, ImportedComponentModel>,
-) -> Result<Vec<ScenarioYaml>> {
+) -> Result<Vec<serde_yaml_ng::Value>> {
     let raw_net_to_board = raw_net_to_board_map(parsed, net_names)?;
     mapping
         .analog_scenarios
@@ -429,7 +430,7 @@ fn build_analog_scenarios(
                     });
                 }
             }
-            Ok(ScenarioYaml {
+            Ok(serde_yaml_ng::to_value(ScenarioYaml {
                 name: scenario.name.clone(),
                 scenario_type: "analog_transient".to_string(),
                 checks: vec!["SPICE_TRANSIENT_ANALYSIS".to_string()],
@@ -449,7 +450,7 @@ fn build_analog_scenarios(
                     probes: scenario.probes.clone(),
                     assertions: scenario.assertions.clone(),
                 },
-            })
+            })?)
         })
         .collect()
 }

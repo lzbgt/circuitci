@@ -75,6 +75,9 @@
       (pin passive line (at 0 20 0) (length 2.54) (number "PHASE_U"))
       (pin passive line (at 0 30 0) (length 2.54) (number "PHASE_V"))
       (pin passive line (at 0 40 0) (length 2.54) (number "PHASE_W")))
+    (symbol "CircuitCI:Regen_Clamp_Envelope"
+      (pin power_in line (at 0 0 0) (length 2.54) (number "BUS"))
+      (pin power_in line (at 0 10 0) (length 2.54) (number "GND")))
     (symbol "CircuitCI:Wheel_Motor_Envelope"
       (pin passive line (at 0 0 0) (length 2.54) (number "PHASE_U"))
       (pin passive line (at 0 10 0) (length 2.54) (number "PHASE_V"))
@@ -126,6 +129,10 @@
     (property "Reference" "PWR_STAGE")
     (property "Value" "3x_CSD88599Q5DC_PRELIMINARY")
     (pin "VM") (pin "GND") (pin "PHASE_U") (pin "PHASE_V") (pin "PHASE_W"))
+  (symbol (lib_id "CircuitCI:Regen_Clamp_Envelope") (at 180 120 0)
+    (property "Reference" "REGEN1")
+    (property "Value" "REGEN_CLAMP_DESIGN_ENVELOPE")
+    (pin "BUS") (pin "GND"))
   (symbol (lib_id "CircuitCI:Resistor") (at 135 130 0)
     (property "Reference" "RSHUNT_U")
     (property "Value" "5mR_1W")
@@ -234,4 +241,6 @@
   (wire (pts (xy 180 80) (xy 188 80))) (label "phase_u" (at 188 80 0))
   (wire (pts (xy 180 90) (xy 188 90))) (label "phase_v" (at 188 90 0))
   (wire (pts (xy 180 100) (xy 188 100))) (label "phase_w" (at 188 100 0))
+  (wire (pts (xy 180 120) (xy 188 120))) (label "vwheel_sw" (at 188 120 0))
+  (wire (pts (xy 180 130) (xy 188 130))) (label "gnd" (at 188 130 0))
 )
