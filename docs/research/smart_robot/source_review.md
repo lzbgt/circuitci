@@ -21,6 +21,10 @@ robot control-stack design pass.
 | TI DRV8323 datasheet | `docs/research/smart_robot/sources/drv8323_datasheet.pdf` | `dd8386c972e8d0a57278e432da6e9d8b2bc2f73768dd97eac69594da20d24208` |
 | TI CSD88599Q5DC product page | `docs/research/smart_robot/sources/csd88599q5dc_product.html` | `7b0c6ddf956afd16edf5980d99069782a5ed7517053a7ba063defa8427b02aab` |
 | TI CSD88599Q5DC datasheet | `docs/research/smart_robot/sources/csd88599q5dc_datasheet.pdf` | `193fc1b1e214064fef48e7fe73a3394c30b13ef07977cbb8663d36e9bfbbdd65` |
+| TI TCAN3413 product page | `docs/research/smart_robot/sources/tcan3413_product.html` | `500dcecf530224b361cbd2ebeb3c5051a6ceeca03221e09b4eb8ed99c19f0064` |
+| TI TCAN3413 datasheet | `docs/research/smart_robot/sources/tcan3413_datasheet.pdf` | `2c0e8963e7762bc91edf30a365cc10c31ce88e2ddda3b67a120c4158ae52930b` |
+| TI THVD1450 product page | `docs/research/smart_robot/sources/thvd1450_product.html` | `5dbdd9efd4169c8ea8ac78dd4879bf40aec7e68232388a4887031570c05af132` |
+| TI THVD1450 datasheet | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` | `c8d27b57c6cd2018d5a38d65fcc030f7cd47f2221232e26b05dc8671095693ca` |
 | NXP PCA9685 product page | `docs/research/smart_robot/sources/pca9685_product.html` | `28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468` |
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
@@ -59,6 +63,15 @@ robot control-stack design pass.
   CSD88599Q5DC power blocks. That makes three CSD88599Q5DC devices a sourced
   preliminary bridge candidate for the 2S wheel actuator board, not a final SOA
   or thermal sign-off.
+- TI's TCAN3413 product page identifies a 3.3 V CAN FD transceiver with
+  separate VIO support from 1.7 V to 3.6 V, VCC operation from 3.0 V to 3.6 V,
+  ISO 11898-2:2016 compliance, standby mode, and bus fault protection up to
+  plus/minus 58 V. That makes it a sourced first CAN transceiver for the 3.3 V
+  motion-core and wheel-actuator control buses.
+- TI's THVD1450 product page identifies a 3.3 V to 5 V RS485/RS422
+  transceiver with 50 Mbps signaling, one-eighth-unit-load bus loading,
+  up to 256 bus nodes, and plus/minus 18 kV IEC ESD positioning. That makes it
+  a sourced first RS485 transceiver for the motion-core smart-servo bus.
 - NXP's PCA9685 page and datasheet identify a 16-channel, 12-bit PWM
   Fast-mode Plus I2C LED controller. The saved datasheet states 2.3 V to 5.5 V
   supply operation, 5.5 V tolerant inputs/outputs, Fm+ operation up to 1 MHz,
@@ -82,10 +95,10 @@ robot control-stack design pass.
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,
   ICM-42688-P SPI/interrupt interface, and MCU-side CAN/RS485 logic levels.
-- The CAN and RS485 transceiver models are intentionally generic placeholders.
-  They verify MCU-side power and I/O levels only; exact bus protection,
-  termination, common-mode range, ESD, and connector layout require concrete
-  transceiver part selection.
+- The CAN and RS485 transceiver placeholders have been replaced with sourced TI
+  TCAN3413 and THVD1450 models. These verify rail and MCU-side I/O compatibility
+  only; termination, cable length, connector pinout, external surge/ESD policy,
+  EMC, and routed-bus layout still require board-level evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
@@ -95,8 +108,8 @@ robot control-stack design pass.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
-  inputs, CAN transceiver MCU-side logic, rail budgets, and a preliminary
-  3x CSD88599Q5DC wheel bridge candidate.
+  inputs, TCAN3413 CAN transceiver rail and MCU-side logic, rail budgets, and a
+  preliminary 3x CSD88599Q5DC wheel bridge candidate.
 - The wheel actuator now also checks `M1`, a modeled first-pass motor-load
   design envelope: 10 A phase peak, 6 A phase RMS, 6 A regeneration,
   5 mohm / 1 W phase shunts, 8 A motor connector rating, 10 ohm gate

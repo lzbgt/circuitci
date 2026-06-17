@@ -1,0 +1,107 @@
+component_id: vendor.ti.tcan3413
+version: 0.1.0
+category: can_transceiver
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.08
+  VIO:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 1.7
+      operating_voltage_max_V: 3.6
+      max_supply_current_A: 0.005
+  GND:
+    kind: electrical_ground
+    required: true
+  TXD:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RXD:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  STB:
+    kind: digital_electrical_input
+    required: false
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  CANH:
+    kind: passive
+    required: true
+  CANL:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TCAN3413
+  package: SOIC-8 / SOT-23-THN-8 / VSON-8
+  polarity: 3v3_can_fd_transceiver
+  pinout:
+    VCC: VCC
+    VIO: VIO
+    GND: GND
+    TXD: TXD
+    RXD: RXD
+    STB: STB
+    CANH: CANH
+    CANL: CANL
+  electrical_characteristics:
+    supply_voltage:
+      conditions: 3.3 V single-supply operation.
+      min: 3.0
+      max: 3.6
+      unit: V
+    io_voltage:
+      conditions: TCAN3413 VIO-supported logic range.
+      min: 1.7
+      max: 3.6
+      unit: V
+    can_fd_data_rate:
+      conditions: Classical CAN and optimized CAN FD performance.
+      max: 5.0
+      unit: Mbps
+    light_bus_data_rate:
+      conditions: Simpler networks per TI product page.
+      max: 8.0
+      unit: Mbps
+    bus_fault_protection:
+      conditions: Bus fault protection rating.
+      max: 58.0
+      unit: V
+  documents:
+    - title: TCAN3413 product page
+      path: docs/research/smart_robot/sources/tcan3413_product.html
+      source_url: https://www.ti.com/product/TCAN3413
+      sha256: 500dcecf530224b361cbd2ebeb3c5051a6ceeca03221e09b4eb8ed99c19f0064
+      retrieved: "2026-06-17"
+    - title: TCAN341x 3.3-V CAN FD Transceivers With Standby Mode and Bus Standoff datasheet
+      path: docs/research/smart_robot/sources/tcan3413_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tcan3413.pdf
+      sha256: 2c0e8963e7762bc91edf30a365cc10c31ce88e2ddda3b67a120c4158ae52930b
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_power_tree
+    - mcu_side_io_voltage_screening
+    - smart_robot_can_transceiver_selection
+  not_valid_for:
+    - can_signal_integrity
+    - can_termination_or_stub_length_signoff
+    - can_emi_or_common_mode_signoff
+    - bus_fault_energy_signoff

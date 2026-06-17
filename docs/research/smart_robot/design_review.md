@@ -21,8 +21,10 @@ validated independently.
   and two GPIO-style control lines.
 - Treat LicheeRV `3V3` as a reference or IO-domain signal only. Do not power the
   robot motion board from the module.
-- Keep CAN and RS485 transceiver selection open until bus voltage, cable length,
-  ESD target, connector, and termination policy are chosen.
+- Use TCAN3413 for the first 3.3 V CAN control-bus pass and THVD1450 for the
+  first 3.3 V RS485 smart-servo bus pass. Keep cable length, termination,
+  connector pinout, external surge/ESD target, EMC, and routed layout as open
+  board-level constraints.
 - Keep PMU/charger design separate from the motion core. Battery charging and
   e-stop hardware must not depend on Linux software.
 - Do not proceed to fabrication from the high-level Markdown alone. The first
@@ -35,8 +37,8 @@ validated independently.
    - LicheeRV connector
    - AT32F435
    - ICM-42688-P
-   - CAN transceiver
-   - RS485 transceiver
+   - TCAN3413 CAN transceiver
+   - THVD1450 RS485 transceiver
    - debug and PMU connectors
 2. Left wheel actuator board:
    - AT32M416
@@ -93,7 +95,7 @@ left/right reusable wheel controller pass:
   `WH/WL`).
 - DRV8323 SPI and nFAULT interface.
 - 3.3 V encoder/Hall signal compatibility.
-- Generic CAN transceiver MCU-side compatibility.
+- TCAN3413 3.3 V CAN transceiver rail and MCU-side compatibility.
 - Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
   switched wheel rail.
 - `M1` motor-load design envelope feeding the first-pass bridge budget:

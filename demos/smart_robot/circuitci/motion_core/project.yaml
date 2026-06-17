@@ -6,6 +6,8 @@ libraries:
   - ../../../../libs/vendor/sipeed/modules
   - ../../../../libs/vendor/artery/mcus
   - ../../../../libs/vendor/tdk/imu
+  - ../../../../libs/vendor/ti/can_transceivers
+  - ../../../../libs/vendor/ti/rs485_transceivers
   - ../../../../libs/generic/digital
 
 board:
@@ -60,20 +62,23 @@ board:
         CS: icm_spi_cs
         INT1: icm_int1
     U3:
-      model: generic.can_transceiver.basic
-      part_number: CAN_TRANSCEIVER_TBD
+      model: vendor.ti.tcan3413
+      part_number: TCAN3413DR
       power_domains:
         VCC: 3v3_logic
+        VIO: 3v3_logic
       pins:
         VCC: 3v3_logic
+        VIO: 3v3_logic
         GND: gnd
         TXD: robot_can_tx
         RXD: robot_can_rx
+        STB: gnd
         CANH: robot_canh
         CANL: robot_canl
     U4:
-      model: generic.rs485_transceiver.basic
-      part_number: RS485_TRANSCEIVER_TBD
+      model: vendor.ti.thvd1450
+      part_number: THVD1450D
       power_domains:
         VCC: 3v3_logic
       pins:
@@ -82,6 +87,7 @@ board:
         DI: rs485_servo_tx
         RO: rs485_servo_rx
         DE: rs485_servo_de
+        RE_N: rs485_servo_de
         A: rs485_servo_a
         B: rs485_servo_b
   nets:

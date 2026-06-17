@@ -62,8 +62,8 @@ Main parts:
 ```text
 AT32F435VGT7 / AT32F435RGT7
 ICM-42688-P
-CAN transceiver
-RS485 transceiver
+TCAN3413 CAN transceiver
+THVD1450 RS485 transceiver
 PCA9685 optional
 power monitors
 watchdog / e-stop logic
@@ -152,7 +152,7 @@ AT32M416
 3-shunt or 2-shunt current sensing
 wheel encoder / Hall input
 local jump servo / jump actuator output
-CAN bus
+TCAN3413 CAN bus
 local fault protection
 ```
 

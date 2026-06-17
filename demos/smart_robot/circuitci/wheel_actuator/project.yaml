@@ -5,6 +5,7 @@ project:
 libraries:
   - ../../../../libs/generic
   - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/ti/can_transceivers
   - ../../../../libs/vendor/ti/motor_drivers
   - ../models
 
@@ -66,15 +67,18 @@ board:
         SOB: cur_v
         SOC: cur_w
     U3:
-      model: generic.can_transceiver.basic
-      part_number: CAN_TRANSCEIVER_TBD
+      model: vendor.ti.tcan3413
+      part_number: TCAN3413DR
       power_domains:
         VCC: 3v3_logic
+        VIO: 3v3_logic
       pins:
         VCC: 3v3_logic
+        VIO: 3v3_logic
         GND: gnd
         TXD: wheel_can_tx
         RXD: wheel_can_rx
+        STB: gnd
         CANH: robot_canh
         CANL: robot_canl
     ENC1:

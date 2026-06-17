@@ -10,8 +10,9 @@ robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
 - LicheeRV Nano WiFi module as a purchased brain module.
 - AT32F435 motion-control MCU.
 - ICM-42688-P IMU over SPI plus interrupt.
-- MCU-side CAN transceiver interface.
-- MCU-side RS485 smart-servo interface.
+- TI TCAN3413 3.3 V CAN transceiver rail and MCU-side interface.
+- TI THVD1450 3.3 V RS485 smart-servo transceiver rail and MCU-side
+  interface.
 - Static rail budget and 3.3 V logic-level compatibility.
 
 `pmu/project.yaml` models the first reusable PMU board:
@@ -28,7 +29,7 @@ board:
 - DRV8323 three-phase smart gate-driver interface.
 - Six independent PWM lines for a normal 3-phase BLDC bridge.
 - 3.3 V encoder/Hall input compatibility.
-- CAN command-link MCU-side compatibility.
+- TI TCAN3413 3.3 V CAN command-link rail and MCU-side compatibility.
 - Preliminary 3x CSD88599Q5DC half-bridge wheel power-stage budget.
 - `M1` motor-load design envelope feeding the bridge budget: 10 A phase peak,
   6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
@@ -72,7 +73,8 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 
 - Exact AT32F435 package pin assignment.
 - Exact LicheeRV Nano header pin numbers and mechanical footprint.
-- CAN/RS485 transceiver part choice, termination, common-mode range, and ESD.
+- CAN/RS485 termination, cable length, common-mode range, connector pinout,
+  external surge/ESD policy, and EMC/layout behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,

@@ -1,0 +1,106 @@
+component_id: vendor.ti.thvd1450
+version: 0.1.0
+category: rs485_transceiver
+ports:
+  VCC:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.0
+      operating_voltage_max_V: 5.5
+      max_supply_current_A: 0.08
+  GND:
+    kind: electrical_ground
+    required: true
+  DI:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RO:
+    kind: digital_electrical_output
+    required: true
+    electrical:
+      drive_high_voltage_V: 3.3
+      source_impedance_ohm: 50
+  DE:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  RE_N:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 2.0
+      vil_max_V: 0.8
+      injection_current_limit_A: 0.0001
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: THVD1450
+  package: SOIC-8 / VSON-8 / VSSOP-8
+  polarity: half_duplex_rs485_transceiver
+  pinout:
+    VCC: VCC
+    GND: GND
+    DI: D
+    RO: R
+    DE: DE
+    RE_N: /RE
+    A: A
+    B: B
+  electrical_characteristics:
+    supply_voltage:
+      conditions: 3.3 V to 5 V operation.
+      min: 3.0
+      max: 5.5
+      unit: V
+    data_rate:
+      conditions: THVD1450 maximum data-rate class.
+      max: 50.0
+      unit: Mbps
+    bus_esd_protection:
+      conditions: IEC ESD protection class from TI product page.
+      max: 18.0
+      unit: kV
+    receiver_unit_load:
+      conditions: 1/8 unit load.
+      typ: 0.125
+      unit: UL
+    bus_node_count:
+      conditions: Up to 256 bus nodes.
+      max: 256
+      unit: nodes
+  documents:
+    - title: THVD1450 product page
+      path: docs/research/smart_robot/sources/thvd1450_product.html
+      source_url: https://www.ti.com/product/THVD1450
+      sha256: 5dbdd9efd4169c8ea8ac78dd4879bf40aec7e68232388a4887031570c05af132
+      retrieved: "2026-06-17"
+    - title: THVD14xx 3.3-V to 5-V RS-485 Transceivers with ESD Protection datasheet
+      path: docs/research/smart_robot/sources/thvd1450_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/thvd1450.pdf
+      sha256: c8d27b57c6cd2018d5a38d65fcc030f7cd47f2221232e26b05dc8671095693ca
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - static_power_tree
+    - mcu_side_io_voltage_screening
+    - smart_robot_rs485_servo_bus_transceiver_selection
+  not_valid_for:
+    - rs485_signal_integrity
+    - fail_safe_bias_or_termination_design
+    - cable_length_or_emc_signoff
+    - bus_fault_energy_signoff
