@@ -38,8 +38,8 @@ form:
 - Sketch: shows the imported/sketched board graph summary. Canvas editing will
   build on this stage.
 - Library: shows library bindings and scenario suggestion YAML.
-- Simulation: runs validation through the engine and lists emitted waveforms,
-  generated SPICE decks, artifacts, findings, and limitations.
+- Simulation: runs validation through the engine, plots emitted CSV waveforms,
+  and lists generated SPICE decks, artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. These are the
@@ -58,10 +58,12 @@ The supported desktop simulation path is:
 1. load or import board evidence,
 2. bind sourced component models,
 3. run declared validation and `analog_transient` scenarios,
-4. observe generated decks, waveforms, findings, and report artifacts,
+4. observe generated decks, plotted CSV waveforms, findings, and report
+   artifacts,
 5. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, interactive waveform plotting, automatic
-arbitrary schematic-to-SPICE conversion, and vendor macromodel acquisition are
-future GUI stages. They must reuse the existing Board IR, importer, model, and
-validation contracts instead of creating a parallel EDA model.
+Full schematic-canvas editing, advanced waveform cursors/measurements,
+automatic arbitrary schematic-to-SPICE conversion, and vendor macromodel
+acquisition are future GUI stages. They must reuse the existing Board IR,
+importer, model, and validation contracts instead of creating a parallel EDA
+model.

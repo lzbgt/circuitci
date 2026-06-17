@@ -57,6 +57,9 @@ pub struct CircuitCiApp {
     report_markdown: String,
     suggestions_yaml: String,
     project_snapshot: Option<ProjectSnapshot>,
+    waveforms: Vec<WaveformView>,
+    selected_waveform: usize,
+    selected_probe: usize,
 }
 
 impl Default for CircuitCiApp {
@@ -72,6 +75,9 @@ impl Default for CircuitCiApp {
             report_markdown: String::new(),
             suggestions_yaml: String::new(),
             project_snapshot: None,
+            waveforms: Vec::new(),
+            selected_waveform: 0,
+            selected_probe: 0,
         }
     }
 }
@@ -277,7 +283,10 @@ impl CircuitCiApp {
     fn simulation_stage(&mut self, ui: &mut egui::Ui) {
         ui.heading("Simulation And Observation");
         ui.separator();
-        if let Some(report) = &self.report {
+        if self.report.is_some() {
+            self.waveform_view(ui);
+            ui.separator();
+            let report = self.report.as_ref().expect("checked above");
             ui.label("Waveforms");
             if report.waveforms.is_empty() {
                 ui.label("No waveform artifacts were emitted by the current scenario set.");
@@ -346,11 +355,22 @@ impl CircuitCiApp {
             Path::new(&self.output_dir),
         ) {
             Ok((report, markdown)) => {
+                let waveforms = load_report_waveforms(&report);
+                let waveform_count = waveforms.len();
                 self.status = format!("Validation {}", report.result);
                 self.report_markdown = markdown;
                 self.report = Some(report);
-                self.stage = Stage::Reports;
-                self.push_diagnostic("Validation report written.");
+                self.waveforms = waveforms;
+                self.selected_waveform = 0;
+                self.selected_probe = 0;
+                self.stage = if waveform_count == 0 {
+                    Stage::Reports
+                } else {
+                    Stage::Simulation
+                };
+                self.push_diagnostic(&format!(
+                    "Validation report written; loaded {waveform_count} waveform view(s)."
+                ));
                 self.load_project_summary();
             }
             Err(error) => self.record_error(error),
@@ -378,6 +398,51 @@ impl CircuitCiApp {
     fn push_diagnostic(&mut self, message: &str) {
         self.diagnostics.push(message.to_string());
     }
+
+    fn waveform_view(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.strong("Waveform Viewer");
+            if self.waveforms.is_empty() {
+                ui.label("No parsed CSV waveform is available.");
+            }
+        });
+        if self.waveforms.is_empty() {
+            return;
+        }
+
+        self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
+        ui.horizontal_wrapped(|ui| {
+            for (index, waveform) in self.waveforms.iter().enumerate() {
+                if ui
+                    .selectable_label(self.selected_waveform == index, &waveform.label)
+                    .clicked()
+                {
+                    self.selected_waveform = index;
+                    self.selected_probe = 0;
+                }
+            }
+        });
+
+        let waveform = &self.waveforms[self.selected_waveform];
+        if waveform.probes.is_empty() {
+            ui.label("Waveform has no probe columns.");
+            return;
+        }
+
+        self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
+        ui.horizontal_wrapped(|ui| {
+            for (index, probe) in waveform.probes.iter().enumerate() {
+                if ui
+                    .selectable_label(self.selected_probe == index, &probe.label)
+                    .clicked()
+                {
+                    self.selected_probe = index;
+                }
+            }
+        });
+
+        draw_waveform_plot(ui, waveform, self.selected_probe);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -387,6 +452,20 @@ struct ProjectSnapshot {
     nets: usize,
     scenarios: usize,
     libraries: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct WaveformView {
+    label: String,
+    path: String,
+    time_s: Vec<f64>,
+    probes: Vec<WaveformProbe>,
+}
+
+#[derive(Debug, Clone)]
+struct WaveformProbe {
+    label: String,
+    values: Vec<f64>,
 }
 
 fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
@@ -422,6 +501,116 @@ fn validate_from_gui(
     Ok((report, markdown))
 }
 
+fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
+    report
+        .waveforms
+        .iter()
+        .filter_map(|waveform| load_waveform_csv(Path::new(waveform), waveform).ok())
+        .collect()
+}
+
+fn load_waveform_csv(path: &Path, label: &str) -> Result<WaveformView> {
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
+    parse_waveform_csv_text(&text, label)
+}
+
+fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
+    let mut time_s = Vec::new();
+    let mut probe_labels = Vec::new();
+    let mut probe_values: Vec<Vec<f64>> = Vec::new();
+
+    for (line_index, line) in text.lines().enumerate() {
+        let fields = split_waveform_fields(line);
+        if fields.is_empty() {
+            continue;
+        }
+        let Some(time) = parse_waveform_float(fields[0]) else {
+            if time_s.is_empty() {
+                probe_labels = fields
+                    .iter()
+                    .skip(1)
+                    .map(|field| (*field).to_string())
+                    .collect();
+                continue;
+            }
+            anyhow::bail!(
+                "Waveform row {} has non-numeric time value {}.",
+                line_index + 1,
+                fields[0]
+            );
+        };
+        if let Some(previous) = time_s.last()
+            && time <= *previous
+        {
+            anyhow::bail!(
+                "Waveform row {} has non-increasing time value {}.",
+                line_index + 1,
+                fields[0]
+            );
+        }
+        let probe_count = fields.len().saturating_sub(1);
+        if probe_count == 0 {
+            anyhow::bail!("Waveform row {} has no probe columns.", line_index + 1);
+        }
+        if probe_values.is_empty() {
+            probe_values = vec![Vec::new(); probe_count];
+            if probe_labels.len() != probe_count {
+                probe_labels = (0..probe_count)
+                    .map(|index| format!("probe_{}", index + 1))
+                    .collect();
+            }
+        } else if probe_count < probe_values.len() {
+            anyhow::bail!(
+                "Waveform row {} has {} probe columns, expected at least {}.",
+                line_index + 1,
+                probe_count,
+                probe_values.len()
+            );
+        }
+        time_s.push(time);
+        for (index, values) in probe_values.iter_mut().enumerate() {
+            let value = parse_waveform_float(fields[index + 1]).with_context(|| {
+                format!(
+                    "Waveform row {} has non-numeric probe value {}.",
+                    line_index + 1,
+                    fields[index + 1]
+                )
+            })?;
+            values.push(value);
+        }
+    }
+
+    if time_s.is_empty() {
+        anyhow::bail!("Waveform CSV has no numeric samples.");
+    }
+
+    let probes = probe_labels
+        .into_iter()
+        .zip(probe_values)
+        .map(|(label, values)| WaveformProbe { label, values })
+        .collect();
+    Ok(WaveformView {
+        label: label.to_string(),
+        path: label.to_string(),
+        time_s,
+        probes,
+    })
+}
+
+fn split_waveform_fields(line: &str) -> Vec<&str> {
+    line.split(|character: char| character == ',' || character.is_whitespace())
+        .filter(|field| !field.is_empty())
+        .collect()
+}
+
+fn parse_waveform_float(value: &str) -> Option<f64> {
+    value
+        .parse::<f64>()
+        .ok()
+        .filter(|number| number.is_finite())
+}
+
 fn suggest_from_gui(project_path: &Path, profile: &str) -> Result<String> {
     let project = crate::board_ir::load_project(project_path)?;
     let (library, library_findings) = crate::library::load_library(project_path, &project);
@@ -433,6 +622,117 @@ fn suggest_from_gui(project_path: &Path, profile: &str) -> Result<String> {
     };
     let report = crate::scenario_suggestions::suggest_scenarios_for_profile(&bound, profile);
     serde_yaml_ng::to_string(&report).context("Failed to serialize scenario suggestions.")
+}
+
+fn draw_waveform_plot(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: usize) {
+    let probe = &waveform.probes[probe_index];
+    let Some((x_min, x_max)) = min_max(&waveform.time_s) else {
+        ui.label("Waveform has no time samples.");
+        return;
+    };
+    let Some((y_min, y_max)) = min_max(&probe.values) else {
+        ui.label("Selected probe has no samples.");
+        return;
+    };
+
+    ui.label(format!(
+        "{} samples from {}",
+        waveform.time_s.len(),
+        waveform.path
+    ));
+    let desired_size = egui::vec2(ui.available_width().max(360.0), 300.0);
+    let (rect, _) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 4.0, egui::Color32::from_gray(16));
+
+    let plot_rect = egui::Rect::from_min_max(
+        rect.min + egui::vec2(56.0, 16.0),
+        rect.max - egui::vec2(16.0, 38.0),
+    );
+    draw_plot_frame(&painter, plot_rect);
+
+    let x_span = positive_span(x_min, x_max);
+    let y_span = positive_span(y_min, y_max);
+    let map_point = |x: f64, y: f64| -> egui::Pos2 {
+        let x_ratio = ((x - x_min) / x_span).clamp(0.0, 1.0) as f32;
+        let y_ratio = ((y - y_min) / y_span).clamp(0.0, 1.0) as f32;
+        egui::pos2(
+            plot_rect.left() + x_ratio * plot_rect.width(),
+            plot_rect.bottom() - y_ratio * plot_rect.height(),
+        )
+    };
+
+    for tick in 0..=4 {
+        let ratio = tick as f32 / 4.0;
+        let x = plot_rect.left() + ratio * plot_rect.width();
+        painter.line_segment(
+            [
+                egui::pos2(x, plot_rect.top()),
+                egui::pos2(x, plot_rect.bottom()),
+            ],
+            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
+        );
+        let y = plot_rect.top() + ratio * plot_rect.height();
+        painter.line_segment(
+            [
+                egui::pos2(plot_rect.left(), y),
+                egui::pos2(plot_rect.right(), y),
+            ],
+            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
+        );
+    }
+
+    let points: Vec<_> = waveform
+        .time_s
+        .iter()
+        .copied()
+        .zip(probe.values.iter().copied())
+        .map(|(x, y)| map_point(x, y))
+        .collect();
+    if points.len() >= 2 {
+        painter.add(egui::Shape::line(
+            points,
+            egui::Stroke::new(2.0, egui::Color32::from_rgb(93, 185, 255)),
+        ));
+    }
+
+    let font = egui::FontId::monospace(12.0);
+    painter.text(
+        egui::pos2(plot_rect.left(), rect.bottom() - 22.0),
+        egui::Align2::LEFT_CENTER,
+        format!("t {:.3e}..{:.3e} s", x_min, x_max),
+        font.clone(),
+        egui::Color32::LIGHT_GRAY,
+    );
+    painter.text(
+        egui::pos2(plot_rect.left(), rect.top() + 8.0),
+        egui::Align2::LEFT_CENTER,
+        format!("{} {:.3e}..{:.3e}", probe.label, y_min, y_max),
+        font,
+        egui::Color32::LIGHT_GRAY,
+    );
+}
+
+fn draw_plot_frame(painter: &egui::Painter, rect: egui::Rect) {
+    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(96));
+    painter.line_segment([rect.left_top(), rect.right_top()], stroke);
+    painter.line_segment([rect.right_top(), rect.right_bottom()], stroke);
+    painter.line_segment([rect.right_bottom(), rect.left_bottom()], stroke);
+    painter.line_segment([rect.left_bottom(), rect.left_top()], stroke);
+}
+
+fn min_max(values: &[f64]) -> Option<(f64, f64)> {
+    let mut iter = values.iter().copied();
+    let first = iter.next()?;
+    let (min, max) = iter.fold((first, first), |(min, max), value| {
+        (min.min(value), max.max(value))
+    });
+    Some((min, max))
+}
+
+fn positive_span(min: f64, max: f64) -> f64 {
+    let span = max - min;
+    if span.abs() < f64::EPSILON { 1.0 } else { span }
 }
 
 fn finding_group(ui: &mut egui::Ui, title: &str, findings: &[Finding]) {
@@ -472,4 +772,36 @@ fn limitation_group(ui: &mut egui::Ui, limitations: &[Limitation]) {
 
 fn display_path(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_waveform_csv_text;
+
+    #[test]
+    fn waveform_parser_accepts_ngspice_header_and_samples() {
+        let text = "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 3.3 0.002
+";
+        let waveform = parse_waveform_csv_text(text, "waveform.csv").unwrap();
+        assert_eq!(waveform.time_s, vec![0.0, 1e-6]);
+        assert_eq!(waveform.probes[0].label, "v(out)");
+        assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
+        assert_eq!(waveform.probes[1].label, "i(load)");
+        assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+    }
+
+    #[test]
+    fn waveform_parser_rejects_non_increasing_time() {
+        let error = parse_waveform_csv_text(
+            "time v(out)
+1e-6 1.0
+1e-6 2.0
+",
+            "waveform.csv",
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("non-increasing time"));
+    }
 }
