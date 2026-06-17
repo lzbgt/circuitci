@@ -2,6 +2,10 @@
 
 This folder contains machine-checkable logical schematics for the reusable smart
 robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
+The first KiCad connectivity skeleton for the motion-core board is tracked in
+`../kicad/motion_core/` and imports back through CircuitCI, but this folder
+remains the validation source of truth until CAD import round-trips all
+power-domain, scenario, and routed-layout evidence.
 
 ## Current Slices
 

@@ -14,6 +14,14 @@ wheel-actuator boards. This reduces fabrication risk because charger/battery
 safety, Linux IO, IMU/CAN/servo logic, and high-current BLDC switching can be
 validated independently.
 
+The first KiCad CAD bridge is
+`demos/smart_robot/kicad/motion_core/root.kicad_sch` with
+`circuitci.kicad-map.yaml`. It imports through CircuitCI as a schematic
+connectivity source artifact, but it is not yet the validation source of truth:
+`demos/smart_robot/circuitci/motion_core/project.yaml` still carries
+power-domain, scenario, and pre-layout route-placement evidence that native
+KiCad import does not round-trip yet.
+
 ## Corrections And Constraints
 
 - Use the Sipeed LicheeRV Nano source docs, not memory, for module facts. The

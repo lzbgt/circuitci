@@ -1,0 +1,163 @@
+libraries:
+  - ../../../../libs/vendor/sipeed/modules
+  - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/tdk/imu
+  - ../../../../libs/vendor/ti/can_transceivers
+  - ../../../../libs/vendor/ti/esd_protection
+  - ../../../../libs/vendor/ti/rs485_transceivers
+  - ../../../../libs/generic/analog
+
+components:
+  MOD1:
+    model: vendor.sipeed.licheerv_nano_w
+    part_number: LicheeRV-Nano-W
+    pin_map:
+      5V: 5V
+      GND: GND
+      UART0_TX_A16: UART0_TX_A16
+      UART0_RX_A17: UART0_RX_A17
+      GPIOA14_MOTION_EN: GPIOA14_MOTION_EN
+      GPIOA15_FAULT_IRQ: GPIOA15_FAULT_IRQ
+  U1:
+    model: vendor.artery.at32f435_motion_core
+    part_number: AT32F435
+    pin_map:
+      VDD: VDD
+      GND: GND
+      LRV_UART_RX: LRV_UART_RX
+      LRV_UART_TX: LRV_UART_TX
+      LRV_MOTION_EN: LRV_MOTION_EN
+      MOTION_FAULT_IRQ: MOTION_FAULT_IRQ
+      ICM_SPI_SCK: ICM_SPI_SCK
+      ICM_SPI_MOSI: ICM_SPI_MOSI
+      ICM_SPI_MISO: ICM_SPI_MISO
+      ICM_SPI_CS: ICM_SPI_CS
+      ICM_INT1: ICM_INT1
+      CAN_TX: CAN_TX
+      CAN_RX: CAN_RX
+      RS485_TX: RS485_TX
+      RS485_RX: RS485_RX
+      RS485_DE: RS485_DE
+  U2:
+    model: vendor.tdk.icm42688p
+    part_number: ICM-42688-P
+    pin_map:
+      VDD: VDD
+      VDDIO: VDDIO
+      GND: GND
+      SCLK: SCLK
+      SDI: SDI
+      SDO: SDO
+      CS: CS
+      INT1: INT1
+  U3:
+    model: vendor.ti.tcan3413
+    part_number: TCAN3413DR
+    pin_map:
+      VCC: VCC
+      VIO: VIO
+      GND: GND
+      TXD: TXD
+      RXD: RXD
+      STB: STB
+      CANH: CANH
+      CANL: CANL
+  U4:
+    model: vendor.ti.thvd1450
+    part_number: THVD1450D
+    pin_map:
+      VCC: VCC
+      GND: GND
+      DI: DI
+      RO: RO
+      DE: DE
+      RE_N: RE_N
+      A: A
+      B: B
+  UCAN_ESD1:
+    model: vendor.ti.esd2can24_q1
+    part_number: ESD2CAN24-Q1
+    pin_map:
+      CANH: CANH
+      CANL: CANL
+      GND: GND
+  U485_ESD1:
+    model: vendor.ti.esds552
+    part_number: ESDS552
+    pin_map:
+      A: A
+      B: B
+      GND: GND
+  RT_CAN1:
+    model: generic.analog.resistor
+    part_number: 120R_CAN_TERM
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 120.0
+  RT_RS4851:
+    model: generic.analog.resistor
+    part_number: 120R_RS485_TERM
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 120.0
+
+nets:
+  5v_sys:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+    supply_current_limit_A: 2.0
+  3v3_logic:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 0.5
+  3v3_imu:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 0.05
+  gnd:
+    kind: ground
+  lrv_uart_tx_to_mcu_rx:
+    kind: digital_or_analog
+  lrv_uart_rx_from_mcu_tx:
+    kind: digital_or_analog
+  lrv_motion_en:
+    kind: digital_or_analog
+  motion_fault_irq:
+    kind: digital_or_analog
+  icm_spi_sck:
+    kind: digital_or_analog
+  icm_spi_mosi:
+    kind: digital_or_analog
+  icm_spi_miso:
+    kind: digital_or_analog
+  icm_spi_cs:
+    kind: digital_or_analog
+  icm_int1:
+    kind: digital_or_analog
+  robot_can_tx:
+    kind: digital_or_analog
+  robot_can_rx:
+    kind: digital_or_analog
+  robot_canh:
+    kind: digital_or_analog
+  robot_canl:
+    kind: digital_or_analog
+  rs485_servo_tx:
+    kind: digital_or_analog
+  rs485_servo_rx:
+    kind: digital_or_analog
+  rs485_servo_de:
+    kind: digital_or_analog
+  rs485_servo_a:
+    kind: digital_or_analog
+  rs485_servo_b:
+    kind: digital_or_analog

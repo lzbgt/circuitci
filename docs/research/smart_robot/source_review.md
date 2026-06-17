@@ -121,7 +121,9 @@ robot control-stack design pass.
   motion core, and wheel actuator boards separate for reuse and safety.
 - Do not draw the final KiCad/JLC schematic until each board has a passing
   CircuitCI logical schematic. This catches rail and I/O mistakes before CAD
-  symbol/footprint work.
+  symbol/footprint work. The first motion-core KiCad skeleton is now tracked in
+  `demos/smart_robot/kicad/motion_core/` and imports back through CircuitCI as a
+  connectivity artifact.
 - The first verifiable slice is
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,
