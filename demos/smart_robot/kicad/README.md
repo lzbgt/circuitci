@@ -39,3 +39,30 @@ validation scenarios, pre-layout placement contracts, or routed PCB evidence.
 Keep using `../circuitci/motion_core/project.yaml` for sign-off checks until
 the KiCad importer round-trips those fields or explicit overlay steps are
 added.
+
+## Wheel Actuator
+
+`wheel_actuator/root.kicad_sch` is the matching KiCad connectivity skeleton for
+the reusable left/right wheel actuator board. It uses local `CircuitCI:*`
+symbols for the motor-control MCU, DRV8323 gate driver, CAN transceiver and TVS,
+endpoint termination option, encoder/Hall input, preliminary CSD88599Q5DC
+three-phase bridge candidate, motor-load envelope, and JST VH actuator-bus
+connector.
+
+`wheel_actuator/circuitci.kicad-map.yaml` binds those schematic references and
+pins back to the source-backed models used by
+`../circuitci/wheel_actuator/project.yaml`.
+
+Import check:
+
+```sh
+circuitci import-kicad-schematic \
+  demos/smart_robot/kicad/wheel_actuator/root.kicad_sch \
+  --mapping demos/smart_robot/kicad/wheel_actuator/circuitci.kicad-map.yaml \
+  --output out/smart_robot_wheel_actuator_imported.project.yaml
+```
+
+As with the motion-core bridge, the imported Board IR proves connectivity and
+model binding only. It does not yet round-trip the motor-drive validation
+scenario, current/load budgets, connector-current policy, layout placement
+contracts, or routed PCB evidence.

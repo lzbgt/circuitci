@@ -1,0 +1,200 @@
+libraries:
+  - ../../../../libs/generic
+  - ../../../../libs/vendor/artery/mcus
+  - ../../../../libs/vendor/jst/connectors
+  - ../../../../libs/vendor/ti/can_transceivers
+  - ../../../../libs/vendor/ti/esd_protection
+  - ../../../../libs/vendor/ti/motor_drivers
+  - ../../circuitci/models
+
+components:
+  U1:
+    model: vendor.artery.at32m416_motor_control
+    part_number: AT32M416
+    pin_map:
+      VDD: VDD
+      GND: GND
+      CAN_TX: CAN_TX
+      CAN_RX: CAN_RX
+      PWM_UH: PWM_UH
+      PWM_UL: PWM_UL
+      PWM_VH: PWM_VH
+      PWM_VL: PWM_VL
+      PWM_WH: PWM_WH
+      PWM_WL: PWM_WL
+      DRV_EN: DRV_EN
+      DRV_NFAULT: DRV_NFAULT
+      DRV_SPI_SCK: DRV_SPI_SCK
+      DRV_SPI_MOSI: DRV_SPI_MOSI
+      DRV_SPI_MISO: DRV_SPI_MISO
+      DRV_SPI_CS: DRV_SPI_CS
+      CUR_U: CUR_U
+      CUR_V: CUR_V
+      CUR_W: CUR_W
+      ENC_A: ENC_A
+      ENC_B: ENC_B
+      ENC_Z: ENC_Z
+      ENABLE_IN: ENABLE_IN
+      FAULT_OUT: FAULT_OUT
+  U2:
+    model: vendor.ti.drv8323
+    part_number: DRV8323
+    pin_map:
+      VM: VM
+      DVDD: DVDD
+      GND: GND
+      INHA: INHA
+      INLA: INLA
+      INHB: INHB
+      INLB: INLB
+      INHC: INHC
+      INLC: INLC
+      ENABLE: ENABLE
+      NFAULT: NFAULT
+      SCLK: SCLK
+      SDI: SDI
+      SDO: SDO
+      NCS: NCS
+      SOA: SOA
+      SOB: SOB
+      SOC: SOC
+  U3:
+    model: vendor.ti.tcan3413
+    part_number: TCAN3413DR
+    pin_map:
+      VCC: VCC
+      VIO: VIO
+      GND: GND
+      TXD: TXD
+      RXD: RXD
+      STB: STB
+      CANH: CANH
+      CANL: CANL
+  UCAN_ESD1:
+    model: vendor.ti.esd2can24_q1
+    part_number: ESD2CAN24-Q1
+    pin_map:
+      CANH: CANH
+      CANL: CANL
+      GND: GND
+  RT_CAN1:
+    model: generic.analog.resistor
+    part_number: 120R_CAN_TERM_ENDPOINT_OPTION
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: resistor
+      value_ohm: 120.0
+  ENC1:
+    model: demo.smart_robot.encoder_hall_3v3
+    part_number: ENCODER_OR_HALL_3V3
+    pin_map:
+      VCC: VCC
+      GND: GND
+      A: A
+      B: B
+      Z: Z
+  PWR_STAGE:
+    model: demo.smart_robot.csd88599q5dc_3phase_bridge_budget
+    part_number: 3x_CSD88599Q5DC_PRELIMINARY
+    pin_map:
+      VM: VM
+      GND: GND
+      PHASE_U: PHASE_U
+      PHASE_V: PHASE_V
+      PHASE_W: PHASE_W
+  M1:
+    model: demo.smart_robot.wheel_motor_design_envelope
+    part_number: WHEEL_MOTOR_DESIGN_ENVELOPE
+    pin_map:
+      PHASE_U: PHASE_U
+      PHASE_V: PHASE_V
+      PHASE_W: PHASE_W
+  JACT1:
+    model: vendor.jst.vh_8pin_actuator_bus_header
+    part_number: B8P-VH_ACTUATOR_BUS
+    pin_map:
+      VBAT: VBAT
+      GND: GND
+      CANH: CANH
+      CANL: CANL
+      AUX_5V: AUX_5V
+      ENABLE: ENABLE
+      FAULT: FAULT
+      SYNC: SYNC
+
+nets:
+  vwheel_sw:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 8.0
+  3v3_logic:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 0.5
+  5v_aux:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+    supply_current_limit_A: 0.5
+  gnd:
+    kind: ground
+  wheel_can_tx:
+    kind: digital_or_analog
+  wheel_can_rx:
+    kind: digital_or_analog
+  robot_canh:
+    kind: digital_or_analog
+  robot_canl:
+    kind: digital_or_analog
+  drv_inha:
+    kind: digital_or_analog
+  drv_inla:
+    kind: digital_or_analog
+  drv_inhb:
+    kind: digital_or_analog
+  drv_inlb:
+    kind: digital_or_analog
+  drv_inhc:
+    kind: digital_or_analog
+  drv_inlc:
+    kind: digital_or_analog
+  drv_enable:
+    kind: digital_or_analog
+  drv_nfault:
+    kind: digital_or_analog
+  drv_spi_sck:
+    kind: digital_or_analog
+  drv_spi_mosi:
+    kind: digital_or_analog
+  drv_spi_miso:
+    kind: digital_or_analog
+  drv_spi_cs:
+    kind: digital_or_analog
+  cur_u:
+    kind: digital_or_analog
+  cur_v:
+    kind: digital_or_analog
+  cur_w:
+    kind: digital_or_analog
+  enc_a:
+    kind: digital_or_analog
+  enc_b:
+    kind: digital_or_analog
+  enc_z:
+    kind: digital_or_analog
+  enable_in:
+    kind: digital_or_analog
+  fault_out:
+    kind: digital_or_analog
+  sync_in:
+    kind: digital_or_analog
+  phase_u:
+    kind: digital_or_analog
+  phase_v:
+    kind: digital_or_analog
+  phase_w:
+    kind: digital_or_analog
