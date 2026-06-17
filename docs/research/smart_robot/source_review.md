@@ -175,7 +175,9 @@ robot control-stack design pass.
   source-backed selected switch models replace those placeholders. It also
   carries `POWER_SWITCH_BUDGET_VALID` gates so selected switches must declare
   current-limit, on-resistance, thermal-resistance, and junction-temperature
-  evidence before PMU sign-off can pass.
+  evidence before PMU sign-off can pass. Reverse-current and inrush gates now
+  also require selected-switch backfeed-blocking, soft-start/inrush-current,
+  and switched-capacitance evidence.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall

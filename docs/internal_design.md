@@ -155,9 +155,11 @@ connector rating parameters or a bound connector component model with
 `connector` metadata. The power-switch rule consumes the same load evidence and
 a bound `power_switch` component, then checks switched-rail connectivity,
 voltage rating, output-current rating, current-limit setting, and static
-conduction thermal budget. The cable current rule uses the same target load
-evidence, but requires explicit cable ratings or a bound cable assembly model
-with `cable_assembly` metadata.
+conduction thermal budget. The reverse-current and inrush rules use the same
+target/switch binding but require explicit backfeed-blocking and soft-start
+evidence before e-stop rails can be signed off. The cable current rule uses the
+same target load evidence, but requires explicit cable ratings or a bound cable
+assembly model with `cable_assembly` metadata.
 The cable thermal rule requires a declared temperature-rise test point and
 maximum allowed rise, then scales rise by I^2 from the test current.
 The cable voltage-drop rule requires declared loop resistance and an allowed

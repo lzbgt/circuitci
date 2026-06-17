@@ -128,6 +128,8 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
 - `POWER_SWITCH_BUDGET_VALID`
+- `POWER_SWITCH_REVERSE_CURRENT_VALID`
+- `POWER_SWITCH_INRUSH_VALID`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `LOAD_CABLE_VOLTAGE_DROP_VALID`
@@ -918,6 +920,18 @@ include `required_switch_current_A`, `switch_max_output_current_A`,
 `ambient_temperature_C`, `max_junction_temperature_C`,
 `max_junction_temperature_margin_C`, and
 `thermal_resistance_junction_to_ambient_C_per_W`.
+
+`POWER_SWITCH_REVERSE_CURRENT_VALID` reports are emitted by `load_budget`
+scenarios that require a selected switch to block e-stop rail backfeed. Stable
+measured keys include `reverse_current_blocking`, `switch_output_net`, and
+`load_net`. Stable limit keys include `reverse_current_blocking_required`.
+
+`POWER_SWITCH_INRUSH_VALID` reports are emitted by `load_budget` scenarios that
+declare a switched-rail soft-start/inrush screen. Stable measured keys include
+`load_component`, `load_net`, `load_voltage_V`, `switched_capacitance_F`,
+`soft_start_time_us`, and `estimated_inrush_current_A`. Stable limit keys
+include `required_inrush_current_A`, `switch_max_inrush_current_A`, and
+`min_inrush_current_margin_ratio`.
 
 `LOAD_CABLE_CURRENT_VALID` reports are emitted by `load_budget` scenarios that
 declare a cable assembly current screen. Stable measured keys include

@@ -86,6 +86,8 @@ pub(super) const MOTOR_CURRENT_SENSE_ACCURACY_VALID: &str = "MOTOR_CURRENT_SENSE
 pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
 pub(super) const POWER_SWITCH_BUDGET_VALID: &str = "POWER_SWITCH_BUDGET_VALID";
+pub(super) const POWER_SWITCH_REVERSE_CURRENT_VALID: &str = "POWER_SWITCH_REVERSE_CURRENT_VALID";
+pub(super) const POWER_SWITCH_INRUSH_VALID: &str = "POWER_SWITCH_INRUSH_VALID";
 pub(super) const LOAD_CABLE_CURRENT_VALID: &str = "LOAD_CABLE_CURRENT_VALID";
 pub(super) const LOAD_CABLE_THERMAL_DERATING_VALID: &str = "LOAD_CABLE_THERMAL_DERATING_VALID";
 pub(super) const LOAD_CABLE_VOLTAGE_DROP_VALID: &str = "LOAD_CABLE_VOLTAGE_DROP_VALID";
@@ -500,6 +502,16 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 }
                 POWER_SWITCH_BUDGET_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_power_switch_budget(bound, scenario, &mut findings)
+                }
+                POWER_SWITCH_REVERSE_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
+                    load_budget::validate_power_switch_reverse_current(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
+                POWER_SWITCH_INRUSH_VALID if scenario.scenario_type == "load_budget" => {
+                    load_budget::validate_power_switch_inrush(bound, scenario, &mut findings)
                 }
                 LOAD_CABLE_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_load_cable_current(bound, scenario, &mut findings)

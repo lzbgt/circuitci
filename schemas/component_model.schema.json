@@ -83,7 +83,10 @@
           "type": "number",
           "exclusiveMinimum": 0
         },
-        "max_junction_temperature_C": { "type": "number", "exclusiveMinimum": 0 }
+        "max_junction_temperature_C": { "type": "number", "exclusiveMinimum": 0 },
+        "reverse_current_blocking": { "type": "boolean" },
+        "max_inrush_current_A": { "type": "number", "exclusiveMinimum": 0 },
+        "soft_start_time_us": { "type": "number", "exclusiveMinimum": 0 }
       },
       "additionalProperties": false
     },

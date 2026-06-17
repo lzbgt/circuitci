@@ -315,7 +315,7 @@ CircuitCI currently models the PMU charger, 5 V buck, 3.3 V buck, and switched
 servo/wheel rails. The switched rails intentionally fail fabrication sign-off
 until the `U_SERVO_SW` and `U_WHEEL_SW` placeholders are replaced by
 source-backed high-current eFuse, load-switch, or MOSFET-driver parts with
-current-limit and static thermal evidence.
+current-limit, static thermal, reverse-current, and soft-start/inrush evidence.
 
 For USB-C PD negotiation, use either:
 
@@ -539,6 +539,9 @@ current, thermal, inrush, reverse-current, and SOA behavior.
 `POWER_SWITCH_BUDGET_VALID` also blocks sign-off until those selected models
 declare current-limit, on-resistance, package/board thermal resistance, and
 maximum junction-temperature data.
+Reverse-current and inrush gates additionally require explicit
+backfeed-blocking capability, soft-start/inrush-current limits, and
+switched-capacitance evidence.
 
 ## Wheel driver enable chain
 

@@ -5,7 +5,8 @@ use serde_json::json;
 
 use super::{
     LOAD_CABLE_CURRENT_VALID, LOAD_CABLE_THERMAL_DERATING_VALID, LOAD_CABLE_VOLTAGE_DROP_VALID,
-    LOAD_CONNECTOR_CURRENT_VALID, POWER_SWITCH_BUDGET_VALID,
+    LOAD_CONNECTOR_CURRENT_VALID, POWER_SWITCH_BUDGET_VALID, POWER_SWITCH_INRUSH_VALID,
+    POWER_SWITCH_REVERSE_CURRENT_VALID,
 };
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
@@ -735,6 +736,294 @@ pub(super) fn validate_power_switch_budget(
             "Select a lower-resistance switch or package with better thermal performance."
                 .to_string(),
             "Reduce switched rail current, improve copper area, or add measured thermal evidence."
+                .to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
+pub(super) fn validate_power_switch_reverse_current(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the switched load behind the power switch.",
+            findings,
+        );
+        return;
+    };
+    let Some(power_pin) = target.power_pin.as_deref() else {
+        missing_input(
+            scenario,
+            "target.power_pin",
+            "Set scenario.target.power_pin to the switched load supply pin.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing switched load component.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_net) = load_component.pins.get(power_pin) else {
+        missing_input(
+            scenario,
+            "target.power_pin.net",
+            "Connect the switched load power pin to the power switch output rail.",
+            findings,
+        );
+        return;
+    };
+    let Some((switch_component_id, switch_model)) =
+        power_switch_evidence(bound, scenario, findings)
+    else {
+        return;
+    };
+    let Some(power_switch) = switch_model.power_switch.as_ref() else {
+        missing_input(
+            scenario,
+            "switch_component.power_switch",
+            "Bind parameters.switch_component to a model with power_switch metadata.",
+            findings,
+        );
+        return;
+    };
+    let Some(switch_component) = bound.project.board.components.get(&switch_component_id) else {
+        missing_input(
+            scenario,
+            "switch_component",
+            "Set parameters.switch_component to an existing power-switch component.",
+            findings,
+        );
+        return;
+    };
+    let Some(output_net) = switch_component.pins.get(&power_switch.output_pin) else {
+        missing_input(
+            scenario,
+            "switch_component.output_pin",
+            "Connect the power switch output pin to the switched load rail.",
+            findings,
+        );
+        return;
+    };
+    if output_net != load_net {
+        let mut finding = Finding::critical(
+            POWER_SWITCH_REVERSE_CURRENT_VALID,
+            &scenario.name,
+            "Power switch output net does not feed the targeted switched load rail.",
+        );
+        finding.component = Some(switch_component_id.clone());
+        finding
+            .measured
+            .insert("switch_output_net".to_string(), json!(output_net));
+        finding
+            .measured
+            .insert("load_net".to_string(), json!(load_net));
+        finding.suggested_fixes = vec![
+            "Connect the selected switch output to the declared switched load rail.".to_string(),
+            "Point the scenario at the load behind this switch if the topology is intentional."
+                .to_string(),
+        ];
+        findings.push(finding);
+    }
+    let Some(reverse_current_required) =
+        optional_bool_parameter(scenario, "reverse_current_blocking_required", findings)
+    else {
+        return;
+    };
+    if !reverse_current_required {
+        return;
+    }
+    let Some(reverse_current_blocking) = power_switch.reverse_current_blocking else {
+        missing_input(
+            scenario,
+            "power_switch.reverse_current_blocking",
+            "Set power_switch.reverse_current_blocking from selected switch datasheet or measured reverse-current behavior.",
+            findings,
+        );
+        return;
+    };
+    if !reverse_current_blocking {
+        let mut finding = Finding::critical(
+            POWER_SWITCH_REVERSE_CURRENT_VALID,
+            &scenario.name,
+            "Selected switch does not declare reverse-current blocking for the e-stop switched rail.",
+        );
+        finding.component = Some(switch_component_id);
+        finding
+            .measured
+            .insert("reverse_current_blocking".to_string(), json!(false));
+        finding
+            .limit
+            .insert("reverse_current_blocking_required".to_string(), json!(true));
+        finding.suggested_fixes = vec![
+            "Select an eFuse/load switch with reverse-current blocking or add a validated back-to-back MOSFET path."
+                .to_string(),
+            "If backfeed is intentionally allowed, remove the reverse-current blocking requirement and validate the upstream energy path."
+                .to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
+pub(super) fn validate_power_switch_inrush(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the switched load behind the power switch.",
+            findings,
+        );
+        return;
+    };
+    let Some(power_pin) = target.power_pin.as_deref() else {
+        missing_input(
+            scenario,
+            "target.power_pin",
+            "Set scenario.target.power_pin to the switched load supply pin.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing switched load component.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_net) = load_component.pins.get(power_pin) else {
+        missing_input(
+            scenario,
+            "target.power_pin.net",
+            "Connect the switched load power pin to the power switch output rail.",
+            findings,
+        );
+        return;
+    };
+    let load_voltage_v = bound
+        .project
+        .board
+        .nets
+        .get(load_net)
+        .and_then(|net| net.nominal_voltage)
+        .unwrap_or(0.0);
+    if load_voltage_v <= 0.0 || !load_voltage_v.is_finite() {
+        missing_input(
+            scenario,
+            "target.power_pin.net.nominal_voltage",
+            "Set nominal_voltage on the switched load rail for inrush estimation.",
+            findings,
+        );
+        return;
+    }
+    let Some((switch_component_id, switch_model)) =
+        power_switch_evidence(bound, scenario, findings)
+    else {
+        return;
+    };
+    let Some(power_switch) = switch_model.power_switch.as_ref() else {
+        missing_input(
+            scenario,
+            "switch_component.power_switch",
+            "Bind parameters.switch_component to a model with power_switch metadata.",
+            findings,
+        );
+        return;
+    };
+    let Some(max_inrush_current_a) = positive_model_value(
+        scenario,
+        power_switch.max_inrush_current_a,
+        "power_switch.max_inrush_current_A",
+        "Set power_switch.max_inrush_current_A from selected switch soft-start/current-limit evidence.",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(soft_start_time_us) = positive_model_value(
+        scenario,
+        power_switch.soft_start_time_us,
+        "power_switch.soft_start_time_us",
+        "Set power_switch.soft_start_time_us from selected switch slew-rate or soft-start evidence.",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(switched_capacitance_f) =
+        parameter_value(scenario, "switched_capacitance_F", findings)
+    else {
+        return;
+    };
+    let Some(min_margin) = optional_margin(scenario, "min_inrush_current_margin_ratio", findings)
+    else {
+        return;
+    };
+
+    let estimated_inrush_current_a =
+        switched_capacitance_f * load_voltage_v / (soft_start_time_us * 1e-6);
+    let required_inrush_current_a = estimated_inrush_current_a * min_margin;
+    if required_inrush_current_a > max_inrush_current_a {
+        let mut finding = Finding::critical(
+            POWER_SWITCH_INRUSH_VALID,
+            &scenario.name,
+            format!(
+                "Estimated inrush current {:.6} A with {:.3}x margin exceeds {:.6} A switch limit.",
+                estimated_inrush_current_a, min_margin, max_inrush_current_a
+            ),
+        );
+        finding.component = Some(switch_component_id);
+        finding
+            .measured
+            .insert("load_component".to_string(), json!(target.component));
+        finding
+            .measured
+            .insert("load_net".to_string(), json!(load_net));
+        finding
+            .measured
+            .insert("load_voltage_V".to_string(), json!(load_voltage_v));
+        finding.measured.insert(
+            "switched_capacitance_F".to_string(),
+            json!(switched_capacitance_f),
+        );
+        finding
+            .measured
+            .insert("soft_start_time_us".to_string(), json!(soft_start_time_us));
+        finding.measured.insert(
+            "estimated_inrush_current_A".to_string(),
+            json!(estimated_inrush_current_a),
+        );
+        finding.limit.insert(
+            "required_inrush_current_A".to_string(),
+            json!(required_inrush_current_a),
+        );
+        finding.limit.insert(
+            "switch_max_inrush_current_A".to_string(),
+            json!(max_inrush_current_a),
+        );
+        finding.limit.insert(
+            "min_inrush_current_margin_ratio".to_string(),
+            json!(min_margin),
+        );
+        finding.suggested_fixes = vec![
+            "Select a switch with a higher soft-start/inrush current rating.".to_string(),
+            "Increase soft-start time, reduce switched capacitance, or split the switched rail."
+                .to_string(),
+            "Validate turn-on waveform and upstream rail droop with measurement or transient simulation."
                 .to_string(),
         ];
         findings.push(finding);
@@ -1544,6 +1833,39 @@ fn optional_nonnegative_parameter(
         );
         None
     }
+}
+
+fn optional_bool_parameter(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<bool> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        return Some(true);
+    };
+    let Some(value) = raw.as_bool() else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set load_budget parameters.{name} to a boolean."),
+            findings,
+        );
+        return None;
+    };
+    Some(value)
+}
+
+fn parameter_value(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<f64> {
+    let Some(raw) = scenario.parameters.get(name) else {
+        missing_input(
+            scenario,
+            name,
+            &format!("Set load_budget parameters.{name} to a finite value greater than zero."),
+            findings,
+        );
+        return None;
+    };
+    positive_parameter(scenario, name, raw, findings)
 }
 
 fn positive_parameter(

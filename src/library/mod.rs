@@ -102,6 +102,12 @@ pub struct PowerSwitch {
     pub thermal_resistance_junction_to_ambient_c_per_w: Option<f64>,
     #[serde(default, rename = "max_junction_temperature_C")]
     pub max_junction_temperature_c: Option<f64>,
+    #[serde(default)]
+    pub reverse_current_blocking: Option<bool>,
+    #[serde(default, rename = "max_inrush_current_A")]
+    pub max_inrush_current_a: Option<f64>,
+    #[serde(default, rename = "soft_start_time_us")]
+    pub soft_start_time_us: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

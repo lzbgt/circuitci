@@ -281,6 +281,9 @@ power_switch:
   on_resistance_ohm: 0.050
   thermal_resistance_junction_to_ambient_C_per_W: 80.0
   max_junction_temperature_C: 150.0
+  reverse_current_blocking: true
+  max_inrush_current_A: 1.0
+  soft_start_time_us: 1000.0
 ```
 
 - `input_pin` and `output_pin` must name distinct `electrical_power` model
@@ -299,6 +302,11 @@ power_switch:
   `thermal_resistance_junction_to_ambient_C_per_W`, and
   `max_junction_temperature_C` are used by `POWER_SWITCH_BUDGET_VALID` for
   selected eFuse/load-switch/MOSFET-path sign-off gates.
+- `reverse_current_blocking` is used by
+  `POWER_SWITCH_REVERSE_CURRENT_VALID`.
+- `max_inrush_current_A` and `soft_start_time_us` are used by
+  `POWER_SWITCH_INRUSH_VALID` together with scenario-declared switched
+  capacitance.
 
 This is a static topology and conduction-budget check. It does not sign off
 inrush, turn-on ramp, reverse current, switch SOA, current-limit waveform,

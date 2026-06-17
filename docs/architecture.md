@@ -144,8 +144,11 @@ an explicit connector rating or a connector component model with `connector`
 metadata. `POWER_SWITCH_BUDGET_VALID` applies the same load evidence to a
 selected `power_switch` component and checks output-current rating,
 current-limit setting, pin voltage ratings, and a static conduction thermal
-budget. `LOAD_CABLE_CURRENT_VALID` applies the same current evidence to
-explicit cable ratings or `cable_assembly` metadata.
+budget. `POWER_SWITCH_REVERSE_CURRENT_VALID` and
+`POWER_SWITCH_INRUSH_VALID` add explicit selected-switch gates for e-stop
+backfeed and capacitive turn-on evidence. `LOAD_CABLE_CURRENT_VALID` applies
+the same current evidence to explicit cable ratings or `cable_assembly`
+metadata.
 `LOAD_CABLE_THERMAL_DERATING_VALID` estimates cable temperature rise by I^2
 scaling from explicit harness test evidence. `LOAD_CABLE_VOLTAGE_DROP_VALID`
 estimates DC harness voltage drop and power loss from explicit loop-resistance

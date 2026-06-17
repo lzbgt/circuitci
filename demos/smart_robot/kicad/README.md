@@ -106,7 +106,8 @@ so imported PMU schematics fail fabrication sign-off until those rail switches
 are replaced by source-backed selected high-current parts. It also preserves
 the `POWER_SWITCH_BUDGET_VALID` gates for the servo and wheel switched rails,
 so imported schematics cannot bypass current-limit and static thermal evidence
-requirements.
+requirements. Reverse-current and inrush gates are also preserved for both
+switched rails.
 
 Import check:
 

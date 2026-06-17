@@ -120,6 +120,8 @@ Canonical executable check IDs:
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
 - `POWER_SWITCH_BUDGET_VALID`
+- `POWER_SWITCH_REVERSE_CURRENT_VALID`
+- `POWER_SWITCH_INRUSH_VALID`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `LOAD_CABLE_VOLTAGE_DROP_VALID`
@@ -2232,8 +2234,9 @@ jitter, calibration implementation, thermal drift, or firmware filtering.
 ## Load Budget Scenario Shape
 
 `load_budget` scenarios validate explicit load-to-connector current,
-load-to-switch current/thermal budget, cable current, cable temperature-rise,
-cable voltage-drop/power-loss, and optional voltage budgets. They are
+load-to-switch current/thermal/inrush/reverse-current budget, cable current,
+cable temperature-rise, cable voltage-drop/power-loss, and optional voltage
+budgets. They are
 deterministic schematic-budget checks for payload connectors and harness
 interfaces, not crimp-process, bundle-derating, flex-life, or transient-load
 sign-off.
@@ -2300,6 +2303,21 @@ findings. This rule catches using a placeholder e-stop policy box where a real
 eFuse, load switch, or MOSFET path is required. It does not model turn-on ramp,
 inrush energy, short-circuit waveform, reverse current, repeated surge, or PCB
 copper temperature.
+
+`POWER_SWITCH_REVERSE_CURRENT_VALID` checks that a selected switch model
+declares `power_switch.reverse_current_blocking: true` when
+`reverse_current_blocking_required` is true or omitted. Missing selected-switch
+reverse-current data produces a critical `VALIDATION_INPUT_MISSING` finding.
+This is a static capability gate for e-stop rails and does not prove the
+reverse-current transient waveform or upstream energy absorption.
+
+`POWER_SWITCH_INRUSH_VALID` estimates first-order capacitive turn-on current as
+`switched_capacitance_F * rail_voltage / soft_start_time`. It requires
+`power_switch.max_inrush_current_A`, `power_switch.soft_start_time_us`, and
+`parameters.switched_capacitance_F`; `min_inrush_current_margin_ratio` is
+optional and defaults to `1.0`. This is a deterministic soft-start budget gate,
+not a substitute for measured turn-on waveform, upstream droop, eFuse fault
+response, or thermal pulse validation.
 
 ## Firmware Update Scenario Shape
 

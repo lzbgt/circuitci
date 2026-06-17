@@ -39,6 +39,9 @@ layout sign-off.
 - `POWER_SWITCH_BUDGET_VALID` gates for those two switched rails. They
   intentionally fail closed on missing selected switch current-limit,
   on-resistance, thermal-resistance, and junction-temperature evidence.
+- `POWER_SWITCH_REVERSE_CURRENT_VALID` and `POWER_SWITCH_INRUSH_VALID` gates,
+  which intentionally fail closed until selected switches declare backfeed
+  blocking, soft-start/inrush current, and switched-capacitance evidence.
 
 `wheel_actuator/project.yaml` models the reusable left/right wheel actuator
 board:
@@ -137,15 +140,16 @@ Expected result:
 
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_pmu_v0: fail (critical=4, warning=0, info=0)
+CircuitCI smart_robot_pmu_v0: fail (critical=8, warning=0, info=0)
 CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
 The PMU failure is expected until `U_SERVO_SW` and `U_WHEEL_SW` are replaced
 by source-backed selected high-current eFuse, load-switch, or MOSFET-driver
-evidence with current-limit and static thermal metadata. The lower level
-BQ25798, TPS54331, TPS62162, and power-tree checks should still remain clean.
+evidence with current-limit, static thermal, reverse-current, soft-start, and
+switched-capacitance metadata. The lower level BQ25798, TPS54331, TPS62162,
+and power-tree checks should still remain clean.
 
 The wheel actuator failure is expected until `M1`, `REGEN1`, and the
 actuator-bus cable assembly are replaced by source-backed selected components,
@@ -163,9 +167,9 @@ clean.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety. The current
   PMU slice blocks sign-off on selected switch evidence and static switch
-  current/thermal metadata, but does not yet validate selected switch inrush,
-  SOA, reverse current, current-limit transient waveform, or PCB copper
-  temperature.
+  current/thermal/reverse-current/inrush metadata, but does not yet validate
+  selected switch SOA, current-limit transient waveform, upstream rail droop,
+  or PCB copper temperature.
 - Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
   curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable

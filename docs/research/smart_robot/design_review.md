@@ -106,6 +106,9 @@ should encode:
   placeholders intentionally fail closed because they have no selected
   current-limit, on-resistance, thermal-resistance, or junction-temperature
   evidence.
+- Blocking reverse-current and inrush gates on both switched rails. These
+  intentionally fail closed until selected switches declare backfeed blocking,
+  soft-start/inrush current, and switched-capacitance evidence.
 
 The placeholder e-stop switches are not fabrication-ready components. The PMU
 report intentionally fails until they are replaced with source-backed

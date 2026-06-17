@@ -187,6 +187,34 @@ fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
         }),
         "PMU must fail sign-off until the wheel switch current-limit evidence is selected: {missing_inputs:#?}"
     );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_servo_switch_reverse_current"
+                && finding["limit"]["required_input"] == "power_switch.reverse_current_blocking"
+        }),
+        "PMU must fail sign-off until the servo switch reverse-current evidence is selected: {missing_inputs:#?}"
+    );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_wheel_switch_reverse_current"
+                && finding["limit"]["required_input"] == "power_switch.reverse_current_blocking"
+        }),
+        "PMU must fail sign-off until the wheel switch reverse-current evidence is selected: {missing_inputs:#?}"
+    );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_servo_switch_inrush"
+                && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
+        }),
+        "PMU must fail sign-off until the servo switch inrush evidence is selected: {missing_inputs:#?}"
+    );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_wheel_switch_inrush"
+                && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
+        }),
+        "PMU must fail sign-off until the wheel switch inrush evidence is selected: {missing_inputs:#?}"
+    );
 }
 
 #[test]
@@ -209,6 +237,18 @@ fn smart_robot_pmu_switch_budget_passes_with_source_backed_switches() {
             .into_iter()
             .any(|finding| finding["severity"] == "critical"),
         "source-backed PMU switch evidence should clear switch budget checks: {report:#?}"
+    );
+    assert!(
+        !findings_with_id(&report, "POWER_SWITCH_REVERSE_CURRENT_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "source-backed PMU switch evidence should clear reverse-current checks: {report:#?}"
+    );
+    assert!(
+        !findings_with_id(&report, "POWER_SWITCH_INRUSH_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "source-backed PMU switch evidence should clear inrush checks: {report:#?}"
     );
     assert!(
         !findings_with_id(&report, "MODEL_QUALITY_REQUIRED")
@@ -1065,6 +1105,9 @@ fn pmu_project_with_source_backed_switch_model() -> (tempfile::TempDir, std::pat
     switch_model["power_switch"]["thermal_resistance_junction_to_ambient_C_per_W"] =
         YamlValue::Number(40.0.into());
     switch_model["power_switch"]["max_junction_temperature_C"] = YamlValue::Number(150.0.into());
+    switch_model["power_switch"]["reverse_current_blocking"] = YamlValue::Bool(true);
+    switch_model["power_switch"]["max_inrush_current_A"] = YamlValue::Number(20.0.into());
+    switch_model["power_switch"]["soft_start_time_us"] = YamlValue::Number(2000.0.into());
     switch_model["model_quality"]["source"] = YamlValue::String("datasheet".to_string());
     switch_model["model_quality"]["confidence"] = YamlValue::String("medium".to_string());
     std::fs::write(
@@ -1081,6 +1124,14 @@ fn pmu_project_with_source_backed_switch_model() -> (tempfile::TempDir, std::pat
         .replace(
             "demo.smart_robot.estop_power_switch_policy",
             "demo.smart_robot.test_source_backed_estop_switch",
+        )
+        .replace(
+            "switch_component: U_SERVO_SW\n      min_inrush_current_margin_ratio: 1.2",
+            "switch_component: U_SERVO_SW\n      switched_capacitance_F: 0.001\n      min_inrush_current_margin_ratio: 1.2",
+        )
+        .replace(
+            "switch_component: U_WHEEL_SW\n      min_inrush_current_margin_ratio: 1.2",
+            "switch_component: U_WHEEL_SW\n      switched_capacitance_F: 0.001\n      min_inrush_current_margin_ratio: 1.2",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();
