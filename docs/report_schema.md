@@ -119,6 +119,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `MOTOR_BRIDGE_BUDGET_VALID`
+- `MOTOR_LOAD_SUPPLY_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
 - `MOTOR_BRIDGE_SWITCHING_VALID`
 - `MOTOR_BRIDGE_SOA_VALID`
@@ -811,6 +812,12 @@ limit keys include `bridge_reference_current_A`,
 `bridge_device_current_class_A`, `motor_phase_peak_current_A`,
 `motor_connector_current_rating_A`, `phase_shunt_power_rating_W`,
 `min_shunt_power_margin_ratio`, and `max_shunt_sense_voltage_V`.
+
+`MOTOR_LOAD_SUPPLY_VALID` reports are emitted by `motor_drive` scenarios that
+compare a declared motor bus voltage window against selected motor supply
+evidence. Stable measured keys include `bus_voltage_min_V` and
+`bus_voltage_max_V`. Stable limit keys include
+`motor_supply_voltage_min_V` and `motor_supply_voltage_max_V`.
 
 `MOTOR_BRIDGE_LOSS_THERMAL_VALID` reports are emitted by `motor_drive`
 scenarios that declare source-backed bridge loss/rating metadata and explicit

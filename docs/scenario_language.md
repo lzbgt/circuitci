@@ -111,6 +111,7 @@ Canonical executable check IDs:
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
+- `MOTOR_LOAD_SUPPLY_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
 - `MOTOR_BRIDGE_SWITCHING_VALID`
 - `MOTOR_BRIDGE_SOA_VALID`
@@ -1883,6 +1884,31 @@ scenarios:
       dead_time_ns: 200.0
       pwm_frequency_Hz: 20000.0
 ```
+
+`MOTOR_LOAD_SUPPLY_VALID` checks that the selected motor supply envelope covers
+the declared motor bus voltage window:
+
+```yaml
+scenarios:
+  - name: wheel_motor_supply_voltage
+    type: motor_drive
+    checks:
+      - MOTOR_LOAD_SUPPLY_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_min_V: 6.0
+      bus_voltage_max_V: 12.6
+```
+
+The motor supply range may be explicit scenario parameters
+`motor_supply_voltage_min_V` and `motor_supply_voltage_max_V`, or model-derived
+from `parameters.motor_component` bound to `motor_load.supply_voltage_min_V`
+and `motor_load.supply_voltage_max_V`. Scenario values override model values
+for what-if checks. Missing or inverted ranges fail closed with
+`VALIDATION_INPUT_MISSING`. This rule only checks static supply compatibility;
+it does not prove torque, speed, stall, thermal, or control-loop behavior.
 
 `MOTOR_BRIDGE_BUDGET_VALID` checks:
 

@@ -145,10 +145,14 @@ left/right reusable wheel controller pass:
 - A separate actuator-bus cable voltage-drop gate is declared. The selected
   first-pass harness now clears this drop gate with source-backed
   loop-resistance evidence.
-- `M1` motor-load design envelope feeding the first-pass bridge budget:
-  10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
-  with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
-  200 ns dead time, and 20 kHz PWM.
+- `M1` motor-load design envelope feeding the first-pass motor-drive checks:
+  6.0 V to 12.6 V supply window, 10 A phase peak, 6 A phase RMS,
+  6 A regeneration, 5 mohm / 1 W phase shunts with 2x power margin,
+  8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
+  20 kHz PWM.
+- `MOTOR_LOAD_SUPPLY_VALID` checks the declared 6.0 V to 12.6 V wheel bus
+  window against the motor-load supply envelope. This blocks a future selected
+  motor whose datasheet voltage range does not cover the actual wheel bus.
 - `M1` is still a generic low-confidence design envelope, not selected motor
   evidence. The wheel validation report is expected to retain the non-blocking
   `LOW_CONFIDENCE_MODEL` limitation for

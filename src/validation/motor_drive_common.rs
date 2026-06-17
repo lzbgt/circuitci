@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::{
     MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_CURRENT_SENSE_ACCURACY_VALID,
-    MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_REGEN_CLAMP_VALID,
+    MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_LOAD_SUPPLY_VALID, MOTOR_REGEN_CLAMP_VALID,
 };
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
@@ -586,6 +586,35 @@ pub(super) fn bridge_loss_finding(
         &scenario.name,
         comparison.message,
     );
+    finding.component = Some(component.to_string());
+    finding.measured.insert(
+        comparison.measured_name.to_string(),
+        json!(comparison.measured),
+    );
+    finding
+        .limit
+        .insert(comparison.limit_name.to_string(), json!(comparison.limit));
+    finding.suggested_fixes = vec![comparison.fix.to_string()];
+    findings.push(finding);
+}
+
+pub(super) struct MotorSupplyComparison<'a> {
+    pub(super) measured_name: &'a str,
+    pub(super) limit_name: &'a str,
+    pub(super) measured: f64,
+    pub(super) limit: f64,
+    pub(super) message: &'a str,
+    pub(super) fix: &'a str,
+}
+
+pub(super) fn motor_supply_finding(
+    scenario: &Scenario,
+    component: &str,
+    comparison: MotorSupplyComparison<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding =
+        Finding::critical(MOTOR_LOAD_SUPPLY_VALID, &scenario.name, comparison.message);
     finding.component = Some(component.to_string());
     finding.measured.insert(
         comparison.measured_name.to_string(),

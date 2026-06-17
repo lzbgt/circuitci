@@ -32,10 +32,13 @@ budget screen. It also runs a first-pass CSD88599Q5DC switching screen from
 source-backed gate charge/rise/fall timing, plus a static shunt/gain/ADC
 current-sense accuracy screen. `MOTOR_BRIDGE_SOA_VALID` is also declared and
 uses TI Figure 4-3 as a typical system SOA curve, screening 115 C board
-temperature, 10 A phase-peak current, and 2x current margin. These checks are
-not final measured switching waveform, PWM sampling, repeated-pulse regen, or
-selected amplifier sign-off. The logical wheel model now also includes
-a blocking `MODEL_QUALITY_REQUIRED` gate for `M1`, plus a
+temperature, 10 A phase-peak current, and 2x current margin.
+`MOTOR_LOAD_SUPPLY_VALID` checks the 6.0 V to 12.6 V wheel bus window against
+the motor-load model so a future wrong-voltage motor selection cannot pass
+sign-off by only satisfying current budgets. These checks are not final
+measured switching waveform, PWM sampling, repeated-pulse regen, or selected
+amplifier sign-off. The logical wheel model now also includes a blocking
+`MODEL_QUALITY_REQUIRED` gate for `M1`, plus a
 `LOAD_CABLE_CURRENT_VALID` gate and `LOAD_CABLE_THERMAL_DERATING_VALID` gate
 and `LOAD_CABLE_VOLTAGE_DROP_VALID` gate for actuator-bus harness evidence.
 The selected Vishay RH100 1 ohm / 100 W resistor closes the first-pass regen

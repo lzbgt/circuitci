@@ -12,6 +12,9 @@ ports:
     kind: passive
     required: true
 motor_load:
+  supply_voltage_min_V: 6.0
+  supply_voltage_nominal_V: 12.0
+  supply_voltage_max_V: 12.6
   phase_peak_current_A: 10.0
   phase_rms_current_A: 6.0
   max_regen_current_A: 6.0

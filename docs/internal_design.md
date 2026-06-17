@@ -106,13 +106,15 @@ add fail-closed importer coverage before adding an approximation.
 ## Motor Drive Budgets
 
 `src/validation/motor_drive.rs` owns deterministic first-pass motor-drive
-validator entry points: bridge budget, bridge loss/thermal, regen clamp,
-route-current, current-sense placement, and current-sense accuracy.
+validator entry points: motor supply voltage, bridge budget,
+bridge loss/thermal, regen clamp, route-current, current-sense placement, and
+current-sense accuracy.
 `src/validation/motor_drive_common.rs` owns shared parameter parsing,
 motor-load evidence resolution, route/placement geometry helpers, and common
-finding builders. The bridge-budget rule consumes explicit scenario parameters
-and optional `parameters.motor_component` evidence from a bound component model
-with `motor_load`; it does not infer motor behavior from topology.
+finding builders. `MOTOR_LOAD_SUPPLY_VALID` and the bridge-budget rule consume
+explicit scenario parameters and optional `parameters.motor_component` evidence
+from a bound component model with `motor_load`; they do not infer motor
+behavior from topology.
 `MOTOR_REGEN_CLAMP_VALID` similarly accepts explicit scenario current/energy
 ratings for what-if studies or `parameters.clamp_component` evidence from a
 bound component model with `regen_absorber`. Required current, connector,

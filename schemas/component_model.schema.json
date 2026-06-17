@@ -286,6 +286,9 @@
     "motor_load": {
       "type": "object",
       "properties": {
+        "supply_voltage_min_V": { "type": "number", "minimum": 0 },
+        "supply_voltage_max_V": { "type": "number", "exclusiveMinimum": 0 },
+        "supply_voltage_nominal_V": { "type": "number", "exclusiveMinimum": 0 },
         "phase_peak_current_A": { "type": "number", "exclusiveMinimum": 0 },
         "phase_rms_current_A": { "type": "number", "exclusiveMinimum": 0 },
         "max_regen_current_A": { "type": "number", "minimum": 0 },

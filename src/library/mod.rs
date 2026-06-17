@@ -327,6 +327,12 @@ pub struct Crystal {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct MotorLoad {
+    #[serde(default, rename = "supply_voltage_min_V")]
+    pub supply_voltage_min_v: Option<f64>,
+    #[serde(default, rename = "supply_voltage_max_V")]
+    pub supply_voltage_max_v: Option<f64>,
+    #[serde(default, rename = "supply_voltage_nominal_V")]
+    pub supply_voltage_nominal_v: Option<f64>,
     #[serde(default, rename = "phase_peak_current_A")]
     pub phase_peak_current_a: Option<f64>,
     #[serde(default, rename = "phase_rms_current_A")]

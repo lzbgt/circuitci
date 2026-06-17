@@ -263,6 +263,99 @@ pub(super) fn validate_motor_bridge_budget(
     }
 }
 
+pub(super) fn validate_motor_load_supply(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(bus_voltage_min_v) = required_non_negative(scenario, "bus_voltage_min_V", findings)
+    else {
+        return;
+    };
+    let Some(bus_voltage_max_v) = required_positive(scenario, "bus_voltage_max_V", findings) else {
+        return;
+    };
+    let Some(motor_supply_min_v) = required_non_negative_with_fallback(
+        scenario,
+        "motor_supply_voltage_min_V",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.supply_voltage_min_v),
+        "motor_load.supply_voltage_min_V",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(motor_supply_max_v) = required_positive_with_fallback(
+        scenario,
+        "motor_supply_voltage_max_V",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.supply_voltage_max_v),
+        "motor_load.supply_voltage_max_V",
+        findings,
+    ) else {
+        return;
+    };
+
+    if bus_voltage_min_v > bus_voltage_max_v {
+        missing_input(
+            scenario,
+            "bus_voltage_min_V",
+            "Set bus_voltage_min_V less than or equal to bus_voltage_max_V.",
+            findings,
+        );
+        return;
+    }
+    if motor_supply_min_v > motor_supply_max_v {
+        missing_input(
+            scenario,
+            "motor_load.supply_voltage_min_V",
+            "Set motor supply minimum voltage less than or equal to motor supply maximum voltage.",
+            findings,
+        );
+        return;
+    }
+
+    if bus_voltage_min_v < motor_supply_min_v {
+        motor_supply_finding(
+            scenario,
+            motor_load
+                .as_ref()
+                .map(|evidence| evidence.component_id.as_str())
+                .unwrap_or("motor"),
+            MotorSupplyComparison {
+                measured_name: "bus_voltage_min_V",
+                limit_name: "motor_supply_voltage_min_V",
+                measured: bus_voltage_min_v,
+                limit: motor_supply_min_v,
+                message: "Wheel bus minimum voltage is below the selected motor supply range.",
+                fix: "Select a motor specified for the battery range, raise the minimum wheel bus voltage, or add measured low-voltage torque/current evidence.",
+            },
+            findings,
+        );
+    }
+    if bus_voltage_max_v > motor_supply_max_v {
+        motor_supply_finding(
+            scenario,
+            motor_load
+                .as_ref()
+                .map(|evidence| evidence.component_id.as_str())
+                .unwrap_or("motor"),
+            MotorSupplyComparison {
+                measured_name: "bus_voltage_max_V",
+                limit_name: "motor_supply_voltage_max_V",
+                measured: bus_voltage_max_v,
+                limit: motor_supply_max_v,
+                message: "Wheel bus maximum voltage exceeds the selected motor supply range.",
+                fix: "Select a motor with adequate voltage rating, lower the wheel bus voltage, or add a separate motor-drive rail within the motor rating.",
+            },
+            findings,
+        );
+    }
+}
+
 pub(super) fn validate_motor_bridge_loss_thermal(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,

@@ -109,15 +109,20 @@ Motor and actuator load-envelope models can declare current evidence used by
 
 ```yaml
 motor_load:
+  supply_voltage_min_V: 6.0
+  supply_voltage_nominal_V: 12.0
+  supply_voltage_max_V: 12.6
   phase_peak_current_A: 10.0
   phase_rms_current_A: 6.0
   max_regen_current_A: 6.0
   source: docs/research/smart_robot/design_review.md
 ```
 
-These fields are load-budget evidence, not a dynamic motor model. Use
-datasheet- or measurement-backed values for a selected motor before treating
-the actuator bridge as fabrication-ready.
+These fields are load-budget evidence, not a dynamic motor model. Supply
+voltage fields bound the motor's allowed bus range for
+`MOTOR_LOAD_SUPPLY_VALID`; current fields feed bridge, route, current-sense,
+SOA, and regeneration screens. Use datasheet- or measurement-backed values for
+a selected motor before treating the actuator bridge as fabrication-ready.
 
 Regeneration clamp or absorber models can declare first-pass single-event
 current and energy evidence used by `MOTOR_REGEN_CLAMP_VALID`:

@@ -17,6 +17,12 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         "wheel actuator bridge budget should pass: {report:#?}"
     );
     assert!(
+        !findings_with_id(&report, "MOTOR_LOAD_SUPPLY_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "wheel actuator motor supply voltage budget should pass: {report:#?}"
+    );
+    assert!(
         report["limitations"]
             .as_array()
             .unwrap()
@@ -788,6 +794,37 @@ fn smart_robot_wheel_bridge_budget_fails_undersized_shunt() {
 }
 
 #[test]
+fn smart_robot_wheel_motor_supply_fails_overvoltage_bus() {
+    let (dir, project) = wheel_actuator_project_with_low_motor_supply_max();
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let supply_findings = findings_with_id(&report, "MOTOR_LOAD_SUPPLY_VALID");
+    assert!(
+        supply_findings.iter().any(|finding| {
+            finding["component"] == "M1"
+                && finding["measured"]["bus_voltage_max_V"] == 12.6
+                && finding["limit"]["motor_supply_voltage_max_V"] == 8.0
+        }),
+        "expected motor supply overvoltage failure, got {supply_findings:#?}"
+    );
+}
+
+#[test]
 fn smart_robot_wheel_bridge_loss_thermal_fails_low_board_budget() {
     let (dir, project) = mutated_wheel_actuator_project(
         "max_total_bridge_loss_W: 2.0",
@@ -1294,6 +1331,41 @@ fn wheel_actuator_project_with_low_regen_absorber_energy() -> (tempfile::TempDir
         .replace(
             "demo.smart_robot.vishay_rh100_1r0_regen_absorber",
             "demo.smart_robot.test_low_energy_regen_absorber",
+        );
+    let project = dir.path().join("project.yaml");
+    std::fs::write(&project, source).unwrap();
+    (dir, project)
+}
+
+fn wheel_actuator_project_with_low_motor_supply_max() -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+    let mut model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/wheel_motor_design_envelope.model.yaml",
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    model["component_id"] =
+        YamlValue::String("demo.smart_robot.test_low_voltage_wheel_motor".to_string());
+    model["motor_load"]["supply_voltage_max_V"] = YamlValue::Number(8.0.into());
+    std::fs::write(
+        model_dir.join("test_low_voltage_wheel_motor.model.yaml"),
+        serde_yaml_ng::to_string(&model).unwrap(),
+    )
+    .unwrap();
+
+    let source = wheel_actuator_project_source()
+        .replace(
+            "libraries:\n",
+            &format!("libraries:\n  - {}\n", model_dir.to_string_lossy()),
+        )
+        .replace(
+            "demo.smart_robot.wheel_motor_design_envelope",
+            "demo.smart_robot.test_low_voltage_wheel_motor",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();

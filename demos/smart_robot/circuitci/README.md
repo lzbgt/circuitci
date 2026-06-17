@@ -53,10 +53,12 @@ board:
 - First-pass CAN TVS and termination route-placement contracts from explicit
   layout evidence.
 - Preliminary 3x CSD88599Q5DC half-bridge wheel power-stage budget.
-- `M1` motor-load design envelope feeding the bridge budget: 10 A phase peak,
-  6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
-  8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
-  20 kHz PWM.
+- `M1` motor-load design envelope feeding the motor-drive checks: 6.0 V to
+  12.6 V supply window, 10 A phase peak, 6 A phase RMS, 6 A regeneration,
+  5 mohm / 1 W phase shunts, 8 A motor connector rating, 10 ohm gate
+  resistors, 200 ns dead time, and 20 kHz PWM.
+- `MOTOR_LOAD_SUPPLY_VALID` first-pass supply compatibility screening for the
+  6.0 V to 12.6 V wheel bus against the selected motor envelope.
 - `M1` intentionally remains a generic low-confidence model. Validation reports
   must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a

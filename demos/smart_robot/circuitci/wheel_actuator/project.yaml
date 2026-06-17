@@ -365,6 +365,16 @@ scenarios:
       components: [M1]
       allowed_sources: [datasheet, measured]
       min_confidence: medium
+  - name: wheel_actuator_motor_supply_voltage
+    type: motor_drive
+    checks:
+      - MOTOR_LOAD_SUPPLY_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      bus_voltage_min_V: 6.0
+      bus_voltage_max_V: 12.6
   - name: wheel_actuator_bridge_budget
     type: motor_drive
     checks:

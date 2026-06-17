@@ -81,6 +81,7 @@ pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
 pub(super) const MOTOR_BRIDGE_SWITCHING_VALID: &str = "MOTOR_BRIDGE_SWITCHING_VALID";
 pub(super) const MOTOR_BRIDGE_SOA_VALID: &str = "MOTOR_BRIDGE_SOA_VALID";
+pub(super) const MOTOR_LOAD_SUPPLY_VALID: &str = "MOTOR_LOAD_SUPPLY_VALID";
 pub(super) const MOTOR_REGEN_CLAMP_VALID: &str = "MOTOR_REGEN_CLAMP_VALID";
 pub(super) const MOTOR_ROUTE_CURRENT_VALID: &str = "MOTOR_ROUTE_CURRENT_VALID";
 pub(super) const MOTOR_CURRENT_SENSE_ACCURACY_VALID: &str = "MOTOR_CURRENT_SENSE_ACCURACY_VALID";
@@ -478,6 +479,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 MOTOR_BRIDGE_SOA_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_soa(bound, scenario, &mut findings)
                 }
+                MOTOR_LOAD_SUPPLY_VALID if scenario.scenario_type == "motor_drive" => {
+                    motor_drive::validate_motor_load_supply(bound, scenario, &mut findings)
+                }
                 MOTOR_REGEN_CLAMP_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_regen_clamp(bound, scenario, &mut findings)
                 }
@@ -584,6 +588,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
                 | MOTOR_BRIDGE_SWITCHING_VALID
                 | MOTOR_BRIDGE_SOA_VALID
+                | MOTOR_LOAD_SUPPLY_VALID
                 | MOTOR_REGEN_CLAMP_VALID
                 | MOTOR_ROUTE_CURRENT_VALID
                 | MOTOR_CURRENT_SENSE_ACCURACY_VALID

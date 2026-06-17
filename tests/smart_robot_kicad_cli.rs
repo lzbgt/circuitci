@@ -179,6 +179,20 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
             .unwrap()
             .iter()
             .any(|scenario| {
+                scenario["name"] == "wheel_actuator_motor_supply_voltage"
+                    && scenario["checks"][0] == "MOTOR_LOAD_SUPPLY_VALID"
+                    && scenario["target"]["component"] == "PWR_STAGE"
+                    && scenario["parameters"]["motor_component"] == "M1"
+                    && scenario["parameters"]["bus_voltage_max_V"] == 12.6
+            }),
+        "wheel KiCad import should preserve the motor supply-voltage gate: {imported:#?}"
+    );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
                 scenario["name"] == "wheel_actuator_bus_cable_budget"
                     && scenario["checks"][0] == "LOAD_CABLE_CURRENT_VALID"
                     && scenario["target"]["component"] == "PWR_STAGE"

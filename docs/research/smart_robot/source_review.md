@@ -168,6 +168,11 @@ robot control-stack design pass.
   routes, and first-pass phase-shunt/current-sense placement checks. Cable
   length, connector pinout, EMC, copper temperature rise, current-sense
   accuracy, and final routed layout still require board-level evidence.
+- `M1` now carries a 6.0 V to 12.6 V generic supply envelope in addition to
+  the first-pass current envelope. `MOTOR_LOAD_SUPPLY_VALID` checks that the
+  declared wheel bus range fits the selected motor model, but this remains
+  placeholder evidence until a motor datasheet or measured envelope replaces
+  `demo.smart_robot.wheel_motor_design_envelope`.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
