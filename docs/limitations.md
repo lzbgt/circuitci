@@ -318,6 +318,10 @@ without explicit imported mechanical evidence.
 - Component models are low-confidence generic behavioral models unless a vendor
   or datasheet-backed pack says otherwise.
 - Reports include `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models used by a project.
+- `MODEL_QUALITY_REQUIRED` can make selected low-confidence or wrong-source
+  models critical for fabrication sign-off, but it only validates declared
+  model provenance and confidence. It does not prove that the datasheet model
+  contains every physical rating needed by the board.
 - `LOAD_CONNECTOR_CURRENT_VALID` compares static load current and optional
   nominal rail voltage against declared connector ratings. It does not prove
   crimp quality, wire gauge, contact temperature rise, vibration retention,

@@ -56,6 +56,9 @@ board:
   must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
   selected motor datasheet or measured load envelope replaces it.
+- `MODEL_QUALITY_REQUIRED` is also declared for `M1` and `REGEN1`, so the wheel
+  actuator is intentionally blocked from fabrication sign-off while those
+  critical load/absorber models remain generic placeholders.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` first-pass CSD88599Q5DC bridge screening:
   12.6 V max bus, 40 A current class, and scaled 3 W at 30 A reference-loss
   evidence against a 2 W board thermal budget with 2x margin.
@@ -120,9 +123,14 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: pass (critical=0, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=2, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
+
+The wheel actuator failure is expected until `M1` and `REGEN1` are replaced by
+source-backed selected components or measured load/absorber evidence. The lower
+level bridge, CAN, connector, route, current-sense, SOA, switching, and regen
+budget checks should still remain clean.
 
 ## What This Does Not Yet Prove
 

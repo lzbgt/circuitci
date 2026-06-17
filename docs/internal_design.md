@@ -279,6 +279,13 @@ pattern for shunt placement and sense routes. It requires component placement
 records and route polylines; it does not derive Kelvin quality from schematic
 net names or infer current-sense accuracy from shunt value alone.
 
+`MODEL_QUALITY_REQUIRED` is deliberately generic. Validation already emits
+non-blocking `LOW_CONFIDENCE_MODEL` limitations for every weak model, but
+fabrication sign-off needs a narrower critical gate: only the named components
+in the scenario are compared against the explicit allowed source list and
+minimum confidence threshold. This keeps exploratory design envelopes usable
+while making selected critical components fail closed.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

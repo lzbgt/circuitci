@@ -13,6 +13,7 @@ mod interface_protection;
 mod io_voltage;
 mod load_budget;
 mod manufacturing;
+mod model_quality;
 mod motor_drive;
 mod motor_drive_common;
 mod power_tree;
@@ -84,6 +85,7 @@ pub(super) const MOTOR_ROUTE_CURRENT_VALID: &str = "MOTOR_ROUTE_CURRENT_VALID";
 pub(super) const MOTOR_CURRENT_SENSE_ACCURACY_VALID: &str = "MOTOR_CURRENT_SENSE_ACCURACY_VALID";
 pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
+pub(super) const MODEL_QUALITY_REQUIRED: &str = "MODEL_QUALITY_REQUIRED";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "gpio_backdrive",
     "reset_boot",
@@ -98,6 +100,7 @@ const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "analog_transient",
     "motor_drive",
     "load_budget",
+    "model_quality",
 ];
 
 #[derive(Debug, Default)]
@@ -491,6 +494,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 LOAD_CONNECTOR_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_load_connector_current(bound, scenario, &mut findings)
                 }
+                MODEL_QUALITY_REQUIRED if scenario.scenario_type == "model_quality" => {
+                    model_quality::validate_model_quality_required(bound, scenario, &mut findings)
+                }
                 GPIO_BACKDRIVE
                 | INTERFACE_PROTECTION_REVIEW
                 | BUS_TERMINATION_VALID
@@ -541,7 +547,8 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | MOTOR_ROUTE_CURRENT_VALID
                 | MOTOR_CURRENT_SENSE_ACCURACY_VALID
                 | MOTOR_CURRENT_SENSE_PLACEMENT_VALID
-                | LOAD_CONNECTOR_CURRENT_VALID => findings.push(Finding::critical(
+                | LOAD_CONNECTOR_CURRENT_VALID
+                | MODEL_QUALITY_REQUIRED => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,
                     format!(

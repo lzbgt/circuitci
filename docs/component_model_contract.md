@@ -739,3 +739,9 @@ Operation names are model-local. Generic validation keys off operation metadata 
 ## Quality Policy
 
 Every model must declare model quality. Reports emit `LOW_CONFIDENCE_MODEL` limitations for `generic`, `estimated`, or `low` confidence models so users do not over-trust behavioral library metadata.
+
+Projects may also declare `MODEL_QUALITY_REQUIRED` scenarios for selected
+components. Those scenarios compare each named component model's
+`model_quality.source` and `model_quality.confidence` against an explicit
+sign-off policy, turning placeholder envelopes into critical findings when a
+board is being prepared for fabrication.

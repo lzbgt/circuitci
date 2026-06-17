@@ -175,6 +175,11 @@ robot control-stack design pass.
   `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
   selected motor datasheet or measured envelope replaces this model.
+- The wheel actuator now also declares a blocking `MODEL_QUALITY_REQUIRED`
+  fabrication gate for `M1` and `REGEN1`. The gate requires model source
+  `datasheet` or `measured` and at least `medium` confidence, so the current
+  wheel report must fail sign-off while those two critical load/absorber
+  components remain generic design envelopes.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A

@@ -39,6 +39,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation::interface_protection` | Static signal-protection, routed-interface, and topology-scoped bus termination rules. |
 | `validation::motor_drive` | Static motor bridge budget, loss/thermal, regen-clamp, route-current, and current-sense rules over explicit current, shunt, connector, gate-timing, layout, and ADC evidence. |
 | `validation::load_budget` | Static load-to-connector current and voltage budget rules over explicit load and connector metadata. |
+| `validation::model_quality` | Fabrication sign-off gates that require selected components to use source-backed component models with explicit confidence thresholds. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
@@ -143,6 +144,12 @@ an explicit connector rating or a connector component model with `connector`
 metadata. This is useful for reusable robot payload connectors before CAD
 capture; it does not prove cable assembly quality, vibration retention, thermal
 rise, or pulsed-load behavior.
+
+Model-quality rules are explicit sign-off gates. `MODEL_QUALITY_REQUIRED` turns
+selected component model provenance into critical findings when a fabrication
+review must not rely on `generic`, `estimated`, or low-confidence envelopes.
+The always-on `LOW_CONFIDENCE_MODEL` limitation remains non-blocking context;
+the scenario decides which components are actually sign-off blockers.
 
 Interface-protection rules cover clamp devices, level shifters, USB connector
 mechanics/routing, explicit bus termination, and explicit bus protection

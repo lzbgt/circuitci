@@ -91,7 +91,7 @@ full-profile sign-off. Use `suggest-scenarios --profile iot_basic_v0` after
 importing available evidence to generate missing-core-check remediation
 templates.
 
-Projects using `generic`, `estimated`, or `low` confidence component models must include non-blocking `LOW_CONFIDENCE_MODEL` limitations scoped to the component and model.
+Projects using `generic`, `estimated`, or `low` confidence component models must include non-blocking `LOW_CONFIDENCE_MODEL` limitations scoped to the component and model. Use `MODEL_QUALITY_REQUIRED` when a specific component's model quality must block fabrication sign-off.
 
 ## Additional Rule Findings
 
@@ -126,6 +126,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
+- `MODEL_QUALITY_REQUIRED`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -893,6 +894,13 @@ measured keys include `connector_component`, `load_net`, and `load_current_A`.
 Stable limit keys include `required_connector_current_A`,
 `connector_current_rating_A`, `min_connector_current_margin_ratio`, and
 `connector_voltage_rating_V` when voltage screening fails.
+
+`MODEL_QUALITY_REQUIRED` reports are emitted by `model_quality` scenarios. They
+compare named board components against an explicit sign-off policy for
+`model_quality.source` and `model_quality.confidence`. Stable measured keys
+include `model`, `model_source`, `model_confidence`, `missing_input`, and
+`missing_component`. Stable limit keys include `allowed_sources` and
+`min_confidence`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus

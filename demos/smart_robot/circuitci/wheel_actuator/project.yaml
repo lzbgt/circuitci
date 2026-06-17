@@ -349,6 +349,14 @@ scenarios:
     checks:
       - POWER_TREE_VALID
       - IO_VOLTAGE_COMPATIBLE
+  - name: wheel_actuator_selected_load_evidence_gate
+    type: model_quality
+    checks:
+      - MODEL_QUALITY_REQUIRED
+    parameters:
+      components: [M1, REGEN1]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium
   - name: wheel_actuator_bridge_budget
     type: motor_drive
     checks:

@@ -76,6 +76,7 @@ Executable scenario types:
 - `analog_transient`
 - `motor_drive`
 - `load_budget`
+- `model_quality`
 
 Unsupported scenario types must produce an explicit low-confidence limitation or informational finding, not a crash.
 
@@ -117,6 +118,7 @@ Canonical executable check IDs:
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
+- `MODEL_QUALITY_REQUIRED`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -139,6 +141,37 @@ Canonical executable check IDs:
 `SPICE_OPERATING_LIMIT` is not declared as a separate scenario check. It is an
 automatic critical finding emitted by `SPICE_TRANSIENT_ANALYSIS` when generated
 Board IR device waveforms exceed datasheet absolute maximum ratings.
+
+## Model Quality Sign-Off
+
+Use `model_quality` scenarios with `MODEL_QUALITY_REQUIRED` when a board is
+being reviewed for fabrication and named components must not rely on generic,
+estimated, or low-confidence envelopes.
+
+```yaml
+scenarios:
+  - name: selected_load_evidence_gate
+    type: model_quality
+    checks:
+      - MODEL_QUALITY_REQUIRED
+    parameters:
+      components: [M1, REGEN1]
+      allowed_sources: [datasheet, measured]
+      min_confidence: medium
+```
+
+The check:
+
+1. Requires `parameters.components` or `target.component`.
+2. Requires non-empty `parameters.allowed_sources`.
+3. Requires `parameters.min_confidence` to be `low`, `medium`, or `high`.
+4. Fails if any named board component is missing, unbound, bound to a missing
+   model, has `model_quality.source` outside the allowed list, or has
+   confidence below the threshold.
+
+`LOW_CONFIDENCE_MODEL` limitations remain non-blocking report context. Use
+`MODEL_QUALITY_REQUIRED` for selected components that must block fabrication
+sign-off.
 
 ## Reset/Boot Scenario Shape
 

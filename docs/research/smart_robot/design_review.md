@@ -136,6 +136,11 @@ left/right reusable wheel controller pass:
   `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until
   selected motor evidence replaces it.
+- The wheel validation now also declares `MODEL_QUALITY_REQUIRED` for `M1` and
+  `REGEN1`. That scenario is intentionally blocking for fabrication sign-off:
+  the bridge and layout budgets may pass, but the wheel actuator report must
+  fail until the motor load and regeneration absorber are backed by selected
+  datasheets or measured evidence.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.

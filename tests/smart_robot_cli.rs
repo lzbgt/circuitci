@@ -6,9 +6,9 @@ use serde_yaml_ng::Value as YamlValue;
 use std::process::Command;
 
 #[test]
-fn smart_robot_wheel_bridge_budgets_pass() {
+fn smart_robot_wheel_blocks_placeholder_load_signoff() {
     let report = run_validation("demos/smart_robot/circuitci/wheel_actuator/project.yaml");
-    assert_eq!(report["result"], "pass");
+    assert_eq!(report["result"], "fail");
     assert_report_schema_valid(&report);
     assert!(
         !findings_with_id(&report, "MOTOR_BRIDGE_BUDGET_VALID")
@@ -65,6 +65,56 @@ fn smart_robot_wheel_bridge_budgets_pass() {
             .into_iter()
             .any(|finding| finding["severity"] == "critical"),
         "wheel actuator system SOA budget should pass: {report:#?}"
+    );
+    let model_quality_findings = findings_with_id(&report, "MODEL_QUALITY_REQUIRED");
+    assert!(
+        model_quality_findings
+            .iter()
+            .any(|finding| finding["component"] == "M1"
+                && finding["measured"]["model_source"] == "generic"
+                && finding["measured"]["model_confidence"] == "low"
+                && finding["limit"]["allowed_sources"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&Value::String("datasheet".to_string()))
+                && finding["limit"]["min_confidence"] == "medium"),
+        "wheel actuator must fail sign-off on placeholder motor evidence: {model_quality_findings:#?}"
+    );
+    assert!(
+        model_quality_findings
+            .iter()
+            .any(|finding| finding["component"] == "REGEN1"
+                && finding["measured"]["model_source"] == "generic"
+                && finding["measured"]["model_confidence"] == "low"),
+        "wheel actuator must fail sign-off on placeholder regen evidence: {model_quality_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_model_quality_gate_passes_with_source_backed_loads() {
+    let (dir, project) = wheel_actuator_project_with_source_backed_load_models();
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+    assert!(
+        !findings_with_id(&report, "MODEL_QUALITY_REQUIRED")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "source-backed load evidence should clear the wheel model-quality gate: {report:#?}"
     );
 }
 
@@ -818,6 +868,65 @@ fn wheel_actuator_project_without_system_soa() -> (tempfile::TempDir, std::path:
         .replace(
             "demo.smart_robot.csd88599q5dc_3phase_bridge_budget",
             "demo.smart_robot.csd88599q5dc_3phase_bridge_budget_no_soa",
+        );
+    let project = dir.path().join("project.yaml");
+    std::fs::write(&project, source).unwrap();
+    (dir, project)
+}
+
+fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir, std::path::PathBuf)
+{
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+
+    let mut motor_model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/wheel_motor_design_envelope.model.yaml",
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    motor_model["component_id"] =
+        YamlValue::String("demo.smart_robot.test_source_backed_wheel_motor".to_string());
+    motor_model["model_quality"]["source"] = YamlValue::String("datasheet".to_string());
+    motor_model["model_quality"]["confidence"] = YamlValue::String("medium".to_string());
+    std::fs::write(
+        model_dir.join("test_source_backed_wheel_motor.model.yaml"),
+        serde_yaml_ng::to_string(&motor_model).unwrap(),
+    )
+    .unwrap();
+
+    let mut regen_model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/regen_clamp_design_envelope.model.yaml",
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    regen_model["component_id"] =
+        YamlValue::String("demo.smart_robot.test_source_backed_regen_clamp".to_string());
+    regen_model["model_quality"]["source"] = YamlValue::String("measured".to_string());
+    regen_model["model_quality"]["confidence"] = YamlValue::String("medium".to_string());
+    std::fs::write(
+        model_dir.join("test_source_backed_regen_clamp.model.yaml"),
+        serde_yaml_ng::to_string(&regen_model).unwrap(),
+    )
+    .unwrap();
+
+    let source = wheel_actuator_project_source()
+        .replace(
+            "libraries:\n",
+            &format!("libraries:\n  - {}\n", model_dir.to_string_lossy()),
+        )
+        .replace(
+            "demo.smart_robot.wheel_motor_design_envelope",
+            "demo.smart_robot.test_source_backed_wheel_motor",
+        )
+        .replace(
+            "demo.smart_robot.regen_clamp_design_envelope",
+            "demo.smart_robot.test_source_backed_regen_clamp",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();
