@@ -3,7 +3,9 @@ use crate::library::{BoundBoard, ComponentModel, PortKind};
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::{LOAD_CABLE_CURRENT_VALID, LOAD_CONNECTOR_CURRENT_VALID};
+use super::{
+    LOAD_CABLE_CURRENT_VALID, LOAD_CABLE_THERMAL_DERATING_VALID, LOAD_CONNECTOR_CURRENT_VALID,
+};
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
 
@@ -357,6 +359,187 @@ pub(super) fn validate_load_cable_current(
     }
 }
 
+pub(super) fn validate_load_cable_thermal_derating(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the load behind the cable assembly.",
+            findings,
+        );
+        return;
+    };
+    let Some(power_pin) = target.power_pin.as_deref() else {
+        missing_input(
+            scenario,
+            "target.power_pin",
+            "Set scenario.target.power_pin to the load supply pin being cable-derated.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing load component.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_model) = bound.library.get(&load_component.model) else {
+        missing_input(
+            scenario,
+            "target.component.model",
+            "Bind the load component to a component model with power-pin current metadata.",
+            findings,
+        );
+        return;
+    };
+    let Some(load_port) = load_model.ports.get(power_pin) else {
+        missing_input(
+            scenario,
+            "target.power_pin",
+            "Set scenario.target.power_pin to a pin declared by the target component model.",
+            findings,
+        );
+        return;
+    };
+    if load_port.kind != PortKind::ElectricalPower {
+        missing_input(
+            scenario,
+            "target.power_pin",
+            "Set scenario.target.power_pin to an electrical_power port.",
+            findings,
+        );
+        return;
+    }
+    let Some(load_current_a) = load_port.electrical.max_supply_current_a else {
+        missing_input(
+            scenario,
+            "target.power_pin.max_supply_current_A",
+            "Add max_supply_current_A to the target load power pin.",
+            findings,
+        );
+        return;
+    };
+    if !load_current_a.is_finite() || load_current_a <= 0.0 {
+        missing_input(
+            scenario,
+            "target.power_pin.max_supply_current_A",
+            "Set max_supply_current_A to a finite value greater than zero.",
+            findings,
+        );
+        return;
+    }
+
+    let cable_evidence = cable_evidence(bound, scenario, findings);
+    let Some(test_current_a) = parameter_or_cable_thermal_value(
+        scenario,
+        "cable_temperature_rise_test_current_A",
+        "temperature_rise_test_current_A",
+        cable_evidence.as_ref().and_then(|(_, model)| {
+            model
+                .cable_assembly
+                .as_ref()?
+                .temperature_rise_test_current_a
+        }),
+        findings,
+    ) else {
+        return;
+    };
+    let Some(test_rise_c) = parameter_or_cable_thermal_value(
+        scenario,
+        "cable_temperature_rise_at_test_current_C",
+        "temperature_rise_at_test_current_C",
+        cable_evidence.as_ref().and_then(|(_, model)| {
+            model
+                .cable_assembly
+                .as_ref()?
+                .temperature_rise_at_test_current_c
+        }),
+        findings,
+    ) else {
+        return;
+    };
+    let Some(max_rise_c) = parameter_or_cable_thermal_value(
+        scenario,
+        "max_cable_temperature_rise_C",
+        "max_temperature_rise_C",
+        cable_evidence
+            .as_ref()
+            .and_then(|(_, model)| model.cable_assembly.as_ref()?.max_temperature_rise_c),
+        findings,
+    ) else {
+        return;
+    };
+    let Some(min_margin) = optional_margin(scenario, "thermal_current_margin_ratio", findings)
+    else {
+        return;
+    };
+
+    let thermal_current_a = load_current_a * min_margin;
+    let estimated_rise_c = test_rise_c * (thermal_current_a / test_current_a).powi(2);
+    if estimated_rise_c > max_rise_c {
+        let mut finding = Finding::critical(
+            LOAD_CABLE_THERMAL_DERATING_VALID,
+            &scenario.name,
+            format!(
+                "Estimated cable temperature rise {:.6} C at {:.6} A exceeds {:.6} C limit.",
+                estimated_rise_c, thermal_current_a, max_rise_c
+            ),
+        );
+        finding.component = Some(target.component.clone());
+        if let Some((component_id, _)) = &cable_evidence {
+            finding
+                .measured
+                .insert("cable_component".to_string(), json!(component_id));
+        }
+        if let Some(net) = load_component.pins.get(power_pin) {
+            finding.measured.insert("load_net".to_string(), json!(net));
+        }
+        finding
+            .measured
+            .insert("load_current_A".to_string(), json!(load_current_a));
+        finding
+            .measured
+            .insert("thermal_current_A".to_string(), json!(thermal_current_a));
+        finding.measured.insert(
+            "temperature_rise_test_current_A".to_string(),
+            json!(test_current_a),
+        );
+        finding.measured.insert(
+            "temperature_rise_at_test_current_C".to_string(),
+            json!(test_rise_c),
+        );
+        finding.measured.insert(
+            "estimated_temperature_rise_C".to_string(),
+            json!(estimated_rise_c),
+        );
+        finding.limit.insert(
+            "max_cable_temperature_rise_C".to_string(),
+            json!(max_rise_c),
+        );
+        finding.limit.insert(
+            "thermal_current_margin_ratio".to_string(),
+            json!(min_margin),
+        );
+        finding.suggested_fixes = vec![
+            "Select a cable assembly with lower thermal rise at the required current."
+                .to_string(),
+            "Reduce the load current, use more conductors, or split the load across another harness."
+                .to_string(),
+            "Add measured harness temperature-rise evidence for the final routing and duty cycle."
+                .to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
 fn connector_evidence<'a>(
     bound: &'a BoundBoard<'_>,
     scenario: &Scenario,
@@ -510,6 +693,40 @@ fn parameter_or_cable_voltage(
         return positive_parameter(scenario, "cable_voltage_rating_V", raw, findings).map(Some);
     }
     Some(cable_value.filter(|value| value.is_finite() && *value > 0.0))
+}
+
+fn parameter_or_cable_thermal_value(
+    scenario: &Scenario,
+    parameter_name: &str,
+    model_field: &str,
+    cable_value: Option<f64>,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    if let Some(raw) = scenario.parameters.get(parameter_name) {
+        return positive_parameter(scenario, parameter_name, raw, findings);
+    }
+    let Some(value) = cable_value else {
+        missing_input(
+            scenario,
+            parameter_name,
+            &format!(
+                "Add load_budget parameters.{parameter_name}, or bind parameters.cable_component to a model with cable_assembly.{model_field}."
+            ),
+            findings,
+        );
+        return None;
+    };
+    if value.is_finite() && value > 0.0 {
+        Some(value)
+    } else {
+        missing_input(
+            scenario,
+            &format!("cable_assembly.{model_field}"),
+            &format!("Set cable_assembly.{model_field} to a finite value greater than zero."),
+            findings,
+        );
+        None
+    }
 }
 
 fn optional_margin(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<f64> {

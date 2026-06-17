@@ -506,6 +506,15 @@ scenarios:
       power_pin: VM
     parameters:
       min_cable_current_margin_ratio: 1.5
+  - name: wheel_actuator_bus_cable_thermal_derating
+    type: load_budget
+    checks:
+      - LOAD_CABLE_THERMAL_DERATING_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      thermal_current_margin_ratio: 1.5
   - name: wheel_actuator_can_esd_canh
     type: interface_protection
     checks:

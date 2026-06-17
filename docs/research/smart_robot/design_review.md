@@ -130,6 +130,9 @@ left/right reusable wheel controller pass:
 - A separate actuator-bus cable-current sign-off gate is declared and
   intentionally fails closed until selected wire, crimp, cable assembly, or
   measured harness current evidence is supplied.
+- A separate actuator-bus cable thermal-derating gate is also declared and
+  intentionally fails closed until selected cable temperature-rise evidence is
+  supplied.
 - `M1` motor-load design envelope feeding the first-pass bridge budget:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
@@ -148,6 +151,10 @@ left/right reusable wheel controller pass:
   actuator-bus harness. It must keep failing with `VALIDATION_INPUT_MISSING`
   until the selected cable assembly or explicit harness rating is added; the
   JST VH connector rating alone is not wire/crimp evidence.
+- The wheel validation also declares `LOAD_CABLE_THERMAL_DERATING_VALID` for
+  the actuator-bus harness. It must keep failing until selected harness
+  temperature-rise evidence is added; the rule only scales from declared test
+  data and does not infer ampacity from generic wire gauge assumptions.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.
@@ -193,7 +200,7 @@ measurement evidence, then add true SOA curves, measured switching waveforms,
 peak gate-current timing, transient thermal paths, selected regeneration
 absorber behavior, repeated-pulse clamp heating, selected current-sense
 amplifier/ADC part behavior, PWM sampling/common-mode rejection, imported final
-layout evidence, cable assembly current/thermal evidence, and PCB
+layout evidence, cable assembly current/temperature-rise evidence, and PCB
 copper-temperature validation.
 
 ## Servo Payload Slice Status

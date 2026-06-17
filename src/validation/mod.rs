@@ -86,6 +86,7 @@ pub(super) const MOTOR_CURRENT_SENSE_ACCURACY_VALID: &str = "MOTOR_CURRENT_SENSE
 pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
 pub(super) const LOAD_CABLE_CURRENT_VALID: &str = "LOAD_CABLE_CURRENT_VALID";
+pub(super) const LOAD_CABLE_THERMAL_DERATING_VALID: &str = "LOAD_CABLE_THERMAL_DERATING_VALID";
 pub(super) const MODEL_QUALITY_REQUIRED: &str = "MODEL_QUALITY_REQUIRED";
 const SUPPORTED_SCENARIO_TYPES: &[&str] = &[
     "gpio_backdrive",
@@ -498,6 +499,13 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 LOAD_CABLE_CURRENT_VALID if scenario.scenario_type == "load_budget" => {
                     load_budget::validate_load_cable_current(bound, scenario, &mut findings)
                 }
+                LOAD_CABLE_THERMAL_DERATING_VALID if scenario.scenario_type == "load_budget" => {
+                    load_budget::validate_load_cable_thermal_derating(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
+                }
                 MODEL_QUALITY_REQUIRED if scenario.scenario_type == "model_quality" => {
                     model_quality::validate_model_quality_required(bound, scenario, &mut findings)
                 }
@@ -553,6 +561,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | MOTOR_CURRENT_SENSE_PLACEMENT_VALID
                 | LOAD_CONNECTOR_CURRENT_VALID
                 | LOAD_CABLE_CURRENT_VALID
+                | LOAD_CABLE_THERMAL_DERATING_VALID
                 | MODEL_QUALITY_REQUIRED => findings.push(Finding::critical(
                     "CHECK_SCENARIO_TYPE_MISMATCH",
                     &scenario.name,

@@ -119,6 +119,10 @@ robot control-stack design pass.
   `VALIDATION_INPUT_MISSING` until the project selects a cable assembly, wire
   gauge/crimp combination, or measured harness rating. The JST VH header
   rating is not enough to sign off the cable path.
+- The wheel actuator also has a separate `LOAD_CABLE_THERMAL_DERATING_VALID`
+  gate for actuator-bus harness temperature-rise evidence. It intentionally
+  reports `VALIDATION_INPUT_MISSING` until the project selects a cable assembly
+  with test-current/rise evidence or measures the final harness.
 
 ## Design Review Notes
 
@@ -189,6 +193,10 @@ robot control-stack design pass.
   harness-current screen. The current report must fail until selected
   actuator-bus cable current evidence is supplied; connector metadata does not
   prove wire gauge, crimp quality, harness routing, or thermal derating.
+- The wheel actuator also declares a blocking
+  `LOAD_CABLE_THERMAL_DERATING_VALID` harness-temperature screen. The current
+  report must fail until selected actuator-bus cable temperature-rise evidence
+  is supplied.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
@@ -230,7 +238,7 @@ robot control-stack design pass.
   true MOSFET SOA, peak gate current, switch-node ringing, selected amplifier
   bandwidth/common-mode behavior, PWM sampling, transient thermal impedance,
   selected regeneration absorber repeated-pulse behavior, PCB copper
-  temperature rise, cable assembly temperature rise, or motor-control loop
+  temperature rise, final harness temperature rise, or motor-control loop
   stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the

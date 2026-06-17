@@ -96,6 +96,13 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         }),
         "wheel actuator must fail sign-off until actuator-bus cable current evidence is selected: {missing_inputs:#?}"
     );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "wheel_actuator_bus_cable_thermal_derating"
+                && finding["limit"]["required_input"] == "cable_temperature_rise_test_current_A"
+        }),
+        "wheel actuator must fail sign-off until actuator-bus cable thermal evidence is selected: {missing_inputs:#?}"
+    );
 }
 
 #[test]
@@ -271,6 +278,42 @@ fn smart_robot_wheel_actuator_fails_undersized_actuator_bus_cable() {
                 && finding["limit"]["required_cable_current_A"] == 9.0
         }),
         "expected actuator-bus cable current failure, got {cable_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_fails_hot_actuator_bus_cable() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "thermal_current_margin_ratio: 1.5",
+        "cable_temperature_rise_test_current_A: 6.0\n      cable_temperature_rise_at_test_current_C: 20.0\n      max_cable_temperature_rise_C: 30.0\n      thermal_current_margin_ratio: 1.5",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let thermal_findings = findings_with_id(&report, "LOAD_CABLE_THERMAL_DERATING_VALID");
+    assert!(
+        thermal_findings.iter().any(|finding| {
+            finding["component"] == "PWR_STAGE"
+                && finding["measured"]["load_current_A"] == 6.0
+                && finding["measured"]["thermal_current_A"] == 9.0
+                && finding["measured"]["estimated_temperature_rise_C"] == 45.0
+                && finding["limit"]["max_cable_temperature_rise_C"] == 30.0
+        }),
+        "expected actuator-bus cable thermal derating failure, got {thermal_findings:#?}"
     );
 }
 
@@ -974,6 +1017,10 @@ fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir
         .replace(
             "min_cable_current_margin_ratio: 1.5",
             "cable_current_rating_A: 12.0\n      cable_voltage_rating_V: 30.0\n      min_cable_current_margin_ratio: 1.5",
+        )
+        .replace(
+            "thermal_current_margin_ratio: 1.5",
+            "cable_temperature_rise_test_current_A: 12.0\n      cable_temperature_rise_at_test_current_C: 20.0\n      max_cable_temperature_rise_C: 30.0\n      thermal_current_margin_ratio: 1.5",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();

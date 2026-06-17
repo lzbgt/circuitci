@@ -120,6 +120,7 @@ Canonical executable check IDs:
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
 - `LOAD_CABLE_CURRENT_VALID`
+- `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -201,6 +202,37 @@ Cable current can come from `parameters.cable_current_rating_A` or from a
 also screen nominal load voltage. Missing cable evidence is a critical
 `VALIDATION_INPUT_MISSING` finding so schematic/CAD bridges cannot imply
 fabrication readiness without a selected harness.
+
+## Load Cable Thermal Derating
+
+Use `load_budget` scenarios with `LOAD_CABLE_THERMAL_DERATING_VALID` when a
+load current must be checked against selected cable or harness
+temperature-rise evidence.
+
+```yaml
+scenarios:
+  - name: wheel_actuator_bus_cable_thermal_derating
+    type: load_budget
+    checks:
+      - LOAD_CABLE_THERMAL_DERATING_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      cable_component: WHEEL_CABLE1
+      thermal_current_margin_ratio: 1.5
+```
+
+The check derives load current from `target.power_pin.max_supply_current_A`,
+multiplies it by `thermal_current_margin_ratio` when present, and estimates
+temperature rise by I^2 scaling from a declared test point:
+`rise_at_test_current * (thermal_current / test_current)^2`.
+`cable_temperature_rise_test_current_A`,
+`cable_temperature_rise_at_test_current_C`, and
+`max_cable_temperature_rise_C` can be explicit scenario parameters, or can come
+from a `parameters.cable_component` model with matching `cable_assembly`
+metadata. Missing thermal evidence is a critical `VALIDATION_INPUT_MISSING`
+finding.
 
 ## Reset/Boot Scenario Shape
 
@@ -2166,10 +2198,11 @@ jitter, calibration implementation, thermal drift, or firmware filtering.
 
 ## Load Budget Scenario Shape
 
-`load_budget` scenarios validate explicit load-to-connector current and
-optional voltage budgets. They are deterministic schematic-budget checks for
-payload connectors and harness interfaces, not cable assembly, temperature-rise,
-or transient-load sign-off.
+`load_budget` scenarios validate explicit load-to-connector current, cable
+current, cable temperature-rise, and optional voltage budgets. They are
+deterministic schematic-budget checks for payload connectors and harness
+interfaces, not crimp-process, bundle-derating, flex-life, or transient-load
+sign-off.
 
 ```yaml
 scenarios:

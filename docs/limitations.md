@@ -330,6 +330,11 @@ without explicit imported mechanical evidence.
   rail voltage against declared cable or harness assembly ratings. It does not
   prove crimp process quality, bundle derating, flex life, enclosure airflow,
   contact temperature rise, or pulsed-current heating.
+- `LOAD_CABLE_THERMAL_DERATING_VALID` estimates cable temperature rise by
+  I^2 scaling from one declared temperature-rise test point. It does not model
+  bundle derating, airflow, enclosure contact, intermittent duty cycle, flex
+  aging, crimp heating, connector heating, or measured routed-harness
+  temperature.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` scales a source-backed bridge reference
   loss point against declared motor RMS current and explicit board thermal
   budget. It does not compute MOSFET SOA, switching transition loss,

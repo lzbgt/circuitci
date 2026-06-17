@@ -207,6 +207,12 @@ pub struct CableAssembly {
     pub current_rating_a: Option<f64>,
     #[serde(default, rename = "voltage_rating_V")]
     pub voltage_rating_v: Option<f64>,
+    #[serde(default, rename = "temperature_rise_test_current_A")]
+    pub temperature_rise_test_current_a: Option<f64>,
+    #[serde(default, rename = "temperature_rise_at_test_current_C")]
+    pub temperature_rise_at_test_current_c: Option<f64>,
+    #[serde(default, rename = "max_temperature_rise_C")]
+    pub max_temperature_rise_c: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

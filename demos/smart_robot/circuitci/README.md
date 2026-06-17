@@ -96,6 +96,9 @@ board:
 - `LOAD_CABLE_CURRENT_VALID` is declared for the actuator-bus harness and is
   intentionally missing cable evidence until a selected wire/crimp/cable
   assembly rating is sourced.
+- `LOAD_CABLE_THERMAL_DERATING_VALID` is also declared for actuator-bus
+  harness temperature rise and intentionally fails closed until selected
+  cable temperature-rise evidence is sourced.
 
 `servo_payload/project.yaml` models the reusable low-load servo/payload hub:
 
@@ -126,15 +129,15 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: fail (critical=3, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=4, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
 The wheel actuator failure is expected until `M1`, `REGEN1`, and the
 actuator-bus cable assembly are replaced by source-backed selected components,
-ratings, or measured load/absorber/harness evidence. The lower level bridge,
-CAN, connector, route, current-sense, SOA, switching, and regen budget checks
-should still remain clean.
+ratings, temperature-rise data, or measured load/absorber/harness evidence. The
+lower level bridge, CAN, connector, route, current-sense, SOA, switching, and
+regen budget checks should still remain clean.
 
 ## What This Does Not Yet Prove
 

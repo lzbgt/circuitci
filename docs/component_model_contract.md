@@ -178,12 +178,20 @@ Cable or harness assemblies can declare separate static ratings:
 cable_assembly:
   current_rating_A: 8.0
   voltage_rating_V: 30.0
+  temperature_rise_test_current_A: 8.0
+  temperature_rise_at_test_current_C: 18.0
+  max_temperature_rise_C: 30.0
   source: cable assembly datasheet or measured harness qualification
 ```
 
 `LOAD_CABLE_CURRENT_VALID` uses this metadata when a scenario declares
 `parameters.cable_component`. Scenario parameters `cable_current_rating_A` and
 `cable_voltage_rating_V` can also provide explicit board-specific evidence.
+`LOAD_CABLE_THERMAL_DERATING_VALID` uses the temperature-rise test point and
+maximum allowed rise when a scenario declares `parameters.cable_component`, or
+equivalent explicit scenario parameters. The validator scales temperature rise
+by I^2 from the declared test current; it does not derive wire ampacity from
+AWG tables or generic installation assumptions.
 This is intentionally separate from connector metadata because a connector
 header rating does not prove wire gauge, crimp, harness routing, or cable
 temperature rise.

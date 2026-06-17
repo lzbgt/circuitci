@@ -152,13 +152,15 @@ as sign-off.
 and cable budget checks. The connector rule consumes one target load power pin,
 its model-declared `max_supply_current_A`, and either explicit connector rating
 parameters or a bound connector component model with `connector` metadata. The
-cable rule uses the same target load evidence, but requires explicit cable
-ratings or a bound cable assembly model with `cable_assembly` metadata.
+cable current rule uses the same target load evidence, but requires explicit
+cable ratings or a bound cable assembly model with `cable_assembly` metadata.
+The cable thermal rule requires a declared temperature-rise test point and
+maximum allowed rise, then scales rise by I^2 from the test current.
 
 Keep this module limited to static current and nominal-voltage budget screens.
 Connector contact heating, wire gauge derating, crimp quality, harness routing,
-pulsed current, vibration, regeneration, and hot-plug behavior need separate
-source-backed evidence before they are treated as sign-off.
+pulsed current, vibration, regeneration, and hot-plug behavior need more
+specific source-backed evidence before they are treated as sign-off.
 
 ## Process Presets
 
