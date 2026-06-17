@@ -1,0 +1,147 @@
+component_id: vendor.ti.tps25948_8a_rcb_dvdt
+version: 0.1.0
+category: load_switch
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 3.5
+      operating_voltage_max_V: 23.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 23.0
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.23
+      vil_max_V: 1.07
+  GND:
+    kind: electrical_ground
+    required: true
+  ILM:
+    kind: passive
+    required: false
+  DVDT:
+    kind: passive
+    required: false
+  ITIMER:
+    kind: passive
+    required: false
+  FLT:
+    kind: digital_electrical_output
+    required: false
+  SPLYGD:
+    kind: digital_electrical_output
+    required: false
+  OVLO:
+    kind: passive
+    required: false
+  RCBCTRL:
+    kind: digital_electrical_input
+    required: false
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: EN
+  enabled_state: high
+  max_output_current_A: 8.0
+  current_limit_A: 8.0
+  on_resistance_ohm: 0.020
+  thermal_resistance_junction_to_ambient_C_per_W: 33.4
+  max_junction_temperature_C: 125.0
+  reverse_current_blocking: true
+  max_inrush_current_A: 8.0
+  soft_start_time_us: 7040.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS25948
+  package: YWP PWCSP-12
+  polarity: active_high_efuse_with_true_reverse_current_blocking
+  pinout:
+    VIN: IN
+    VOUT: OUT
+    EN: EN/UVLO
+    GND: GND
+    ILM: ILM
+    DVDT: dVdt
+    ITIMER: ITIMER
+    FLT: FLT/FLT
+    SPLYGD: SPLYGD/SPLYGD
+    OVLO: OVLO
+    RCBCTRL: RCBCTRL
+  electrical_characteristics:
+    input_voltage:
+      conditions: Recommended operating input voltage range.
+      min: 3.5
+      max: 23.0
+      unit: V
+    absolute_maximum_input_voltage:
+      conditions: Maximum input voltage range, -40 C <= TJ <= 125 C.
+      max: 28.0
+      unit: V
+    continuous_switch_current:
+      conditions: Recommended operating condition; TJ <= 125 C, IN to OUT or OUT to IN.
+      max: 8.0
+      unit: A
+    current_limit:
+      conditions: Overcurrent threshold with RILM = 604 ohm.
+      min: 7.2
+      typ: 8.0
+      max: 8.7
+      unit: A
+    on_resistance:
+      conditions: 3.5 V <= VIN <= 23 V, IOUT = 3 A, -40 C <= TJ <= 125 C.
+      max: 20.0
+      unit: mOhm
+    thermal_resistance_junction_to_ambient:
+      conditions: YWP package on TI custom 2s2p PCB.
+      typ: 33.4
+      unit: C_per_W
+    junction_temperature:
+      conditions: Recommended operating junction temperature range.
+      min: -40.0
+      max: 125.0
+      unit: C
+    reverse_current_blocking:
+      conditions: Ideal-diode operation with true reverse current blocking; RCBCTRL floating or high enables reverse current blocking.
+      unit: note
+    dvdt_soft_start:
+      conditions: Switching characteristics at VIN = 12 V, CdVdt = 3.3 nF, ROUT = 100 ohm, COUT = 1 uF.
+      typ: 7.04
+      unit: ms
+  device_parameters:
+    configured_current_limit:
+      conditions: Smart-robot servo rail model assumes RILM = 604 ohm for an 8 A typical current-limit threshold.
+      unit: note
+      simulation_relevance: POWER_SWITCH_BUDGET_VALID screens the selected servo rail load against this configured limit.
+    configured_slew_rate:
+      conditions: Smart-robot servo rail model assumes CdVdt = 3.3 nF and uses the datasheet 12 V rise-time row for conservative first-pass inrush screening.
+      unit: note
+      simulation_relevance: POWER_SWITCH_INRUSH_VALID still requires explicit switched_capacitance_F in the scenario.
+  documents:
+    - title: TPS25948 product page
+      path: docs/research/smart_robot/sources/tps25948_product.html
+      source_url: https://www.ti.com/product/TPS25948
+      sha256: b4b10fa77d3e8963eb4b24edb2f8ba3561de2201f41beef6e382e34ae6478bc4
+      retrieved: "2026-06-17"
+    - title: TPS25948 3.5V-23V, 12.2mOhm, 8A eFuse With Bi-Directional Power Delivery datasheet
+      path: docs/research/smart_robot/sources/tps25948_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps25948.pdf
+      sha256: 7259b8c694b939b0cdc05821eb4aa8772ca69213635bc2f139ac5d037c648584
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - pmu_servo_rail_switch_current_budget
+    - pmu_servo_rail_reverse_current_screening
+    - pmu_servo_rail_first_pass_inrush_screening
+  not_valid_for:
+    - final_servo_stall_or_regeneration_signoff
+    - final_downstream_capacitance_signoff_without_bom_or_layout
+    - safety_certification

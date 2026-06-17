@@ -1,6 +1,7 @@
 libraries:
   - ../../../../libs/generic
   - ../../../../libs/vendor/ti/chargers
+  - ../../../../libs/vendor/ti/efuses
   - ../../../../libs/vendor/ti/regulators
   - ../../../../libs/vendor/sipeed/modules
   - ../../../../libs/vendor/artery/mcus
@@ -83,8 +84,8 @@ components:
       primitive: capacitor
       value_f: 0.000022
   U_SERVO_SW:
-    model: demo.smart_robot.estop_power_switch_policy
-    part_number: SERVO_ESTOP_SWITCH_TBD
+    model: vendor.ti.tps25948_8a_rcb_dvdt
+    part_number: TPS25948-8A-RCB-DVDT
     pin_map:
       VIN: VIN
       VOUT: VOUT
@@ -234,6 +235,7 @@ scenarios:
       power_pin: VCC
     parameters:
       switch_component: U_SERVO_SW
+      switched_capacitance_F: 0.001
       min_inrush_current_margin_ratio: 1.2
   - name: pmu_wheel_switch_budget
     type: load_budget

@@ -168,16 +168,14 @@ robot control-stack design pass.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support
-  parts, and e-stop rail gating policy. The high-current servo/wheel switch
-  models are design-policy placeholders, not fabrication-ready MOSFET/eFuse
-  selections. The PMU slice now carries a blocking `MODEL_QUALITY_REQUIRED`
-  gate for `U_SERVO_SW` and `U_WHEEL_SW`, so the report must fail until
-  source-backed selected switch models replace those placeholders. It also
-  carries `POWER_SWITCH_BUDGET_VALID` gates so selected switches must declare
-  current-limit, on-resistance, thermal-resistance, and junction-temperature
-  evidence before PMU sign-off can pass. Reverse-current and inrush gates now
-  also require selected-switch backfeed-blocking, soft-start/inrush-current,
-  and switched-capacitance evidence.
+  parts, and e-stop rail gating policy. `U_SERVO_SW` now uses a source-backed
+  configured TI TPS25948 8 A eFuse model with reverse-current blocking and
+  dVdt/inrush evidence. `U_WHEEL_SW` remains a design-policy placeholder, so
+  the PMU report must still fail until a high-current wheel switch with
+  current-limit, thermal, reverse-current, and inrush evidence is selected.
+  The TPS25985 datasheet was cached as a wheel candidate, but it is not
+  selected because the current review did not prove the required
+  reverse-current blocking feature.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall

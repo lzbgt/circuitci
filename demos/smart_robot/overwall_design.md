@@ -312,9 +312,10 @@ Battery pack + BMS/protection
 For the charger IC, the clean high-quality choice is **BQ25798**. It is a 1–4 cell, 5 A buck-boost charger intended for USB PD-type input and integrates four switching MOSFETs and BATFET. ([Texas Instruments][4])
 
 CircuitCI currently models the PMU charger, 5 V buck, 3.3 V buck, and switched
-servo/wheel rails. The switched rails intentionally fail fabrication sign-off
-until the `U_SERVO_SW` and `U_WHEEL_SW` placeholders are replaced by
-source-backed high-current eFuse, load-switch, or MOSFET-driver parts with
+servo/wheel rails. `U_SERVO_SW` now uses a source-backed configured TI TPS25948
+8 A eFuse model for first-pass servo-rail screening. `U_WHEEL_SW` still
+intentionally fails fabrication sign-off until the placeholder is replaced by a
+source-backed high-current eFuse, load-switch, or MOSFET-driver part with
 current-limit, static thermal, reverse-current, and soft-start/inrush evidence.
 
 For USB-C PD negotiation, use either:
@@ -532,16 +533,17 @@ E_STOP button
 
 The e-stop must not depend only on Linux software.
 
-The first validation model treats the e-stop rail switches as safety-critical
-selected parts, not generic policy boxes. `MODEL_QUALITY_REQUIRED` must stay
-blocking until datasheet-backed or measured switch models prove the real
-current, thermal, inrush, reverse-current, and SOA behavior.
-`POWER_SWITCH_BUDGET_VALID` also blocks sign-off until those selected models
-declare current-limit, on-resistance, package/board thermal resistance, and
-maximum junction-temperature data.
-Reverse-current and inrush gates additionally require explicit
-backfeed-blocking capability, soft-start/inrush-current limits, and
-switched-capacitance evidence.
+The validation model treats the e-stop rail switches as safety-critical
+selected parts, not generic policy boxes. The servo rail has a first-pass
+TPS25948 model with current-limit, thermal, reverse-current, and dVdt/inrush
+evidence. `MODEL_QUALITY_REQUIRED` must stay blocking for the wheel rail until
+a datasheet-backed or measured switch model proves the real current, thermal,
+inrush, reverse-current, and SOA behavior.
+`POWER_SWITCH_BUDGET_VALID` also blocks wheel sign-off until that selected
+model declares current-limit, on-resistance, package/board thermal resistance,
+and maximum junction-temperature data. Reverse-current and inrush gates
+additionally require explicit backfeed-blocking capability,
+soft-start/inrush-current limits, and switched-capacitance evidence.
 
 ## Wheel driver enable chain
 

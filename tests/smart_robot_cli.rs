@@ -141,7 +141,7 @@ fn smart_robot_wheel_model_quality_gate_passes_with_source_backed_loads() {
 }
 
 #[test]
-fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
+fn smart_robot_pmu_blocks_remaining_placeholder_wheel_switch_signoff() {
     let report = run_validation("demos/smart_robot/circuitci/pmu/project.yaml");
     assert_eq!(report["result"], "fail");
     assert_report_schema_valid(&report);
@@ -153,46 +153,19 @@ fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
     );
     let model_quality_findings = findings_with_id(&report, "MODEL_QUALITY_REQUIRED");
     assert!(
-        model_quality_findings.iter().any(|finding| {
-            finding["component"] == "U_SERVO_SW"
-                && finding["measured"]["model_source"] == "design_requirement"
-                && finding["measured"]["model_confidence"] == "low"
-                && finding["limit"]["allowed_sources"]
-                    .as_array()
-                    .unwrap()
-                    .contains(&Value::String("datasheet".to_string()))
-        }),
-        "PMU must fail sign-off on placeholder servo e-stop switch evidence: {model_quality_findings:#?}"
-    );
-    assert!(
-        model_quality_findings.iter().any(|finding| {
-            finding["component"] == "U_WHEEL_SW"
-                && finding["measured"]["model_source"] == "design_requirement"
-                && finding["measured"]["model_confidence"] == "low"
-        }),
-        "PMU must fail sign-off on placeholder wheel e-stop switch evidence: {model_quality_findings:#?}"
+        model_quality_findings.len() == 1
+            && model_quality_findings[0]["component"] == "U_WHEEL_SW"
+            && model_quality_findings[0]["measured"]["model_source"] == "design_requirement"
+            && model_quality_findings[0]["measured"]["model_confidence"] == "low",
+        "PMU must fail sign-off only on the remaining placeholder wheel e-stop switch evidence: {model_quality_findings:#?}"
     );
     let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
-    assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_servo_switch_budget"
-                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
-        }),
-        "PMU must fail sign-off until the servo switch current-limit evidence is selected: {missing_inputs:#?}"
-    );
     assert!(
         missing_inputs.iter().any(|finding| {
             finding["scenario"] == "pmu_wheel_switch_budget"
                 && finding["limit"]["required_input"] == "power_switch.current_limit_A"
         }),
         "PMU must fail sign-off until the wheel switch current-limit evidence is selected: {missing_inputs:#?}"
-    );
-    assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_servo_switch_reverse_current"
-                && finding["limit"]["required_input"] == "power_switch.reverse_current_blocking"
-        }),
-        "PMU must fail sign-off until the servo switch reverse-current evidence is selected: {missing_inputs:#?}"
     );
     assert!(
         missing_inputs.iter().any(|finding| {
@@ -203,17 +176,16 @@ fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
     );
     assert!(
         missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_servo_switch_inrush"
-                && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
-        }),
-        "PMU must fail sign-off until the servo switch inrush evidence is selected: {missing_inputs:#?}"
-    );
-    assert!(
-        missing_inputs.iter().any(|finding| {
             finding["scenario"] == "pmu_wheel_switch_inrush"
                 && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
         }),
         "PMU must fail sign-off until the wheel switch inrush evidence is selected: {missing_inputs:#?}"
+    );
+    assert!(
+        !missing_inputs.iter().any(|finding| finding["scenario"]
+            .as_str()
+            .is_some_and(|scenario| scenario.starts_with("pmu_servo_switch_"))),
+        "The source-backed TPS25948 servo switch must clear selected-part blockers: {missing_inputs:#?}"
     );
 }
 
@@ -1126,6 +1098,10 @@ fn pmu_project_with_source_backed_switch_model() -> (tempfile::TempDir, std::pat
             "demo.smart_robot.test_source_backed_estop_switch",
         )
         .replace(
+            "vendor.ti.tps25948_8a_rcb_dvdt",
+            "demo.smart_robot.test_source_backed_estop_switch",
+        )
+        .replace(
             "switch_component: U_SERVO_SW\n      min_inrush_current_margin_ratio: 1.2",
             "switch_component: U_SERVO_SW\n      switched_capacitance_F: 0.001\n      min_inrush_current_margin_ratio: 1.2",
         )
@@ -1149,6 +1125,10 @@ fn pmu_project_source() -> String {
         .replace(
             "../../../../libs/vendor/ti/chargers",
             &repo.join("libs/vendor/ti/chargers").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/ti/efuses",
+            &repo.join("libs/vendor/ti/efuses").to_string_lossy(),
         )
         .replace(
             "../../../../libs/vendor/ti/regulators",

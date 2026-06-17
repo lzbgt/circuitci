@@ -486,15 +486,7 @@ fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
         .filter(|finding| finding["id"] == "MODEL_QUALITY_REQUIRED")
         .map(|finding| finding["component"].as_str().unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(model_quality_components, vec!["U_SERVO_SW", "U_WHEEL_SW"]);
-    assert!(
-        failures.iter().any(|finding| {
-            finding["id"] == "VALIDATION_INPUT_MISSING"
-                && finding["scenario"] == "pmu_servo_switch_budget"
-                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
-        }),
-        "imported PMU schematic must preserve the servo switch current-limit blocker: {failures:#?}"
-    );
+    assert_eq!(model_quality_components, vec!["U_WHEEL_SW"]);
     assert!(
         failures.iter().any(|finding| {
             finding["id"] == "VALIDATION_INPUT_MISSING"
@@ -502,14 +494,6 @@ fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
                 && finding["limit"]["required_input"] == "power_switch.current_limit_A"
         }),
         "imported PMU schematic must preserve the wheel switch current-limit blocker: {failures:#?}"
-    );
-    assert!(
-        failures.iter().any(|finding| {
-            finding["id"] == "VALIDATION_INPUT_MISSING"
-                && finding["scenario"] == "pmu_servo_switch_reverse_current"
-                && finding["limit"]["required_input"] == "power_switch.reverse_current_blocking"
-        }),
-        "imported PMU schematic must preserve the servo switch reverse-current blocker: {failures:#?}"
     );
     assert!(
         failures.iter().any(|finding| {
@@ -522,18 +506,16 @@ fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
     assert!(
         failures.iter().any(|finding| {
             finding["id"] == "VALIDATION_INPUT_MISSING"
-                && finding["scenario"] == "pmu_servo_switch_inrush"
-                && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
-        }),
-        "imported PMU schematic must preserve the servo switch inrush blocker: {failures:#?}"
-    );
-    assert!(
-        failures.iter().any(|finding| {
-            finding["id"] == "VALIDATION_INPUT_MISSING"
                 && finding["scenario"] == "pmu_wheel_switch_inrush"
                 && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
         }),
         "imported PMU schematic must preserve the wheel switch inrush blocker: {failures:#?}"
+    );
+    assert!(
+        !failures.iter().any(|finding| finding["scenario"]
+            .as_str()
+            .is_some_and(|scenario| scenario.starts_with("pmu_servo_switch_"))),
+        "imported PMU schematic must preserve the source-backed TPS25948 servo switch selection: {failures:#?}"
     );
 }
 

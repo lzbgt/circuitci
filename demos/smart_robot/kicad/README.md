@@ -96,18 +96,16 @@ manufacturing DRC.
 `pmu/root.kicad_sch` is the KiCad connectivity skeleton for the reusable PMU
 board. It uses local `CircuitCI:*` symbols for the USB-C PD source placeholder,
 protected 2S battery source, BQ25798 charger, TPS54331 5 V buck, TPS62162
-3.3 V buck, required 3.3 V support passives, e-stop switched rail placeholders,
-and the first-pass rail load budgets.
+3.3 V buck, required 3.3 V support passives, selected TPS25948 servo switch,
+wheel e-stop switched rail placeholder, and the first-pass rail load budgets.
 
 `pmu/circuitci.kicad-map.yaml` binds those schematic references and pins back
 to the source-backed models used by `../circuitci/pmu/project.yaml`. It also
-preserves the `MODEL_QUALITY_REQUIRED` gate for `U_SERVO_SW` and `U_WHEEL_SW`,
-so imported PMU schematics fail fabrication sign-off until those rail switches
-are replaced by source-backed selected high-current parts. It also preserves
-the `POWER_SWITCH_BUDGET_VALID` gates for the servo and wheel switched rails,
-so imported schematics cannot bypass current-limit and static thermal evidence
-requirements. Reverse-current and inrush gates are also preserved for both
-switched rails.
+preserves the selected TPS25948 model for `U_SERVO_SW` and the
+`MODEL_QUALITY_REQUIRED` gate for the remaining `U_WHEEL_SW` placeholder. It
+also preserves the `POWER_SWITCH_BUDGET_VALID`, reverse-current, and inrush
+gates, so imported schematics cannot bypass selected-part current-limit,
+static thermal, backfeed, and soft-start evidence requirements.
 
 Import check:
 

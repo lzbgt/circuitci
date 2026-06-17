@@ -87,7 +87,7 @@
     (pin "A") (pin "B"))
   (symbol (lib_id "CircuitCI:EStop_Power_Switch") (at 180 0 0)
     (property "Reference" "U_SERVO_SW")
-    (property "Value" "SERVO_ESTOP_SWITCH_TBD")
+    (property "Value" "TPS25948-8A-RCB-DVDT")
     (pin "VIN") (pin "VOUT") (pin "EN") (pin "GND"))
   (symbol (lib_id "CircuitCI:EStop_Power_Switch") (at 180 60 0)
     (property "Reference" "U_WHEEL_SW")

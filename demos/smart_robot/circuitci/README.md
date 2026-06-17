@@ -32,16 +32,14 @@ layout sign-off.
 - BQ25798 charger input/battery current-budget screening.
 - TPS54331 5 V buck static voltage/current screening.
 - TPS62162 3.3 V buck support inductor/capacitor screening.
-- Design-policy e-stop switch placeholders for servo and wheel rails.
-- `MODEL_QUALITY_REQUIRED` fabrication gate for `U_SERVO_SW` and `U_WHEEL_SW`,
-  so the PMU cannot be signed off while the high-current switched-rail parts
-  are still low-confidence design-policy placeholders.
-- `POWER_SWITCH_BUDGET_VALID` gates for those two switched rails. They
-  intentionally fail closed on missing selected switch current-limit,
-  on-resistance, thermal-resistance, and junction-temperature evidence.
-- `POWER_SWITCH_REVERSE_CURRENT_VALID` and `POWER_SWITCH_INRUSH_VALID` gates,
-  which intentionally fail closed until selected switches declare backfeed
-  blocking, soft-start/inrush current, and switched-capacitance evidence.
+- Source-backed TI TPS25948 configured eFuse selection for `U_SERVO_SW`.
+- Design-policy e-stop switch placeholder for the higher-current wheel rail.
+- `POWER_SWITCH_BUDGET_VALID`, `POWER_SWITCH_REVERSE_CURRENT_VALID`, and
+  `POWER_SWITCH_INRUSH_VALID` now clear for the servo rail with a first-pass
+  1 mF switched-capacitance envelope.
+- The same gates intentionally fail closed for `U_WHEEL_SW` until a selected
+  high-current wheel switch declares current-limit, static thermal,
+  reverse-current, and inrush evidence.
 
 `wheel_actuator/project.yaml` models the reusable left/right wheel actuator
 board:
@@ -145,11 +143,11 @@ CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
-The PMU failure is expected until `U_SERVO_SW` and `U_WHEEL_SW` are replaced
-by source-backed selected high-current eFuse, load-switch, or MOSFET-driver
-evidence with current-limit, static thermal, reverse-current, soft-start, and
+The PMU failure is expected until `U_WHEEL_SW` is replaced by source-backed
+selected high-current eFuse, load-switch, or MOSFET-driver evidence with
+current-limit, static thermal, reverse-current, soft-start, and
 switched-capacitance metadata. The lower level BQ25798, TPS54331, TPS62162,
-and power-tree checks should still remain clean.
+TPS25948 servo switch, and power-tree checks should still remain clean.
 
 The wheel actuator failure is expected until `M1`, `REGEN1`, and the
 actuator-bus cable assembly are replaced by source-backed selected components,
@@ -164,12 +162,12 @@ clean.
 - Exact LicheeRV Nano header pin numbers and mechanical footprint.
 - CAN/RS485 cable length, common-mode range, connector pinout,
   imported-final-layout route evidence, surge-energy policy, and EMC behavior.
-- High-current servo/wheel e-stop switch part selection, inrush, thermal,
+- High-current wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety. The current
-  PMU slice blocks sign-off on selected switch evidence and static switch
-  current/thermal/reverse-current/inrush metadata, but does not yet validate
-  selected switch SOA, current-limit transient waveform, upstream rail droop,
-  or PCB copper temperature.
+  PMU slice blocks sign-off on the remaining wheel switch evidence and static
+  current/thermal/reverse-current/inrush metadata. The selected TPS25948 servo
+  switch still needs final downstream capacitance from CAD/BOM plus measured
+  upstream rail droop/current-limit transient evidence before fabrication.
 - Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
   curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
