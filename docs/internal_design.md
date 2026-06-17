@@ -106,9 +106,10 @@ add fail-closed importer coverage before adding an approximation.
 ## Motor Drive Budgets
 
 `src/validation/motor_drive.rs` owns deterministic first-pass motor-drive
-validator entry points: motor supply voltage, bridge budget,
-bridge loss/thermal, regen clamp, route-current, current-sense placement, and
-current-sense accuracy.
+validator entry points for bridge budget, SOA, regen clamp, route-current,
+current-sense placement, and current-sense accuracy.
+`src/validation/motor_drive_bridge.rs` owns focused bridge electrical screens:
+motor supply voltage, bridge loss/thermal, and bridge switching.
 `src/validation/motor_drive_common.rs` owns shared parameter parsing,
 motor-load evidence resolution, route/placement geometry helpers, and common
 finding builders. `MOTOR_LOAD_SUPPLY_VALID` and the bridge-budget rule consume

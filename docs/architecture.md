@@ -118,10 +118,12 @@ regeneration, and layout parameters, or a declared motor/load component model
 with `motor_load` voltage and current evidence, so a robot actuator bridge can
 fail closed on missing or undersized first-pass values before schematic
 capture.
-Validator entry points live in `validation::motor_drive`; shared parameter
-parsing, motor-load evidence, route/placement geometry, and common finding
-builders live in `validation::motor_drive_common` so more motor checks do not
-grow one monolithic source file.
+SOA, regeneration, route-current, and current-sense entry points live in
+`validation::motor_drive`. Bridge supply/loss/switching screens live in
+`validation::motor_drive_bridge`. Shared parameter parsing, motor-load
+evidence, route/placement geometry, and common finding builders live in
+`validation::motor_drive_common` so more motor checks do not grow one
+monolithic source file.
 `MOTOR_BRIDGE_LOSS_THERMAL_VALID` adds a source-backed reference-loss
 thermal-budget screen from component `motor_bridge` metadata.
 `MOTOR_LOAD_SUPPLY_VALID` checks the declared motor bus window against

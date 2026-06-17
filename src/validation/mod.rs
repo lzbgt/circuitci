@@ -16,6 +16,7 @@ mod load_budget_power_switch;
 mod manufacturing;
 mod model_quality;
 mod motor_drive;
+mod motor_drive_bridge;
 mod motor_drive_common;
 mod power_tree;
 mod resident_protocol;
@@ -471,16 +472,24 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     motor_drive::validate_motor_bridge_budget(bound, scenario, &mut findings)
                 }
                 MOTOR_BRIDGE_LOSS_THERMAL_VALID if scenario.scenario_type == "motor_drive" => {
-                    motor_drive::validate_motor_bridge_loss_thermal(bound, scenario, &mut findings)
+                    motor_drive_bridge::validate_motor_bridge_loss_thermal(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
                 }
                 MOTOR_BRIDGE_SWITCHING_VALID if scenario.scenario_type == "motor_drive" => {
-                    motor_drive::validate_motor_bridge_switching(bound, scenario, &mut findings)
+                    motor_drive_bridge::validate_motor_bridge_switching(
+                        bound,
+                        scenario,
+                        &mut findings,
+                    )
                 }
                 MOTOR_BRIDGE_SOA_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_soa(bound, scenario, &mut findings)
                 }
                 MOTOR_LOAD_SUPPLY_VALID if scenario.scenario_type == "motor_drive" => {
-                    motor_drive::validate_motor_load_supply(bound, scenario, &mut findings)
+                    motor_drive_bridge::validate_motor_load_supply(bound, scenario, &mut findings)
                 }
                 MOTOR_REGEN_CLAMP_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_regen_clamp(bound, scenario, &mut findings)
