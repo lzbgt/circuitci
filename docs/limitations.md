@@ -322,6 +322,10 @@ without explicit imported mechanical evidence.
   nominal rail voltage against declared connector ratings. It does not prove
   crimp quality, wire gauge, contact temperature rise, vibration retention,
   pulsed current, hot-plug behavior, or regeneration into the load rail.
+- `MOTOR_ROUTE_CURRENT_VALID` compares imported route segment widths against an
+  explicit A/mm policy. It does not compute copper temperature rise, current
+  sharing across pours, thermal-via effectiveness, MOSFET SOA, switching loss,
+  or regeneration transient energy.
 - `RESIDENT_BOOTLOADER_UPDATE_SEQUENCE` validates declared transaction traces and does not execute firmware, decode raw serial frames, recompute CRCs, emulate flash, or prove HIL behavior.
 - `CONTROL_LINE_RELEASE_SEQUENCE` validates declared line effects and release delays and does not solve transistor storage, hidden RC networks, or physical modem-pin voltage truth tables.
 - `analog_transient` scenarios are the only path intended for quantitative

@@ -130,7 +130,9 @@ robot control-stack design pass.
   net-rule evidence, not a fabrication-ready motor-drive layout. It now
   preserves compact ordered CANH/CANL route evidence so the wheel actuator CAN
   TVS and endpoint-termination placement scenarios can be overlaid onto the
-  imported CAD project and validated without manual layout metadata.
+  imported CAD project and validated without manual layout metadata. It also
+  preserves the phase and switched-battery route widths used by
+  `MOTOR_ROUTE_CURRENT_VALID` for a first-pass route-current screen.
 - The first verifiable slice is
   `demos/smart_robot/circuitci/motion_core/project.yaml`. It covers the
   LicheeRV-to-AT32F435 UART/enable/fault link, AT32F435 rail budget,
@@ -143,9 +145,10 @@ robot control-stack design pass.
   120 ohm CAN/RS485 termination components within explicit 5% tolerance.
   First-pass route-placement contracts now check selected TVS and termination
   components against explicit layout placements/routes. The wheel actuator PCB
-  bridge proves that path with imported KiCad PCB evidence. Cable length,
-  connector pinout, EMC, and final routed-bus layout still require board-level
-  evidence.
+  bridge proves that path with imported KiCad PCB evidence. The same PCB bridge
+  now proves first-pass motor route-width checks for phase and switched-battery
+  routes. Cable length, connector pinout, EMC, copper temperature rise, and
+  final routed layout still require board-level evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support

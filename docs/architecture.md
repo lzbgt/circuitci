@@ -135,6 +135,12 @@ every CAN/RS485 board should carry local termination.
 route polylines for both bus lines, then checks declared TVS or termination
 components against project-specific distance limits.
 
+Motor-drive route checks consume the same `board.layout.routes` evidence.
+`MOTOR_ROUTE_CURRENT_VALID` requires scenarios to name routed motor/power nets,
+select current evidence, and declare an explicit A/mm route-width policy. It
+compares imported segment widths against that policy without claiming MOSFET
+SOA, switching-loss, copper-temperature, or regeneration-transient sign-off.
+
 ## Process Presets
 
 `parameters.fabrication_process` is a named source-backed default set for

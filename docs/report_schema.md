@@ -119,6 +119,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `POWER_TREE_VALID`
 - `IO_VOLTAGE_COMPATIBLE`
 - `MOTOR_BRIDGE_BUDGET_VALID`
+- `MOTOR_ROUTE_CURRENT_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -797,6 +798,13 @@ limit keys include `bridge_reference_current_A`,
 `bridge_device_current_class_A`, `motor_phase_peak_current_A`,
 `motor_connector_current_rating_A`, `phase_shunt_power_rating_W`,
 `min_shunt_power_margin_ratio`, and `max_shunt_sense_voltage_V`.
+
+`MOTOR_ROUTE_CURRENT_VALID` reports are emitted by `motor_drive` scenarios that
+declare routed motor/power nets and an explicit current-density policy. Stable
+measured keys include `route_current_A`, `route_current_source`,
+`min_route_width_mm`, and `motor_component` when motor-load evidence is used.
+Stable limit keys include `max_current_density_A_per_mm` and
+`required_route_width_mm`.
 
 `LOAD_CONNECTOR_CURRENT_VALID` reports are emitted by `load_budget` scenarios
 that declare the check. They compare one load power-pin current budget against

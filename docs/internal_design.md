@@ -230,6 +230,14 @@ checks both off-route tolerance and route distance. It is a deterministic layout
 evidence guard; it does not model ESD surge current, parasitic inductance, cable
 EMC, or differential signal integrity.
 
+`MOTOR_ROUTE_CURRENT_VALID` keeps motor copper screening similarly explicit. It
+does not infer current capacity from copper weight or router defaults. A
+scenario must provide route nets, route current evidence or a motor-load current
+source, and `max_current_density_A_per_mm`. The validator then compares that
+policy to the minimum imported segment width for each route. This gives CAD
+imports an executable first-pass guard while leaving SOA, switching loss,
+temperature rise, thermal vias, and shared copper pours to later evidence.
+
 ## Reports
 
 Reports are a stable API. New findings should include:

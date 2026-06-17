@@ -1,9 +1,9 @@
-use crate::board_ir::Scenario;
+use crate::board_ir::{NetRoute, Scenario};
 use crate::library::{BoundBoard, MotorLoad};
 use crate::reports::Finding;
 use serde_json::json;
 
-use super::MOTOR_BRIDGE_BUDGET_VALID;
+use super::{MOTOR_BRIDGE_BUDGET_VALID, MOTOR_ROUTE_CURRENT_VALID};
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
 
@@ -257,6 +257,270 @@ pub(super) fn validate_motor_bridge_budget(
             findings,
         );
     }
+}
+
+pub(super) fn validate_motor_route_current(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let route_nets = required_route_nets(scenario, findings);
+    if route_nets.is_empty() {
+        return;
+    }
+    let Some(max_current_density_a_per_mm) =
+        required_positive(scenario, "max_current_density_A_per_mm", findings)
+    else {
+        return;
+    };
+    let Some(route_current) = route_current_evidence(bound, scenario, findings) else {
+        return;
+    };
+    let required_route_width_mm = route_current.current_a / max_current_density_a_per_mm;
+
+    for net in route_nets {
+        let Some(route) = route_evidence(bound, scenario, &net, findings) else {
+            continue;
+        };
+        let Some(min_width_mm) = min_route_width_mm(route) else {
+            missing_input(
+                scenario,
+                "board.layout.routes",
+                "Use imported or explicit routed copper evidence with positive finite segment widths.",
+                findings,
+            );
+            continue;
+        };
+        if min_width_mm + f64::EPSILON < required_route_width_mm {
+            let mut finding = Finding::critical(
+                MOTOR_ROUTE_CURRENT_VALID,
+                &scenario.name,
+                format!(
+                    "Motor route {net} has minimum width {min_width_mm:.6} mm, but {:.6} A with {:.6} A/mm policy requires at least {required_route_width_mm:.6} mm.",
+                    route_current.current_a, max_current_density_a_per_mm
+                ),
+            );
+            finding.net = Some(net);
+            finding.measured.insert(
+                "route_current_A".to_string(),
+                json!(route_current.current_a),
+            );
+            finding.measured.insert(
+                "route_current_source".to_string(),
+                json!(route_current.source),
+            );
+            finding
+                .measured
+                .insert("min_route_width_mm".to_string(), json!(min_width_mm));
+            if let Some(component_id) = &route_current.motor_component {
+                finding
+                    .measured
+                    .insert("motor_component".to_string(), json!(component_id));
+            }
+            finding.limit.insert(
+                "max_current_density_A_per_mm".to_string(),
+                json!(max_current_density_a_per_mm),
+            );
+            finding.limit.insert(
+                "required_route_width_mm".to_string(),
+                json!(required_route_width_mm),
+            );
+            finding.suggested_fixes = vec![
+                "Increase the routed copper width, add parallel copper with explicit route evidence, or lower the declared motor current limit.".to_string(),
+                "Keep max_current_density_A_per_mm tied to board stackup, copper weight, temperature-rise, and layout policy evidence.".to_string(),
+            ];
+            findings.push(finding);
+        }
+    }
+}
+
+fn required_route_nets(scenario: &Scenario, findings: &mut Vec<Finding>) -> Vec<String> {
+    let Some(raw) = scenario.parameters.get("route_nets") else {
+        missing_input(
+            scenario,
+            "route_nets",
+            "Add motor_drive parameters.route_nets as a non-empty list of routed motor/power nets.",
+            findings,
+        );
+        return Vec::new();
+    };
+    let Some(values) = raw.as_sequence() else {
+        missing_input(
+            scenario,
+            "route_nets",
+            "Set motor_drive parameters.route_nets to a list of net names.",
+            findings,
+        );
+        return Vec::new();
+    };
+    let mut nets = Vec::new();
+    for value in values {
+        let Some(net) = value.as_str() else {
+            missing_input(
+                scenario,
+                "route_nets",
+                "Each motor_drive parameters.route_nets entry must be a string.",
+                findings,
+            );
+            return Vec::new();
+        };
+        let trimmed = net.trim();
+        if trimmed.is_empty() {
+            missing_input(
+                scenario,
+                "route_nets",
+                "Motor-drive route net names must not be blank.",
+                findings,
+            );
+            return Vec::new();
+        }
+        if !nets.iter().any(|existing| existing == trimmed) {
+            nets.push(trimmed.to_string());
+        }
+    }
+    if nets.is_empty() {
+        missing_input(
+            scenario,
+            "route_nets",
+            "Add at least one motor_drive parameters.route_nets entry.",
+            findings,
+        );
+    }
+    nets
+}
+
+struct RouteCurrentEvidence {
+    current_a: f64,
+    source: &'static str,
+    motor_component: Option<String>,
+}
+
+fn route_current_evidence(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<RouteCurrentEvidence> {
+    if scenario.parameters.contains_key("route_current_A") {
+        return required_positive(scenario, "route_current_A", findings).map(|current_a| {
+            RouteCurrentEvidence {
+                current_a,
+                source: "route_current_A",
+                motor_component: None,
+            }
+        });
+    }
+    let source = required_current_source(scenario, findings)?;
+    let motor_load = motor_load_evidence(bound, scenario, findings)?;
+    let current = match source {
+        "phase_rms" => motor_load.load.phase_rms_current_a,
+        "phase_peak" => motor_load.load.phase_peak_current_a,
+        "max_regen" => motor_load.load.max_regen_current_a,
+        _ => None,
+    };
+    let Some(current_a) = current else {
+        missing_input(
+            scenario,
+            "current_source",
+            &format!("Motor load component does not declare current evidence for {source}."),
+            findings,
+        );
+        return None;
+    };
+    if !current_a.is_finite() || current_a <= 0.0 {
+        missing_input(
+            scenario,
+            "current_source",
+            &format!("Motor load {source} current must be finite and greater than zero."),
+            findings,
+        );
+        return None;
+    }
+    Some(RouteCurrentEvidence {
+        current_a,
+        source,
+        motor_component: Some(motor_load.component_id),
+    })
+}
+
+fn required_current_source(
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) -> Option<&'static str> {
+    let Some(raw) = scenario.parameters.get("current_source") else {
+        missing_input(
+            scenario,
+            "current_source",
+            "Add motor_drive parameters.current_source as phase_rms, phase_peak, or max_regen when route_current_A is omitted.",
+            findings,
+        );
+        return None;
+    };
+    let Some(value) = raw.as_str() else {
+        missing_input(
+            scenario,
+            "current_source",
+            "Set motor_drive parameters.current_source to phase_rms, phase_peak, or max_regen.",
+            findings,
+        );
+        return None;
+    };
+    match value.trim() {
+        "phase_rms" => Some("phase_rms"),
+        "phase_peak" => Some("phase_peak"),
+        "max_regen" => Some("max_regen"),
+        _ => {
+            missing_input(
+                scenario,
+                "current_source",
+                "Use current_source: phase_rms, phase_peak, or max_regen.",
+                findings,
+            );
+            None
+        }
+    }
+}
+
+fn route_evidence<'a>(
+    bound: &'a BoundBoard<'_>,
+    scenario: &Scenario,
+    net: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<&'a NetRoute> {
+    if !bound.project.board.nets.contains_key(net) {
+        missing_input(
+            scenario,
+            "route_nets",
+            &format!("Declare motor-drive route net {net} in board.nets."),
+            findings,
+        );
+        return None;
+    }
+    let Some(route) = bound.project.board.layout.routes.get(net) else {
+        missing_input(
+            scenario,
+            "board.layout.routes",
+            &format!(
+                "Add imported or explicit board.layout.routes evidence for motor-drive net {net}."
+            ),
+            findings,
+        );
+        return None;
+    };
+    Some(route)
+}
+
+fn min_route_width_mm(route: &NetRoute) -> Option<f64> {
+    route
+        .segments
+        .iter()
+        .filter_map(|segment| {
+            if segment.width_mm.is_finite() && segment.width_mm > 0.0 {
+                Some(segment.width_mm)
+            } else {
+                None
+            }
+        })
+        .min_by(|left, right| left.total_cmp(right))
 }
 
 fn required_positive(scenario: &Scenario, name: &str, findings: &mut Vec<Finding>) -> Option<f64> {

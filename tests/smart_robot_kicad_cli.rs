@@ -422,7 +422,7 @@ fn smart_robot_wheel_actuator_kicad_pcb_imports_layout_evidence() {
 }
 
 #[test]
-fn smart_robot_wheel_actuator_kicad_pcb_validates_bus_layout_scenarios() {
+fn smart_robot_wheel_actuator_kicad_pcb_validates_layout_scenarios() {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
     let schematic_project = dir.path().join("wheel_actuator_imported.project.yaml");
@@ -475,11 +475,13 @@ fn smart_robot_wheel_actuator_kicad_pcb_validates_bus_layout_scenarios() {
                 Some("wheel_actuator_can_endpoint_termination")
                     | Some("wheel_actuator_can_esd_route_placement")
                     | Some("wheel_actuator_can_termination_route_placement")
+                    | Some("wheel_actuator_phase_route_current")
+                    | Some("wheel_actuator_vbat_regen_route_current")
             )
         })
         .cloned()
         .collect();
-    assert_eq!(bus_layout_scenarios.len(), 3);
+    assert_eq!(bus_layout_scenarios.len(), 5);
     for scenario in &mut bus_layout_scenarios {
         let parameters = scenario["parameters"].as_object_mut().unwrap();
         if parameters.get("line_a_net").is_some() {
@@ -493,6 +495,16 @@ fn smart_robot_wheel_actuator_kicad_pcb_validates_bus_layout_scenarios() {
                 "line_b_net".to_string(),
                 Value::String("net_robot_canl".into()),
             );
+        }
+        if let Some(route_nets) = parameters
+            .get_mut("route_nets")
+            .and_then(Value::as_array_mut)
+        {
+            for route_net in route_nets {
+                if let Some(net) = route_net.as_str() {
+                    *route_net = Value::String(format!("net_{net}"));
+                }
+            }
         }
     }
     imported["scenarios"] = Value::Array(bus_layout_scenarios);
@@ -520,6 +532,6 @@ fn smart_robot_wheel_actuator_kicad_pcb_validates_bus_layout_scenarios() {
     assert_report_schema_valid(&report);
     assert!(
         report["failures"].as_array().unwrap().is_empty(),
-        "CAD-derived CAN layout scenarios should validate cleanly: {report:#?}"
+        "CAD-derived wheel layout scenarios should validate cleanly: {report:#?}"
     );
 }

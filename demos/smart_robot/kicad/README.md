@@ -76,9 +76,11 @@ circuitci import-kicad-pcb \
 As with the motion-core bridge, the imported schematic Board IR proves
 connectivity and model binding only. The PCB-enriched Board IR additionally
 proves first-pass placement, pad, route, via, outline, zone, and routing-rule
-evidence, but it is still not a final layout sign-off: it does not prove
-MOSFET SOA/thermal margins, copper temperature rise, regeneration handling,
-EMC, or manufacturing DRC.
+evidence. The imported route widths now also drive the wheel actuator CAN
+placement checks and first-pass motor phase/`VBAT_SW` route-current checks. It
+is still not a final layout sign-off: it does not prove MOSFET SOA/thermal
+margins, copper temperature rise, regeneration handling, EMC, or manufacturing
+DRC.
 
 ## PMU
 

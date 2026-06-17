@@ -442,6 +442,38 @@ fn smart_robot_wheel_bridge_budget_fails_undersized_shunt() {
     );
 }
 
+#[test]
+fn smart_robot_wheel_route_current_fails_undersized_phase_width() {
+    let (dir, project) = mutated_wheel_actuator_project("width_mm: 1.20", "width_mm: 0.80");
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let route_findings = findings_with_id(&report, "MOTOR_ROUTE_CURRENT_VALID");
+    assert!(
+        route_findings.iter().any(|finding| {
+            finding["net"] == "phase_u"
+                && finding["measured"]["route_current_A"] == 6.0
+                && finding["measured"]["min_route_width_mm"] == 0.8
+                && finding["limit"]["required_route_width_mm"] == 1.2
+        }),
+        "expected undersized phase route failure, got {route_findings:#?}"
+    );
+}
+
 fn mutated_wheel_actuator_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();

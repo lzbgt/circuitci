@@ -110,6 +110,7 @@ Canonical executable check IDs:
 - `CLOCK_SOURCE_VALID`
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
+- `MOTOR_ROUTE_CURRENT_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -1783,6 +1784,45 @@ robot motor-board mistakes such as an undersized shunt, connector, or bridge
 current class before schematic capture. It does not replace gate-driver
 datasheet timing review, switching-loss calculation, current-sense accuracy,
 regen clamp design, thermal modeling, or PCB copper-temperature validation.
+
+`MOTOR_ROUTE_CURRENT_VALID` checks imported or explicit motor-drive route
+width evidence against an explicit current-density policy:
+
+```yaml
+scenarios:
+  - name: wheel_phase_route_current
+    type: motor_drive
+    checks:
+      - MOTOR_ROUTE_CURRENT_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      current_source: phase_rms
+      route_nets: [phase_u, phase_v, phase_w]
+      max_current_density_A_per_mm: 5.0
+```
+
+Required parameters:
+
+- `route_nets`: non-empty list of routed motor or power nets.
+- `max_current_density_A_per_mm`: explicit board/layout policy. It should be
+  tied to copper weight, temperature-rise, board stackup, and product margin
+  evidence.
+- Either `route_current_A`, or `motor_component` plus `current_source`.
+
+When `route_current_A` is omitted, `current_source` must be one of:
+
+- `phase_rms`
+- `phase_peak`
+- `max_regen`
+
+The validator uses the selected current evidence to compute
+`required_route_width_mm = current / max_current_density_A_per_mm`, then checks
+the minimum imported `board.layout.routes.<net>.segments[].width_mm` for every
+named route. This is a deterministic route-width guard; it does not model
+MOSFET SOA, switching loss, copper temperature rise, thermal vias, pour sharing,
+or transient regeneration behavior.
 
 ## Load Budget Scenario Shape
 

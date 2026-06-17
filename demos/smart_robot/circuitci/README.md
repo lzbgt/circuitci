@@ -52,6 +52,9 @@ board:
   6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
   8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
   20 kHz PWM.
+- `MOTOR_ROUTE_CURRENT_VALID` first-pass route-width policies for the
+  1.2 mm phase routes and 1.5 mm switched-battery route. These are explicit
+  A/mm layout-policy checks, not copper-temperature or SOA proof.
 - JST VH 8-pin actuator-bus connector screening for the switched wheel rail
   with 1.5x current margin.
 
@@ -97,8 +100,9 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
-  MOSFET SOA, switching loss, thermal, regeneration clamp, imported final
-  CAN/RS485 layout evidence, cable assembly evidence, and layout copper.
+  MOSFET SOA, switching loss, thermal, regeneration clamp energy, cable
+  assembly evidence, and final routed layout copper beyond the first-pass
+  route-width checks.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.
