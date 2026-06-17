@@ -102,6 +102,10 @@ should encode:
 - Blocking `MODEL_QUALITY_REQUIRED` gate on `U_SERVO_SW` and `U_WHEEL_SW`, so
   PMU validation cannot pass fabrication sign-off while those safety-critical
   switches remain low-confidence design-policy models.
+- Blocking `POWER_SWITCH_BUDGET_VALID` gates on the same switches. The current
+  placeholders intentionally fail closed because they have no selected
+  current-limit, on-resistance, thermal-resistance, or junction-temperature
+  evidence.
 
 The placeholder e-stop switches are not fabrication-ready components. The PMU
 report intentionally fails until they are replaced with source-backed

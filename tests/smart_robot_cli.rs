@@ -172,6 +172,50 @@ fn smart_robot_pmu_blocks_placeholder_estop_switch_signoff() {
         }),
         "PMU must fail sign-off on placeholder wheel e-stop switch evidence: {model_quality_findings:#?}"
     );
+    let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_servo_switch_budget"
+                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
+        }),
+        "PMU must fail sign-off until the servo switch current-limit evidence is selected: {missing_inputs:#?}"
+    );
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "pmu_wheel_switch_budget"
+                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
+        }),
+        "PMU must fail sign-off until the wheel switch current-limit evidence is selected: {missing_inputs:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_pmu_switch_budget_passes_with_source_backed_switches() {
+    let (dir, project) = pmu_project_with_source_backed_switch_model();
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args(["validate", project.to_str().unwrap(), "--output"])
+        .arg(&output)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "pass");
+    assert_report_schema_valid(&report);
+    assert!(
+        !findings_with_id(&report, "POWER_SWITCH_BUDGET_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "source-backed PMU switch evidence should clear switch budget checks: {report:#?}"
+    );
+    assert!(
+        !findings_with_id(&report, "MODEL_QUALITY_REQUIRED")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "source-backed PMU switch evidence should clear model-quality checks: {report:#?}"
+    );
 }
 
 #[test]
@@ -999,6 +1043,80 @@ fn mutated_wheel_actuator_project(from: &str, to: &str) -> (tempfile::TempDir, s
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();
     (dir, project)
+}
+
+fn pmu_project_with_source_backed_switch_model() -> (tempfile::TempDir, std::path::PathBuf) {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+
+    let mut switch_model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/estop_power_switch_policy.model.yaml",
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    switch_model["component_id"] =
+        YamlValue::String("demo.smart_robot.test_source_backed_estop_switch".to_string());
+    switch_model["power_switch"]["current_limit_A"] = YamlValue::Number(15.0.into());
+    switch_model["power_switch"]["on_resistance_ohm"] = YamlValue::Number(0.010.into());
+    switch_model["power_switch"]["thermal_resistance_junction_to_ambient_C_per_W"] =
+        YamlValue::Number(40.0.into());
+    switch_model["power_switch"]["max_junction_temperature_C"] = YamlValue::Number(150.0.into());
+    switch_model["model_quality"]["source"] = YamlValue::String("datasheet".to_string());
+    switch_model["model_quality"]["confidence"] = YamlValue::String("medium".to_string());
+    std::fs::write(
+        model_dir.join("test_source_backed_estop_switch.model.yaml"),
+        serde_yaml_ng::to_string(&switch_model).unwrap(),
+    )
+    .unwrap();
+
+    let source = pmu_project_source()
+        .replace(
+            "libraries:\n",
+            &format!("libraries:\n  - {}\n", model_dir.to_string_lossy()),
+        )
+        .replace(
+            "demo.smart_robot.estop_power_switch_policy",
+            "demo.smart_robot.test_source_backed_estop_switch",
+        );
+    let project = dir.path().join("project.yaml");
+    std::fs::write(&project, source).unwrap();
+    (dir, project)
+}
+
+fn pmu_project_source() -> String {
+    let repo = std::env::current_dir().unwrap();
+    std::fs::read_to_string("demos/smart_robot/circuitci/pmu/project.yaml")
+        .unwrap()
+        .replace(
+            "../../../../libs/generic",
+            &repo.join("libs/generic").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/ti/chargers",
+            &repo.join("libs/vendor/ti/chargers").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/ti/regulators",
+            &repo.join("libs/vendor/ti/regulators").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/sipeed/modules",
+            &repo.join("libs/vendor/sipeed/modules").to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/artery/mcus",
+            &repo.join("libs/vendor/artery/mcus").to_string_lossy(),
+        )
+        .replace(
+            "../models",
+            &repo
+                .join("demos/smart_robot/circuitci/models")
+                .to_string_lossy(),
+        )
 }
 
 fn wheel_actuator_project_without_system_soa() -> (tempfile::TempDir, std::path::PathBuf) {

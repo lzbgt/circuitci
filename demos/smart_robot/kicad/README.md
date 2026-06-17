@@ -103,7 +103,10 @@ and the first-pass rail load budgets.
 to the source-backed models used by `../circuitci/pmu/project.yaml`. It also
 preserves the `MODEL_QUALITY_REQUIRED` gate for `U_SERVO_SW` and `U_WHEEL_SW`,
 so imported PMU schematics fail fabrication sign-off until those rail switches
-are replaced by source-backed selected high-current parts.
+are replaced by source-backed selected high-current parts. It also preserves
+the `POWER_SWITCH_BUDGET_VALID` gates for the servo and wheel switched rails,
+so imported schematics cannot bypass current-limit and static thermal evidence
+requirements.
 
 Import check:
 

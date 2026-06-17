@@ -369,6 +369,32 @@ fn smart_robot_pmu_kicad_schematic_imports_connectivity() {
             }),
         "PMU KiCad import should preserve the e-stop switch selected-part gate: {imported:#?}"
     );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "pmu_servo_switch_budget"
+                    && scenario["checks"][0] == "POWER_SWITCH_BUDGET_VALID"
+                    && scenario["target"]["component"] == "SERVO_LOAD"
+                    && scenario["parameters"]["switch_component"] == "U_SERVO_SW"
+            }),
+        "PMU KiCad import should preserve the servo switch budget gate: {imported:#?}"
+    );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "pmu_wheel_switch_budget"
+                    && scenario["checks"][0] == "POWER_SWITCH_BUDGET_VALID"
+                    && scenario["target"]["component"] == "WHEEL_LOAD"
+                    && scenario["parameters"]["switch_component"] == "U_WHEEL_SW"
+            }),
+        "PMU KiCad import should preserve the wheel switch budget gate: {imported:#?}"
+    );
 }
 
 #[test]
@@ -413,6 +439,22 @@ fn smart_robot_pmu_kicad_schematic_validates_estop_switch_gate() {
         .map(|finding| finding["component"].as_str().unwrap())
         .collect::<Vec<_>>();
     assert_eq!(model_quality_components, vec!["U_SERVO_SW", "U_WHEEL_SW"]);
+    assert!(
+        failures.iter().any(|finding| {
+            finding["id"] == "VALIDATION_INPUT_MISSING"
+                && finding["scenario"] == "pmu_servo_switch_budget"
+                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
+        }),
+        "imported PMU schematic must preserve the servo switch current-limit blocker: {failures:#?}"
+    );
+    assert!(
+        failures.iter().any(|finding| {
+            finding["id"] == "VALIDATION_INPUT_MISSING"
+                && finding["scenario"] == "pmu_wheel_switch_budget"
+                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
+        }),
+        "imported PMU schematic must preserve the wheel switch current-limit blocker: {failures:#?}"
+    );
 }
 
 #[test]

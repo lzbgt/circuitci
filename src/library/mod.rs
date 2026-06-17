@@ -94,6 +94,14 @@ pub struct PowerSwitch {
     pub enabled_state: PowerSwitchState,
     #[serde(default, rename = "max_output_current_A")]
     pub max_output_current_a: Option<f64>,
+    #[serde(default, rename = "current_limit_A")]
+    pub current_limit_a: Option<f64>,
+    #[serde(default, rename = "on_resistance_ohm")]
+    pub on_resistance_ohm: Option<f64>,
+    #[serde(default, rename = "thermal_resistance_junction_to_ambient_C_per_W")]
+    pub thermal_resistance_junction_to_ambient_c_per_w: Option<f64>,
+    #[serde(default, rename = "max_junction_temperature_C")]
+    pub max_junction_temperature_c: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -326,6 +326,12 @@ without explicit imported mechanical evidence.
   nominal rail voltage against declared connector ratings. It does not prove
   crimp quality, wire gauge, contact temperature rise, vibration retention,
   pulsed current, hot-plug behavior, or regeneration into the load rail.
+- `POWER_SWITCH_BUDGET_VALID` compares a switched load's static current against
+  selected switch current rating/current-limit metadata and estimates
+  conduction junction temperature from one on-resistance and thermal-resistance
+  point. It does not model inrush, turn-on ramp, current-limit transient
+  waveform, reverse current, short-circuit SOA, repeated surge, or PCB copper
+  temperature.
 - `LOAD_CABLE_CURRENT_VALID` compares static load current and optional nominal
   rail voltage against declared cable or harness assembly ratings. It does not
   prove crimp process quality, bundle derating, flex life, enclosure airflow,

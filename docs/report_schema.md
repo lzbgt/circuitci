@@ -127,6 +127,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
+- `POWER_SWITCH_BUDGET_VALID`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `LOAD_CABLE_VOLTAGE_DROP_VALID`
@@ -904,6 +905,19 @@ compare named board components against an explicit sign-off policy for
 include `model`, `model_source`, `model_confidence`, `missing_input`, and
 `missing_component`. Stable limit keys include `allowed_sources` and
 `min_confidence`.
+
+`POWER_SWITCH_BUDGET_VALID` reports are emitted by `load_budget` scenarios that
+declare a selected power-switch budget. Stable measured keys include
+`load_component`, `load_current_A`, `switch_output_net`, `load_net`,
+`input_net_voltage_V`, `output_net_voltage_V`, `thermal_current_A`,
+`on_resistance_ohm`, `conduction_loss_W`, and
+`estimated_junction_temperature_C` when those branches run. Stable limit keys
+include `required_switch_current_A`, `switch_max_output_current_A`,
+`required_current_limit_A`, `switch_current_limit_A`,
+`input_pin_operating_voltage_max_V`, `output_pin_operating_voltage_max_V`,
+`ambient_temperature_C`, `max_junction_temperature_C`,
+`max_junction_temperature_margin_C`, and
+`thermal_resistance_junction_to_ambient_C_per_W`.
 
 `LOAD_CABLE_CURRENT_VALID` reports are emitted by `load_budget` scenarios that
 declare a cable assembly current screen. Stable measured keys include

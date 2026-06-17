@@ -201,3 +201,31 @@ scenarios:
       components: [U_SERVO_SW, U_WHEEL_SW]
       allowed_sources: [datasheet, measured]
       min_confidence: medium
+  - name: pmu_servo_switch_budget
+    type: load_budget
+    checks:
+      - POWER_SWITCH_BUDGET_VALID
+    target:
+      component: SERVO_LOAD
+      power_pin: VCC
+    parameters:
+      switch_component: U_SERVO_SW
+      min_switch_current_margin_ratio: 1.5
+      min_current_limit_margin_ratio: 1.2
+      ambient_temperature_C: 60.0
+      thermal_current_margin_ratio: 1.0
+      max_junction_temperature_margin_C: 25.0
+  - name: pmu_wheel_switch_budget
+    type: load_budget
+    checks:
+      - POWER_SWITCH_BUDGET_VALID
+    target:
+      component: WHEEL_LOAD
+      power_pin: VCC
+    parameters:
+      switch_component: U_WHEEL_SW
+      min_switch_current_margin_ratio: 1.5
+      min_current_limit_margin_ratio: 1.2
+      ambient_temperature_C: 60.0
+      thermal_current_margin_ratio: 1.0
+      max_junction_temperature_margin_C: 25.0

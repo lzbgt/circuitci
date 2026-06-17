@@ -141,7 +141,10 @@ thermal, firmware regeneration-control, or PCB copper-temperature sign-off.
 Load-budget rules are static connector/load screens. `load_budget` scenarios
 target a load power pin and compare its declared `max_supply_current_A` against
 an explicit connector rating or a connector component model with `connector`
-metadata. `LOAD_CABLE_CURRENT_VALID` applies the same current evidence to
+metadata. `POWER_SWITCH_BUDGET_VALID` applies the same load evidence to a
+selected `power_switch` component and checks output-current rating,
+current-limit setting, pin voltage ratings, and a static conduction thermal
+budget. `LOAD_CABLE_CURRENT_VALID` applies the same current evidence to
 explicit cable ratings or `cable_assembly` metadata.
 `LOAD_CABLE_THERMAL_DERATING_VALID` estimates cable temperature rise by I^2
 scaling from explicit harness test evidence. `LOAD_CABLE_VOLTAGE_DROP_VALID`

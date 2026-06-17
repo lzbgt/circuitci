@@ -119,6 +119,7 @@ Canonical executable check IDs:
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
+- `POWER_SWITCH_BUDGET_VALID`
 - `LOAD_CABLE_CURRENT_VALID`
 - `LOAD_CABLE_THERMAL_DERATING_VALID`
 - `LOAD_CABLE_VOLTAGE_DROP_VALID`
@@ -2230,9 +2231,9 @@ jitter, calibration implementation, thermal drift, or firmware filtering.
 
 ## Load Budget Scenario Shape
 
-`load_budget` scenarios validate explicit load-to-connector current, cable
-current, cable temperature-rise, cable voltage-drop/power-loss, and optional
-voltage budgets. They are
+`load_budget` scenarios validate explicit load-to-connector current,
+load-to-switch current/thermal budget, cable current, cable temperature-rise,
+cable voltage-drop/power-loss, and optional voltage budgets. They are
 deterministic schematic-budget checks for payload connectors and harness
 interfaces, not crimp-process, bundle-derating, flex-life, or transient-load
 sign-off.
@@ -2273,6 +2274,32 @@ Missing or non-finite required values produce critical
 such as using a signal connector for a servo or actuator current path. It does
 not prove contact temperature rise, crimp quality, wire gauge, vibration
 retention, duty-cycle heating, surge current, or regeneration behavior.
+
+`POWER_SWITCH_BUDGET_VALID` checks:
+
+1. `target.component` and `target.power_pin` name the switched load and
+   electrical power pin behind the selected switch.
+2. `parameters.switch_component` names an existing component bound to a model
+   with `power_switch` metadata.
+3. The switch output pin feeds the same net as the targeted load power pin.
+4. The switch input/output power-pin voltage ratings cover the connected rail
+   nominal voltages.
+5. `power_switch.max_output_current_A` covers the load current multiplied by
+   `min_switch_current_margin_ratio`.
+6. `power_switch.current_limit_A` covers the load current multiplied by
+   `min_current_limit_margin_ratio`.
+7. `power_switch.on_resistance_ohm`,
+   `power_switch.thermal_resistance_junction_to_ambient_C_per_W`,
+   `power_switch.max_junction_temperature_C`, and
+   `parameters.ambient_temperature_C` define a static conduction thermal
+   estimate at `thermal_current_margin_ratio`.
+8. `max_junction_temperature_margin_C` is optional and defaults to `0 C`.
+
+Missing selected-switch ratings produce critical `VALIDATION_INPUT_MISSING`
+findings. This rule catches using a placeholder e-stop policy box where a real
+eFuse, load switch, or MOSFET path is required. It does not model turn-on ramp,
+inrush energy, short-circuit waveform, reverse current, repeated surge, or PCB
+copper temperature.
 
 ## Firmware Update Scenario Shape
 

@@ -277,6 +277,10 @@ power_switch:
   control_pin: EN
   enabled_state: high
   max_output_current_A: 0.05
+  current_limit_A: 0.08
+  on_resistance_ohm: 0.050
+  thermal_resistance_junction_to_ambient_C_per_W: 80.0
+  max_junction_temperature_C: 150.0
 ```
 
 - `input_pin` and `output_pin` must name distinct `electrical_power` model
@@ -291,10 +295,15 @@ power_switch:
   remain explicit evidence inputs.
 - `max_output_current_A` checks the sum of declared `max_supply_current_A`
   loads on the switched output rail.
+- `current_limit_A`, `on_resistance_ohm`,
+  `thermal_resistance_junction_to_ambient_C_per_W`, and
+  `max_junction_temperature_C` are used by `POWER_SWITCH_BUDGET_VALID` for
+  selected eFuse/load-switch/MOSFET-path sign-off gates.
 
-This is a static topology/evidence check. It does not sign off inrush,
-turn-on ramp, reverse current, switch SOA, or thermal behavior; those require
-SPICE or a datasheet-backed transient/power-path model.
+This is a static topology and conduction-budget check. It does not sign off
+inrush, turn-on ramp, reverse current, switch SOA, current-limit waveform,
+repeated surge, or PCB copper temperature; those require SPICE, measurement,
+or a datasheet-backed transient/power-path model.
 
 Reset supervisor models can declare static threshold metadata:
 

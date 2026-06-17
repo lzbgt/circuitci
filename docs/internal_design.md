@@ -149,11 +149,15 @@ as sign-off.
 ## Load Connector And Cable Budgets
 
 `src/validation/load_budget.rs` owns deterministic first-pass load connector
-and cable budget checks. The connector rule consumes one target load power pin,
-its model-declared `max_supply_current_A`, and either explicit connector rating
-parameters or a bound connector component model with `connector` metadata. The
-cable current rule uses the same target load evidence, but requires explicit
-cable ratings or a bound cable assembly model with `cable_assembly` metadata.
+power-switch, and cable budget checks. The connector rule consumes one target
+load power pin, its model-declared `max_supply_current_A`, and either explicit
+connector rating parameters or a bound connector component model with
+`connector` metadata. The power-switch rule consumes the same load evidence and
+a bound `power_switch` component, then checks switched-rail connectivity,
+voltage rating, output-current rating, current-limit setting, and static
+conduction thermal budget. The cable current rule uses the same target load
+evidence, but requires explicit cable ratings or a bound cable assembly model
+with `cable_assembly` metadata.
 The cable thermal rule requires a declared temperature-rise test point and
 maximum allowed rise, then scales rise by I^2 from the test current.
 The cable voltage-drop rule requires declared loop resistance and an allowed

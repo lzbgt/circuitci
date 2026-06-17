@@ -314,7 +314,8 @@ For the charger IC, the clean high-quality choice is **BQ25798**. It is a 1–4 
 CircuitCI currently models the PMU charger, 5 V buck, 3.3 V buck, and switched
 servo/wheel rails. The switched rails intentionally fail fabrication sign-off
 until the `U_SERVO_SW` and `U_WHEEL_SW` placeholders are replaced by
-source-backed high-current eFuse, load-switch, or MOSFET-driver parts.
+source-backed high-current eFuse, load-switch, or MOSFET-driver parts with
+current-limit and static thermal evidence.
 
 For USB-C PD negotiation, use either:
 
@@ -535,6 +536,9 @@ The first validation model treats the e-stop rail switches as safety-critical
 selected parts, not generic policy boxes. `MODEL_QUALITY_REQUIRED` must stay
 blocking until datasheet-backed or measured switch models prove the real
 current, thermal, inrush, reverse-current, and SOA behavior.
+`POWER_SWITCH_BUDGET_VALID` also blocks sign-off until those selected models
+declare current-limit, on-resistance, package/board thermal resistance, and
+maximum junction-temperature data.
 
 ## Wheel driver enable chain
 

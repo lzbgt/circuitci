@@ -172,7 +172,10 @@ robot control-stack design pass.
   models are design-policy placeholders, not fabrication-ready MOSFET/eFuse
   selections. The PMU slice now carries a blocking `MODEL_QUALITY_REQUIRED`
   gate for `U_SERVO_SW` and `U_WHEEL_SW`, so the report must fail until
-  source-backed selected switch models replace those placeholders.
+  source-backed selected switch models replace those placeholders. It also
+  carries `POWER_SWITCH_BUDGET_VALID` gates so selected switches must declare
+  current-limit, on-resistance, thermal-resistance, and junction-temperature
+  evidence before PMU sign-off can pass.
 - The first wheel-actuator validation slice is
   `demos/smart_robot/circuitci/wheel_actuator/project.yaml`. It verifies the
   AT32M416-to-DRV8323 six-PWM interface, SPI/fault pins, 3.3 V encoder/Hall
