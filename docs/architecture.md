@@ -43,7 +43,7 @@ normalized board, layout, library, scenario, and process evidence.
 | `validation::model_quality` | Fabrication sign-off gates that require selected components to use source-backed component models with explicit confidence thresholds. |
 | `reports` | Convert findings into stable `report.json` and readable `report.md`. |
 | `suite` | Run acceptance/public fixture suites against a built CLI. |
-| `gui` | Optional `egui`/`eframe` desktop shell for project loading, staged review, validation, simulation artifact observation, and report viewing. |
+| `gui` | Optional `egui`/`eframe` desktop shell for project loading, staged review, validation, simulation artifact observation, and report viewing. `gui::sketch` owns Board IR graph snapshots/layout and structured scalar component/net edits. |
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
 
 ## Core Contracts

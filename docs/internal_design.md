@@ -18,6 +18,14 @@ report viewing. Schematic-canvas editing and waveform plotting should still
 persist through Board IR, importer metadata, generated SPICE decks, and report
 artifacts so headless agents can reproduce GUI actions.
 
+GUI implementation is split so the stage shell does not accumulate all desktop
+logic in one source file. `src/gui.rs` owns application state, menus, stage
+routing, validation/report calls, and waveform observation. `src/gui/sketch.rs`
+owns Board IR graph snapshots, graph layout/drawing helpers, and structured
+scalar YAML edit helpers for existing components and nets. New graph editing
+features should extend that sketch module or introduce another focused GUI
+submodule before `src/gui.rs` approaches the 2000-line guard again.
+
 ## Evidence Model
 
 Board IR is the only data model consumed by validation. Importers may add or

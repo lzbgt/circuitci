@@ -18,6 +18,7 @@ the default CLI dependency graph:
 ```text
 circuitci-gui
   -> src/gui.rs
+  -> src/gui/sketch.rs
   -> Board IR loading
   -> component model binding
   -> scenario suggestions
@@ -27,6 +28,11 @@ circuitci-gui
 
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
+
+`src/gui.rs` owns the application shell, stage routing, validation/report calls,
+and waveform observation. `src/gui/sketch.rs` owns the Board IR graph snapshot,
+sketch graph layout/drawing helpers, and structured scalar YAML edit helpers
+for selected components and nets.
 
 ## Workflow Shell
 
