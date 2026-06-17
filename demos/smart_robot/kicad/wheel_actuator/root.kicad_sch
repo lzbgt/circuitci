@@ -136,7 +136,7 @@
     (pin "VM") (pin "GND") (pin "PHASE_U") (pin "PHASE_V") (pin "PHASE_W"))
   (symbol (lib_id "CircuitCI:Regen_Clamp_Envelope") (at 180 120 0)
     (property "Reference" "REGEN1")
-    (property "Value" "REGEN_CLAMP_DESIGN_ENVELOPE")
+    (property "Value" "RH100_1R0_FIRST_PASS_REGEN_ABSORBER")
     (pin "BUS") (pin "GND"))
   (symbol (lib_id "CircuitCI:Resistor") (at 135 130 0)
     (property "Reference" "RSHUNT_U")

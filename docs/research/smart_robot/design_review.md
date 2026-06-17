@@ -154,11 +154,10 @@ left/right reusable wheel controller pass:
   `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until
   selected motor evidence replaces it.
-- The wheel validation now also declares `MODEL_QUALITY_REQUIRED` for `M1` and
-  `REGEN1`. That scenario is intentionally blocking for fabrication sign-off:
-  the bridge and layout budgets may pass, but the wheel actuator report must
-  fail until the motor load and regeneration absorber are backed by selected
-  datasheets or measured evidence.
+- The wheel validation now declares `MODEL_QUALITY_REQUIRED` for `M1`. That
+  scenario is intentionally blocking for fabrication sign-off: the bridge and
+  layout budgets may pass, but the wheel actuator report must fail until the
+  motor load is backed by selected datasheets or measured evidence.
 - The wheel validation also declares `LOAD_CABLE_CURRENT_VALID` for the
   actuator-bus harness. It now uses `JACT1_CABLE`, a selected JST VH/AWG16
   0.5 m harness model, to clear cable-current evidence for the current
@@ -185,13 +184,14 @@ left/right reusable wheel controller pass:
   screen checks 115 C board temperature, 10 A phase-peak current, and 2x
   current margin. This is not a substitute for measured switching/current/
   thermal evidence on the final routed board.
-- `REGEN1` first-pass regeneration absorber envelope: 1 J single-event energy,
-  1 mF wheel-bus capacitance, 12.6 V nominal-to-16 V clamp window, 10 A clamp
-  current envelope, 1.5 J clamp energy envelope, and 1.5x current/energy
-  margins. `REGEN1` is still a generic low-confidence envelope; the validation
-  report is expected to retain the non-blocking `LOW_CONFIDENCE_MODEL`
-  limitation for
-  `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`.
+- `REGEN1` first-pass regeneration absorber: selected Vishay RH100 1 ohm /
+  100 W aluminum-housed resistor, 1 J single-event energy, 1 mF wheel-bus
+  capacitance, 12.6 V nominal-to-16 V clamp window, 10 A clamp current
+  envelope, 1.5 J clamp energy envelope, and 1.5x current/energy margins. The
+  selected resistor closes the model-quality gate, but this remains a
+  first-pass single-event screen; repeated-pulse thermal behavior, enclosure
+  heat sinking, and firmware regeneration control still need selected or
+  measured evidence.
 - First-pass phase-shunt/current-sense placement contract from explicit layout
   evidence, keeping the three phase shunts close to the bridge, phase copper,
   and sense traces.

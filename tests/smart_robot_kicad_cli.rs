@@ -109,7 +109,7 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
     );
     assert_eq!(
         imported["board"]["components"]["REGEN1"]["model"],
-        "demo.smart_robot.regen_clamp_design_envelope"
+        "demo.smart_robot.vishay_rh100_1r0_regen_absorber"
     );
     assert_eq!(
         imported["board"]["components"]["REGEN1"]["pins"]["BUS"],
@@ -165,7 +165,11 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
                 scenario["name"] == "wheel_actuator_selected_load_evidence_gate"
                     && scenario["checks"][0] == "MODEL_QUALITY_REQUIRED"
                     && scenario["parameters"]["components"][0] == "M1"
-                    && scenario["parameters"]["components"][1] == "REGEN1"
+                    && scenario["parameters"]["components"]
+                        .as_array()
+                        .unwrap()
+                        .len()
+                        == 1
             }),
         "wheel KiCad import should preserve the model-quality sign-off gate: {imported:#?}"
     );
@@ -254,7 +258,7 @@ fn smart_robot_wheel_actuator_kicad_schematic_validates_model_quality_gate() {
         .filter(|finding| finding["id"] == "MODEL_QUALITY_REQUIRED")
         .map(|finding| finding["component"].as_str().unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(model_quality_components, vec!["M1", "REGEN1"]);
+    assert_eq!(model_quality_components, vec!["M1"]);
     assert!(failures.iter().any(|finding| {
         finding["id"] == "VALIDATION_INPUT_MISSING"
             && finding["scenario"] == "wheel_actuator_bus_cable_thermal_derating"

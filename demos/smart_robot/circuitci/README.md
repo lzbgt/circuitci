@@ -61,9 +61,9 @@ board:
   must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL` limitation for
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
   selected motor datasheet or measured load envelope replaces it.
-- `MODEL_QUALITY_REQUIRED` is also declared for `M1` and `REGEN1`, so the wheel
-  actuator is intentionally blocked from fabrication sign-off while those
-  critical load/absorber models remain generic placeholders.
+- `MODEL_QUALITY_REQUIRED` is declared for `M1`, so the wheel actuator is
+  intentionally blocked from fabrication sign-off while the motor model remains
+  a generic placeholder.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` first-pass CSD88599Q5DC bridge screening:
   12.6 V max bus, 40 A current class, and scaled 3 W at 30 A reference-loss
   evidence against a 2 W board thermal budget with 2x margin.
@@ -77,14 +77,12 @@ board:
   power-block current/temperature boundary, not final measured waveform or
   transient thermal proof.
 - `MOTOR_REGEN_CLAMP_VALID` first-pass regeneration absorber screening for
-  `REGEN1`: 1 J single-event energy envelope, 1 mF wheel-bus capacitance,
+  selected `REGEN1`: Vishay RH100 1 ohm / 100 W aluminum-housed resistor
+  evidence, 1 J single-event energy envelope, 1 mF wheel-bus capacitance,
   12.6 V nominal-to-16 V clamp window, 10 A clamp current envelope, 1.5 J clamp
-  energy envelope, and 1.5x current/energy margins.
-- `REGEN1` intentionally remains a generic low-confidence design envelope.
-  Validation reports must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL`
-  limitation for `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`
-  until a selected brake resistor, active clamp, TVS, eFuse, or upstream
-  energy sink replaces it.
+  energy envelope, and 1.5x current/energy margins. This closes the placeholder
+  absorber sign-off gate, but it is not repeated-pulse, enclosure thermal, or
+  firmware-controlled regeneration proof.
 - `MOTOR_ROUTE_CURRENT_VALID` first-pass route-width policies for the
   1.2 mm phase routes and 1.5 mm switched-battery route. These are explicit
   A/mm layout-policy checks, not copper-temperature or SOA proof.
@@ -137,7 +135,7 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: fail (critical=3, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=2, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
@@ -147,11 +145,11 @@ sign-off: downstream switched capacitance, PCB copper thermal behavior,
 fault/retry waveforms, and measured rail droop still need layout or bench
 evidence.
 
-The wheel actuator failure is expected until `M1`, `REGEN1`, and actuator-bus
-cable temperature-rise evidence are replaced by source-backed selected
-components or measured evidence. The lower level bridge, CAN, connector, cable
-current, cable voltage-drop, route, current-sense, SOA, switching, and regen
-budget checks should still remain clean.
+The wheel actuator failure is expected until `M1` and actuator-bus cable
+temperature-rise evidence are replaced by source-backed selected components or
+measured evidence. The lower level bridge, CAN, connector, cable current, cable
+voltage-drop, route, current-sense, SOA, switching, and regen budget checks
+should still remain clean.
 
 ## What This Does Not Yet Prove
 

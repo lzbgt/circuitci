@@ -36,6 +36,7 @@ robot control-stack design pass.
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
 | JST VH connector datasheet | `docs/research/smart_robot/sources/jst_vh_connector_datasheet.pdf` | `d51e669c597988b20c0963daf5bef7356cbd2104c1f867e9107c6fa6cd2b899c` |
 | National Wire UL AWM 1015 datasheet | `docs/research/smart_robot/sources/national_wire_ul_awm_1015.pdf` | `8b98c03ef1dac8985a36ca275badda37587a2d8d674c0a5725fbbb698fa635ea` |
+| Vishay Dale RH/NH aluminum-housed resistor datasheet | `docs/research/smart_robot/sources/vishay_rh_nh_aluminum_housed_resistors.pdf` | `b4741aa9ec7437a150fd8aaea5218dbbf3cde96428fa358712e5c7c0b25bb500` |
 
 ## Confirmed Facts
 
@@ -196,10 +197,9 @@ robot control-stack design pass.
   `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
   selected motor datasheet or measured envelope replaces this model.
 - The wheel actuator now also declares a blocking `MODEL_QUALITY_REQUIRED`
-  fabrication gate for `M1` and `REGEN1`. The gate requires model source
-  `datasheet` or `measured` and at least `medium` confidence, so the current
-  wheel report must fail sign-off while those two critical load/absorber
-  components remain generic design envelopes.
+  fabrication gate for `M1`. The gate requires model source `datasheet` or
+  `measured` and at least `medium` confidence, so the current wheel report must
+  fail sign-off while the motor remains a generic design envelope.
 - The wheel actuator also declares a blocking `LOAD_CABLE_CURRENT_VALID`
   harness-current screen. The selected JST VH/AWG16 0.5 m actuator harness now
   clears the current screen with source-backed 10 A evidence.
@@ -231,14 +231,15 @@ robot control-stack design pass.
   temperature, 10 A phase-peak current, and 2x margin. This closes the
   previous missing-SOA metadata finding, but it remains a typical static curve
   screen rather than final measured waveform/thermal sign-off.
-- The wheel actuator now also checks `REGEN1`, a first-pass regeneration
-  absorber design envelope, with `MOTOR_REGEN_CLAMP_VALID`: 1 J single-event
-  energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V clamp window,
-  10 A clamp current envelope, 1.5 J clamp energy envelope, and 1.5x
-  current/energy margins. These are design-policy inputs, not a selected brake
-  or clamp component; reports must retain the non-blocking
-  `LOW_CONFIDENCE_MODEL` limitation for
-  `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`.
+- The wheel actuator now also checks `REGEN1`, a selected Vishay RH100 1 ohm /
+  100 W aluminum-housed resistor, with `MOTOR_REGEN_CLAMP_VALID`: 1 J
+  single-event energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V
+  clamp window, 10 A clamp current envelope, 1.5 J clamp energy envelope, and
+  1.5x current/energy margins. The saved Vishay datasheet gives the RH100
+  100 W rating and includes 1 ohm values in the supported range. The model is
+  source-backed for first-pass absorption screening, but not for repeated-pulse
+  resistor thermal sign-off, enclosure heat sinking, or firmware regeneration
+  control.
 - The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.

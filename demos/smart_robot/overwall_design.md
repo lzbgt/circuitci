@@ -34,13 +34,14 @@ current-sense accuracy screen. `MOTOR_BRIDGE_SOA_VALID` is also declared and
 uses TI Figure 4-3 as a typical system SOA curve, screening 115 C board
 temperature, 10 A phase-peak current, and 2x current margin. These checks are
 not final measured switching waveform, PWM sampling, repeated-pulse regen, or
-selected absorber/amplifier sign-off. The logical wheel model now also includes
-a blocking `MODEL_QUALITY_REQUIRED` gate for `M1` and `REGEN1`, plus a
+selected amplifier sign-off. The logical wheel model now also includes
+a blocking `MODEL_QUALITY_REQUIRED` gate for `M1`, plus a
 `LOAD_CABLE_CURRENT_VALID` gate and `LOAD_CABLE_THERMAL_DERATING_VALID` gate
 and `LOAD_CABLE_VOLTAGE_DROP_VALID` gate for actuator-bus harness evidence.
-The actuator board remains intentionally non-fabrication-ready until the motor,
-regen absorber, and cable assembly are selected from datasheets or measured
-evidence.
+The selected Vishay RH100 1 ohm / 100 W resistor closes the first-pass regen
+absorber evidence gate, but the actuator board remains intentionally
+non-fabrication-ready until the motor and cable temperature-rise evidence are
+selected from datasheets or measured evidence.
 
 Do **not** merge the charger, LicheeRV, IMU, motor drivers, and servo power all onto one PCB at first. For a reusable platform, make the **PMU board**, **motion core board**, and **actuator boards** separate.
 

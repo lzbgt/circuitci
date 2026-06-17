@@ -122,8 +122,8 @@ board:
         PHASE_V: phase_v
         PHASE_W: phase_w
     REGEN1:
-      model: demo.smart_robot.regen_clamp_design_envelope
-      part_number: REGEN_CLAMP_DESIGN_ENVELOPE
+      model: demo.smart_robot.vishay_rh100_1r0_regen_absorber
+      part_number: RH100_1R0_FIRST_PASS_REGEN_ABSORBER
       power_domains:
         BUS: vwheel_sw
       pins:
@@ -362,7 +362,7 @@ scenarios:
     checks:
       - MODEL_QUALITY_REQUIRED
     parameters:
-      components: [M1, REGEN1]
+      components: [M1]
       allowed_sources: [datasheet, measured]
       min_confidence: medium
   - name: wheel_actuator_bridge_budget

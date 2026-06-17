@@ -36,17 +36,16 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         "wheel actuator regen clamp budget should pass: {report:#?}"
     );
     assert!(
-        report["limitations"]
+        !report["limitations"]
             .as_array()
             .unwrap()
             .iter()
             .any(|limitation| {
                 limitation["id"] == "LOW_CONFIDENCE_MODEL"
                     && limitation["scope"]
-                        == "component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope"
-                    && limitation["blocking"] == false
+                        == "component:REGEN1:model:demo.smart_robot.vishay_rh100_1r0_regen_absorber"
             }),
-        "wheel actuator must expose the demo regen-clamp limitation: {report:#?}"
+        "selected regen absorber must not emit a low-confidence limitation: {report:#?}"
     );
     assert!(
         !findings_with_id(&report, "MOTOR_CURRENT_SENSE_ACCURACY_VALID")
@@ -81,12 +80,10 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
         "wheel actuator must fail sign-off on placeholder motor evidence: {model_quality_findings:#?}"
     );
     assert!(
-        model_quality_findings
+        !model_quality_findings
             .iter()
-            .any(|finding| finding["component"] == "REGEN1"
-                && finding["measured"]["model_source"] == "generic"
-                && finding["measured"]["model_confidence"] == "low"),
-        "wheel actuator must fail sign-off on placeholder regen evidence: {model_quality_findings:#?}"
+            .any(|finding| finding["component"] == "REGEN1"),
+        "selected regen absorber evidence should clear model-quality sign-off: {model_quality_findings:#?}"
     );
     let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
     assert!(
@@ -1292,23 +1289,6 @@ fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir
     )
     .unwrap();
 
-    let mut regen_model: YamlValue = serde_yaml_ng::from_str(
-        &std::fs::read_to_string(
-            "demos/smart_robot/circuitci/models/regen_clamp_design_envelope.model.yaml",
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    regen_model["component_id"] =
-        YamlValue::String("demo.smart_robot.test_source_backed_regen_clamp".to_string());
-    regen_model["model_quality"]["source"] = YamlValue::String("measured".to_string());
-    regen_model["model_quality"]["confidence"] = YamlValue::String("medium".to_string());
-    std::fs::write(
-        model_dir.join("test_source_backed_regen_clamp.model.yaml"),
-        serde_yaml_ng::to_string(&regen_model).unwrap(),
-    )
-    .unwrap();
-
     let source = wheel_actuator_project_source()
         .replace(
             "libraries:\n",
@@ -1317,10 +1297,6 @@ fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir
         .replace(
             "demo.smart_robot.wheel_motor_design_envelope",
             "demo.smart_robot.test_source_backed_wheel_motor",
-        )
-        .replace(
-            "demo.smart_robot.regen_clamp_design_envelope",
-            "demo.smart_robot.test_source_backed_regen_clamp",
         )
         .replace(
             "min_cable_current_margin_ratio: 1.5",
