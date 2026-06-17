@@ -119,6 +119,7 @@ Canonical executable check IDs:
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
+- `LOAD_CABLE_CURRENT_VALID`
 - `DRILL_DIAMETER_VALID`
 - `DRILL_TO_BOARD_EDGE_CLEARANCE_VALID`
 - `SLOT_TO_BOARD_EDGE_CLEARANCE_VALID`
@@ -172,6 +173,34 @@ The check:
 `LOW_CONFIDENCE_MODEL` limitations remain non-blocking report context. Use
 `MODEL_QUALITY_REQUIRED` for selected components that must block fabrication
 sign-off.
+
+## Load Cable Current
+
+Use `load_budget` scenarios with `LOAD_CABLE_CURRENT_VALID` when a load current
+must be checked against a selected cable or harness assembly, not only the PCB
+connector.
+
+```yaml
+scenarios:
+  - name: wheel_actuator_bus_cable_budget
+    type: load_budget
+    checks:
+      - LOAD_CABLE_CURRENT_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      cable_component: WHEEL_CABLE1
+      min_cable_current_margin_ratio: 1.5
+```
+
+The check derives load current from `target.power_pin.max_supply_current_A`.
+Cable current can come from `parameters.cable_current_rating_A` or from a
+`parameters.cable_component` model with `cable_assembly.current_rating_A`.
+`parameters.cable_voltage_rating_V` or `cable_assembly.voltage_rating_V` can
+also screen nominal load voltage. Missing cable evidence is a critical
+`VALIDATION_INPUT_MISSING` finding so schematic/CAD bridges cannot imply
+fabrication readiness without a selected harness.
 
 ## Reset/Boot Scenario Shape
 

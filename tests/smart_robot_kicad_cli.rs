@@ -169,6 +169,19 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
             }),
         "wheel KiCad import should preserve the model-quality sign-off gate: {imported:#?}"
     );
+    assert!(
+        imported["scenarios"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|scenario| {
+                scenario["name"] == "wheel_actuator_bus_cable_budget"
+                    && scenario["checks"][0] == "LOAD_CABLE_CURRENT_VALID"
+                    && scenario["target"]["component"] == "PWR_STAGE"
+                    && scenario["target"]["power_pin"] == "VM"
+            }),
+        "wheel KiCad import should preserve the cable-current sign-off gate: {imported:#?}"
+    );
 }
 
 #[test]
@@ -213,6 +226,11 @@ fn smart_robot_wheel_actuator_kicad_schematic_validates_model_quality_gate() {
         .map(|finding| finding["component"].as_str().unwrap())
         .collect::<Vec<_>>();
     assert_eq!(model_quality_components, vec!["M1", "REGEN1"]);
+    assert!(failures.iter().any(|finding| {
+        finding["id"] == "VALIDATION_INPUT_MISSING"
+            && finding["scenario"] == "wheel_actuator_bus_cable_budget"
+            && finding["limit"]["required_input"] == "cable_current_rating_A"
+    }));
 }
 
 #[test]

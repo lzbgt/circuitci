@@ -93,6 +93,9 @@ board:
   current error.
 - JST VH 8-pin actuator-bus connector screening for the switched wheel rail
   with 1.5x current margin.
+- `LOAD_CABLE_CURRENT_VALID` is declared for the actuator-bus harness and is
+  intentionally missing cable evidence until a selected wire/crimp/cable
+  assembly rating is sourced.
 
 `servo_payload/project.yaml` models the reusable low-load servo/payload hub:
 
@@ -123,14 +126,15 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: fail (critical=2, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=3, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
-The wheel actuator failure is expected until `M1` and `REGEN1` are replaced by
-source-backed selected components or measured load/absorber evidence. The lower
-level bridge, CAN, connector, route, current-sense, SOA, switching, and regen
-budget checks should still remain clean.
+The wheel actuator failure is expected until `M1`, `REGEN1`, and the
+actuator-bus cable assembly are replaced by source-backed selected components,
+ratings, or measured load/absorber/harness evidence. The lower level bridge,
+CAN, connector, route, current-sense, SOA, switching, and regen budget checks
+should still remain clean.
 
 ## What This Does Not Yet Prove
 
@@ -143,7 +147,7 @@ budget checks should still remain clean.
 - Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
   curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
-  assembly evidence, and final routed layout copper beyond the first-pass
+  assembly current/thermal evidence, and final routed layout copper beyond the first-pass
   bridge-loss, switching, regen-envelope, route-width, shunt-placement, and
   current-sense static-accuracy checks.
 - Selected servo model, stall current, regeneration, position feedback,

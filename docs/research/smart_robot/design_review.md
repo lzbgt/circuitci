@@ -127,6 +127,9 @@ left/right reusable wheel controller pass:
 - JST VH 8-pin actuator-bus connector current and voltage budget for the
   switched wheel rail, checked with 1.5x margin against the preliminary bridge
   load.
+- A separate actuator-bus cable-current sign-off gate is declared and
+  intentionally fails closed until selected wire, crimp, cable assembly, or
+  measured harness current evidence is supplied.
 - `M1` motor-load design envelope feeding the first-pass bridge budget:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
@@ -141,6 +144,10 @@ left/right reusable wheel controller pass:
   the bridge and layout budgets may pass, but the wheel actuator report must
   fail until the motor load and regeneration absorber are backed by selected
   datasheets or measured evidence.
+- The wheel validation also declares `LOAD_CABLE_CURRENT_VALID` for the
+  actuator-bus harness. It must keep failing with `VALIDATION_INPUT_MISSING`
+  until the selected cable assembly or explicit harness rating is added; the
+  JST VH connector rating alone is not wire/crimp evidence.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.
@@ -186,8 +193,8 @@ measurement evidence, then add true SOA curves, measured switching waveforms,
 peak gate-current timing, transient thermal paths, selected regeneration
 absorber behavior, repeated-pulse clamp heating, selected current-sense
 amplifier/ADC part behavior, PWM sampling/common-mode rejection, imported final
-layout evidence, cable assembly evidence, and PCB copper-temperature
-validation.
+layout evidence, cable assembly current/thermal evidence, and PCB
+copper-temperature validation.
 
 ## Servo Payload Slice Status
 

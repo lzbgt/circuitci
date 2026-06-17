@@ -88,6 +88,14 @@ fn smart_robot_wheel_blocks_placeholder_load_signoff() {
                 && finding["measured"]["model_confidence"] == "low"),
         "wheel actuator must fail sign-off on placeholder regen evidence: {model_quality_findings:#?}"
     );
+    let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
+    assert!(
+        missing_inputs.iter().any(|finding| {
+            finding["scenario"] == "wheel_actuator_bus_cable_budget"
+                && finding["limit"]["required_input"] == "cable_current_rating_A"
+        }),
+        "wheel actuator must fail sign-off until actuator-bus cable current evidence is selected: {missing_inputs:#?}"
+    );
 }
 
 #[test]
@@ -228,6 +236,41 @@ fn smart_robot_wheel_actuator_fails_undersized_actuator_bus_connector() {
                 && finding["limit"]["connector_current_rating_A"] == 5.0
                 && finding["limit"]["required_connector_current_A"] == 9.0),
         "expected actuator bus connector current failure, got {connector_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_actuator_fails_undersized_actuator_bus_cable() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "min_cable_current_margin_ratio: 1.5",
+        "cable_current_rating_A: 5.0\n      min_cable_current_margin_ratio: 1.5",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let cable_findings = findings_with_id(&report, "LOAD_CABLE_CURRENT_VALID");
+    assert!(
+        cable_findings.iter().any(|finding| {
+            finding["component"] == "PWR_STAGE"
+                && finding["measured"]["load_current_A"] == 6.0
+                && finding["limit"]["cable_current_rating_A"] == 5.0
+                && finding["limit"]["required_cable_current_A"] == 9.0
+        }),
+        "expected actuator-bus cable current failure, got {cable_findings:#?}"
     );
 }
 
@@ -927,6 +970,10 @@ fn wheel_actuator_project_with_source_backed_load_models() -> (tempfile::TempDir
         .replace(
             "demo.smart_robot.regen_clamp_design_envelope",
             "demo.smart_robot.test_source_backed_regen_clamp",
+        )
+        .replace(
+            "min_cable_current_margin_ratio: 1.5",
+            "cable_current_rating_A: 12.0\n      cable_voltage_rating_V: 30.0\n      min_cable_current_margin_ratio: 1.5",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();

@@ -241,3 +241,12 @@ scenarios:
       components: [M1, REGEN1]
       allowed_sources: [datasheet, measured]
       min_confidence: medium
+  - name: wheel_actuator_bus_cable_budget
+    type: load_budget
+    checks:
+      - LOAD_CABLE_CURRENT_VALID
+    target:
+      component: PWR_STAGE
+      power_pin: VM
+    parameters:
+      min_cable_current_margin_ratio: 1.5

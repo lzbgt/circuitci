@@ -127,6 +127,7 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `MODEL_QUALITY_REQUIRED`
+- `LOAD_CABLE_CURRENT_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
 
@@ -901,6 +902,13 @@ compare named board components against an explicit sign-off policy for
 include `model`, `model_source`, `model_confidence`, `missing_input`, and
 `missing_component`. Stable limit keys include `allowed_sources` and
 `min_confidence`.
+
+`LOAD_CABLE_CURRENT_VALID` reports are emitted by `load_budget` scenarios that
+declare a cable assembly current screen. Stable measured keys include
+`cable_component`, `load_net`, `load_current_A`, and `load_voltage_V` when
+voltage screening fails. Stable limit keys include
+`required_cable_current_A`, `cable_current_rating_A`,
+`min_cable_current_margin_ratio`, and `cable_voltage_rating_V`.
 
 `FUNCTIONAL_MCU_FIRMWARE` reports are emitted by `firmware_in_loop` scenarios.
 For QEMU-backed scenarios, a pass requires successful QEMU execution plus

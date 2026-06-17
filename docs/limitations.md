@@ -326,6 +326,10 @@ without explicit imported mechanical evidence.
   nominal rail voltage against declared connector ratings. It does not prove
   crimp quality, wire gauge, contact temperature rise, vibration retention,
   pulsed current, hot-plug behavior, or regeneration into the load rail.
+- `LOAD_CABLE_CURRENT_VALID` compares static load current and optional nominal
+  rail voltage against declared cable or harness assembly ratings. It does not
+  prove crimp process quality, bundle derating, flex life, enclosure airflow,
+  contact temperature rise, or pulsed-current heating.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` scales a source-backed bridge reference
   loss point against declared motor RMS current and explicit board thermal
   budget. It does not compute MOSFET SOA, switching transition loss,

@@ -114,6 +114,11 @@ robot control-stack design pass.
   switched wheel rail. Treat this as a connector budget check only; cable
   assembly, wire gauge, crimp pullout, vibration, temperature rise, CAN
   termination, and surge/ESD protection remain separate checks.
+- The wheel actuator now has a separate `LOAD_CABLE_CURRENT_VALID` gate for
+  actuator-bus harness evidence. It intentionally reports
+  `VALIDATION_INPUT_MISSING` until the project selects a cable assembly, wire
+  gauge/crimp combination, or measured harness rating. The JST VH header
+  rating is not enough to sign off the cable path.
 
 ## Design Review Notes
 
@@ -180,6 +185,10 @@ robot control-stack design pass.
   `datasheet` or `measured` and at least `medium` confidence, so the current
   wheel report must fail sign-off while those two critical load/absorber
   components remain generic design envelopes.
+- The wheel actuator also declares a blocking `LOAD_CABLE_CURRENT_VALID`
+  harness-current screen. The current report must fail until selected
+  actuator-bus cable current evidence is supplied; connector metadata does not
+  prove wire gauge, crimp quality, harness routing, or thermal derating.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
@@ -221,7 +230,8 @@ robot control-stack design pass.
   true MOSFET SOA, peak gate current, switch-node ringing, selected amplifier
   bandwidth/common-mode behavior, PWM sampling, transient thermal impedance,
   selected regeneration absorber repeated-pulse behavior, PCB copper
-  temperature rise, or motor-control loop stability.
+  temperature rise, cable assembly temperature rise, or motor-control loop
+  stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four

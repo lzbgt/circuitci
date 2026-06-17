@@ -172,6 +172,22 @@ model for a board-specific cable or derated assembly. This is static connector
 budget evidence; temperature rise, crimp quality, wire gauge, vibration, and
 pulsed-load behavior need separate validation evidence.
 
+Cable or harness assemblies can declare separate static ratings:
+
+```yaml
+cable_assembly:
+  current_rating_A: 8.0
+  voltage_rating_V: 30.0
+  source: cable assembly datasheet or measured harness qualification
+```
+
+`LOAD_CABLE_CURRENT_VALID` uses this metadata when a scenario declares
+`parameters.cable_component`. Scenario parameters `cable_current_rating_A` and
+`cable_voltage_rating_V` can also provide explicit board-specific evidence.
+This is intentionally separate from connector metadata because a connector
+header rating does not prove wire gauge, crimp, harness routing, or cable
+temperature rise.
+
 Regulator and power-converter models may also declare static conversion
 metadata:
 

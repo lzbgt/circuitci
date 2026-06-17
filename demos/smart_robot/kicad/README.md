@@ -52,9 +52,10 @@ absorber envelope, and JST VH actuator-bus connector.
 `wheel_actuator/circuitci.kicad-map.yaml` binds those schematic references and
 pins back to the source-backed models used by
 `../circuitci/wheel_actuator/project.yaml`. It also carries the
-`MODEL_QUALITY_REQUIRED` sign-off scenario for `M1` and `REGEN1`, so validating
-the imported schematic blocks fabrication until those placeholder envelopes are
-replaced by selected datasheet or measured evidence.
+`MODEL_QUALITY_REQUIRED` sign-off scenario for `M1` and `REGEN1`, plus the
+`LOAD_CABLE_CURRENT_VALID` actuator-bus harness gate. Validating the imported
+schematic blocks fabrication until those placeholder envelopes and cable
+evidence are replaced by selected datasheet or measured evidence.
 
 `wheel_actuator/wheel_actuator.kicad_pcb` is the first smart-robot PCB layout
 bridge. It is a compact placement/routing artifact for import testing: it
@@ -86,7 +87,8 @@ also drives the first-pass phase-shunt and current-sense route placement
 checks. It is still not a final layout sign-off: it does not prove MOSFET
 SOA/thermal margins, dynamic current-sense waveform behavior, copper
 temperature rise, selected regeneration absorber behavior, repeated-pulse
-heating, EMC, or manufacturing DRC.
+heating, selected cable assembly current/thermal behavior, EMC, or
+manufacturing DRC.
 
 ## PMU
 
@@ -135,5 +137,5 @@ circuitci import-kicad-schematic \
 
 The imported Board IR proves I2C, OE, PWM fanout, servo power, and connector
 signal connectivity only. It does not yet round-trip connector-current budget
-scenarios, servo stall/regeneration assumptions, cable derating, or routed PCB
-evidence.
+scenarios, servo stall/regeneration assumptions, cable assembly derating, or
+routed PCB evidence.

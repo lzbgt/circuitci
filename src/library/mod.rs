@@ -34,6 +34,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub connector: Option<Connector>,
     #[serde(default)]
+    pub cable_assembly: Option<CableAssembly>,
+    #[serde(default)]
     pub signal_conditioning: SignalConditioning,
     #[serde(default)]
     pub clock_sources: Vec<ClockSource>,
@@ -191,6 +193,16 @@ pub struct UsbConnector {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Connector {
+    #[serde(default, rename = "current_rating_A")]
+    pub current_rating_a: Option<f64>,
+    #[serde(default, rename = "voltage_rating_V")]
+    pub voltage_rating_v: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CableAssembly {
     #[serde(default, rename = "current_rating_A")]
     pub current_rating_a: Option<f64>,
     #[serde(default, rename = "voltage_rating_V")]
