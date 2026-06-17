@@ -56,6 +56,8 @@ pub struct CircuitCiApp {
     report: Option<ValidationReport>,
     report_markdown: String,
     suggestions_yaml: String,
+    project_yaml: String,
+    project_yaml_dirty: bool,
     project_snapshot: Option<ProjectSnapshot>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
@@ -74,6 +76,8 @@ impl Default for CircuitCiApp {
             report: None,
             report_markdown: String::new(),
             suggestions_yaml: String::new(),
+            project_yaml: String::new(),
+            project_yaml_dirty: false,
             project_snapshot: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
@@ -97,8 +101,16 @@ impl CircuitCiApp {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Load Project Summary").clicked() {
+                    if ui.button("Load Project").clicked() {
                         self.load_project_summary();
+                        ui.close();
+                    }
+                    if ui.button("Load Project YAML").clicked() {
+                        self.load_project_yaml();
+                        ui.close();
+                    }
+                    if ui.button("Save Project YAML").clicked() {
+                        self.save_project_yaml();
                         ui.close();
                     }
                     if ui.button("Validate").clicked() {
@@ -163,6 +175,9 @@ impl CircuitCiApp {
                     if ui.button("Load").clicked() {
                         self.load_project_summary();
                     }
+                    if ui.button("Save").clicked() {
+                        self.save_project_yaml();
+                    }
                     if ui.button("Validate").clicked() {
                         self.validate_project();
                     }
@@ -176,6 +191,9 @@ impl CircuitCiApp {
                     ui.label(format!("Components: {}", snapshot.components));
                     ui.label(format!("Nets: {}", snapshot.nets));
                     ui.label(format!("Scenarios: {}", snapshot.scenarios));
+                    if self.project_yaml_dirty {
+                        ui.label("YAML: unsaved edits");
+                    }
                     if !snapshot.libraries.is_empty() {
                         ui.label("Libraries");
                         for library in &snapshot.libraries {
@@ -237,7 +255,7 @@ impl CircuitCiApp {
     fn sketch_stage(&mut self, ui: &mut egui::Ui) {
         ui.heading("Sketch Workspace");
         ui.separator();
-        ui.label("This first desktop slice is an observation and workflow shell. Schematic canvas editing will build on the same project model and library binding path.");
+        ui.label("Edit the Board IR YAML evidence directly, save it, then rerun validation and waveform observation through the same engine path.");
         ui.add_space(8.0);
         if let Some(snapshot) = &self.project_snapshot {
             egui::Grid::new("sketch_grid").striped(true).show(ui, |ui| {
@@ -251,6 +269,36 @@ impl CircuitCiApp {
                 ui.label(format!("{} scenarios", snapshot.scenarios));
                 ui.end_row();
             });
+        }
+        ui.horizontal(|ui| {
+            if ui.button("Load YAML").clicked() {
+                self.load_project_yaml();
+            }
+            if ui.button("Save YAML").clicked() {
+                self.save_project_yaml();
+            }
+            if ui.button("Validate YAML").clicked() {
+                self.validate_project_yaml_text();
+            }
+            if self.project_yaml_dirty {
+                ui.label("Unsaved edits");
+            }
+        });
+        ui.separator();
+        if self.project_yaml.is_empty() {
+            ui.label("Load a project to edit its Board IR YAML.");
+        } else {
+            let response = egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.project_yaml)
+                        .font(egui::TextStyle::Monospace)
+                        .desired_rows(36)
+                        .lock_focus(true),
+                )
+            });
+            if response.inner.changed() {
+                self.project_yaml_dirty = true;
+            }
         }
     }
 
@@ -340,9 +388,56 @@ impl CircuitCiApp {
     fn load_project_summary(&mut self) {
         match load_project_snapshot(Path::new(&self.project_path)) {
             Ok(snapshot) => {
+                let loaded_name = snapshot.name.clone();
                 self.status = format!("Loaded {}", snapshot.name);
                 self.project_snapshot = Some(snapshot);
-                self.push_diagnostic("Project summary loaded.");
+                if !self.project_yaml_dirty {
+                    self.load_project_yaml();
+                }
+                self.push_diagnostic(&format!("Project summary loaded for {loaded_name}."));
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn load_project_yaml(&mut self) {
+        match std::fs::read_to_string(Path::new(&self.project_path))
+            .with_context(|| format!("Failed to read {}.", self.project_path))
+            .and_then(|text| {
+                validate_board_ir_yaml_text(&text)?;
+                Ok(text)
+            }) {
+            Ok(text) => {
+                self.project_yaml = text;
+                self.project_yaml_dirty = false;
+                self.stage = Stage::Sketch;
+                self.status = "Project YAML loaded.".to_string();
+                self.push_diagnostic("Project YAML loaded into Sketch workspace.");
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn save_project_yaml(&mut self) {
+        match validate_board_ir_yaml_text(&self.project_yaml).and_then(|()| {
+            std::fs::write(Path::new(&self.project_path), &self.project_yaml)
+                .with_context(|| format!("Failed to write {}.", self.project_path))
+        }) {
+            Ok(()) => {
+                self.project_yaml_dirty = false;
+                self.status = "Project YAML saved.".to_string();
+                self.push_diagnostic("Project YAML saved after schema parse validation.");
+                self.load_project_summary();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn validate_project_yaml_text(&mut self) {
+        match validate_board_ir_yaml_text(&self.project_yaml) {
+            Ok(()) => {
+                self.status = "Project YAML parses.".to_string();
+                self.push_diagnostic("Project YAML parse validation passed.");
             }
             Err(error) => self.record_error(error),
         }
@@ -481,6 +576,12 @@ fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
             .map(|library| library.to_string())
             .collect(),
     })
+}
+
+fn validate_board_ir_yaml_text(text: &str) -> Result<()> {
+    let _project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    Ok(())
 }
 
 fn validate_from_gui(
@@ -776,7 +877,32 @@ fn display_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_waveform_csv_text;
+    use super::{parse_waveform_csv_text, validate_board_ir_yaml_text};
+
+    #[test]
+    fn board_ir_editor_accepts_minimal_project_yaml() {
+        validate_board_ir_yaml_text(
+            "project:
+  name: gui_editor_test
+  version: 0.1.0
+board:
+  components: {}
+  nets: {}
+",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn board_ir_editor_rejects_invalid_project_yaml() {
+        let error = validate_board_ir_yaml_text(
+            "project:
+  name: gui_editor_test
+",
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("Board IR"));
+    }
 
     #[test]
     fn waveform_parser_accepts_ngspice_header_and_samples() {

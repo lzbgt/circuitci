@@ -35,8 +35,8 @@ form:
 
 - Project: choose a Board IR project and output directory, then load or
   validate it.
-- Sketch: shows the imported/sketched board graph summary. Canvas editing will
-  build on this stage.
+- Sketch: shows the imported/sketched board graph summary and provides a raw
+  Board IR YAML editor with parse-validated save.
 - Library: shows library bindings and scenario suggestion YAML.
 - Simulation: runs validation through the engine, plots emitted CSV waveforms,
   and lists generated SPICE decks, artifacts, findings, and limitations.
@@ -56,14 +56,16 @@ missing.
 The supported desktop simulation path is:
 
 1. load or import board evidence,
-2. bind sourced component models,
-3. run declared validation and `analog_transient` scenarios,
-4. observe generated decks, plotted CSV waveforms, findings, and report
+2. edit Board IR YAML evidence when the imported/sketched project needs a
+   correction,
+3. bind sourced component models,
+4. run declared validation and `analog_transient` scenarios,
+5. observe generated decks, plotted CSV waveforms, findings, and report
    artifacts,
-5. edit the project/model evidence and rerun.
+6. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, advanced waveform cursors/measurements,
-automatic arbitrary schematic-to-SPICE conversion, and vendor macromodel
-acquisition are future GUI stages. They must reuse the existing Board IR,
-importer, model, and validation contracts instead of creating a parallel EDA
-model.
+Full schematic-canvas editing, structured component/net property inspectors,
+advanced waveform cursors/measurements, automatic arbitrary schematic-to-SPICE
+conversion, and vendor macromodel acquisition are future GUI stages. They must
+reuse the existing Board IR, importer, model, and validation contracts instead
+of creating a parallel EDA model.
