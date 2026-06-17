@@ -52,6 +52,10 @@ board:
   6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts,
   8 A motor connector rating, 10 ohm gate resistors, 200 ns dead time, and
   20 kHz PWM.
+- `M1` intentionally remains a generic low-confidence model. Validation reports
+  must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL` limitation for
+  `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
+  selected motor datasheet or measured load envelope replaces it.
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` first-pass CSD88599Q5DC bridge screening:
   12.6 V max bus, 40 A current class, and scaled 3 W at 30 A reference-loss
   evidence against a 2 W board thermal budget with 2x margin.

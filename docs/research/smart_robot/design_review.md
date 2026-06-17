@@ -131,6 +131,10 @@ left/right reusable wheel controller pass:
   10 A phase peak, 6 A phase RMS, 6 A regeneration, 5 mohm / 1 W phase shunts
   with 2x power margin, 8 A motor connector rating, 10 ohm gate resistors,
   200 ns dead time, and 20 kHz PWM.
+- `M1` is still a generic low-confidence design envelope, not selected motor
+  evidence. The wheel validation report is expected to pass while retaining the
+  non-blocking `LOW_CONFIDENCE_MODEL` limitation for
+  `component:M1:model:demo.smart_robot.wheel_motor_design_envelope`.
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.

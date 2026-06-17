@@ -15,6 +15,19 @@ fn smart_robot_wheel_bridge_budget_passes() {
             .any(|finding| finding["severity"] == "critical"),
         "wheel actuator bridge budget should pass: {report:#?}"
     );
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| {
+                limitation["id"] == "LOW_CONFIDENCE_MODEL"
+                    && limitation["scope"]
+                        == "component:M1:model:demo.smart_robot.wheel_motor_design_envelope"
+                    && limitation["blocking"] == false
+            }),
+        "wheel actuator must expose the demo motor-envelope limitation: {report:#?}"
+    );
 }
 
 #[test]

@@ -171,7 +171,10 @@ robot control-stack design pass.
   5 mohm / 1 W phase shunts, 8 A motor connector rating, 10 ohm gate
   resistors, 200 ns dead time, and 20 kHz PWM. These values are design-policy
   inputs for a reusable small robot actuator, not sourced motor
-  characterization.
+  characterization. Wheel validation reports must retain the non-blocking
+  `LOW_CONFIDENCE_MODEL` limitation for
+  `component:M1:model:demo.smart_robot.wheel_motor_design_envelope` until a
+  selected motor datasheet or measured envelope replaces this model.
 - The wheel actuator now also checks the preliminary CSD88599Q5DC bridge model
   with `MOTOR_BRIDGE_LOSS_THERMAL_VALID`: 12.6 V maximum bus, 40 A current
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
