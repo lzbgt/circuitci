@@ -236,10 +236,12 @@ robot control-stack design pass.
   single-event energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V
   clamp window, 10 A clamp current envelope, 1.5 J clamp energy envelope, and
   1.5x current/energy margins. The saved Vishay datasheet gives the RH100
-  100 W rating and includes 1 ohm values in the supported range. The model is
-  source-backed for first-pass absorption screening, but not for repeated-pulse
-  resistor thermal sign-off, enclosure heat sinking, or firmware regeneration
-  control.
+  100 W rating and includes 1 ohm values in the supported range. The
+  `regen_absorber` model metadata now carries the 10 A / 1.5 J first-pass
+  ratings consumed by the validator, so the scenario no longer duplicates those
+  selected-part values. The model is source-backed for first-pass absorption
+  screening, but not for repeated-pulse resistor thermal sign-off, enclosure
+  heat sinking, or firmware regeneration control.
 - The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.

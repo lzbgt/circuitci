@@ -2073,8 +2073,6 @@ scenarios:
       bus_voltage_nominal_V: 12.6
       clamp_voltage_V: 16.0
       max_bus_voltage_V: 18.0
-      clamp_current_rating_A: 10.0
-      clamp_energy_rating_J: 1.5
       min_clamp_current_margin_ratio: 1.5
       min_regen_energy_margin_ratio: 1.5
 ```
@@ -2091,15 +2089,18 @@ Required evidence:
   not infer rotor inertia, speed, or firmware braking behavior.
 - `bus_capacitance_F`, `bus_voltage_nominal_V`, `clamp_voltage_V`, and
   `max_bus_voltage_V` define the bus energy window.
-- `clamp_current_rating_A`, `clamp_energy_rating_J`,
-  `min_clamp_current_margin_ratio`, and `min_regen_energy_margin_ratio` define
-  the absorber/clamp limits and required margins.
+- Absorber current and energy ratings come from explicit
+  `clamp_current_rating_A` / `clamp_energy_rating_J` parameters, or from the
+  named `clamp_component` model's `regen_absorber.clamp_current_rating_A` /
+  `regen_absorber.clamp_energy_rating_J` metadata.
+- `min_clamp_current_margin_ratio` and `min_regen_energy_margin_ratio` define
+  the required margins.
 
 The validator requires `clamp_voltage_V > bus_voltage_nominal_V`, checks
 `clamp_voltage_V <= max_bus_voltage_V`, checks regeneration current with the
 declared current margin, and computes bus-capacitor absorption as
 `0.5 * bus_capacitance_F * (clamp_voltage_V^2 - bus_voltage_nominal_V^2)`.
-That bus absorption plus `clamp_energy_rating_J` must cover
+That bus absorption plus explicit or model-derived `clamp_energy_rating_J` must cover
 `regen_energy_J * min_regen_energy_margin_ratio`. This is a static single-event
 screen; it does not prove repeated-pulse heating, brake-resistor temperature
 rise, active clamp stability, firmware regeneration control, or motor SOA.

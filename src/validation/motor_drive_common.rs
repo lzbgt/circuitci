@@ -653,6 +653,24 @@ pub(super) fn required_positive_with_fallback(
     fallback_name: &str,
     findings: &mut Vec<Finding>,
 ) -> Option<f64> {
+    required_positive_with_component_fallback(
+        scenario,
+        name,
+        fallback,
+        fallback_name,
+        "motor_component",
+        findings,
+    )
+}
+
+pub(super) fn required_positive_with_component_fallback(
+    scenario: &Scenario,
+    name: &str,
+    fallback: Option<f64>,
+    fallback_name: &str,
+    component_parameter: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
     if scenario.parameters.contains_key(name) {
         return required_positive(scenario, name, findings);
     }
@@ -661,7 +679,7 @@ pub(super) fn required_positive_with_fallback(
             scenario,
             name,
             &format!(
-                "Add motor_drive parameters.{name}, or set parameters.motor_component to a component model with {fallback_name}."
+                "Add motor_drive parameters.{name}, or set parameters.{component_parameter} to a component model with {fallback_name}."
             ),
             findings,
         );

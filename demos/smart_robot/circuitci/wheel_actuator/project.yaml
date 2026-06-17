@@ -435,8 +435,6 @@ scenarios:
       bus_voltage_nominal_V: 12.6
       clamp_voltage_V: 16.0
       max_bus_voltage_V: 18.0
-      clamp_current_rating_A: 10.0
-      clamp_energy_rating_J: 1.5
       min_clamp_current_margin_ratio: 1.5
       min_regen_energy_margin_ratio: 1.5
   - name: wheel_actuator_phase_route_current

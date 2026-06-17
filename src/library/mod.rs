@@ -44,6 +44,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub motor_load: Option<MotorLoad>,
     #[serde(default)]
+    pub regen_absorber: Option<RegenAbsorber>,
+    #[serde(default)]
     pub motor_bridge: Option<MotorBridge>,
     #[serde(default)]
     pub datasheet: Option<Datasheet>,
@@ -331,6 +333,16 @@ pub struct MotorLoad {
     pub phase_rms_current_a: Option<f64>,
     #[serde(default, rename = "max_regen_current_A")]
     pub max_regen_current_a: Option<f64>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegenAbsorber {
+    #[serde(default, rename = "clamp_current_rating_A")]
+    pub clamp_current_rating_a: Option<f64>,
+    #[serde(default, rename = "clamp_energy_rating_J")]
+    pub clamp_energy_rating_j: Option<f64>,
     #[serde(default)]
     pub source: Option<String>,
 }

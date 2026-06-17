@@ -112,10 +112,12 @@ route-current, current-sense placement, and current-sense accuracy.
 motor-load evidence resolution, route/placement geometry helpers, and common
 finding builders. The bridge-budget rule consumes explicit scenario parameters
 and optional `parameters.motor_component` evidence from a bound component model
-with `motor_load`; it does not infer motor behavior from topology. Required
-current, connector, shunt, gate-resistor, dead-time, and PWM values must be
-finite and positive where appropriate; unknown values produce
-`VALIDATION_INPUT_MISSING`.
+with `motor_load`; it does not infer motor behavior from topology.
+`MOTOR_REGEN_CLAMP_VALID` similarly accepts explicit scenario current/energy
+ratings for what-if studies or `parameters.clamp_component` evidence from a
+bound component model with `regen_absorber`. Required current, connector,
+shunt, gate-resistor, dead-time, PWM, and absorber values must be finite and
+positive where appropriate; unknown values produce `VALIDATION_INPUT_MISSING`.
 
 Current-sense placement checks consume only component placements and route
 polylines already present in `board.layout`. They compare phase shunts against

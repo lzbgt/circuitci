@@ -293,6 +293,15 @@
       },
       "additionalProperties": false
     },
+    "regen_absorber": {
+      "type": "object",
+      "properties": {
+        "clamp_current_rating_A": { "type": "number", "exclusiveMinimum": 0 },
+        "clamp_energy_rating_J": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "motor_bridge": {
       "type": "object",
       "properties": {

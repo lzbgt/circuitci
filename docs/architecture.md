@@ -132,10 +132,13 @@ current-versus-temperature limits, or fall back to classic
 `datasheet.safe_operating_area.vds_id_curves` for VDS/ID pulse curves.
 `MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event
 regeneration envelope against bus capacitance and a named absorber/clamp
-component. `MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks declared shunt, gain,
-ADC, offset, tolerance, and error budgets. These rules still do not imply FOC,
-true MOSFET SOA, switching-waveform, PWM sampling behavior, peak gate-current
-behavior, repeated-pulse
+component. Absorber current and energy ratings can come from scenario
+parameters for what-if studies or from the named component model's
+`regen_absorber` metadata for selected-part evidence.
+`MOTOR_CURRENT_SENSE_ACCURACY_VALID` checks declared shunt, gain, ADC, offset,
+tolerance, and error budgets. These rules still do not imply FOC, true MOSFET
+SOA, switching-waveform, PWM sampling behavior, peak gate-current behavior,
+repeated-pulse
 thermal, firmware regeneration-control, or PCB copper-temperature sign-off.
 
 Load-budget rules are static connector/load screens. `load_budget` scenarios

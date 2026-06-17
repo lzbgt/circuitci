@@ -11,6 +11,10 @@ ports:
 spice:
   primitive: resistor
   value_ohm: 1.0
+regen_absorber:
+  clamp_current_rating_A: 10.0
+  clamp_energy_rating_J: 1.5
+  source: docs/research/smart_robot/sources/vishay_rh_nh_aluminum_housed_resistors.pdf; derived 100 W / 1 ohm current and 100 W for 15 ms first-pass single-event energy envelope
 datasheet:
   manufacturer: Vishay Dale
   part_number: RH100_1R0_FIRST_PASS_REGEN_ABSORBER

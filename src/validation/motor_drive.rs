@@ -1244,7 +1244,7 @@ pub(super) fn validate_motor_regen_clamp(
         );
         return;
     };
-    if bound.library.get(&clamp.model).is_none() {
+    let Some(clamp_model) = bound.library.get(&clamp.model) else {
         missing_input(
             scenario,
             "clamp_component.model",
@@ -1252,9 +1252,9 @@ pub(super) fn validate_motor_regen_clamp(
             findings,
         );
         return;
-    }
-
+    };
     let motor_load = motor_load_evidence(bound, scenario, findings);
+    let regen_absorber = clamp_model.regen_absorber.as_ref();
     let Some(max_regen_current_a) = required_non_negative_with_fallback(
         scenario,
         "max_regen_current_A",
@@ -1283,14 +1283,24 @@ pub(super) fn validate_motor_regen_clamp(
     let Some(max_bus_voltage_v) = required_positive(scenario, "max_bus_voltage_V", findings) else {
         return;
     };
-    let Some(clamp_current_rating_a) =
-        required_positive(scenario, "clamp_current_rating_A", findings)
-    else {
+    let Some(clamp_current_rating_a) = required_positive_with_component_fallback(
+        scenario,
+        "clamp_current_rating_A",
+        regen_absorber.and_then(|absorber| absorber.clamp_current_rating_a),
+        "regen_absorber.clamp_current_rating_A",
+        "clamp_component",
+        findings,
+    ) else {
         return;
     };
-    let Some(clamp_energy_rating_j) =
-        required_positive(scenario, "clamp_energy_rating_J", findings)
-    else {
+    let Some(clamp_energy_rating_j) = required_positive_with_component_fallback(
+        scenario,
+        "clamp_energy_rating_J",
+        regen_absorber.and_then(|absorber| absorber.clamp_energy_rating_j),
+        "regen_absorber.clamp_energy_rating_J",
+        "clamp_component",
+        findings,
+    ) else {
         return;
     };
     let Some(min_current_margin_ratio) =
@@ -1359,7 +1369,7 @@ pub(super) fn validate_motor_regen_clamp(
                 "Motor regeneration envelope requires {required_absorption_energy_j:.6} J with margin, but bus capacitance plus clamp rating absorbs {total_absorption_energy_j:.6} J."
             ),
         );
-        finding.component = Some(clamp_component);
+        finding.component = Some(clamp_component.clone());
         finding
             .measured
             .insert("regen_energy_J".to_string(), json!(regen_energy_j));
@@ -1376,6 +1386,9 @@ pub(super) fn validate_motor_regen_clamp(
                 .measured
                 .insert("motor_component".to_string(), json!(evidence.component_id));
         }
+        finding
+            .measured
+            .insert("clamp_component".to_string(), json!(clamp_component));
         finding.limit.insert(
             "required_absorption_energy_J".to_string(),
             json!(required_absorption_energy_j),

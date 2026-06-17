@@ -119,6 +119,20 @@ These fields are load-budget evidence, not a dynamic motor model. Use
 datasheet- or measurement-backed values for a selected motor before treating
 the actuator bridge as fabrication-ready.
 
+Regeneration clamp or absorber models can declare first-pass single-event
+current and energy evidence used by `MOTOR_REGEN_CLAMP_VALID`:
+
+```yaml
+regen_absorber:
+  clamp_current_rating_A: 10.0
+  clamp_energy_rating_J: 1.5
+  source: docs/research/smart_robot/sources/vishay_rh_nh_aluminum_housed_resistors.pdf
+```
+
+These fields are selected-part evidence for the static clamp screen. They are
+not repeated-pulse thermal, enclosure heat-sinking, or firmware regeneration
+control proof unless the source explicitly covers those conditions.
+
 Motor bridge models can declare first-pass loss and rating evidence used by
 `MOTOR_BRIDGE_LOSS_THERMAL_VALID`:
 

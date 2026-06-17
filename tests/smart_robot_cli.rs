@@ -936,8 +936,7 @@ fn smart_robot_wheel_bridge_soa_static_budget_fails_low_system_margin() {
 
 #[test]
 fn smart_robot_wheel_regen_clamp_fails_low_energy_rating() {
-    let (dir, project) =
-        mutated_wheel_actuator_project("clamp_energy_rating_J: 1.5", "clamp_energy_rating_J: 0.2");
+    let (dir, project) = wheel_actuator_project_with_low_regen_absorber_energy();
     let output = dir.path().join("report");
     let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
         .args([
@@ -1259,6 +1258,42 @@ fn wheel_actuator_project_without_system_soa() -> (tempfile::TempDir, std::path:
         .replace(
             "demo.smart_robot.csd88599q5dc_3phase_bridge_budget",
             "demo.smart_robot.csd88599q5dc_3phase_bridge_budget_no_soa",
+        );
+    let project = dir.path().join("project.yaml");
+    std::fs::write(&project, source).unwrap();
+    (dir, project)
+}
+
+fn wheel_actuator_project_with_low_regen_absorber_energy() -> (tempfile::TempDir, std::path::PathBuf)
+{
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let model_dir = dir.path().join("models");
+    std::fs::create_dir_all(&model_dir).unwrap();
+    let mut model: YamlValue = serde_yaml_ng::from_str(
+        &std::fs::read_to_string(
+            "demos/smart_robot/circuitci/models/vishay_rh100_1r0_regen_absorber.model.yaml",
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    model["component_id"] =
+        YamlValue::String("demo.smart_robot.test_low_energy_regen_absorber".to_string());
+    model["regen_absorber"]["clamp_energy_rating_J"] = YamlValue::Number(0.2.into());
+    std::fs::write(
+        model_dir.join("test_low_energy_regen_absorber.model.yaml"),
+        serde_yaml_ng::to_string(&model).unwrap(),
+    )
+    .unwrap();
+
+    let source = wheel_actuator_project_source()
+        .replace(
+            "libraries:\n",
+            &format!("libraries:\n  - {}\n", model_dir.to_string_lossy()),
+        )
+        .replace(
+            "demo.smart_robot.vishay_rh100_1r0_regen_absorber",
+            "demo.smart_robot.test_low_energy_regen_absorber",
         );
     let project = dir.path().join("project.yaml");
     std::fs::write(&project, source).unwrap();
