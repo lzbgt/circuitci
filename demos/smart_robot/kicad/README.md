@@ -97,12 +97,14 @@ manufacturing DRC.
 board. It uses local `CircuitCI:*` symbols for the USB-C PD source placeholder,
 protected 2S battery source, BQ25798 charger, TPS54331 5 V buck, TPS62162
 3.3 V buck, required 3.3 V support passives, selected TPS25948 servo switch,
-wheel e-stop switched rail placeholder, and the first-pass rail load budgets.
+selected TPS24751/CSD17501Q5A wheel switch path, and the first-pass rail load
+budgets.
 
 `pmu/circuitci.kicad-map.yaml` binds those schematic references and pins back
 to the source-backed models used by `../circuitci/pmu/project.yaml`. It also
-preserves the selected TPS25948 model for `U_SERVO_SW` and the
-`MODEL_QUALITY_REQUIRED` gate for the remaining `U_WHEEL_SW` placeholder. It
+preserves the selected TPS25948 model for `U_SERVO_SW`, the selected
+TPS24751/CSD17501Q5A path for `U_WHEEL_SW`, and the
+`MODEL_QUALITY_REQUIRED` gate for both switched rails. It
 also preserves the `POWER_SWITCH_BUDGET_VALID`, reverse-current, and inrush
 gates, so imported schematics cannot bypass selected-part current-limit,
 static thermal, reverse-mode, and soft-start evidence requirements.

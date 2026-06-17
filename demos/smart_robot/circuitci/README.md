@@ -33,13 +33,11 @@ layout sign-off.
 - TPS54331 5 V buck static voltage/current screening.
 - TPS62162 3.3 V buck support inductor/capacitor screening.
 - Source-backed TI TPS25948 configured eFuse selection for `U_SERVO_SW`.
-- Design-policy e-stop switch placeholder for the higher-current wheel rail.
+- Source-backed TI TPS24751 plus CSD17501Q5A reverse-blocking switch-path
+  selection for `U_WHEEL_SW`.
 - `POWER_SWITCH_BUDGET_VALID`, `POWER_SWITCH_REVERSE_CURRENT_VALID`, and
-  `POWER_SWITCH_INRUSH_VALID` now clear for the servo rail with a first-pass
-  1 mF switched-capacitance envelope.
-- The same gates intentionally fail closed for `U_WHEEL_SW` until a selected
-  high-current wheel switch declares current-limit, static thermal,
-  off-state reverse-current isolation, and inrush evidence.
+  `POWER_SWITCH_INRUSH_VALID` now clear for both switched rails with first-pass
+  1 mF switched-capacitance envelopes.
 
 `wheel_actuator/project.yaml` models the reusable left/right wheel actuator
 board:
@@ -138,16 +136,16 @@ Expected result:
 
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_pmu_v0: fail (critical=4, warning=0, info=0)
+CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_wheel_actuator_v0: fail (critical=5, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
 
-The PMU failure is expected until `U_WHEEL_SW` is replaced by source-backed
-selected high-current eFuse, load-switch, or MOSFET-driver evidence with
-current-limit, static thermal, off-state reverse-current isolation, soft-start, and
-switched-capacitance metadata. The lower level BQ25798, TPS54331, TPS62162,
-TPS25948 servo switch, and power-tree checks should still remain clean.
+The PMU selected-part gates now pass for the charger, bucks, servo eFuse, wheel
+switch path, and power-tree checks. This is still not final fabrication
+sign-off: downstream switched capacitance, PCB copper thermal behavior,
+fault/retry waveforms, and measured rail droop still need layout or bench
+evidence.
 
 The wheel actuator failure is expected until `M1`, `REGEN1`, and the
 actuator-bus cable assembly are replaced by source-backed selected components,

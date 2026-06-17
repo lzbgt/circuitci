@@ -313,11 +313,9 @@ For the charger IC, the clean high-quality choice is **BQ25798**. It is a 1–4 
 
 CircuitCI currently models the PMU charger, 5 V buck, 3.3 V buck, and switched
 servo/wheel rails. `U_SERVO_SW` now uses a source-backed configured TI TPS25948
-8 A eFuse model for first-pass servo-rail screening. `U_WHEEL_SW` still
-intentionally fails fabrication sign-off until the placeholder is replaced by a
-source-backed high-current eFuse, load-switch, or MOSFET-driver part with
-current-limit, static thermal, off-state reverse-current isolation, and
-soft-start/inrush evidence.
+8 A eFuse model for first-pass servo-rail screening. `U_WHEEL_SW` now uses a
+source-backed TPS24751/CSD17501Q5A reverse-blocking switch path for first-pass
+wheel-rail screening.
 
 For USB-C PD negotiation, use either:
 
@@ -537,15 +535,13 @@ The e-stop must not depend only on Linux software.
 The validation model treats the e-stop rail switches as safety-critical
 selected parts, not generic policy boxes. The servo rail has a first-pass
 TPS25948 model with current-limit, thermal, always-on reverse-current blocking,
-and dVdt/inrush evidence. `MODEL_QUALITY_REQUIRED` must stay blocking for the
-wheel rail until a datasheet-backed or measured switch model proves the real
-current, thermal, inrush, off-state reverse-current isolation, and SOA
-behavior.
-`POWER_SWITCH_BUDGET_VALID` also blocks wheel sign-off until that selected
-model declares current-limit, on-resistance, package/board thermal resistance,
-and maximum junction-temperature data. Reverse-current and inrush gates
-additionally require explicit backfeed-blocking capability,
-soft-start/inrush-current limits, and switched-capacitance evidence.
+and dVdt/inrush evidence. The wheel rail has a first-pass TPS24751 plus
+CSD17501Q5A path with current-limit, thermal, off-state reverse-current
+isolation, and inrush evidence.
+`POWER_SWITCH_BUDGET_VALID`, `POWER_SWITCH_REVERSE_CURRENT_VALID`, and
+`POWER_SWITCH_INRUSH_VALID` now check those selected paths. They still do not
+replace layout thermal extraction, measured fault/retry waveforms, or final
+downstream switched-capacitance evidence.
 
 ## Wheel driver enable chain
 

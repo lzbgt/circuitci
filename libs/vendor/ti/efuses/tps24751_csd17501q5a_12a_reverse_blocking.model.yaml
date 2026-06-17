@@ -1,0 +1,142 @@
+component_id: vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking
+version: 0.1.0
+category: load_switch
+ports:
+  VIN:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 2.5
+      operating_voltage_max_V: 18.0
+  VOUT:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 0.0
+      operating_voltage_max_V: 18.0
+  EN:
+    kind: digital_electrical_input
+    required: true
+    electrical:
+      vih_min_V: 1.3
+  GND:
+    kind: electrical_ground
+    required: true
+  TIMER:
+    kind: passive
+    required: false
+  PROG:
+    kind: passive
+    required: false
+  SET:
+    kind: passive
+    required: false
+  FLTb:
+    kind: digital_electrical_output
+    required: false
+  PGb:
+    kind: digital_electrical_output
+    required: false
+power_switch:
+  input_pin: VIN
+  output_pin: VOUT
+  control_pin: EN
+  enabled_state: high
+  max_output_current_A: 12.0
+  current_limit_A: 11.0
+  on_resistance_ohm: 0.0097
+  thermal_resistance_junction_to_ambient_C_per_W: 49.0
+  max_junction_temperature_C: 125.0
+  reverse_current_blocking_mode: when_disabled
+  max_inrush_current_A: 11.0
+  soft_start_time_us: 6300.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: TPS24751 + CSD17501Q5A
+  package: TPS24751 RUV VQFN-36 with CSD17501Q5A SON 5 mm x 6 mm blocking FET
+  polarity: active_high_hot_swap_switch_path_with_external_reverse_blocking_fet
+  pinout:
+    VIN: TPS24751 VCC/DRAIN/SENSE input path
+    VOUT: TPS24751 OUT plus external blocking-FET output path
+    EN: TPS24751 EN
+    GND: TPS24751 GND
+    TIMER: TPS24751 TIMER
+    PROG: TPS24751 PROG
+    SET: TPS24751 SET
+    FLTb: TPS24751 FLTb
+    PGb: TPS24751 PGb
+  electrical_characteristics:
+    input_voltage:
+      conditions: TPS24751 recommended operating input range for VCC/SENSE/SET.
+      min: 2.5
+      max: 18.0
+      unit: V
+    absolute_maximum_input_voltage:
+      conditions: TPS24751 absolute maximum DRAIN/EN/GATE/OUT/PGb/SENSE/VCC pin range.
+      max: 30.0
+      unit: V
+    continuous_switch_current:
+      conditions: TPS24751 feature table states continuous current up to 12 A.
+      max: 12.0
+      unit: A
+    configured_current_limit:
+      conditions: Smart-robot wheel rail uses the TPS24751 datasheet 11 A design-example current limit.
+      typ: 11.0
+      unit: A
+    integrated_mosfet_on_resistance:
+      conditions: TPS24751 OUT RON at 1 A <= IOUT <= 10 A and TJ = 125 C.
+      max: 6.0
+      unit: mOhm
+    blocking_fet_on_resistance:
+      conditions: CSD17501Q5A RDS(on) at VGS = 4.5 V and IDS = 25 A.
+      max: 3.7
+      unit: mOhm
+    effective_path_on_resistance:
+      conditions: Conservative sum of TPS24751 hot RON max and CSD17501Q5A 4.5 V RDS(on) max.
+      max: 9.7
+      unit: mOhm
+    thermal_resistance_junction_to_ambient:
+      conditions: Conservative max of CSD17501Q5A RthetaJA on 1 in2 2-oz copper and TPS24751 RthetaJA reference.
+      typ: 49.0
+      unit: C_per_W
+    junction_temperature:
+      conditions: TPS24751 recommended operating junction temperature range.
+      min: -40.0
+      max: 125.0
+      unit: C
+    reverse_current_blocking_mode:
+      conditions: TI product page identifies reverse current blocking when off; TPS24751 datasheet Figure 46 shows the reverse blocking implementation and the timing calculation names CSD17501Q5A as the blocking FET.
+      unit: note
+    inrush_soft_start:
+      conditions: TPS24751 datasheet design example uses 11 A current limit, 470 uF load capacitance, and 6.3 ms selected fault-timer/inrush allowance.
+      typ: 6.3
+      unit: ms
+  documents:
+    - title: TPS24751 product page
+      path: docs/research/smart_robot/sources/tps24751_product.html
+      source_url: https://www.ti.com/product/TPS24751
+      sha256: 065e10285e78a7318bd00983d95a03187c4191c6f4f9d41db7e27313dde8f408
+    - title: TPS24751 datasheet
+      path: docs/research/smart_robot/sources/tps24751_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/tps24751.pdf
+      sha256: 7b9513d1185c74c94218653ded608e89e90d53d2886adbee477cf659a6bd3fdf
+    - title: CSD17501Q5A product page
+      path: docs/research/smart_robot/sources/csd17501q5a_product.html
+      source_url: https://www.ti.com/product/CSD17501Q5A
+      sha256: f2a419d687a74b67d1ea187961a9981a3dfd70afaae5f860206489f2720d7aee
+    - title: CSD17501Q5A datasheet
+      path: docs/research/smart_robot/sources/csd17501q5a_datasheet.pdf
+      source_url: https://www.ti.com/lit/gpn/CSD17501Q5A
+      sha256: 2b312e3e9c696e0cbb298a48ce855c538ff9c806d187c0092b5a086b393884f8
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - pmu_wheel_rail_selected_switch_budget
+    - pmu_wheel_rail_off_state_reverse_isolation_screening
+    - pmu_wheel_rail_first_pass_inrush_screening
+  not_valid_for:
+    - final_layout_thermal_signoff
+    - measured_short_circuit_waveform_signoff
+    - repeated_inrush_or_fault_retry_thermal_signoff
+    - safety_certification

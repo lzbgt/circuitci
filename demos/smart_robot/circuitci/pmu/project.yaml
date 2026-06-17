@@ -112,8 +112,8 @@ board:
         EN: estop_power_enable
         GND: gnd
     U_WHEEL_SW:
-      model: demo.smart_robot.estop_power_switch_policy
-      part_number: WHEEL_ESTOP_SWITCH_TBD
+      model: vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking
+      part_number: TPS24751+CSD17501Q5A
       power_domains:
         VIN: vbat_2s
         VOUT: vwheel_sw
@@ -300,6 +300,7 @@ scenarios:
       power_pin: VCC
     parameters:
       switch_component: U_WHEEL_SW
+      switched_capacitance_F: 0.001
       min_inrush_current_margin_ratio: 1.2
   - name: pmu_2s_charging_and_estop_enabled
     type: power_tree

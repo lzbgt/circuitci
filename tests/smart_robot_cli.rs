@@ -141,52 +141,45 @@ fn smart_robot_wheel_model_quality_gate_passes_with_source_backed_loads() {
 }
 
 #[test]
-fn smart_robot_pmu_blocks_remaining_placeholder_wheel_switch_signoff() {
+fn smart_robot_pmu_passes_with_selected_power_switch_paths() {
     let report = run_validation("demos/smart_robot/circuitci/pmu/project.yaml");
-    assert_eq!(report["result"], "fail");
+    assert_eq!(report["result"], "pass");
     assert_report_schema_valid(&report);
     assert!(
         !findings_with_id(&report, "POWER_TREE_VALID")
             .into_iter()
             .any(|finding| finding["severity"] == "critical"),
-        "PMU power-tree checks should remain clean while selected switch evidence is blocked: {report:#?}"
-    );
-    let model_quality_findings = findings_with_id(&report, "MODEL_QUALITY_REQUIRED");
-    assert!(
-        model_quality_findings.len() == 1
-            && model_quality_findings[0]["component"] == "U_WHEEL_SW"
-            && model_quality_findings[0]["measured"]["model_source"] == "design_requirement"
-            && model_quality_findings[0]["measured"]["model_confidence"] == "low",
-        "PMU must fail sign-off only on the remaining placeholder wheel e-stop switch evidence: {model_quality_findings:#?}"
-    );
-    let missing_inputs = findings_with_id(&report, "VALIDATION_INPUT_MISSING");
-    assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_wheel_switch_budget"
-                && finding["limit"]["required_input"] == "power_switch.current_limit_A"
-        }),
-        "PMU must fail sign-off until the wheel switch current-limit evidence is selected: {missing_inputs:#?}"
+        "PMU power-tree checks should remain clean with selected switch evidence: {report:#?}"
     );
     assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_wheel_switch_reverse_current"
-                && finding["limit"]["required_input"]
-                    == "power_switch.reverse_current_blocking_mode"
-        }),
-        "PMU must fail sign-off until the wheel switch reverse-current evidence is selected: {missing_inputs:#?}"
+        !findings_with_id(&report, "MODEL_QUALITY_REQUIRED")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "PMU selected switch models should clear model-quality sign-off: {report:#?}"
     );
     assert!(
-        missing_inputs.iter().any(|finding| {
-            finding["scenario"] == "pmu_wheel_switch_inrush"
-                && finding["limit"]["required_input"] == "power_switch.max_inrush_current_A"
-        }),
-        "PMU must fail sign-off until the wheel switch inrush evidence is selected: {missing_inputs:#?}"
+        !findings_with_id(&report, "VALIDATION_INPUT_MISSING")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "PMU selected switch models should not leave required switch inputs missing: {report:#?}"
     );
     assert!(
-        !missing_inputs.iter().any(|finding| finding["scenario"]
-            .as_str()
-            .is_some_and(|scenario| scenario.starts_with("pmu_servo_switch_"))),
-        "The source-backed TPS25948 servo switch must clear selected-part blockers: {missing_inputs:#?}"
+        !findings_with_id(&report, "POWER_SWITCH_REVERSE_CURRENT_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "TPS25948 must satisfy the servo always-on reverse mode and TPS24751 path must satisfy wheel off-state isolation: {report:#?}"
+    );
+    assert!(
+        !findings_with_id(&report, "POWER_SWITCH_BUDGET_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "selected PMU switch paths should clear static current and thermal budgets: {report:#?}"
+    );
+    assert!(
+        !findings_with_id(&report, "POWER_SWITCH_INRUSH_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "selected PMU switch paths should clear first-pass inrush budgets: {report:#?}"
     );
 }
 

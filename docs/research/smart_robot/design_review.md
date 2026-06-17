@@ -102,14 +102,14 @@ should encode:
   servo-rail screening. CircuitCI now checks its source-backed current limit,
   on-resistance, thermal resistance, reverse-current blocking, and first-pass
   dVdt/inrush envelope.
-- `U_WHEEL_SW` remains an explicit e-stop policy placeholder. PMU validation
-  cannot pass fabrication sign-off while the wheel switch remains a
-  low-confidence design-policy model.
-- Blocking `POWER_SWITCH_BUDGET_VALID`, reverse-current, and inrush gates now
-  remain only on the wheel switched rail. The downloaded TPS25985 is a useful
-  high-current candidate, but it is not selected because the cached datasheet
-  review did not prove the off-state reverse-current isolation required by the
-  current PMU switch contract.
+- `U_WHEEL_SW` selected as a TPS24751 hot-swap/eFuse path with a CSD17501Q5A
+  blocking FET for first-pass wheel-rail screening. CircuitCI now checks its
+  source-backed 11 A current-limit envelope, conservative 9.7 mOhm path
+  resistance, 49 C/W thermal screen, off-state reverse-current isolation mode,
+  and first-pass 6.3 ms inrush envelope.
+- The downloaded TPS25985 remains a useful high-current candidate, but it is
+  not selected because the cached source review did not prove the off-state
+  reverse-current isolation required by the current PMU switch contract.
 
 The servo switch selection is still first-pass. The scenario currently uses a
 1 mF switched-capacitance envelope for `VSERVO`; replace it with actual

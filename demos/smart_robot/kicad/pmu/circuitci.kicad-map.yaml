@@ -92,8 +92,8 @@ components:
       EN: EN
       GND: GND
   U_WHEEL_SW:
-    model: demo.smart_robot.estop_power_switch_policy
-    part_number: WHEEL_ESTOP_SWITCH_TBD
+    model: vendor.ti.tps24751_csd17501q5a_12a_reverse_blocking
+    part_number: TPS24751+CSD17501Q5A
     pin_map:
       VIN: VIN
       VOUT: VOUT
@@ -270,4 +270,5 @@ scenarios:
       power_pin: VCC
     parameters:
       switch_component: U_WHEEL_SW
+      switched_capacitance_F: 0.001
       min_inrush_current_margin_ratio: 1.2
