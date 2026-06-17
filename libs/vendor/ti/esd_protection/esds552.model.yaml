@@ -1,0 +1,66 @@
+component_id: vendor.ti.esds552
+version: 0.1.0
+category: rs485_esd_protection
+ports:
+  A:
+    kind: passive
+    required: true
+  B:
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: a
+      protected_pin: A
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 12.0
+    - name: b
+      protected_pin: B
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 12.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: ESDS552
+  package: SOT-23
+  polarity: passive_two_channel_bidirectional_rs485_esd_surge_protection
+  pinout:
+    A: A
+    B: B
+    GND: GND
+  electrical_characteristics:
+    reverse_standoff_voltage:
+      conditions: RS-485/RS-422 bidirectional line protection.
+      max: 12.0
+      unit: V
+    protected_interfaces:
+      conditions: Two-channel bidirectional ESD and surge protection for RS-485 and RS-422 interface lines.
+      unit: note
+  documents:
+    - title: ESDS552 product page
+      path: docs/research/smart_robot/sources/esds552_product.html
+      source_url: https://www.ti.com/product/ESDS552
+      sha256: 7757b8460f208a6f0e7c2fb05e19bf62e09ef686f2ba540f6f3e8eef33bf0e23
+      retrieved: "2026-06-17"
+    - title: ESDS552 12V Bi-Directional Surge Protection Diode in SOT-23 datasheet
+      path: docs/research/smart_robot/sources/esds552_datasheet.pdf
+      source_url: https://www.ti.com/lit/gpn/ESDS552
+      sha256: 3ce62d5dbb2b1637cb8591437db132fd4d1771059051ee0ab58aa2d0332fc936
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - rs485_esd_static_screening
+    - interface_protection_review
+    - static_rs485_clamp_presence_and_ground_reference
+  not_valid_for:
+    - esd_or_surge_pulse_waveform
+    - iec_61000_4_2_or_iec_61000_4_5_signoff
+    - rs485_signal_integrity_or_termination_signoff
+    - connector_placement_or_trace_stub_signoff
+    - cable_harness_or_common_mode_transient_signoff

@@ -64,6 +64,8 @@ AT32F435VGT7 / AT32F435RGT7
 ICM-42688-P
 TCAN3413 CAN transceiver
 THVD1450 RS485 transceiver
+ESD2CAN24-Q1 CANH/CANL TVS near connector
+ESDS552 RS485 A/B TVS near connector
 PCA9685 optional
 power monitors
 watchdog / e-stop logic

@@ -27,6 +27,8 @@ robot control-stack design pass.
 | TI CAN ESD / overvoltage application note | `docs/research/smart_robot/sources/ti_can_esd_overvoltage_app_note.pdf` | `207ed023ca70af6e1cb54c356e799d588ea9d4754f66875d09cfdc76f57eb364` |
 | TI THVD1450 product page | `docs/research/smart_robot/sources/thvd1450_product.html` | `5dbdd9efd4169c8ea8ac78dd4879bf40aec7e68232388a4887031570c05af132` |
 | TI THVD1450 datasheet | `docs/research/smart_robot/sources/thvd1450_datasheet.pdf` | `c8d27b57c6cd2018d5a38d65fcc030f7cd47f2221232e26b05dc8671095693ca` |
+| TI ESDS552 product page | `docs/research/smart_robot/sources/esds552_product.html` | `7757b8460f208a6f0e7c2fb05e19bf62e09ef686f2ba540f6f3e8eef33bf0e23` |
+| TI ESDS552 datasheet | `docs/research/smart_robot/sources/esds552_datasheet.pdf` | `3ce62d5dbb2b1637cb8591437db132fd4d1771059051ee0ab58aa2d0332fc936` |
 | NXP PCA9685 product page | `docs/research/smart_robot/sources/pca9685_product.html` | `28cbfe16e1a9b64c21ee3dec97f01f1277aa08013b6d67e11084a08536804468` |
 | NXP PCA9685 datasheet | `docs/research/smart_robot/sources/pca9685_datasheet.pdf` | `237d47f339cac4c3a0d56a5f0b4d3c93df71e3eb43f36ac57ea4ff38e6b2e585` |
 | JST XH connector datasheet | `docs/research/smart_robot/sources/jst_xh_connector_datasheet.pdf` | `9426b136902f11900825077535e5c65032b7fbc31ffb59c5e9e1f463bb20fb90` |
@@ -80,6 +82,11 @@ robot control-stack design pass.
   transceiver with 50 Mbps signaling, one-eighth-unit-load bus loading,
   up to 256 bus nodes, and plus/minus 18 kV IEC ESD positioning. That makes it
   a sourced first RS485 transceiver for the motion-core smart-servo bus.
+- TI's ESDS552 product page identifies a 12 V, two-channel bidirectional ESD
+  and surge protection diode for RS-485 and RS-422. The first CircuitCI model
+  uses that source to check RS485 A/B clamp presence and ground reference on
+  the motion-core smart-servo port. This is not IEC surge/ESD pulse,
+  termination, placement, common-mode, or signal-integrity sign-off.
 - NXP's PCA9685 page and datasheet identify a 16-channel, 12-bit PWM
   Fast-mode Plus I2C LED controller. The saved datasheet states 2.3 V to 5.5 V
   supply operation, 5.5 V tolerant inputs/outputs, Fm+ operation up to 1 MHz,
@@ -111,10 +118,10 @@ robot control-stack design pass.
   ICM-42688-P SPI/interrupt interface, and MCU-side CAN/RS485 logic levels.
 - The CAN and RS485 transceiver placeholders have been replaced with sourced TI
   TCAN3413 and THVD1450 models. The motion-core CAN port also includes a sourced
-  ESD2CAN24-Q1 clamp review on CANH/CANL. These verify rail, MCU-side I/O, and
-  static CAN clamp presence/reference only; termination, cable length, connector
-  pinout, RS485 protection, EMC, and routed-bus layout still require board-level
-  evidence.
+  ESD2CAN24-Q1 clamp review on CANH/CANL, and the RS485 port includes a sourced
+  ESDS552 clamp review on A/B. These verify rail, MCU-side I/O, and static bus
+  clamp presence/reference only; termination, cable length, connector pinout,
+  EMC, and routed-bus layout still require board-level evidence.
 - The first PMU validation slice is
   `demos/smart_robot/circuitci/pmu/project.yaml`. It verifies BQ25798 input and
   charge-current budget, TPS54331 5 V output budget, TPS62162 3.3 V support

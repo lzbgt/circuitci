@@ -14,6 +14,7 @@ robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
 - TI ESD2CAN24-Q1 static CANH/CANL clamp presence and ground-reference review.
 - TI THVD1450 3.3 V RS485 smart-servo transceiver rail and MCU-side
   interface.
+- TI ESDS552 static RS485 A/B clamp presence and ground-reference review.
 - Static rail budget and 3.3 V logic-level compatibility.
 
 `pmu/project.yaml` models the first reusable PMU board:
@@ -78,14 +79,12 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 - Exact AT32F435 package pin assignment.
 - Exact LicheeRV Nano header pin numbers and mechanical footprint.
 - CAN/RS485 termination, cable length, common-mode range, connector pinout,
-  RS485 protection, CAN TVS placement/stub length, surge-energy policy, and
-  EMC/layout behavior.
+  TVS placement/stub length, surge-energy policy, and EMC/layout behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense accuracy,
   MOSFET SOA, switching loss, thermal, regeneration clamp, CAN/RS485 bus
-  termination/layout, RS485 protection, cable assembly evidence, and layout
-  copper.
+  termination/layout, cable assembly evidence, and layout copper.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

@@ -98,6 +98,13 @@ board:
         CANH: robot_canh
         CANL: robot_canl
         GND: gnd
+    U485_ESD1:
+      model: vendor.ti.esds552
+      part_number: ESDS552
+      pins:
+        A: rs485_servo_a
+        B: rs485_servo_b
+        GND: gnd
   nets:
     5v_sys:
       kind: power
@@ -175,3 +182,19 @@ scenarios:
       component: UCAN_ESD1
     parameters:
       clamp: canl
+  - name: motion_core_rs485_esd_a
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: U485_ESD1
+    parameters:
+      clamp: a
+  - name: motion_core_rs485_esd_b
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: U485_ESD1
+    parameters:
+      clamp: b
