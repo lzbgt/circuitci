@@ -130,6 +130,38 @@ fn smart_robot_wheel_actuator_fails_undersized_actuator_bus_connector() {
     );
 }
 
+#[test]
+fn smart_robot_wheel_actuator_fails_can_esd_not_ground_referenced() {
+    let (dir, project) = mutated_wheel_actuator_project(
+        "    UCAN_ESD1:\n      model: vendor.ti.esd2can24_q1\n      part_number: ESD2CAN24-Q1\n      pins:\n        CANH: robot_canh\n        CANL: robot_canl\n        GND: gnd",
+        "    UCAN_ESD1:\n      model: vendor.ti.esd2can24_q1\n      part_number: ESD2CAN24-Q1\n      pins:\n        CANH: robot_canh\n        CANL: robot_canl\n        GND: robot_canh",
+    );
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let protection_findings = findings_with_id(&report, "INTERFACE_PROTECTION_REVIEW");
+    assert!(
+        protection_findings.iter().any(|finding| {
+            finding["component"] == "UCAN_ESD1" && finding["severity"] == "critical"
+        }),
+        "expected CAN ESD ground-reference failure, got {protection_findings:#?}"
+    );
+}
+
 fn mutated_servo_payload_project(from: &str, to: &str) -> (tempfile::TempDir, std::path::PathBuf) {
     std::fs::create_dir_all("out").unwrap();
     let dir = tempfile::tempdir_in("out").unwrap();
@@ -221,6 +253,10 @@ fn mutated_wheel_actuator_project(from: &str, to: &str) -> (tempfile::TempDir, s
             &repo
                 .join("libs/vendor/ti/can_transceivers")
                 .to_string_lossy(),
+        )
+        .replace(
+            "../../../../libs/vendor/ti/esd_protection",
+            &repo.join("libs/vendor/ti/esd_protection").to_string_lossy(),
         )
         .replace(
             "../../../../libs/vendor/ti/motor_drivers",

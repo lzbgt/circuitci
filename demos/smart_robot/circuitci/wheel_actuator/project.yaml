@@ -7,6 +7,7 @@ libraries:
   - ../../../../libs/vendor/artery/mcus
   - ../../../../libs/vendor/jst/connectors
   - ../../../../libs/vendor/ti/can_transceivers
+  - ../../../../libs/vendor/ti/esd_protection
   - ../../../../libs/vendor/ti/motor_drivers
   - ../models
 
@@ -82,6 +83,13 @@ board:
         STB: gnd
         CANH: robot_canh
         CANL: robot_canl
+    UCAN_ESD1:
+      model: vendor.ti.esd2can24_q1
+      part_number: ESD2CAN24-Q1
+      pins:
+        CANH: robot_canh
+        CANL: robot_canl
+        GND: gnd
     ENC1:
       model: demo.smart_robot.encoder_hall_3v3
       part_number: ENCODER_OR_HALL_3V3
@@ -232,3 +240,19 @@ scenarios:
     parameters:
       connector_component: JACT1
       min_connector_current_margin_ratio: 1.5
+  - name: wheel_actuator_can_esd_canh
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UCAN_ESD1
+    parameters:
+      clamp: canh
+  - name: wheel_actuator_can_esd_canl
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UCAN_ESD1
+    parameters:
+      clamp: canl

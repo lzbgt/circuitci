@@ -1,0 +1,67 @@
+component_id: vendor.ti.esd2can24_q1
+version: 0.1.0
+category: can_esd_protection
+ports:
+  CANH:
+    kind: passive
+    required: true
+  CANL:
+    kind: passive
+    required: true
+  GND:
+    kind: electrical_ground
+    required: true
+signal_conditioning:
+  protection_clamps:
+    - name: canh
+      protected_pin: CANH
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 24.0
+    - name: canl
+      protected_pin: CANL
+      reference_pin: GND
+      reference: ground
+      working_voltage_max_V: 24.0
+datasheet:
+  manufacturer: Texas Instruments
+  part_number: ESD2CAN24-Q1
+  package: SOT-23 / SOT-23-THN
+  polarity: passive_two_channel_can_esd_protection
+  pinout:
+    CANH: CANH
+    CANL: CANL
+    GND: GND
+  electrical_characteristics:
+    reverse_standoff_voltage:
+      conditions: CANH and CANL pins to ground.
+      max: 24.0
+      unit: V
+    protected_interfaces:
+      conditions: Two-channel ESD protection diode for CANH/CANL networks.
+      unit: note
+  documents:
+    - title: ESD2CANxx24-Q1 Automotive 24-V, 2-Channel ESD Protection Diode for In-Vehicle Networks datasheet
+      path: docs/research/smart_robot/sources/ti_esd2can24_q1_datasheet.pdf
+      source_url: https://www.ti.com/lit/ds/symlink/esd2can24-q1.pdf
+      sha256: 305b0aafdec918e96476fdf7a385cd2143e8b7664383842160c3ef1522d2bc5e
+      retrieved: "2026-06-17"
+    - title: System-Level ESD and Overvoltage Protection for CAN Transceivers application note
+      path: docs/research/smart_robot/sources/ti_can_esd_overvoltage_app_note.pdf
+      source_url: https://www.ti.com/lit/an/slla530/slla530.pdf
+      sha256: 207ed023ca70af6e1cb54c356e799d588ea9d4754f66875d09cfdc76f57eb364
+      retrieved: "2026-06-17"
+model_quality:
+  source: datasheet
+  confidence: medium
+  intended_use:
+    - can_esd_static_screening
+    - interface_protection_review
+    - preliminary_smart_robot_bus_validation
+    - static_can_clamp_presence_and_ground_reference
+  not_valid_for:
+    - esd_pulse_clamp_waveform
+    - iso_7637_or_iso_10605_signoff
+    - can_signal_integrity_or_termination_signoff
+    - connector_placement_or_trace_stub_signoff
+    - surge_energy_or_cable_harness_signoff

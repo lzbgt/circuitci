@@ -157,6 +157,7 @@ AT32M416
 wheel encoder / Hall input
 local jump servo / jump actuator output
 TCAN3413 CAN bus
+ESD2CAN24-Q1 CANH/CANL TVS near connector
 local fault protection
 ```
 

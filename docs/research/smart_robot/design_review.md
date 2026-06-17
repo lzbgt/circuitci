@@ -21,10 +21,10 @@ validated independently.
   and two GPIO-style control lines.
 - Treat LicheeRV `3V3` as a reference or IO-domain signal only. Do not power the
   robot motion board from the module.
-- Use TCAN3413 for the first 3.3 V CAN control-bus pass and THVD1450 for the
-  first 3.3 V RS485 smart-servo bus pass. Keep cable length, termination,
-  connector pinout, external surge/ESD target, EMC, and routed layout as open
-  board-level constraints.
+- Use TCAN3413 for the first 3.3 V CAN control-bus pass, ESD2CAN24-Q1 for the
+  first static CANH/CANL clamp review, and THVD1450 for the first 3.3 V RS485
+  smart-servo bus pass. Keep cable length, termination, connector pinout, RS485
+  surge/ESD target, EMC, and routed layout as open board-level constraints.
 - Keep PMU/charger design separate from the motion core. Battery charging and
   e-stop hardware must not depend on Linux software.
 - Do not proceed to fabrication from the high-level Markdown alone. The first
@@ -97,6 +97,7 @@ left/right reusable wheel controller pass:
 - DRV8323 SPI and nFAULT interface.
 - 3.3 V encoder/Hall signal compatibility.
 - TCAN3413 3.3 V CAN transceiver rail and MCU-side compatibility.
+- ESD2CAN24-Q1 CANH/CANL clamp presence and ground-reference review.
 - Preliminary 3x CSD88599Q5DC half-bridge power-stage candidate on the PMU
   switched wheel rail.
 - JST VH 8-pin actuator-bus connector current and voltage budget for the
@@ -118,8 +119,8 @@ with a checked static budget, not final power-stage sign-off. The next
 validation slice must replace `demo.smart_robot.wheel_motor_design_envelope`
 with selected motor datasheet or measurement evidence, then add
 gate-charge/switching-loss checks, MOSFET SOA, thermal paths, regeneration
-clamp behavior, CAN termination/protection, cable assembly evidence, and PCB
-copper-temperature validation.
+clamp behavior, CAN termination/layout placement, RS485 protection, cable
+assembly evidence, and PCB copper-temperature validation.
 
 ## Servo Payload Slice Status
 

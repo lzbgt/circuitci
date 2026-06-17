@@ -7,6 +7,7 @@ libraries:
   - ../../../../libs/vendor/artery/mcus
   - ../../../../libs/vendor/tdk/imu
   - ../../../../libs/vendor/ti/can_transceivers
+  - ../../../../libs/vendor/ti/esd_protection
   - ../../../../libs/vendor/ti/rs485_transceivers
   - ../../../../libs/generic/digital
 
@@ -90,6 +91,13 @@ board:
         RE_N: rs485_servo_de
         A: rs485_servo_a
         B: rs485_servo_b
+    UCAN_ESD1:
+      model: vendor.ti.esd2can24_q1
+      part_number: ESD2CAN24-Q1
+      pins:
+        CANH: robot_canh
+        CANL: robot_canl
+        GND: gnd
   nets:
     5v_sys:
       kind: power
@@ -151,3 +159,19 @@ scenarios:
     checks:
       - POWER_TREE_VALID
       - IO_VOLTAGE_COMPATIBLE
+  - name: motion_core_can_esd_canh
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UCAN_ESD1
+    parameters:
+      clamp: canh
+  - name: motion_core_can_esd_canl
+    type: interface_protection
+    checks:
+      - INTERFACE_PROTECTION_REVIEW
+    target:
+      component: UCAN_ESD1
+    parameters:
+      clamp: canl
