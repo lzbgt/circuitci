@@ -1,0 +1,13 @@
+{
+  "board": {},
+  "libraries": {},
+  "meta": {
+    "filename": "pmu.kicad_pro",
+    "version": 1
+  },
+  "net_settings": {},
+  "pcbnew": {},
+  "schematic": {
+    "root": "root.kicad_sch"
+  }
+}

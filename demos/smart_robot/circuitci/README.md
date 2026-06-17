@@ -2,8 +2,8 @@
 
 This folder contains machine-checkable logical schematics for the reusable smart
 robot board stack before committing to KiCad or JLC EDA Pro schematic/PCB CAD.
-The first KiCad connectivity skeletons for the motion-core and wheel-actuator
-boards are tracked under `../kicad/` and import back through CircuitCI, but
+The first KiCad connectivity skeletons for the motion-core, wheel-actuator, and
+PMU boards are tracked under `../kicad/` and import back through CircuitCI, but
 this folder remains the validation source of truth until CAD import round-trips
 all power-domain, scenario, and routed-layout evidence.
 

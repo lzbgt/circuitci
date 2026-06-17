@@ -137,3 +137,92 @@ fn smart_robot_wheel_actuator_kicad_schematic_imports_connectivity() {
         "input"
     );
 }
+
+#[test]
+fn smart_robot_pmu_kicad_schematic_imports_connectivity() {
+    std::fs::create_dir_all("out").unwrap();
+    let dir = tempfile::tempdir_in("out").unwrap();
+    let output = dir.path().join("pmu_imported.project.yaml");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "import-kicad-schematic",
+            "demos/smart_robot/kicad/pmu/root.kicad_sch",
+            "--mapping",
+            "demos/smart_robot/kicad/pmu/circuitci.kicad-map.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let schema: Value =
+        serde_json::from_str(include_str!("../schemas/board_ir.schema.json")).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert_yaml_file_valid(&output, &validator);
+
+    let imported: Value =
+        serde_yaml_ng::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+    assert_eq!(imported["project"]["import_source"], "kicad_schematic");
+    assert_eq!(
+        imported["board"]["components"]["UCHG"]["model"],
+        "vendor.ti.bq25798"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UCHG"]["pins"]["VBUS"],
+        "net_vbus_pd"
+    );
+    assert_eq!(
+        imported["board"]["components"]["UCHG"]["pins"]["SYS"],
+        "net_sys_pmu"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U5V"]["pins"]["VSENSE"],
+        "net_5v_sys"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U3V3"]["pins"]["VOS"],
+        "net_3v3_logic"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U_SERVO_SW"]["pins"]["VOUT"],
+        "net_vservo_sw"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U_WHEEL_SW"]["pins"]["VOUT"],
+        "net_vwheel_sw"
+    );
+    assert_eq!(
+        imported["board"]["components"]["SERVO_LOAD"]["pins"]["VCC"],
+        "net_vservo_sw"
+    );
+    assert_eq!(
+        imported["board"]["components"]["WHEEL_LOAD"]["pins"]["VCC"],
+        "net_vwheel_sw"
+    );
+    assert_eq!(
+        imported["board"]["components"]["L3V3"]["spice"]["value_h"],
+        0.0000022
+    );
+    assert_eq!(
+        imported["board"]["components"]["C3V3_OUT"]["spice"]["value_f"],
+        0.000022
+    );
+    assert_eq!(imported["board"]["nets"]["net_vbus_pd"]["kind"], "power");
+    assert_eq!(
+        imported["board"]["nets"]["net_vbus_pd"]["nominal_voltage"],
+        20.0
+    );
+    assert_eq!(
+        imported["board"]["nets"]["net_vservo_sw"]["supply_current_limit_A"],
+        4.0
+    );
+    assert_eq!(
+        imported["board"]["components"]["UCHG"]["source"]["board_pin_electrical_types"]["SDA"],
+        "bidirectional"
+    );
+    assert_eq!(
+        imported["board"]["components"]["U3V3"]["source"]["board_pin_electrical_types"]["PG"],
+        "output"
+    );
+}

@@ -1,0 +1,193 @@
+libraries:
+  - ../../../../libs/generic
+  - ../../../../libs/vendor/ti/chargers
+  - ../../../../libs/vendor/ti/regulators
+  - ../../../../libs/vendor/sipeed/modules
+  - ../../../../libs/vendor/artery/mcus
+  - ../../circuitci/models
+
+components:
+  VPD:
+    model: generic.analog.dc_voltage_source
+    part_number: USB_C_PD_20V_SOURCE
+    pin_map:
+      P: P
+      N: N
+  VBAT:
+    model: generic.analog.dc_voltage_source
+    part_number: PROTECTED_2S_LI_ION_PACK
+    pin_map:
+      P: P
+      N: N
+  UCHG:
+    model: vendor.ti.bq25798
+    part_number: BQ25798
+    pin_map:
+      VBUS: VBUS
+      BAT: BAT
+      SYS: SYS
+      GND: GND
+      SCL: SCL
+      SDA: SDA
+      INT: INT
+      CE: CE
+      QON: QON
+      TS: TS
+  U5V:
+    model: vendor.ti.tps54331_5v
+    part_number: TPS54331
+    pin_map:
+      VIN: VIN
+      VSENSE: VSENSE
+      PH: PH
+      BOOT: BOOT
+      EN: EN
+      COMP: COMP
+      SS: SS
+      GND: GND
+  U3V3:
+    model: vendor.ti.tps62162_3v3
+    part_number: TPS62162DSG
+    pin_map:
+      VIN: VIN
+      VOS: VOS
+      SW: SW
+      EN: EN
+      PG: PG
+      GND: GND
+  L3V3:
+    model: generic.analog.inductor
+    part_number: 2.2uH
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: inductor
+      value_h: 0.0000022
+  C3V3_IN:
+    model: generic.analog.capacitor
+    part_number: 10uF
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: capacitor
+      value_f: 0.000010
+  C3V3_OUT:
+    model: generic.analog.capacitor
+    part_number: 22uF
+    pin_map:
+      A: A
+      B: B
+    spice:
+      primitive: capacitor
+      value_f: 0.000022
+  U_SERVO_SW:
+    model: demo.smart_robot.estop_power_switch_policy
+    part_number: SERVO_ESTOP_SWITCH_TBD
+    pin_map:
+      VIN: VIN
+      VOUT: VOUT
+      EN: EN
+      GND: GND
+  U_WHEEL_SW:
+    model: demo.smart_robot.estop_power_switch_policy
+    part_number: WHEEL_ESTOP_SWITCH_TBD
+    pin_map:
+      VIN: VIN
+      VOUT: VOUT
+      EN: EN
+      GND: GND
+  MOD1_LOAD:
+    model: vendor.sipeed.licheerv_nano_w
+    part_number: LicheeRV-Nano-W-load-budget
+    pin_map:
+      5V: 5V
+      GND: GND
+  UMCU_LOAD:
+    model: vendor.artery.at32f435_motion_core
+    part_number: AT32F435-motion-core-load-budget
+    pin_map:
+      VDD: VDD
+      GND: GND
+  SERVO_LOAD:
+    model: demo.smart_robot.servo_rail_load
+    part_number: SERVO_RAIL_BUDGET
+    pin_map:
+      VCC: VCC
+      GND: GND
+  WHEEL_LOAD:
+    model: demo.smart_robot.wheel_rail_load
+    part_number: WHEEL_RAIL_BUDGET
+    pin_map:
+      VCC: VCC
+      GND: GND
+
+nets:
+  vbus_pd:
+    kind: power
+    nominal_voltage: 20.0
+    powered: true
+    supply_current_limit_A: 3.0
+  vbat_2s:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 12.0
+  sys_pmu:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 6.0
+  5v_sys:
+    kind: power
+    nominal_voltage: 5.0
+    powered: true
+    supply_current_limit_A: 3.0
+  3v3_logic:
+    kind: power
+    nominal_voltage: 3.3
+    powered: true
+    supply_current_limit_A: 1.0
+  vservo_sw:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 4.0
+  vwheel_sw:
+    kind: power
+    nominal_voltage: 7.4
+    powered: true
+    supply_current_limit_A: 8.0
+  gnd:
+    kind: ground
+  pmu_i2c_scl:
+    kind: digital_or_analog
+  pmu_i2c_sda:
+    kind: digital_or_analog
+  pmu_chg_int:
+    kind: digital_or_analog
+  charger_ce_n:
+    kind: digital_or_analog
+  pmu_qon:
+    kind: digital_or_analog
+  battery_ntc:
+    kind: digital_or_analog
+  buck_5v_sw:
+    kind: digital_or_analog
+  buck_5v_boot:
+    kind: digital_or_analog
+  buck_5v_en:
+    kind: digital_or_analog
+  buck_5v_comp:
+    kind: digital_or_analog
+  buck_5v_ss:
+    kind: digital_or_analog
+  buck_3v3_sw:
+    kind: digital_or_analog
+  buck_3v3_en:
+    kind: digital_or_analog
+  buck_3v3_pg:
+    kind: digital_or_analog
+  estop_power_enable:
+    kind: digital_or_analog

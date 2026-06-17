@@ -66,3 +66,28 @@ As with the motion-core bridge, the imported Board IR proves connectivity and
 model binding only. It does not yet round-trip the motor-drive validation
 scenario, current/load budgets, connector-current policy, layout placement
 contracts, or routed PCB evidence.
+
+## PMU
+
+`pmu/root.kicad_sch` is the KiCad connectivity skeleton for the reusable PMU
+board. It uses local `CircuitCI:*` symbols for the USB-C PD source placeholder,
+protected 2S battery source, BQ25798 charger, TPS54331 5 V buck, TPS62162
+3.3 V buck, required 3.3 V support passives, e-stop switched rail placeholders,
+and the first-pass rail load budgets.
+
+`pmu/circuitci.kicad-map.yaml` binds those schematic references and pins back
+to the source-backed models used by `../circuitci/pmu/project.yaml`.
+
+Import check:
+
+```sh
+circuitci import-kicad-schematic \
+  demos/smart_robot/kicad/pmu/root.kicad_sch \
+  --mapping demos/smart_robot/kicad/pmu/circuitci.kicad-map.yaml \
+  --output out/smart_robot_pmu_imported.project.yaml
+```
+
+The imported Board IR proves PMU connectivity and passive values only. It does
+not yet round-trip the BQ25798 configured charge current, power-domain metadata,
+e-stop pin states, validation scenarios, regulator layout contracts, or routed
+PCB evidence.
