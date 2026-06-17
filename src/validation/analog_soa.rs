@@ -314,7 +314,10 @@ struct SoaSample {
     contiguous_duration_us: f64,
 }
 
-fn select_soa_curve(curves: &[ValidatedSoaCurve], duration_us: f64) -> (&ValidatedSoaCurve, bool) {
+pub(super) fn select_soa_curve(
+    curves: &[ValidatedSoaCurve],
+    duration_us: f64,
+) -> (&ValidatedSoaCurve, bool) {
     if let Some(curve) = curves
         .iter()
         .find(|curve| curve.pulse_width_us >= duration_us)
@@ -329,12 +332,12 @@ fn select_soa_curve(curves: &[ValidatedSoaCurve], duration_us: f64) -> (&Validat
     )
 }
 
-enum SoaLimitAtVds {
+pub(super) enum SoaLimitAtVds {
     Allowed(f64),
     AboveRange(f64),
 }
 
-fn soa_id_limit(curve: &ValidatedSoaCurve, vds_v: f64) -> SoaLimitAtVds {
+pub(super) fn soa_id_limit(curve: &ValidatedSoaCurve, vds_v: f64) -> SoaLimitAtVds {
     let first = curve
         .points
         .first()

@@ -146,6 +146,12 @@ are source-backed. These fields are not a replacement for MOSFET SOA curves,
 switching waveform simulation, peak gate-current timing, thermal impedance, or
 measured board temperature.
 
+Motor bridge SOA checks consume `datasheet.safe_operating_area.vds_id_curves`,
+the same source-backed curve metadata used by analog transient SOA checks. A
+bridge model without those curves can still support reference-loss and
+switching screens, but any `MOTOR_BRIDGE_SOA_VALID` scenario must fail closed
+until sourced SOA points or measured waveform/thermal evidence is available.
+
 Connector models can declare static electrical ratings used by `load_budget`
 scenarios:
 

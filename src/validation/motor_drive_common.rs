@@ -753,6 +753,27 @@ pub(super) fn required_at_least(
     }
 }
 
+pub(super) fn required_ratio(
+    scenario: &Scenario,
+    name: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<f64> {
+    let value = required_number(scenario, name, findings)?;
+    if value > 0.0 && value <= 1.0 {
+        Some(value)
+    } else {
+        missing_input(
+            scenario,
+            name,
+            &format!(
+                "Set motor_drive parameters.{name} to a finite ratio greater than zero and no more than one."
+            ),
+            findings,
+        );
+        None
+    }
+}
+
 pub(super) fn optional_positive(
     scenario: &Scenario,
     name: &str,

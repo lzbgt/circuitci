@@ -332,6 +332,11 @@ without explicit imported mechanical evidence.
   total gate charge. It does not prove MOSFET SOA, peak gate source/sink
   current, Miller plateau behavior, switch-node ringing, dead-time, diode
   reverse recovery, transient thermal impedance, or measured waveforms.
+- `MOTOR_BRIDGE_SOA_VALID` compares one explicit static bridge stress point to
+  source-backed datasheet SOA curves. It fails closed when SOA metadata is
+  missing, but it does not infer motor inertia, actual switch-node waveforms,
+  avalanche energy, repeated-pulse thermal impedance, current sharing,
+  heatsinking, or measured board temperature.
 - `MOTOR_REGEN_CLAMP_VALID` checks explicit single-event regeneration current,
   energy, bus capacitance, voltage window, and clamp/absorber current-energy
   limits. It does not infer motor inertia or speed, prove repeated-pulse

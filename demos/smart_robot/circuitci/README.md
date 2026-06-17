@@ -63,6 +63,11 @@ board:
   56 nC max total gate charge at 10 V, 20 ns rise, 3 ns fall, 20 kHz PWM,
   six switching/gate-charge events per PWM cycle, 0.5 W switching-loss budget
   with 2x margin, and 20 mA average gate-drive charge-current budget.
+- `MOTOR_BRIDGE_SOA_VALID` is declared for the CSD88599Q5DC bridge and
+  intentionally fails closed because the preliminary bridge model has no
+  sourced, digitized SOA curve. The wheel actuator is not fabrication-ready
+  until selected bridge SOA metadata or measured switching/current/thermal
+  evidence replaces that gap.
 - `MOTOR_REGEN_CLAMP_VALID` first-pass regeneration absorber screening for
   `REGEN1`: 1 J single-event energy envelope, 1 mF wheel-bus capacitance,
   12.6 V nominal-to-16 V clamp window, 10 A clamp current envelope, 1.5 J clamp
@@ -115,9 +120,12 @@ Expected result:
 ```text
 CircuitCI smart_robot_motion_core_v0: pass (critical=0, warning=0, info=0)
 CircuitCI smart_robot_pmu_v0: pass (critical=0, warning=0, info=0)
-CircuitCI smart_robot_wheel_actuator_v0: pass (critical=0, warning=0, info=0)
+CircuitCI smart_robot_wheel_actuator_v0: fail (critical=1, warning=0, info=0)
 CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
 ```
+
+The wheel actuator failure is intentional until the selected bridge model has
+sourced SOA curves or measured switching/current/thermal evidence.
 
 ## What This Does Not Yet Prove
 
@@ -127,8 +135,8 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
   imported-final-layout route evidence, surge-energy policy, and EMC behavior.
 - High-current servo/wheel e-stop switch part selection, inrush, thermal,
   reverse-current behavior, connector heating, and battery safety.
-- Selected wheel motor datasheet/measurement evidence, current-sense electrical
-  accuracy, true MOSFET SOA, measured switching waveforms, transient thermal
+- Selected wheel motor datasheet/measurement evidence, true sourced bridge SOA
+  curves, measured switching waveforms, transient thermal
   impedance, selected regeneration clamp part/repeated-pulse behavior, cable
   assembly evidence, and final routed layout copper beyond the first-pass
   bridge-loss, switching, regen-envelope, route-width, shunt-placement, and

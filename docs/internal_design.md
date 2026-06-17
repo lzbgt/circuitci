@@ -266,6 +266,14 @@ policy to the minimum imported segment width for each route. This gives CAD
 imports an executable first-pass guard while leaving SOA, switching loss,
 temperature rise, thermal vias, and shared copper pours to later evidence.
 
+`MOTOR_BRIDGE_SOA_VALID` follows the same evidence discipline for power-stage
+stress. It uses the shared analog SOA metadata parser/interpolator, but emits
+motor-drive findings keyed to the bridge scenario. The rule requires an
+explicit bus-voltage/current/pulse/duty-cycle stress point and sourced
+`datasheet.safe_operating_area.vds_id_curves`; missing SOA curves are critical
+so a fabrication review cannot pass on reference-loss and switching screens
+alone.
+
 `MOTOR_CURRENT_SENSE_PLACEMENT_VALID` follows the same explicit-evidence
 pattern for shunt placement and sense routes. It requires component placement
 records and route polylines; it does not derive Kelvin quality from schematic

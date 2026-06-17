@@ -121,7 +121,10 @@ Reset/boot/download rules use the same finding object. Required IDs:
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
 - `MOTOR_BRIDGE_SWITCHING_VALID`
+- `MOTOR_BRIDGE_SOA_VALID`
+- `MOTOR_REGEN_CLAMP_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
+- `MOTOR_CURRENT_SENSE_ACCURACY_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `SPICE_TRANSIENT_ANALYSIS`
 - `SPICE_OPERATING_LIMIT`
@@ -823,6 +826,21 @@ gate-drive/PWM budget inputs. Stable measured keys include
 `gate_charge_voltage_V`, and `motor_component`, depending on which comparison
 fails. Stable limit keys include `max_total_switching_loss_W`,
 `min_switching_loss_margin_ratio`, and `max_average_gate_drive_current_A`.
+
+`MOTOR_BRIDGE_SOA_VALID` reports are emitted by `motor_drive` scenarios that
+declare a motor bridge, explicit pulse width/duty-cycle/bus-voltage stress, and
+source-backed `datasheet.safe_operating_area.vds_id_curves` metadata on the
+bridge model. Missing or invalid SOA metadata is reported as a critical
+fail-closed finding with stable measured keys `component`, `model`, and
+`soa_metadata_error`, plus limit key `valid_soa_curve_required`. Curve stress
+failures include measured keys `vds_v`, `id_a`, `pulse_width_us`,
+`pulse_duty_cycle`, `soa_current_margin_ratio`,
+`duration_covered_by_curve`, `vds_above_curve_range`, and
+`motor_component` when motor-load evidence is used. Stable limit keys include
+`id_limit_a`, `required_id_a`, `soa_curve`, `curve_pulse_width_us`,
+`curve_duty_cycle_max`, `min_soa_current_margin_ratio`, `interpolation`,
+`source_document`, `source_figure`, `digitization_method`,
+`digitization_confidence`, and optional `digitization_warning`.
 
 `MOTOR_REGEN_CLAMP_VALID` reports are emitted by `motor_drive` scenarios that
 declare a motor bridge, a named regeneration clamp/absorber component, explicit

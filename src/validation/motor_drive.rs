@@ -3,10 +3,12 @@ use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
 
+use super::analog_soa::{SoaLimitAtVds, select_soa_curve, soa_id_limit, validated_soa_curves};
 use super::motor_drive_common::*;
 use super::{
-    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_BRIDGE_SWITCHING_VALID,
-    MOTOR_CURRENT_SENSE_ACCURACY_VALID, MOTOR_REGEN_CLAMP_VALID, MOTOR_ROUTE_CURRENT_VALID,
+    MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID, MOTOR_BRIDGE_SOA_VALID,
+    MOTOR_BRIDGE_SWITCHING_VALID, MOTOR_CURRENT_SENSE_ACCURACY_VALID, MOTOR_REGEN_CLAMP_VALID,
+    MOTOR_ROUTE_CURRENT_VALID,
 };
 
 pub(super) fn validate_motor_bridge_budget(
@@ -683,6 +685,212 @@ pub(super) fn validate_motor_bridge_switching(
         ];
         findings.push(finding);
     }
+}
+
+pub(super) fn validate_motor_bridge_soa(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(component) = bound.project.board.components.get(&target.component) else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(model) = bound.library.get(&component.model) else {
+        missing_input(
+            scenario,
+            "component.model",
+            "Bind the motor bridge component to a source-backed component model.",
+            findings,
+        );
+        return;
+    };
+    if model.motor_bridge.is_none() {
+        missing_input(
+            scenario,
+            "component.model.motor_bridge",
+            "Use a motor bridge component model with source-backed motor_bridge metadata.",
+            findings,
+        );
+        return;
+    }
+
+    let curves = match validated_soa_curves(model) {
+        Ok(curves) => curves,
+        Err(message) => {
+            let mut finding = Finding::critical(
+                MOTOR_BRIDGE_SOA_VALID,
+                &scenario.name,
+                format!(
+                    "Motor bridge component {} model {} lacks valid safe-operating-area metadata: {message}.",
+                    target.component, model.component_id
+                ),
+            );
+            finding.component = Some(target.component.clone());
+            finding
+                .measured
+                .insert("component".to_string(), json!(target.component));
+            finding
+                .measured
+                .insert("model".to_string(), json!(model.component_id));
+            finding
+                .measured
+                .insert("soa_metadata_error".to_string(), json!(message));
+            finding
+                .limit
+                .insert("valid_soa_curve_required".to_string(), json!(true));
+            finding.suggested_fixes = vec![
+                "Add sourced safe_operating_area.vds_id_curves metadata for the selected bridge, including pulse width, duty cycle, source document, source figure, and digitization method.".to_string(),
+                "Use measured motor current and switching waveforms if datasheet SOA curves are unavailable or too generic for the operating point.".to_string(),
+            ];
+            findings.push(finding);
+            return;
+        }
+    };
+
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(peak_current_a) = required_positive_with_fallback(
+        scenario,
+        "motor_phase_peak_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.phase_peak_current_a),
+        "motor_load.phase_peak_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(bus_voltage_max_v) = required_positive(scenario, "bus_voltage_max_V", findings) else {
+        return;
+    };
+    let Some(pulse_width_us) = required_positive(scenario, "pulse_width_us", findings) else {
+        return;
+    };
+    let Some(pulse_duty_cycle) = required_ratio(scenario, "pulse_duty_cycle", findings) else {
+        return;
+    };
+    let Some(min_soa_current_margin_ratio) =
+        required_at_least(scenario, "min_soa_current_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+
+    let (curve, duration_covered) = select_soa_curve(&curves, pulse_width_us);
+    let limit = soa_id_limit(curve, bus_voltage_max_v);
+    let (allowed_id_a, vds_above_curve_range) = match limit {
+        SoaLimitAtVds::Allowed(allowed) => (allowed, false),
+        SoaLimitAtVds::AboveRange(endpoint) => (endpoint, true),
+    };
+    let soa_current_margin_ratio = allowed_id_a / peak_current_a;
+    let required_current_a = peak_current_a * min_soa_current_margin_ratio;
+    let violates = !duration_covered
+        || pulse_duty_cycle > curve.duty_cycle_max
+        || vds_above_curve_range
+        || allowed_id_a < required_current_a;
+    if !violates {
+        return;
+    }
+
+    let mut finding = Finding::critical(
+        MOTOR_BRIDGE_SOA_VALID,
+        &scenario.name,
+        format!(
+            "Motor bridge static SOA screen allows {allowed_id_a:.6} A at {bus_voltage_max_v:.6} V for curve {}; required {required_current_a:.6} A including {min_soa_current_margin_ratio:.3}x margin.",
+            curve.name
+        ),
+    );
+    finding.component = Some(target.component.clone());
+    finding
+        .measured
+        .insert("vds_v".to_string(), json!(bus_voltage_max_v));
+    finding
+        .measured
+        .insert("id_a".to_string(), json!(peak_current_a));
+    finding
+        .measured
+        .insert("pulse_width_us".to_string(), json!(pulse_width_us));
+    finding
+        .measured
+        .insert("pulse_duty_cycle".to_string(), json!(pulse_duty_cycle));
+    finding.measured.insert(
+        "soa_current_margin_ratio".to_string(),
+        json!(soa_current_margin_ratio),
+    );
+    finding.measured.insert(
+        "duration_covered_by_curve".to_string(),
+        json!(duration_covered),
+    );
+    finding.measured.insert(
+        "vds_above_curve_range".to_string(),
+        json!(vds_above_curve_range),
+    );
+    if let Some(evidence) = &motor_load {
+        finding
+            .measured
+            .insert("motor_component".to_string(), json!(evidence.component_id));
+    }
+    finding
+        .limit
+        .insert("id_limit_a".to_string(), json!(allowed_id_a));
+    finding
+        .limit
+        .insert("required_id_a".to_string(), json!(required_current_a));
+    finding
+        .limit
+        .insert("soa_curve".to_string(), json!(curve.name));
+    finding.limit.insert(
+        "curve_pulse_width_us".to_string(),
+        json!(curve.pulse_width_us),
+    );
+    finding.limit.insert(
+        "curve_duty_cycle_max".to_string(),
+        json!(curve.duty_cycle_max),
+    );
+    finding.limit.insert(
+        "min_soa_current_margin_ratio".to_string(),
+        json!(min_soa_current_margin_ratio),
+    );
+    finding
+        .limit
+        .insert("interpolation".to_string(), json!("log_log"));
+    finding
+        .limit
+        .insert("source_document".to_string(), json!(curve.source_document));
+    finding
+        .limit
+        .insert("source_figure".to_string(), json!(curve.source_figure));
+    finding.limit.insert(
+        "digitization_method".to_string(),
+        json!(curve.digitization_method),
+    );
+    finding.limit.insert(
+        "digitization_confidence".to_string(),
+        json!(curve.digitization_confidence),
+    );
+    if let Some(note) = &curve.digitization_note {
+        finding
+            .limit
+            .insert("digitization_warning".to_string(), json!(note));
+    }
+    finding.suggested_fixes = vec![
+        "Reduce bus voltage/current stress, shorten the pulse, reduce duty cycle, or select a bridge whose sourced SOA curve covers the operating point with margin.".to_string(),
+        "Replace this static SOA screen with measured motor/switch-node waveforms and transient thermal evidence before fabrication sign-off.".to_string(),
+    ];
+    findings.push(finding);
 }
 
 pub(super) fn validate_motor_regen_clamp(
