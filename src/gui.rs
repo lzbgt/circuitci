@@ -70,6 +70,7 @@ pub struct CircuitCiApp {
     project_yaml: String,
     project_yaml_dirty: bool,
     project_snapshot: Option<ProjectSnapshot>,
+    selected_sketch_item: Option<SketchSelection>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -103,6 +104,7 @@ impl Default for CircuitCiApp {
             project_yaml: String::new(),
             project_yaml_dirty: false,
             project_snapshot: None,
+            selected_sketch_item: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -371,6 +373,13 @@ impl CircuitCiApp {
                 ui.end_row();
             });
         }
+        if let Some(snapshot) = self.project_snapshot.clone() {
+            ui.separator();
+            ui.horizontal(|ui| {
+                self.draw_board_graph(ui, &snapshot);
+                self.sketch_inspector(ui, &snapshot);
+            });
+        }
         ui.horizontal(|ui| {
             if ui.button("Load YAML").clicked() {
                 self.load_project_yaml();
@@ -492,6 +501,7 @@ impl CircuitCiApp {
                 let loaded_name = snapshot.name.clone();
                 self.status = format!("Loaded {}", snapshot.name);
                 self.project_snapshot = Some(snapshot);
+                self.selected_sketch_item = None;
                 if !self.project_yaml_dirty {
                     self.load_project_yaml();
                 }
@@ -643,6 +653,107 @@ impl CircuitCiApp {
         self.diagnostics.push(message.to_string());
     }
 
+    fn draw_board_graph(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        let desired_size = egui::vec2((ui.available_width() * 0.64).max(460.0), 340.0);
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 4.0, egui::Color32::from_gray(18));
+        painter.rect_stroke(
+            rect,
+            4.0,
+            egui::Stroke::new(1.0, egui::Color32::from_gray(80)),
+            egui::StrokeKind::Inside,
+        );
+
+        let graph = layout_sketch_graph(rect, snapshot);
+        for edge in &graph.edges {
+            painter.line_segment(
+                [edge.start, edge.end],
+                egui::Stroke::new(1.0, egui::Color32::from_gray(72)),
+            );
+        }
+        for node in &graph.nodes {
+            let selected = self
+                .selected_sketch_item
+                .as_ref()
+                .is_some_and(|selection| selection.matches(node));
+            draw_sketch_node(&painter, node, selected);
+        }
+
+        if response.clicked()
+            && let Some(position) = response.interact_pointer_pos()
+        {
+            self.selected_sketch_item = graph
+                .nodes
+                .iter()
+                .find(|node| node.rect.contains(position))
+                .map(|node| node.selection.clone());
+        }
+    }
+
+    fn sketch_inspector(&self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        ui.vertical(|ui| {
+            ui.set_min_width(260.0);
+            ui.heading("Inspector");
+            match &self.selected_sketch_item {
+                Some(SketchSelection::Component(id)) => {
+                    if let Some(component) = snapshot
+                        .components_detail
+                        .iter()
+                        .find(|item| &item.id == id)
+                    {
+                        ui.strong(&component.id);
+                        ui.label(format!("model: {}", component.model));
+                        if let Some(part_number) = &component.part_number {
+                            ui.label(format!("part: {part_number}"));
+                        }
+                        ui.label(format!("pins: {}", component.pins.len()));
+                        egui::ScrollArea::vertical()
+                            .max_height(230.0)
+                            .show(ui, |ui| {
+                                for pin in &component.pins {
+                                    ui.monospace(format!("{} -> {}", pin.pin, pin.net));
+                                }
+                            });
+                    }
+                }
+                Some(SketchSelection::Net(id)) => {
+                    if let Some(net) = snapshot.nets_detail.iter().find(|item| &item.id == id) {
+                        ui.strong(&net.id);
+                        ui.label(format!("kind: {}", net.kind));
+                        if let Some(voltage) = net.nominal_voltage {
+                            ui.label(format!("nominal: {voltage:.3} V"));
+                        }
+                        if let Some(powered) = net.powered {
+                            ui.label(format!("powered: {powered}"));
+                        }
+                        ui.label(format!("connections: {}", net.connections.len()));
+                        egui::ScrollArea::vertical()
+                            .max_height(230.0)
+                            .show(ui, |ui| {
+                                for connection in &net.connections {
+                                    ui.monospace(connection);
+                                }
+                            });
+                    }
+                }
+                Some(SketchSelection::Overflow(label)) => {
+                    ui.strong(label);
+                    ui.label("Only the first visible rows are drawn to keep the graph readable.");
+                    ui.label("Use the YAML editor for the complete project.");
+                }
+                None => {
+                    ui.label("Select a component or net in the graph.");
+                    ui.label(format!(
+                        "{} components, {} nets",
+                        snapshot.components_detail.len(),
+                        snapshot.nets_detail.len()
+                    ));
+                }
+            }
+        });
+    }
+
     fn waveform_view(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.strong("Waveform Viewer");
@@ -696,6 +807,64 @@ struct ProjectSnapshot {
     nets: usize,
     scenarios: usize,
     libraries: Vec<String>,
+    components_detail: Vec<SketchComponent>,
+    nets_detail: Vec<SketchNet>,
+}
+
+#[derive(Debug, Clone)]
+struct SketchComponent {
+    id: String,
+    model: String,
+    part_number: Option<String>,
+    pins: Vec<SketchPin>,
+}
+
+#[derive(Debug, Clone)]
+struct SketchPin {
+    pin: String,
+    net: String,
+}
+
+#[derive(Debug, Clone)]
+struct SketchNet {
+    id: String,
+    kind: String,
+    nominal_voltage: Option<f64>,
+    powered: Option<bool>,
+    connections: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SketchSelection {
+    Component(String),
+    Net(String),
+    Overflow(String),
+}
+
+impl SketchSelection {
+    fn matches(&self, node: &SketchNode) -> bool {
+        self == &node.selection
+    }
+}
+
+#[derive(Debug)]
+struct SketchGraph {
+    nodes: Vec<SketchNode>,
+    edges: Vec<SketchEdge>,
+}
+
+#[derive(Debug)]
+struct SketchNode {
+    selection: SketchSelection,
+    label: String,
+    detail: String,
+    rect: egui::Rect,
+}
+
+#[derive(Debug)]
+struct SketchEdge {
+    start: egui::Pos2,
+    end: egui::Pos2,
 }
 
 #[derive(Debug, Clone)]
@@ -714,6 +883,45 @@ struct WaveformProbe {
 
 fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
     let project = crate::board_ir::load_project(path)?;
+    let components_detail: Vec<_> = project
+        .board
+        .components
+        .iter()
+        .map(|(id, component)| SketchComponent {
+            id: id.clone(),
+            model: component.model.clone(),
+            part_number: component.part_number.clone(),
+            pins: component
+                .pins
+                .iter()
+                .map(|(pin, net)| SketchPin {
+                    pin: pin.clone(),
+                    net: net.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+    let mut connections_by_net = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for component in &components_detail {
+        for pin in &component.pins {
+            connections_by_net
+                .entry(pin.net.clone())
+                .or_default()
+                .push(format!("{}.{}", component.id, pin.pin));
+        }
+    }
+    let nets_detail: Vec<_> = project
+        .board
+        .nets
+        .iter()
+        .map(|(id, net)| SketchNet {
+            id: id.clone(),
+            kind: format!("{:?}", net.kind),
+            nominal_voltage: net.nominal_voltage,
+            powered: net.powered,
+            connections: connections_by_net.remove(id).unwrap_or_default(),
+        })
+        .collect();
     Ok(ProjectSnapshot {
         name: project.project.name,
         components: project.board.components.len(),
@@ -724,6 +932,8 @@ fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
             .iter()
             .map(|library| library.to_string())
             .collect(),
+        components_detail,
+        nets_detail,
     })
 }
 
@@ -1014,6 +1224,163 @@ fn positive_span(min: f64, max: f64) -> f64 {
     if span.abs() < f64::EPSILON { 1.0 } else { span }
 }
 
+fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
+    let margin = 18.0;
+    let node_width = ((rect.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
+    let node_height = 44.0;
+    let row_gap = 10.0;
+    let left_x = rect.left() + margin;
+    let right_x = rect.right() - margin - node_width;
+    let top = rect.top() + margin;
+    let max_rows = ((rect.height() - 2.0 * margin) / (node_height + row_gap))
+        .floor()
+        .max(1.0) as usize;
+
+    let mut nodes = Vec::new();
+    let component_count = snapshot.components_detail.len().min(max_rows);
+    for (index, component) in snapshot.components_detail.iter().take(max_rows).enumerate() {
+        let y = top + index as f32 * (node_height + row_gap);
+        nodes.push(SketchNode {
+            selection: SketchSelection::Component(component.id.clone()),
+            label: component.id.clone(),
+            detail: compact_label(&component.model, 34),
+            rect: egui::Rect::from_min_size(
+                egui::pos2(left_x, y),
+                egui::vec2(node_width, node_height),
+            ),
+        });
+    }
+
+    let net_count = snapshot.nets_detail.len().min(max_rows);
+    for (index, net) in snapshot.nets_detail.iter().take(max_rows).enumerate() {
+        let y = top + index as f32 * (node_height + row_gap);
+        nodes.push(SketchNode {
+            selection: SketchSelection::Net(net.id.clone()),
+            label: net.id.clone(),
+            detail: format!("{} / {} conn", net.kind, net.connections.len()),
+            rect: egui::Rect::from_min_size(
+                egui::pos2(right_x, y),
+                egui::vec2(node_width, node_height),
+            ),
+        });
+    }
+
+    let mut component_centers = std::collections::BTreeMap::new();
+    let mut net_centers = std::collections::BTreeMap::new();
+    for node in &nodes {
+        match &node.selection {
+            SketchSelection::Component(id) => {
+                component_centers.insert(id.as_str(), node.rect.center());
+            }
+            SketchSelection::Net(id) => {
+                net_centers.insert(id.as_str(), node.rect.center());
+            }
+            SketchSelection::Overflow(_) => {}
+        }
+    }
+
+    let mut edges = Vec::new();
+    for component in snapshot.components_detail.iter().take(component_count) {
+        let Some(start) = component_centers.get(component.id.as_str()).copied() else {
+            continue;
+        };
+        for pin in &component.pins {
+            if let Some(end) = net_centers.get(pin.net.as_str()).copied() {
+                edges.push(SketchEdge { start, end });
+                if edges.len() >= 80 {
+                    break;
+                }
+            }
+        }
+        if edges.len() >= 80 {
+            break;
+        }
+    }
+
+    if snapshot.components_detail.len() > component_count {
+        push_overflow_hint(
+            &mut nodes,
+            left_x,
+            rect.bottom() - margin - node_height,
+            node_width,
+            node_height,
+            snapshot.components_detail.len() - component_count,
+            "more components",
+        );
+    }
+    if snapshot.nets_detail.len() > net_count {
+        push_overflow_hint(
+            &mut nodes,
+            right_x,
+            rect.bottom() - margin - node_height,
+            node_width,
+            node_height,
+            snapshot.nets_detail.len() - net_count,
+            "more nets",
+        );
+    }
+
+    SketchGraph { nodes, edges }
+}
+
+fn push_overflow_hint(
+    nodes: &mut Vec<SketchNode>,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    count: usize,
+    label: &str,
+) {
+    nodes.push(SketchNode {
+        selection: SketchSelection::Overflow(label.to_string()),
+        label: format!("+{count}"),
+        detail: label.to_string(),
+        rect: egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(width, height)),
+    });
+}
+
+fn draw_sketch_node(painter: &egui::Painter, node: &SketchNode, selected: bool) {
+    let fill = match node.selection {
+        SketchSelection::Component(_) => egui::Color32::from_rgb(36, 52, 70),
+        SketchSelection::Net(_) => egui::Color32::from_rgb(42, 62, 46),
+        SketchSelection::Overflow(_) => egui::Color32::from_gray(36),
+    };
+    let stroke = if selected {
+        egui::Stroke::new(2.0, egui::Color32::from_rgb(93, 185, 255))
+    } else {
+        egui::Stroke::new(1.0, egui::Color32::from_gray(108))
+    };
+    painter.rect_filled(node.rect, 4.0, fill);
+    painter.rect_stroke(node.rect, 4.0, stroke, egui::StrokeKind::Inside);
+    painter.text(
+        node.rect.left_top() + egui::vec2(8.0, 9.0),
+        egui::Align2::LEFT_CENTER,
+        compact_label(&node.label, 24),
+        egui::FontId::monospace(13.0),
+        egui::Color32::WHITE,
+    );
+    painter.text(
+        node.rect.left_bottom() + egui::vec2(8.0, -12.0),
+        egui::Align2::LEFT_CENTER,
+        compact_label(&node.detail, 34),
+        egui::FontId::monospace(11.0),
+        egui::Color32::LIGHT_GRAY,
+    );
+}
+
+fn compact_label(value: &str, max_chars: usize) -> String {
+    if value.chars().count() <= max_chars {
+        return value.to_string();
+    }
+    let mut text = value
+        .chars()
+        .take(max_chars.saturating_sub(1))
+        .collect::<String>();
+    text.push_str("...");
+    text
+}
+
 fn finding_group(ui: &mut egui::Ui, title: &str, findings: &[Finding]) {
     egui::CollapsingHeader::new(format!("{title} ({})", findings.len()))
         .default_open(!findings.is_empty())
@@ -1056,7 +1423,9 @@ fn display_path(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        optional_path, parse_waveform_csv_text, sanitized_project_name, validate_board_ir_yaml_text,
+        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, egui, layout_sketch_graph,
+        optional_path, parse_waveform_csv_text, sanitized_project_name,
+        validate_board_ir_yaml_text,
     };
     use std::path::Path;
 
@@ -1104,6 +1473,39 @@ board:
             sanitized_project_name(Path::new("bad name!.kicad_sch"), "fallback"),
             "bad_name"
         );
+    }
+
+    #[test]
+    fn sketch_graph_layout_connects_component_to_net() {
+        let snapshot = ProjectSnapshot {
+            name: "graph".to_string(),
+            components: 1,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "R1".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                pins: vec![SketchPin {
+                    pin: "A".to_string(),
+                    net: "net_a".to_string(),
+                }],
+            }],
+            nets_detail: vec![SketchNet {
+                id: "net_a".to_string(),
+                kind: "DigitalOrAnalog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["R1.A".to_string()],
+            }],
+        };
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0)),
+            &snapshot,
+        );
+        assert_eq!(graph.nodes.len(), 2);
+        assert_eq!(graph.edges.len(), 1);
     }
 
     #[test]
