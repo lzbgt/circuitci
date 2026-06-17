@@ -76,6 +76,7 @@ pub(super) const SPICE_TRANSIENT_ANALYSIS: &str = "SPICE_TRANSIENT_ANALYSIS";
 pub(super) const SPICE_OPERATING_LIMIT: &str = "SPICE_OPERATING_LIMIT";
 pub(super) const MOTOR_BRIDGE_BUDGET_VALID: &str = "MOTOR_BRIDGE_BUDGET_VALID";
 pub(super) const MOTOR_BRIDGE_LOSS_THERMAL_VALID: &str = "MOTOR_BRIDGE_LOSS_THERMAL_VALID";
+pub(super) const MOTOR_REGEN_CLAMP_VALID: &str = "MOTOR_REGEN_CLAMP_VALID";
 pub(super) const MOTOR_ROUTE_CURRENT_VALID: &str = "MOTOR_ROUTE_CURRENT_VALID";
 pub(super) const MOTOR_CURRENT_SENSE_PLACEMENT_VALID: &str = "MOTOR_CURRENT_SENSE_PLACEMENT_VALID";
 pub(super) const LOAD_CONNECTOR_CURRENT_VALID: &str = "LOAD_CONNECTOR_CURRENT_VALID";
@@ -457,6 +458,9 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 MOTOR_BRIDGE_LOSS_THERMAL_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_bridge_loss_thermal(bound, scenario, &mut findings)
                 }
+                MOTOR_REGEN_CLAMP_VALID if scenario.scenario_type == "motor_drive" => {
+                    motor_drive::validate_motor_regen_clamp(bound, scenario, &mut findings)
+                }
                 MOTOR_ROUTE_CURRENT_VALID if scenario.scenario_type == "motor_drive" => {
                     motor_drive::validate_motor_route_current(bound, scenario, &mut findings)
                 }
@@ -514,6 +518,7 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                 | SPICE_TRANSIENT_ANALYSIS
                 | MOTOR_BRIDGE_BUDGET_VALID
                 | MOTOR_BRIDGE_LOSS_THERMAL_VALID
+                | MOTOR_REGEN_CLAMP_VALID
                 | MOTOR_ROUTE_CURRENT_VALID
                 | MOTOR_CURRENT_SENSE_PLACEMENT_VALID
                 | LOAD_CONNECTOR_CURRENT_VALID => findings.push(Finding::critical(

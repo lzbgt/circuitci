@@ -82,7 +82,8 @@ placement checks and first-pass motor phase/`VBAT_SW` route-current checks. It
 also drives the first-pass phase-shunt and current-sense route placement
 checks. It is still not a final layout sign-off: it does not prove MOSFET
 SOA/thermal margins, current-sense accuracy, copper temperature rise,
-regeneration handling, EMC, or manufacturing DRC.
+selected regeneration absorber behavior, repeated-pulse heating, EMC, or
+manufacturing DRC.
 
 ## PMU
 

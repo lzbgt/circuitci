@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::{
     MOTOR_BRIDGE_BUDGET_VALID, MOTOR_BRIDGE_LOSS_THERMAL_VALID,
-    MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_ROUTE_CURRENT_VALID,
+    MOTOR_CURRENT_SENSE_PLACEMENT_VALID, MOTOR_REGEN_CLAMP_VALID, MOTOR_ROUTE_CURRENT_VALID,
 };
 
 const VALIDATION_INPUT_MISSING: &str = "VALIDATION_INPUT_MISSING";
@@ -457,6 +457,195 @@ pub(super) fn validate_motor_bridge_loss_thermal(
         finding.suggested_fixes = vec![
             "Lower the wheel current target, improve the thermal design, or select a lower-loss bridge.".to_string(),
             "Replace this first-pass scaled-loss screen with sourced SOA/switching-loss/thermal evidence before final fabrication sign-off.".to_string(),
+        ];
+        findings.push(finding);
+    }
+}
+
+pub(super) fn validate_motor_regen_clamp(
+    bound: &BoundBoard<'_>,
+    scenario: &Scenario,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(target) = &scenario.target else {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to the motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    if !bound
+        .project
+        .board
+        .components
+        .contains_key(&target.component)
+    {
+        missing_input(
+            scenario,
+            "target.component",
+            "Set scenario.target.component to an existing motor bridge/power-stage component.",
+            findings,
+        );
+        return;
+    };
+    let Some(clamp_component) = required_string(scenario, "clamp_component", findings) else {
+        return;
+    };
+    let Some(clamp) = bound.project.board.components.get(&clamp_component) else {
+        missing_input(
+            scenario,
+            "clamp_component",
+            "Set parameters.clamp_component to an existing regeneration clamp or absorber component.",
+            findings,
+        );
+        return;
+    };
+    if bound.library.get(&clamp.model).is_none() {
+        missing_input(
+            scenario,
+            "clamp_component.model",
+            "Bind the regeneration clamp or absorber component to a component model.",
+            findings,
+        );
+        return;
+    }
+
+    let motor_load = motor_load_evidence(bound, scenario, findings);
+    let Some(max_regen_current_a) = required_non_negative_with_fallback(
+        scenario,
+        "max_regen_current_A",
+        motor_load
+            .as_ref()
+            .and_then(|evidence| evidence.load.max_regen_current_a),
+        "motor_load.max_regen_current_A",
+        findings,
+    ) else {
+        return;
+    };
+    let Some(regen_energy_j) = required_positive(scenario, "regen_energy_J", findings) else {
+        return;
+    };
+    let Some(bus_capacitance_f) = required_positive(scenario, "bus_capacitance_F", findings) else {
+        return;
+    };
+    let Some(bus_voltage_nominal_v) =
+        required_positive(scenario, "bus_voltage_nominal_V", findings)
+    else {
+        return;
+    };
+    let Some(clamp_voltage_v) = required_positive(scenario, "clamp_voltage_V", findings) else {
+        return;
+    };
+    let Some(max_bus_voltage_v) = required_positive(scenario, "max_bus_voltage_V", findings) else {
+        return;
+    };
+    let Some(clamp_current_rating_a) =
+        required_positive(scenario, "clamp_current_rating_A", findings)
+    else {
+        return;
+    };
+    let Some(clamp_energy_rating_j) =
+        required_positive(scenario, "clamp_energy_rating_J", findings)
+    else {
+        return;
+    };
+    let Some(min_current_margin_ratio) =
+        required_at_least(scenario, "min_clamp_current_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+    let Some(min_energy_margin_ratio) =
+        required_at_least(scenario, "min_regen_energy_margin_ratio", 1.0, findings)
+    else {
+        return;
+    };
+
+    if clamp_voltage_v <= bus_voltage_nominal_v {
+        missing_input(
+            scenario,
+            "clamp_voltage_V",
+            "Set clamp_voltage_V greater than bus_voltage_nominal_V so bus capacitance has a positive absorption window.",
+            findings,
+        );
+        return;
+    }
+
+    if clamp_voltage_v > max_bus_voltage_v {
+        regen_clamp_finding(
+            scenario,
+            &clamp_component,
+            RegenClampComparison {
+                measured_name: "clamp_voltage_V",
+                limit_name: "max_bus_voltage_V",
+                measured: clamp_voltage_v,
+                limit: max_bus_voltage_v,
+                message: "Motor regeneration clamp voltage exceeds the declared maximum wheel-bus voltage.",
+                fix: "Select a lower clamp threshold, raise the source-backed bus/bridge voltage limit, or add a staged brake path that limits bus voltage.",
+            },
+            findings,
+        );
+    }
+
+    let required_clamp_current_a = max_regen_current_a * min_current_margin_ratio;
+    if required_clamp_current_a > clamp_current_rating_a {
+        regen_clamp_finding(
+            scenario,
+            &clamp_component,
+            RegenClampComparison {
+                measured_name: "required_clamp_current_A",
+                limit_name: "clamp_current_rating_A",
+                measured: required_clamp_current_a,
+                limit: clamp_current_rating_a,
+                message: "Motor regeneration clamp current rating is below the declared regeneration current with margin.",
+                fix: "Select a stronger brake/clamp path, reduce allowed regeneration current, or add sourced current-sharing evidence.",
+            },
+            findings,
+        );
+    }
+
+    let bus_absorption_energy_j =
+        0.5 * bus_capacitance_f * (clamp_voltage_v.powi(2) - bus_voltage_nominal_v.powi(2));
+    let total_absorption_energy_j = bus_absorption_energy_j + clamp_energy_rating_j;
+    let required_absorption_energy_j = regen_energy_j * min_energy_margin_ratio;
+    if required_absorption_energy_j > total_absorption_energy_j {
+        let mut finding = Finding::critical(
+            MOTOR_REGEN_CLAMP_VALID,
+            &scenario.name,
+            format!(
+                "Motor regeneration envelope requires {required_absorption_energy_j:.6} J with margin, but bus capacitance plus clamp rating absorbs {total_absorption_energy_j:.6} J."
+            ),
+        );
+        finding.component = Some(clamp_component);
+        finding
+            .measured
+            .insert("regen_energy_J".to_string(), json!(regen_energy_j));
+        finding.measured.insert(
+            "bus_absorption_energy_J".to_string(),
+            json!(bus_absorption_energy_j),
+        );
+        finding.measured.insert(
+            "total_absorption_energy_J".to_string(),
+            json!(total_absorption_energy_j),
+        );
+        if let Some(evidence) = &motor_load {
+            finding
+                .measured
+                .insert("motor_component".to_string(), json!(evidence.component_id));
+        }
+        finding.limit.insert(
+            "required_absorption_energy_J".to_string(),
+            json!(required_absorption_energy_j),
+        );
+        finding.limit.insert(
+            "min_regen_energy_margin_ratio".to_string(),
+            json!(min_energy_margin_ratio),
+        );
+        finding.suggested_fixes = vec![
+            "Select a brake resistor, active clamp, or upstream energy sink with sourced pulse-energy evidence.".to_string(),
+            "Increase source-backed bus capacitance or lower the declared regeneration energy envelope.".to_string(),
+            "Do not treat this static screen as repeated-pulse thermal or firmware regeneration-control sign-off.".to_string(),
         ];
         findings.push(finding);
     }
@@ -1182,6 +1371,35 @@ fn bridge_loss_finding(
         &scenario.name,
         comparison.message,
     );
+    finding.component = Some(component.to_string());
+    finding.measured.insert(
+        comparison.measured_name.to_string(),
+        json!(comparison.measured),
+    );
+    finding
+        .limit
+        .insert(comparison.limit_name.to_string(), json!(comparison.limit));
+    finding.suggested_fixes = vec![comparison.fix.to_string()];
+    findings.push(finding);
+}
+
+struct RegenClampComparison<'a> {
+    measured_name: &'a str,
+    limit_name: &'a str,
+    measured: f64,
+    limit: f64,
+    message: &'a str,
+    fix: &'a str,
+}
+
+fn regen_clamp_finding(
+    scenario: &Scenario,
+    component: &str,
+    comparison: RegenClampComparison<'_>,
+    findings: &mut Vec<Finding>,
+) {
+    let mut finding =
+        Finding::critical(MOTOR_REGEN_CLAMP_VALID, &scenario.name, comparison.message);
     finding.component = Some(component.to_string());
     finding.measured.insert(
         comparison.measured_name.to_string(),

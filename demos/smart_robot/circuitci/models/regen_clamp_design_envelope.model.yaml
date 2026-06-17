@@ -1,0 +1,43 @@
+component_id: demo.smart_robot.regen_clamp_design_envelope
+version: 0.1.0
+category: motor_regen_absorber_design_envelope
+ports:
+  BUS:
+    kind: electrical_power
+    required: true
+    electrical:
+      operating_voltage_min_V: 6.0
+      operating_voltage_max_V: 18.0
+      max_supply_current_A: 0.0
+  GND:
+    kind: electrical_ground
+    required: true
+datasheet:
+  manufacturer: Demo Smart Robot
+  part_number: REGEN_CLAMP_DESIGN_ENVELOPE
+  package: design envelope
+  polarity: bidirectional_bus_absorber
+  device_parameters:
+    clamp_current_rating:
+      value: 10.0
+      unit: A
+      simulation_relevance: First-pass current envelope for a future sourced brake/clamp path.
+    clamp_energy_rating:
+      value: 1.5
+      unit: J
+      simulation_relevance: First-pass single-event energy envelope until a selected absorber and pulse rating are sourced.
+  documents:
+    - title: Smart robot design review
+      path: docs/research/smart_robot/design_review.md
+model_quality:
+  source: generic
+  confidence: low
+  intended_use:
+    - first_pass_regeneration_budget_screen
+    - smart_robot_demo_validation
+  not_valid_for:
+    - selected_regen_clamp_part
+    - repeated_pulse_thermal_signoff
+    - brake_resistor_temperature_rise
+    - firmware_regeneration_control_signoff
+    - final_fabrication_without_selected_absorber

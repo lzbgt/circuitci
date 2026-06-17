@@ -59,6 +59,15 @@ board:
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID` first-pass CSD88599Q5DC bridge screening:
   12.6 V max bus, 40 A current class, and scaled 3 W at 30 A reference-loss
   evidence against a 2 W board thermal budget with 2x margin.
+- `MOTOR_REGEN_CLAMP_VALID` first-pass regeneration absorber screening for
+  `REGEN1`: 1 J single-event energy envelope, 1 mF wheel-bus capacitance,
+  12.6 V nominal-to-16 V clamp window, 10 A clamp current envelope, 1.5 J clamp
+  energy envelope, and 1.5x current/energy margins.
+- `REGEN1` intentionally remains a generic low-confidence design envelope.
+  Validation reports must keep emitting a non-blocking `LOW_CONFIDENCE_MODEL`
+  limitation for `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`
+  until a selected brake resistor, active clamp, TVS, eFuse, or upstream
+  energy sink replaces it.
 - `MOTOR_ROUTE_CURRENT_VALID` first-pass route-width policies for the
   1.2 mm phase routes and 1.5 mm switched-battery route. These are explicit
   A/mm layout-policy checks, not copper-temperature or SOA proof.
@@ -111,9 +120,9 @@ CircuitCI smart_robot_servo_payload_v0: pass (critical=0, warning=0, info=0)
   reverse-current behavior, connector heating, and battery safety.
 - Selected wheel motor datasheet/measurement evidence, current-sense electrical
   accuracy, true MOSFET SOA, switching transition loss, transient thermal
-  impedance, regeneration clamp energy, cable assembly evidence, and final
-  routed layout copper beyond the first-pass bridge-loss, route-width, and
-  shunt-placement checks.
+  impedance, selected regeneration clamp part/repeated-pulse behavior, cable
+  assembly evidence, and final routed layout copper beyond the first-pass
+  bridge-loss, regen-envelope, route-width, and shunt-placement checks.
 - Selected servo model, stall current, regeneration, position feedback,
   connector heating, cable assembly quality, and balance-critical actuator
   control.

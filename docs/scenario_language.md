@@ -111,6 +111,7 @@ Canonical executable check IDs:
 - `POWER_TREE_VALID`
 - `MOTOR_BRIDGE_BUDGET_VALID`
 - `MOTOR_BRIDGE_LOSS_THERMAL_VALID`
+- `MOTOR_REGEN_CLAMP_VALID`
 - `MOTOR_ROUTE_CURRENT_VALID`
 - `MOTOR_CURRENT_SENSE_PLACEMENT_VALID`
 - `DRILL_DIAMETER_VALID`
@@ -1826,6 +1827,56 @@ That estimate times `min_loss_margin_ratio` must fit
 `max_total_bridge_loss_W`. This is a source-backed screening calculation; it
 does not replace MOSFET SOA curves, switching transition loss, gate-charge
 timing, thermal impedance, regeneration energy, or measured board temperature.
+
+`MOTOR_REGEN_CLAMP_VALID` checks a declared single-event regeneration absorber
+budget:
+
+```yaml
+scenarios:
+  - name: wheel_regen_clamp_budget
+    type: motor_drive
+    checks:
+      - MOTOR_REGEN_CLAMP_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      clamp_component: REGEN1
+      regen_energy_J: 1.0
+      bus_capacitance_F: 0.001
+      bus_voltage_nominal_V: 12.6
+      clamp_voltage_V: 16.0
+      max_bus_voltage_V: 18.0
+      clamp_current_rating_A: 10.0
+      clamp_energy_rating_J: 1.5
+      min_clamp_current_margin_ratio: 1.5
+      min_regen_energy_margin_ratio: 1.5
+```
+
+Required evidence:
+
+- `target.component` names the motor bridge or power stage being protected.
+- `clamp_component` names an existing, model-bound regeneration absorber,
+  brake, clamp, or upstream energy-sink component.
+- Maximum regeneration current comes from explicit `max_regen_current_A`, or
+  from `parameters.motor_component` bound to a model with
+  `motor_load.max_regen_current_A`.
+- `regen_energy_J` is explicit single-event energy evidence. The validator does
+  not infer rotor inertia, speed, or firmware braking behavior.
+- `bus_capacitance_F`, `bus_voltage_nominal_V`, `clamp_voltage_V`, and
+  `max_bus_voltage_V` define the bus energy window.
+- `clamp_current_rating_A`, `clamp_energy_rating_J`,
+  `min_clamp_current_margin_ratio`, and `min_regen_energy_margin_ratio` define
+  the absorber/clamp limits and required margins.
+
+The validator requires `clamp_voltage_V > bus_voltage_nominal_V`, checks
+`clamp_voltage_V <= max_bus_voltage_V`, checks regeneration current with the
+declared current margin, and computes bus-capacitor absorption as
+`0.5 * bus_capacitance_F * (clamp_voltage_V^2 - bus_voltage_nominal_V^2)`.
+That bus absorption plus `clamp_energy_rating_J` must cover
+`regen_energy_J * min_regen_energy_margin_ratio`. This is a static single-event
+screen; it does not prove repeated-pulse heating, brake-resistor temperature
+rise, active clamp stability, firmware regeneration control, or motor SOA.
 
 `MOTOR_ROUTE_CURRENT_VALID` checks imported or explicit motor-drive route
 width evidence against an explicit current-density policy:

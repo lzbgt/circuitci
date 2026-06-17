@@ -327,6 +327,12 @@ without explicit imported mechanical evidence.
   budget. It does not compute MOSFET SOA, switching transition loss,
   gate-charge timing, transient thermal impedance, regeneration energy, or
   measured PCB temperature.
+- `MOTOR_REGEN_CLAMP_VALID` checks explicit single-event regeneration current,
+  energy, bus capacitance, voltage window, and clamp/absorber current-energy
+  limits. It does not infer motor inertia or speed, prove repeated-pulse
+  thermal behavior, brake-resistor temperature rise, active clamp stability,
+  firmware regeneration control, MOSFET SOA, or real battery acceptance of
+  regenerated energy.
 - `MOTOR_ROUTE_CURRENT_VALID` compares imported route segment widths against an
   explicit A/mm policy. It does not compute copper temperature rise, current
   sharing across pours, thermal-via effectiveness, MOSFET SOA, switching loss,

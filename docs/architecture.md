@@ -112,13 +112,17 @@ IC/BGA stencil aperture rows, and paste spacing. Shared geometry lives in
 focused modules so source files stay below the 2000-line guard.
 
 Motor-drive rules are static design-budget screens. `motor_drive` scenarios
-require explicit current, connector, shunt, and gate-timing parameters, or a
-declared motor/load component model with `motor_load` current evidence, so a
-robot actuator bridge can fail closed on missing or undersized first-pass
-values before schematic capture. `MOTOR_BRIDGE_LOSS_THERMAL_VALID` adds a
-source-backed reference-loss thermal-budget screen from component
-`motor_bridge` metadata. These rules still do not imply FOC, true MOSFET SOA,
-switching-waveform, or PCB copper-temperature sign-off.
+require explicit current, connector, shunt, gate-timing, regeneration, and
+layout parameters, or a declared motor/load component model with `motor_load`
+current evidence, so a robot actuator bridge can fail closed on missing or
+undersized first-pass values before schematic capture.
+`MOTOR_BRIDGE_LOSS_THERMAL_VALID` adds a source-backed reference-loss
+thermal-budget screen from component `motor_bridge` metadata.
+`MOTOR_REGEN_CLAMP_VALID` checks an explicitly declared single-event
+regeneration envelope against bus capacitance and a named absorber/clamp
+component. These rules still do not imply FOC, true MOSFET SOA,
+switching-waveform, repeated-pulse thermal, firmware regeneration-control, or
+PCB copper-temperature sign-off.
 
 Load-budget rules are static connector/load screens. `load_budget` scenarios
 target a load power pin and compare its declared `max_supply_current_A` against

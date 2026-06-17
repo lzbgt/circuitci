@@ -121,15 +121,19 @@ error, ADC quantization/noise, PWM rejection, or thermal drift.
 
 Bridge loss/thermal checks consume typed `motor_bridge` model metadata and
 explicit board thermal-budget parameters. The only built-in loss model is
-source-reference scaling by RMS phase current. Keep SOA curves, switching
-transition loss, gate-charge timing, transient thermal impedance, and measured
+source-reference scaling by RMS phase current. Regeneration clamp checks consume
+an explicit single-event energy envelope, bus capacitance, voltage window, and
+named absorber component; they do not derive rotor energy from topology or
+motor guesses. Keep SOA curves, switching transition loss, gate-charge timing,
+transient thermal impedance, repeated-pulse clamp heating, and measured
 temperature as separate evidence-backed rules.
 
 Keep this module limited to checks that can be evaluated from declared design
 budget numbers, component binding evidence, and explicit layout geometry.
-MOSFET SOA, switching loss, thermal paths, current-sense accuracy, regeneration
-clamps, and PCB copper temperature rise need source-backed model data or
-separate validation rules before they are treated as sign-off.
+MOSFET SOA, switching loss, thermal paths, current-sense accuracy, selected
+regeneration absorber behavior, and PCB copper temperature rise need
+source-backed model data or separate validation rules before they are treated
+as sign-off.
 
 ## Load Connector Budgets
 

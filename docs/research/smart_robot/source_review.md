@@ -180,14 +180,23 @@ robot control-stack design pass.
   class, and the retained 3 W at 30 A reference-loss point scaled to the 6 A
   RMS design envelope against an explicit 2 W board thermal budget with 2x
   margin.
+- The wheel actuator now also checks `REGEN1`, a first-pass regeneration
+  absorber design envelope, with `MOTOR_REGEN_CLAMP_VALID`: 1 J single-event
+  energy, 1 mF wheel-bus capacitance, a 12.6 V nominal-to-16 V clamp window,
+  10 A clamp current envelope, 1.5 J clamp energy envelope, and 1.5x
+  current/energy margins. These are design-policy inputs, not a selected brake
+  or clamp component; reports must retain the non-blocking
+  `LOW_CONFIDENCE_MODEL` limitation for
+  `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`.
 - The wheel actuator now includes a JST VH 8-pin actuator-bus connector model
   and validates the preliminary CSD88599Q5DC bridge load against that connector
   with 1.5x current margin.
 - The wheel slice now validates first-pass phase-shunt placement and
   current-sense route distances from explicit layout evidence. It does not yet
   validate true MOSFET SOA, gate charge, switching transition loss,
-  current-sense electrical accuracy, transient thermal impedance, regeneration
-  clamp energy, PCB copper temperature rise, or motor-control loop stability.
+  current-sense electrical accuracy, transient thermal impedance, selected
+  regeneration absorber repeated-pulse behavior, PCB copper temperature rise,
+  or motor-control loop stability.
 - The first servo/payload validation slice is
   `demos/smart_robot/circuitci/servo_payload/project.yaml`. It verifies the
   AT32F435 I2C2 host pins, NXP PCA9685 3.3 V power and logic domain, four

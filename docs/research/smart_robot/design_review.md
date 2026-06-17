@@ -138,6 +138,13 @@ left/right reusable wheel controller pass:
 - CSD88599Q5DC source-reference bridge loss/thermal budget: 12.6 V maximum
   bus, 40 A current class, and scaled 3 W at 30 A reference-loss evidence
   checked against a 2 W board thermal budget with 2x margin.
+- `REGEN1` first-pass regeneration absorber envelope: 1 J single-event energy,
+  1 mF wheel-bus capacitance, 12.6 V nominal-to-16 V clamp window, 10 A clamp
+  current envelope, 1.5 J clamp energy envelope, and 1.5x current/energy
+  margins. `REGEN1` is still a generic low-confidence envelope; the validation
+  report is expected to retain the non-blocking `LOW_CONFIDENCE_MODEL`
+  limitation for
+  `component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope`.
 - First-pass phase-shunt/current-sense placement contract from explicit layout
   evidence, keeping the three phase shunts close to the bridge, phase copper,
   and sense traces.
@@ -153,9 +160,10 @@ with checked static and reference-loss budgets, not final power-stage sign-off.
 The next validation slice must replace
 `demo.smart_robot.wheel_motor_design_envelope` with selected motor datasheet or
 measurement evidence, then add true SOA curves, switching transition loss,
-gate-charge timing, transient thermal paths, regeneration clamp behavior,
-current-sense electrical accuracy, imported final layout evidence, cable
-assembly evidence, and PCB copper-temperature validation.
+gate-charge timing, transient thermal paths, selected regeneration absorber
+behavior, repeated-pulse clamp heating, current-sense electrical accuracy,
+imported final layout evidence, cable assembly evidence, and PCB
+copper-temperature validation.
 
 ## Servo Payload Slice Status
 

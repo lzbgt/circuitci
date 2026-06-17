@@ -811,6 +811,16 @@ which comparison fails. Stable limit keys include
 `motor_bridge_voltage_rating_V`, `motor_bridge_current_rating_A`,
 `max_total_bridge_loss_W`, and `min_loss_margin_ratio`.
 
+`MOTOR_REGEN_CLAMP_VALID` reports are emitted by `motor_drive` scenarios that
+declare a motor bridge, a named regeneration clamp/absorber component, explicit
+single-event regeneration energy, bus capacitance, voltage window, and clamp
+current/energy limits. Stable measured keys include `clamp_voltage_V`,
+`required_clamp_current_A`, `regen_energy_J`, `bus_absorption_energy_J`,
+`total_absorption_energy_J`, and `motor_component`, depending on which
+comparison fails. Stable limit keys include `max_bus_voltage_V`,
+`clamp_current_rating_A`, `required_absorption_energy_J`, and
+`min_regen_energy_margin_ratio`.
+
 `MOTOR_ROUTE_CURRENT_VALID` reports are emitted by `motor_drive` scenarios that
 declare routed motor/power nets and an explicit current-density policy. Stable
 measured keys include `route_current_A`, `route_current_source`,

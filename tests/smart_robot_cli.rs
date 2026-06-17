@@ -28,6 +28,25 @@ fn smart_robot_wheel_bridge_budget_passes() {
             }),
         "wheel actuator must expose the demo motor-envelope limitation: {report:#?}"
     );
+    assert!(
+        !findings_with_id(&report, "MOTOR_REGEN_CLAMP_VALID")
+            .into_iter()
+            .any(|finding| finding["severity"] == "critical"),
+        "wheel actuator regen clamp budget should pass: {report:#?}"
+    );
+    assert!(
+        report["limitations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|limitation| {
+                limitation["id"] == "LOW_CONFIDENCE_MODEL"
+                    && limitation["scope"]
+                        == "component:REGEN1:model:demo.smart_robot.regen_clamp_design_envelope"
+                    && limitation["blocking"] == false
+            }),
+        "wheel actuator must expose the demo regen-clamp limitation: {report:#?}"
+    );
 }
 
 #[test]
@@ -490,6 +509,42 @@ fn smart_robot_wheel_bridge_loss_thermal_fails_low_board_budget() {
                 && finding["limit"]["min_loss_margin_ratio"] == 2.0
         }),
         "expected motor bridge thermal budget failure, got {thermal_findings:#?}"
+    );
+}
+
+#[test]
+fn smart_robot_wheel_regen_clamp_fails_low_energy_rating() {
+    let (dir, project) =
+        mutated_wheel_actuator_project("clamp_energy_rating_J: 1.5", "clamp_energy_rating_J: 0.2");
+    let output = dir.path().join("report");
+    let status = Command::new(env!("CARGO_BIN_EXE_circuitci"))
+        .args([
+            "validate",
+            project.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let report: Value =
+        serde_json::from_str(&std::fs::read_to_string(output.join("report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report["result"], "fail");
+    assert_report_schema_valid(&report);
+    let regen_findings = findings_with_id(&report, "MOTOR_REGEN_CLAMP_VALID");
+    assert!(
+        regen_findings.iter().any(|finding| {
+            let total_energy = finding["measured"]["total_absorption_energy_J"]
+                .as_f64()
+                .unwrap();
+            finding["component"] == "REGEN1"
+                && (total_energy - 0.24862).abs() < 1e-9
+                && finding["limit"]["required_absorption_energy_J"] == 1.5
+                && finding["limit"]["min_regen_energy_margin_ratio"] == 1.5
+        }),
+        "expected regen clamp energy failure, got {regen_findings:#?}"
     );
 }
 

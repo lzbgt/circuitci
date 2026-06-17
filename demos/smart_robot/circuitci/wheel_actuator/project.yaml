@@ -121,6 +121,14 @@ board:
         PHASE_U: phase_u
         PHASE_V: phase_v
         PHASE_W: phase_w
+    REGEN1:
+      model: demo.smart_robot.regen_clamp_design_envelope
+      part_number: REGEN_CLAMP_DESIGN_ENVELOPE
+      power_domains:
+        BUS: vwheel_sw
+      pins:
+        BUS: vwheel_sw
+        GND: gnd
     RSHUNT_U:
       model: generic.analog.resistor
       part_number: 5mR_1W_PHASE_SHUNT_U
@@ -370,6 +378,24 @@ scenarios:
       bus_voltage_max_V: 12.6
       max_total_bridge_loss_W: 2.0
       min_loss_margin_ratio: 2.0
+  - name: wheel_actuator_regen_clamp_budget
+    type: motor_drive
+    checks:
+      - MOTOR_REGEN_CLAMP_VALID
+    target:
+      component: PWR_STAGE
+    parameters:
+      motor_component: M1
+      clamp_component: REGEN1
+      regen_energy_J: 1.0
+      bus_capacitance_F: 0.001
+      bus_voltage_nominal_V: 12.6
+      clamp_voltage_V: 16.0
+      max_bus_voltage_V: 18.0
+      clamp_current_rating_A: 10.0
+      clamp_energy_rating_J: 1.5
+      min_clamp_current_margin_ratio: 1.5
+      min_regen_energy_margin_ratio: 1.5
   - name: wheel_actuator_phase_route_current
     type: motor_drive
     checks:
