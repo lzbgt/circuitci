@@ -3,8 +3,7 @@ use eframe::egui;
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
     draw_sketch_pin_anchor, edge_label_position, edit_schematic_wire_route, hit_test_wire,
-    layout_sketch_graph_viewport, orthogonal_wire_points,
-    persisted_node_position_from_screen_with_snap,
+    layout_sketch_graph_viewport, persisted_node_position_from_screen_with_snap,
     persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
     sketch_wire_points, snap_screen_point_to_grid, with_opacity,
 };
@@ -319,12 +318,20 @@ impl CircuitCiApp {
                 .as_ref()
                 .map(WireDragTarget::snap_position)
                 .unwrap_or(pointer);
-            draw_wire_polyline(
+            let route_points = self.sketch_wire_draft.screen_points(rect, viewport);
+            let points = sketch_routes::wire_points(source, &route_points, end);
+            draw_wire_points(
                 &painter,
-                source,
-                end,
+                &points,
                 egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
+            draw_wire_junctions(
+                &painter,
+                &points,
+                egui::Color32::from_rgb(255, 196, 87),
+                true,
+            );
+            draw_pending_wire_route_handles(&painter, &route_points);
         }
         for badge in &bundle_badges {
             let opacity = if let Some(view) = &hierarchy_view {
@@ -495,10 +502,12 @@ impl CircuitCiApp {
                     && !(source_component_id == anchor.component_id
                         && self.wire_pin_id.trim() == anchor.pin)
                 {
-                    self.apply_visual_pin_wire(
+                    let route_points = self.pending_wire_route_points();
+                    self.apply_visual_pin_wire_with_route(
                         source_component_id,
                         anchor.component_id.clone(),
                         anchor.pin.clone(),
+                        route_points,
                     );
                 } else {
                     self.start_visual_wire_from_anchor(anchor);
@@ -506,11 +515,15 @@ impl CircuitCiApp {
             } else if let Some(SketchSelection::Net(net_id)) = &clicked
                 && let Some(component_id) = self.wire_from_component.clone()
             {
-                self.apply_visual_wire(component_id, net_id.clone());
+                let route_points = self.pending_wire_route_points();
+                self.apply_visual_wire_with_route(component_id, net_id.clone(), route_points);
             } else if let Some(edge) = clicked_wire
                 && let Some(component_id) = self.wire_from_component.clone()
             {
-                self.apply_visual_wire(component_id, edge.net_id.clone());
+                let route_points = self.pending_wire_route_points();
+                self.apply_visual_wire_with_route(component_id, edge.net_id.clone(), route_points);
+            } else if self.wire_from_component.is_some() && placement_target_clear {
+                self.add_pending_wire_route_point(rect, viewport, position);
             } else if multi_select {
                 if let Some(selection) = clicked {
                     self.toggle_sketch_selection(selection);
@@ -759,10 +772,16 @@ impl CircuitCiApp {
             self.status = "Canvas placement canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.wire_from_component.is_some() {
             self.wire_from_component = None;
+            self.sketch_wire_draft.clear();
             self.status = "Wire mode canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.sketch_wire_route_drag.is_some() {
             self.sketch_wire_route_drag = None;
             self.status = "Wire route edit canceled.".to_string();
+        } else if delete_pressed
+            && self.wire_from_component.is_some()
+            && !self.sketch_wire_draft.is_empty()
+        {
+            self.remove_last_pending_wire_route_point();
         } else if let Some(badge) = hovered_probe_badge {
             if quick_above_pressed {
                 self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
@@ -948,8 +967,9 @@ impl CircuitCiApp {
         self.pin_edit_net = anchor.net.clone();
         self.wire_pin_id = anchor.pin.clone();
         self.wire_from_component = Some(anchor.component_id.clone());
+        self.sketch_wire_draft.clear();
         self.status = format!(
-            "Wire mode: drag or click another pin, net, or wire to connect {}.{}.",
+            "Wire mode: click blank space for bends, then click or release on a pin, net, or wire to connect {}.{}.",
             anchor.component_id, anchor.pin
         );
     }
@@ -958,6 +978,7 @@ impl CircuitCiApp {
         let Some(source_component_id) = self.wire_from_component.clone() else {
             return;
         };
+        let route_points = self.pending_wire_route_points();
         match target {
             WireDragTarget::Pin {
                 component_id, pin, ..
@@ -965,12 +986,56 @@ impl CircuitCiApp {
                 if source_component_id == component_id && self.wire_pin_id.trim() == pin {
                     return;
                 }
-                self.apply_visual_pin_wire(source_component_id, component_id, pin);
+                self.apply_visual_pin_wire_with_route(
+                    source_component_id,
+                    component_id,
+                    pin,
+                    route_points,
+                );
             }
             WireDragTarget::NetNode { net_id, .. } | WireDragTarget::Wire { net_id, .. } => {
-                self.apply_visual_wire(source_component_id, net_id);
+                self.apply_visual_wire_with_route(source_component_id, net_id, route_points);
             }
         }
+    }
+
+    fn add_pending_wire_route_point(
+        &mut self,
+        canvas: egui::Rect,
+        viewport: sketch::SketchViewport,
+        position: egui::Pos2,
+    ) {
+        let before = self.sketch_wire_draft.len();
+        self.sketch_wire_draft.push_screen_point(
+            canvas,
+            viewport,
+            position,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        if self.sketch_wire_draft.len() > before {
+            self.status = format!(
+                "Wire route bend {} added. Click a pin, net, or wire to finish.",
+                self.sketch_wire_draft.len()
+            );
+        }
+    }
+
+    fn remove_last_pending_wire_route_point(&mut self) {
+        if self.sketch_wire_draft.pop_point() {
+            self.status = if self.sketch_wire_draft.is_empty() {
+                "Wire route bend removed.".to_string()
+            } else {
+                format!(
+                    "Wire route bend removed; {} remain.",
+                    self.sketch_wire_draft.len()
+                )
+            };
+        }
+    }
+
+    fn pending_wire_route_points(&self) -> Vec<(f64, f64)> {
+        self.sketch_wire_draft.points().to_vec()
     }
 
     fn apply_schematic_wire_route(
@@ -1654,6 +1719,17 @@ fn draw_wire_route_preview(
     );
 }
 
+fn draw_pending_wire_route_handles(painter: &egui::Painter, route_points: &[egui::Pos2]) {
+    for point in route_points {
+        painter.circle_filled(*point, 4.5, egui::Color32::from_rgb(255, 196, 87));
+        painter.circle_stroke(
+            *point,
+            6.5,
+            egui::Stroke::new(1.5, egui::Color32::from_rgb(36, 36, 36)),
+        );
+    }
+}
+
 pub(super) fn hit_test_wire_route_handle(
     graph: &sketch::SketchGraph,
     position: egui::Pos2,
@@ -1674,16 +1750,6 @@ pub(super) fn hit_test_wire_route_handle(
 
 pub(super) fn wire_route_insert_index(edge: &sketch::SketchEdge, position: egui::Pos2) -> usize {
     sketch_routes::route_insert_index(edge.start, &edge.route, edge.end, position)
-}
-
-fn draw_wire_polyline(
-    painter: &egui::Painter,
-    start: egui::Pos2,
-    end: egui::Pos2,
-    stroke: egui::Stroke,
-) {
-    let points = orthogonal_wire_points(start, end);
-    draw_wire_points(painter, &points, stroke);
 }
 
 fn draw_wire_drag_target(painter: &egui::Painter, target: &WireDragTarget) {

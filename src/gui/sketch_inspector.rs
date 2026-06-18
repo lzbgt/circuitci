@@ -7,7 +7,8 @@ use super::sketch::{
     ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
     assign_component_pin, connect_component_pins, edit_component_model, edit_component_part_number,
     edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_component_style,
-    edit_schematic_node_position, remove_component, remove_component_pin, remove_net,
+    edit_schematic_node_position, edit_schematic_wire_route, remove_component,
+    remove_component_pin, remove_net,
 };
 use super::sketch_rename::{rename_component, rename_net};
 use super::sketch_spice::{
@@ -15,6 +16,7 @@ use super::sketch_spice::{
     replace_component_spice,
 };
 use super::{CircuitCiApp, Stage};
+use anyhow::Context;
 use eframe::egui;
 
 impl CircuitCiApp {
@@ -552,36 +554,52 @@ impl CircuitCiApp {
     }
 
     pub(super) fn apply_visual_wire(&mut self, component_id: String, net_id: String) {
-        match assign_component_pin(
-            &self.project_yaml,
-            &component_id,
-            &self.wire_pin_id,
-            &net_id,
-        ) {
-            Ok(updated) => {
-                self.pin_edit_id = self.wire_pin_id.clone();
-                self.pin_edit_net = net_id.clone();
-                self.wire_from_component = None;
-                self.set_single_sketch_selection(Some(SketchSelection::Component(
-                    component_id.clone(),
-                )));
-                self.apply_edited_project_yaml(
-                    updated,
-                    &format!(
-                        "Visual wire assigned {component_id}.{} to {net_id}.",
-                        self.wire_pin_id.trim()
-                    ),
-                );
-            }
+        self.apply_visual_wire_with_route(component_id, net_id, Vec::new());
+    }
+
+    pub(super) fn apply_visual_wire_with_route(
+        &mut self,
+        component_id: String,
+        net_id: String,
+        route_points: Vec<(f64, f64)>,
+    ) {
+        let source_pin_id = self.wire_pin_id.trim().to_string();
+        match assign_component_pin(&self.project_yaml, &component_id, &source_pin_id, &net_id) {
+            Ok(updated) => match apply_wire_route_if_present(
+                updated,
+                &component_id,
+                &source_pin_id,
+                &net_id,
+                &route_points,
+            ) {
+                Ok(updated) => {
+                    self.pin_edit_id = self.wire_pin_id.clone();
+                    self.pin_edit_net = net_id.clone();
+                    self.wire_from_component = None;
+                    self.sketch_wire_draft.clear();
+                    self.set_single_sketch_selection(Some(SketchSelection::Component(
+                        component_id.clone(),
+                    )));
+                    self.apply_edited_project_yaml(
+                        updated,
+                        &format!(
+                            "Visual wire assigned {component_id}.{} to {net_id}.",
+                            source_pin_id
+                        ),
+                    );
+                }
+                Err(error) => self.record_error(error),
+            },
             Err(error) => self.record_error(error),
         }
     }
 
-    pub(super) fn apply_visual_pin_wire(
+    pub(super) fn apply_visual_pin_wire_with_route(
         &mut self,
         source_component_id: String,
         target_component_id: String,
         target_pin_id: String,
+        route_points: Vec<(f64, f64)>,
     ) {
         let source_pin_id = self.wire_pin_id.trim().to_string();
         match connect_component_pins(
@@ -592,17 +610,33 @@ impl CircuitCiApp {
             &target_pin_id,
         ) {
             Ok(updated) => {
-                self.pin_edit_id = target_pin_id.clone();
-                self.wire_from_component = None;
-                self.set_single_sketch_selection(Some(SketchSelection::Component(
-                    target_component_id.clone(),
-                )));
-                self.apply_edited_project_yaml(
+                match net_for_component_pin(&updated, &source_component_id, &source_pin_id)
+                    .and_then(|net_id| {
+                        apply_wire_route_if_present(
+                            updated,
+                            &source_component_id,
+                            &source_pin_id,
+                            &net_id,
+                            &route_points,
+                        )
+                        .map(|updated| (updated, net_id))
+                    }) {
+                    Ok((updated, _net_id)) => {
+                        self.pin_edit_id = target_pin_id.clone();
+                        self.wire_from_component = None;
+                        self.sketch_wire_draft.clear();
+                        self.set_single_sketch_selection(Some(SketchSelection::Component(
+                            target_component_id.clone(),
+                        )));
+                        self.apply_edited_project_yaml(
                     updated,
                     &format!(
                         "Visual wire connected {source_component_id}.{source_pin_id} to {target_component_id}.{target_pin_id}."
                     ),
                 );
+                    }
+                    Err(error) => self.record_error(error),
+                }
             }
             Err(error) => self.record_error(error),
         }
@@ -913,6 +947,35 @@ impl CircuitCiApp {
     }
 }
 
+fn apply_wire_route_if_present(
+    updated_yaml: String,
+    component_id: &str,
+    pin_id: &str,
+    net_id: &str,
+    route_points: &[(f64, f64)],
+) -> anyhow::Result<String> {
+    if route_points.is_empty() {
+        return Ok(updated_yaml);
+    }
+    let source = format!("{component_id}.{pin_id}");
+    edit_schematic_wire_route(&updated_yaml, &source, net_id, route_points)
+}
+
+fn net_for_component_pin(text: &str, component_id: &str, pin_id: &str) -> anyhow::Result<String> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Edited project YAML is not valid Board IR.")?;
+    let component = project
+        .board
+        .components
+        .get(component_id)
+        .with_context(|| format!("Board IR component {component_id} was not found."))?;
+    component
+        .pins
+        .get(pin_id)
+        .cloned()
+        .with_context(|| format!("Board IR pin {component_id}.{pin_id} is not connected."))
+}
+
 fn pulse_field(ui: &mut egui::Ui, label: &str, value: &mut f64, speed: f64, suffix: &str) -> bool {
     ui.label(label);
     let changed = ui
@@ -964,9 +1027,25 @@ fn sanitized_probe_stem(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_current_probe_name_for_component, default_power_probe_name_for_component,
-        default_probe_name_for_net,
+        apply_wire_route_if_present, default_current_probe_name_for_component,
+        default_power_probe_name_for_component, default_probe_name_for_net, net_for_component_pin,
     };
+
+    fn wired_project_yaml() -> &'static str {
+        "project:
+  name: inspector_wire_route_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+  nets:
+    net_a:
+      kind: digital_or_analog
+"
+    }
 
     #[test]
     fn default_probe_name_sanitizes_canvas_net_ids() {
@@ -1005,5 +1084,23 @@ mod tests {
             default_power_probe_name_for_component("///"),
             "component_power"
         );
+    }
+
+    #[test]
+    fn pending_wire_route_is_applied_to_connected_source_pin() {
+        let net = net_for_component_pin(wired_project_yaml(), "R1", "A").unwrap();
+        let edited = apply_wire_route_if_present(
+            wired_project_yaml().to_string(),
+            "R1",
+            "A",
+            &net,
+            &[(120.0, 140.0), (180.0, 140.0)],
+        )
+        .unwrap();
+
+        assert!(edited.contains("wire_routes:"));
+        assert!(edited.contains("R1.A->net_a:"));
+        assert!(edited.contains("x: 120.0"));
+        assert!(edited.contains("x: 180.0"));
     }
 }

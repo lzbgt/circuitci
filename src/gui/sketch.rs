@@ -1380,6 +1380,22 @@ pub(super) fn persisted_wire_route_point_from_screen_with_snap(
     )
 }
 
+pub(super) fn screen_wire_route_point_from_persisted(
+    canvas: egui::Rect,
+    point: (f64, f64),
+    viewport: SketchViewport,
+) -> egui::Pos2 {
+    transform_viewport_pos(
+        egui::pos2(
+            canvas.left() + point.0 as f32,
+            canvas.top() + point.1 as f32,
+        ),
+        canvas,
+        viewport,
+    )
+}
+
+#[cfg(test)]
 pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<egui::Pos2> {
     sketch_routes::orthogonal_points(start, end)
 }

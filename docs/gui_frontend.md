@@ -83,8 +83,9 @@ transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
 hit-testing, fit-all and fit-selection bounds, bounded full-list logical layout
 for pannable imported designs, and model-aware pin-anchor layout/rendering
 primitives. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
-geometry helpers used for custom route display, hit-testing, insertion, and
-drag previews.
+geometry helpers used for custom route display, hit-testing, insertion, active
+wire previews, and drag previews. `src/gui/sketch_wire_draft.rs` owns the
+transient in-progress wire-bend points while a pin connection is being drawn.
 `src/gui/sketch_duplicate.rs` owns the selected-component/local-net duplication
 YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_rename.rs` owns structured component/net rename mutations that
@@ -99,8 +100,8 @@ edited YAML before the GUI accepts the mutation.
 order, viewport input, hit-test routing, marquee and drag event routing,
 pin-anchor drag-to-wire completion, snap-aware wire preview and target
 highlight drawing, visible schematic wire-route handles, direct schematic
-wire-route drag editing, route-handle insertion/deletion, custom-route
-clearing,
+wire-route drag editing, route-handle insertion/deletion, active multi-bend
+wire drawing, custom-route clearing,
 node/wire/probe/bundle/hierarchy connector tooltips, and right-click context
 menus over component, net, wire, and probe badge targets.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
@@ -227,7 +228,8 @@ form:
   sketch items, pin-to-net assignment/removal for selected components, visual
   pin-to-pin and pin-to-net
   wire assignment by clicking or dragging component pin anchors to pins, nets,
-  or wires with target highlighting and snap preview, graph-node
+  or wires with target highlighting and snap preview, clicked intermediate bend
+  points while an active wire is being drawn, graph-node
   direct schematic wire-route shaping by dragging a rendered wire segment or
   existing route handle, route-handle insertion/deletion from wire context
   menus,
@@ -405,8 +407,9 @@ continues to persist only Board IR components, nets, pins, and optional
 The sketch grid, snap controls, net labels, junction dots, and orthogonal wire
 routes are also editor affordances. Snapping may update persisted schematic
 node positions, dragging a wire or one of its visible route handles may update
-`board.schematic.wire_routes` with display-only waypoints, wire context-menu
-route-handle insertion/deletion may update the same display metadata, and
+`board.schematic.wire_routes` with display-only waypoints, active wire-mode
+blank-canvas bend clicks and wire context-menu route-handle insertion/deletion
+may update the same display metadata, and
 clicking a wire may select its underlying Board IR net, but grid visibility,
 net-label placement, junction dot rendering, hit-test regions, custom schematic
 wire waypoints, and orthogonal routing style do not create independent electrical
@@ -414,6 +417,11 @@ connectivity or physical PCB placement evidence.
 Custom wire routes render as orthogonal schematic polylines between persisted
 waypoints, so route handles can be placed freely while the visible schematic
 path remains EDA-style horizontal/vertical geometry.
+During wire mode, blank-canvas clicks add transient bend points; completing the
+wire on a pin, net node, or existing wire persists those bends as the new
+pin-to-net route metadata in the same validated Board IR edit as the electrical
+connection. Pressing Delete/Backspace during wire mode removes the latest
+pending bend, and Escape cancels the in-progress route.
 
 Canvas probe insertion is also a Board IR scenario edit, not a hidden runtime
 probe layer. The selected-net inspector appends a voltage probe to an existing

@@ -68,14 +68,17 @@ layout for pannable imported designs, schematic grid/snap helpers, orthogonal
 wire geometry, schematic wire route waypoint metadata, wire hit-testing,
 shared sketch YAML helpers, and model-port default pin/net seeding for
 library-backed component insertion. `src/gui/sketch_routes.rs` owns shared
-orthogonal wire-route geometry helpers so display, hit-testing, insertion, and
-drag preview all use the same route semantics.
+orthogonal wire-route geometry helpers so display, hit-testing, insertion,
+active wire preview, and drag preview all use the same route semantics.
+`src/gui/sketch_wire_draft.rs` owns transient in-progress wire-bend points while
+the user is drawing a pin connection.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
 highlight drawing, visible wire-route handles, direct wire-route drag editing
-plus route-handle insertion/deletion and clearing, hover
+plus route-handle insertion/deletion, active multi-bend wire drawing, and
+clearing, hover
 tooltips, context menus, and runtime tint display. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
@@ -158,9 +161,12 @@ list. A custom schematic route may persist display-only waypoints under
 may only shape the rendered pin-to-net edge. It must not create, remove, or
 retarget electrical connectivity, and it must not be treated as PCB copper
 route evidence. Wire hit-testing may select the underlying Board IR net,
-connect an active source pin to that net, drag a visible display waypoint for
-the specific rendered edge, or clear those display waypoints. None of those
-actions may persist a separate wire object.
+connect an active source pin to that net, add transient blank-canvas bend points
+while drawing an active source pin connection, drag a visible display waypoint
+for the specific rendered edge, or clear those display waypoints. Completing an
+active multi-bend wire may persist the pending bend points as
+`board.schematic.wire_routes` in the same validated edit as the pin-to-net
+connection. None of those actions may persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
 Rename actions must rewrite explicit Board IR IDs rather than introducing a

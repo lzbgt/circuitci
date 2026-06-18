@@ -39,6 +39,7 @@ mod sketch_spice;
 mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
+mod sketch_wire_draft;
 mod spice;
 mod waveform;
 
@@ -168,6 +169,7 @@ pub struct CircuitCiApp {
     pin_edit_net: String,
     wire_pin_id: String,
     wire_from_component: Option<String>,
+    sketch_wire_draft: sketch_wire_draft::SketchWireDraft,
     analog_scenario_name: String,
     analog_ground_net: String,
     analog_probe_net: String,
@@ -303,6 +305,7 @@ impl Default for CircuitCiApp {
             pin_edit_net: String::new(),
             wire_pin_id: "P1".to_string(),
             wire_from_component: None,
+            sketch_wire_draft: Default::default(),
             analog_scenario_name: "gui_transient".to_string(),
             analog_ground_net: String::new(),
             analog_probe_net: String::new(),
