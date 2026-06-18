@@ -27,9 +27,12 @@ component entries and may remove only nets that are not referenced by component
 pins. It may assign or remove component pin bindings only when the component
 exists and any assigned target net exists. Visual wire routing should keep using
 these Board IR mutation helpers rather than introducing a parallel connection
-model. New graph editing features should extend the sketch module or introduce
-another focused GUI submodule before `src/gui.rs` approaches the 2000-line
-guard again.
+model. `src/gui/analog.rs` owns generated-from-Board analog transient scenario
+creation. It may derive node and pin bindings from Board IR for observation
+scenarios, but assertion authoring and file-backed SPICE deck editing should be
+separate focused modules so waveform sign-off semantics stay explicit. New
+graph editing features should extend the sketch module or introduce another
+focused GUI submodule before `src/gui.rs` approaches the 2000-line guard again.
 
 ## Evidence Model
 

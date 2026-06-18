@@ -3,8 +3,10 @@ use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
 
+mod analog;
 mod sketch;
 
+use analog::{AnalogScenarioDraft, append_analog_transient_scenario};
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
     draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -85,6 +87,12 @@ pub struct CircuitCiApp {
     new_net_kind: String,
     pin_edit_id: String,
     pin_edit_net: String,
+    analog_scenario_name: String,
+    analog_ground_net: String,
+    analog_probe_net: String,
+    analog_probe_name: String,
+    analog_stop_time_us: f64,
+    analog_max_step_us: f64,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     waveforms: Vec<WaveformView>,
@@ -125,6 +133,12 @@ impl Default for CircuitCiApp {
             new_net_kind: "digital_or_analog".to_string(),
             pin_edit_id: "P1".to_string(),
             pin_edit_net: String::new(),
+            analog_scenario_name: "gui_transient".to_string(),
+            analog_ground_net: String::new(),
+            analog_probe_net: String::new(),
+            analog_probe_name: "probe_voltage".to_string(),
+            analog_stop_time_us: 100.0,
+            analog_max_step_us: 1.0,
             project_snapshot: None,
             selected_sketch_item: None,
             waveforms: Vec::new(),
@@ -465,6 +479,10 @@ impl CircuitCiApp {
     fn simulation_stage(&mut self, ui: &mut egui::Ui) {
         ui.heading("Simulation And Observation");
         ui.separator();
+        if let Some(snapshot) = self.project_snapshot.clone() {
+            self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+        }
         if self.report.is_some() {
             self.waveform_view(ui);
             ui.separator();
@@ -493,6 +511,62 @@ impl CircuitCiApp {
                 "Run validation to observe SPICE waveforms, generated decks, and rule findings.",
             );
         }
+    }
+
+    fn analog_scenario_editor(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        ui.collapsing("Analog Transient Scenario", |ui| {
+            initialize_analog_net_defaults(
+                snapshot,
+                &mut self.analog_ground_net,
+                &mut self.analog_probe_net,
+            );
+            egui::Grid::new("analog_transient_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Scenario");
+                    ui.text_edit_singleline(&mut self.analog_scenario_name);
+                    ui.end_row();
+
+                    ui.label("Ground net");
+                    net_combo(
+                        ui,
+                        "analog_ground_net",
+                        &mut self.analog_ground_net,
+                        snapshot,
+                    );
+                    ui.end_row();
+
+                    ui.label("Probe net");
+                    net_combo(ui, "analog_probe_net", &mut self.analog_probe_net, snapshot);
+                    ui.end_row();
+
+                    ui.label("Probe name");
+                    ui.text_edit_singleline(&mut self.analog_probe_name);
+                    ui.end_row();
+
+                    ui.label("Stop time");
+                    ui.add(
+                        egui::DragValue::new(&mut self.analog_stop_time_us)
+                            .speed(1.0)
+                            .range(0.001..=1_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+
+                    ui.label("Max step");
+                    ui.add(
+                        egui::DragValue::new(&mut self.analog_max_step_us)
+                            .speed(0.1)
+                            .range(0.001..=1_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+                });
+            if ui.button("Add Analog Scenario").clicked() {
+                self.apply_add_analog_scenario();
+            }
+        });
     }
 
     fn reports_stage(&mut self, ui: &mut egui::Ui) {
@@ -1059,6 +1133,27 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_scenario(&mut self) {
+        let draft = AnalogScenarioDraft {
+            name: self.analog_scenario_name.clone(),
+            ground_net: self.analog_ground_net.clone(),
+            probe_net: self.analog_probe_net.clone(),
+            probe_name: self.analog_probe_name.clone(),
+            stop_time_us: self.analog_stop_time_us,
+            max_step_us: self.analog_max_step_us,
+        };
+        match append_analog_transient_scenario(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Analog scenario {} added.",
+                    self.analog_scenario_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn waveform_view(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.strong("Waveform Viewer");
@@ -1164,6 +1259,41 @@ fn validate_from_gui(
     let markdown = std::fs::read_to_string(output.join("report.md"))
         .with_context(|| format!("Failed to read {}.", output.join("report.md").display()))?;
     Ok((report, markdown))
+}
+
+fn initialize_analog_net_defaults(
+    snapshot: &ProjectSnapshot,
+    ground_net: &mut String,
+    probe_net: &mut String,
+) {
+    if ground_net.is_empty()
+        && let Some(net) = snapshot.nets_detail.iter().find(|net| net.kind == "ground")
+    {
+        *ground_net = net.id.clone();
+    }
+    if probe_net.is_empty()
+        && let Some(net) = snapshot
+            .nets_detail
+            .iter()
+            .find(|net| net.kind != "ground")
+            .or_else(|| snapshot.nets_detail.first())
+    {
+        *probe_net = net.id.clone();
+    }
+}
+
+fn net_combo(ui: &mut egui::Ui, id: &str, selected: &mut String, snapshot: &ProjectSnapshot) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select net"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for net in &snapshot.nets_detail {
+                ui.selectable_value(selected, net.id.clone(), &net.id);
+            }
+        });
 }
 
 fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
