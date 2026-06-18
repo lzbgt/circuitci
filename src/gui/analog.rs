@@ -24,6 +24,13 @@ pub(super) struct AnalogAssertionDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogProbeDraft {
+    pub(super) scenario_name: String,
+    pub(super) net_id: String,
+    pub(super) probe_name: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioChoice {
     pub(super) name: String,
     pub(super) stop_time_us: f64,
@@ -150,6 +157,62 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
     Ok(updated)
 }
 
+pub(super) fn append_analog_voltage_probe(text: &str, draft: &AnalogProbeDraft) -> Result<String> {
+    validate_probe_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.nets.contains_key(&draft.net_id) {
+        anyhow::bail!("Probe net {} was not found.", draft.net_id);
+    }
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if analog
+        .probes
+        .iter()
+        .any(|probe| probe.name == draft.probe_name)
+    {
+        anyhow::bail!(
+            "Analog probe {} already exists in scenario {}.",
+            draft.probe_name,
+            scenario.name
+        );
+    }
+    let node = analog
+        .node_bindings
+        .iter()
+        .find(|binding| binding.net == draft.net_id)
+        .map(|binding| binding.node.clone())
+        .with_context(|| {
+            format!(
+                "Scenario {} has no node binding for net {}.",
+                scenario.name, draft.net_id
+            )
+        })?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let probes = ensure_child_sequence_mut(analog_mapping, "probes", "analog probes")?;
+    let mut probe = serde_yaml_ng::Mapping::new();
+    insert_string(&mut probe, "name", draft.probe_name.trim());
+    insert_string(&mut probe, "expression", &format!("V({node})"));
+    insert_string(&mut probe, "quantity", "voltage");
+    probes.push(serde_yaml_ng::Value::Mapping(probe));
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog probe YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 fn validate_draft(draft: &AnalogScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
@@ -190,6 +253,15 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     }
     if !draft.threshold.is_finite() {
         anyhow::bail!("Analog assertion threshold must be finite.");
+    }
+    Ok(())
+}
+
+fn validate_probe_draft(draft: &AnalogProbeDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.net_id.trim().is_empty() {
+        anyhow::bail!("Probe net must not be blank.");
     }
     Ok(())
 }
@@ -529,8 +601,8 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogAssertionDraft, AnalogScenarioDraft, append_analog_assertion,
-        append_analog_transient_scenario,
+        AnalogAssertionDraft, AnalogProbeDraft, AnalogScenarioDraft, append_analog_assertion,
+        append_analog_transient_scenario, append_analog_voltage_probe,
     };
 
     fn editable_project_yaml() -> &'static str {
@@ -583,6 +655,14 @@ board:
             at_us: 50.0,
             start_us: 0.0,
             end_us: 100.0,
+        }
+    }
+
+    fn probe_draft() -> AnalogProbeDraft {
+        AnalogProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            net_id: "rail_5v".to_string(),
+            probe_name: "rail_5v_voltage".to_string(),
         }
     }
 
@@ -641,5 +721,27 @@ board:
         draft.at_us = 101.0;
         let error = append_analog_assertion(&edited, &draft).unwrap_err();
         assert!(error.to_string().contains("stop time"));
+    }
+
+    #[test]
+    fn append_analog_voltage_probe_emits_valid_yaml() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_voltage_probe(&edited, &probe_draft()).unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "rail_5v_voltage"
+                && probe.expression == "V(rail_5v)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Voltage
+        }));
+    }
+
+    #[test]
+    fn append_analog_voltage_probe_rejects_missing_node_binding() {
+        let mut edited =
+            append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        edited = edited.replace("    - node: rail_5v\n      net: rail_5v\n", "");
+        let error = append_analog_voltage_probe(&edited, &probe_draft()).unwrap_err();
+        assert!(error.to_string().contains("node binding"));
     }
 }

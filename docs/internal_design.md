@@ -85,9 +85,13 @@ interpolation helpers rather than an unsynchronized live simulation model.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.
-`src/gui/analog.rs` owns generated-from-Board analog transient scenario creation
-and structured sample/min/max assertion authoring. It may derive node and pin
-bindings from Board IR for observation scenarios. `src/gui/spice.rs` owns
+`src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
+selected-net voltage-probe insertion into existing analog scenarios, and
+structured sample/min/max assertion authoring. It may derive node and pin
+bindings from Board IR for observation scenarios, and selected-net probe
+insertion must fail closed when the target scenario has no node binding for the
+selected Board IR net. It must append normal Board IR analog probes rather than
+creating a GUI-only probe list. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather

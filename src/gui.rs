@@ -16,6 +16,7 @@ mod sketch_symbols;
 mod sketch_tests;
 mod spice;
 
+use analog::{AnalogProbeDraft, analog_scenario_choices, append_analog_voltage_probe};
 use simulation::{
     WaveformView, load_report_waveforms, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, waveform_time_range_for_view,
@@ -141,6 +142,8 @@ pub struct CircuitCiApp {
     analog_assertion_at_us: f64,
     analog_assertion_start_us: f64,
     analog_assertion_end_us: f64,
+    analog_probe_scenario: String,
+    analog_canvas_probe_name: String,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     selected_sketch_items: BTreeSet<SketchSelection>,
@@ -225,6 +228,8 @@ impl Default for CircuitCiApp {
             analog_assertion_at_us: 50.0,
             analog_assertion_start_us: 0.0,
             analog_assertion_end_us: 100.0,
+            analog_probe_scenario: String::new(),
+            analog_canvas_probe_name: String::new(),
             project_snapshot: None,
             selected_sketch_item: None,
             selected_sketch_items: BTreeSet::new(),
@@ -1290,6 +1295,8 @@ impl CircuitCiApp {
                                     ui.monospace(connection);
                                 }
                             });
+                        ui.separator();
+                        self.net_probe_editor(ui, &net.id);
                         if ui.button("Remove Net").clicked() {
                             self.apply_remove_net(&net.id);
                         }
@@ -1513,6 +1520,79 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn net_probe_editor(&mut self, ui: &mut egui::Ui, net_id: &str) {
+        ui.label("Simulation probe");
+        let choices = match analog_scenario_choices(&self.project_yaml) {
+            Ok(choices) => choices,
+            Err(error) => {
+                ui.label(format!("Analog scenarios unavailable: {error}"));
+                return;
+            }
+        };
+        if choices.is_empty() {
+            ui.label("Add an analog transient scenario before inserting probes.");
+            if ui.button("Seed Scenario Editor").clicked() {
+                self.analog_probe_net = net_id.to_string();
+                self.analog_probe_name = default_probe_name_for_net(net_id);
+                self.stage = Stage::Simulation;
+                self.status = format!("Simulation editor seeded for net {net_id}.");
+            }
+            return;
+        }
+        if self.analog_probe_scenario.is_empty()
+            || !choices
+                .iter()
+                .any(|choice| choice.name == self.analog_probe_scenario)
+        {
+            self.analog_probe_scenario = choices[0].name.clone();
+        }
+        if self.analog_canvas_probe_name.is_empty() {
+            self.analog_canvas_probe_name = default_probe_name_for_net(net_id);
+        }
+        egui::ComboBox::from_id_salt("canvas_probe_scenario")
+            .selected_text(&self.analog_probe_scenario)
+            .show_ui(ui, |ui| {
+                for choice in &choices {
+                    ui.selectable_value(
+                        &mut self.analog_probe_scenario,
+                        choice.name.clone(),
+                        &choice.name,
+                    );
+                }
+            });
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut self.analog_canvas_probe_name);
+            if ui.button("Use Net").clicked() {
+                self.analog_canvas_probe_name = default_probe_name_for_net(net_id);
+            }
+        });
+        if ui.button("Add Voltage Probe").clicked() {
+            self.apply_add_voltage_probe_for_net(net_id);
+        }
+    }
+
+    fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) {
+        let draft = AnalogProbeDraft {
+            scenario_name: self.analog_probe_scenario.clone(),
+            net_id: net_id.to_string(),
+            probe_name: self.analog_canvas_probe_name.clone(),
+        };
+        match append_analog_voltage_probe(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = self.analog_probe_scenario.clone();
+                self.analog_assertion_probe = self.analog_canvas_probe_name.trim().to_string();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Voltage probe {} added for net {net_id}.",
+                        self.analog_canvas_probe_name.trim()
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
 }
 
 fn validate_from_gui(
@@ -1701,6 +1781,23 @@ fn compact_wire_label(label: &str) -> String {
     compact
 }
 
+fn default_probe_name_for_net(net_id: &str) -> String {
+    let mut name = String::new();
+    for character in net_id.trim().chars() {
+        if character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.') {
+            name.push(character);
+        } else if !name.ends_with('_') {
+            name.push('_');
+        }
+    }
+    let name = name.trim_matches('_');
+    if name.is_empty() {
+        "net_voltage".to_string()
+    } else {
+        format!("{name}_voltage")
+    }
+}
+
 fn wire_preview_start(
     graph: &sketch::SketchGraph,
     component_id: &str,
@@ -1723,6 +1820,7 @@ fn wire_preview_start(
 
 #[cfg(test)]
 mod tests {
+    use super::default_probe_name_for_net;
     use super::egui;
     use super::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin,
@@ -1793,6 +1891,16 @@ board:
         assert!(edited.contains("kind: power"));
         assert!(edited.contains("nominal_voltage: 3.3"));
         assert!(edited.contains("powered: true"));
+    }
+
+    #[test]
+    fn default_probe_name_sanitizes_canvas_net_ids() {
+        assert_eq!(
+            default_probe_name_for_net("motor.phase-a"),
+            "motor.phase-a_voltage"
+        );
+        assert_eq!(default_probe_name_for_net(" net/a "), "net_a_voltage");
+        assert_eq!(default_probe_name_for_net("///"), "net_voltage");
     }
 
     #[test]

@@ -99,18 +99,20 @@ form:
   pin-to-pin and pin-to-net
   wire assignment by clicking component pin anchors or net nodes, graph-node
   runtime tinting and hover readouts for
-  matching waveform probes, shared undo/redo for Board IR graph/property/wire/
-  YAML edits, and a raw Board IR YAML editor with parse-validated save.
+  matching waveform probes, selected-net voltage-probe insertion into existing
+  analog scenarios, shared undo/redo for Board IR graph/property/wire/YAML
+  edits, and a raw Board IR YAML editor with parse-validated save.
 - Library: shows library bindings, searches the active component model set,
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
-  with ground/probe net selection, add sample/min/max probe assertions, edit
-  file-backed SPICE decks declared by analog scenarios, then runs validation
-  through the engine, plots emitted CSV waveforms, provides simulation-time
-  scrub/playback, A/B cursor measurements with min/max and delta values, and
-  lists generated SPICE decks, artifacts, findings, and limitations.
+  with ground/probe net selection, add selected-net voltage probes to existing
+  analog scenarios, add sample/min/max probe assertions, edit file-backed SPICE
+  decks declared by analog scenarios, then runs validation through the engine,
+  plots emitted CSV waveforms, provides simulation-time scrub/playback, A/B
+  cursor measurements with min/max and delta values, and lists generated SPICE
+  decks, artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. These are the
@@ -156,17 +158,20 @@ The supported desktop simulation path is:
 17. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
 18. append a generated-from-Board analog transient scenario with a voltage probe,
-19. add sample or windowed min/max waveform assertions against declared probes,
-20. load, edit, save, and rerun file-backed SPICE decks from declared analog
+19. select a net or wire on the sketch canvas and append another voltage probe
+   to an existing analog scenario when that scenario has a node binding for the
+   net,
+20. add sample or windowed min/max waveform assertions against declared probes,
+21. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-21. bind sourced component models,
-22. run declared validation and `analog_transient` scenarios,
-23. scrub or play the simulation time cursor to drive graph runtime tinting,
-24. hover graph nodes to inspect matching voltage/current/power probe values at
+22. bind sourced component models,
+23. run declared validation and `analog_transient` scenarios,
+24. scrub or play the simulation time cursor to drive graph runtime tinting,
+25. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-25. observe generated decks, plotted CSV waveforms, cursor values, min/max
+26. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-26. edit the project/model evidence and rerun.
+27. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -186,3 +191,10 @@ node positions, and clicking a wire may select its underlying Board IR net, but
 grid visibility, net-label placement, junction dot rendering, hit-test regions,
 and orthogonal routing style do not create independent electrical connectivity
 or physical PCB placement evidence.
+
+Canvas probe insertion is also a Board IR scenario edit, not a hidden runtime
+probe layer. The selected-net inspector appends a voltage probe to an existing
+analog scenario only when that scenario already declares a node binding for the
+selected Board IR net. Current and power probes still require explicit
+component/branch semantics and remain authored through scenario YAML or future
+symbol-aware probe tools.
