@@ -6,7 +6,7 @@ use super::sketch::{self, ProjectSnapshot, SketchSelection};
 use super::sketch_actions::sketch_selection_bounds;
 use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
 
-const QUICK_TOOLBAR_SIZE: egui::Vec2 = egui::vec2(396.0, 34.0);
+const QUICK_TOOLBAR_SIZE: egui::Vec2 = egui::vec2(504.0, 34.0);
 const GROUP_HANDLE_SIZE: egui::Vec2 = egui::vec2(66.0, 22.0);
 const GROUP_CORNER_HANDLE_SIZE: egui::Vec2 = egui::vec2(8.0, 8.0);
 
@@ -172,6 +172,10 @@ impl CircuitCiApp {
         let Some(bounds) = sketch_selection_bounds(graph, &self.selected_sketch_items) else {
             return;
         };
+        let has_selected_components = self
+            .selected_sketch_items
+            .iter()
+            .any(|selection| matches!(selection, SketchSelection::Component(_)));
         let pos = quick_toolbar_position(canvas, bounds, QUICK_TOOLBAR_SIZE);
         egui::Area::new(egui::Id::new("sketch_selection_quick_toolbar"))
             .order(egui::Order::Foreground)
@@ -191,6 +195,27 @@ impl CircuitCiApp {
                         if ui.small_button("Distribute").clicked() {
                             self.sketch_group_action =
                                 Some(SketchGroupAction::DistributeHorizontal);
+                        }
+                        if ui
+                            .add_enabled(has_selected_components, egui::Button::new("Rot").small())
+                            .on_hover_text("Rotate selected components clockwise")
+                            .clicked()
+                        {
+                            self.apply_rotate_selected_sketch_components(90);
+                        }
+                        if ui
+                            .add_enabled(has_selected_components, egui::Button::new("Flip").small())
+                            .on_hover_text("Flip selected components")
+                            .clicked()
+                        {
+                            self.apply_flip_selected_sketch_components();
+                        }
+                        if ui
+                            .add_enabled(has_selected_components, egui::Button::new("Pins").small())
+                            .on_hover_text("Cycle selected component pin side")
+                            .clicked()
+                        {
+                            self.apply_cycle_selected_sketch_pin_side();
                         }
                         if ui
                             .add_enabled(

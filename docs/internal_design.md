@@ -166,8 +166,8 @@ diode/BJT/MOSFET current-sense branches, and selected-component power-probe
 insertion for those same supported generated branches.
 `src/gui/sketch_selection_inspector.rs` owns the multi-selection summary,
 on-canvas selected-group frame/move handle and quick toolbar, and quick actions;
-it must reuse existing viewport, group-action, clipboard, duplication, and
-delete paths instead of creating another mutation model.
+it must reuse existing viewport, group-action, orientation, clipboard,
+duplication, and delete paths instead of creating another mutation model.
 `src/gui/sketch_probes.rs`
 owns derived schematic voltage/current/power probe badge targeting, layout,
 hit-testing, and drawing. Rendered pin anchors are UI affordances derived from

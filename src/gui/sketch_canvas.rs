@@ -1729,19 +1729,19 @@ impl CircuitCiApp {
         );
     }
 
-    fn apply_rotate_selected_sketch_components(&mut self, delta_deg: i32) {
+    pub(super) fn apply_rotate_selected_sketch_components(&mut self, delta_deg: i32) {
         self.apply_transform_selected_sketch_component_styles("rotating", "Rotated", |style| {
             style.rotation_deg = normalize_canvas_rotation(style.rotation_deg + delta_deg);
         });
     }
 
-    fn apply_flip_selected_sketch_components(&mut self) {
+    pub(super) fn apply_flip_selected_sketch_components(&mut self) {
         self.apply_transform_selected_sketch_component_styles("flipping", "Flipped", |style| {
             style.mirrored = !style.mirrored;
         });
     }
 
-    fn apply_cycle_selected_sketch_pin_side(&mut self) {
+    pub(super) fn apply_cycle_selected_sketch_pin_side(&mut self) {
         self.apply_transform_selected_sketch_component_styles(
             "changing pin side for",
             "Changed pin side for",

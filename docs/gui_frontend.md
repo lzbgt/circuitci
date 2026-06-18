@@ -189,9 +189,9 @@ generated semiconductor current-sense branches, plus selected-component power
 probe insertion for those same supported branches.
 `src/gui/sketch_selection_inspector.rs` owns the multi-selection inspector
 summary, on-canvas selection frame/move handle, quick toolbar, and quick
-actions for fitting, clearing, nudge, align, distribute, copy, duplicate, and
-delete; these actions reuse existing canvas selection and validated Board IR
-edit paths.
+actions for fitting, clearing, nudge, align, distribute, orientation changes,
+copy, duplicate, and delete; these actions reuse existing canvas selection and
+validated Board IR edit paths.
 `src/gui/sketch_probes.rs` owns derived schematic voltage/current/power probe
 badge targeting, badge layout, badge hit-testing, and badge drawing.
 `src/gui/library.rs` owns component model browsing over the active project
@@ -283,7 +283,8 @@ form:
   Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
   Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
   for freehand lasso selection, multi-selection inspector summary/actions,
-  on-canvas selected-group frame/move handle and quick toolbar,
+  on-canvas selected-group frame/move handle and quick toolbar with
+  rotate/flip/pin-side actions,
   group drag/nudge/edge-align/center-align/distribute controls for
   multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
