@@ -77,9 +77,11 @@ mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, direct wire-route drag editing,
 active multi-bend wire drawing, overview-minimap event routing, and runtime
-tint routing. `src/gui/sketch_canvas_render.rs` owns the canvas-local paint and
-tooltip helpers for wires, route handles, wire previews, wire target
-affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+tint routing. `src/gui/sketch_render.rs` owns graph node and pin-anchor
+painting, including runtime tinting, opacity handling, symbol glyph dispatch,
+and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
+canvas-local paint and tooltip helpers for wires, route handles, wire previews,
+wire target affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe badge, route-handle, and
 blank-canvas targets, including route handle insertion/deletion and
 custom-route clearing. Blank-canvas primary drag

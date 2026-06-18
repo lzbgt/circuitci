@@ -106,9 +106,11 @@ edited YAML before the GUI accepts the mutation.
 order, viewport input, hit-test routing, marquee and drag event routing,
 pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
 active multi-bend wire drawing, overview-minimap event routing, and graph
-hover/runtime routing. `src/gui/sketch_canvas_render.rs` owns canvas-local
+hover/runtime routing. `src/gui/sketch_render.rs` owns graph node and pin-anchor
+paint helpers, including runtime tinting, opacity handling, symbol glyph dispatch,
+and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns canvas-local
 tooltip and paint helpers for wires, route handles, wire previews, wire target
-affordances, kind-aware pin chips, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe-badge, and blank-canvas
 targets, including route-handle actions and named-net/off-page label placement
 actions.

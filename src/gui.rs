@@ -39,6 +39,7 @@ mod sketch_net_labels;
 mod sketch_palette;
 mod sketch_probes;
 mod sketch_rename;
+mod sketch_render;
 mod sketch_routes;
 mod sketch_spice;
 mod sketch_symbols;
