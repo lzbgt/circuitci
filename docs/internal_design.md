@@ -30,7 +30,11 @@ pin/net seeding for library-backed component insertion. It may add or remove
 component entries and may remove only nets that are not referenced by component
 pins. Inserted library components may create generated per-pin nets from
 source-backed model port declarations, but those nets are still ordinary Board
-IR sketch connections that the user can rewire. `src/gui/sketch_actions.rs`
+IR sketch connections that the user can rewire. `src/gui/sketch_symbols.rs`
+owns visual-only symbol-style rendering: it may infer common glyph classes from
+reference designators and model IDs, but it must continue to persist only Board
+IR components, nets, pins, and optional schematic node positions.
+`src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
 and selected-item deletion actions that compose lower-level sketch YAML
 mutations. Rendered pin anchors are UI

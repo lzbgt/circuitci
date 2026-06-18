@@ -21,6 +21,7 @@ circuitci-gui
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
+  -> src/gui/sketch_symbols.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
   -> src/gui/analog.rs
@@ -44,7 +45,9 @@ selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
 updates, view-state pan/zoom transforms, fit-content bounds, Shift-drag marquee
 selection, model-aware pin-anchor rendering, and validated component pin
-assignment. `src/gui/sketch_actions.rs` owns canvas selection state operations,
+assignment. `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
+symbol selection and the egui glyph drawing used by sketch nodes.
+`src/gui/sketch_actions.rs` owns canvas selection state operations,
 fit-content application, multi-selected drag/nudge/alignment, and batched
 selected-item deletion as validated Board IR YAML edits. Visual wire creation
 can start from a
@@ -76,9 +79,11 @@ form:
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
-  rendered component pin anchors, an inspector for component bindings and net
-  connections, structured scalar edits for existing component and net
-  properties, add/remove controls for components and unreferenced nets,
+  common-class symbol-style rendering for resistors, capacitors, inductors,
+  diodes, sources, connectors, ICs, and generic blocks, rendered component pin
+  anchors, an inspector for component bindings and net connections, structured
+  scalar edits for existing component and net properties, add/remove controls
+  for components and unreferenced nets,
   draggable component/net node positions, pan/zoom plus reset-view and
   fit-content controls, Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
@@ -150,9 +155,15 @@ The supported desktop simulation path is:
    measurements, findings, and report artifacts,
 23. edit the project/model evidence and rerun.
 
-Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
-math channels, advanced SPICE source tooling, automatic arbitrary
+Standards-complete symbol libraries and symbol editors, buses, hierarchical
+schematic sheets, advanced waveform math channels, advanced SPICE source
+tooling, automatic arbitrary
 schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
 stages. Basic file-backed deck edits are supported, but must still reuse the
 existing Board IR, importer, model, and validation contracts instead of creating
 a parallel EDA model.
+
+The sketch canvas symbol rendering is deliberately a view-layer affordance. It
+infers a compact glyph from the component reference designator and model ID, then
+continues to persist only Board IR components, nets, pins, and optional
+`board.schematic.node_positions`.

@@ -10,6 +10,7 @@ mod project;
 mod simulation;
 mod sketch;
 mod sketch_actions;
+mod sketch_symbols;
 mod spice;
 
 use project::{optional_path, sanitized_project_name};

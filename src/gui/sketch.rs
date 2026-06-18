@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
 
+use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, draw_symbol_glyph};
+
 #[derive(Debug, Clone)]
 pub(super) struct ProjectSnapshot {
     pub(super) name: String,
@@ -69,6 +71,7 @@ pub(super) struct SketchNode {
     pub(super) selection: SketchSelection,
     pub(super) label: String,
     pub(super) detail: String,
+    pub(super) symbol: SketchSymbolKind,
     pub(super) rect: egui::Rect,
 }
 
@@ -840,6 +843,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                 &format!("{} / {} pins", component.model, component.pins.len()),
                 34,
             ),
+            symbol: component_symbol_kind(component),
             rect: node_rect_from_position(
                 rect,
                 component.position,
@@ -857,6 +861,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
             selection: SketchSelection::Net(net.id.clone()),
             label: net.id.clone(),
             detail: format!("{} / {} conn", net.kind, net.connections.len()),
+            symbol: SketchSymbolKind::Net,
             rect: node_rect_from_position(rect, net.position, default, node_width, net_height),
         });
     }
@@ -1114,6 +1119,7 @@ fn push_overflow_hint(
         selection: SketchSelection::Overflow(label.to_string()),
         label: format!("+{count}"),
         detail: label.to_string(),
+        symbol: SketchSymbolKind::Overflow,
         rect: egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(width, height)),
     });
 }
@@ -1139,6 +1145,7 @@ pub(super) fn draw_sketch_node(
     };
     painter.rect_filled(node.rect, 4.0, fill);
     painter.rect_stroke(node.rect, 4.0, stroke, egui::StrokeKind::Inside);
+    draw_symbol_glyph(painter, node);
     painter.text(
         node.rect.left_top() + egui::vec2(8.0, 9.0),
         egui::Align2::LEFT_CENTER,
@@ -1208,11 +1215,12 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        SketchPosition, SketchSelection, SketchViewport, add_component, add_component_with_ports,
-        add_net, assign_component_pin, connect_component_pins, edit_schematic_node_position,
-        edit_schematic_node_positions, layout_sketch_graph, layout_sketch_graph_viewport,
-        load_project_snapshot_from_yaml, persisted_node_position_from_screen, remove_component,
-        remove_component_pin, remove_net, sketch_graph_bounds, validate_board_ir_yaml_text,
+        SketchPosition, SketchSelection, SketchSymbolKind, SketchViewport, add_component,
+        add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
+        edit_schematic_node_position, edit_schematic_node_positions, layout_sketch_graph,
+        layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+        persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
+        sketch_graph_bounds, validate_board_ir_yaml_text,
     };
     use crate::gui::CircuitCiApp;
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
@@ -1288,6 +1296,95 @@ board:
 
         validate_board_ir_yaml_text(&edited).unwrap();
         assert!(edited.contains("VIN: u2_vin_2"));
+    }
+
+    #[test]
+    fn layout_assigns_common_component_symbol_kinds() {
+        let snapshot = ProjectSnapshot {
+            name: "symbols".to_string(),
+            components: 7,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![
+                SketchComponent {
+                    id: "R1".to_string(),
+                    model: "generic.analog.resistor".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "C1".to_string(),
+                    model: "generic.analog.capacitor".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "L1".to_string(),
+                    model: "generic.analog.inductor".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "D1".to_string(),
+                    model: "generic.analog.diode".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "V1".to_string(),
+                    model: "generic.analog.voltage_source".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "J1".to_string(),
+                    model: "vendor.example.connector".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+                SketchComponent {
+                    id: "U1".to_string(),
+                    model: "vendor.example.controller".to_string(),
+                    part_number: None,
+                    pins: Vec::new(),
+                    position: None,
+                },
+            ],
+            nets_detail: vec![SketchNet {
+                id: "gnd".to_string(),
+                kind: "ground".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: Vec::new(),
+                position: None,
+            }],
+        };
+
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 900.0)),
+            &snapshot,
+        );
+        let symbols_by_label: std::collections::BTreeMap<_, _> = graph
+            .nodes
+            .iter()
+            .map(|node| (node.label.as_str(), node.symbol))
+            .collect();
+
+        assert_eq!(symbols_by_label["R1"], SketchSymbolKind::Resistor);
+        assert_eq!(symbols_by_label["C1"], SketchSymbolKind::Capacitor);
+        assert_eq!(symbols_by_label["L1"], SketchSymbolKind::Inductor);
+        assert_eq!(symbols_by_label["D1"], SketchSymbolKind::Diode);
+        assert_eq!(symbols_by_label["V1"], SketchSymbolKind::Source);
+        assert_eq!(symbols_by_label["J1"], SketchSymbolKind::Connector);
+        assert_eq!(symbols_by_label["U1"], SketchSymbolKind::Ic);
+        assert_eq!(symbols_by_label["gnd"], SketchSymbolKind::Net);
     }
 
     #[test]
