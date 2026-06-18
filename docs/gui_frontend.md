@@ -119,8 +119,11 @@ Its dock controls expose transient reference/value visibility plus
 auto-arrange/reset actions for persisted label positions.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, event routing, marquee and drag dispatch, pin-anchor drag-to-wire
-completion, direct schematic wire-route drag editing, active multi-bend wire
-drawing, overview-minimap event routing, and graph hover/runtime routing.
+completion, overview-minimap event routing, and graph hover/runtime routing.
+`src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
+multi-bend wire drawing, direct schematic wire-route edits, component placement
+orientation controls, selected-component orientation transforms, canvas probe
+defaults, and viewport pan/zoom input.
 `src/gui/sketch_canvas_interaction.rs` owns reusable canvas interaction
 primitives: viewport zoom math, schematic canvas sizing, wire target
 hit-testing, route-handle hit-testing, and placement orientation cycling.

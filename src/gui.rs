@@ -30,6 +30,7 @@ mod sketch_canvas_menus;
 mod sketch_canvas_render;
 #[cfg(test)]
 mod sketch_canvas_tests;
+mod sketch_canvas_tools;
 mod sketch_component_labels;
 mod sketch_connectivity;
 mod sketch_duplicate;

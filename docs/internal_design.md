@@ -75,8 +75,11 @@ the user is drawing a pin connection.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, event routing, pin-anchor drag-to-wire
-completion, direct wire-route drag editing, active multi-bend wire drawing,
-overview-minimap event routing, and runtime tint routing.
+completion, overview-minimap event routing, and runtime tint routing.
+`src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
+drawing, direct wire-route edits, component placement orientation controls,
+selected-component orientation transforms, canvas probe defaults, and viewport
+pan/zoom input.
 `src/gui/sketch_canvas_interaction.rs` owns reusable interaction primitives:
 viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
