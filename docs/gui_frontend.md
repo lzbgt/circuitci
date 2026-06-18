@@ -18,6 +18,7 @@ the default CLI dependency graph:
 ```text
 circuitci-gui
   -> src/gui.rs
+  -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
@@ -33,13 +34,16 @@ circuitci-gui
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
-`src/gui.rs` owns the application shell, stage routing, and validation/report
-calls. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch graph
-layout/drawing helpers, and structured scalar YAML edit helpers for selected
-components and nets, including conservative add/remove operations for
+`src/gui.rs` owns the application shell, stage routing, import command wiring,
+and validation/report calls. `src/gui/project.rs` owns project summary/YAML
+load, save, parse validation, import path/name helpers, and shared Board IR
+undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
+graph layout/drawing helpers, and structured scalar YAML edit helpers for
+selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
-updates, and validated component pin assignment. Visual wire creation reuses the
-same pin-to-net mutation path instead of introducing a second connection model.
+updates, and validated component pin assignment. Visual wire creation reuses
+the same pin-to-net mutation path instead of introducing a second connection
+model.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, and selected-component
 model assignment through the same Board IR YAML mutation path.

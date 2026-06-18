@@ -21,7 +21,9 @@ GUI actions.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, menus, stage
-routing, and validation/report calls. `src/gui/sketch.rs`
+routing, import command wiring, and validation/report calls. `src/gui/project.rs`
+owns project summary/YAML load, save, parse validation, import path/name
+helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, and structured
 scalar YAML edit helpers for existing components and nets. It may add or remove
 component entries and may remove only nets that are not referenced by component
@@ -31,12 +33,13 @@ positions under `board.schematic.node_positions`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
-introducing a parallel connection model. The GUI shared undo/redo history is a
-capped in-memory stack of Board IR YAML snapshots; graph, property, wire, and
-text edits should enter that history through the same application-level
-mutation boundary rather than keeping per-widget state. Loading or importing a
-different project clears history, while saving the current project preserves it
-so the user can still step backward from a saved edit. `src/gui/simulation.rs`
+introducing a parallel connection model. The GUI shared undo/redo history in
+`src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
+graph, property, wire, and text edits should enter that history through the
+same application-level mutation boundary rather than keeping per-widget state.
+Loading or importing a different project clears history, while saving the
+current project preserves it so the user can still step backward from a saved
+edit. `src/gui/simulation.rs`
 owns the Simulation stage UI, waveform CSV parsing, plotting, simulation-time
 scrub/playback controls, cursor readouts, min/max/delta measurements, and
 normalized runtime activity values for graph tinting. It may display graph
