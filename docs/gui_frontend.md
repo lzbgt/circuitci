@@ -22,6 +22,7 @@ circuitci-gui
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
+  -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_symbols.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
@@ -43,13 +44,11 @@ KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, and shared Board IR
 undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
-graph layout/drawing helpers, and structured scalar YAML edit helpers for
-selected components and nets, including conservative add/remove operations for
-components and unreferenced nets, persisted schematic node positions/styles,
-drag updates, view-state pan/zoom transforms, schematic grid/snap helpers,
+graph layout/drawing helpers, persisted schematic node positions/styles, drag
+updates, view-state pan/zoom transforms, schematic grid/snap helpers,
 orthogonal wire visuals, net label/junction rendering, wire hit-testing,
-fit-content bounds, Shift-drag marquee selection, model-aware pin-anchor
-rendering, and validated component pin assignment.
+fit-content bounds, Shift-drag marquee selection, and model-aware pin-anchor
+rendering.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
@@ -60,6 +59,11 @@ rendered pin anchor and can terminate on another pin anchor or an existing net
 node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
 creates a generated Board IR net through the same mutation path instead of
 introducing a second connection model.
+`src/gui/sketch_inspector.rs` owns the selected component/net inspector,
+structured scalar YAML edit actions, conservative component/unreferenced-net
+add/remove operations, schematic symbol style edits, validated component pin
+assignment, visual wire assignment mutations, and selected-net voltage-probe
+insertion controls.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML

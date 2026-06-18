@@ -26,12 +26,10 @@ stage UI plus KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
-owns Board IR graph snapshots, graph layout/drawing helpers, structured scalar
-YAML edit helpers for existing components and nets, schematic grid/snap helpers,
-orthogonal wire visuals, net label/junction rendering, wire hit-testing, and
-model-port default pin/net seeding for library-backed component insertion. It
-may add or remove component entries and may remove only nets that are not
-referenced by component pins. Inserted library
+owns Board IR graph snapshots, graph layout/drawing helpers, schematic
+grid/snap helpers, orthogonal wire visuals, net label/junction rendering, wire
+hit-testing, and model-port default pin/net seeding for library-backed
+component insertion. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
@@ -41,7 +39,11 @@ IR components, nets, pins, and optional schematic node positions/styles.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
 and selected-item deletion actions that compose lower-level sketch YAML
-mutations. Rendered pin anchors are UI
+mutations. `src/gui/sketch_inspector.rs` owns the selected component/net
+inspector, structured scalar YAML edit actions, conservative component and
+unreferenced-net add/remove operations, schematic symbol style edits, validated
+component pin assignment, visual wire assignment mutations, and selected-net
+voltage-probe insertion controls. Rendered pin anchors are UI
 affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
