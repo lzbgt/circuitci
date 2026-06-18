@@ -174,6 +174,9 @@ sense source, or a bound diode/BJT/MOSFET model branch with CircuitCI's
 generated current-sense source. Selected-component power-probe insertion must
 use the same component set and compose explicit branch voltage and current
 expressions rather than relying on hidden waveform math.
+The branch expression derivation itself lives in `src/gui/analog_branches.rs`
+and must fail closed for unsupported subcircuits, file-backed deck internals, or
+components that lack the required model/pin evidence.
 It must append or remove normal Board IR analog probes and assertions rather
 than creating a GUI-only probe list; selected-probe assertion summaries must be
 recomputed from Board IR plus the latest report, assertion clearing for a probe

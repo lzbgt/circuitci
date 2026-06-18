@@ -7,6 +7,7 @@ use std::path::Path;
 mod analog;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
+mod analog_branches;
 mod analog_models;
 mod file_dialogs;
 mod import_flow;

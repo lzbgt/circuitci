@@ -106,7 +106,9 @@ artifacts.
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
-generation for generated-from-Board simulations. `src/gui/spice.rs` owns
+generation for generated-from-Board simulations. `src/gui/analog_branches.rs`
+owns supported source/passive/semiconductor branch current and power expression
+derivation for component probes. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
 actions for imported or hand-authored analog scenarios.
 
