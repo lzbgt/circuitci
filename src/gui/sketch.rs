@@ -17,6 +17,7 @@ pub(super) struct ProjectSnapshot {
     pub(super) libraries: Vec<String>,
     pub(super) components_detail: Vec<SketchComponent>,
     pub(super) nets_detail: Vec<SketchNet>,
+    pub(super) probes: Vec<SketchProbe>,
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +104,7 @@ pub(super) struct SketchGraph {
     pub(super) nodes: Vec<SketchNode>,
     pub(super) pin_anchors: Vec<SketchPinAnchor>,
     pub(super) edges: Vec<SketchEdge>,
+    pub(super) probe_badges: Vec<SketchProbeBadge>,
 }
 
 #[derive(Debug)]
@@ -132,6 +134,44 @@ pub(super) struct SketchEdge {
     pub(super) start: egui::Pos2,
     pub(super) end: egui::Pos2,
 }
+
+#[derive(Debug, Clone)]
+pub(super) struct SketchProbe {
+    pub(super) scenario_name: String,
+    pub(super) probe_name: String,
+    pub(super) expression: String,
+    pub(super) quantity: SketchProbeQuantity,
+    pub(super) target: SketchProbeTarget,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchProbeQuantity {
+    Voltage,
+    Current,
+    Power,
+}
+
+impl SketchProbeQuantity {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Voltage => "V",
+            Self::Current => "I",
+            Self::Power => "P",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum SketchProbeTarget {
+    Component(String),
+    Net(String),
+}
+
+#[derive(Debug)]
+pub(super) struct SketchProbeBadge {
+    pub(super) probe: SketchProbe,
+    pub(super) rect: egui::Rect,
+}
 pub(super) fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
     let project = crate::board_ir::load_project(path)?;
     Ok(project_snapshot_from_project(project))
@@ -144,8 +184,9 @@ pub(super) fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnaps
 }
 
 fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
-    let positions = project.board.schematic.node_positions;
-    let styles = project.board.schematic.node_styles;
+    let positions = &project.board.schematic.node_positions;
+    let styles = &project.board.schematic.node_styles;
+    let probes = project_probe_badges(&project);
     let components_detail: Vec<_> = project
         .board
         .components
@@ -154,8 +195,8 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             id: id.clone(),
             model: component.model.clone(),
             part_number: component.part_number.clone(),
-            position: sketch_position_for(&positions, &SketchSelection::Component(id.clone())),
-            style: sketch_style_for(&styles, &SketchSelection::Component(id.clone())),
+            position: sketch_position_for(positions, &SketchSelection::Component(id.clone())),
+            style: sketch_style_for(styles, &SketchSelection::Component(id.clone())),
             pins: component
                 .pins
                 .iter()
@@ -185,7 +226,7 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             nominal_voltage: net.nominal_voltage,
             powered: net.powered,
             connections: connections_by_net.remove(id).unwrap_or_default(),
-            position: sketch_position_for(&positions, &SketchSelection::Net(id.clone())),
+            position: sketch_position_for(positions, &SketchSelection::Net(id.clone())),
         })
         .collect();
     ProjectSnapshot {
@@ -200,7 +241,104 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             .collect(),
         components_detail,
         nets_detail,
+        probes,
     }
+}
+
+fn project_probe_badges(project: &crate::board_ir::BoardProject) -> Vec<SketchProbe> {
+    let branch_targets = component_branch_targets(project);
+    let mut probes = Vec::new();
+    for scenario in &project.scenarios {
+        let Some(analog) = scenario.analog.as_ref() else {
+            continue;
+        };
+        let node_to_net: std::collections::BTreeMap<_, _> = analog
+            .node_bindings
+            .iter()
+            .map(|binding| (binding.node.as_str(), binding.net.as_str()))
+            .collect();
+        for probe in &analog.probes {
+            let quantity = sketch_probe_quantity(&probe.quantity);
+            let target = match quantity {
+                SketchProbeQuantity::Voltage => {
+                    voltage_probe_target(&probe.expression, &node_to_net)
+                }
+                SketchProbeQuantity::Current | SketchProbeQuantity::Power => {
+                    component_probe_target(&probe.expression, &branch_targets)
+                }
+            };
+            let Some(target) = target else {
+                continue;
+            };
+            probes.push(SketchProbe {
+                scenario_name: scenario.name.clone(),
+                probe_name: probe.name.clone(),
+                expression: probe.expression.clone(),
+                quantity,
+                target,
+            });
+        }
+    }
+    probes
+}
+
+fn sketch_probe_quantity(quantity: &crate::board_ir::AnalogQuantity) -> SketchProbeQuantity {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => SketchProbeQuantity::Voltage,
+        crate::board_ir::AnalogQuantity::Current => SketchProbeQuantity::Current,
+        crate::board_ir::AnalogQuantity::Power => SketchProbeQuantity::Power,
+    }
+}
+
+fn voltage_probe_target(
+    expression: &str,
+    node_to_net: &std::collections::BTreeMap<&str, &str>,
+) -> Option<SketchProbeTarget> {
+    let normalized = expression_without_whitespace(expression);
+    let inner = normalized.strip_prefix("V(")?.strip_suffix(')')?;
+    let node = inner.split(',').next()?.trim();
+    node_to_net
+        .get(node)
+        .map(|net| SketchProbeTarget::Net((*net).to_string()))
+}
+
+fn component_probe_target(
+    expression: &str,
+    branch_targets: &std::collections::BTreeMap<String, String>,
+) -> Option<SketchProbeTarget> {
+    let normalized = expression_without_whitespace(expression).to_ascii_lowercase();
+    branch_targets
+        .iter()
+        .find(|(branch, _)| normalized.contains(&format!("i({branch})")))
+        .map(|(_, component_id)| SketchProbeTarget::Component(component_id.clone()))
+}
+
+fn component_branch_targets(
+    project: &crate::board_ir::BoardProject,
+) -> std::collections::BTreeMap<String, String> {
+    let mut targets = std::collections::BTreeMap::new();
+    for component_id in project.board.components.keys() {
+        for prefix in ["V", "I"] {
+            targets.insert(
+                spice_element_name(prefix, component_id).to_ascii_lowercase(),
+                component_id.clone(),
+            );
+        }
+        for prefix in ["R", "C", "L", "D", "Q", "M"] {
+            targets.insert(
+                generated_current_sense_name(prefix, component_id).to_ascii_lowercase(),
+                component_id.clone(),
+            );
+        }
+    }
+    targets
+}
+
+fn expression_without_whitespace(expression: &str) -> String {
+    expression
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect()
 }
 
 fn sketch_position_for(
@@ -1045,6 +1183,8 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         }
     }
 
+    let probe_badges = layout_probe_badges(snapshot, &nodes);
+
     if snapshot.components_detail.len() > component_count {
         push_overflow_hint(
             &mut nodes,
@@ -1072,7 +1212,52 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         nodes,
         pin_anchors,
         edges,
+        probe_badges,
     }
+}
+
+fn layout_probe_badges(snapshot: &ProjectSnapshot, nodes: &[SketchNode]) -> Vec<SketchProbeBadge> {
+    let mut target_counts = std::collections::BTreeMap::<SketchProbeTarget, usize>::new();
+    let mut badges = Vec::new();
+    for probe in &snapshot.probes {
+        let Some(node) = nodes
+            .iter()
+            .find(|node| match (&node.selection, &probe.target) {
+                (SketchSelection::Component(node_id), SketchProbeTarget::Component(target_id)) => {
+                    node_id == target_id
+                }
+                (SketchSelection::Net(node_id), SketchProbeTarget::Net(target_id)) => {
+                    node_id == target_id
+                }
+                _ => false,
+            })
+        else {
+            continue;
+        };
+        let offset_index = target_counts.entry(probe.target.clone()).or_insert(0);
+        let rect = probe_badge_rect(node.rect, *offset_index, probe.quantity);
+        *offset_index += 1;
+        badges.push(SketchProbeBadge {
+            probe: probe.clone(),
+            rect,
+        });
+    }
+    badges
+}
+
+fn probe_badge_rect(
+    node_rect: egui::Rect,
+    offset_index: usize,
+    quantity: SketchProbeQuantity,
+) -> egui::Rect {
+    let size = match quantity {
+        SketchProbeQuantity::Voltage => egui::vec2(22.0, 18.0),
+        SketchProbeQuantity::Current => egui::vec2(22.0, 18.0),
+        SketchProbeQuantity::Power => egui::vec2(24.0, 18.0),
+    };
+    let x = node_rect.right() - size.x - 6.0;
+    let y = node_rect.top() + 6.0 + offset_index as f32 * (size.y + 3.0);
+    egui::Rect::from_min_size(egui::pos2(x, y), size)
 }
 
 pub(super) fn layout_sketch_graph_viewport(
@@ -1108,6 +1293,9 @@ pub(super) fn sketch_graph_bounds(graph: &SketchGraph) -> Option<egui::Rect> {
     }
     for edge in &graph.edges {
         include_rect(egui::Rect::from_two_pos(edge.start, edge.end));
+    }
+    for badge in &graph.probe_badges {
+        include_rect(badge.rect);
     }
     bounds
 }
@@ -1224,6 +1412,16 @@ pub(super) fn hit_test_wire(graph: &SketchGraph, position: egui::Pos2) -> Option
         .map(|(_, edge)| edge)
 }
 
+pub(super) fn hit_test_probe_badge(
+    graph: &SketchGraph,
+    position: egui::Pos2,
+) -> Option<&SketchProbeBadge> {
+    graph
+        .probe_badges
+        .iter()
+        .find(|badge| badge.rect.expand(2.0).contains(position))
+}
+
 pub(super) fn draw_sketch_grid(
     painter: &egui::Painter,
     canvas: egui::Rect,
@@ -1301,6 +1499,9 @@ fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport:
     for edge in &mut graph.edges {
         edge.start = transform_viewport_pos(edge.start, canvas, viewport);
         edge.end = transform_viewport_pos(edge.end, canvas, viewport);
+    }
+    for badge in &mut graph.probe_badges {
+        badge.rect = transform_viewport_rect(badge.rect, canvas, viewport);
     }
 }
 
@@ -1493,6 +1694,33 @@ pub(super) fn draw_sketch_pin_anchor(
     );
 }
 
+pub(super) fn draw_probe_badge(painter: &egui::Painter, badge: &SketchProbeBadge, hovered: bool) {
+    let fill = match badge.probe.quantity {
+        SketchProbeQuantity::Voltage => egui::Color32::from_rgb(52, 100, 166),
+        SketchProbeQuantity::Current => egui::Color32::from_rgb(136, 86, 154),
+        SketchProbeQuantity::Power => egui::Color32::from_rgb(180, 112, 40),
+    };
+    let stroke_color = if hovered {
+        egui::Color32::from_rgb(255, 226, 145)
+    } else {
+        egui::Color32::from_gray(36)
+    };
+    painter.rect_filled(badge.rect, 3.0, fill);
+    painter.rect_stroke(
+        badge.rect,
+        3.0,
+        egui::Stroke::new(if hovered { 2.0 } else { 1.0 }, stroke_color),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        badge.rect.center(),
+        egui::Align2::CENTER_CENTER,
+        badge.probe.quantity.label(),
+        egui::FontId::monospace(11.0),
+        egui::Color32::WHITE,
+    );
+}
+
 fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
     let activity = activity.clamp(0.0, 1.0) as f32;
     let highlight = egui::Color32::from_rgb(255, 196, 87);
@@ -1516,4 +1744,32 @@ fn compact_label(value: &str, max_chars: usize) -> String {
         .collect::<String>();
     text.push_str("...");
     text
+}
+
+fn generated_current_sense_name(device_prefix: &str, component_id: &str) -> String {
+    format!("VCCI_{}", spice_element_name(device_prefix, component_id))
+}
+
+fn spice_element_name(prefix: &str, component_id: &str) -> String {
+    let suffix = spice_element_suffix(component_id);
+    if suffix.starts_with(prefix) {
+        suffix
+    } else {
+        format!("{prefix}{suffix}")
+    }
+}
+
+fn spice_element_suffix(component_id: &str) -> String {
+    let mut suffix = String::new();
+    for character in component_id.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            suffix.push(character);
+        } else {
+            suffix.push('_');
+        }
+    }
+    if suffix.is_empty() {
+        suffix.push('X');
+    }
+    suffix
 }

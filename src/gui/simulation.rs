@@ -1363,6 +1363,7 @@ mod tests {
                     position: None,
                 },
             ],
+            probes: Vec::new(),
         }
     }
 }

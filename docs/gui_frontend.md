@@ -106,10 +106,12 @@ form:
   pin-to-pin and pin-to-net
   wire assignment by clicking component pin anchors or net nodes, graph-node
   runtime tinting and hover readouts for
-  matching waveform probes, selected-net voltage-probe insertion into existing
-  analog scenarios, selected-component current-probe insertion for supported
-  generated SPICE branches, selected-component power-probe insertion for
-  supported generated SPICE branches, shared undo/redo for Board IR
+  matching waveform probes, visible voltage/current/power probe badges derived
+  from analog scenario probes, badge clicks that open the corresponding
+  Simulation-stage probe context, selected-net voltage-probe insertion into
+  existing analog scenarios, selected-component current-probe insertion for
+  supported generated SPICE branches, selected-component power-probe insertion
+  for supported generated SPICE branches, shared undo/redo for Board IR
   graph/property/wire/YAML edits, and a raw Board IR YAML editor with
   parse-validated save.
 - Library: shows library bindings, searches the active component model set,
@@ -185,9 +187,11 @@ The supported desktop simulation path is:
 26. scrub or play the simulation time cursor to drive graph runtime tinting,
 27. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-28. observe generated decks, plotted CSV waveforms, cursor values, min/max
+28. use visible schematic probe badges to find voltage/current/power probes and
+   jump to their Simulation-stage assertion/probe context,
+29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-29. edit the project/model evidence and rerun.
+30. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -220,3 +224,10 @@ CircuitCI's generated zero-volt current-sense source. It appends power probes
 for the same supported component set by composing explicit branch voltage and
 branch current expressions. Subcircuit internals and file-backed deck branch
 probes still require explicit deck/model evidence.
+
+Schematic probe badges are derived overlays over existing analog scenario
+probes. Voltage badges attach to Board IR nets only when the probe expression's
+SPICE node maps back through `analog.node_bindings`; current and power badges
+attach to components only when the expression references a generated/source
+branch that CircuitCI can map back to a Board IR component. The badges are not a
+second persisted probe model.

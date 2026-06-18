@@ -87,6 +87,12 @@ normalized runtime activity values for graph tinting. It may display graph
 hover readouts and activity coloring for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
+Schematic probe badges are derived in `src/gui/sketch.rs` from existing analog
+scenario probes: voltage expressions attach to Board IR nets through
+`analog.node_bindings`, while current and power expressions attach to
+components only when their `I(...)` branch maps to a generated/source branch
+name CircuitCI can prove. Badge clicks select the existing scenario/probe in the
+Simulation stage; badges must not become a second persisted probe store.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.

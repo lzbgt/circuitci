@@ -4,7 +4,7 @@ use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
     edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
-    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
+    edit_schematic_node_positions, hit_test_probe_badge, hit_test_wire, layout_sketch_graph,
     layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
@@ -86,6 +86,96 @@ fn add_component_with_ports_suffixes_existing_generated_net() {
 }
 
 #[test]
+fn snapshot_derives_probe_badges_from_analog_probes() {
+    let snapshot = load_project_snapshot_from_yaml(
+        "project:
+  name: probe_badge_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+      pins:
+        A: rail
+        B: out
+  nets:
+    rail:
+      kind: power
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: tran
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [R1]
+      model_files: []
+      node_bindings:
+        - { net: rail, node: rail_5v }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: rail_5v }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: rail_voltage, expression: 'V(rail_5v)', quantity: voltage }
+        - { name: r1_current, expression: 'I(VCCI_R1)', quantity: current }
+        - { name: r1_power, expression: 'V(rail_5v,out)*I(VCCI_R1)', quantity: power }
+      assertions: []
+",
+    )
+    .unwrap();
+
+    assert_eq!(snapshot.probes.len(), 3);
+    assert!(snapshot.probes.iter().any(|probe| {
+        probe.probe_name == "rail_voltage"
+            && probe.quantity.label() == "V"
+            && matches!(probe.target, super::sketch::SketchProbeTarget::Net(ref id) if id == "rail")
+    }));
+    assert!(snapshot.probes.iter().any(|probe| {
+        probe.probe_name == "r1_current"
+            && probe.quantity.label() == "I"
+            && matches!(probe.target, super::sketch::SketchProbeTarget::Component(ref id) if id == "R1")
+    }));
+    assert!(snapshot.probes.iter().any(|probe| {
+        probe.probe_name == "r1_power"
+            && probe.quantity.label() == "P"
+            && matches!(probe.target, super::sketch::SketchProbeTarget::Component(ref id) if id == "R1")
+    }));
+}
+
+#[test]
+fn layout_places_hit_testable_probe_badges() {
+    let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    snapshot.probes.push(super::sketch::SketchProbe {
+        scenario_name: "tran".to_string(),
+        probe_name: "net_a_voltage".to_string(),
+        expression: "V(net_a)".to_string(),
+        quantity: super::sketch::SketchProbeQuantity::Voltage,
+        target: super::sketch::SketchProbeTarget::Net("net_a".to_string()),
+    });
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),
+        &snapshot,
+    );
+
+    assert_eq!(graph.probe_badges.len(), 1);
+    let badge = hit_test_probe_badge(&graph, graph.probe_badges[0].rect.center()).unwrap();
+    assert_eq!(badge.probe.probe_name, "net_a_voltage");
+}
+
+#[test]
 fn layout_assigns_common_component_symbol_kinds() {
     let snapshot = ProjectSnapshot {
         name: "symbols".to_string(),
@@ -159,6 +249,7 @@ fn layout_assigns_common_component_symbol_kinds() {
             connections: Vec::new(),
             position: None,
         }],
+        probes: Vec::new(),
     };
 
     let graph = layout_sketch_graph(
@@ -374,6 +465,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
             connections: vec!["R1.A".to_string()],
             position: Some(SketchPosition { x: 310.0, y: 70.0 }),
         }],
+        probes: Vec::new(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -435,6 +527,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
                 position: None,
             },
         ],
+        probes: Vec::new(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -486,6 +579,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
             connections: vec!["R1.A".to_string()],
             position: Some(SketchPosition { x: 300.0, y: 30.0 }),
         }],
+        probes: Vec::new(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph_viewport(
@@ -535,6 +629,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
             connections: vec!["U1.OUT".to_string()],
             position: Some(SketchPosition { x: 360.0, y: 90.0 }),
         }],
+        probes: Vec::new(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph(canvas, &snapshot);
@@ -768,6 +863,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
             connections: vec!["U1.OUT".to_string(), "U2.IN".to_string()],
             position: Some(SketchPosition { x: 460.0, y: 240.0 }),
         }],
+        probes: Vec::new(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp::default();
