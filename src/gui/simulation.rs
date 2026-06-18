@@ -6,6 +6,10 @@ use super::analog::{
     append_analog_assertion, append_analog_transient_scenario, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
+use super::analog_generated::{
+    AnalogGeneratedComponentDraft, AnalogGeneratedScenario, analog_generated_scenarios,
+    exclude_generated_component, include_generated_component,
+};
 use super::analog_models::{
     AnalogModelFileDraft, AnalogModelFileRemoveDraft, AnalogModelFileScenario,
     analog_model_file_scenarios, append_analog_model_file, model_file_sha256,
@@ -27,6 +31,8 @@ impl CircuitCiApp {
         ui.separator();
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+            self.analog_generated_components_editor(ui);
             ui.separator();
             self.analog_stimulus_editor(ui);
             ui.separator();
@@ -121,6 +127,106 @@ impl CircuitCiApp {
                 });
             if ui.button("Add Analog Scenario").clicked() {
                 self.apply_add_analog_scenario();
+            }
+        });
+    }
+
+    fn analog_generated_components_editor(&mut self, ui: &mut egui::Ui) {
+        let scenarios = match analog_generated_scenarios(&self.project_yaml) {
+            Ok(scenarios) => scenarios,
+            Err(error) => {
+                ui.collapsing("Generated Components", |ui| {
+                    ui.label(format!("Generated components unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("Generated Components", |ui| {
+            if scenarios.is_empty() {
+                ui.label("No generated_from_board analog scenario is available.");
+                return;
+            }
+            initialize_generated_component_defaults(
+                &scenarios,
+                &mut self.analog_generated_scenario,
+                &mut self.analog_generated_component,
+            );
+            let selected_scenario =
+                selected_generated_scenario(&scenarios, &self.analog_generated_scenario)
+                    .or_else(|| scenarios.first());
+            let Some(selected_scenario) = selected_scenario else {
+                return;
+            };
+            egui::Grid::new("analog_generated_components_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Scenario");
+                    let previous_scenario = self.analog_generated_scenario.clone();
+                    generated_scenario_combo(ui, &mut self.analog_generated_scenario, &scenarios);
+                    if self.analog_generated_scenario != previous_scenario {
+                        self.analog_generated_component.clear();
+                        initialize_generated_component_defaults(
+                            &scenarios,
+                            &mut self.analog_generated_scenario,
+                            &mut self.analog_generated_component,
+                        );
+                    }
+                    ui.end_row();
+
+                    ui.label("Component");
+                    generated_component_combo(
+                        ui,
+                        selected_scenario,
+                        &mut self.analog_generated_component,
+                    );
+                    ui.end_row();
+
+                    ui.label("Included count");
+                    ui.label(selected_scenario.components.len().to_string());
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                let selected_component = selected_scenario
+                    .board_components
+                    .iter()
+                    .find(|component| component.id == self.analog_generated_component);
+                let is_included = selected_component.is_some_and(|component| component.included);
+                if ui
+                    .add_enabled(!is_included, egui::Button::new("Include Component"))
+                    .clicked()
+                {
+                    self.apply_include_generated_component();
+                }
+                if ui
+                    .add_enabled(is_included, egui::Button::new("Exclude Component"))
+                    .clicked()
+                {
+                    self.apply_exclude_generated_component();
+                }
+            });
+            if selected_scenario.components.is_empty() {
+                ui.label("No components are currently included.");
+            } else {
+                ui.label("Included components");
+                egui::Grid::new("analog_generated_component_list")
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("Component");
+                        ui.strong("Action");
+                        ui.end_row();
+                        for component_id in &selected_scenario.components {
+                            ui.monospace(component_id);
+                            if ui.button("Exclude").clicked() {
+                                self.apply_exclude_generated_component_by_id(
+                                    &selected_scenario.name,
+                                    component_id,
+                                );
+                            }
+                            ui.end_row();
+                        }
+                    });
             }
         });
     }
@@ -632,6 +738,52 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_include_generated_component(&mut self) {
+        let scenario_name = self.analog_generated_scenario.clone();
+        let component_id = self.analog_generated_component.clone();
+        self.apply_include_generated_component_by_id(&scenario_name, &component_id);
+    }
+
+    fn apply_include_generated_component_by_id(&mut self, scenario_name: &str, component_id: &str) {
+        let draft = AnalogGeneratedComponentDraft {
+            scenario_name: scenario_name.to_string(),
+            component_id: component_id.to_string(),
+        };
+        match include_generated_component(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component {} included in generated scenario {}.",
+                    draft.component_id, draft.scenario_name
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_exclude_generated_component(&mut self) {
+        let scenario_name = self.analog_generated_scenario.clone();
+        let component_id = self.analog_generated_component.clone();
+        self.apply_exclude_generated_component_by_id(&scenario_name, &component_id);
+    }
+
+    fn apply_exclude_generated_component_by_id(&mut self, scenario_name: &str, component_id: &str) {
+        let draft = AnalogGeneratedComponentDraft {
+            scenario_name: scenario_name.to_string(),
+            component_id: component_id.to_string(),
+        };
+        match exclude_generated_component(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component {} excluded from generated scenario {}.",
+                    draft.component_id, draft.scenario_name
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_replace_analog_stimulus(&mut self, kind: AnalogStimulusKind) {
         let draft = AnalogStimulusDraft {
             scenario_name: self.analog_stimulus_scenario.clone(),
@@ -1018,6 +1170,44 @@ fn initialize_model_file_scenario_default(
     }
 }
 
+fn initialize_generated_component_defaults(
+    scenarios: &[AnalogGeneratedScenario],
+    scenario_name: &mut String,
+    component_id: &mut String,
+) {
+    let scenario_missing = selected_generated_scenario(scenarios, scenario_name).is_none();
+    if (scenario_name.is_empty() || scenario_missing)
+        && let Some(scenario) = scenarios.first()
+    {
+        *scenario_name = scenario.name.clone();
+    }
+    let Some(scenario) = selected_generated_scenario(scenarios, scenario_name) else {
+        return;
+    };
+    let component_missing = !scenario
+        .board_components
+        .iter()
+        .any(|component| component.id == *component_id);
+    if (component_id.is_empty() || component_missing)
+        && let Some(component) = scenario
+            .board_components
+            .iter()
+            .find(|component| !component.included)
+            .or_else(|| scenario.board_components.first())
+    {
+        *component_id = component.id.clone();
+    }
+}
+
+fn selected_generated_scenario<'a>(
+    scenarios: &'a [AnalogGeneratedScenario],
+    scenario_name: &str,
+) -> Option<&'a AnalogGeneratedScenario> {
+    scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn initialize_analog_stimulus_defaults(
     choices: &[AnalogStimulusChoice],
@@ -1148,6 +1338,42 @@ fn analog_model_scenario_combo(
         .show_ui(ui, |ui| {
             for scenario in scenarios {
                 ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
+            }
+        });
+}
+
+fn generated_scenario_combo(
+    ui: &mut egui::Ui,
+    selected: &mut String,
+    scenarios: &[AnalogGeneratedScenario],
+) {
+    egui::ComboBox::from_id_salt("analog_generated_scenario")
+        .selected_text(if selected.is_empty() {
+            "select scenario"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for scenario in scenarios {
+                ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
+            }
+        });
+}
+
+fn generated_component_combo(
+    ui: &mut egui::Ui,
+    scenario: &AnalogGeneratedScenario,
+    selected: &mut String,
+) {
+    egui::ComboBox::from_id_salt("analog_generated_component")
+        .selected_text(if selected.is_empty() {
+            "select component".to_string()
+        } else {
+            selected.clone()
+        })
+        .show_ui(ui, |ui| {
+            for component in &scenario.board_components {
+                ui.selectable_value(selected, component.id.clone(), component.label());
             }
         });
 }

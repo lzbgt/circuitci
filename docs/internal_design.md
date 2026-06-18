@@ -174,6 +174,10 @@ sense source, or a bound diode/BJT/MOSFET model branch with CircuitCI's
 generated current-sense source. Selected-component power-probe insertion must
 use the same component set and compose explicit branch voltage and current
 expressions rather than relying on hidden waveform math.
+Generated scenario component membership editing lives in
+`src/gui/analog_generated.rs`. It may only mutate `analog.generated.components`
+and the scenario pin bindings needed for included component pins; it must keep at
+least one generated component and must reject unknown board components.
 The branch expression derivation itself lives in `src/gui/analog_branches.rs`
 and must fail closed for unsupported subcircuits, file-backed deck internals, or
 components that lack the required model/pin evidence.

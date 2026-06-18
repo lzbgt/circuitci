@@ -8,6 +8,7 @@ mod analog;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
 mod analog_branches;
+mod analog_generated;
 mod analog_models;
 mod analog_stimulus;
 mod file_dialogs;
@@ -163,6 +164,8 @@ pub struct CircuitCiApp {
     analog_canvas_probe_name: String,
     analog_canvas_component_probe_name: String,
     analog_canvas_component_power_probe_name: String,
+    analog_generated_scenario: String,
+    analog_generated_component: String,
     analog_model_scenario: String,
     analog_model_path: String,
     analog_model_sha256: String,
@@ -268,6 +271,8 @@ impl Default for CircuitCiApp {
             analog_canvas_probe_name: String::new(),
             analog_canvas_component_probe_name: String::new(),
             analog_canvas_component_power_probe_name: String::new(),
+            analog_generated_scenario: String::new(),
+            analog_generated_component: String::new(),
             analog_model_scenario: String::new(),
             analog_model_path: String::new(),
             analog_model_sha256: String::new(),

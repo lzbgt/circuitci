@@ -106,7 +106,9 @@ artifacts.
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
-generation for generated-from-Board simulations. `src/gui/analog_branches.rs`
+generation for generated-from-Board simulations. `src/gui/analog_generated.rs`
+owns generated scenario component membership and associated pin-binding repair.
+`src/gui/analog_branches.rs`
 owns supported source/passive/semiconductor branch current and power expression
 derivation for component probes. `src/gui/analog_stimulus.rs` owns structured
 DC and pulse source-primitive listing and value/timing mutation for components
