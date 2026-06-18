@@ -90,9 +90,11 @@ custom-route clearing. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag should replace the
 selection with boxed visible items, Cmd/Ctrl-drag should add boxed items,
-Alt/Option-drag should subtract boxed items, pin-anchor drag should start visual
-wire mode instead of moving the component, and component drags must only move
-objects when the drag starts on a component. Active wire drags should use the same pin/net/wire target hit test
+Alt/Option-drag should subtract boxed items, and holding `L` while starting
+those same selection drag chords should use a freehand lasso instead of a box.
+Pin-anchor drag should start visual wire mode instead of moving the component,
+and component drags must only move objects when the drag starts on a component.
+Active wire drags should use the same pin/net/wire target hit test
 for preview and release so the highlighted target matches the eventual Board IR
 mutation. Inserted library
 components may create generated per-pin nets from source-backed model port

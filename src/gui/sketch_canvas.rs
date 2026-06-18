@@ -931,10 +931,17 @@ impl CircuitCiApp {
                 && let Some(mode) =
                     ui.input(|input| SketchSelectionBoxMode::from_modifiers(input.modifiers))
             {
-                self.sketch_selection_box_drag = Some(super::SketchSelectionBoxDrag {
-                    start: position,
-                    mode,
-                });
+                if ui.input(|input| input.key_down(egui::Key::L)) {
+                    self.sketch_selection_lasso_drag = Some(super::SketchSelectionLassoDrag {
+                        points: vec![position],
+                        mode,
+                    });
+                } else {
+                    self.sketch_selection_box_drag = Some(super::SketchSelectionBoxDrag {
+                        start: position,
+                        mode,
+                    });
+                }
             } else if clicked_node.is_none() {
                 self.sketch_pan_drag_active = true;
             } else if clicked_node.is_some() {
@@ -966,6 +973,33 @@ impl CircuitCiApp {
                 egui::FontId::monospace(11.0),
                 selection_box.mode.stroke(),
             );
+        } else if let Some(lasso) = &mut self.sketch_selection_lasso_drag
+            && let Some(current) = response
+                .interact_pointer_pos()
+                .or_else(|| ui.ctx().pointer_hover_pos())
+        {
+            if lasso
+                .points
+                .last()
+                .is_none_or(|point| point.distance(current) >= 3.0)
+            {
+                lasso.points.push(current);
+            }
+            if lasso.points.len() >= 2 {
+                let stroke = egui::Stroke::new(1.5, lasso.mode.stroke());
+                painter.add(egui::Shape::line(lasso.points.clone(), stroke));
+                if let (Some(first), Some(last)) = (lasso.points.first(), lasso.points.last()) {
+                    painter.line_segment([*last, *first], stroke);
+                    painter.circle_filled(*first, 3.0, lasso.mode.stroke());
+                }
+                painter.text(
+                    current + egui::vec2(8.0, 8.0),
+                    egui::Align2::LEFT_TOP,
+                    format!("{} lasso", lasso.mode.label()),
+                    egui::FontId::monospace(11.0),
+                    lasso.mode.stroke(),
+                );
+            }
         } else if response.dragged_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
             && let Some(drag) = &mut self.sketch_component_label_drag
@@ -1049,6 +1083,21 @@ impl CircuitCiApp {
                 &graph,
                 selection_box.mode,
             );
+        }
+        if response.drag_stopped_by(egui::PointerButton::Primary)
+            && let Some(mut lasso) = self.sketch_selection_lasso_drag.take()
+        {
+            if let Some(end) = response
+                .interact_pointer_pos()
+                .or_else(|| ui.ctx().pointer_hover_pos())
+                && lasso
+                    .points
+                    .last()
+                    .is_none_or(|point| point.distance(end) >= 3.0)
+            {
+                lasso.points.push(end);
+            }
+            self.apply_lasso_selection(&lasso.points, &graph, lasso.mode);
         }
         if response.drag_stopped_by(egui::PointerButton::Primary)
             && let Some(drag) = self.sketch_wire_route_drag.take()
@@ -1167,6 +1216,9 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_selection_box_drag.is_some() {
             self.sketch_selection_box_drag = None;
             self.status = "Selection box canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_selection_lasso_drag.is_some() {
+            self.sketch_selection_lasso_drag = None;
+            self.status = "Selection lasso canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.sketch_wire_route_drag.is_some() {
             self.sketch_wire_route_drag = None;
             self.status = "Wire route edit canceled.".to_string();

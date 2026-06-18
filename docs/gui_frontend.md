@@ -275,7 +275,8 @@ form:
   schematic hierarchy search/select/fit/focus/isolate controls and object
   navigator search/select/fit controls,
   Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
-  Alt/Option-drag subtractive selection boxes, group drag/nudge/edge-align/center-align/
+  Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
+  for freehand lasso selection, group drag/nudge/edge-align/center-align/
   distribute controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
@@ -369,7 +370,9 @@ The supported desktop simulation path is:
    flip, or choose pin side through the inspector; all write
    `board.schematic.node_styles`,
 13. Shift-drag a selection box to replace selection, Cmd/Ctrl-drag to add
-    visible components/nets, or Alt/Option-drag to subtract them,
+    visible components/nets, or Alt/Option-drag to subtract them; hold `L`
+    while starting the same drag gestures to freehand-lasso irregular dense
+    areas,
 14. drag, nudge, align edges/centers, or distribute multi-selected sketch nodes
    as one validated Board IR edit,
 15. duplicate selected components with their internally referenced local nets

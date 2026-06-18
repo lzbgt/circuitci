@@ -51,7 +51,9 @@ routing. `gui::sketch_canvas_interaction` owns reusable viewport zoom math,
 schematic canvas sizing, wire-target hit testing, route-handle hit testing, and
 placement orientation cycling. Selection boxes are transient GUI state:
 Shift-drag replaces the selected visible sketch items, Cmd/Ctrl-drag adds them,
-and Alt/Option-drag subtracts them without mutating Board IR.
+and Alt/Option-drag subtracts them without mutating Board IR; holding `L` while
+starting the same drag chords uses a freehand lasso instead of a rectangular
+box.
 
 Sketch wire-route handles and active wire-mode bend clicks are schematic display
 metadata only. Completing a multi-bend wire, dragging, inserting, deleting, or

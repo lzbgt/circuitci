@@ -44,6 +44,8 @@ mod sketch_probes;
 mod sketch_rename;
 mod sketch_render;
 mod sketch_routes;
+#[cfg(test)]
+mod sketch_selection_tests;
 mod sketch_spice;
 mod sketch_symbols;
 #[cfg(test)]
@@ -135,6 +137,12 @@ struct SketchComponentLabelDrag {
 #[derive(Debug, Clone)]
 struct SketchSelectionBoxDrag {
     start: egui::Pos2,
+    mode: SketchSelectionBoxMode,
+}
+
+#[derive(Debug, Clone)]
+struct SketchSelectionLassoDrag {
+    points: Vec<egui::Pos2>,
     mode: SketchSelectionBoxMode,
 }
 
@@ -258,6 +266,7 @@ pub struct CircuitCiApp {
     sketch_clipboard_components: Vec<String>,
     sketch_paste_requested: bool,
     sketch_selection_box_drag: Option<SketchSelectionBoxDrag>,
+    sketch_selection_lasso_drag: Option<SketchSelectionLassoDrag>,
     sketch_viewport_command: Option<SketchViewportCommand>,
     sketch_group_action: Option<SketchGroupAction>,
     sketch_zoom: f32,
@@ -407,6 +416,7 @@ impl Default for CircuitCiApp {
             sketch_clipboard_components: Vec::new(),
             sketch_paste_requested: false,
             sketch_selection_box_drag: None,
+            sketch_selection_lasso_drag: None,
             sketch_viewport_command: None,
             sketch_group_action: None,
             sketch_zoom: 1.0,

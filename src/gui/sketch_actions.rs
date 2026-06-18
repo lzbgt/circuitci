@@ -51,6 +51,31 @@ impl CircuitCiApp {
             .filter(|node| marquee.intersects(node.rect))
             .map(|node| node.selection.clone())
             .collect::<std::collections::BTreeSet<_>>();
+        self.apply_selection_hits(hits, mode, "boxed");
+    }
+
+    pub(super) fn apply_lasso_selection(
+        &mut self,
+        points: &[egui::Pos2],
+        graph: &sketch::SketchGraph,
+        mode: SketchSelectionBoxMode,
+    ) {
+        let hits = graph
+            .nodes
+            .iter()
+            .filter(|node| !matches!(node.selection, SketchSelection::Overflow(_)))
+            .filter(|node| lasso_hits_rect(points, node.rect))
+            .map(|node| node.selection.clone())
+            .collect::<std::collections::BTreeSet<_>>();
+        self.apply_selection_hits(hits, mode, "lassoed");
+    }
+
+    fn apply_selection_hits(
+        &mut self,
+        hits: std::collections::BTreeSet<SketchSelection>,
+        mode: SketchSelectionBoxMode,
+        replace_verb: &'static str,
+    ) {
         let hit_count = hits.len();
         match mode {
             SketchSelectionBoxMode::Replace => {
@@ -72,7 +97,7 @@ impl CircuitCiApp {
             "{} sketch item(s) {}; {} selected.",
             hit_count,
             match mode {
-                SketchSelectionBoxMode::Replace => "boxed",
+                SketchSelectionBoxMode::Replace => replace_verb,
                 SketchSelectionBoxMode::Add => "added",
                 SketchSelectionBoxMode::Subtract => "removed",
             },
@@ -399,6 +424,73 @@ impl CircuitCiApp {
             .cloned()
             .collect()
     }
+}
+
+fn lasso_hits_rect(points: &[egui::Pos2], rect: egui::Rect) -> bool {
+    if points.len() < 3 {
+        return false;
+    }
+    point_in_polygon(rect.center(), points)
+        || [
+            rect.left_top(),
+            rect.right_top(),
+            rect.right_bottom(),
+            rect.left_bottom(),
+        ]
+        .into_iter()
+        .any(|corner| point_in_polygon(corner, points))
+        || points.iter().any(|point| rect.contains(*point))
+        || points
+            .iter()
+            .copied()
+            .zip(points.iter().copied().cycle().skip(1))
+            .take(points.len())
+            .any(|(start, end)| segment_intersects_rect(start, end, rect))
+}
+
+fn point_in_polygon(point: egui::Pos2, polygon: &[egui::Pos2]) -> bool {
+    let mut inside = false;
+    let mut previous = polygon[polygon.len() - 1];
+    for current in polygon {
+        let crosses_y = (current.y > point.y) != (previous.y > point.y);
+        let x_at_y = if (previous.y - current.y).abs() <= f32::EPSILON {
+            current.x
+        } else {
+            (previous.x - current.x) * (point.y - current.y) / (previous.y - current.y) + current.x
+        };
+        if crosses_y && point.x < x_at_y {
+            inside = !inside;
+        }
+        previous = *current;
+    }
+    inside
+}
+
+fn segment_intersects_rect(start: egui::Pos2, end: egui::Pos2, rect: egui::Rect) -> bool {
+    rect.contains(start)
+        || rect.contains(end)
+        || segments_intersect(start, end, rect.left_top(), rect.right_top())
+        || segments_intersect(start, end, rect.right_top(), rect.right_bottom())
+        || segments_intersect(start, end, rect.right_bottom(), rect.left_bottom())
+        || segments_intersect(start, end, rect.left_bottom(), rect.left_top())
+}
+
+fn segments_intersect(
+    a_start: egui::Pos2,
+    a_end: egui::Pos2,
+    b_start: egui::Pos2,
+    b_end: egui::Pos2,
+) -> bool {
+    let d1 = direction(a_start, a_end, b_start);
+    let d2 = direction(a_start, a_end, b_end);
+    let d3 = direction(b_start, b_end, a_start);
+    let d4 = direction(b_start, b_end, a_end);
+    ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0))
+        && ((d3 > 0.0 && d4 < 0.0) || (d3 < 0.0 && d4 > 0.0))
+}
+
+fn direction(start: egui::Pos2, end: egui::Pos2, point: egui::Pos2) -> f32 {
+    (point.x - start.x) * (end.y - start.y) - (point.y - start.y) * (end.x - start.x)
 }
 
 fn fit_viewport_to_bounds(app: &mut CircuitCiApp, canvas: egui::Rect, bounds: egui::Rect) {
