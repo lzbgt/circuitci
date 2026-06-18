@@ -300,7 +300,9 @@ where
 
 fn ensure_not_canceled(should_cancel: &impl Fn() -> bool) -> Result<()> {
     if should_cancel() {
-        bail!("KiCad PCB import canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "KiCad PCB import canceled before completion.",
+        ));
     }
     Ok(())
 }

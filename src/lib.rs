@@ -1,4 +1,5 @@
 pub mod board_ir;
+pub mod cancellation;
 pub mod charger_programming;
 pub mod cli;
 #[cfg(feature = "gui")]

@@ -270,7 +270,9 @@ where
 
 fn ensure_not_canceled(should_cancel: &impl Fn() -> bool) -> Result<()> {
     if should_cancel() {
-        anyhow::bail!("SPICE import canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "SPICE import canceled before completion.",
+        ));
     }
     Ok(())
 }

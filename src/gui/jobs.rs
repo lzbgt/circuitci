@@ -1,8 +1,9 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::simulation::load_report_waveforms;
 use super::{CircuitCiApp, Stage, validate_from_gui};
+use crate::cancellation;
 use crate::reports::ValidationReport;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use eframe::egui;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -400,13 +401,16 @@ impl CircuitCiApp {
                     self.background_job = None;
                     if canceled {
                         self.status = "Background job canceled.".to_string();
-                        self.push_diagnostic("Ignored canceled background job result.");
-                        self.push_background_job_record(
+                        let detail = canceled_job_detail(&result).unwrap_or_else(|| {
+                            format!("Canceled {label} for {target}; ignored worker result.")
+                        });
+                        let output_path = background_job_output_path(&result);
+                        self.push_diagnostic(&detail);
+                        self.push_canceled_background_job_record(
                             label,
-                            "canceled",
                             elapsed_secs,
-                            target,
-                            None,
+                            detail,
+                            output_path,
                         );
                         return;
                     }
@@ -502,12 +506,7 @@ impl CircuitCiApp {
             );
             return;
         }
-        match result.result.with_context(|| {
-            format!(
-                "Background validation failed for {}.",
-                result.project_path.display()
-            )
-        }) {
+        match result.result {
             Ok(output) => {
                 let waveforms = load_report_waveforms(&output.report);
                 let waveform_count = waveforms.len();
@@ -541,7 +540,22 @@ impl CircuitCiApp {
                 self.load_project_summary_unchecked();
             }
             Err(error) => {
-                let detail = format!("{error:#}");
+                if cancellation::is_canceled(&error) {
+                    let detail = format!("{error:#}");
+                    self.status = "Background job canceled.".to_string();
+                    self.push_diagnostic(&detail);
+                    self.push_canceled_background_job_record(
+                        "validation",
+                        elapsed_secs,
+                        detail,
+                        Some(result.output_dir.to_string_lossy().into_owned()),
+                    );
+                    return;
+                }
+                let detail = format!(
+                    "Background validation failed for {}.\n{error:#}",
+                    result.project_path.display()
+                );
                 self.push_background_job_record(
                     "validation",
                     "failed",
@@ -591,6 +605,18 @@ impl CircuitCiApp {
                 self.load_project_summary_unchecked();
             }
             Err(error) => {
+                if cancellation::is_canceled(&error) {
+                    let detail = format!("{error:#}");
+                    self.status = "Background job canceled.".to_string();
+                    self.push_diagnostic(&detail);
+                    self.push_canceled_background_job_record(
+                        "scenario suggestions",
+                        elapsed_secs,
+                        detail,
+                        None,
+                    );
+                    return;
+                }
                 let detail = format!("{error:#}");
                 self.push_background_job_record(
                     "scenario suggestions",
@@ -642,6 +668,18 @@ impl CircuitCiApp {
                 }
             }
             Err(error) => {
+                if cancellation::is_canceled(&error) {
+                    let detail = format!("{error:#}");
+                    self.status = "Background job canceled.".to_string();
+                    self.push_diagnostic(&detail);
+                    self.push_canceled_background_job_record(
+                        result.kind.label(),
+                        elapsed_secs,
+                        detail,
+                        Some(result.output_project_path.to_string_lossy().into_owned()),
+                    );
+                    return;
+                }
                 let detail = format!("{error:#}");
                 self.push_background_job_record(
                     result.kind.label(),
@@ -744,6 +782,16 @@ impl CircuitCiApp {
             self.background_job_history.drain(0..overflow);
         }
     }
+
+    fn push_canceled_background_job_record(
+        &mut self,
+        label: &str,
+        elapsed_secs: f32,
+        detail: String,
+        output_path: Option<String>,
+    ) {
+        self.push_background_job_record(label, "canceled", elapsed_secs, detail, output_path);
+    }
 }
 
 fn send_background_progress(
@@ -757,11 +805,47 @@ fn send_background_progress(
     }));
 }
 
+fn canceled_job_detail(result: &BackgroundJobResult) -> Option<String> {
+    match result {
+        BackgroundJobResult::Validation(result) => result
+            .result
+            .as_ref()
+            .err()
+            .filter(|error| cancellation::is_canceled(error))
+            .map(|error| format!("{error:#}")),
+        BackgroundJobResult::Suggestions(result) => result
+            .result
+            .as_ref()
+            .err()
+            .filter(|error| cancellation::is_canceled(error))
+            .map(|error| format!("{error:#}")),
+        BackgroundJobResult::ImportProject(result) => result
+            .result
+            .as_ref()
+            .err()
+            .filter(|error| cancellation::is_canceled(error))
+            .map(|error| format!("{error:#}")),
+    }
+}
+
+fn background_job_output_path(result: &BackgroundJobResult) -> Option<String> {
+    match result {
+        BackgroundJobResult::Validation(result) => {
+            Some(result.output_dir.to_string_lossy().into_owned())
+        }
+        BackgroundJobResult::ImportProject(result) => {
+            Some(result.output_project_path.to_string_lossy().into_owned())
+        }
+        BackgroundJobResult::Suggestions(_) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         BACKGROUND_JOB_EVENT_LIMIT, BACKGROUND_JOB_HISTORY_LIMIT, BackgroundJobProgress,
-        CircuitCiApp, ImportProjectJobResult, ImportProjectKind, ValidationJobResult,
+        CircuitCiApp, ImportProjectJobResult, ImportProjectKind, SuggestionJobResult,
+        ValidationJobResult,
     };
     use std::path::PathBuf;
     use std::sync::atomic::Ordering;
@@ -883,6 +967,78 @@ mod tests {
         assert_eq!(
             app.background_job_history[0].label,
             "KiCad schematic import"
+        );
+    }
+
+    #[test]
+    fn canceled_suggestion_result_is_recorded_as_canceled() {
+        let mut app = CircuitCiApp::default();
+        app.project_path = "active.project.yaml".to_string();
+        app.profile = "default".to_string();
+
+        app.apply_suggestion_result(
+            SuggestionJobResult {
+                project_path: PathBuf::from("active.project.yaml"),
+                profile: "default".to_string(),
+                result: Err(crate::cancellation::canceled(
+                    "Scenario suggestions canceled before completion.",
+                )),
+            },
+            0.75,
+        );
+
+        assert_eq!(app.status, "Background job canceled.");
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(app.background_job_history[0].label, "scenario suggestions");
+        assert_eq!(app.background_job_history[0].outcome, "canceled");
+        assert!(
+            app.background_job_history[0]
+                .detail
+                .contains("Scenario suggestions canceled")
+        );
+        assert!(app.background_job_history[0].output_path.is_none());
+    }
+
+    #[test]
+    fn canceled_import_result_is_recorded_as_canceled() {
+        let mut app = CircuitCiApp::default();
+        app.project_path = "active.project.yaml".to_string();
+        app.import_spice_deck_path = "input.cir".to_string();
+        app.import_spice_output_path = "out/imported.project.yaml".to_string();
+        app.import_spice_project_name = "imported".to_string();
+        app.import_spice_backend = "auto".to_string();
+        let state_key = app.spice_import_key();
+
+        app.apply_import_project_result(
+            ImportProjectJobResult {
+                kind: ImportProjectKind::SpiceDeck,
+                prior_project_path: "active.project.yaml".to_string(),
+                state_key,
+                output_project_path: PathBuf::from("out/imported.project.yaml"),
+                import_pcb_project_path: None,
+                next_stage: None,
+                success_status: "should not apply",
+                success_diagnostic: "should not apply".to_string(),
+                result: Err(crate::cancellation::canceled(
+                    "SPICE import canceled before completion.",
+                )),
+            },
+            1.25,
+        );
+
+        assert_eq!(app.status, "Background job canceled.");
+        assert_eq!(app.project_path, "active.project.yaml");
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(app.background_job_history[0].label, "SPICE deck import");
+        assert_eq!(app.background_job_history[0].outcome, "canceled");
+        assert_eq!(
+            app.background_job_history[0].output_path.as_deref(),
+            Some("out/imported.project.yaml")
+        );
+        assert!(
+            app.background_job_history[0]
+                .detail
+                .contains("SPICE import canceled")
         );
     }
 

@@ -35,7 +35,9 @@ still non-preemptive unless their internals expose safe cancellation points.
 Active job events and recent job records are capped, in-memory workflow
 diagnostics with stage, label, outcome, elapsed time, detail, and optional
 output path; they must not be serialized into Board IR or treated as design
-evidence. Validation progress should be emitted from the same path
+evidence. Safe checkpoint cancellation paths should return the shared typed
+operation-canceled error so the GUI records a `canceled` outcome instead of a
+generic `failed` worker error. Validation progress should be emitted from the same path
 that loads the project, binds models, executes scenarios, prepares and runs
 analog transients, loads waveform artifacts, applies profile coverage,
 assembles reports, and writes artifacts so the GUI does not drift from headless

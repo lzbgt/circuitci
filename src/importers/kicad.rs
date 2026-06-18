@@ -174,7 +174,9 @@ where
 
 fn ensure_not_canceled(should_cancel: &impl Fn() -> bool) -> Result<()> {
     if should_cancel() {
-        anyhow::bail!("KiCad import canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "KiCad import canceled before completion.",
+        ));
     }
     Ok(())
 }

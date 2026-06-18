@@ -1142,15 +1142,21 @@ where
 {
     let project = crate::board_ir::load_project(project_path)?;
     if should_cancel() {
-        anyhow::bail!("Scenario suggestions canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "Scenario suggestions canceled before completion.",
+        ));
     }
     let (library, library_findings) = crate::library::load_library(project_path, &project);
     if should_cancel() {
-        anyhow::bail!("Scenario suggestions canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "Scenario suggestions canceled before completion.",
+        ));
     }
     let bound = crate::library::bind_project(&project, library, library_findings);
     if should_cancel() {
-        anyhow::bail!("Scenario suggestions canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "Scenario suggestions canceled before completion.",
+        ));
     }
     let profile = if profile.trim().is_empty() || profile == "default" {
         None
@@ -1159,7 +1165,9 @@ where
     };
     let report = crate::scenario_suggestions::suggest_scenarios_for_profile(&bound, profile);
     if should_cancel() {
-        anyhow::bail!("Scenario suggestions canceled before completion.");
+        return Err(crate::cancellation::canceled(
+            "Scenario suggestions canceled before completion.",
+        ));
     }
     serde_yaml_ng::to_string(&report).context("Failed to serialize scenario suggestions.")
 }
