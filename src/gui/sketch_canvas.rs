@@ -200,6 +200,35 @@ impl CircuitCiApp {
                 position,
             )
         });
+        let wire_drag_target = if let Some(component_id) = &self.wire_from_component
+            && let Some(position) = pointer_hover
+            && rect.contains(position)
+            && hierarchy_view.as_ref().is_none_or(|view| {
+                view.interaction_visible(&SketchSelection::Component(component_id.clone()))
+            }) {
+            wire_drag_target_at(
+                &graph,
+                position,
+                |anchor| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.anchor_visible(anchor))
+                },
+                |edge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.edge_visible(edge))
+                },
+                |node| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.interaction_visible(&node.selection))
+                },
+            )
+            .filter(|target| !target.is_source_pin(component_id.as_str(), self.wire_pin_id.trim()))
+        } else {
+            None
+        };
         for edge in &graph.edges {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.edge_visible(edge) {
@@ -213,7 +242,17 @@ impl CircuitCiApp {
             let selected = self.selection_is_selected(&wire_selection);
             let hovered = hovered_wire
                 .is_some_and(|wire| wire.net_id == edge.net_id && wire.source == edge.source);
-            draw_wire_edge(&painter, edge, selected, hovered, self.sketch_zoom, opacity);
+            let target = wire_drag_target
+                .as_ref()
+                .is_some_and(|target| target.matches_edge(edge));
+            draw_wire_edge(
+                &painter,
+                edge,
+                selected,
+                hovered || target,
+                self.sketch_zoom,
+                opacity,
+            );
         }
         if let Some(component_id) = &self.wire_from_component
             && let Some(pointer) = ui.ctx().pointer_hover_pos()
@@ -230,10 +269,14 @@ impl CircuitCiApp {
                 self.sketch_snap_enabled,
                 self.sketch_grid_step,
             );
+            let end = wire_drag_target
+                .as_ref()
+                .map(WireDragTarget::snap_position)
+                .unwrap_or(pointer);
             draw_wire_polyline(
                 &painter,
                 source,
-                pointer,
+                end,
                 egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
         }
@@ -280,7 +323,20 @@ impl CircuitCiApp {
             };
             let active = self.wire_from_component.as_ref() == Some(&anchor.component_id)
                 && self.wire_pin_id.trim() == anchor.pin;
-            draw_sketch_pin_anchor(&painter, anchor, active, opacity);
+            let target = wire_drag_target.as_ref().is_some_and(|target| {
+                matches!(
+                    target,
+                    WireDragTarget::Pin {
+                        component_id,
+                        pin,
+                        ..
+                    } if component_id == &anchor.component_id && pin == &anchor.pin
+                )
+            });
+            draw_sketch_pin_anchor(&painter, anchor, active || target, opacity);
+        }
+        if let Some(target) = &wire_drag_target {
+            draw_wire_drag_target(&painter, target);
         }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
@@ -755,25 +811,21 @@ impl CircuitCiApp {
         );
     }
 
-    fn apply_wire_drag_target(&mut self, target: WireDragTarget<'_>) {
+    fn apply_wire_drag_target(&mut self, target: WireDragTarget) {
         let Some(source_component_id) = self.wire_from_component.clone() else {
             return;
         };
         match target {
-            WireDragTarget::Pin(anchor) => {
-                if source_component_id == anchor.component_id
-                    && self.wire_pin_id.trim() == anchor.pin
-                {
+            WireDragTarget::Pin {
+                component_id, pin, ..
+            } => {
+                if source_component_id == component_id && self.wire_pin_id.trim() == pin {
                     return;
                 }
-                self.apply_visual_pin_wire(
-                    source_component_id,
-                    anchor.component_id.clone(),
-                    anchor.pin.clone(),
-                );
+                self.apply_visual_pin_wire(source_component_id, component_id, pin);
             }
-            WireDragTarget::Net(net_id) => {
-                self.apply_visual_wire(source_component_id, net_id.to_string());
+            WireDragTarget::NetNode { net_id, .. } | WireDragTarget::Wire { net_id, .. } => {
+                self.apply_visual_wire(source_component_id, net_id);
             }
         }
     }
@@ -1026,36 +1078,125 @@ fn zoom_viewport_around(
     (new_zoom, focus_offset - logical_focus * new_zoom)
 }
 
-enum WireDragTarget<'a> {
-    Pin(&'a sketch::SketchPinAnchor),
-    Net(&'a str),
+#[derive(Debug, Clone, PartialEq)]
+enum WireDragTarget {
+    Pin {
+        component_id: String,
+        pin: String,
+        net: String,
+        pos: egui::Pos2,
+    },
+    NetNode {
+        net_id: String,
+        rect: egui::Rect,
+    },
+    Wire {
+        net_id: String,
+        source: String,
+        start: egui::Pos2,
+        end: egui::Pos2,
+        snap: egui::Pos2,
+    },
 }
 
-fn wire_drag_target_at<'a>(
-    graph: &'a sketch::SketchGraph,
+impl WireDragTarget {
+    fn snap_position(&self) -> egui::Pos2 {
+        match self {
+            WireDragTarget::Pin { pos, .. } => *pos,
+            WireDragTarget::NetNode { rect, .. } => rect.center(),
+            WireDragTarget::Wire { snap, .. } => *snap,
+        }
+    }
+
+    fn is_source_pin(&self, component_id: &str, pin: &str) -> bool {
+        matches!(
+            self,
+            WireDragTarget::Pin {
+                component_id: target_component_id,
+                pin: target_pin,
+                ..
+            } if target_component_id == component_id && target_pin == pin
+        )
+    }
+
+    fn matches_edge(&self, edge: &sketch::SketchEdge) -> bool {
+        matches!(
+            self,
+            WireDragTarget::Wire {
+                net_id,
+                source,
+                ..
+            } if net_id == &edge.net_id && source == &edge.source
+        )
+    }
+}
+
+fn wire_drag_target_at(
+    graph: &sketch::SketchGraph,
     position: egui::Pos2,
     anchor_visible: impl Fn(&sketch::SketchPinAnchor) -> bool,
     edge_visible: impl Fn(&sketch::SketchEdge) -> bool,
     node_visible: impl Fn(&sketch::SketchNode) -> bool,
-) -> Option<WireDragTarget<'a>> {
+) -> Option<WireDragTarget> {
     if let Some(anchor) = graph
         .pin_anchors
         .iter()
         .find(|anchor| anchor_visible(anchor) && anchor.pos.distance(position) <= 10.0)
     {
-        return Some(WireDragTarget::Pin(anchor));
+        return Some(WireDragTarget::Pin {
+            component_id: anchor.component_id.clone(),
+            pin: anchor.pin.clone(),
+            net: anchor.net.clone(),
+            pos: anchor.pos,
+        });
     }
-    if let Some(SketchSelection::Net(net_id)) = graph
+    if let Some(node) = graph
         .nodes
         .iter()
         .find(|node| node_visible(node) && node.rect.contains(position))
-        .map(|node| &node.selection)
+        && let SketchSelection::Net(net_id) = &node.selection
     {
-        return Some(WireDragTarget::Net(net_id.as_str()));
+        return Some(WireDragTarget::NetNode {
+            net_id: net_id.clone(),
+            rect: node.rect,
+        });
     }
     hit_test_wire(graph, position)
         .filter(|edge| edge_visible(edge))
-        .map(|edge| WireDragTarget::Net(edge.net_id.as_str()))
+        .map(|edge| WireDragTarget::Wire {
+            net_id: edge.net_id.clone(),
+            source: edge.source.clone(),
+            start: edge.start,
+            end: edge.end,
+            snap: closest_point_on_wire(position, edge.start, edge.end),
+        })
+}
+
+fn closest_point_on_wire(position: egui::Pos2, start: egui::Pos2, end: egui::Pos2) -> egui::Pos2 {
+    let points = orthogonal_wire_points(start, end);
+    points
+        .windows(2)
+        .map(|segment| closest_point_on_segment(position, segment[0], segment[1]))
+        .min_by(|left, right| {
+            left.distance_sq(position)
+                .partial_cmp(&right.distance_sq(position))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .unwrap_or(end)
+}
+
+fn closest_point_on_segment(
+    position: egui::Pos2,
+    start: egui::Pos2,
+    end: egui::Pos2,
+) -> egui::Pos2 {
+    let segment = end - start;
+    let length_sq = segment.length_sq();
+    if length_sq <= f32::EPSILON {
+        return start;
+    }
+    let t = ((position - start).dot(segment) / length_sq).clamp(0.0, 1.0);
+    start + segment * t
 }
 
 pub(super) fn schematic_canvas_size(available: egui::Vec2) -> egui::Vec2 {
@@ -1188,6 +1329,42 @@ fn draw_wire_polyline(
     draw_wire_points(painter, &points, stroke);
 }
 
+fn draw_wire_drag_target(painter: &egui::Painter, target: &WireDragTarget) {
+    let color = egui::Color32::from_rgb(255, 196, 87);
+    match target {
+        WireDragTarget::Pin { pos, .. } => {
+            painter.circle_filled(
+                *pos,
+                7.5,
+                egui::Color32::from_rgba_unmultiplied(255, 196, 87, 44),
+            );
+            painter.circle_stroke(*pos, 9.0, egui::Stroke::new(2.0, color));
+        }
+        WireDragTarget::NetNode { rect, .. } => {
+            let rect = rect.expand(5.0);
+            painter.rect_filled(
+                rect,
+                4.0,
+                egui::Color32::from_rgba_unmultiplied(255, 196, 87, 24),
+            );
+            painter.rect_stroke(
+                rect,
+                4.0,
+                egui::Stroke::new(2.0, color),
+                egui::StrokeKind::Inside,
+            );
+        }
+        WireDragTarget::Wire { snap, .. } => {
+            painter.circle_filled(
+                *snap,
+                5.5,
+                egui::Color32::from_rgba_unmultiplied(255, 196, 87, 80),
+            );
+            painter.circle_stroke(*snap, 7.0, egui::Stroke::new(2.0, color));
+        }
+    }
+}
+
 fn draw_wire_points(painter: &egui::Painter, points: &[egui::Pos2], stroke: egui::Stroke) {
     for segment in points.windows(2) {
         painter.line_segment([segment[0], segment[1]], stroke);
@@ -1270,7 +1447,7 @@ fn wire_preview_start(
 
 #[cfg(test)]
 mod tests {
-    use super::{WireDragTarget, wire_drag_target_at, zoom_viewport_around};
+    use super::{WireDragTarget, closest_point_on_wire, wire_drag_target_at, zoom_viewport_around};
     use crate::gui::sketch::{
         SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection,
     };
@@ -1328,7 +1505,10 @@ mod tests {
             |_| true,
             |_| true,
         ) {
-            Some(WireDragTarget::Pin(anchor)) => assert_eq!(anchor.pin, "A"),
+            Some(WireDragTarget::Pin { pin, pos, .. }) => {
+                assert_eq!(pin, "A");
+                assert_eq!(pos, egui::pos2(100.0, 100.0));
+            }
             _ => panic!("expected pin target"),
         }
         match wire_drag_target_at(
@@ -1338,7 +1518,10 @@ mod tests {
             |_| true,
             |_| true,
         ) {
-            Some(WireDragTarget::Net(net)) => assert_eq!(net, "net_mid"),
+            Some(WireDragTarget::NetNode { net_id, rect }) => {
+                assert_eq!(net_id, "net_mid");
+                assert!(rect.contains(egui::pos2(130.0, 110.0)));
+            }
             _ => panic!("expected net target"),
         }
         match wire_drag_target_at(
@@ -1348,8 +1531,21 @@ mod tests {
             |_| true,
             |_| true,
         ) {
-            Some(WireDragTarget::Net(net)) => assert_eq!(net, "wire_net"),
+            Some(WireDragTarget::Wire { net_id, snap, .. }) => {
+                assert_eq!(net_id, "wire_net");
+                assert_eq!(snap, egui::pos2(120.0, 200.0));
+            }
             _ => panic!("expected wire net target"),
         }
+    }
+
+    #[test]
+    fn wire_drag_snap_uses_nearest_orthogonal_segment() {
+        let snap = closest_point_on_wire(
+            egui::pos2(150.0, 75.0),
+            egui::pos2(20.0, 20.0),
+            egui::pos2(220.0, 120.0),
+        );
+        assert_eq!(snap, egui::pos2(120.0, 75.0));
     }
 }
