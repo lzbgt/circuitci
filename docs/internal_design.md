@@ -224,6 +224,11 @@ pins and independent-source primitives have `P`/`N` pins before writing
 component-level `spice` evidence, reject non-finite or nonsensical numeric
 values, update exact generated/source branch probe expressions when the
 primitive prefix changes, and reparse Board IR before accepting the edit.
+`src/gui/sketch_inline_edit.rs` owns direct canvas inline component ID and
+single-value SPICE edits. It must remain a thin UI layer over
+`sketch_rename.rs` and `sketch_spice.rs`; it may parse convenience engineering
+suffixes for scalar values, but it must not bypass pin-convention validation,
+branch-expression rewrite rules, or Board IR reparse validation.
 `src/gui/sketch_palette.rs` owns primitive insertion for user-sketched generic
 R/C/L and independent voltage/current source components. Each insertion must
 create the component, editable pin nets, component-level SPICE evidence, and

@@ -32,6 +32,7 @@ mod sketch_canvas_tests;
 mod sketch_connectivity;
 mod sketch_duplicate;
 mod sketch_hierarchy;
+mod sketch_inline_edit;
 mod sketch_inspector;
 mod sketch_minimap;
 mod sketch_navigator;
@@ -54,6 +55,7 @@ use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchPinSide, SketchSelection,
 };
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
+use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{WaveformView, waveform_time_range_for_view};
@@ -264,6 +266,7 @@ pub struct CircuitCiApp {
     sketch_net_label_net_kind: String,
     sketch_net_label_place_armed: bool,
     sketch_net_label_edit: Option<SketchNetLabelEdit>,
+    sketch_component_inline_edit: Option<SketchComponentInlineEdit>,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
@@ -411,6 +414,7 @@ impl Default for CircuitCiApp {
             sketch_net_label_net_kind: "digital_or_analog".to_string(),
             sketch_net_label_place_armed: false,
             sketch_net_label_edit: None,
+            sketch_component_inline_edit: None,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             sketch_wire_route_drag: None,

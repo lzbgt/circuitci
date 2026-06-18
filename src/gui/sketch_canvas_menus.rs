@@ -2,6 +2,7 @@ use eframe::egui;
 
 use super::sketch::{self, ProjectSnapshot, SketchSelection, edge_label_position};
 use super::sketch_canvas_render::component_context_pin;
+use super::sketch_inline_edit::component_supports_inline_value;
 use super::sketch_probes::SketchProbeBadge;
 use super::{CircuitCiApp, Stage};
 
@@ -96,6 +97,26 @@ impl CircuitCiApp {
                 ui.strong(format!("Component {component_id}"));
                 if ui.button("Inspect Component").clicked() {
                     self.set_single_sketch_selection(Some(node.selection.clone()));
+                    ui.close();
+                }
+                if ui.button("Edit ID Inline").clicked() {
+                    self.begin_component_id_inline_edit(component_id);
+                    ui.close();
+                }
+                let component = snapshot
+                    .components_detail
+                    .iter()
+                    .find(|component| component.id == component_id.as_str());
+                if ui
+                    .add_enabled(
+                        component.is_some_and(|component| {
+                            component_supports_inline_value(component.spice.as_ref())
+                        }),
+                        egui::Button::new("Edit Value Inline"),
+                    )
+                    .clicked()
+                {
+                    self.begin_component_value_inline_edit(snapshot, component_id);
                     ui.close();
                 }
                 if ui.button("Duplicate Component").clicked() {

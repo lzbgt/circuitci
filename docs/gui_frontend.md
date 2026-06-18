@@ -102,6 +102,12 @@ for Board IR component-level evidence. It validates the required pin convention
 for passive and independent-source primitives, updates exact generated/source
 branch probe expressions when a primitive prefix changes, and reparses the
 edited YAML before the GUI accepts the mutation.
+`src/gui/sketch_inline_edit.rs` owns canvas inline component ID and scalar
+SPICE value editing. Double-clicking a scalar SPICE component opens the value
+editor; double-clicking other components opens the ID editor; context menus
+expose both actions explicitly when supported. Inline value edits accept
+engineering suffixes such as `4.7k`, `100n`, `1u`, `10m`, and `2M`, then route
+through the same validated rename/SPICE mutation helpers used by the inspector.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, viewport input, hit-test routing, marquee and drag event routing,
 pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
@@ -233,7 +239,8 @@ form:
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
-  scalar edits, rename controls, a primitive palette that places generic
+  scalar edits, rename controls, inline canvas component ID/value editing, a
+  primitive palette that places generic
   resistors, capacitors, inductors, DC voltage/current sources, and pulse
   voltage/current sources at the current view, a canvas click, drag/drop release
   with orientation-aware snap ghost feedback, or a context-menu pointer with
@@ -328,8 +335,10 @@ The supported desktop simulation path is:
 2. choose project, output, KiCad, and SPICE import paths through native
    open/save/folder dialogs or direct text entry,
 3. inspect the imported/sketched component and net graph,
-4. edit selected component IDs, component model/part-number, net IDs, and net
-   kind/voltage/powered fields through structured controls,
+4. edit selected component IDs and scalar SPICE values inline on the schematic
+   canvas or through structured controls, and edit component
+   model/part-number, net IDs, and net kind/voltage/powered fields through
+   structured controls,
 5. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
 6. drag component/net graph nodes to persist `board.schematic.node_positions`,
@@ -510,8 +519,9 @@ above/below cursor-sample assertions, clearing assertions, or removing the
 probe. These menu actions call the same validated Board IR mutation paths as
 the keyboard shortcuts.
 Right-clicking a component, net node, or wire opens the common sketch action
-menu for that target. Component menus can inspect/select, start wire mode from
-an existing/default pin, add current or power probes, or delete the component.
+menu for that target. Component menus can inspect/select, start inline ID or
+supported scalar-value editing, start wire mode from an existing/default pin,
+add current or power probes, or delete the component.
 Net and wire menus can inspect/select the underlying net, connect the active
 wire to that net, add a voltage probe, or delete the net through the existing
 net-removal rules; a wire is still just a rendered view of Board IR pin-to-net

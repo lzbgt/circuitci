@@ -658,6 +658,10 @@ impl CircuitCiApp {
                 self.apply_visual_wire_with_route(component_id, edge.net_id.clone(), route_points);
             } else if self.wire_from_component.is_some() && placement_target_clear {
                 self.add_pending_wire_route_point(rect, viewport, position);
+            } else if let Some(SketchSelection::Component(component_id)) = &clicked
+                && response.double_clicked_by(egui::PointerButton::Primary)
+            {
+                self.begin_component_default_inline_edit(snapshot, component_id);
             } else if multi_select {
                 if let Some(selection) = clicked {
                     self.toggle_sketch_selection(selection);
@@ -1118,6 +1122,7 @@ impl CircuitCiApp {
             }
         }
         self.sketch_net_label_inline_editor(ui, &net_label_badges, snapshot);
+        self.sketch_component_inline_editor(ui, &graph);
     }
 
     fn start_visual_wire_from_anchor(&mut self, anchor: &sketch::SketchPinAnchor) {
