@@ -165,8 +165,10 @@ target analog scenario.
 selected-net voltage-probe insertion, selected-component source, passive, and
 semiconductor current-probe insertion, selected-component source, passive, and
 semiconductor power-probe insertion into existing analog scenarios, and
-structured sample/min/max assertion authoring. It may derive node and pin bindings from
-Board IR for observation scenarios. Selected-net probe insertion must fail
+structured sample/min/max assertion authoring. Its focused regression tests live
+in `src/gui/analog_tests.rs` so the production module stays below the source
+line guard. It may derive node and pin bindings from Board IR for observation
+scenarios. Selected-net probe insertion must fail
 closed when the target scenario has no node binding for the selected Board IR
 net. Selected-component current-probe insertion must fail closed unless the
 target scenario is `generated_from_board`, includes the component, and the

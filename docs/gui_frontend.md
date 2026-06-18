@@ -31,6 +31,7 @@ circuitci-gui
   -> src/gui/library.rs
   -> src/gui/simulation.rs
   -> src/gui/analog.rs
+  -> src/gui/analog_tests.rs (GUI test builds only)
   -> src/gui/spice.rs
   -> Board IR loading
   -> component model binding
@@ -107,7 +108,8 @@ extraction from loaded waveform artifacts.
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
-generation for generated-from-Board simulations. `src/gui/analog_generated.rs`
+generation for generated-from-Board simulations, with focused regression
+coverage split into `src/gui/analog_tests.rs`. `src/gui/analog_generated.rs`
 owns generated scenario analysis settings, ground/node mapping, component
 membership, and associated pin-binding repair.
 `src/gui/analog_branches.rs`
