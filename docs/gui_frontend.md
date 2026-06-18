@@ -101,8 +101,8 @@ mutation path. Inserted components use the selected model's declared ports to
 seed editable Board IR pin bindings and generated per-pin nets.
 `src/gui/simulation.rs` owns the Simulation stage UI and analog
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
-read-only generated scenario audit snapshot and readiness diagnostics shown
-before edit panels.
+read-only generated scenario audit snapshot, readiness diagnostics, and quick
+editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV
 parsing, plotting, simulation-time scrub/playback controls, cursor measurement
 tools, GUI-only derived waveform channels, promotion of representable derived
@@ -170,7 +170,7 @@ form:
   selected component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, audit generated scenario timing/backend,
-  source/probe/assertion/model-file/node-binding coverage plus readiness gaps, edit generated
+  source/probe/assertion/model-file/node-binding coverage plus readiness gaps with quick editor navigation, edit generated
   scenario stop time/max step, ground net, SPICE node bindings, and component membership, add selected-net
   voltage probes to existing analog scenarios, inspect a selected probe badge's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without

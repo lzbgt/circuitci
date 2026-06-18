@@ -166,7 +166,9 @@ snapshots for Simulation-stage display. It may summarize timing/backend,
 included components, source primitives, probes, assertions, model files, and
 node bindings from Board IR, and it may derive readiness diagnostics for missing
 source primitive, probe, assertion, model SHA, node binding, and pin binding
-coverage. It must not introduce a second analog netlist or sign-off model.
+coverage. Readiness actions may preselect existing Simulation-stage editor
+fields for those gaps, but they must not mutate Board IR by themselves. It must
+not introduce a second analog netlist or sign-off model.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
 selected-net voltage-probe insertion, selected-component source, passive, and
 semiconductor current-probe insertion, selected-component source, passive, and

@@ -24,6 +24,28 @@ pub(super) struct AnalogGeneratedOverview {
 pub(super) struct AnalogOverviewRow {
     pub(super) name: String,
     pub(super) detail: String,
+    action: Option<AnalogOverviewAction>,
+}
+
+#[derive(Debug, Clone)]
+enum AnalogOverviewAction {
+    GeneratedComponent { component_id: String },
+    GeneratedBinding { net: String, node: String },
+    ModelFile { path: String },
+    AssertionProbe { probe_name: Option<String> },
+    ProbeAuthoring,
+}
+
+impl AnalogOverviewAction {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::GeneratedComponent { .. } => "Open component",
+            Self::GeneratedBinding { .. } => "Open binding",
+            Self::ModelFile { .. } => "Open model",
+            Self::AssertionProbe { .. } => "Open assertion",
+            Self::ProbeAuthoring => "Open probe",
+        }
+    }
 }
 
 pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGeneratedOverview>> {
@@ -47,6 +69,7 @@ pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGenerat
                     Some(AnalogOverviewRow {
                         name: component_id.clone(),
                         detail: spice_summary(spice),
+                        action: None,
                     })
                 })
                 .collect();
@@ -70,6 +93,7 @@ pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGenerat
                             analog_quantity_label(&probe.quantity),
                             probe.expression
                         ),
+                        action: None,
                     })
                     .collect(),
                 assertion_rows: analog
@@ -78,6 +102,7 @@ pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGenerat
                     .map(|assertion| AnalogOverviewRow {
                         name: assertion.name.clone(),
                         detail: format!("{} {}", assertion.probe, assertion_summary(assertion)),
+                        action: None,
                     })
                     .collect(),
                 model_file_rows: analog
@@ -90,6 +115,7 @@ pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGenerat
                             .as_ref()
                             .map(|sha| format!("sha256 {}", short_sha(sha)))
                             .unwrap_or_else(|| "missing sha256".to_string()),
+                        action: None,
                     })
                     .collect(),
                 binding_rows: analog
@@ -98,6 +124,7 @@ pub(super) fn generated_analog_overviews(text: &str) -> Result<Vec<AnalogGenerat
                     .map(|binding| AnalogOverviewRow {
                         name: binding.net.clone(),
                         detail: format!("SPICE node {}", binding.node),
+                        action: None,
                     })
                     .collect(),
             })
@@ -159,13 +186,81 @@ impl CircuitCiApp {
                     ui.end_row();
                 });
             ui.add_space(6.0);
-            analog_overview_rows(ui, "Readiness", &selected.diagnostic_rows);
+            self.analog_readiness_rows(ui, selected);
             analog_overview_rows(ui, "Sources", &selected.source_rows);
             analog_overview_rows(ui, "Probes", &selected.probe_rows);
             analog_overview_rows(ui, "Assertions", &selected.assertion_rows);
             analog_overview_rows(ui, "Model files", &selected.model_file_rows);
             analog_overview_rows(ui, "Node bindings", &selected.binding_rows);
         });
+    }
+
+    fn analog_readiness_rows(&mut self, ui: &mut egui::Ui, overview: &AnalogGeneratedOverview) {
+        ui.strong("Readiness");
+        if overview.diagnostic_rows.is_empty() {
+            ui.label("Ready");
+            return;
+        }
+        egui::Grid::new("analog_generated_overview_Readiness")
+            .num_columns(3)
+            .striped(true)
+            .show(ui, |ui| {
+                for row in &overview.diagnostic_rows {
+                    ui.monospace(&row.name);
+                    ui.label(&row.detail);
+                    if let Some(action) = &row.action {
+                        if ui.button(action.label()).clicked() {
+                            self.apply_overview_action(&overview.name, action);
+                        }
+                    } else {
+                        ui.label("");
+                    }
+                    ui.end_row();
+                }
+            });
+    }
+
+    fn apply_overview_action(&mut self, scenario_name: &str, action: &AnalogOverviewAction) {
+        self.analog_generated_scenario = scenario_name.to_string();
+        match action {
+            AnalogOverviewAction::GeneratedComponent { component_id } => {
+                self.analog_generated_component = component_id.clone();
+                self.analog_stimulus_scenario = scenario_name.to_string();
+                self.analog_stimulus_component = component_id.clone();
+                self.status =
+                    format!("Selected component {component_id} for generated scenario editing.");
+            }
+            AnalogOverviewAction::GeneratedBinding { net, node } => {
+                self.analog_generated_node_net = net.clone();
+                self.analog_generated_node_name = node.clone();
+                self.status =
+                    format!("Selected node binding {net} for generated scenario editing.");
+            }
+            AnalogOverviewAction::ModelFile { path } => {
+                self.analog_model_scenario = scenario_name.to_string();
+                self.analog_model_path = path.clone();
+                self.analog_model_sha256.clear();
+                self.status =
+                    format!("Selected SPICE model file {path} for hashing or replacement.");
+            }
+            AnalogOverviewAction::AssertionProbe { probe_name } => {
+                self.analog_assertion_scenario = scenario_name.to_string();
+                self.analog_assertion_probe = probe_name.clone().unwrap_or_default();
+                self.analog_assertion_edit_original.clear();
+                if self.analog_assertion_name.trim().is_empty() {
+                    self.analog_assertion_name = "probe_check".to_string();
+                }
+                self.status = "Selected assertion editor context for this scenario.".to_string();
+            }
+            AnalogOverviewAction::ProbeAuthoring => {
+                self.analog_probe_scenario = scenario_name.to_string();
+                self.status =
+                    "Selected probe authoring context; add voltage/current/power probes from the schematic canvas."
+                        .to_string();
+            }
+        }
+        let status = self.status.clone();
+        self.push_diagnostic(&status);
     }
 }
 
@@ -239,6 +334,7 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Missing components",
             "No generated components are included.",
+            None,
         ));
     }
 
@@ -258,6 +354,7 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Missing component evidence",
             format!("Included components are not in board.components: {ids}."),
+            None,
         ));
     }
 
@@ -269,6 +366,11 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Missing source primitives",
             "No included component exposes a Board IR spice primitive.",
+            generated.components.first().map(|component_id| {
+                AnalogOverviewAction::GeneratedComponent {
+                    component_id: component_id.clone(),
+                }
+            }),
         ));
     } else if let Some(ids) = joined_ids(
         generated
@@ -279,6 +381,11 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Partial source coverage",
             format!("Included components without Board IR spice primitives: {ids}."),
+            first_component_without_source(generated, &source_components).map(|component_id| {
+                AnalogOverviewAction::GeneratedComponent {
+                    component_id: component_id.clone(),
+                }
+            }),
         ));
     }
 
@@ -286,12 +393,16 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Missing probes",
             "No waveform probes are declared.",
+            Some(AnalogOverviewAction::ProbeAuthoring),
         ));
     }
     if analog.assertions.is_empty() {
         diagnostics.push(diagnostic(
             "Missing assertions",
             "No pass/fail waveform assertions are declared.",
+            Some(AnalogOverviewAction::AssertionProbe {
+                probe_name: analog.probes.first().map(|probe| probe.name.clone()),
+            }),
         ));
     }
     for model_file in &analog.model_files {
@@ -303,6 +414,9 @@ fn readiness_diagnostics(
             diagnostics.push(diagnostic(
                 "Missing model SHA",
                 format!("{} has no SHA-256 evidence.", model_file.path),
+                Some(AnalogOverviewAction::ModelFile {
+                    path: model_file.path.clone(),
+                }),
             ));
         }
     }
@@ -319,10 +433,18 @@ fn readiness_diagnostics(
                 "{} maps to SPICE node {}; generated ground should map to 0.",
                 generated.ground_net, binding.node
             ),
+            Some(AnalogOverviewAction::GeneratedBinding {
+                net: generated.ground_net.clone(),
+                node: "0".to_string(),
+            }),
         )),
         None => diagnostics.push(diagnostic(
             "Missing ground binding",
             format!("{} has no SPICE node binding.", generated.ground_net),
+            Some(AnalogOverviewAction::GeneratedBinding {
+                net: generated.ground_net.clone(),
+                node: "0".to_string(),
+            }),
         )),
     }
 
@@ -340,6 +462,16 @@ fn readiness_diagnostics(
         diagnostics.push(diagnostic(
             "Missing node bindings",
             format!("Included component nets without SPICE nodes: {ids}."),
+            first_missing_node_binding(&referenced_nets, &bound_nets).map(|net| {
+                AnalogOverviewAction::GeneratedBinding {
+                    node: if net == generated.ground_net {
+                        "0".to_string()
+                    } else {
+                        net.clone()
+                    },
+                    net,
+                }
+            }),
         ));
     }
 
@@ -364,11 +496,19 @@ fn readiness_diagnostics(
             }
         }
     }
-    let missing_pin_bindings = joined_ids(missing_pin_binding_labels);
+    let missing_pin_bindings = joined_ids(&missing_pin_binding_labels);
     if let Some(ids) = missing_pin_bindings {
         diagnostics.push(diagnostic(
             "Missing pin bindings",
             format!("Included component pins without SPICE node endpoints: {ids}."),
+            missing_pin_binding_labels
+                .first()
+                .and_then(|label| label.split_once('.'))
+                .map(
+                    |(component_id, _pin)| AnalogOverviewAction::GeneratedComponent {
+                        component_id: component_id.to_string(),
+                    },
+                ),
         ));
     }
     diagnostics
@@ -385,10 +525,35 @@ fn included_component_nets(
         .collect()
 }
 
-fn diagnostic(name: impl Into<String>, detail: impl Into<String>) -> AnalogOverviewRow {
+fn first_component_without_source<'a>(
+    generated: &'a crate::board_ir::AnalogGeneratedNetlist,
+    source_components: &BTreeSet<&str>,
+) -> Option<&'a String> {
+    generated
+        .components
+        .iter()
+        .find(|component_id| !source_components.contains(component_id.as_str()))
+}
+
+fn first_missing_node_binding(
+    referenced_nets: &BTreeSet<String>,
+    bound_nets: &BTreeSet<&str>,
+) -> Option<String> {
+    referenced_nets
+        .iter()
+        .find(|net| !bound_nets.contains(net.as_str()))
+        .cloned()
+}
+
+fn diagnostic(
+    name: impl Into<String>,
+    detail: impl Into<String>,
+    action: Option<AnalogOverviewAction>,
+) -> AnalogOverviewRow {
     AnalogOverviewRow {
         name: name.into(),
         detail: detail.into(),
+        action,
     }
 }
 
@@ -540,7 +705,7 @@ fn compact_number(value: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::generated_analog_overviews;
+    use super::{AnalogOverviewAction, generated_analog_overviews};
 
     fn project_yaml() -> &'static str {
         "project:
@@ -659,5 +824,54 @@ scenarios:
         assert!(diagnostics.contains(&"Missing assertions"));
         assert!(diagnostics.contains(&"Missing model SHA"));
         assert!(diagnostics.contains(&"Missing pin bindings"));
+        let missing_probes = overview
+            .diagnostic_rows
+            .iter()
+            .find(|row| row.name == "Missing probes")
+            .unwrap();
+        assert!(matches!(
+            &missing_probes.action,
+            Some(AnalogOverviewAction::ProbeAuthoring)
+        ));
+        let missing_assertions = overview
+            .diagnostic_rows
+            .iter()
+            .find(|row| row.name == "Missing assertions")
+            .unwrap();
+        assert!(matches!(
+            &missing_assertions.action,
+            Some(AnalogOverviewAction::AssertionProbe { probe_name }) if probe_name.is_none()
+        ));
+        let missing_model_sha = overview
+            .diagnostic_rows
+            .iter()
+            .find(|row| row.name == "Missing model SHA")
+            .unwrap();
+        assert!(matches!(
+            &missing_model_sha.action,
+            Some(AnalogOverviewAction::ModelFile { path }) if path == "models/opamp.lib"
+        ));
+        let missing_pin_bindings = overview
+            .diagnostic_rows
+            .iter()
+            .find(|row| row.name == "Missing pin bindings")
+            .unwrap();
+        assert!(matches!(
+            &missing_pin_bindings.action,
+            Some(AnalogOverviewAction::GeneratedComponent { component_id }) if component_id == "R1"
+        ));
+    }
+
+    #[test]
+    fn generated_analog_overview_actions_have_compact_labels() {
+        assert_eq!(AnalogOverviewAction::ProbeAuthoring.label(), "Open probe");
+        assert_eq!(
+            AnalogOverviewAction::GeneratedBinding {
+                net: "gnd".to_string(),
+                node: "0".to_string(),
+            }
+            .label(),
+            "Open binding"
+        );
     }
 }
