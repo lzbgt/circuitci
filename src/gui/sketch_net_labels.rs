@@ -18,6 +18,12 @@ pub(super) struct SketchNetLabelBadge {
     pub(super) rect: egui::Rect,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NetLabelInlineAction {
+    Apply,
+    Cancel,
+}
+
 impl CircuitCiApp {
     pub(super) fn sketch_net_label_panel(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         ui.collapsing("Named Net Labels", |ui| {
@@ -218,6 +224,155 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn begin_net_label_inline_edit(&mut self, badge: &SketchNetLabelBadge) {
+        self.sketch_net_label_edit = Some(super::SketchNetLabelEdit {
+            label_id: badge.id.clone(),
+            original_net_id: badge.net_id.clone(),
+            draft_net_id: badge.net_id.clone(),
+            draft_kind: badge.kind,
+        });
+        self.sketch_net_label_net_id = badge.net_id.clone();
+        self.sketch_net_label_kind = badge.kind;
+        self.status = format!("Editing schematic net label {}.", badge.id);
+    }
+
+    pub(super) fn sketch_net_label_inline_editor(
+        &mut self,
+        ui: &mut egui::Ui,
+        badges: &[SketchNetLabelBadge],
+        snapshot: &ProjectSnapshot,
+    ) {
+        let Some(edit) = self.sketch_net_label_edit.clone() else {
+            return;
+        };
+        let Some(badge) = badges.iter().find(|badge| badge.id == edit.label_id) else {
+            self.sketch_net_label_edit = None;
+            return;
+        };
+
+        let mut draft_net_id = edit.draft_net_id.clone();
+        let mut draft_kind = edit.draft_kind;
+        let mut action = None;
+        let editor_pos = badge.rect.right_top() + egui::vec2(8.0, -4.0);
+        egui::Area::new(egui::Id::new(("net_label_edit", &edit.label_id)))
+            .order(egui::Order::Foreground)
+            .fixed_pos(editor_pos)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.set_min_width(240.0);
+                    ui.strong("Edit Net Label");
+                    ui.horizontal(|ui| {
+                        ui.label("Net");
+                        let response = ui.add(
+                            egui::TextEdit::singleline(&mut draft_net_id).desired_width(150.0),
+                        );
+                        if response.lost_focus()
+                            && ui.input(|input| input.key_pressed(egui::Key::Enter))
+                        {
+                            action = Some(NetLabelInlineAction::Apply);
+                        }
+                    });
+                    egui::ComboBox::from_id_salt(("inline_net_label_kind", &edit.label_id))
+                        .selected_text(draft_kind.label())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut draft_kind,
+                                SketchNetLabelKind::Local,
+                                SketchNetLabelKind::Local.label(),
+                            );
+                            ui.selectable_value(
+                                &mut draft_kind,
+                                SketchNetLabelKind::OffPage,
+                                SketchNetLabelKind::OffPage.label(),
+                            );
+                        });
+                    let trimmed = draft_net_id.trim();
+                    let matches: Vec<_> = snapshot
+                        .nets_detail
+                        .iter()
+                        .filter(|net| !trimmed.is_empty() && net.id.contains(trimmed))
+                        .take(5)
+                        .map(|net| net.id.clone())
+                        .collect();
+                    if !matches.is_empty() {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label("Use");
+                            for net in matches {
+                                if ui.small_button(&net).clicked() {
+                                    draft_net_id = net;
+                                }
+                            }
+                        });
+                    }
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(
+                                !draft_net_id.trim().is_empty(),
+                                egui::Button::new("Apply"),
+                            )
+                            .clicked()
+                        {
+                            action = Some(NetLabelInlineAction::Apply);
+                        }
+                        if ui.button("Cancel").clicked() {
+                            action = Some(NetLabelInlineAction::Cancel);
+                        }
+                    });
+                });
+            });
+
+        if let Some(edit) = &mut self.sketch_net_label_edit {
+            edit.draft_net_id = draft_net_id;
+            edit.draft_kind = draft_kind;
+        }
+        match action {
+            Some(NetLabelInlineAction::Apply) => self.apply_net_label_inline_edit(),
+            Some(NetLabelInlineAction::Cancel) => {
+                self.sketch_net_label_edit = None;
+                self.status = "Canceled schematic net label edit.".to_string();
+            }
+            None => {}
+        }
+    }
+
+    fn apply_net_label_inline_edit(&mut self) {
+        let Some(edit) = self.sketch_net_label_edit.clone() else {
+            return;
+        };
+        let new_net_id = edit.draft_net_id.trim().to_string();
+        let net_exists = self
+            .project_snapshot
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.nets_detail.iter().any(|net| net.id == new_net_id));
+        let result = if new_net_id == edit.original_net_id {
+            set_schematic_net_label_kind(&self.project_yaml, &edit.label_id, edit.draft_kind)
+        } else if net_exists {
+            set_schematic_net_label_target_and_kind(
+                &self.project_yaml,
+                &edit.label_id,
+                &new_net_id,
+                edit.draft_kind,
+            )
+        } else {
+            rename_net(&self.project_yaml, &edit.original_net_id, &new_net_id).and_then(|updated| {
+                set_schematic_net_label_kind(&updated, &edit.label_id, edit.draft_kind)
+            })
+        };
+        match result {
+            Ok(updated) => {
+                self.sketch_net_label_edit = None;
+                self.sketch_net_label_net_id = new_net_id.clone();
+                self.sketch_net_label_kind = edit.draft_kind;
+                self.set_single_sketch_selection(Some(SketchSelection::Net(new_net_id.clone())));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Updated schematic net label {}.", edit.label_id),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     pub(super) fn apply_move_schematic_net_label_to(
         &mut self,
         canvas: egui::Rect,
@@ -261,6 +416,10 @@ impl CircuitCiApp {
             self.set_single_sketch_selection(Some(super::sketch::SketchSelection::Net(
                 badge.net_id.clone(),
             )));
+            ui.close();
+        }
+        if ui.button("Edit Label").clicked() {
+            self.begin_net_label_inline_edit(badge);
             ui.close();
         }
         ui.separator();
@@ -387,7 +546,8 @@ pub(super) fn net_label_tooltip(ui: &mut egui::Ui, badge: &SketchNetLabelBadge) 
     ui.label(format!("label id: {}", badge.id));
     ui.separator();
     ui.label("Click to select the underlying Board IR net.");
-    ui.label("Right-click to convert or delete this schematic label.");
+    ui.label("Double-click to edit or retarget this label.");
+    ui.label("Right-click to edit, convert, or delete this schematic label.");
 }
 
 pub(super) fn append_schematic_net_label(
@@ -466,6 +626,35 @@ pub(super) fn set_schematic_net_label_kind(
         .with_context(|| format!("Schematic net label {label_id} was not found."))?
         .as_mapping_mut()
         .with_context(|| format!("Schematic net label {label_id} must be an object."))?;
+    label.insert(
+        key("kind"),
+        serde_yaml_ng::Value::String(kind.as_str().to_string()),
+    );
+    encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn set_schematic_net_label_target_and_kind(
+    text: &str,
+    label_id: &str,
+    net_id: &str,
+    kind: SketchNetLabelKind,
+) -> Result<String> {
+    let label_id = validated_graph_id(label_id, "net label")?;
+    let net_id = validated_graph_id(net_id, "net")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.nets.contains_key(net_id) {
+        anyhow::bail!("Board IR net {net_id} was not found.");
+    }
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let labels = ensure_net_labels_mapping(&mut yaml)?;
+    let label = labels
+        .get_mut(key(label_id))
+        .with_context(|| format!("Schematic net label {label_id} was not found."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Schematic net label {label_id} must be an object."))?;
+    label.insert(key("net"), serde_yaml_ng::Value::String(net_id.to_string()));
     label.insert(
         key("kind"),
         serde_yaml_ng::Value::String(kind.as_str().to_string()),
@@ -651,6 +840,8 @@ board:
   nets:
     sig:
       kind: digital_or_analog
+    other:
+      kind: power
 "
     }
 
@@ -697,6 +888,55 @@ board:
             "missing",
             SketchNetLabelKind::Local,
             SketchPosition { x: 80.0, y: 96.0 },
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn set_schematic_net_label_target_and_kind_retargets_existing_net() {
+        let labeled = append_schematic_net_label(
+            project_yaml(),
+            "sig",
+            SketchNetLabelKind::Local,
+            SketchPosition { x: 80.0, y: 96.0 },
+        )
+        .unwrap();
+
+        let edited = set_schematic_net_label_target_and_kind(
+            &labeled,
+            "label_sig",
+            "other",
+            SketchNetLabelKind::OffPage,
+        )
+        .unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        assert_eq!(snapshot.net_labels.len(), 1);
+        assert_eq!(snapshot.net_labels[0].id, "label_sig");
+        assert_eq!(snapshot.net_labels[0].net_id, "other");
+        assert_eq!(snapshot.net_labels[0].kind, SketchNetLabelKind::OffPage);
+        assert!(snapshot.nets_detail.iter().any(|net| net.id == "sig"));
+        assert!(snapshot.nets_detail.iter().any(|net| net.id == "other"));
+    }
+
+    #[test]
+    fn set_schematic_net_label_target_and_kind_rejects_missing_net() {
+        let labeled = append_schematic_net_label(
+            project_yaml(),
+            "sig",
+            SketchNetLabelKind::Local,
+            SketchPosition { x: 80.0, y: 96.0 },
+        )
+        .unwrap();
+
+        let error = set_schematic_net_label_target_and_kind(
+            &labeled,
+            "label_sig",
+            "missing",
+            SketchNetLabelKind::Local,
         )
         .unwrap_err();
 

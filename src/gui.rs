@@ -113,6 +113,14 @@ struct SketchNetLabelDrag {
     current_center: egui::Pos2,
 }
 
+#[derive(Debug, Clone)]
+struct SketchNetLabelEdit {
+    label_id: String,
+    original_net_id: String,
+    draft_net_id: String,
+    draft_kind: SketchNetLabelKind,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SketchGroupAction {
     Nudge(egui::Vec2),
@@ -246,6 +254,7 @@ pub struct CircuitCiApp {
     sketch_net_label_kind: SketchNetLabelKind,
     sketch_net_label_net_kind: String,
     sketch_net_label_place_armed: bool,
+    sketch_net_label_edit: Option<SketchNetLabelEdit>,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
@@ -389,6 +398,7 @@ impl Default for CircuitCiApp {
             sketch_net_label_kind: SketchNetLabelKind::Local,
             sketch_net_label_net_kind: "digital_or_analog".to_string(),
             sketch_net_label_place_armed: false,
+            sketch_net_label_edit: None,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             sketch_wire_route_drag: None,

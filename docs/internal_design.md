@@ -123,12 +123,14 @@ named-net and off-page connector labels under `board.schematic.net_labels`.
 Those labels may be placed from selected-net controls, typed net-label controls,
 or net/wire context menus. A typed label may reuse an existing net or create a
 missing Board IR net with an explicit net kind before placing the display
-badge. Labels may be dragged to reposition their display point, clicked to
-select the underlying net, used as active-wire drop targets for that same
-underlying net, converted between local and off-page presentation, removed when
-their net is removed, and rewritten when a net is renamed. They annotate
-ordinary Board IR nets and must not create hidden connectivity, bus topology,
-sheet ports, or PCB
+badge. Labels may be dragged to reposition their display point, double-clicked
+or context-edited with existing-net autocomplete, clicked to select the
+underlying net, used as active-wire drop targets for that same underlying net,
+converted between local and off-page presentation, removed when their net is
+removed, and rewritten when a net is renamed. Inline editing to an existing net
+retargets only that label; inline editing to a missing net renames the
+underlying Board IR net through `sketch_rename`. They annotate ordinary Board IR
+nets and must not create hidden connectivity, bus topology, sheet ports, or PCB
 evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
 hierarchy grouping for the Sketch stage. It may use imported KiCad
 `component.source.instances[*].path` records and importer-generated namespaced

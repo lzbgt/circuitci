@@ -128,10 +128,13 @@ dot-qualified, and common paired interface nets. Bundle overlays are a visual
 navigation aid over scalar Board IR nets and do not persist bus evidence.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge
-layout, drawing, hit-testing, typed create-or-reuse placement, selected-net
-rename routing, drag repositioning, active-wire target handling, conversion,
-deletion, and net-rename cleanup. Labels select and annotate ordinary Board IR
-nets; they do not create hidden net ties or hierarchical connectivity.
+layout, drawing, hit-testing, typed create-or-reuse placement, inline
+edit/autocomplete, selected-net rename routing, drag repositioning, active-wire
+target handling, conversion, deletion, and net-rename cleanup. Inline editing a
+label to an existing net retargets only that label; editing it to a missing net
+renames the underlying Board IR net through the validated rename path. Labels
+select and annotate ordinary Board IR nets; they do not create hidden net ties
+or hierarchical connectivity.
 `src/gui/sketch_hierarchy.rs` owns the Sketch-stage schematic hierarchy panel:
 it derives sheet-like groups from imported KiCad `source.instances[*].path`
 metadata and importer namespace prefixes such as `sheet__R1`, then selects or
@@ -342,9 +345,10 @@ The supported desktop simulation path is:
 21. place local named-net labels or off-page connector labels for a selected
    net, net node, wire, or typed net name under `board.schematic.net_labels`;
    create a missing typed net with an explicit net kind, rename a selected net
-   to the typed label name, convert or delete label badges, drag them to
-   reposition their schematic display point, or finish an active wire on them
-   without changing the underlying Board IR net identity,
+   to the typed label name, double-click or context-edit a label with existing
+   net autocomplete, convert or delete label badges, drag them to reposition
+   their schematic display point, or finish an active wire on them without
+   changing the underlying Board IR net identity,
 22. inspect Board IR connections through orthogonal wire routes, net labels,
    junction dots, and clickable wire-to-net or label-to-net selection rendered
    over the persisted pin/net graph,

@@ -30,6 +30,9 @@ labels persist as `board.schematic.net_labels` display metadata for ordinary
 Board IR nets. A typed label panel can reuse an existing net, create a missing
 net with an explicit net kind, place the label at the view center or by canvas
 click/context menu, or rename the selected net to the typed name. Users can
+double-click or context-edit a placed label with existing-net autocomplete:
+choosing an existing net retargets that label, while typing a missing net
+renames the underlying Board IR net through the validated rename path. Users can
 drag labels to reposition them and finish an active wire on a label to connect
 to that label's underlying net; converting, moving, or deleting labels does not
 create hidden net ties, hierarchical ports, or PCB

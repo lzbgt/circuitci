@@ -576,6 +576,8 @@ impl CircuitCiApp {
                         badge.net_id.clone(),
                         route_points,
                     );
+                } else if response.double_clicked_by(egui::PointerButton::Primary) {
+                    self.begin_net_label_inline_edit(badge);
                 } else {
                     self.set_single_sketch_selection(Some(SketchSelection::Net(
                         badge.net_id.clone(),
@@ -1044,6 +1046,7 @@ impl CircuitCiApp {
                 ));
             }
         }
+        self.sketch_net_label_inline_editor(ui, &net_label_badges, snapshot);
     }
 
     fn start_visual_wire_from_anchor(&mut self, anchor: &sketch::SketchPinAnchor) {
