@@ -21,6 +21,7 @@ circuitci-gui
   -> src/gui/shell.rs
   -> src/gui/import_flow.rs
   -> src/gui/file_dialogs.rs
+  -> src/gui/jobs.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
@@ -50,6 +51,10 @@ command wiring.
 `src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
 project, import, and output path fields. The dialogs are compiled only with the
 optional GUI feature and do not affect the default CLI build.
+`src/gui/jobs.rs` owns GUI background validation jobs. Validation and
+analog-scenario execution run on a worker thread and report back to the UI
+through a channel; cancel requests mark the in-flight result to be ignored when
+the engine call returns.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
@@ -210,11 +215,15 @@ The supported desktop simulation path is:
 25. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
 26. bind sourced component models,
-27. run declared validation and `analog_transient` scenarios,
-28. scrub or play the simulation time cursor to drive graph runtime tinting,
-29. hover graph nodes to inspect matching voltage/current/power probe values at
+27. run declared validation and `analog_transient` scenarios in a background
+   worker while the desktop shell remains responsive,
+28. cancel a running validation from the Simulation menu, left project panel, or
+   status panel; the current implementation ignores the worker result when it
+   returns rather than preempting an in-flight SPICE/backend call,
+29. scrub or play the simulation time cursor to drive graph runtime tinting,
+30. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-30. use visible schematic probe badges to find voltage/current/power probes,
+31. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
@@ -222,13 +231,13 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-31. use right-click component, net, and wire menus for common sketch actions
+32. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, and delete through the same validated Board IR
    mutation paths as the inspector and keyboard actions,
-32. observe generated decks, plotted CSV waveforms, cursor values, min/max
+33. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-33. edit the project/model evidence and rerun.
+34. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source

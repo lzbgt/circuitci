@@ -9,6 +9,7 @@ mod analog;
 mod analog_assertion_edit_tests;
 mod file_dialogs;
 mod import_flow;
+mod jobs;
 mod library;
 mod project;
 mod shell;
@@ -24,9 +25,8 @@ mod spice;
 
 use project::PendingProjectAction;
 use simulation::{
-    WaveformView, load_report_waveforms, runtime_probe_activity_for_selection,
-    runtime_probe_lines_for_selection, waveform_probe_value_for_badge,
-    waveform_time_range_for_view,
+    WaveformView, runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
+    waveform_probe_value_for_badge, waveform_time_range_for_view,
 };
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
@@ -177,6 +177,7 @@ pub struct CircuitCiApp {
     waveform_cursor_b_us: f64,
     waveform_playing: bool,
     waveform_playback_speed: f64,
+    background_validation: Option<jobs::BackgroundValidationJob>,
 }
 
 impl Default for CircuitCiApp {
@@ -267,6 +268,7 @@ impl Default for CircuitCiApp {
             waveform_cursor_b_us: 0.0,
             waveform_playing: false,
             waveform_playback_speed: 1.0,
+            background_validation: None,
         }
     }
 }
@@ -274,6 +276,7 @@ impl Default for CircuitCiApp {
 impl eframe::App for CircuitCiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_close_request(ctx);
+        self.poll_background_validation(ctx);
         self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
@@ -365,38 +368,6 @@ impl CircuitCiApp {
             if response.inner.changed() {
                 self.record_project_yaml_text_edit(previous_yaml);
             }
-        }
-    }
-
-    fn validate_project(&mut self) {
-        match validate_from_gui(
-            Path::new(&self.project_path),
-            &self.profile,
-            Path::new(&self.output_dir),
-        ) {
-            Ok((report, markdown)) => {
-                let waveforms = load_report_waveforms(&report);
-                let waveform_count = waveforms.len();
-                self.status = format!("Validation {}", report.result);
-                self.report_markdown = markdown;
-                self.report = Some(report);
-                self.waveforms = waveforms;
-                self.selected_waveform = 0;
-                self.selected_probe = 0;
-                self.waveform_cursor_a_us = 0.0;
-                self.waveform_cursor_b_us = 0.0;
-                self.waveform_playing = false;
-                self.stage = if waveform_count == 0 {
-                    Stage::Reports
-                } else {
-                    Stage::Simulation
-                };
-                self.push_diagnostic(&format!(
-                    "Validation report written; loaded {waveform_count} waveform view(s)."
-                ));
-                self.load_project_summary_unchecked();
-            }
-            Err(error) => self.record_error(error),
         }
     }
 

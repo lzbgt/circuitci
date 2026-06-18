@@ -55,7 +55,13 @@ impl CircuitCiApp {
                         self.save_project_yaml();
                         ui.close();
                     }
-                    if ui.button("Validate").clicked() {
+                    if ui
+                        .add_enabled(
+                            self.background_validation_elapsed_secs().is_none(),
+                            egui::Button::new("Validate"),
+                        )
+                        .clicked()
+                    {
                         self.validate_project();
                         ui.close();
                     }
@@ -100,9 +106,26 @@ impl CircuitCiApp {
                     }
                 });
                 ui.menu_button("Simulation", |ui| {
-                    if ui.button("Run Validation + Analog Scenarios").clicked() {
+                    if ui
+                        .add_enabled(
+                            self.background_validation_elapsed_secs().is_none(),
+                            egui::Button::new("Run Validation + Analog Scenarios"),
+                        )
+                        .clicked()
+                    {
                         self.validate_project();
                         self.stage = Stage::Simulation;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(
+                            self.background_validation_elapsed_secs().is_some()
+                                && !self.background_validation_cancel_requested(),
+                            egui::Button::new("Cancel Background Validation"),
+                        )
+                        .clicked()
+                    {
+                        self.cancel_background_validation();
                         ui.close();
                     }
                 });
@@ -165,7 +188,13 @@ impl CircuitCiApp {
                     if ui.button("Save").clicked() {
                         self.save_project_yaml();
                     }
-                    if ui.button("Validate").clicked() {
+                    if ui
+                        .add_enabled(
+                            self.background_validation_elapsed_secs().is_none(),
+                            egui::Button::new("Validate"),
+                        )
+                        .clicked()
+                    {
                         self.validate_project();
                     }
                     if ui.button("Suggest").clicked() {
@@ -200,6 +229,29 @@ impl CircuitCiApp {
                     }
                 });
                 ui.separator();
+                if let Some(elapsed_secs) = self.background_validation_elapsed_secs() {
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.add(egui::Spinner::new());
+                            let suffix = if self.background_validation_cancel_requested() {
+                                "cancel requested"
+                            } else {
+                                "running"
+                            };
+                            ui.label(format!("Validation {suffix} for {elapsed_secs:.1}s"));
+                            if ui
+                                .add_enabled(
+                                    !self.background_validation_cancel_requested(),
+                                    egui::Button::new("Cancel"),
+                                )
+                                .clicked()
+                            {
+                                self.cancel_background_validation();
+                            }
+                        });
+                    });
+                }
+                ui.separator();
                 if let Some(snapshot) = &self.project_snapshot {
                     ui.label(format!("Name: {}", snapshot.name));
                     ui.label(format!("Components: {}", snapshot.components));
@@ -229,6 +281,28 @@ impl CircuitCiApp {
                     ui.strong("Status:");
                     ui.label(&self.status);
                 });
+                if let Some(elapsed_secs) = self.background_validation_elapsed_secs() {
+                    ui.horizontal(|ui| {
+                        ui.add(egui::Spinner::new());
+                        let suffix = if self.background_validation_cancel_requested() {
+                            "cancel requested"
+                        } else {
+                            "running"
+                        };
+                        ui.label(format!(
+                            "Background validation {suffix}, {elapsed_secs:.1}s"
+                        ));
+                        if ui
+                            .add_enabled(
+                                !self.background_validation_cancel_requested(),
+                                egui::Button::new("Cancel"),
+                            )
+                            .clicked()
+                        {
+                            self.cancel_background_validation();
+                        }
+                    });
+                }
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for diagnostic in self.diagnostics.iter().rev().take(40) {
                         ui.label(diagnostic);

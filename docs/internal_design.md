@@ -23,8 +23,12 @@ GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state and
 validation/report command calls. `src/gui/shell.rs` owns menus, workflow stage
 routing, the left project panel, the status panel, Project/Reports views, and
-finding/limitation rendering. `src/gui/import_flow.rs` owns the Import stage UI
-plus KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+finding/limitation rendering. `src/gui/jobs.rs` owns background validation job
+state, worker-thread launch, channel polling, stale-result rejection, and
+cancel-request handling. Canceling a validation job must not try to kill a Rust
+thread or backend process directly; it marks the current result as ignored when
+the worker returns. `src/gui/import_flow.rs` owns the Import stage UI plus KiCad
+schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
