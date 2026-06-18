@@ -27,6 +27,9 @@ impl CircuitCiApp {
                 {
                     self.selected_waveform = index;
                     self.selected_probe = 0;
+                    self.waveform_math_left = 0;
+                    self.waveform_math_right = 0;
+                    self.waveform_math_name.clear();
                     self.waveform_cursor_a_us = 0.0;
                     self.waveform_cursor_b_us = 0.0;
                     self.waveform_playing = false;
@@ -49,6 +52,10 @@ impl CircuitCiApp {
                         .clicked()
                     {
                         self.selected_probe = index;
+                        self.waveform_math_left =
+                            self.waveform_math_left.min(waveform.probes.len() - 1);
+                        self.waveform_math_right =
+                            self.waveform_math_right.min(waveform.probes.len() - 1);
                         self.waveform_cursor_a_us = 0.0;
                         self.waveform_cursor_b_us = 0.0;
                         self.waveform_playing = false;
@@ -57,6 +64,7 @@ impl CircuitCiApp {
             });
         }
 
+        self.waveform_math_panel(ui);
         self.waveform_playback_panel(ui);
         let waveform = &self.waveforms[self.selected_waveform];
         waveform_measurement_panel(
@@ -122,6 +130,120 @@ impl CircuitCiApp {
             );
         });
     }
+
+    fn waveform_math_panel(&mut self, ui: &mut egui::Ui) {
+        let Some(waveform) = self.waveforms.get(self.selected_waveform) else {
+            return;
+        };
+        if waveform.probes.len() < 2 {
+            return;
+        }
+        let probe_labels: Vec<String> = waveform
+            .probes
+            .iter()
+            .map(|probe| probe.label.clone())
+            .collect();
+        let selected_probe_is_derived = waveform
+            .probes
+            .get(self.selected_probe)
+            .is_some_and(|probe| probe.derived);
+        self.waveform_math_left = self.waveform_math_left.min(probe_labels.len() - 1);
+        self.waveform_math_right = self.waveform_math_right.min(probe_labels.len() - 1);
+        if self.waveform_math_right == self.waveform_math_left && probe_labels.len() > 1 {
+            self.waveform_math_right = (self.waveform_math_left + 1).min(probe_labels.len() - 1);
+        }
+        ui.collapsing("Derived Waveform Channel", |ui| {
+            egui::Grid::new("waveform_math_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Left probe");
+                    waveform_probe_combo(
+                        ui,
+                        "waveform_math_left",
+                        &mut self.waveform_math_left,
+                        &probe_labels,
+                    );
+                    ui.end_row();
+
+                    ui.label("Operation");
+                    waveform_math_operation_combo(ui, &mut self.waveform_math_operation);
+                    ui.end_row();
+
+                    ui.label("Right probe");
+                    waveform_probe_combo(
+                        ui,
+                        "waveform_math_right",
+                        &mut self.waveform_math_right,
+                        &probe_labels,
+                    );
+                    ui.end_row();
+
+                    ui.label("Name");
+                    ui.text_edit_singleline(&mut self.waveform_math_name);
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Add Derived Channel").clicked() {
+                    self.apply_add_waveform_math_channel();
+                }
+                if ui
+                    .add_enabled(
+                        selected_probe_is_derived,
+                        egui::Button::new("Remove Selected Derived"),
+                    )
+                    .clicked()
+                {
+                    self.apply_remove_selected_waveform_math_channel();
+                }
+            });
+        });
+    }
+
+    fn apply_add_waveform_math_channel(&mut self) {
+        let Some(waveform) = self.waveforms.get_mut(self.selected_waveform) else {
+            return;
+        };
+        let draft = WaveformMathDraft {
+            left_probe: self.waveform_math_left,
+            right_probe: self.waveform_math_right,
+            operation: self.waveform_math_operation.clone(),
+            label: self.waveform_math_name.clone(),
+        };
+        match append_derived_waveform_probe(waveform, &draft) {
+            Ok(index) => {
+                self.selected_probe = index;
+                self.status = format!(
+                    "Derived waveform channel {} added.",
+                    waveform.probes[index].label
+                );
+                self.waveform_math_name.clear();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_selected_waveform_math_channel(&mut self) {
+        let Some(waveform) = self.waveforms.get_mut(self.selected_waveform) else {
+            return;
+        };
+        let Some(probe) = waveform.probes.get(self.selected_probe) else {
+            return;
+        };
+        if !probe.derived {
+            return;
+        }
+        let label = probe.label.clone();
+        waveform.probes.remove(self.selected_probe);
+        self.selected_probe = self.selected_probe.saturating_sub(1);
+        self.waveform_math_left = self
+            .waveform_math_left
+            .min(waveform.probes.len().saturating_sub(1));
+        self.waveform_math_right = self
+            .waveform_math_right
+            .min(waveform.probes.len().saturating_sub(1));
+        self.status = format!("Derived waveform channel {label} removed.");
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +258,8 @@ pub(super) struct WaveformView {
 struct WaveformProbe {
     label: String,
     values: Vec<f64>,
+    derived: bool,
+    expression: Option<String>,
 }
 
 pub(super) fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
@@ -391,7 +515,12 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
     let probes = probe_labels
         .into_iter()
         .zip(probe_values)
-        .map(|(label, values)| WaveformProbe { label, values })
+        .map(|(label, values)| WaveformProbe {
+            label,
+            values,
+            derived: false,
+            expression: None,
+        })
         .collect();
     Ok(WaveformView {
         label: label.to_string(),
@@ -399,6 +528,175 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
         time_s,
         probes,
     })
+}
+
+#[derive(Debug, Clone)]
+struct WaveformMathDraft {
+    left_probe: usize,
+    right_probe: usize,
+    operation: String,
+    label: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WaveformMathOperation {
+    Difference,
+    Sum,
+    Product,
+    Ratio,
+}
+
+impl WaveformMathOperation {
+    fn from_label(label: &str) -> Result<Self> {
+        match label.trim() {
+            "difference" => Ok(Self::Difference),
+            "sum" => Ok(Self::Sum),
+            "product" => Ok(Self::Product),
+            "ratio" => Ok(Self::Ratio),
+            other => anyhow::bail!("Unsupported waveform math operation {other}."),
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Difference => "difference",
+            Self::Sum => "sum",
+            Self::Product => "product",
+            Self::Ratio => "ratio",
+        }
+    }
+
+    fn symbol(self) -> &'static str {
+        match self {
+            Self::Difference => "-",
+            Self::Sum => "+",
+            Self::Product => "*",
+            Self::Ratio => "/",
+        }
+    }
+
+    fn apply(self, left: f64, right: f64) -> Result<f64> {
+        match self {
+            Self::Difference => Ok(left - right),
+            Self::Sum => Ok(left + right),
+            Self::Product => Ok(left * right),
+            Self::Ratio => {
+                if right.abs() <= f64::EPSILON {
+                    anyhow::bail!("Ratio denominator contains a zero sample.");
+                }
+                Ok(left / right)
+            }
+        }
+    }
+}
+
+fn append_derived_waveform_probe(
+    waveform: &mut WaveformView,
+    draft: &WaveformMathDraft,
+) -> Result<usize> {
+    let operation = WaveformMathOperation::from_label(&draft.operation)?;
+    let left = waveform
+        .probes
+        .get(draft.left_probe)
+        .with_context(|| format!("Left probe index {} is out of range.", draft.left_probe))?;
+    let right = waveform
+        .probes
+        .get(draft.right_probe)
+        .with_context(|| format!("Right probe index {} is out of range.", draft.right_probe))?;
+    if left.values.len() != right.values.len() || left.values.len() != waveform.time_s.len() {
+        anyhow::bail!("Waveform probes must share the selected waveform time base.");
+    }
+    let values: Vec<f64> = left
+        .values
+        .iter()
+        .copied()
+        .zip(right.values.iter().copied())
+        .map(|(left, right)| operation.apply(left, right))
+        .collect::<Result<Vec<_>>>()?;
+    if values.iter().any(|value| !value.is_finite()) {
+        anyhow::bail!("Derived waveform channel produced a non-finite sample.");
+    }
+    let expression = format!("{} {} {}", left.label, operation.symbol(), right.label);
+    let label = unique_waveform_probe_label(
+        waveform,
+        &derived_waveform_label(&draft.label, operation, &left.label, &right.label),
+    );
+    waveform.probes.push(WaveformProbe {
+        label,
+        values,
+        derived: true,
+        expression: Some(expression),
+    });
+    Ok(waveform.probes.len() - 1)
+}
+
+fn derived_waveform_label(
+    requested: &str,
+    operation: WaveformMathOperation,
+    left: &str,
+    right: &str,
+) -> String {
+    let requested = requested.trim();
+    if !requested.is_empty() {
+        return requested.to_string();
+    }
+    format!("{left} {} {right}", operation.symbol())
+}
+
+fn unique_waveform_probe_label(waveform: &WaveformView, requested: &str) -> String {
+    let base = if requested.trim().is_empty() {
+        "derived".to_string()
+    } else {
+        requested.trim().to_string()
+    };
+    if waveform.probes.iter().all(|probe| probe.label != base) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}_{suffix}");
+        if waveform.probes.iter().all(|probe| probe.label != candidate) {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded suffix search must find a unique waveform label")
+}
+
+fn waveform_probe_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    selected: &mut usize,
+    probe_labels: &[String],
+) {
+    *selected = (*selected).min(probe_labels.len().saturating_sub(1));
+    let selected_text = probe_labels
+        .get(*selected)
+        .map(String::as_str)
+        .unwrap_or("select probe");
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(selected_text)
+        .show_ui(ui, |ui| {
+            for (index, label) in probe_labels.iter().enumerate() {
+                ui.selectable_value(selected, index, label);
+            }
+        });
+}
+
+fn waveform_math_operation_combo(ui: &mut egui::Ui, selected: &mut String) {
+    if WaveformMathOperation::from_label(selected).is_err() {
+        *selected = WaveformMathOperation::Difference.label().to_string();
+    }
+    egui::ComboBox::from_id_salt("waveform_math_operation")
+        .selected_text(selected.as_str())
+        .show_ui(ui, |ui| {
+            for operation in [
+                WaveformMathOperation::Difference,
+                WaveformMathOperation::Sum,
+                WaveformMathOperation::Product,
+                WaveformMathOperation::Ratio,
+            ] {
+                ui.selectable_value(selected, operation.label().to_string(), operation.label());
+            }
+        });
 }
 
 fn split_waveform_fields(line: &str) -> Vec<&str> {
@@ -605,7 +903,12 @@ fn draw_waveform_plot(
     painter.text(
         egui::pos2(plot_rect.left(), rect.top() + 8.0),
         egui::Align2::LEFT_CENTER,
-        format!("{} {:.3e}..{:.3e}", probe.label, y_min, y_max),
+        format!(
+            "{} {:.3e}..{:.3e}",
+            probe.expression.as_deref().unwrap_or(&probe.label),
+            y_min,
+            y_max
+        ),
         font,
         egui::Color32::LIGHT_GRAY,
     );
@@ -785,7 +1088,8 @@ pub(super) fn format_value(value: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        interpolated_value, parse_waveform_csv_text, runtime_probe_activity_for_selection,
+        WaveformMathDraft, append_derived_waveform_probe, interpolated_value,
+        parse_waveform_csv_text, runtime_probe_activity_for_selection,
         runtime_probe_lines_for_selection, waveform_measurement, waveform_probe_value_for_badge,
         waveform_time_range_for_view,
     };
@@ -874,6 +1178,81 @@ mod tests {
         assert_eq!(measurement.full_min, 0.0);
         assert_eq!(measurement.full_max, 2.0);
         assert_eq!(measurement.window_max, 2.0);
+    }
+
+    #[test]
+    fn derived_waveform_difference_is_selectable_probe() {
+        let mut waveform = parse_waveform_csv_text(
+            "time v(out) v(in)
+0.0 0.0 5.0
+1e-6 3.0 5.0
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let index = append_derived_waveform_probe(
+            &mut waveform,
+            &WaveformMathDraft {
+                left_probe: 1,
+                right_probe: 0,
+                operation: "difference".to_string(),
+                label: "headroom".to_string(),
+            },
+        )
+        .unwrap();
+        assert_eq!(waveform.probes[index].label, "headroom");
+        assert_eq!(waveform.probes[index].values, vec![5.0, 2.0]);
+        assert!(waveform.probes[index].derived);
+        let measurement = waveform_measurement(&waveform, index, 0.0, 1.0).unwrap();
+        assert_eq!(measurement.full_min, 2.0);
+        assert_eq!(measurement.full_max, 5.0);
+    }
+
+    #[test]
+    fn derived_waveform_product_composes_power_trace() {
+        let mut waveform = parse_waveform_csv_text(
+            "time v(load) i(load)
+0.0 5.0 0.10
+1e-6 4.0 0.25
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let index = append_derived_waveform_probe(
+            &mut waveform,
+            &WaveformMathDraft {
+                left_probe: 0,
+                right_probe: 1,
+                operation: "product".to_string(),
+                label: String::new(),
+            },
+        )
+        .unwrap();
+        assert_eq!(waveform.probes[index].label, "v(load) * i(load)");
+        assert_eq!(waveform.probes[index].values, vec![0.5, 1.0]);
+    }
+
+    #[test]
+    fn derived_waveform_ratio_rejects_zero_denominator() {
+        let mut waveform = parse_waveform_csv_text(
+            "time v(out) i(load)
+0.0 5.0 0.0
+1e-6 4.0 0.25
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let error = append_derived_waveform_probe(
+            &mut waveform,
+            &WaveformMathDraft {
+                left_probe: 0,
+                right_probe: 1,
+                operation: "ratio".to_string(),
+                label: "impedance".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("zero sample"));
     }
 
     #[test]

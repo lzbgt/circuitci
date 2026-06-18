@@ -116,11 +116,12 @@ project load action; they must not bypass validation, import, save, or the
 dirty-state guard. `src/gui/simulation.rs` owns the Simulation stage UI and
 analog scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
 parsing, plotting, simulation-time scrub/playback controls, cursor readouts,
-min/max/delta measurements, exact probe-value lookup, and normalized runtime
-activity values for graph tinting. It may display graph hover readouts and
-activity coloring for runtime waveform probes, but those values must come from
-report waveform artifacts and the shared waveform interpolation helpers rather
-than an unsynchronized live simulation model.
+min/max/delta measurements, GUI-only derived waveform channels, exact
+probe-value lookup, and normalized runtime activity values for graph tinting. It
+may display graph hover readouts, activity coloring, and derived difference,
+sum, product, or ratio channels for runtime waveform probes, but those values
+must come from report waveform artifacts and the shared waveform interpolation
+helpers rather than an unsynchronized live simulation model.
 Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing
 analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
@@ -201,9 +202,9 @@ dangling assertion references.
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather
-than introducing a second analog project model. Advanced waveform math/channel
-analysis should remain a separate focused module so waveform sign-off semantics
-stay explicit.
+than introducing a second analog project model. GUI-derived waveform math
+channels must remain observation-only; persistent sign-off semantics still need
+explicit Board IR probes and assertions.
 
 ## Evidence Model
 
