@@ -263,7 +263,8 @@ impl CircuitCiApp {
         );
         let excluded = std::collections::BTreeSet::new();
         let guides = sketch_alignment::guides_for_rect(graph, base, &excluded);
-        let snapped = sketch_alignment::snap_rect_to_guides(base, guides, self.sketch_snap_enabled);
+        let snapped =
+            sketch_alignment::snap_rect_to_guides(base, guides, self.sketch_guide_snap_enabled);
         (snapped, guides, snapped != base)
     }
 

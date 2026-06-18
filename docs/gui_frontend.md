@@ -125,10 +125,12 @@ multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe
 defaults, and viewport pan/zoom input.
 `src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
-drawing, and Snap-mode target adjustment for component placement plus
-selected-node and selected-group drag affordances. It does not create a second
-Board IR model; persistence still routes through validated schematic position
-edits.
+drawing, and optional guide-snap target adjustment for component placement plus
+selected-node and selected-group drag affordances. The primary schematic toolbar
+exposes Grid, grid-step, and Free/Grid/Guides/Grid+Guides snap modes so users
+can tune placement behavior without opening secondary panels. It does not create
+a second Board IR model; persistence still routes through validated schematic
+position edits.
 `src/gui/sketch_canvas_interaction.rs` owns reusable canvas interaction
 primitives: viewport zoom math, schematic canvas sizing, wire target
 hit-testing, route-handle hit-testing, and placement orientation cycling.
@@ -276,7 +278,8 @@ form:
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
-  schematic grid/snap controls, overview-minimap click/drag panning,
+  primary-toolbar grid visibility, grid-step, and snap-mode controls,
+  overview-minimap click/drag panning,
   orthogonal wire visuals with net labels, placed local/off-page named-net
   labels, and junction dots, derived
   net-bundle trunks/badges for bracketed, dot-qualified,
@@ -292,7 +295,8 @@ form:
   Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
   for freehand lasso selection, multi-selection inspector summary/actions,
   on-canvas selected-group frame/move handle with snap/free target feedback,
-  alignment guides, and quick toolbar with rotate/flip/pin-side actions,
+  alignment guides with optional guide snapping, and quick toolbar with
+  rotate/flip/pin-side actions,
   group drag/nudge/edge-align/center-align/distribute controls for
   multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -497,9 +501,11 @@ affordances: their text is derived from Board IR component IDs and scalar SPICE
 evidence, while optional dragged positions persist only under
 `board.schematic.component_labels`. Reference/value visibility is transient GUI
 state; auto-arrange and reset only add or remove those display positions.
-The sketch grid, snap controls, net labels, junction dots, and orthogonal wire
-routes are also editor affordances. Snapping may update persisted schematic
-node positions, dragging a wire or one of its visible route handles may update
+The sketch grid, toolbar snap controls, net labels, junction dots, and
+orthogonal wire routes are also editor affordances. Grid snapping and guide
+snapping are transient user interaction modes; either may update persisted
+schematic node positions only through accepted edits. Dragging a wire or one of
+its visible route handles may update
 `board.schematic.wire_routes` with display-only waypoints, active wire-mode
 blank-canvas bend clicks and wire context-menu route-handle insertion/deletion
 may update the same display metadata, and placing or dragging a local/off-page

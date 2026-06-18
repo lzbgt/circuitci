@@ -184,6 +184,25 @@ enum SketchViewportCommand {
     Home,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SketchSnapMode {
+    Free,
+    Grid,
+    Guides,
+    GridAndGuides,
+}
+
+impl SketchSnapMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Free => "Free",
+            Self::Grid => "Grid",
+            Self::Guides => "Guides",
+            Self::GridAndGuides => "Grid + Guides",
+        }
+    }
+}
+
 pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
@@ -284,6 +303,7 @@ pub struct CircuitCiApp {
     sketch_pan: egui::Vec2,
     sketch_grid_enabled: bool,
     sketch_snap_enabled: bool,
+    sketch_guide_snap_enabled: bool,
     sketch_grid_step: f32,
     sketch_hierarchy_query: String,
     sketch_hierarchy_focus: Option<SketchHierarchyFocus>,
@@ -435,6 +455,7 @@ impl Default for CircuitCiApp {
             sketch_pan: egui::Vec2::ZERO,
             sketch_grid_enabled: true,
             sketch_snap_enabled: true,
+            sketch_guide_snap_enabled: true,
             sketch_grid_step: DEFAULT_SKETCH_GRID_STEP,
             sketch_hierarchy_query: String::new(),
             sketch_hierarchy_focus: None,
@@ -577,6 +598,7 @@ impl CircuitCiApp {
             if ui.button("Home").clicked() {
                 self.sketch_viewport_command = Some(SketchViewportCommand::Home);
             }
+            self.sketch_snap_toolbar_controls(ui);
             if ui.button("Save").clicked() {
                 self.save_project_yaml();
             }
@@ -602,6 +624,79 @@ impl CircuitCiApp {
             }
         });
         ui.separator();
+    }
+
+    fn sketch_snap_toolbar_controls(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        ui.checkbox(&mut self.sketch_grid_enabled, "Grid");
+        ui.label("Step");
+        let step_changed = ui
+            .add(
+                egui::DragValue::new(&mut self.sketch_grid_step)
+                    .range(4.0..=96.0)
+                    .speed(1.0),
+            )
+            .changed();
+        if step_changed {
+            self.normalize_sketch_grid_step();
+        }
+        for step in [8.0, 16.0, 32.0] {
+            if ui.small_button(format!("{step:.0}")).clicked() {
+                self.sketch_grid_step = step;
+            }
+        }
+
+        let mut mode = self.sketch_snap_mode();
+        egui::ComboBox::from_id_salt("sketch_snap_mode")
+            .selected_text(mode.label())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut mode,
+                    SketchSnapMode::Free,
+                    SketchSnapMode::Free.label(),
+                );
+                ui.selectable_value(
+                    &mut mode,
+                    SketchSnapMode::Grid,
+                    SketchSnapMode::Grid.label(),
+                );
+                ui.selectable_value(
+                    &mut mode,
+                    SketchSnapMode::Guides,
+                    SketchSnapMode::Guides.label(),
+                );
+                ui.selectable_value(
+                    &mut mode,
+                    SketchSnapMode::GridAndGuides,
+                    SketchSnapMode::GridAndGuides.label(),
+                );
+            });
+        self.set_sketch_snap_mode(mode);
+    }
+
+    fn sketch_snap_mode(&self) -> SketchSnapMode {
+        match (self.sketch_snap_enabled, self.sketch_guide_snap_enabled) {
+            (false, false) => SketchSnapMode::Free,
+            (true, false) => SketchSnapMode::Grid,
+            (false, true) => SketchSnapMode::Guides,
+            (true, true) => SketchSnapMode::GridAndGuides,
+        }
+    }
+
+    fn set_sketch_snap_mode(&mut self, mode: SketchSnapMode) {
+        (self.sketch_snap_enabled, self.sketch_guide_snap_enabled) = match mode {
+            SketchSnapMode::Free => (false, false),
+            SketchSnapMode::Grid => (true, false),
+            SketchSnapMode::Guides => (false, true),
+            SketchSnapMode::GridAndGuides => (true, true),
+        };
+    }
+
+    fn normalize_sketch_grid_step(&mut self) {
+        if !self.sketch_grid_step.is_finite() {
+            self.sketch_grid_step = DEFAULT_SKETCH_GRID_STEP;
+        }
+        self.sketch_grid_step = self.sketch_grid_step.clamp(4.0, 96.0);
     }
 
     fn run_schematic_model(&mut self) {
@@ -725,14 +820,6 @@ impl CircuitCiApp {
                 if ui.button("Reset Pan").clicked() {
                     self.sketch_pan = egui::Vec2::ZERO;
                 }
-                ui.checkbox(&mut self.sketch_grid_enabled, "Grid");
-                ui.checkbox(&mut self.sketch_snap_enabled, "Snap");
-                ui.add(
-                    egui::DragValue::new(&mut self.sketch_grid_step)
-                        .range(4.0..=96.0)
-                        .speed(1.0)
-                        .suffix(" grid"),
-                );
                 if ui
                     .add_enabled(
                         self.has_deletable_sketch_selection(),
@@ -964,13 +1051,14 @@ fn display_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::egui;
     use super::sketch::{
-        ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin,
-        edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
-        edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
+        DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
+        SketchPin, edit_component_model, edit_component_part_number, edit_net_kind,
+        edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph,
+        validate_board_ir_yaml_text,
     };
     use super::sketch_canvas_render::component_context_pin;
+    use super::{CircuitCiApp, SketchSnapMode, egui};
     use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
@@ -1176,5 +1264,48 @@ board:
         );
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn sketch_snap_mode_maps_grid_and_guide_flags() {
+        let mut app = CircuitCiApp::default();
+
+        app.set_sketch_snap_mode(SketchSnapMode::Free);
+        assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Free);
+        assert!(!app.sketch_snap_enabled);
+        assert!(!app.sketch_guide_snap_enabled);
+
+        app.set_sketch_snap_mode(SketchSnapMode::Grid);
+        assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Grid);
+        assert!(app.sketch_snap_enabled);
+        assert!(!app.sketch_guide_snap_enabled);
+
+        app.set_sketch_snap_mode(SketchSnapMode::Guides);
+        assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Guides);
+        assert!(!app.sketch_snap_enabled);
+        assert!(app.sketch_guide_snap_enabled);
+
+        app.set_sketch_snap_mode(SketchSnapMode::GridAndGuides);
+        assert_eq!(app.sketch_snap_mode(), SketchSnapMode::GridAndGuides);
+        assert!(app.sketch_snap_enabled);
+        assert!(app.sketch_guide_snap_enabled);
+    }
+
+    #[test]
+    fn sketch_grid_step_normalizes_toolbar_input() {
+        let mut app = CircuitCiApp {
+            sketch_grid_step: f32::NAN,
+            ..Default::default()
+        };
+        app.normalize_sketch_grid_step();
+        assert_eq!(app.sketch_grid_step, DEFAULT_SKETCH_GRID_STEP);
+
+        app.sketch_grid_step = 1.0;
+        app.normalize_sketch_grid_step();
+        assert_eq!(app.sketch_grid_step, 4.0);
+
+        app.sketch_grid_step = 128.0;
+        app.normalize_sketch_grid_step();
+        assert_eq!(app.sketch_grid_step, 96.0);
     }
 }

@@ -652,7 +652,7 @@ impl CircuitCiApp {
                     &graph,
                     &group_drag.node_starts,
                     pointer - group_drag.pointer_start,
-                    self.sketch_snap_enabled,
+                    self.sketch_guide_snap_enabled,
                 );
                 if let Some(bounds) =
                     sketch_alignment::moved_selection_bounds(&group_drag.node_starts, delta)
@@ -1094,7 +1094,7 @@ impl CircuitCiApp {
                     &graph,
                     &group_drag.node_starts,
                     raw_delta,
-                    self.sketch_snap_enabled,
+                    self.sketch_guide_snap_enabled,
                 );
                 if (delta - group_drag.last_applied_delta).length_sq() <= f32::EPSILON {
                     return None;
@@ -1227,7 +1227,7 @@ impl CircuitCiApp {
                     &graph,
                     &node_starts,
                     raw_delta,
-                    self.sketch_snap_enabled,
+                    self.sketch_guide_snap_enabled,
                 );
                 self.apply_selected_schematic_screen_delta_with_snap(
                     rect,
@@ -1251,7 +1251,7 @@ impl CircuitCiApp {
                 let snapped_rect = sketch_alignment::snap_rect_to_guides(
                     proposed_rect,
                     guides,
-                    self.sketch_snap_enabled,
+                    self.sketch_guide_snap_enabled,
                 );
                 let (x, y) = if snapped_rect != proposed_rect {
                     persisted_node_position_from_screen(
