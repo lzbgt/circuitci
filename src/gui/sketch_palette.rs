@@ -371,6 +371,7 @@ impl CircuitCiApp {
                 } else {
                     ui.label(pulse_default_label(self.sketch_palette_kind));
                 }
+                self.sketch_placement_orientation_controls(ui);
 
                 let can_insert = !self.project_yaml.trim().is_empty();
                 ui.horizontal(|ui| {
@@ -685,6 +686,8 @@ board:
             sketch_palette_value: 2200.0,
             sketch_palette_place_armed: true,
             sketch_placement_rotation_deg: 90,
+            sketch_placement_mirrored: true,
+            sketch_placement_pin_side: crate::gui::sketch::SketchPinSide::Left,
             sketch_snap_enabled: false,
             ..Default::default()
         };
@@ -701,6 +704,11 @@ board:
         assert_eq!(position.x, 210.0);
         assert_eq!(position.y, 154.0);
         assert_eq!(component.style.rotation_deg, 90);
+        assert!(component.style.mirrored);
+        assert_eq!(
+            component.style.pin_side,
+            crate::gui::sketch::SketchPinSide::Left
+        );
         assert!(!app.sketch_palette_place_armed);
         assert_eq!(
             app.selected_sketch_item,

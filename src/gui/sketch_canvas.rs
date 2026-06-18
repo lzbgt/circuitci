@@ -1,9 +1,9 @@
 use eframe::egui;
 
 use super::sketch::{
-    self, ProjectSnapshot, SketchNodeStyle, SketchSelection, draw_sketch_grid, draw_sketch_node,
-    draw_sketch_pin_anchor, edit_schematic_component_styles, edit_schematic_wire_route,
-    hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
+    self, ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, draw_sketch_grid,
+    draw_sketch_node, draw_sketch_pin_anchor, edit_schematic_component_styles,
+    edit_schematic_wire_route, hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
     persisted_node_position_from_screen_with_snap,
     persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
     sketch_wire_points, snap_screen_point_to_grid,
@@ -489,21 +489,16 @@ impl CircuitCiApp {
             && rect.contains(pointer)
         {
             let label = self.canvas_placement_label();
+            let style = self.canvas_placement_style();
             let ghost = placement_ghost_rect(
                 rect,
                 pointer,
                 viewport,
                 self.sketch_snap_enabled,
                 self.sketch_grid_step,
-                placement_ghost_size(&label, self.canvas_placement_rotation_deg()),
+                placement_ghost_size(&label, style),
             );
-            draw_placement_ghost(
-                &painter,
-                ghost,
-                &label,
-                placement_target_clear,
-                self.canvas_placement_rotation_deg(),
-            );
+            draw_placement_ghost(&painter, ghost, &label, placement_target_clear, style);
         }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
@@ -953,6 +948,10 @@ impl CircuitCiApp {
             && ui.input(|input| !input.modifiers.shift && input.key_pressed(egui::Key::R));
         let rotate_counter_clockwise_pressed = response.hovered()
             && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::R));
+        let flip_pressed = response.hovered()
+            && ui.input(|input| !input.modifiers.shift && input.key_pressed(egui::Key::F));
+        let cycle_pin_side_pressed = response.hovered()
+            && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::F));
         let cancel_canvas_mode_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
@@ -979,6 +978,10 @@ impl CircuitCiApp {
             self.rotate_canvas_placement(90);
         } else if rotate_counter_clockwise_pressed && self.component_placement_armed() {
             self.rotate_canvas_placement(-90);
+        } else if flip_pressed && self.component_placement_armed() {
+            self.flip_canvas_placement();
+        } else if cycle_pin_side_pressed && self.component_placement_armed() {
+            self.cycle_canvas_placement_pin_side();
         } else if delete_pressed
             && self.wire_from_component.is_some()
             && !self.sketch_wire_draft.is_empty()
@@ -1014,6 +1017,10 @@ impl CircuitCiApp {
             self.apply_rotate_selected_sketch_components(90);
         } else if rotate_counter_clockwise_pressed {
             self.apply_rotate_selected_sketch_components(-90);
+        } else if flip_pressed {
+            self.apply_flip_selected_sketch_components();
+        } else if cycle_pin_side_pressed {
+            self.apply_cycle_selected_sketch_pin_side();
         } else if delete_pressed {
             self.apply_delete_selected_sketch_item();
         }
@@ -1303,6 +1310,9 @@ impl CircuitCiApp {
         if rotation != 0 && (self.sketch_palette_place_armed || self.sketch_library_place_armed) {
             label = format!("{label} {rotation} deg");
         }
+        if self.component_placement_armed() && self.sketch_placement_mirrored {
+            label = format!("{label} flipped");
+        }
         label
     }
 
@@ -1311,6 +1321,14 @@ impl CircuitCiApp {
             normalize_canvas_rotation(self.sketch_placement_rotation_deg)
         } else {
             0
+        }
+    }
+
+    fn canvas_placement_style(&self) -> SketchNodeStyle {
+        if self.component_placement_armed() {
+            self.placement_node_style()
+        } else {
+            SketchNodeStyle::default()
         }
     }
 
@@ -1327,18 +1345,101 @@ impl CircuitCiApp {
         );
     }
 
+    fn flip_canvas_placement(&mut self) {
+        self.sketch_placement_mirrored = !self.sketch_placement_mirrored;
+        let state = if self.sketch_placement_mirrored {
+            "flipped"
+        } else {
+            "unflipped"
+        };
+        self.status = format!("Canvas placement {state}.");
+    }
+
+    fn cycle_canvas_placement_pin_side(&mut self) {
+        self.sketch_placement_pin_side = next_pin_side(self.sketch_placement_pin_side);
+        self.status = format!(
+            "Canvas placement pin side set to {}.",
+            self.sketch_placement_pin_side.as_str()
+        );
+    }
+
     pub(super) fn placement_node_style(&self) -> SketchNodeStyle {
         SketchNodeStyle {
             rotation_deg: normalize_canvas_rotation(self.sketch_placement_rotation_deg),
-            ..Default::default()
+            mirrored: self.sketch_placement_mirrored,
+            pin_side: self.sketch_placement_pin_side,
         }
     }
 
+    pub(super) fn sketch_placement_orientation_controls(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Orientation");
+            ui.label(format!(
+                "{} deg",
+                normalize_canvas_rotation(self.sketch_placement_rotation_deg)
+            ));
+            if ui.button("Rotate").on_hover_text("Shortcut: R").clicked() {
+                self.rotate_canvas_placement(90);
+            }
+            let flip_label = if self.sketch_placement_mirrored {
+                "Unflip"
+            } else {
+                "Flip"
+            };
+            if ui.button(flip_label).on_hover_text("Shortcut: F").clicked() {
+                self.flip_canvas_placement();
+            }
+        });
+        let mut pin_side = self.sketch_placement_pin_side;
+        egui::ComboBox::from_label("Placement pins")
+            .selected_text(pin_side.as_str())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut pin_side, SketchPinSide::Auto, "auto");
+                ui.selectable_value(&mut pin_side, SketchPinSide::Left, "left");
+                ui.selectable_value(&mut pin_side, SketchPinSide::Right, "right");
+            });
+        if pin_side != self.sketch_placement_pin_side {
+            self.sketch_placement_pin_side = pin_side;
+            self.status = format!(
+                "Canvas placement pin side set to {}.",
+                self.sketch_placement_pin_side.as_str()
+            );
+        }
+        ui.small(
+            "Canvas shortcuts: R rotate, Shift+R rotate back, F flip, Shift+F cycle pin side.",
+        );
+    }
+
     fn apply_rotate_selected_sketch_components(&mut self, delta_deg: i32) {
+        self.apply_transform_selected_sketch_component_styles("rotating", "Rotated", |style| {
+            style.rotation_deg = normalize_canvas_rotation(style.rotation_deg + delta_deg);
+        });
+    }
+
+    fn apply_flip_selected_sketch_components(&mut self) {
+        self.apply_transform_selected_sketch_component_styles("flipping", "Flipped", |style| {
+            style.mirrored = !style.mirrored;
+        });
+    }
+
+    fn apply_cycle_selected_sketch_pin_side(&mut self) {
+        self.apply_transform_selected_sketch_component_styles(
+            "changing pin side for",
+            "Changed pin side for",
+            |style| style.pin_side = next_pin_side(style.pin_side),
+        );
+    }
+
+    fn apply_transform_selected_sketch_component_styles(
+        &mut self,
+        empty_verb: &str,
+        applied_verb: &str,
+        mut transform: impl FnMut(&mut SketchNodeStyle),
+    ) {
         let Some(snapshot) = &self.project_snapshot else {
             return;
         };
-        let mut selected_components = self
+        let selected_components = self
             .selected_sketch_items
             .iter()
             .chain(self.selected_sketch_item.iter())
@@ -1348,11 +1449,11 @@ impl CircuitCiApp {
             })
             .collect::<std::collections::BTreeSet<_>>();
         if selected_components.is_empty() {
-            self.status = "Select one or more components before rotating.".to_string();
+            self.status = format!("Select one or more components before {empty_verb}.");
             return;
         }
         let mut edits = Vec::with_capacity(selected_components.len());
-        for component_id in std::mem::take(&mut selected_components) {
+        for component_id in selected_components {
             let Some(component) = snapshot
                 .components_detail
                 .iter()
@@ -1361,7 +1462,7 @@ impl CircuitCiApp {
                 continue;
             };
             let mut style = component.style;
-            style.rotation_deg = normalize_canvas_rotation(style.rotation_deg + delta_deg);
+            transform(&mut style);
             edits.push((component_id, style));
         }
         if edits.is_empty() {
@@ -1372,7 +1473,7 @@ impl CircuitCiApp {
                 let count = edits.len();
                 self.apply_edited_project_yaml(
                     updated,
-                    &format!("Rotated {count} selected component(s)."),
+                    &format!("{applied_verb} {count} selected component(s)."),
                 );
             }
             Err(error) => self.record_error(error),
@@ -1463,6 +1564,14 @@ impl CircuitCiApp {
 
 fn normalize_canvas_rotation(rotation_deg: i32) -> i32 {
     rotation_deg.rem_euclid(360) / 90 * 90
+}
+
+fn next_pin_side(pin_side: SketchPinSide) -> SketchPinSide {
+    match pin_side {
+        SketchPinSide::Auto => SketchPinSide::Right,
+        SketchPinSide::Right => SketchPinSide::Left,
+        SketchPinSide::Left => SketchPinSide::Auto,
+    }
 }
 
 pub(super) fn zoom_viewport_around(

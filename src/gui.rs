@@ -49,7 +49,9 @@ mod spice;
 mod waveform;
 
 use project::PendingProjectAction;
-use sketch::{DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchSelection};
+use sketch::{
+    DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchPinSide, SketchSelection,
+};
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
@@ -254,6 +256,8 @@ pub struct CircuitCiApp {
     sketch_palette_place_armed: bool,
     sketch_library_place_armed: bool,
     sketch_placement_rotation_deg: i32,
+    sketch_placement_mirrored: bool,
+    sketch_placement_pin_side: SketchPinSide,
     sketch_net_label_net_id: String,
     sketch_net_label_kind: SketchNetLabelKind,
     sketch_net_label_net_kind: String,
@@ -399,6 +403,8 @@ impl Default for CircuitCiApp {
             sketch_palette_place_armed: false,
             sketch_library_place_armed: false,
             sketch_placement_rotation_deg: 0,
+            sketch_placement_mirrored: false,
+            sketch_placement_pin_side: SketchPinSide::Auto,
             sketch_net_label_net_id: "sig".to_string(),
             sketch_net_label_kind: SketchNetLabelKind::Local,
             sketch_net_label_net_kind: "digital_or_analog".to_string(),

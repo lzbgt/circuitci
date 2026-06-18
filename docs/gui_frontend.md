@@ -174,8 +174,9 @@ declared ports to seed editable Board IR pin bindings and generated per-pin
 nets, and Sketch-stage placement can target the current view center, an armed
 blank-canvas click, a drag/drop release with live ghost and snap feedback, or
 the blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
-placement ghosts before insertion, and the accepted placement persists that
-schematic-only orientation under `board.schematic.node_styles`.
+placement ghosts before insertion, `F` flips them, and `Shift+F` cycles the
+previewed pin side. The accepted placement persists that schematic-only
+orientation under `board.schematic.node_styles`.
 `src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
 oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the

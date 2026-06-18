@@ -1,7 +1,8 @@
 use eframe::egui;
 
 use super::sketch::{
-    self, ProjectSnapshot, SketchSelection, edge_label_position, sketch_wire_points, with_opacity,
+    self, ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, edge_label_position,
+    sketch_wire_points, with_opacity,
 };
 use super::sketch_canvas::WireDragTarget;
 use super::sketch_probes::{SketchProbeBadge, SketchProbeStatus};
@@ -250,10 +251,10 @@ pub(super) fn placement_ghost_rect(
     egui::Rect::from_center_size(center, size)
 }
 
-pub(super) fn placement_ghost_size(label: &str, rotation_deg: i32) -> egui::Vec2 {
+pub(super) fn placement_ghost_size(label: &str, style: SketchNodeStyle) -> egui::Vec2 {
     let width = (label.chars().count() as f32 * 7.0 + 56.0).clamp(120.0, 220.0);
     let size = egui::vec2(width, 72.0);
-    if matches!(rotation_deg.rem_euclid(360), 90 | 270) {
+    if matches!(style.rotation_deg.rem_euclid(360), 90 | 270) {
         egui::vec2(size.y.max(88.0), size.x.min(180.0))
     } else {
         size
@@ -265,7 +266,7 @@ pub(super) fn draw_placement_ghost(
     rect: egui::Rect,
     label: &str,
     target_clear: bool,
-    rotation_deg: i32,
+    style: SketchNodeStyle,
 ) {
     let accent = if target_clear {
         egui::Color32::from_rgb(95, 190, 255)
@@ -284,15 +285,49 @@ pub(super) fn draw_placement_ghost(
         egui::Stroke::new(2.0, accent),
         egui::StrokeKind::Inside,
     );
-    let pin_y = rect.center().y;
-    match rotation_deg.rem_euclid(360) {
+    let side = resolved_placement_pin_side(style);
+    match style.rotation_deg.rem_euclid(360) {
         90 | 270 => {
-            painter.circle_filled(egui::pos2(rect.center().x, rect.top()), 4.0, accent);
-            painter.circle_filled(egui::pos2(rect.center().x, rect.bottom()), 4.0, accent);
+            let y = match side {
+                SketchPinSide::Left => rect.top(),
+                SketchPinSide::Auto | SketchPinSide::Right => rect.bottom(),
+            };
+            let rail = egui::Rect::from_center_size(
+                egui::pos2(rect.center().x, y),
+                egui::vec2((rect.width() * 0.42).max(34.0), 3.0),
+            );
+            painter.rect_filled(rail, 2.0, accent);
+            painter.circle_filled(
+                egui::pos2(rect.center().x - rail.width() * 0.35, y),
+                4.0,
+                accent,
+            );
+            painter.circle_filled(
+                egui::pos2(rect.center().x + rail.width() * 0.35, y),
+                4.0,
+                accent,
+            );
         }
         _ => {
-            painter.circle_filled(egui::pos2(rect.left(), pin_y), 4.0, accent);
-            painter.circle_filled(egui::pos2(rect.right(), pin_y), 4.0, accent);
+            let x = match side {
+                SketchPinSide::Left => rect.left(),
+                SketchPinSide::Auto | SketchPinSide::Right => rect.right(),
+            };
+            let rail = egui::Rect::from_center_size(
+                egui::pos2(x, rect.center().y),
+                egui::vec2(3.0, (rect.height() * 0.55).max(34.0)),
+            );
+            painter.rect_filled(rail, 2.0, accent);
+            painter.circle_filled(
+                egui::pos2(x, rect.center().y - rail.height() * 0.32),
+                4.0,
+                accent,
+            );
+            painter.circle_filled(
+                egui::pos2(x, rect.center().y + rail.height() * 0.32),
+                4.0,
+                accent,
+            );
         }
     }
     let text = if target_clear {
@@ -307,14 +342,35 @@ pub(super) fn draw_placement_ghost(
         egui::FontId::monospace(11.0),
         egui::Color32::from_gray(238),
     );
-    if rotation_deg.rem_euclid(360) != 0 {
+    if style.rotation_deg.rem_euclid(360) != 0
+        || style.mirrored
+        || style.pin_side != SketchPinSide::Auto
+    {
+        let mut cues = Vec::new();
+        if style.rotation_deg.rem_euclid(360) != 0 {
+            cues.push(format!("{} deg", style.rotation_deg.rem_euclid(360)));
+        }
+        if style.mirrored {
+            cues.push("flip".to_string());
+        }
+        if style.pin_side != SketchPinSide::Auto {
+            cues.push(format!("pins {}", style.pin_side.as_str()));
+        }
         painter.text(
             rect.right_top() + egui::vec2(-6.0, 6.0),
             egui::Align2::RIGHT_TOP,
-            format!("{} deg", rotation_deg.rem_euclid(360)),
+            cues.join(" / "),
             egui::FontId::monospace(9.5),
             egui::Color32::from_gray(216),
         );
+    }
+}
+
+fn resolved_placement_pin_side(style: SketchNodeStyle) -> SketchPinSide {
+    match style.pin_side {
+        SketchPinSide::Left | SketchPinSide::Right => style.pin_side,
+        SketchPinSide::Auto if style.mirrored => SketchPinSide::Left,
+        SketchPinSide::Auto => SketchPinSide::Right,
     }
 }
 

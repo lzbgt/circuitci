@@ -259,6 +259,7 @@ impl CircuitCiApp {
                         self.refresh_next_library_component_id();
                     }
                 });
+                self.sketch_placement_orientation_controls(ui);
                 ui.horizontal(|ui| {
                     if ui
                         .add_enabled(
@@ -751,6 +752,8 @@ board:
             new_component_id: "U1".to_string(),
             sketch_library_place_armed: true,
             sketch_placement_rotation_deg: 180,
+            sketch_placement_mirrored: true,
+            sketch_placement_pin_side: crate::gui::sketch::SketchPinSide::Right,
             sketch_snap_enabled: false,
             ..Default::default()
         };
@@ -767,6 +770,11 @@ board:
         assert_eq!(position.x, 210.0);
         assert_eq!(position.y, 154.0);
         assert_eq!(component.style.rotation_deg, 180);
+        assert!(component.style.mirrored);
+        assert_eq!(
+            component.style.pin_side,
+            crate::gui::sketch::SketchPinSide::Right
+        );
         assert!(!app.sketch_library_place_armed);
         assert_eq!(
             app.selected_sketch_item,
