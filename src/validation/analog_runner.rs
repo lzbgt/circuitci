@@ -42,6 +42,7 @@ pub(super) fn run_ngspice(
     output: &Path,
     source_netlist: &Path,
     operating_probe_expressions: &[String],
+    mut on_progress: impl FnMut(&'static str, String),
 ) -> Result<NgspiceRun, NgspiceRunError> {
     let analog = scenario
         .analog
@@ -64,6 +65,10 @@ pub(super) fn run_ngspice(
     let log = run_dir.join("ngspice.log");
     let waveform = run_dir.join("waveform.csv");
     let embedded_backend = backend == "embedded_ngspice";
+    on_progress(
+        "Writing analog wrapper deck",
+        format!("Writing {}.", wrapper.to_string_lossy()),
+    );
     let wrapper_text = build_ngspice_wrapper(
         bound,
         scenario,
@@ -87,6 +92,15 @@ pub(super) fn run_ngspice(
 
     let embedded_commands =
         EmbeddedCommands::new(bound, scenario, &waveform, operating_probe_expressions);
+    on_progress(
+        "Running analog backend",
+        format!(
+            "{} transient for {} user probe(s) and {} operating probe(s).",
+            backend,
+            analog.probes.len(),
+            operating_probe_expressions.len()
+        ),
+    );
     let output = run_solver_with_timeout(
         backend,
         &wrapper,
@@ -101,6 +115,10 @@ pub(super) fn run_ngspice(
     log_text.push_str(&String::from_utf8_lossy(&output.stdout));
     log_text.push_str("\n\nSTDERR:\n");
     log_text.push_str(&String::from_utf8_lossy(&output.stderr));
+    on_progress(
+        "Writing analog solver log",
+        format!("Writing {}.", log.to_string_lossy()),
+    );
     fs::write(&log, &log_text).map_err(|error| {
         ngspice_error(
             format!("Failed to write ngspice log {}: {error}", log.display()),
@@ -134,8 +152,20 @@ pub(super) fn run_ngspice(
     }
     artifacts.push(waveform.clone());
     let probe_count = analog.probes.len() + operating_probe_expressions.len();
+    on_progress(
+        "Loading analog waveform",
+        format!(
+            "Reading {} with {} column(s).",
+            waveform.to_string_lossy(),
+            probe_count
+        ),
+    );
     let series = parse_waveform_csv(&waveform, probe_count)
         .map_err(|message| ngspice_error(message, artifacts.clone()))?;
+    on_progress(
+        "Loaded analog waveform",
+        format!("{} sample(s).", series.time_s.len()),
+    );
     Ok(NgspiceRun {
         artifacts,
         waveform,

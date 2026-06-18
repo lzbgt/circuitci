@@ -232,8 +232,8 @@ The supported desktop simulation path is:
    suggestions, validation, and analog simulation advance; KiCad/SPICE imports
    report parser, mapping/load, Board IR build/merge, and write phases, while
    validation reports project loading, model loading/binding, scenario
-   execution, profile coverage, report assembly, report writing, and markdown
-   report loading,
+   execution, analog transient scenario/deck/backend/waveform phases, profile
+   coverage, report assembly, report writing, and markdown report loading,
 31. scrub or play the simulation time cursor to drive graph runtime tinting,
 32. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,

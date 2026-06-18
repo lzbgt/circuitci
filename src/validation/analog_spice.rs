@@ -23,14 +23,21 @@ use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 
-pub(super) fn validate_spice_transient(
+pub(super) fn validate_spice_transient_with_progress<F>(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     findings: &mut Vec<Finding>,
     artifacts: &mut Vec<String>,
     waveforms: &mut Vec<String>,
     output: &Path,
-) {
+    mut on_progress: F,
+) where
+    F: FnMut(&'static str, String),
+{
+    on_progress(
+        "Preparing analog transient",
+        format!("Checking analog scenario {}.", scenario.name),
+    );
     let Some(analog) = &scenario.analog else {
         validation_input_missing(
             findings,
@@ -40,6 +47,15 @@ pub(super) fn validate_spice_transient(
         return;
     };
 
+    on_progress(
+        "Checking analog model evidence",
+        format!(
+            "{} model file(s), {} node binding(s), {} pin binding(s).",
+            analog.model_files.len(),
+            analog.node_bindings.len(),
+            analog.pin_bindings.len()
+        ),
+    );
     if let Some(finding) = validate_netlist_source(bound, scenario, artifacts) {
         findings.push(finding);
         return;
@@ -290,6 +306,10 @@ pub(super) fn validate_spice_transient(
     let run_dir = output
         .join("analog")
         .join(safe_artifact_name(&scenario.name));
+    on_progress(
+        "Preparing analog run directory",
+        format!("Creating {}.", run_dir.to_string_lossy()),
+    );
     if let Err(error) = fs::create_dir_all(&run_dir) {
         findings.push(Finding::critical(
             SPICE_TRANSIENT_ANALYSIS,
@@ -301,6 +321,13 @@ pub(super) fn validate_spice_transient(
         ));
         return;
     }
+    on_progress(
+        "Preparing analog deck",
+        format!(
+            "Resolving {} netlist source.",
+            netlist_source_name(&analog.netlist_source)
+        ),
+    );
     let source_netlist = match prepare_source_netlist(bound, scenario, &run_dir) {
         Ok(source_netlist) => {
             push_artifact(artifacts, &source_netlist);
@@ -319,12 +346,20 @@ pub(super) fn validate_spice_transient(
             return;
         }
     };
+    on_progress(
+        "Preparing analog operating probes",
+        format!("Collecting operating-limit probes for {}.", scenario.name),
+    );
     let operating_limits = operating_limit_probes(bound, scenario);
     if !operating_limits.metadata_findings.is_empty() {
         findings.extend(operating_limits.metadata_findings);
         return;
     }
 
+    on_progress(
+        "Selecting analog backend",
+        format!("Requested backend {}.", backend_name(&analog.backend)),
+    );
     let selected = select_backend(&analog.backend);
     let BackendSelection::Selected(backend) = selected else {
         let mut finding = match selected {
@@ -369,13 +404,34 @@ pub(super) fn validate_spice_transient(
         output,
         &source_netlist,
         &operating_expressions,
+        &mut on_progress,
     ) {
         Ok(run) => {
+            on_progress(
+                "Recording analog artifacts",
+                format!(
+                    "{} artifact(s), waveform {}.",
+                    run.artifacts.len(),
+                    run.waveform.to_string_lossy()
+                ),
+            );
             for artifact in &run.artifacts {
                 push_artifact(artifacts, artifact);
             }
             push_artifact(waveforms, &run.waveform);
+            on_progress(
+                "Evaluating analog assertions",
+                format!(
+                    "{} user probe(s), {} assertion(s).",
+                    run.user_probe_count,
+                    analog.assertions.len()
+                ),
+            );
             evaluate_waveform_assertions(scenario, &run, findings);
+            on_progress(
+                "Evaluating analog limits",
+                format!("{} operating probe(s).", operating_limits.probes.len()),
+            );
             evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
             evaluate_soa_limits(scenario, &run, &operating_limits, findings);
         }
@@ -397,6 +453,13 @@ pub(super) fn validate_spice_transient(
             );
             findings.push(finding);
         }
+    }
+}
+
+fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
+    match source {
+        AnalogNetlistSource::File => "file-backed",
+        AnalogNetlistSource::GeneratedFromBoard => "generated-from-Board",
     }
 }
 

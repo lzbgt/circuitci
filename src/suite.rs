@@ -302,7 +302,7 @@ where
             project.scenarios.len()
         ),
     );
-    let mut outcome = crate::validation::validate(&bound, output);
+    let mut outcome = crate::validation::validate_with_progress(&bound, output, &mut on_progress);
     on_progress("Applying profile coverage", format!("Profile {profile}."));
     outcome
         .limitations

@@ -161,6 +161,17 @@ pub fn profile_coverage_limitations(profile: &str, project: &BoardProject) -> Ve
 }
 
 pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
+    validate_with_progress(bound, output, |_, _| {})
+}
+
+pub fn validate_with_progress<F>(
+    bound: &BoundBoard<'_>,
+    output: &Path,
+    mut on_progress: F,
+) -> ValidationOutcome
+where
+    F: FnMut(&'static str, String),
+{
     let mut findings = bound.findings.clone();
     let mut limitations = model_quality_limitations(bound);
     if matches!(
@@ -459,13 +470,14 @@ pub fn validate(bound: &BoundBoard<'_>, output: &Path) -> ValidationOutcome {
                     io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)
                 }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
-                    analog_spice::validate_spice_transient(
+                    analog_spice::validate_spice_transient_with_progress(
                         bound,
                         scenario,
                         &mut findings,
                         &mut artifacts,
                         &mut waveforms,
                         output,
+                        &mut on_progress,
                     )
                 }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {
