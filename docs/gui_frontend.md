@@ -54,7 +54,10 @@ optional GUI feature and do not affect the default CLI build.
 `src/gui/jobs.rs` owns GUI background jobs for validation, scenario
 suggestions, and KiCad/SPICE import actions. Long-running work runs on a worker
 thread and reports back to the UI through a channel; cancel requests mark the
-in-flight result to be ignored when the engine or importer call returns.
+in-flight result to be ignored when the engine or importer call returns. It
+also owns the capped recent-job history used by the status panel to show final
+outcome, elapsed time, diagnostics, and output paths for completed, failed,
+stale, or canceled background actions.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
@@ -222,10 +225,12 @@ The supported desktop simulation path is:
    panel, or status panel; the current implementation ignores the worker result
    when it returns rather than preempting an in-flight importer, SPICE, or
    backend call,
-29. scrub or play the simulation time cursor to drive graph runtime tinting,
-30. hover graph nodes to inspect matching voltage/current/power probe values at
+29. review recent background job outcomes in the status panel, including
+   elapsed time, output path, and a compact diagnostic detail,
+30. scrub or play the simulation time cursor to drive graph runtime tinting,
+31. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-31. use visible schematic probe badges to find voltage/current/power probes,
+32. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
@@ -233,13 +238,13 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-32. use right-click component, net, and wire menus for common sketch actions
+33. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, and delete through the same validated Board IR
    mutation paths as the inspector and keyboard actions,
-33. observe generated decks, plotted CSV waveforms, cursor values, min/max
+34. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-34. edit the project/model evidence and rerun.
+35. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source

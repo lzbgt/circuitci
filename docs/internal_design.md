@@ -28,7 +28,10 @@ state, worker-thread launch, channel polling, stale-result rejection, and
 cancel-request handling for validation, scenario suggestion, and KiCad/SPICE
 import actions. Canceling a background job must not try to kill a Rust thread,
 importer, or backend process directly; it marks the current result as ignored
-when the worker returns. `src/gui/import_flow.rs` owns the Import stage UI plus KiCad
+when the worker returns. Recent job records are capped, in-memory workflow
+diagnostics with label, outcome, elapsed time, detail, and optional output path;
+they must not be serialized into Board IR or treated as design evidence.
+`src/gui/import_flow.rs` owns the Import stage UI plus KiCad
 schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name

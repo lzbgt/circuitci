@@ -178,6 +178,7 @@ pub struct CircuitCiApp {
     waveform_playing: bool,
     waveform_playback_speed: f64,
     background_job: Option<jobs::BackgroundGuiJob>,
+    background_job_history: Vec<jobs::BackgroundJobRecord>,
 }
 
 impl Default for CircuitCiApp {
@@ -269,6 +270,7 @@ impl Default for CircuitCiApp {
             waveform_playing: false,
             waveform_playback_speed: 1.0,
             background_job: None,
+            background_job_history: Vec::new(),
         }
     }
 }

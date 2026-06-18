@@ -9,11 +9,22 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
 
+const BACKGROUND_JOB_HISTORY_LIMIT: usize = 16;
+
 pub(super) struct BackgroundGuiJob {
     receiver: Receiver<BackgroundJobResult>,
     started_at: Instant,
     label: &'static str,
+    target: String,
     canceled: bool,
+}
+
+pub(super) struct BackgroundJobRecord {
+    pub(super) label: String,
+    pub(super) outcome: String,
+    pub(super) elapsed_secs: f32,
+    pub(super) detail: String,
+    pub(super) output_path: Option<String>,
 }
 
 enum BackgroundJobResult {
@@ -64,7 +75,8 @@ impl CircuitCiApp {
         let project_path = PathBuf::from(self.project_path.clone());
         let profile = self.profile.clone();
         let output_dir = PathBuf::from(self.output_dir.clone());
-        self.start_background_job("validation", move |sender| {
+        let target = format!("{} -> {}", project_path.display(), output_dir.display());
+        self.start_background_job("validation", target, move |sender| {
             let thread_project_path = project_path.clone();
             let thread_profile = profile.clone();
             let thread_output_dir = output_dir.clone();
@@ -87,7 +99,8 @@ impl CircuitCiApp {
     pub(super) fn suggest_scenarios(&mut self) {
         let project_path = PathBuf::from(self.project_path.clone());
         let profile = self.profile.clone();
-        self.start_background_job("scenario suggestions", move |sender| {
+        let target = format!("{} ({profile})", project_path.display());
+        self.start_background_job("scenario suggestions", target, move |sender| {
             let thread_project_path = project_path.clone();
             let thread_profile = profile.clone();
             thread::spawn(move || {
@@ -115,7 +128,8 @@ impl CircuitCiApp {
         let default_model = self.import_default_model.trim().to_string();
         let state_key = self.kicad_schematic_import_key();
         let prior_project_path = self.project_path.clone();
-        self.start_background_job("KiCad schematic import", move |sender| {
+        let target = format!("{} -> {}", schematic.display(), output.display());
+        self.start_background_job("KiCad schematic import", target, move |sender| {
             thread::spawn(move || {
                 let options = crate::importers::kicad::KicadImportOptions {
                     input: schematic,
@@ -149,7 +163,13 @@ impl CircuitCiApp {
         let output = Path::new(&self.import_pcb_output_path).to_path_buf();
         let state_key = self.kicad_pcb_import_key();
         let prior_project_path = self.project_path.clone();
-        self.start_background_job("KiCad PCB import", move |sender| {
+        let target = format!(
+            "{} + {} -> {}",
+            input.display(),
+            project.display(),
+            output.display()
+        );
+        self.start_background_job("KiCad PCB import", target, move |sender| {
             thread::spawn(move || {
                 let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
                     input,
@@ -200,7 +220,8 @@ impl CircuitCiApp {
         let max_step_us = self.import_spice_max_step_us;
         let state_key = self.spice_import_key();
         let prior_project_path = self.project_path.clone();
-        self.start_background_job("SPICE deck import", move |sender| {
+        let target = format!("{} -> {}", deck.display(), output.display());
+        self.start_background_job("SPICE deck import", target, move |sender| {
             thread::spawn(move || {
                 let options = crate::importers::spice::SpiceImportOptions {
                     input: deck.clone(),
@@ -252,6 +273,10 @@ impl CircuitCiApp {
         self.background_job.as_ref().map(|job| job.label)
     }
 
+    pub(super) fn background_job_target(&self) -> Option<&str> {
+        self.background_job.as_ref().map(|job| job.target.as_str())
+    }
+
     pub(super) fn background_job_cancel_requested(&self) -> bool {
         self.background_job.as_ref().is_some_and(|job| job.canceled)
     }
@@ -262,20 +287,34 @@ impl CircuitCiApp {
         };
         match job.receiver.try_recv() {
             Ok(result) => {
+                let label = job.label;
+                let target = job.target.clone();
+                let elapsed_secs = job.started_at.elapsed().as_secs_f32();
                 let canceled = self.background_job.as_ref().is_some_and(|job| job.canceled);
                 self.background_job = None;
                 if canceled {
                     self.status = "Background job canceled.".to_string();
                     self.push_diagnostic("Ignored canceled background job result.");
+                    self.push_background_job_record(label, "canceled", elapsed_secs, target, None);
                     return;
                 }
-                self.apply_background_job_result(result);
+                self.apply_background_job_result(result, elapsed_secs);
             }
             Err(TryRecvError::Empty) => {
                 ctx.request_repaint_after(Duration::from_millis(100));
             }
             Err(TryRecvError::Disconnected) => {
+                let label = job.label;
+                let target = job.target.clone();
+                let elapsed_secs = job.started_at.elapsed().as_secs_f32();
                 self.background_job = None;
+                self.push_background_job_record(
+                    label,
+                    "failed",
+                    elapsed_secs,
+                    format!("{target}: worker exited before returning a result."),
+                    None,
+                );
                 self.record_error(anyhow::anyhow!(
                     "Background worker exited before returning a result."
                 ));
@@ -283,7 +322,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn start_background_job<F>(&mut self, label: &'static str, spawn: F)
+    fn start_background_job<F>(&mut self, label: &'static str, target: String, spawn: F)
     where
         F: FnOnce(mpsc::Sender<BackgroundJobResult>),
     {
@@ -299,21 +338,28 @@ impl CircuitCiApp {
             receiver,
             started_at: Instant::now(),
             label,
+            target,
             canceled: false,
         });
         self.status = format!("Background {label} running.");
         self.push_diagnostic(&format!("Background {label} started."));
     }
 
-    fn apply_background_job_result(&mut self, result: BackgroundJobResult) {
+    fn apply_background_job_result(&mut self, result: BackgroundJobResult, elapsed_secs: f32) {
         match result {
-            BackgroundJobResult::Validation(result) => self.apply_validation_result(*result),
-            BackgroundJobResult::Suggestions(result) => self.apply_suggestion_result(*result),
-            BackgroundJobResult::ImportProject(result) => self.apply_import_project_result(*result),
+            BackgroundJobResult::Validation(result) => {
+                self.apply_validation_result(*result, elapsed_secs)
+            }
+            BackgroundJobResult::Suggestions(result) => {
+                self.apply_suggestion_result(*result, elapsed_secs)
+            }
+            BackgroundJobResult::ImportProject(result) => {
+                self.apply_import_project_result(*result, elapsed_secs)
+            }
         }
     }
 
-    fn apply_validation_result(&mut self, result: ValidationJobResult) {
+    fn apply_validation_result(&mut self, result: ValidationJobResult, elapsed_secs: f32) {
         if PathBuf::from(self.project_path.clone()) != result.project_path
             || self.profile != result.profile
             || PathBuf::from(self.output_dir.clone()) != result.output_dir
@@ -321,6 +367,16 @@ impl CircuitCiApp {
             self.status = "Ignored stale background validation result.".to_string();
             self.push_diagnostic(
                 "Ignored a background validation result because project/profile/output changed.",
+            );
+            self.push_background_job_record(
+                "validation",
+                "stale",
+                elapsed_secs,
+                format!(
+                    "Ignored result for {} because project/profile/output changed.",
+                    result.project_path.display()
+                ),
+                Some(result.output_dir.to_string_lossy().into_owned()),
             );
             return;
         }
@@ -350,18 +406,48 @@ impl CircuitCiApp {
                 self.push_diagnostic(&format!(
                     "Background validation report written; loaded {waveform_count} waveform view(s)."
                 ));
+                self.push_background_job_record(
+                    "validation",
+                    "completed",
+                    elapsed_secs,
+                    format!(
+                        "Validation {}; loaded {waveform_count} waveform view(s).",
+                        self.status.trim_start_matches("Validation ")
+                    ),
+                    Some(result.output_dir.to_string_lossy().into_owned()),
+                );
                 self.load_project_summary_unchecked();
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                let detail = format!("{error:#}");
+                self.push_background_job_record(
+                    "validation",
+                    "failed",
+                    elapsed_secs,
+                    detail,
+                    Some(result.output_dir.to_string_lossy().into_owned()),
+                );
+                self.record_error(error);
+            }
         }
     }
 
-    fn apply_suggestion_result(&mut self, result: SuggestionJobResult) {
+    fn apply_suggestion_result(&mut self, result: SuggestionJobResult, elapsed_secs: f32) {
         if PathBuf::from(self.project_path.clone()) != result.project_path
             || self.profile != result.profile
         {
             self.status = "Ignored stale scenario suggestion result.".to_string();
             self.push_diagnostic("Ignored scenario suggestions because project/profile changed.");
+            self.push_background_job_record(
+                "scenario suggestions",
+                "stale",
+                elapsed_secs,
+                format!(
+                    "Ignored suggestions for {} because project/profile changed.",
+                    result.project_path.display()
+                ),
+                None,
+            );
             return;
         }
         match result.result {
@@ -370,19 +456,46 @@ impl CircuitCiApp {
                 self.suggestions_yaml = yaml;
                 self.stage = Stage::Library;
                 self.push_diagnostic("Scenario suggestion YAML updated.");
+                self.push_background_job_record(
+                    "scenario suggestions",
+                    "completed",
+                    elapsed_secs,
+                    format!(
+                        "Scenario suggestions generated for {}.",
+                        result.project_path.display()
+                    ),
+                    None,
+                );
                 self.load_project_summary_unchecked();
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                let detail = format!("{error:#}");
+                self.push_background_job_record(
+                    "scenario suggestions",
+                    "failed",
+                    elapsed_secs,
+                    detail,
+                    None,
+                );
+                self.record_error(error);
+            }
         }
     }
 
-    fn apply_import_project_result(&mut self, result: ImportProjectJobResult) {
+    fn apply_import_project_result(&mut self, result: ImportProjectJobResult, elapsed_secs: f32) {
         if self.project_path != result.prior_project_path
             || self.import_state_key(result.kind) != result.state_key
         {
             self.status = "Ignored stale import result.".to_string();
             self.push_diagnostic(
                 "Ignored an import result because project or import settings changed.",
+            );
+            self.push_background_job_record(
+                result.kind.label(),
+                "stale",
+                elapsed_secs,
+                "Ignored import result because project or import settings changed.".to_string(),
+                Some(result.output_project_path.to_string_lossy().into_owned()),
             );
             return;
         }
@@ -394,12 +507,29 @@ impl CircuitCiApp {
                 }
                 self.status = result.success_status.to_string();
                 self.push_diagnostic(&result.success_diagnostic);
+                self.push_background_job_record(
+                    result.kind.label(),
+                    "completed",
+                    elapsed_secs,
+                    result.success_diagnostic,
+                    Some(result.output_project_path.to_string_lossy().into_owned()),
+                );
                 self.load_project_summary_unchecked();
                 if let Some(stage) = result.next_stage {
                     self.stage = stage;
                 }
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                let detail = format!("{error:#}");
+                self.push_background_job_record(
+                    result.kind.label(),
+                    "failed",
+                    elapsed_secs,
+                    detail,
+                    Some(result.output_project_path.to_string_lossy().into_owned()),
+                );
+                self.record_error(error);
+            }
         }
     }
 
@@ -444,9 +574,45 @@ impl CircuitCiApp {
     }
 }
 
+impl ImportProjectKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::KiCadSchematic => "KiCad schematic import",
+            Self::KiCadPcb => "KiCad PCB import",
+            Self::SpiceDeck => "SPICE deck import",
+        }
+    }
+}
+
+impl CircuitCiApp {
+    fn push_background_job_record(
+        &mut self,
+        label: &str,
+        outcome: &str,
+        elapsed_secs: f32,
+        detail: String,
+        output_path: Option<String>,
+    ) {
+        self.background_job_history.push(BackgroundJobRecord {
+            label: label.to_string(),
+            outcome: outcome.to_string(),
+            elapsed_secs,
+            detail,
+            output_path,
+        });
+        if self.background_job_history.len() > BACKGROUND_JOB_HISTORY_LIMIT {
+            let overflow = self.background_job_history.len() - BACKGROUND_JOB_HISTORY_LIMIT;
+            self.background_job_history.drain(0..overflow);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{CircuitCiApp, ImportProjectJobResult, ImportProjectKind, ValidationJobResult};
+    use super::{
+        BACKGROUND_JOB_HISTORY_LIMIT, CircuitCiApp, ImportProjectJobResult, ImportProjectKind,
+        ValidationJobResult,
+    };
     use std::path::PathBuf;
 
     #[test]
@@ -463,15 +629,20 @@ mod tests {
         app.profile = "default".to_string();
         app.output_dir = "out/new".to_string();
 
-        app.apply_validation_result(ValidationJobResult {
-            project_path: PathBuf::from("old.project.yaml"),
-            profile: "default".to_string(),
-            output_dir: PathBuf::from("out/new"),
-            result: Err(anyhow::anyhow!("should not be observed")),
-        });
+        app.apply_validation_result(
+            ValidationJobResult {
+                project_path: PathBuf::from("old.project.yaml"),
+                profile: "default".to_string(),
+                output_dir: PathBuf::from("out/new"),
+                result: Err(anyhow::anyhow!("should not be observed")),
+            },
+            1.25,
+        );
 
         assert_eq!(app.status, "Ignored stale background validation result.");
         assert!(app.report.is_none());
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(app.background_job_history[0].outcome, "stale");
     }
 
     #[test]
@@ -480,19 +651,47 @@ mod tests {
         app.project_path = "active.project.yaml".to_string();
         app.import_output_path = "out/new.project.yaml".to_string();
 
-        app.apply_import_project_result(ImportProjectJobResult {
-            kind: ImportProjectKind::KiCadSchematic,
-            prior_project_path: "different.project.yaml".to_string(),
-            state_key: app.kicad_schematic_import_key(),
-            output_project_path: PathBuf::from("out/new.project.yaml"),
-            import_pcb_project_path: Some("out/new.project.yaml".to_string()),
-            next_stage: None,
-            success_status: "should not apply",
-            success_diagnostic: "should not apply".to_string(),
-            result: Ok(()),
-        });
+        app.apply_import_project_result(
+            ImportProjectJobResult {
+                kind: ImportProjectKind::KiCadSchematic,
+                prior_project_path: "different.project.yaml".to_string(),
+                state_key: app.kicad_schematic_import_key(),
+                output_project_path: PathBuf::from("out/new.project.yaml"),
+                import_pcb_project_path: Some("out/new.project.yaml".to_string()),
+                next_stage: None,
+                success_status: "should not apply",
+                success_diagnostic: "should not apply".to_string(),
+                result: Ok(()),
+            },
+            2.0,
+        );
 
         assert_eq!(app.status, "Ignored stale import result.");
         assert_eq!(app.project_path, "active.project.yaml");
+        assert_eq!(app.background_job_history.len(), 1);
+        assert_eq!(
+            app.background_job_history[0].label,
+            "KiCad schematic import"
+        );
+    }
+
+    #[test]
+    fn job_history_is_capped() {
+        let mut app = CircuitCiApp::default();
+        for index in 0..(BACKGROUND_JOB_HISTORY_LIMIT + 3) {
+            app.push_background_job_record(
+                "job",
+                "completed",
+                index as f32,
+                format!("detail {index}"),
+                None,
+            );
+        }
+
+        assert_eq!(
+            app.background_job_history.len(),
+            BACKGROUND_JOB_HISTORY_LIMIT
+        );
+        assert_eq!(app.background_job_history[0].detail, "detail 3");
     }
 }

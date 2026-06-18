@@ -303,6 +303,7 @@ impl CircuitCiApp {
                 });
                 if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
                     let label = self.background_job_label().unwrap_or("job");
+                    let target = self.background_job_target().unwrap_or("").to_string();
                     ui.horizontal(|ui| {
                         ui.add(egui::Spinner::new());
                         let suffix = if self.background_job_cancel_requested() {
@@ -311,6 +312,9 @@ impl CircuitCiApp {
                             "running"
                         };
                         ui.label(format!("Background {label} {suffix}, {elapsed_secs:.1}s"));
+                        if !target.is_empty() {
+                            ui.monospace(&target);
+                        }
                         if ui
                             .add_enabled(
                                 !self.background_job_cancel_requested(),
@@ -320,6 +324,38 @@ impl CircuitCiApp {
                         {
                             self.cancel_background_job();
                         }
+                    });
+                }
+                if !self.background_job_history.is_empty() {
+                    egui::CollapsingHeader::new(format!(
+                        "Background Job History ({})",
+                        self.background_job_history.len()
+                    ))
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::Grid::new("background_job_history_grid")
+                            .num_columns(5)
+                            .striped(true)
+                            .show(ui, |ui| {
+                                ui.strong("Job");
+                                ui.strong("Result");
+                                ui.strong("Elapsed");
+                                ui.strong("Output");
+                                ui.strong("Detail");
+                                ui.end_row();
+                                for record in self.background_job_history.iter().rev().take(8) {
+                                    ui.label(&record.label);
+                                    ui.label(&record.outcome);
+                                    ui.label(format!("{:.1}s", record.elapsed_secs));
+                                    if let Some(output_path) = &record.output_path {
+                                        ui.monospace(output_path);
+                                    } else {
+                                        ui.label("-");
+                                    }
+                                    ui.label(&record.detail);
+                                    ui.end_row();
+                                }
+                            });
                     });
                 }
                 egui::ScrollArea::vertical().show(ui, |ui| {
