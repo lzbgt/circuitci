@@ -24,6 +24,7 @@ mod simulation;
 mod sketch;
 mod sketch_actions;
 mod sketch_inspector;
+mod sketch_navigator;
 mod sketch_probes;
 mod sketch_symbols;
 #[cfg(test)]
@@ -42,6 +43,7 @@ use sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
     default_probe_name_for_net,
 };
+use sketch_navigator::SketchNavigatorTarget;
 use sketch_probes::{
     SketchProbeBadge, SketchProbeStatus, draw_probe_badge, hit_test_probe_badge,
     probe_assertion_status,
@@ -198,6 +200,8 @@ pub struct CircuitCiApp {
     sketch_grid_enabled: bool,
     sketch_snap_enabled: bool,
     sketch_grid_step: f32,
+    sketch_navigator_query: String,
+    sketch_navigator_fit_target: Option<SketchNavigatorTarget>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -316,6 +320,8 @@ impl Default for CircuitCiApp {
             sketch_grid_enabled: true,
             sketch_snap_enabled: true,
             sketch_grid_step: DEFAULT_SKETCH_GRID_STEP,
+            sketch_navigator_query: String::new(),
+            sketch_navigator_fit_target: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -371,6 +377,7 @@ impl CircuitCiApp {
         if let Some(snapshot) = self.project_snapshot.clone() {
             ui.separator();
             self.sketch_edit_toolbar(ui);
+            self.sketch_navigator_panel(ui, &snapshot);
             ui.separator();
             ui.horizontal(|ui| {
                 self.draw_board_graph(ui, &snapshot);
@@ -591,6 +598,9 @@ impl CircuitCiApp {
         if self.sketch_fit_requested {
             self.fit_sketch_content(rect, snapshot);
             self.sketch_fit_requested = false;
+        }
+        if let Some(target) = self.sketch_navigator_fit_target.take() {
+            self.fit_sketch_navigator_target(rect, snapshot, &target);
         }
         self.handle_sketch_viewport_input(ui, rect, &response);
         let viewport = self.sketch_viewport();
