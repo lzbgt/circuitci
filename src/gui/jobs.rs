@@ -1,6 +1,6 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::simulation::load_report_waveforms;
-use super::{CircuitCiApp, Stage, suggest_from_gui, validate_from_gui};
+use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -143,7 +143,7 @@ impl CircuitCiApp {
         self.start_background_job(
             "scenario suggestions",
             target,
-            move |sender, _cancel_token| {
+            move |sender, cancel_token| {
                 let thread_project_path = project_path.clone();
                 let thread_profile = profile.clone();
                 thread::spawn(move || {
@@ -152,7 +152,11 @@ impl CircuitCiApp {
                         "Generating suggestions",
                         format!("{} ({thread_profile})", thread_project_path.display()),
                     );
-                    let result = suggest_from_gui(&thread_project_path, &thread_profile);
+                    let result = super::suggest_from_gui_with_cancel(
+                        &thread_project_path,
+                        &thread_profile,
+                        || cancel_token.load(Ordering::Relaxed),
+                    );
                     send_background_progress(
                         &sender,
                         "Suggestions finished",
@@ -186,7 +190,7 @@ impl CircuitCiApp {
         self.start_background_job(
             "KiCad schematic import",
             target,
-            move |sender, _cancel_token| {
+            move |sender, cancel_token| {
                 thread::spawn(move || {
                     let options = crate::importers::kicad::KicadImportOptions {
                         input: schematic,
@@ -195,10 +199,12 @@ impl CircuitCiApp {
                         default_model,
                         mapping,
                     };
-                    let result = crate::importers::kicad_sch::import_kicad_schematic_with_progress(
-                        &options,
-                        |stage, detail| send_background_progress(&sender, stage, detail),
-                    );
+                    let result =
+                        crate::importers::kicad_sch::import_kicad_schematic_with_progress_and_cancel(
+                            &options,
+                            |stage, detail| send_background_progress(&sender, stage, detail),
+                            || cancel_token.load(Ordering::Relaxed),
+                        );
                     let output_project_path = output.clone();
                     send_background_progress(
                         &sender,
@@ -235,16 +241,17 @@ impl CircuitCiApp {
             project.display(),
             output.display()
         );
-        self.start_background_job("KiCad PCB import", target, move |sender, _cancel_token| {
+        self.start_background_job("KiCad PCB import", target, move |sender, cancel_token| {
             thread::spawn(move || {
                 let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
                     input,
                     project,
                     output: output.clone(),
                 };
-                let result = crate::importers::kicad_pcb::import_kicad_pcb_placements_with_progress(
+                let result = crate::importers::kicad_pcb::import_kicad_pcb_placements_with_progress_and_cancel(
                     &options,
                     |stage, detail| send_background_progress(&sender, stage, detail),
+                    || cancel_token.load(Ordering::Relaxed),
                 )
                 .map(|summary| {
                     format!(
@@ -293,7 +300,7 @@ impl CircuitCiApp {
         let state_key = self.spice_import_key();
         let prior_project_path = self.project_path.clone();
         let target = format!("{} -> {}", deck.display(), output.display());
-        self.start_background_job("SPICE deck import", target, move |sender, _cancel_token| {
+        self.start_background_job("SPICE deck import", target, move |sender, cancel_token| {
             thread::spawn(move || {
                 let options = crate::importers::spice::SpiceImportOptions {
                     input: deck.clone(),
@@ -303,9 +310,10 @@ impl CircuitCiApp {
                     stop_time_us,
                     max_step_us,
                 };
-                let result = crate::importers::spice::import_spice_with_progress(
+                let result = crate::importers::spice::import_spice_with_progress_and_cancel(
                     &options,
                     |stage, detail| send_background_progress(&sender, stage, detail),
+                    || cancel_token.load(Ordering::Relaxed),
                 );
                 send_background_progress(
                     &sender,

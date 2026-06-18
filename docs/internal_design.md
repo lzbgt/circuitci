@@ -28,10 +28,11 @@ state, worker-thread launch, channel polling, stale-result rejection, and
 cancel-request handling for validation, scenario suggestion, and KiCad/SPICE
 import actions. Canceling a background job must not try to kill a Rust thread.
 It sets a shared worker cancellation flag, terminates interruptible external
-ngspice child processes during validation, and marks the current result as
-ignored when the worker returns. Synchronous importer work and embedded backend
-calls are still non-preemptive unless their internals expose safe cancellation
-points. Active job events and recent job records are capped, in-memory workflow
+ngspice child processes during validation, stops scenario suggestion and
+KiCad/SPICE import workflows at safe phase-boundary checkpoints, and marks any
+late result as ignored when the worker returns. Embedded backend calls are
+still non-preemptive unless their internals expose safe cancellation points.
+Active job events and recent job records are capped, in-memory workflow
 diagnostics with stage, label, outcome, elapsed time, detail, and optional
 output path; they must not be serialized into Board IR or treated as design
 evidence. Validation progress should be emitted from the same path

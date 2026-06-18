@@ -213,11 +213,24 @@ pub fn import_kicad_pcb_placements_with_progress<F>(
 where
     F: FnMut(&'static str, String),
 {
+    import_kicad_pcb_placements_with_progress_and_cancel(options, &mut on_progress, || false)
+}
+
+pub fn import_kicad_pcb_placements_with_progress_and_cancel<F, C>(
+    options: &KicadPcbPlacementImportOptions,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<KicadPcbImportSummary>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
     on_progress(
         "Parsing KiCad PCB",
         format!("Reading {}.", options.input.display()),
     );
     let parsed_pcb = parse_kicad_pcb(&options.input)?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Loading Board IR",
         format!("Reading {}.", options.project.display()),
@@ -234,6 +247,7 @@ where
             options.project.display()
         )
     })?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Merging PCB evidence",
         format!(
@@ -245,6 +259,7 @@ where
         ),
     );
     let summary = merge_pcb_into_project(&mut project_yaml, &parsed_pcb)?;
+    ensure_not_canceled(&should_cancel)?;
     if summary.placements == 0 {
         bail!(
             "KiCad PCB {} has no footprint references matching Board IR project components in {}.",
@@ -268,6 +283,7 @@ where
         &mut project_yaml,
         options.project.parent().unwrap_or_else(|| Path::new(".")),
     )?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Serializing Board IR",
         format!("Writing {}.", options.output.display()),
@@ -280,6 +296,13 @@ where
     fs::write(&options.output, yaml)
         .with_context(|| format!("Failed to write {}", options.output.display()))?;
     Ok(summary)
+}
+
+fn ensure_not_canceled(should_cancel: &impl Fn() -> bool) -> Result<()> {
+    if should_cancel() {
+        bail!("KiCad PCB import canceled before completion.");
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -1569,7 +1592,10 @@ fn ensure_mapping_field_mut<'a>(mapping: &'a mut Mapping, key: &str) -> Result<&
 
 #[cfg(test)]
 mod tests {
-    use super::{KicadPcbPlacementImportOptions, import_kicad_pcb_placements_with_progress};
+    use super::{
+        KicadPcbPlacementImportOptions, import_kicad_pcb_placements_with_progress,
+        import_kicad_pcb_placements_with_progress_and_cancel,
+    };
 
     #[test]
     fn import_kicad_pcb_with_progress_emits_phases() {
@@ -1597,5 +1623,25 @@ mod tests {
         ] {
             assert!(stages.iter().any(|stage| stage == expected), "{expected}");
         }
+    }
+
+    #[test]
+    fn import_kicad_pcb_cancellation_stops_before_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("canceled_pcb.project.yaml");
+
+        let error = import_kicad_pcb_placements_with_progress_and_cancel(
+            &KicadPcbPlacementImportOptions {
+                input: "demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb".into(),
+                project: "demos/smart_robot/circuitci/wheel_actuator/project.yaml".into(),
+                output: output.clone(),
+            },
+            |_, _| {},
+            || true,
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("canceled"));
+        assert!(!output.exists());
     }
 }

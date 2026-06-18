@@ -210,11 +210,24 @@ pub fn import_spice_with_progress<F>(options: &SpiceImportOptions, mut on_progre
 where
     F: FnMut(&'static str, String),
 {
+    import_spice_with_progress_and_cancel(options, &mut on_progress, || false)
+}
+
+pub fn import_spice_with_progress_and_cancel<F, C>(
+    options: &SpiceImportOptions,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<()>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
     on_progress(
         "Parsing SPICE deck",
         format!("Reading {}.", options.input.display()),
     );
     let deck = parse_spice_deck(&options.input)?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Preparing output",
         format!(
@@ -229,6 +242,7 @@ where
             output_dir.display()
         )
     })?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Building Board IR",
         format!(
@@ -239,6 +253,7 @@ where
         ),
     );
     let project = build_project_yaml(options, &deck, output_dir)?;
+    ensure_not_canceled(&should_cancel)?;
     on_progress(
         "Serializing Board IR",
         format!("Writing {}.", options.output.display()),
@@ -250,6 +265,13 @@ where
     );
     fs::write(&options.output, yaml)
         .with_context(|| format!("Failed to write {}", options.output.display()))?;
+    Ok(())
+}
+
+fn ensure_not_canceled(should_cancel: &impl Fn() -> bool) -> Result<()> {
+    if should_cancel() {
+        anyhow::bail!("SPICE import canceled before completion.");
+    }
     Ok(())
 }
 
@@ -909,8 +931,8 @@ fn sanitize_identifier(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        SpiceImportOptions, import_spice_with_progress, logical_lines, parse_spice_deck,
-        parse_spice_number,
+        SpiceImportOptions, import_spice_with_progress, import_spice_with_progress_and_cancel,
+        logical_lines, parse_spice_deck, parse_spice_number,
     };
 
     #[test]
@@ -983,5 +1005,27 @@ C1 out 0 100n
         ] {
             assert!(stages.iter().any(|stage| stage == expected), "{expected}");
         }
+    }
+
+    #[test]
+    fn import_spice_cancellation_stops_before_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("canceled.project.yaml");
+        let error = import_spice_with_progress_and_cancel(
+            &SpiceImportOptions {
+                input: "examples/import_spice_rc/deck.cir".into(),
+                output: output.clone(),
+                name: "canceled_spice".to_string(),
+                backend: "auto".to_string(),
+                stop_time_us: 1000.0,
+                max_step_us: 1.0,
+            },
+            |_, _| {},
+            || true,
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("canceled"));
+        assert!(!output.exists());
     }
 }

@@ -1132,16 +1132,35 @@ where
     Ok((report, markdown))
 }
 
-fn suggest_from_gui(project_path: &Path, profile: &str) -> Result<String> {
+fn suggest_from_gui_with_cancel<C>(
+    project_path: &Path,
+    profile: &str,
+    should_cancel: C,
+) -> Result<String>
+where
+    C: Fn() -> bool,
+{
     let project = crate::board_ir::load_project(project_path)?;
+    if should_cancel() {
+        anyhow::bail!("Scenario suggestions canceled before completion.");
+    }
     let (library, library_findings) = crate::library::load_library(project_path, &project);
+    if should_cancel() {
+        anyhow::bail!("Scenario suggestions canceled before completion.");
+    }
     let bound = crate::library::bind_project(&project, library, library_findings);
+    if should_cancel() {
+        anyhow::bail!("Scenario suggestions canceled before completion.");
+    }
     let profile = if profile.trim().is_empty() || profile == "default" {
         None
     } else {
         Some(profile)
     };
     let report = crate::scenario_suggestions::suggest_scenarios_for_profile(&bound, profile);
+    if should_cancel() {
+        anyhow::bail!("Scenario suggestions canceled before completion.");
+    }
     serde_yaml_ng::to_string(&report).context("Failed to serialize scenario suggestions.")
 }
 
@@ -1437,6 +1456,18 @@ board:
         ] {
             assert!(stages.iter().any(|stage| stage == expected), "{expected}");
         }
+    }
+
+    #[test]
+    fn suggest_from_gui_cancellation_stops_before_yaml_output() {
+        let error = super::suggest_from_gui_with_cancel(
+            Path::new("examples/scenario_suggestions_power_reset/project.yaml"),
+            "default",
+            || true,
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("canceled"));
     }
 
     #[test]

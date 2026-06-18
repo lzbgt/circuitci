@@ -55,11 +55,12 @@ optional GUI feature and do not affect the default CLI build.
 suggestions, and KiCad/SPICE import actions. Long-running work runs on a worker
 thread and reports back to the UI through a channel; cancel requests set a
 shared worker flag, terminate external ngspice validation processes where
-possible, and still mark the in-flight result to be ignored when the engine or
-importer call returns. It also owns lightweight progress events for the active
-job and the capped recent-job history used by the status panel to show final
-outcome, elapsed time, diagnostics, and output paths for completed, failed,
-stale, or canceled background actions.
+possible, stop scenario suggestions and KiCad/SPICE import jobs at safe
+phase-boundary checkpoints, and still mark any late in-flight result to be
+ignored when a worker returns. It also owns lightweight progress events for the
+active job and the capped recent-job history used by the status panel to show
+final outcome, elapsed time, diagnostics, and output paths for completed,
+failed, stale, or canceled background actions.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
@@ -225,8 +226,9 @@ The supported desktop simulation path is:
    remains responsive,
 28. cancel a running background job from the Simulation menu, left project
    panel, or status panel; external ngspice validation subprocesses are
-   terminated where possible, while importer work and embedded backend calls
-   still finish before their result is ignored,
+   terminated where possible, scenario suggestions and importers stop at safe
+   phase checkpoints, and embedded backend calls still finish before their
+   result is ignored,
 29. review recent background job outcomes in the status panel, including
    elapsed time, output path, and a compact diagnostic detail,
 30. watch active background job stages in the status panel as imports,
