@@ -20,10 +20,10 @@ file-backed SPICE decks, and report artifacts so headless agents can reproduce
 GUI actions.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
-logic in one source file. `src/gui.rs` owns application state and
-validation/report command calls. `src/gui/shell.rs` owns menus, workflow stage
-routing, the left project panel, the status panel, Project/Reports views, and
-finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
+logic in one source file. `src/gui.rs` owns application state, the `eframe`
+update loop, and shared validation/report command helpers. `src/gui/shell.rs`
+owns menus, workflow stage routing, the left project panel, the status panel,
+Project/Reports views, and finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
 state, worker-thread launch, channel polling, stale-result rejection, and
 cancel-request handling for validation, scenario suggestion, and KiCad/SPICE
 import actions. Canceling a background job must not try to kill a Rust thread.
@@ -50,10 +50,13 @@ schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
-owns Board IR graph snapshots, graph layout/drawing helpers, bounded full-list logical layout for pannable imported designs, schematic
-grid/snap helpers, orthogonal wire visuals, net label/junction rendering, wire
-hit-testing, and model-port default pin/net seeding for library-backed
-component insertion. Inserted library
+owns Board IR graph snapshots, graph layout helpers, bounded full-list logical
+layout for pannable imported designs, schematic grid/snap helpers, orthogonal
+wire geometry, wire hit-testing, and model-port default pin/net seeding for
+library-backed component insertion. `src/gui/sketch_canvas.rs` owns the
+Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
+routing, wire preview drawing, hover tooltips, context menus, and runtime tint
+display. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
@@ -169,7 +172,7 @@ remove assertions for that probe while keeping the probe, and Delete/Backspace
 may remove the underlying Board IR probe through `src/gui/analog.rs`; probe
 removal must also remove assertions that reference that probe before re-parsing
 Board IR. Badges must not become a second persisted probe store. Component,
-net, and wire context menus in `src/gui.rs` are interaction routing only. They
+net, and wire context menus in `src/gui/sketch_canvas.rs` are interaction routing only. They
 may select/inspect the target, start or complete visual wire mode, add
 supported voltage/current/power probes, or delete through the existing
 validated Board IR mutation helpers. Rendered wire menus operate on the

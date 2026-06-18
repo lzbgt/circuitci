@@ -26,6 +26,7 @@ circuitci-gui
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
+  -> src/gui/sketch_canvas.rs
   -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_navigator.rs
@@ -47,7 +48,8 @@ circuitci-gui
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
-`src/gui.rs` owns application state and validation/report command calls.
+`src/gui.rs` owns application state, the `eframe` update loop, and shared
+validation/report command helpers.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow stage bar,
 left project panel, status panel, central stage routing, Project landing view,
 Reports view, and finding/limitation rendering. `src/gui/import_flow.rs` owns
@@ -71,12 +73,15 @@ typed operation-canceled error so checkpoint cancellation is shown as
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
-load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
-graph layout/drawing helpers, persisted schematic node positions/styles, drag
-updates, view-state pan/zoom transforms, schematic grid/snap helpers,
-orthogonal wire visuals, net label/junction rendering, wire hit-testing,
-fit-content bounds, bounded full-list logical layout for pannable imported designs, Shift-drag marquee selection, and model-aware pin-anchor
-rendering.
+load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot,
+graph layout helpers, persisted schematic node positions/styles, view-state
+transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
+hit-testing, fit-content bounds, bounded full-list logical layout for pannable
+imported designs, and model-aware pin-anchor layout/rendering primitives.
+`src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
+order, viewport input, hit-test routing, marquee and drag event routing, wire
+preview drawing, node/wire/probe/bundle/hierarchy connector tooltips, and
+right-click context menus over component, net, wire, and probe badge targets.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
