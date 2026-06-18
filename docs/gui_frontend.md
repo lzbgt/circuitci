@@ -82,7 +82,9 @@ graph layout helpers, persisted schematic node positions/styles, view-state
 transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
 hit-testing, fit-all and fit-selection bounds, bounded full-list logical layout
 for pannable imported designs, and model-aware pin-anchor layout/rendering
-primitives.
+primitives. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
+geometry helpers used for custom route display, hit-testing, insertion, and
+drag previews.
 `src/gui/sketch_duplicate.rs` owns the selected-component/local-net duplication
 YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_rename.rs` owns structured component/net rename mutations that
@@ -226,8 +228,9 @@ form:
   pin-to-pin and pin-to-net
   wire assignment by clicking or dragging component pin anchors to pins, nets,
   or wires with target highlighting and snap preview, graph-node
-  direct schematic wire-route shaping by dragging a rendered wire or existing
-  route handle, route-handle insertion/deletion from wire context menus,
+  direct schematic wire-route shaping by dragging a rendered wire segment or
+  existing route handle, route-handle insertion/deletion from wire context
+  menus,
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
@@ -318,7 +321,7 @@ The supported desktop simulation path is:
 19. create a visual wire by clicking or dragging from a rendered source pin
    anchor to a destination pin anchor, net node, or existing wire, with the
    preview snapping to and highlighting valid release targets,
-20. drag a rendered wire to persist a schematic display waypoint under
+20. drag a rendered wire segment to insert a schematic display waypoint under
    `board.schematic.wire_routes`, then drag the visible route handle to refine
    it, insert or delete individual route handles from the wire menu, or clear
    the custom route without changing the underlying pin/net connectivity,
@@ -408,6 +411,9 @@ clicking a wire may select its underlying Board IR net, but grid visibility,
 net-label placement, junction dot rendering, hit-test regions, custom schematic
 wire waypoints, and orthogonal routing style do not create independent electrical
 connectivity or physical PCB placement evidence.
+Custom wire routes render as orthogonal schematic polylines between persisted
+waypoints, so route handles can be placed freely while the visible schematic
+path remains EDA-style horizontal/vertical geometry.
 
 Canvas probe insertion is also a Board IR scenario edit, not a hidden runtime
 probe layer. The selected-net inspector appends a voltage probe to an existing

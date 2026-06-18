@@ -67,7 +67,9 @@ owns Board IR graph snapshots, graph layout helpers, bounded full-list logical
 layout for pannable imported designs, schematic grid/snap helpers, orthogonal
 wire geometry, schematic wire route waypoint metadata, wire hit-testing,
 shared sketch YAML helpers, and model-port default pin/net seeding for
-library-backed component insertion.
+library-backed component insertion. `src/gui/sketch_routes.rs` owns shared
+orthogonal wire-route geometry helpers so display, hit-testing, insertion, and
+drag preview all use the same route semantics.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag

@@ -146,7 +146,25 @@ fn wire_route_insert_index_targets_nearest_segment() {
 
     assert_eq!(index, 1);
     assert_eq!(points[1], egui::pos2(118.0, 66.0));
-    assert_eq!(sketch_wire_points(&edge).len(), 4);
+}
+
+#[test]
+fn routed_wire_points_are_orthogonal_between_custom_handles() {
+    let edge = SketchEdge {
+        net_id: "net_a".to_string(),
+        source: "R1.A".to_string(),
+        start: egui::pos2(20.0, 20.0),
+        end: egui::pos2(220.0, 120.0),
+        route: vec![egui::pos2(80.0, 40.0), egui::pos2(160.0, 96.0)],
+    };
+
+    let points = sketch_wire_points(&edge);
+
+    assert!(points.contains(&egui::pos2(80.0, 40.0)));
+    assert!(points.contains(&egui::pos2(160.0, 96.0)));
+    assert!(points.windows(2).all(|segment| {
+        (segment[0].x - segment[1].x).abs() <= 0.5 || (segment[0].y - segment[1].y).abs() <= 0.5
+    }));
 }
 
 #[test]

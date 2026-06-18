@@ -5,6 +5,7 @@ use std::path::Path;
 use super::sketch_probes::{
     SketchProbe, SketchProbeBadge, derive_project_probes, layout_probe_badges,
 };
+use super::sketch_routes;
 use super::sketch_spice::SketchComponentSpice;
 use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, draw_symbol_glyph};
 
@@ -1380,27 +1381,11 @@ pub(super) fn persisted_wire_route_point_from_screen_with_snap(
 }
 
 pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<egui::Pos2> {
-    if (start.x - end.x).abs() <= 0.5 || (start.y - end.y).abs() <= 0.5 {
-        return vec![start, end];
-    }
-    let mid_x = (start.x + end.x) / 2.0;
-    vec![
-        start,
-        egui::pos2(mid_x, start.y),
-        egui::pos2(mid_x, end.y),
-        end,
-    ]
+    sketch_routes::orthogonal_points(start, end)
 }
 
 pub(super) fn sketch_wire_points(edge: &SketchEdge) -> Vec<egui::Pos2> {
-    if edge.route.is_empty() {
-        return orthogonal_wire_points(edge.start, edge.end);
-    }
-    let mut points = Vec::with_capacity(edge.route.len() + 2);
-    points.push(edge.start);
-    points.extend(edge.route.iter().copied());
-    points.push(edge.end);
-    points
+    sketch_routes::wire_points(edge.start, &edge.route, edge.end)
 }
 
 pub(super) fn edge_label_position(edge: &SketchEdge) -> egui::Pos2 {

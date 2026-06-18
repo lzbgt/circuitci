@@ -49,7 +49,10 @@ normalized board, layout, library, scenario, and process evidence.
 Sketch wire-route handles are schematic display metadata only. Dragging,
 inserting, deleting, or clearing route handles updates
 `board.schematic.wire_routes`; electrical connectivity remains exclusively in
-Board IR component pin-to-net bindings.
+Board IR component pin-to-net bindings. Custom routes are rendered as
+orthogonal polylines between persisted waypoints, and `gui::sketch_routes`
+keeps route display, hit-testing, insertion, and drag preview geometry
+consistent.
 
 ## Core Contracts
 

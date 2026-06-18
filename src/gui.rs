@@ -34,6 +34,7 @@ mod sketch_navigator;
 mod sketch_palette;
 mod sketch_probes;
 mod sketch_rename;
+mod sketch_routes;
 mod sketch_spice;
 mod sketch_symbols;
 #[cfg(test)]

@@ -20,7 +20,7 @@ use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
     waveform_probe_value_for_badge,
 };
-use super::{CircuitCiApp, Stage, analog, sketch_bundles, sketch_hierarchy};
+use super::{CircuitCiApp, Stage, analog, sketch_bundles, sketch_hierarchy, sketch_routes};
 
 impl CircuitCiApp {
     pub(super) fn draw_board_graph_sized(
@@ -592,11 +592,14 @@ impl CircuitCiApp {
                     self.sketch_snap_enabled,
                     self.sketch_grid_step,
                 );
+                let mut points = edge.route.clone();
+                let point_index = wire_route_insert_index(edge, preview);
+                points.insert(point_index, preview);
                 self.sketch_wire_route_drag = Some(super::SketchWireRouteDrag {
                     net_id: edge.net_id.clone(),
                     source: edge.source.clone(),
-                    points: vec![preview],
-                    point_index: 0,
+                    points,
+                    point_index,
                 });
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
             } else if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
@@ -1460,30 +1463,7 @@ pub(super) fn wire_drag_target_at(
 }
 
 pub(super) fn closest_point_on_edge(position: egui::Pos2, edge: &sketch::SketchEdge) -> egui::Pos2 {
-    let points = sketch_wire_points(edge);
-    points
-        .windows(2)
-        .map(|segment| closest_point_on_segment(position, segment[0], segment[1]))
-        .min_by(|left, right| {
-            left.distance_sq(position)
-                .partial_cmp(&right.distance_sq(position))
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .unwrap_or(edge.end)
-}
-
-fn closest_point_on_segment(
-    position: egui::Pos2,
-    start: egui::Pos2,
-    end: egui::Pos2,
-) -> egui::Pos2 {
-    let segment = end - start;
-    let length_sq = segment.length_sq();
-    if length_sq <= f32::EPSILON {
-        return start;
-    }
-    let t = ((position - start).dot(segment) / length_sq).clamp(0.0, 1.0);
-    start + segment * t
+    sketch_routes::closest_point_on_polyline(position, &sketch_wire_points(edge))
 }
 
 pub(super) fn schematic_canvas_size(available: egui::Vec2) -> egui::Vec2 {
@@ -1660,10 +1640,7 @@ fn draw_wire_route_preview(
     edge: &sketch::SketchEdge,
     route_points: &[egui::Pos2],
 ) {
-    let mut points = Vec::with_capacity(route_points.len() + 2);
-    points.push(edge.start);
-    points.extend(route_points.iter().copied());
-    points.push(edge.end);
+    let points = sketch_routes::wire_points(edge.start, route_points, edge.end);
     draw_wire_points(
         painter,
         &points,
@@ -1696,16 +1673,7 @@ pub(super) fn hit_test_wire_route_handle(
 }
 
 pub(super) fn wire_route_insert_index(edge: &sketch::SketchEdge, position: egui::Pos2) -> usize {
-    sketch_wire_points(edge)
-        .windows(2)
-        .enumerate()
-        .map(|(index, segment)| {
-            let closest = closest_point_on_segment(position, segment[0], segment[1]);
-            (index, closest.distance_sq(position))
-        })
-        .min_by(|(_, left), (_, right)| left.total_cmp(right))
-        .map(|(index, _)| index)
-        .unwrap_or(edge.route.len())
+    sketch_routes::route_insert_index(edge.start, &edge.route, edge.end, position)
 }
 
 fn draw_wire_polyline(
