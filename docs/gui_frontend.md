@@ -27,6 +27,7 @@ circuitci-gui
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_canvas.rs
+  -> src/gui/sketch_canvas_interaction.rs
   -> src/gui/sketch_canvas_menus.rs
   -> src/gui/sketch_canvas_render.rs
   -> src/gui/sketch_hierarchy.rs
@@ -116,10 +117,13 @@ double-click/context actions route back to the same inline ID/value editors.
 Its dock controls expose transient reference/value visibility plus
 auto-arrange/reset actions for persisted label positions.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
-order, viewport input, hit-test routing, marquee and drag event routing,
-pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
-active multi-bend wire drawing, overview-minimap event routing, and graph
-hover/runtime routing. `src/gui/sketch_render.rs` owns graph node and pin-anchor
+order, event routing, marquee and drag dispatch, pin-anchor drag-to-wire
+completion, direct schematic wire-route drag editing, active multi-bend wire
+drawing, overview-minimap event routing, and graph hover/runtime routing.
+`src/gui/sketch_canvas_interaction.rs` owns reusable canvas interaction
+primitives: viewport zoom math, schematic canvas sizing, wire target
+hit-testing, route-handle hit-testing, and placement orientation cycling.
+`src/gui/sketch_render.rs` owns graph node and pin-anchor
 paint helpers, including runtime tinting, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns canvas-local
 tooltip and paint helpers for wires, route handles, wire previews, wire target

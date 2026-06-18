@@ -2,7 +2,7 @@ use super::sketch::{
     SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection, SketchViewport,
     sketch_wire_points,
 };
-use super::sketch_canvas::{
+use super::sketch_canvas_interaction::{
     WireDragTarget, closest_point_on_edge, hit_test_wire_route_handle, wire_drag_target_at,
     wire_route_insert_index, zoom_viewport_around,
 };

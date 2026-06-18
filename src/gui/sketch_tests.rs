@@ -10,7 +10,7 @@ use super::sketch::{
     remove_net, remove_schematic_wire_route, sketch_graph_bounds, sketch_wire_points,
     snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
 };
-use super::sketch_canvas::schematic_canvas_size;
+use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,

@@ -4,7 +4,7 @@ use super::sketch::{
     self, ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, edge_label_position,
     sketch_wire_points, with_opacity,
 };
-use super::sketch_canvas::WireDragTarget;
+use super::sketch_canvas_interaction::WireDragTarget;
 use super::sketch_probes::{SketchProbeBadge, SketchProbeStatus};
 use super::sketch_routes;
 

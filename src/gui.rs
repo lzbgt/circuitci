@@ -25,6 +25,7 @@ mod sketch;
 mod sketch_actions;
 mod sketch_bundles;
 mod sketch_canvas;
+mod sketch_canvas_interaction;
 mod sketch_canvas_menus;
 mod sketch_canvas_render;
 #[cfg(test)]

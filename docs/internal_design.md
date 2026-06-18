@@ -74,10 +74,12 @@ active wire preview, and drag preview all use the same route semantics.
 the user is drawing a pin connection.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
-Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
-routing, pin-anchor drag-to-wire completion, direct wire-route drag editing,
-active multi-bend wire drawing, overview-minimap event routing, and runtime
-tint routing. `src/gui/sketch_render.rs` owns graph node and pin-anchor
+Sketch-stage canvas shell: drawing order, event routing, pin-anchor drag-to-wire
+completion, direct wire-route drag editing, active multi-bend wire drawing,
+overview-minimap event routing, and runtime tint routing.
+`src/gui/sketch_canvas_interaction.rs` owns reusable interaction primitives:
+viewport zoom math, schematic canvas sizing, wire target hit-testing,
+route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
 painting, including runtime tinting, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
