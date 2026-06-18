@@ -70,11 +70,13 @@ default pin/net seeding for library-backed component insertion.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
-routing, wire preview drawing, hover tooltips, context menus, and runtime tint
-display. Blank-canvas primary drag and touchpad scroll should pan the schematic
-viewport, pointer-focused pinch/Cmd-scroll should zoom around the cursor,
-Shift-drag remains marquee selection, and component drags must only move
-objects when the drag starts on a component. Inserted library
+routing, pin-anchor drag-to-wire completion, wire preview drawing, hover
+tooltips, context menus, and runtime tint display. Blank-canvas primary drag
+and touchpad scroll should pan the schematic viewport, pointer-focused
+pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
+selection, pin-anchor drag should start visual wire mode instead of moving the
+component, and component drags must only move objects when the drag starts on a
+component. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
@@ -124,12 +126,12 @@ insertion for generated source branches plus generated passive and
 diode/BJT/MOSFET current-sense branches, and selected-component power-probe
 insertion for those same supported generated branches. `src/gui/sketch_probes.rs`
 owns derived schematic voltage/current/power probe badge targeting, layout,
-hit-testing, and drawing. Rendered pin anchors are UI
-affordances derived from component pin bindings; clicking an anchor may start
-or complete a wire assignment. Pin-to-pin wiring should reuse a source or
-target pin net when one already exists, or create a generated Board IR net when
-both pins are unbound. The persisted result must remain `board.nets` plus
-component `pins`, not a second edge list. Canvas pan/zoom, Home, Fit All, Fit
+hit-testing, and drawing. Rendered pin anchors are UI affordances derived from
+component pin bindings; clicking or dragging an anchor may start or complete a
+wire assignment. Pin-to-pin wiring should reuse a source or target pin net when
+one already exists, or create a generated Board IR net when both pins are
+unbound. The persisted result must remain `board.nets` plus component `pins`,
+not a second edge list. Canvas pan/zoom, Home, Fit All, Fit
 Selection, and marquee selection are GUI view/selection state only; they must
 not be serialized as board evidence. Fit commands should operate on current
 schematic graph bounds so imported designs can be recovered after pan/zoom and

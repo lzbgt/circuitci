@@ -387,17 +387,7 @@ impl CircuitCiApp {
                         anchor.pin.clone(),
                     );
                 } else {
-                    self.set_single_sketch_selection(Some(SketchSelection::Component(
-                        anchor.component_id.clone(),
-                    )));
-                    self.pin_edit_id = anchor.pin.clone();
-                    self.pin_edit_net = anchor.net.clone();
-                    self.wire_pin_id = anchor.pin.clone();
-                    self.wire_from_component = Some(anchor.component_id.clone());
-                    self.status = format!(
-                        "Wire mode: click another pin or net node to connect {}.{}.",
-                        anchor.component_id, anchor.pin
-                    );
+                    self.start_visual_wire_from_anchor(anchor);
                 }
             } else if let Some(SketchSelection::Net(net_id)) = &clicked
                 && let Some(component_id) = self.wire_from_component.clone()
@@ -424,6 +414,12 @@ impl CircuitCiApp {
         if response.drag_started_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
+            let clicked_anchor = graph.pin_anchors.iter().find(|anchor| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.anchor_visible(anchor))
+                    && anchor.pos.distance(position) <= 8.0
+            });
             let clicked_node = graph
                 .nodes
                 .iter()
@@ -434,7 +430,9 @@ impl CircuitCiApp {
                         && node.rect.contains(position)
                 })
                 .map(|node| node.selection.clone());
-            if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
+            if let Some(anchor) = clicked_anchor {
+                self.start_visual_wire_from_anchor(anchor);
+            } else if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
                 self.marquee_start = Some(position);
             } else if clicked_node.is_none() {
                 self.sketch_pan_drag_active = true;
@@ -466,6 +464,7 @@ impl CircuitCiApp {
             );
         } else if response.dragged_by(egui::PointerButton::Primary)
             && !self.sketch_pan_drag_active
+            && self.wire_from_component.is_none()
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -505,6 +504,33 @@ impl CircuitCiApp {
         {
             self.apply_marquee_selection(egui::Rect::from_two_pos(start, end), &graph);
         }
+        if response.drag_stopped_by(egui::PointerButton::Primary)
+            && self.wire_from_component.is_some()
+            && let Some(position) = response
+                .interact_pointer_pos()
+                .or_else(|| ui.ctx().pointer_hover_pos())
+            && let Some(target) = wire_drag_target_at(
+                &graph,
+                position,
+                |anchor| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.anchor_visible(anchor))
+                },
+                |edge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.edge_visible(edge))
+                },
+                |node| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.interaction_visible(&node.selection))
+                },
+            )
+        {
+            self.apply_wire_drag_target(target);
+        }
         if response.drag_stopped_by(egui::PointerButton::Primary) {
             self.sketch_pan_drag_active = false;
         }
@@ -533,15 +559,18 @@ impl CircuitCiApp {
             && ui.input(|input| {
                 (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::V)
             });
-        let cancel_place_pressed =
+        let cancel_canvas_mode_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
-        if cancel_place_pressed
+        if cancel_canvas_mode_pressed
             && (self.sketch_palette_place_armed || self.sketch_library_place_armed)
         {
             self.sketch_palette_place_armed = false;
             self.sketch_library_place_armed = false;
             self.status = "Canvas placement canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.wire_from_component.is_some() {
+            self.wire_from_component = None;
+            self.status = "Wire mode canceled.".to_string();
         } else if let Some(badge) = hovered_probe_badge {
             if quick_above_pressed {
                 self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
@@ -709,6 +738,43 @@ impl CircuitCiApp {
         if ui.button("Remove Probe").clicked() {
             self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
             ui.close();
+        }
+    }
+
+    fn start_visual_wire_from_anchor(&mut self, anchor: &sketch::SketchPinAnchor) {
+        self.set_single_sketch_selection(Some(SketchSelection::Component(
+            anchor.component_id.clone(),
+        )));
+        self.pin_edit_id = anchor.pin.clone();
+        self.pin_edit_net = anchor.net.clone();
+        self.wire_pin_id = anchor.pin.clone();
+        self.wire_from_component = Some(anchor.component_id.clone());
+        self.status = format!(
+            "Wire mode: drag or click another pin, net, or wire to connect {}.{}.",
+            anchor.component_id, anchor.pin
+        );
+    }
+
+    fn apply_wire_drag_target(&mut self, target: WireDragTarget<'_>) {
+        let Some(source_component_id) = self.wire_from_component.clone() else {
+            return;
+        };
+        match target {
+            WireDragTarget::Pin(anchor) => {
+                if source_component_id == anchor.component_id
+                    && self.wire_pin_id.trim() == anchor.pin
+                {
+                    return;
+                }
+                self.apply_visual_pin_wire(
+                    source_component_id,
+                    anchor.component_id.clone(),
+                    anchor.pin.clone(),
+                );
+            }
+            WireDragTarget::Net(net_id) => {
+                self.apply_visual_wire(source_component_id, net_id.to_string());
+            }
         }
     }
 
@@ -960,6 +1026,38 @@ fn zoom_viewport_around(
     (new_zoom, focus_offset - logical_focus * new_zoom)
 }
 
+enum WireDragTarget<'a> {
+    Pin(&'a sketch::SketchPinAnchor),
+    Net(&'a str),
+}
+
+fn wire_drag_target_at<'a>(
+    graph: &'a sketch::SketchGraph,
+    position: egui::Pos2,
+    anchor_visible: impl Fn(&sketch::SketchPinAnchor) -> bool,
+    edge_visible: impl Fn(&sketch::SketchEdge) -> bool,
+    node_visible: impl Fn(&sketch::SketchNode) -> bool,
+) -> Option<WireDragTarget<'a>> {
+    if let Some(anchor) = graph
+        .pin_anchors
+        .iter()
+        .find(|anchor| anchor_visible(anchor) && anchor.pos.distance(position) <= 10.0)
+    {
+        return Some(WireDragTarget::Pin(anchor));
+    }
+    if let Some(SketchSelection::Net(net_id)) = graph
+        .nodes
+        .iter()
+        .find(|node| node_visible(node) && node.rect.contains(position))
+        .map(|node| &node.selection)
+    {
+        return Some(WireDragTarget::Net(net_id.as_str()));
+    }
+    hit_test_wire(graph, position)
+        .filter(|edge| edge_visible(edge))
+        .map(|edge| WireDragTarget::Net(edge.net_id.as_str()))
+}
+
 pub(super) fn schematic_canvas_size(available: egui::Vec2) -> egui::Vec2 {
     egui::vec2(available.x.max(560.0), available.y.max(520.0))
 }
@@ -1172,7 +1270,12 @@ fn wire_preview_start(
 
 #[cfg(test)]
 mod tests {
-    use super::zoom_viewport_around;
+    use super::{WireDragTarget, wire_drag_target_at, zoom_viewport_around};
+    use crate::gui::sketch::{
+        SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection,
+    };
+    use crate::gui::sketch_probes::SketchProbeBadge;
+    use crate::gui::sketch_symbols::SketchSymbolKind;
     use eframe::egui;
 
     #[test]
@@ -1188,5 +1291,65 @@ mod tests {
 
         assert!((logical_before.x - logical_after.x).abs() < 1e-3);
         assert!((logical_before.y - logical_after.y).abs() < 1e-3);
+    }
+
+    #[test]
+    fn wire_drag_target_prefers_pin_then_net_then_wire() {
+        let graph = SketchGraph {
+            nodes: vec![SketchNode {
+                selection: SketchSelection::Net("net_mid".to_string()),
+                label: "net_mid".to_string(),
+                detail: String::new(),
+                symbol: SketchSymbolKind::Net,
+                style: Default::default(),
+                rect: egui::Rect::from_min_size(egui::pos2(90.0, 90.0), egui::vec2(80.0, 40.0)),
+            }],
+            pin_anchors: vec![SketchPinAnchor {
+                component_id: "R1".to_string(),
+                pin: "A".to_string(),
+                net: "net_a".to_string(),
+                pos: egui::pos2(100.0, 100.0),
+                label_pos: egui::pos2(104.0, 100.0),
+                label_align: egui::Align2::LEFT_CENTER,
+            }],
+            edges: vec![SketchEdge {
+                net_id: "wire_net".to_string(),
+                source: "R2.B".to_string(),
+                start: egui::pos2(20.0, 200.0),
+                end: egui::pos2(220.0, 200.0),
+            }],
+            probe_badges: Vec::<SketchProbeBadge>::new(),
+        };
+
+        match wire_drag_target_at(
+            &graph,
+            egui::pos2(100.0, 100.0),
+            |_| true,
+            |_| true,
+            |_| true,
+        ) {
+            Some(WireDragTarget::Pin(anchor)) => assert_eq!(anchor.pin, "A"),
+            _ => panic!("expected pin target"),
+        }
+        match wire_drag_target_at(
+            &graph,
+            egui::pos2(130.0, 110.0),
+            |_| true,
+            |_| true,
+            |_| true,
+        ) {
+            Some(WireDragTarget::Net(net)) => assert_eq!(net, "net_mid"),
+            _ => panic!("expected net target"),
+        }
+        match wire_drag_target_at(
+            &graph,
+            egui::pos2(120.0, 202.0),
+            |_| true,
+            |_| true,
+            |_| true,
+        ) {
+            Some(WireDragTarget::Net(net)) => assert_eq!(net, "wire_net"),
+            _ => panic!("expected wire net target"),
+        }
     }
 }

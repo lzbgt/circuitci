@@ -94,9 +94,10 @@ for passive and independent-source primitives, updates exact generated/source
 branch probe expressions when a primitive prefix changes, and reparses the
 edited YAML before the GUI accepts the mutation.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
-order, viewport input, hit-test routing, marquee and drag event routing, wire
-preview drawing, node/wire/probe/bundle/hierarchy connector tooltips, and
-right-click context menus over component, net, wire, and probe badge targets.
+order, viewport input, hit-test routing, marquee and drag event routing,
+pin-anchor drag-to-wire completion, wire preview drawing,
+node/wire/probe/bundle/hierarchy connector tooltips, and right-click context
+menus over component, net, wire, and probe badge targets.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
@@ -105,9 +106,9 @@ drag/nudge/alignment/distribution, and batched selected-item deletion as
 validated Board IR YAML edits. It also owns the transient component clipboard
 used to copy selected components and paste duplicates at a target canvas
 location through validated Board IR mutations.
-Visual wire creation can start from a
-rendered pin anchor and can terminate on another pin anchor or an existing net
-node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
+Visual wire creation can start from a rendered pin anchor by click or drag and
+can terminate on another pin anchor, an existing net node, or an existing wire.
+Pin-to-pin wiring reuses an existing pin net when possible and otherwise
 creates a generated Board IR net through the same mutation path instead of
 introducing a second connection model.
 `src/gui/sketch_bundles.rs` owns conservative, derived net-bundle grouping,
@@ -215,7 +216,8 @@ form:
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
   pin-to-pin and pin-to-net
-  wire assignment by clicking component pin anchors or net nodes, graph-node
+  wire assignment by clicking or dragging component pin anchors to pins, nets,
+  or wires, graph-node
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
@@ -303,8 +305,8 @@ The supported desktop simulation path is:
 17. rename selected components or nets through validated Board IR edits that
    update schematic metadata and generated analog bindings,
 18. assign or remove selected component pin bindings to existing nets,
-19. create a visual wire by clicking a rendered source pin anchor and then a
-   destination pin anchor or net node,
+19. create a visual wire by clicking or dragging from a rendered source pin
+   anchor to a destination pin anchor, net node, or existing wire,
 20. inspect Board IR connections through orthogonal wire routes, net labels,
    junction dots, and clickable wire-to-net selection rendered over the
    persisted pin/net graph,
