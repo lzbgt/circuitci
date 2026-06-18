@@ -78,6 +78,8 @@ graph layout helpers, persisted schematic node positions/styles, view-state
 transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
 hit-testing, fit-content bounds, bounded full-list logical layout for pannable
 imported designs, and model-aware pin-anchor layout/rendering primitives.
+`src/gui/sketch_duplicate.rs` owns the selected-component/local-net duplication
+YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, viewport input, hit-test routing, marquee and drag event routing, wire
 preview drawing, node/wire/probe/bundle/hierarchy connector tooltips, and

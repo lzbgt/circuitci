@@ -25,6 +25,7 @@ mod sketch;
 mod sketch_actions;
 mod sketch_bundles;
 mod sketch_canvas;
+mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inspector;
 mod sketch_navigator;

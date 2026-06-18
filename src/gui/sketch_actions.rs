@@ -1,9 +1,9 @@
 use super::sketch::{
-    self, ProjectSnapshot, SketchSelection, SketchViewport, duplicate_components_with_local_nets,
-    edit_schematic_node_positions, layout_sketch_graph,
-    persisted_node_position_from_screen_with_snap, remove_component, remove_net,
-    sketch_graph_bounds,
+    self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
+    layout_sketch_graph, persisted_node_position_from_screen_with_snap, remove_component,
+    remove_net, sketch_graph_bounds,
 };
+use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::{CircuitCiApp, SketchGroupAction};
 use eframe::egui;
 

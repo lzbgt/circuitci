@@ -52,8 +52,10 @@ owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout helpers, bounded full-list logical
 layout for pannable imported designs, schematic grid/snap helpers, orthogonal
-wire geometry, wire hit-testing, and model-port default pin/net seeding for
-library-backed component insertion. `src/gui/sketch_canvas.rs` owns the
+wire geometry, wire hit-testing, shared sketch YAML helpers, and model-port
+default pin/net seeding for library-backed component insertion.
+`src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
+mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, wire preview drawing, hover tooltips, context menus, and runtime tint
 display. Inserted library
@@ -66,8 +68,9 @@ IR components, nets, pins, and optional schematic node positions/styles.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
 selected-item deletion, and selected-component duplication actions that compose
-lower-level sketch YAML mutations. Duplication may copy selected components and
-nets whose references are wholly inside the selected component set, but it must
+lower-level sketch YAML mutations. `src/gui/sketch_duplicate.rs` may copy
+selected components and nets whose references are wholly inside the selected
+component set, but it must
 leave externally referenced nets shared, strip imported component source
 provenance from the duplicates, avoid copying PCB/layout evidence, and re-parse
 Board IR before committing the edit. `src/gui/sketch_navigator.rs` owns derived searchable component,

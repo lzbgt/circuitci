@@ -3,13 +3,14 @@ use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
-    duplicate_components_with_local_nets, edge_label_position, edit_schematic_component_style,
-    edit_schematic_node_position, edit_schematic_node_positions, hit_test_wire,
-    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
-    orthogonal_wire_points, persisted_node_position_from_screen,
-    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
-    remove_net, sketch_graph_bounds, snap_screen_point_to_grid, validate_board_ir_yaml_text,
+    edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
+    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
+    layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
+    snap_screen_point_to_grid, validate_board_ir_yaml_text,
 };
+use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
 };
