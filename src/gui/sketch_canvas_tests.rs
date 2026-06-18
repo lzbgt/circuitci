@@ -3,9 +3,10 @@ use super::sketch::{
     sketch_wire_points,
 };
 use super::sketch_canvas::{
-    WireDragTarget, closest_point_on_edge, hit_test_wire_route_handle, placement_ghost_rect,
-    wire_drag_target_at, wire_route_insert_index, zoom_viewport_around,
+    WireDragTarget, closest_point_on_edge, hit_test_wire_route_handle, wire_drag_target_at,
+    wire_route_insert_index, zoom_viewport_around,
 };
+use super::sketch_canvas_render::placement_ghost_rect;
 use super::sketch_net_labels::SketchNetLabelBadge;
 use super::sketch_probes::SketchProbeBadge;
 use super::sketch_symbols::SketchSymbolKind;

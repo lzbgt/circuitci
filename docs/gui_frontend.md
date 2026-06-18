@@ -28,6 +28,7 @@ circuitci-gui
   -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_canvas.rs
   -> src/gui/sketch_canvas_menus.rs
+  -> src/gui/sketch_canvas_render.rs
   -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_net_labels.rs
@@ -100,11 +101,12 @@ branch probe expressions when a primitive prefix changes, and reparses the
 edited YAML before the GUI accepts the mutation.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, viewport input, hit-test routing, marquee and drag event routing,
-pin-anchor drag-to-wire completion, snap-aware wire preview and target
-highlight drawing, visible schematic wire-route handles, direct schematic
-wire-route drag editing, active multi-bend wire drawing, canvas target
-tooltips, and graph hover/runtime tint display. `src/gui/sketch_canvas_menus.rs`
-owns right-click menus for component, net, wire, probe-badge, and blank-canvas
+pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
+active multi-bend wire drawing, overview-minimap event routing, and graph
+hover/runtime routing. `src/gui/sketch_canvas_render.rs` owns canvas-local
+tooltip and paint helpers for wires, route handles, wire previews, wire target
+affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+right-click menus for component, net, wire, probe-badge, and blank-canvas
 targets, including route-handle actions and named-net/off-page label placement
 actions.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class

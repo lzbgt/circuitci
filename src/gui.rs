@@ -26,6 +26,7 @@ mod sketch_actions;
 mod sketch_bundles;
 mod sketch_canvas;
 mod sketch_canvas_menus;
+mod sketch_canvas_render;
 #[cfg(test)]
 mod sketch_canvas_tests;
 mod sketch_connectivity;
@@ -909,7 +910,7 @@ mod tests {
         edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
         edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
     };
-    use super::sketch_canvas::component_context_pin;
+    use super::sketch_canvas_render::component_context_pin;
     use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {

@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use super::sketch::{self, ProjectSnapshot, SketchSelection, edge_label_position};
-use super::sketch_canvas::component_context_pin;
+use super::sketch_canvas_render::component_context_pin;
 use super::sketch_probes::SketchProbeBadge;
 use super::{CircuitCiApp, Stage};
 

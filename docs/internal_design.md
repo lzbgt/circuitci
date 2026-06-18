@@ -75,12 +75,14 @@ the user is drawing a pin connection.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
-routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
-highlight drawing, visible wire-route handles, direct wire-route drag editing
-plus active multi-bend wire drawing, hover tooltips, and runtime tint display.
-`src/gui/sketch_canvas_menus.rs` owns right-click menus for component, net,
-wire, probe badge, route-handle, and blank-canvas targets, including route
-handle insertion/deletion and custom-route clearing. Blank-canvas primary drag
+routing, pin-anchor drag-to-wire completion, direct wire-route drag editing,
+active multi-bend wire drawing, overview-minimap event routing, and runtime
+tint routing. `src/gui/sketch_canvas_render.rs` owns the canvas-local paint and
+tooltip helpers for wires, route handles, wire previews, wire target
+affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+right-click menus for component, net, wire, probe badge, route-handle, and
+blank-canvas targets, including route handle insertion/deletion and
+custom-route clearing. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
 selection, pin-anchor drag should start visual wire mode instead of moving the
