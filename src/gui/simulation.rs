@@ -73,14 +73,8 @@ impl CircuitCiApp {
             {
                 self.run_scope_model();
             }
-            if ui.button("Fit Time").clicked()
-                && let Some((start_us, end_us)) = super::waveform::waveform_time_range_for_view(
-                    &self.waveforms,
-                    self.selected_waveform,
-                )
-            {
-                self.waveform_cursor_a_us = start_us;
-                self.waveform_cursor_b_us = end_us;
+            if ui.button("Fit Time").clicked() {
+                self.fit_waveform_time_window();
             }
             if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
                 let label = self.background_job_label().unwrap_or("job");

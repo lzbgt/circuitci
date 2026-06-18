@@ -521,6 +521,8 @@ impl CircuitCiApp {
                 self.waveform_cursor_a_us = 0.0;
                 self.waveform_cursor_b_us = 0.0;
                 self.waveform_playing = false;
+                self.waveform_window_start_us = None;
+                self.waveform_window_end_us = None;
                 self.stage = if waveform_count == 0 {
                     Stage::Reports
                 } else {

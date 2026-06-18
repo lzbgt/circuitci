@@ -54,6 +54,8 @@ impl CircuitCiApp {
         self.waveform_math_right = probe_index;
         self.waveform_cursor_a_us = 0.0;
         self.waveform_cursor_b_us = 0.0;
+        self.waveform_window_start_us = None;
+        self.waveform_window_end_us = None;
         self.waveform_playing = false;
         true
     }
@@ -118,6 +120,8 @@ impl CircuitCiApp {
                     self.waveform_math_name.clear();
                     self.waveform_cursor_a_us = 0.0;
                     self.waveform_cursor_b_us = 0.0;
+                    self.waveform_window_start_us = None;
+                    self.waveform_window_end_us = None;
                     self.waveform_playing = false;
                 }
             }
@@ -188,24 +192,32 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         );
-        draw_waveform_plot_sized(
+        let visible_window = self.visible_waveform_time_window();
+        if let Some((start_us, end_us)) = draw_waveform_plot_sized(
             ui,
             &self.waveforms,
             &traces,
             self.waveform_cursor_a_us,
             self.waveform_cursor_b_us,
+            visible_window,
             scope_plot_size(desired_size),
-        );
+        ) {
+            self.set_waveform_time_window(start_us, end_us);
+        }
     }
 
     fn waveform_playback_panel(&mut self, ui: &mut egui::Ui) {
-        let Some((start_us, end_us)) =
+        let Some((full_start_us, full_end_us)) =
             waveform_time_range_for_view(&self.waveforms, self.selected_waveform)
         else {
             return;
         };
-        if self.waveform_cursor_a_us < start_us || self.waveform_cursor_a_us > end_us {
-            self.waveform_cursor_a_us = start_us;
+        let (window_start_us, window_end_us) = self
+            .visible_waveform_time_window()
+            .unwrap_or((full_start_us, full_end_us));
+        if self.waveform_cursor_a_us < window_start_us || self.waveform_cursor_a_us > window_end_us
+        {
+            self.waveform_cursor_a_us = window_start_us;
         }
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
@@ -221,12 +233,15 @@ impl CircuitCiApp {
                     self.waveform_playing = !self.waveform_playing;
                 }
                 if ui.button("Start").clicked() {
-                    self.waveform_cursor_a_us = start_us;
-                    self.waveform_cursor_b_us = start_us;
+                    self.waveform_cursor_a_us = window_start_us;
+                    self.waveform_cursor_b_us = window_start_us;
                     self.waveform_playing = false;
                 }
                 ui.add(
-                    egui::Slider::new(&mut self.waveform_cursor_a_us, start_us..=end_us)
+                    egui::Slider::new(
+                        &mut self.waveform_cursor_a_us,
+                        window_start_us..=window_end_us,
+                    )
                         .text("time")
                         .suffix(" us")
                         .show_value(true),
@@ -240,10 +255,101 @@ impl CircuitCiApp {
                         .suffix("x"),
                 );
             });
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Time Window");
+                if ui.button("Fit Time").clicked() {
+                    self.fit_waveform_time_window();
+                }
+                if ui.button("Zoom In").clicked() {
+                    self.zoom_waveform_time_window(0.5);
+                }
+                if ui.button("Zoom Out").clicked() {
+                    self.zoom_waveform_time_window(2.0);
+                }
+                if ui.button("Pan Left").clicked() {
+                    self.pan_waveform_time_window(-0.25);
+                }
+                if ui.button("Pan Right").clicked() {
+                    self.pan_waveform_time_window(0.25);
+                }
+            });
+            let mut edited_start = window_start_us;
+            let mut edited_end = window_end_us;
+            ui.horizontal_wrapped(|ui| {
+                ui.label("start");
+                let start_changed = ui
+                    .add(
+                        egui::DragValue::new(&mut edited_start)
+                            .speed(1.0)
+                            .suffix(" us"),
+                    )
+                    .changed();
+                ui.label("end");
+                let end_changed = ui
+                    .add(
+                        egui::DragValue::new(&mut edited_end)
+                            .speed(1.0)
+                            .suffix(" us"),
+                    )
+                    .changed();
+                if start_changed || end_changed {
+                    self.set_waveform_time_window(edited_start, edited_end);
+                }
+                ui.label(format!("full {:.3}..{:.3} us", full_start_us, full_end_us));
+            });
             ui.small(
-                "Cursor A drives graph hover probes and runtime node tinting. Cursor B follows during playback/scrub.",
+                "Drag the scope plot to pan time; use trackpad/mouse wheel over the plot to zoom around the pointer.",
             );
         });
+    }
+
+    pub(super) fn fit_waveform_time_window(&mut self) {
+        if let Some((start_us, end_us)) =
+            waveform_time_range_for_view(&self.waveforms, self.selected_waveform)
+        {
+            self.waveform_window_start_us = None;
+            self.waveform_window_end_us = None;
+            self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
+            self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
+        }
+    }
+
+    fn visible_waveform_time_window(&self) -> Option<(f64, f64)> {
+        waveform_time_window_for_view(
+            &self.waveforms,
+            self.selected_waveform,
+            self.waveform_window_start_us,
+            self.waveform_window_end_us,
+        )
+    }
+
+    fn set_waveform_time_window(&mut self, start_us: f64, end_us: f64) {
+        let Some((start_us, end_us)) =
+            clamp_waveform_time_window(&self.waveforms, self.selected_waveform, start_us, end_us)
+        else {
+            return;
+        };
+        self.waveform_window_start_us = Some(start_us);
+        self.waveform_window_end_us = Some(end_us);
+        self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
+        self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
+    }
+
+    fn zoom_waveform_time_window(&mut self, scale: f64) {
+        let Some((start_us, end_us)) = self.visible_waveform_time_window() else {
+            return;
+        };
+        let center_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
+        let (new_start, new_end) = zoom_time_window(start_us, end_us, center_us, scale);
+        self.set_waveform_time_window(new_start, new_end);
+    }
+
+    fn pan_waveform_time_window(&mut self, span_fraction: f64) {
+        let Some((start_us, end_us)) = self.visible_waveform_time_window() else {
+            return;
+        };
+        let delta_us = (end_us - start_us) * span_fraction;
+        self.set_waveform_time_window(start_us + delta_us, end_us + delta_us);
     }
 
     fn selected_scope_trace(&self) -> WaveformTraceRef {
@@ -729,6 +835,66 @@ pub(super) fn waveform_time_range_for_view(
     waveforms
         .get(waveform_index)
         .and_then(waveform_time_range_us)
+}
+
+fn waveform_time_window_for_view(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    start_us: Option<f64>,
+    end_us: Option<f64>,
+) -> Option<(f64, f64)> {
+    match (start_us, end_us) {
+        (Some(start_us), Some(end_us)) => {
+            clamp_waveform_time_window(waveforms, waveform_index, start_us, end_us)
+        }
+        _ => waveform_time_range_for_view(waveforms, waveform_index),
+    }
+}
+
+fn clamp_waveform_time_window(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    start_us: f64,
+    end_us: f64,
+) -> Option<(f64, f64)> {
+    let (full_start_us, full_end_us) = waveform_time_range_for_view(waveforms, waveform_index)?;
+    if !start_us.is_finite() || !end_us.is_finite() {
+        return Some((full_start_us, full_end_us));
+    }
+    let (mut start_us, mut end_us) = ordered_pair(start_us, end_us);
+    let full_span = positive_span(full_start_us, full_end_us);
+    let min_span = (full_span * 0.0001).max(1e-9);
+    if end_us - start_us < min_span {
+        let center = (start_us + end_us) * 0.5;
+        start_us = center - min_span * 0.5;
+        end_us = center + min_span * 0.5;
+    }
+    if start_us < full_start_us {
+        let shift = full_start_us - start_us;
+        start_us += shift;
+        end_us += shift;
+    }
+    if end_us > full_end_us {
+        let shift = end_us - full_end_us;
+        start_us -= shift;
+        end_us -= shift;
+    }
+    start_us = start_us.clamp(full_start_us, full_end_us);
+    end_us = end_us.clamp(full_start_us, full_end_us);
+    if end_us <= start_us {
+        Some((full_start_us, full_end_us))
+    } else {
+        Some((start_us, end_us))
+    }
+}
+
+fn zoom_time_window(start_us: f64, end_us: f64, focus_us: f64, scale: f64) -> (f64, f64) {
+    let scale = scale.clamp(0.05, 20.0);
+    let span = positive_span(start_us, end_us);
+    let new_span = span * scale;
+    let focus_ratio = ((focus_us - start_us) / span).clamp(0.0, 1.0);
+    let new_start = focus_us - new_span * focus_ratio;
+    (new_start, new_start + new_span)
 }
 
 pub(super) fn waveform_probe_value_for_badge(
@@ -1267,18 +1433,28 @@ fn draw_waveform_plot_sized(
     traces: &[WaveformTraceRef],
     cursor_a_us: f64,
     cursor_b_us: f64,
+    visible_window_us: Option<(f64, f64)>,
     desired_size: egui::Vec2,
-) {
+) -> Option<(f64, f64)> {
     let Some(primary) = traces
         .first()
         .and_then(|trace| waveform_trace(waveforms, *trace))
     else {
         ui.label("No valid scope trace is selected.");
-        return;
+        return None;
     };
-    let Some((x_min, x_max, y_min, y_max)) = waveform_trace_bounds(waveforms, traces) else {
+    let Some((full_start_us, full_end_us)) = waveform_time_range_us(primary.0) else {
         ui.label("Waveform has no time samples.");
-        return;
+        return None;
+    };
+    let (window_start_us, window_end_us) =
+        visible_window_us.unwrap_or((full_start_us, full_end_us));
+    let x_min = window_start_us / 1e6;
+    let x_max = window_end_us / 1e6;
+    let Some((y_min, y_max)) = waveform_trace_bounds_in_window(waveforms, traces, x_min, x_max)
+    else {
+        ui.label("Waveform has no time samples.");
+        return None;
     };
 
     ui.label(format!(
@@ -1287,7 +1463,7 @@ fn draw_waveform_plot_sized(
         primary.0.path,
         traces.len()
     ));
-    let (rect, _) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::drag());
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 4.0, egui::Color32::from_gray(16));
 
@@ -1295,6 +1471,43 @@ fn draw_waveform_plot_sized(
         rect.min + egui::vec2(56.0, 16.0),
         rect.max - egui::vec2(16.0, 38.0),
     );
+    let mut next_window = None;
+    let x_span_us = positive_span(window_start_us, window_end_us);
+    if response.dragged() {
+        let delta = ui.input(|input| input.pointer.delta());
+        if delta.x.abs() > f32::EPSILON && plot_rect.width() > 1.0 {
+            let delta_us = -(delta.x as f64 / plot_rect.width() as f64) * x_span_us;
+            next_window = Some((window_start_us + delta_us, window_end_us + delta_us));
+        }
+    }
+    if response.hovered() {
+        let (zoom_delta, scroll_delta, pointer) = ui.input(|input| {
+            (
+                input.zoom_delta(),
+                input.smooth_scroll_delta,
+                input.pointer.hover_pos(),
+            )
+        });
+        let scale = if (zoom_delta - 1.0).abs() > f32::EPSILON {
+            Some(1.0 / zoom_delta as f64)
+        } else if scroll_delta.y.abs() > f32::EPSILON {
+            Some(if scroll_delta.y > 0.0 { 0.88 } else { 1.14 })
+        } else {
+            None
+        };
+        if let Some(scale) = scale {
+            let focus_ratio = pointer
+                .map(|pos| ((pos.x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0))
+                .unwrap_or(0.5) as f64;
+            let focus_us = window_start_us + focus_ratio * x_span_us;
+            next_window = Some(zoom_time_window(
+                window_start_us,
+                window_end_us,
+                focus_us,
+                scale,
+            ));
+        }
+    }
     draw_plot_frame(&painter, plot_rect);
 
     let x_span = positive_span(x_min, x_max);
@@ -1353,13 +1566,7 @@ fn draw_waveform_plot_sized(
             continue;
         };
         let color = scope_trace_color(trace_order);
-        let points: Vec<_> = trace_waveform
-            .time_s
-            .iter()
-            .copied()
-            .zip(trace_probe.values.iter().copied())
-            .map(|(x, y)| map_point(x, y))
-            .collect();
+        let points = visible_trace_points(trace_waveform, trace_probe, x_min, x_max, &map_point);
         if points.len() >= 2 {
             painter.add(egui::Shape::line(
                 points,
@@ -1390,7 +1597,13 @@ fn draw_waveform_plot_sized(
     painter.text(
         egui::pos2(plot_rect.left(), rect.bottom() - 22.0),
         egui::Align2::LEFT_CENTER,
-        format!("t {:.3e}..{:.3e} s", x_min, x_max),
+        format!(
+            "t {:.3e}..{:.3e} s  (full {:.3e}..{:.3e} s)",
+            x_min,
+            x_max,
+            full_start_us / 1e6,
+            full_end_us / 1e6
+        ),
         font.clone(),
         egui::Color32::LIGHT_GRAY,
     );
@@ -1406,6 +1619,7 @@ fn draw_waveform_plot_sized(
         font,
         egui::Color32::LIGHT_GRAY,
     );
+    next_window
 }
 
 pub(super) fn scope_plot_size(available: egui::Vec2) -> egui::Vec2 {
@@ -1447,28 +1661,53 @@ fn scope_visible_trace_refs(
     traces
 }
 
-fn waveform_trace_bounds(
+fn waveform_trace_bounds_in_window(
     waveforms: &[WaveformView],
     traces: &[WaveformTraceRef],
-) -> Option<(f64, f64, f64, f64)> {
-    let mut x_range: Option<(f64, f64)> = None;
+    start_s: f64,
+    end_s: f64,
+) -> Option<(f64, f64)> {
     let mut y_range: Option<(f64, f64)> = None;
     for trace in traces.iter().copied() {
         let (waveform, probe) = waveform_trace(waveforms, trace)?;
-        let (x_min, x_max) = min_max(&waveform.time_s)?;
-        let (y_min, y_max) = min_max(&probe.values)?;
-        x_range = Some(match x_range {
-            Some((left, right)) => (left.min(x_min), right.max(x_max)),
-            None => (x_min, x_max),
-        });
+        let (y_min, y_max) = if start_s.is_finite() && end_s.is_finite() {
+            window_min_max(&waveform.time_s, &probe.values, start_s, end_s)?
+        } else {
+            min_max(&probe.values)?
+        };
         y_range = Some(match y_range {
             Some((bottom, top)) => (bottom.min(y_min), top.max(y_max)),
             None => (y_min, y_max),
         });
     }
-    let (x_min, x_max) = x_range?;
-    let (y_min, y_max) = y_range?;
-    Some((x_min, x_max, y_min, y_max))
+    y_range
+}
+
+fn visible_trace_points(
+    waveform: &WaveformView,
+    probe: &WaveformProbe,
+    start_s: f64,
+    end_s: f64,
+    map_point: &impl Fn(f64, f64) -> egui::Pos2,
+) -> Vec<egui::Pos2> {
+    let mut points = Vec::new();
+    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, start_s) {
+        points.push(map_point(start_s, value));
+    }
+    for (time, value) in waveform
+        .time_s
+        .iter()
+        .copied()
+        .zip(probe.values.iter().copied())
+    {
+        if time > start_s && time < end_s {
+            points.push(map_point(time, value));
+        }
+    }
+    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, end_s) {
+        points.push(map_point(end_s, value));
+    }
+    points
 }
 
 fn scope_trace_color(index: usize) -> egui::Color32 {

@@ -281,13 +281,14 @@ dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, the primary scope plot, simulation-time scrub/playback controls,
-cursor readouts, min/max/delta measurements, pending schematic probe-to-scope
-focus, transient selected-probe trace pinning/comparison overlays, GUI-only
-derived waveform channels, promotion of representable derived channels to
-explicit Board IR analog probes/assertions, exact probe-value lookup, and
-normalized runtime activity values for graph tinting. It may display graph
-hover readouts, activity coloring, pinned trace overlays over the currently
-loaded CSV set, and derived
+transient visible time-window fit/zoom/pan controls, cursor readouts,
+min/max/delta measurements, pending schematic probe-to-scope focus, transient
+selected-probe trace pinning/comparison overlays, GUI-only derived waveform
+channels, promotion of representable derived channels to explicit Board IR
+analog probes/assertions, exact probe-value lookup, and normalized runtime
+activity values for graph tinting. It may display graph hover readouts,
+activity coloring, pinned trace overlays over the currently loaded CSV set,
+visible-window axis scaling, and derived
 difference, sum, product, or ratio channels for runtime waveform probes, but
 those values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.

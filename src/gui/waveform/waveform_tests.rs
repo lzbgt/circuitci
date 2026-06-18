@@ -4,7 +4,8 @@ use super::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection, sanitized_probe_name,
     scope_plot_size, scope_visible_trace_refs, waveform_measurement,
     waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
-    waveform_time_range_for_view,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -316,6 +317,57 @@ fn waveform_time_range_for_view_returns_microseconds() {
     assert_eq!(
         waveform_time_range_for_view(&[waveform], 0),
         Some((0.0, 2.0))
+    );
+}
+
+#[test]
+fn waveform_time_window_clamps_to_loaded_range() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 1.0
+2e-6 2.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+
+    assert_eq!(
+        waveform_time_window_for_view(&[waveform], 0, Some(-5.0), Some(1.0)),
+        Some((0.0, 2.0))
+    );
+}
+
+#[test]
+fn zoom_time_window_keeps_focus_ratio() {
+    let (start, end) = zoom_time_window(0.0, 100.0, 25.0, 0.5);
+
+    assert_eq!((start, end), (12.5, 62.5));
+}
+
+#[test]
+fn waveform_trace_bounds_use_visible_window() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 10.0
+2e-6 0.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+
+    assert_eq!(
+        waveform_trace_bounds_in_window(
+            &[waveform],
+            &[WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 0,
+            }],
+            0.0,
+            0.5e-6,
+        ),
+        Some((0.0, 5.0))
     );
 }
 
