@@ -2,8 +2,11 @@ use std::collections::BTreeSet;
 
 use eframe::egui;
 
-use super::sketch::{ProjectSnapshot, SketchSelection};
+use super::sketch::{self, ProjectSnapshot, SketchSelection};
+use super::sketch_actions::sketch_selection_bounds;
 use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
+
+const QUICK_TOOLBAR_SIZE: egui::Vec2 = egui::vec2(396.0, 34.0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SketchMultiSelectionSummary {
@@ -143,6 +146,71 @@ impl CircuitCiApp {
             }
         });
     }
+
+    pub(super) fn sketch_selection_quick_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        canvas: egui::Rect,
+        graph: &sketch::SketchGraph,
+    ) {
+        if self.selected_sketch_items.len() <= 1
+            || self.sketch_selection_box_drag.is_some()
+            || self.sketch_selection_lasso_drag.is_some()
+            || self.sketch_wire_route_drag.is_some()
+            || self.sketch_net_label_drag.is_some()
+            || self.sketch_component_label_drag.is_some()
+            || self.wire_from_component.is_some()
+            || self.sketch_palette_place_armed
+            || self.sketch_library_place_armed
+            || self.sketch_net_label_place_armed
+        {
+            return;
+        }
+        let Some(bounds) = sketch_selection_bounds(graph, &self.selected_sketch_items) else {
+            return;
+        };
+        let pos = quick_toolbar_position(canvas, bounds, QUICK_TOOLBAR_SIZE);
+        egui::Area::new(egui::Id::new("sketch_selection_quick_toolbar"))
+            .order(egui::Order::Foreground)
+            .fixed_pos(pos)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.spacing_mut().item_spacing = egui::vec2(4.0, 0.0);
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{} selected", self.selected_sketch_items.len()));
+                        if ui.small_button("Fit").clicked() {
+                            self.sketch_viewport_command =
+                                Some(SketchViewportCommand::FitSelection);
+                        }
+                        if ui.small_button("Align").clicked() {
+                            self.sketch_group_action = Some(SketchGroupAction::AlignCenterY);
+                        }
+                        if ui.small_button("Distribute").clicked() {
+                            self.sketch_group_action =
+                                Some(SketchGroupAction::DistributeHorizontal);
+                        }
+                        if ui
+                            .add_enabled(
+                                self.has_duplicable_sketch_selection(),
+                                egui::Button::new("Duplicate").small(),
+                            )
+                            .clicked()
+                        {
+                            self.apply_duplicate_selected_sketch_items();
+                        }
+                        if ui
+                            .add_enabled(
+                                self.has_deletable_sketch_selection(),
+                                egui::Button::new("Delete").small(),
+                            )
+                            .clicked()
+                        {
+                            self.apply_delete_selected_sketch_item();
+                        }
+                    });
+                });
+            });
+    }
 }
 
 pub(super) fn summarize_multi_selection(
@@ -199,6 +267,27 @@ pub(super) fn summarize_multi_selection(
     summary
 }
 
+fn quick_toolbar_position(
+    canvas: egui::Rect,
+    selection_bounds: egui::Rect,
+    toolbar_size: egui::Vec2,
+) -> egui::Pos2 {
+    let gap = 8.0;
+    let min_x = canvas.left() + gap;
+    let max_x = (canvas.right() - toolbar_size.x - gap).max(min_x);
+    let x = (selection_bounds.center().x - toolbar_size.x / 2.0).clamp(min_x, max_x);
+    let above_y = selection_bounds.top() - toolbar_size.y - gap;
+    let below_y = selection_bounds.bottom() + gap;
+    let min_y = canvas.top() + gap;
+    let max_y = (canvas.bottom() - toolbar_size.y - gap).max(min_y);
+    let y = if above_y >= canvas.top() + gap {
+        above_y
+    } else {
+        below_y.min(max_y)
+    };
+    egui::pos2(x, y.max(min_y))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,5 +336,34 @@ board:
             summary.common_net_kind.as_deref(),
             Some("digital_or_analog")
         );
+    }
+
+    #[test]
+    fn quick_toolbar_position_stays_inside_canvas() {
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(400.0, 260.0));
+        let selection = egui::Rect::from_min_size(egui::pos2(16.0, 20.0), egui::vec2(80.0, 60.0));
+        let size = egui::vec2(180.0, 34.0);
+
+        let pos = quick_toolbar_position(canvas, selection, size);
+
+        assert!(pos.x >= canvas.left());
+        assert!(pos.x + size.x <= canvas.right());
+        assert!(pos.y >= canvas.top());
+        assert!(pos.y + size.y <= canvas.bottom());
+        assert!(pos.y > selection.bottom());
+    }
+
+    #[test]
+    fn quick_toolbar_position_handles_tiny_canvas() {
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(120.0, 42.0));
+        let selection = egui::Rect::from_min_size(egui::pos2(20.0, 8.0), egui::vec2(24.0, 20.0));
+        let size = egui::vec2(180.0, 34.0);
+
+        let pos = quick_toolbar_position(canvas, selection, size);
+
+        assert!(pos.x.is_finite());
+        assert!(pos.y.is_finite());
+        assert!(pos.x >= canvas.left());
+        assert!(pos.y >= canvas.top());
     }
 }

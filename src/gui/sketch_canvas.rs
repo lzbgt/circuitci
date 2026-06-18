@@ -1367,6 +1367,7 @@ impl CircuitCiApp {
                 ));
             }
         }
+        self.sketch_selection_quick_toolbar(ui, rect, &graph);
         self.sketch_net_label_inline_editor(ui, &net_label_badges, snapshot);
         self.sketch_component_inline_editor(ui, &graph);
     }

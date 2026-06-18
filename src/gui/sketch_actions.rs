@@ -507,7 +507,7 @@ fn fit_viewport_to_bounds(app: &mut CircuitCiApp, canvas: egui::Rect, bounds: eg
     app.sketch_pan = target_min - canvas.min - (bounds.min - canvas.min) * zoom;
 }
 
-fn sketch_selection_bounds(
+pub(super) fn sketch_selection_bounds(
     graph: &sketch::SketchGraph,
     selected: &std::collections::BTreeSet<SketchSelection>,
 ) -> Option<egui::Rect> {
