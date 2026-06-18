@@ -26,8 +26,8 @@ use super::waveform::{
     waveform_probe_value_for_badge,
 };
 use super::{
-    CircuitCiApp, analog, sketch_bundles, sketch_connectivity, sketch_hierarchy, sketch_minimap,
-    sketch_net_labels,
+    CircuitCiApp, analog, sketch_bundles, sketch_component_labels, sketch_connectivity,
+    sketch_hierarchy, sketch_minimap, sketch_net_labels,
 };
 
 impl CircuitCiApp {
@@ -84,6 +84,9 @@ impl CircuitCiApp {
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
+        let component_label_badges = sketch_component_labels::layout_component_label_badges(
+            snapshot, &graph, rect, viewport,
+        );
         let minimap = sketch_minimap::SketchMinimap::for_graph(rect, &minimap_graph);
         let connectivity_highlight =
             sketch_connectivity::SketchConnectivityHighlight::from_selection(
@@ -170,6 +173,19 @@ impl CircuitCiApp {
                 },
             )
         });
+        let hovered_component_label_badge = pointer_hover.and_then(|position| {
+            sketch_component_labels::hit_test_component_label_badge(
+                &component_label_badges,
+                position,
+            )
+            .filter(|badge| {
+                hierarchy_view.as_ref().is_none_or(|view| {
+                    view.interaction_visible(&SketchSelection::Component(
+                        badge.component_id.clone(),
+                    ))
+                })
+            })
+        });
         let blank_canvas_hovered = hovered_node.is_none()
             && hovered_anchor.is_none()
             && hovered_route_handle.is_none()
@@ -178,6 +194,7 @@ impl CircuitCiApp {
             && hovered_bundle_badge.is_none()
             && hovered_hierarchy_connector_badge.is_none()
             && hovered_net_label_badge.is_none()
+            && hovered_component_label_badge.is_none()
             && !pointer_over_minimap;
         self.handle_sketch_viewport_input(
             ui,
@@ -196,6 +213,9 @@ impl CircuitCiApp {
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
+        let component_label_badges = sketch_component_labels::layout_component_label_badges(
+            snapshot, &graph, rect, viewport,
+        );
         let pointer_hover = if response.hovered() {
             ui.ctx().pointer_hover_pos()
         } else {
@@ -270,13 +290,27 @@ impl CircuitCiApp {
                 },
             )
         });
+        let hovered_component_label_badge = pointer_hover.and_then(|position| {
+            sketch_component_labels::hit_test_component_label_badge(
+                &component_label_badges,
+                position,
+            )
+            .filter(|badge| {
+                hierarchy_view.as_ref().is_none_or(|view| {
+                    view.interaction_visible(&SketchSelection::Component(
+                        badge.component_id.clone(),
+                    ))
+                })
+            })
+        });
         let placement_target_clear = hovered_node.is_none()
             && hovered_anchor.is_none()
             && hovered_wire.is_none()
             && hovered_probe_badge.is_none()
             && hovered_bundle_badge.is_none()
             && hovered_hierarchy_connector_badge.is_none()
-            && hovered_net_label_badge.is_none();
+            && hovered_net_label_badge.is_none()
+            && hovered_component_label_badge.is_none();
         let wire_drag_target = if let Some(component_id) = &self.wire_from_component
             && let Some(position) = pointer_hover
             && rect.contains(position)
@@ -443,6 +477,39 @@ impl CircuitCiApp {
             let selected = self.selection_is_selected(&selection);
             sketch_net_labels::draw_net_label_badge(&painter, badge, hovered, selected, opacity);
         }
+        for badge in &component_label_badges {
+            let dragged = self
+                .sketch_component_label_drag
+                .as_ref()
+                .filter(|drag| drag.component_id == badge.component_id && drag.kind == badge.kind);
+            let badge = if let Some(drag) = dragged {
+                let mut badge = badge.clone();
+                badge.rect = egui::Rect::from_center_size(drag.current_center, badge.rect.size());
+                std::borrow::Cow::Owned(badge)
+            } else {
+                std::borrow::Cow::Borrowed(badge)
+            };
+            let badge = badge.as_ref();
+            let selection = SketchSelection::Component(badge.component_id.clone());
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.interaction_visible(&selection) {
+                    continue;
+                }
+                view.selection_opacity(&selection)
+            } else {
+                1.0
+            };
+            if opacity <= 0.0 {
+                continue;
+            }
+            let hovered = hovered_component_label_badge.is_some_and(|hovered| {
+                hovered.component_id == badge.component_id && hovered.kind == badge.kind
+            });
+            let selected = self.selection_is_selected(&selection);
+            sketch_component_labels::draw_component_label_badge(
+                &painter, badge, hovered, selected, opacity,
+            );
+        }
         for anchor in &graph.pin_anchors {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.anchor_visible(anchor) {
@@ -558,6 +625,18 @@ impl CircuitCiApp {
                         })
                     },
                 );
+            let clicked_component_label_badge =
+                sketch_component_labels::hit_test_component_label_badge(
+                    &component_label_badges,
+                    position,
+                )
+                .filter(|badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Component(
+                            badge.component_id.clone(),
+                        ))
+                    })
+                });
             let clicked_bundle_badge =
                 sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(
                     |badge| {
@@ -582,7 +661,10 @@ impl CircuitCiApp {
                         && node.rect.contains(position)
                 })
                 .map(|node| node.selection.clone());
-            let clicked_wire = if clicked_anchor.is_none() && clicked.is_none() {
+            let clicked_wire = if clicked_anchor.is_none()
+                && clicked_component_label_badge.is_none()
+                && clicked.is_none()
+            {
                 hit_test_wire(&graph, position).filter(|edge| {
                     hierarchy_view
                         .as_ref()
@@ -628,6 +710,25 @@ impl CircuitCiApp {
                         badge.net_id.clone(),
                     )));
                     self.status = format!("Selected net {} from schematic label.", badge.net_id);
+                }
+            } else if let Some(badge) = clicked_component_label_badge {
+                if response.double_clicked_by(egui::PointerButton::Primary) {
+                    match badge.kind {
+                        sketch_component_labels::SketchComponentLabelKind::Reference => {
+                            self.begin_component_id_inline_edit(&badge.component_id);
+                        }
+                        sketch_component_labels::SketchComponentLabelKind::Value => {
+                            self.begin_component_value_inline_edit(snapshot, &badge.component_id);
+                        }
+                    }
+                } else {
+                    self.set_single_sketch_selection(Some(SketchSelection::Component(
+                        badge.component_id.clone(),
+                    )));
+                    self.status = format!(
+                        "Selected component {} from schematic label.",
+                        badge.component_id
+                    );
                 }
             } else if let Some(badge) = clicked_bundle_badge {
                 self.select_net_bundle(&badge.bundle);
@@ -722,9 +823,22 @@ impl CircuitCiApp {
                         })
                     },
                 );
+            let clicked_component_label_badge =
+                sketch_component_labels::hit_test_component_label_badge(
+                    &component_label_badges,
+                    position,
+                )
+                .filter(|badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Component(
+                            badge.component_id.clone(),
+                        ))
+                    })
+                });
             let clicked_wire = if clicked_anchor.is_none()
                 && clicked_node.is_none()
                 && clicked_net_label_badge.is_none()
+                && clicked_component_label_badge.is_none()
             {
                 hit_test_wire(&graph, position).filter(|edge| {
                     hierarchy_view
@@ -749,6 +863,20 @@ impl CircuitCiApp {
                     point_index,
                 });
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
+            } else if self.wire_from_component.is_none()
+                && !self.sketch_palette_place_armed
+                && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed
+                && let Some(badge) = clicked_component_label_badge
+            {
+                self.sketch_component_label_drag = Some(super::SketchComponentLabelDrag {
+                    component_id: badge.component_id.clone(),
+                    kind: badge.kind,
+                    current_center: badge.rect.center(),
+                });
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    badge.component_id.clone(),
+                )));
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
@@ -816,6 +944,17 @@ impl CircuitCiApp {
             );
         } else if response.dragged_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
+            && let Some(drag) = &mut self.sketch_component_label_drag
+        {
+            drag.current_center = snap_screen_point_to_grid(
+                rect,
+                position,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+            );
+        } else if response.dragged_by(egui::PointerButton::Primary)
+            && let Some(position) = response.interact_pointer_pos()
             && let Some(drag) = &mut self.sketch_wire_route_drag
         {
             if let Some(point) = drag.points.get_mut(drag.point_index) {
@@ -843,6 +982,7 @@ impl CircuitCiApp {
             && self.wire_from_component.is_none()
             && self.sketch_wire_route_drag.is_none()
             && self.sketch_net_label_drag.is_none()
+            && self.sketch_component_label_drag.is_none()
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -895,6 +1035,19 @@ impl CircuitCiApp {
                 viewport,
                 &drag.label_id,
                 &drag.net_id,
+                drag.current_center,
+            );
+        }
+        if response.drag_stopped_by(egui::PointerButton::Primary)
+            && let Some(drag) = self.sketch_component_label_drag.take()
+            && let Some(badge) = component_label_badges
+                .iter()
+                .find(|badge| badge.component_id == drag.component_id && badge.kind == drag.kind)
+        {
+            self.apply_move_schematic_component_label_to(
+                rect,
+                viewport,
+                badge,
                 drag.current_center,
             );
         }
@@ -989,6 +1142,9 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_net_label_drag.is_some() {
             self.sketch_net_label_drag = None;
             self.status = "Net label move canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_component_label_drag.is_some() {
+            self.sketch_component_label_drag = None;
+            self.status = "Component label move canceled.".to_string();
         } else if rotate_clockwise_pressed && self.component_placement_armed() {
             self.rotate_canvas_placement(90);
         } else if rotate_counter_clockwise_pressed && self.component_placement_armed() {
@@ -1068,6 +1224,13 @@ impl CircuitCiApp {
             });
             response.on_hover_ui(|ui| {
                 sketch_net_labels::net_label_tooltip(ui, badge);
+            });
+        } else if let Some(badge) = hovered_component_label_badge {
+            response.context_menu(|ui| {
+                self.component_label_context_menu(ui, badge, snapshot);
+            });
+            response.on_hover_ui(|ui| {
+                sketch_component_labels::component_label_tooltip(ui, badge);
             });
         } else if let Some(node) = hovered_node {
             response.context_menu(|ui| {

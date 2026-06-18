@@ -22,6 +22,11 @@ The Sketch canvas also supports inline component ID editing and inline scalar
 SPICE value editing for passives and DC sources; both route through the same
 validated Board IR mutation helpers used by the inspector.
 
+Visible component reference/value labels are rendered directly on the
+schematic. Reference text derives from the component ID, value text derives
+from scalar SPICE evidence, and dragged label positions persist under
+`board.schematic.component_labels` as display metadata only.
+
 Wire-route context menus can also insert a route handle at the pointer or delete
 one visible route handle, and dragging a routed wire segment inserts a waypoint
 into the existing route instead of replacing it. Custom routes render as

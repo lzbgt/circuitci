@@ -60,6 +60,11 @@ schematic position, can be dragged to reposition, and can accept active-wire
 drops onto their underlying Board IR net. They only annotate an existing Board
 IR net and do not create hidden net ties, sheet ports, buses, or physical layout
 evidence.
+Schematic component reference/value labels are display metadata as well.
+`gui::sketch_component_labels` derives label text from Board IR component IDs
+and scalar SPICE evidence, while optional positions persist under
+`board.schematic.component_labels`; moving these labels does not rename
+components, change SPICE values, or create alternate sign-off evidence.
 
 ## Core Contracts
 

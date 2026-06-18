@@ -2,6 +2,7 @@ use super::sketch::{
     SketchSelection, board_child_mapping_mut, encode_edited_project_yaml, schematic_node_key,
     validated_graph_id,
 };
+use super::sketch_component_labels;
 use super::sketch_net_labels;
 use anyhow::{Context, Result};
 
@@ -25,6 +26,7 @@ pub(super) fn rename_component(text: &str, old_id: &str, new_id: &str) -> Result
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
     rename_board_mapping_key(&mut yaml, "components", old_id, new_id, "component")?;
     rename_schematic_node_metadata(&mut yaml, "component", old_id, new_id);
+    sketch_component_labels::rename_component_labels(&mut yaml, old_id, new_id);
     rename_schematic_wire_route_component(&mut yaml, old_id, new_id);
     rename_analog_component_references(&mut yaml, old_id, new_id);
 

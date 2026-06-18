@@ -185,6 +185,33 @@
                 "additionalProperties": false
               }
             },
+            "component_labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "properties": {
+                      "x": { "type": "number" },
+                      "y": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                  },
+                  "value": {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "properties": {
+                      "x": { "type": "number" },
+                      "y": { "type": "number" }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
             "wire_routes": {
               "type": "object",
               "additionalProperties": {

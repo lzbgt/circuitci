@@ -2,6 +2,7 @@ use eframe::egui;
 
 use super::sketch::{self, ProjectSnapshot, SketchSelection, edge_label_position};
 use super::sketch_canvas_render::component_context_pin;
+use super::sketch_component_labels::{SketchComponentLabelBadge, SketchComponentLabelKind};
 use super::sketch_inline_edit::component_supports_inline_value;
 use super::sketch_probes::SketchProbeBadge;
 use super::{CircuitCiApp, Stage};
@@ -248,6 +249,44 @@ impl CircuitCiApp {
             .clicked()
         {
             self.apply_paste_sketch_clipboard(canvas, pointer_hover);
+            ui.close();
+        }
+    }
+
+    pub(super) fn component_label_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        badge: &SketchComponentLabelBadge,
+        snapshot: &ProjectSnapshot,
+    ) {
+        ui.strong(format!(
+            "{} label {}",
+            badge.kind.label(),
+            badge.component_id
+        ));
+        ui.label(&badge.text);
+        if ui.button("Inspect Component").clicked() {
+            self.set_single_sketch_selection(Some(SketchSelection::Component(
+                badge.component_id.clone(),
+            )));
+            ui.close();
+        }
+        match badge.kind {
+            SketchComponentLabelKind::Reference => {
+                if ui.button("Edit ID Inline").clicked() {
+                    self.begin_component_id_inline_edit(&badge.component_id);
+                    ui.close();
+                }
+            }
+            SketchComponentLabelKind::Value => {
+                if ui.button("Edit Value Inline").clicked() {
+                    self.begin_component_value_inline_edit(snapshot, &badge.component_id);
+                    ui.close();
+                }
+            }
+        }
+        if ui.button("Reset Label Position").clicked() {
+            self.apply_reset_schematic_component_label(badge);
             ui.close();
         }
     }

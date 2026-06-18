@@ -29,6 +29,7 @@ mod sketch_canvas_menus;
 mod sketch_canvas_render;
 #[cfg(test)]
 mod sketch_canvas_tests;
+mod sketch_component_labels;
 mod sketch_connectivity;
 mod sketch_duplicate;
 mod sketch_hierarchy;
@@ -54,6 +55,7 @@ use project::PendingProjectAction;
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchPinSide, SketchSelection,
 };
+use sketch_component_labels::SketchComponentLabelKind;
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
@@ -118,6 +120,13 @@ struct SketchWireRouteDrag {
 struct SketchNetLabelDrag {
     label_id: String,
     net_id: String,
+    current_center: egui::Pos2,
+}
+
+#[derive(Debug, Clone)]
+struct SketchComponentLabelDrag {
+    component_id: String,
+    kind: SketchComponentLabelKind,
     current_center: egui::Pos2,
 }
 
@@ -271,6 +280,7 @@ pub struct CircuitCiApp {
     sketch_pan_drag_active: bool,
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
     sketch_net_label_drag: Option<SketchNetLabelDrag>,
+    sketch_component_label_drag: Option<SketchComponentLabelDrag>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -419,6 +429,7 @@ impl Default for CircuitCiApp {
             sketch_pan_drag_active: false,
             sketch_wire_route_drag: None,
             sketch_net_label_drag: None,
+            sketch_component_label_drag: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -1072,6 +1083,7 @@ board:
             probes: Vec::new(),
             wire_routes: Default::default(),
             net_labels: Default::default(),
+            component_labels: Default::default(),
         };
 
         assert_eq!(
@@ -1120,6 +1132,7 @@ board:
             probes: Vec::new(),
             wire_routes: Default::default(),
             net_labels: Default::default(),
+            component_labels: Default::default(),
         };
         let graph = layout_sketch_graph(
             egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0)),

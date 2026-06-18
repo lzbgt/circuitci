@@ -594,6 +594,7 @@ fn layout_assigns_common_component_symbol_kinds() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
 
     let graph = layout_sketch_graph(
@@ -849,6 +850,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -915,6 +917,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -971,6 +974,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph_viewport(
@@ -1025,6 +1029,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph(canvas, &snapshot);
@@ -1483,6 +1488,7 @@ fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 220.0));
 
@@ -1543,6 +1549,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp::default();
@@ -1604,6 +1611,7 @@ fn fit_selected_sketch_content_places_selection_inside_canvas() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp {
@@ -1639,6 +1647,7 @@ fn home_viewport_command_resets_zoom_and_pan() {
         probes: Vec::new(),
         wire_routes: Default::default(),
         net_labels: Default::default(),
+        component_labels: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp {

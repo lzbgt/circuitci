@@ -29,6 +29,7 @@ pub(super) struct ProjectSnapshot {
     pub(super) probes: Vec<SketchProbe>,
     pub(super) wire_routes: std::collections::BTreeMap<String, Vec<SketchPosition>>,
     pub(super) net_labels: Vec<SketchNetLabelPlacement>,
+    pub(super) component_labels: std::collections::BTreeMap<String, SketchComponentLabelPositions>,
 }
 
 #[derive(Debug, Clone)]
@@ -65,6 +66,12 @@ pub(super) struct SketchNetLabelPlacement {
     pub(super) net_id: String,
     pub(super) kind: SketchNetLabelKind,
     pub(super) position: SketchPosition,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct SketchComponentLabelPositions {
+    pub(super) reference: Option<SketchPosition>,
+    pub(super) value: Option<SketchPosition>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,6 +201,7 @@ pub(super) fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnaps
 fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
     let positions = &project.board.schematic.node_positions;
     let styles = &project.board.schematic.node_styles;
+    let component_labels = &project.board.schematic.component_labels;
     let wire_routes = &project.board.schematic.wire_routes;
     let net_labels = &project.board.schematic.net_labels;
     let probes = derive_project_probes(&project);
@@ -297,6 +305,25 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
                     x: label.x,
                     y: label.y,
                 },
+            })
+            .collect(),
+        component_labels: component_labels
+            .iter()
+            .filter(|(component_id, _)| project.board.components.contains_key(*component_id))
+            .map(|(component_id, labels)| {
+                (
+                    component_id.clone(),
+                    SketchComponentLabelPositions {
+                        reference: labels.reference.as_ref().map(|position| SketchPosition {
+                            x: position.x,
+                            y: position.y,
+                        }),
+                        value: labels.value.as_ref().map(|position| SketchPosition {
+                            x: position.x,
+                            y: position.y,
+                        }),
+                    },
+                )
             })
             .collect(),
     }

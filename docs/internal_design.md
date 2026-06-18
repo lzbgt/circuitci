@@ -229,6 +229,12 @@ single-value SPICE edits. It must remain a thin UI layer over
 `sketch_rename.rs` and `sketch_spice.rs`; it may parse convenience engineering
 suffixes for scalar values, but it must not bypass pin-convention validation,
 branch-expression rewrite rules, or Board IR reparse validation.
+`src/gui/sketch_component_labels.rs` owns visible component reference/value
+labels. Label text must always be derived from Board IR component IDs and
+scalar component-level SPICE evidence; persisted
+`board.schematic.component_labels` entries may store only optional display
+positions for those derived labels. Component rename mutations must rewrite
+component-label metadata keys so stale display positions do not remain.
 `src/gui/sketch_palette.rs` owns primitive insertion for user-sketched generic
 R/C/L and independent voltage/current source components. Each insertion must
 create the component, editable pin nets, component-level SPICE evidence, and
@@ -375,6 +381,8 @@ enrich these evidence families:
   `board.schematic.node_styles`, which stores schematic-only symbol rotation,
   mirror, and pin-side preferences, and `board.schematic.wire_routes`, which
   stores display-only pin-to-net route waypoints, and
+  `board.schematic.component_labels`, which stores display-only reference/value
+  label positions for existing Board IR components, and
   `board.schematic.net_labels`, which stores display-only local/off-page labels
   for existing Board IR nets. These are intentionally separate from physical
   `board.layout.placements` and
