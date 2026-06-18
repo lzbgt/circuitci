@@ -1,7 +1,8 @@
 use super::sketch::{
-    self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
-    layout_sketch_graph, persisted_node_position_from_screen_with_snap, remove_component,
-    remove_net, sketch_graph_bounds,
+    self, ProjectSnapshot, SketchSelection, SketchViewport, duplicate_components_with_local_nets,
+    edit_schematic_node_positions, layout_sketch_graph,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_net,
+    sketch_graph_bounds,
 };
 use super::{CircuitCiApp, SketchGroupAction};
 use eframe::egui;
@@ -217,6 +218,60 @@ impl CircuitCiApp {
                 .selected_sketch_items
                 .iter()
                 .any(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+    }
+
+    pub(super) fn has_duplicable_sketch_selection(&self) -> bool {
+        self.selected_sketch_items
+            .iter()
+            .any(|selection| matches!(selection, SketchSelection::Component(_)))
+            || self
+                .selected_sketch_item
+                .as_ref()
+                .is_some_and(|selection| matches!(selection, SketchSelection::Component(_)))
+    }
+
+    pub(super) fn apply_duplicate_selected_sketch_items(&mut self) {
+        let component_ids = self.selected_component_ids();
+        if component_ids.is_empty() {
+            self.status = "Select at least one component to duplicate.".to_string();
+            return;
+        }
+        match duplicate_components_with_local_nets(
+            &self.project_yaml,
+            &component_ids,
+            egui::vec2(32.0, 32.0),
+        ) {
+            Ok((updated, selections)) => {
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("{} component(s) duplicated.", component_ids.len()),
+                );
+                self.selected_sketch_items = selections.into_iter().collect();
+                self.selected_sketch_item = self.selected_sketch_items.iter().next().cloned();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn selected_component_ids(&self) -> Vec<String> {
+        if self.selected_sketch_items.is_empty() {
+            return self
+                .selected_sketch_item
+                .as_ref()
+                .and_then(|selection| match selection {
+                    SketchSelection::Component(component_id) => Some(component_id.clone()),
+                    SketchSelection::Net(_) | SketchSelection::Overflow(_) => None,
+                })
+                .into_iter()
+                .collect();
+        }
+        self.selected_sketch_items
+            .iter()
+            .filter_map(|selection| match selection {
+                SketchSelection::Component(component_id) => Some(component_id.clone()),
+                SketchSelection::Net(_) | SketchSelection::Overflow(_) => None,
+            })
+            .collect()
     }
 
     fn apply_delete_selected_sketch_items(&mut self) {

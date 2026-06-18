@@ -506,8 +506,17 @@ impl CircuitCiApp {
                 {
                     self.apply_delete_selected_sketch_item();
                 }
+                if ui
+                    .add_enabled(
+                        self.has_duplicable_sketch_selection(),
+                        egui::Button::new("Duplicate"),
+                    )
+                    .clicked()
+                {
+                    self.apply_duplicate_selected_sketch_items();
+                }
                 ui.label(
-                    "Middle/right drag pans; Shift+drag marquee selects; snap affects schematic node placement.",
+                    "Middle/right drag pans; Shift+drag marquee selects; Cmd/Ctrl+D duplicates selected components; snap affects schematic node placement.",
                 );
             });
             if self.selected_sketch_items.len() > 1 {

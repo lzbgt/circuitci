@@ -65,8 +65,12 @@ reference designators and model IDs, but it must continue to persist only Board
 IR components, nets, pins, and optional schematic node positions/styles.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
-and selected-item deletion actions that compose lower-level sketch YAML
-mutations. `src/gui/sketch_navigator.rs` owns derived searchable component,
+selected-item deletion, and selected-component duplication actions that compose
+lower-level sketch YAML mutations. Duplication may copy selected components and
+nets whose references are wholly inside the selected component set, but it must
+leave externally referenced nets shared, strip imported component source
+provenance from the duplicates, avoid copying PCB/layout evidence, and re-parse
+Board IR before committing the edit. `src/gui/sketch_navigator.rs` owns derived searchable component,
 net-bundle, net, wire, and probe rows for the Sketch-stage object navigator.
 Navigator selection and fit actions may update GUI selection, analog probe
 editor context, and viewport state, but they must not mutate Board IR by

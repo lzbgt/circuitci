@@ -3,12 +3,12 @@ use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
-    edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
-    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
-    layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
-    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
-    remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
-    snap_screen_point_to_grid, validate_board_ir_yaml_text,
+    duplicate_components_with_local_nets, edge_label_position, edit_schematic_component_style,
+    edit_schematic_node_position, edit_schematic_node_positions, hit_test_wire,
+    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+    orthogonal_wire_points, persisted_node_position_from_screen,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
+    remove_net, sketch_graph_bounds, snap_screen_point_to_grid, validate_board_ir_yaml_text,
 };
 use super::sketch_probes::{
     SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
@@ -86,6 +86,133 @@ fn add_component_with_ports_suffixes_existing_generated_net() {
 
     validate_board_ir_yaml_text(&edited).unwrap();
     assert!(edited.contains("VIN: u2_vin_2"));
+}
+
+#[test]
+fn duplicate_components_copies_local_nets_and_offsets_positions() {
+    let yaml = "project:
+  name: duplicate_test
+  version: 0.1.0
+board:
+  schematic:
+    node_positions:
+      component:R1: { x: 10.0, y: 20.0 }
+      component:C1: { x: 20.0, y: 80.0 }
+      net:local: { x: 160.0, y: 40.0 }
+    node_styles:
+      component:R1: { rotation_deg: 90, mirrored: true, pin_side: left }
+  components:
+    R1:
+      model: generic.analog.resistor
+      part_number: RC0603
+      source:
+        format: kicad_schematic
+        instances:
+          - { project: imported.kicad_sch, path: /sheet, reference: R1, unit: 1 }
+      pins:
+        A: local
+        B: gnd
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: local
+        B: gnd
+    U1:
+      model: generic.ic
+      pins:
+        GND: gnd
+  nets:
+    local:
+      kind: digital_or_analog
+      nominal_voltage: 1.2
+    gnd:
+      kind: ground
+";
+    let (edited, selections) = duplicate_components_with_local_nets(
+        yaml,
+        &["R1".to_string(), "C1".to_string()],
+        egui::vec2(32.0, 48.0),
+    )
+    .unwrap();
+
+    validate_board_ir_yaml_text(&edited).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    assert!(snapshot.components_detail.iter().any(|component| {
+        component.id == "R2"
+            && component.part_number.as_deref() == Some("RC0603")
+            && component.source_paths.is_empty()
+            && component.pins.iter().any(|pin| pin.net == "local_copy")
+            && component.pins.iter().any(|pin| pin.net == "gnd")
+            && component.position.is_some_and(|position| {
+                (position.x - 42.0).abs() < f64::EPSILON && (position.y - 68.0).abs() < f64::EPSILON
+            })
+            && component.style.rotation_deg == 90
+            && component.style.mirrored
+            && component.style.pin_side == SketchPinSide::Left
+    }));
+    assert!(snapshot.components_detail.iter().any(|component| {
+        component.id == "C2" && component.pins.iter().any(|pin| pin.net == "local_copy")
+    }));
+    assert!(snapshot.nets_detail.iter().any(|net| {
+        net.id == "local_copy"
+            && net.nominal_voltage == Some(1.2)
+            && net.position.is_some_and(|position| {
+                (position.x - 192.0).abs() < f64::EPSILON
+                    && (position.y - 88.0).abs() < f64::EPSILON
+            })
+    }));
+    assert!(!snapshot.nets_detail.iter().any(|net| net.id == "gnd_copy"));
+    assert!(selections.contains(&SketchSelection::Component("R2".to_string())));
+    assert!(selections.contains(&SketchSelection::Component("C2".to_string())));
+    assert!(selections.contains(&SketchSelection::Net("local_copy".to_string())));
+}
+
+#[test]
+fn duplicate_component_keeps_external_nets_shared() {
+    let yaml = "project:
+  name: duplicate_external_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+        B: gnd
+    U1:
+      model: generic.ic
+      pins:
+        IN: net_a
+        GND: gnd
+  nets:
+    net_a:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+";
+    let (edited, selections) =
+        duplicate_components_with_local_nets(yaml, &["R1".to_string()], egui::vec2(32.0, 32.0))
+            .unwrap();
+    validate_board_ir_yaml_text(&edited).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    let r2 = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "R2")
+        .unwrap();
+
+    assert!(r2.pins.iter().any(|pin| pin.net == "net_a"));
+    assert!(r2.pins.iter().any(|pin| pin.net == "gnd"));
+    assert!(
+        !snapshot
+            .nets_detail
+            .iter()
+            .any(|net| net.id == "net_a_copy")
+    );
+    assert_eq!(
+        selections,
+        vec![SketchSelection::Component("R2".to_string())]
+    );
 }
 
 #[test]

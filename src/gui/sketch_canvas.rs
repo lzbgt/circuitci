@@ -425,6 +425,10 @@ impl CircuitCiApp {
             && ui.input(|input| !input.modifiers.shift && input.key_pressed(egui::Key::A));
         let clear_assertions_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::X));
+        let duplicate_pressed = response.hovered()
+            && ui.input(|input| {
+                (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::D)
+            });
         if let Some(badge) = hovered_probe_badge {
             if quick_above_pressed {
                 self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
@@ -443,6 +447,8 @@ impl CircuitCiApp {
             } else if delete_pressed {
                 self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
             }
+        } else if duplicate_pressed {
+            self.apply_duplicate_selected_sketch_items();
         } else if delete_pressed {
             self.apply_delete_selected_sketch_item();
         }
@@ -584,6 +590,11 @@ impl CircuitCiApp {
                 ui.strong(format!("Component {component_id}"));
                 if ui.button("Inspect Component").clicked() {
                     self.set_single_sketch_selection(Some(node.selection.clone()));
+                    ui.close();
+                }
+                if ui.button("Duplicate Component").clicked() {
+                    self.set_single_sketch_selection(Some(node.selection.clone()));
+                    self.apply_duplicate_selected_sketch_items();
                     ui.close();
                 }
                 if ui.button("Start Wire From Pin").clicked() {
