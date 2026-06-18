@@ -1028,12 +1028,26 @@ impl CircuitCiApp {
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Delete) || input.key_pressed(egui::Key::Backspace)
             });
-        if delete_pressed {
-            if let Some(badge) = hovered_probe_badge {
+        let add_assertion_pressed =
+            response.hovered() && ui.input(|input| input.key_pressed(egui::Key::A));
+        let clear_assertions_pressed =
+            response.hovered() && ui.input(|input| input.key_pressed(egui::Key::X));
+        if let Some(badge) = hovered_probe_badge {
+            if add_assertion_pressed {
+                self.apply_add_canvas_probe_assertion(
+                    &badge.probe.scenario_name,
+                    &badge.probe.probe_name,
+                );
+            } else if clear_assertions_pressed {
+                self.apply_remove_canvas_probe_assertions(
+                    &badge.probe.scenario_name,
+                    &badge.probe.probe_name,
+                );
+            } else if delete_pressed {
                 self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
-            } else {
-                self.apply_delete_selected_sketch_item();
             }
+        } else if delete_pressed {
+            self.apply_delete_selected_sketch_item();
         }
 
         if let Some(badge) = hovered_probe_badge {
@@ -1228,6 +1242,8 @@ fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &SketchProbeBadge) {
     ui.label(format!("expression: {}", badge.probe.expression));
     ui.separator();
     ui.label("Click to open this probe in the Simulation stage.");
+    ui.label("Press A while hovering to add an assertion from current settings.");
+    ui.label("Press X while hovering to clear assertions for this probe.");
     ui.label("Press Delete or Backspace while hovering to remove it.");
 }
 

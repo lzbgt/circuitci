@@ -111,9 +111,10 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge clicks that open the corresponding
-  Simulation-stage probe context, hovered-badge deletion that removes the probe
-  and dependent assertions through a validated Board IR edit, selected-net
-  voltage-probe insertion into existing analog scenarios,
+  Simulation-stage probe context, hovered-badge assertion creation/clearing,
+  hovered-badge deletion that removes the probe and dependent assertions
+  through a validated Board IR edit, selected-net voltage-probe insertion into
+  existing analog scenarios,
   selected-component current-probe insertion for
   supported generated SPICE branches, selected-component power-probe insertion
   for supported generated SPICE branches, shared undo/redo for Board IR
@@ -193,8 +194,9 @@ The supported desktop simulation path is:
 27. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
 28. use visible schematic probe badges to find voltage/current/power probes,
-   jump to their Simulation-stage assertion/probe context, or remove a hovered
-   probe badge with Delete/Backspace,
+   jump to their Simulation-stage assertion/probe context, add an assertion
+   from the current assertion-editor settings with `A`, clear assertions for
+   the probe with `X`, or remove a hovered probe badge with Delete/Backspace,
 29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
 30. edit the project/model evidence and rerun.
@@ -236,6 +238,9 @@ probes. Voltage badges attach to Board IR nets only when the probe expression's
 SPICE node maps back through `analog.node_bindings`; current and power badges
 attach to components only when the expression references a generated/source
 branch that CircuitCI can map back to a Board IR component. The badges are not a
-second persisted probe model. Removing a hovered badge deletes the underlying
-Board IR analog probe and any analog assertions that reference it, then
-re-parses the edited Board IR before updating the canvas.
+second persisted probe model. Pressing `A` on a hovered badge appends a normal
+Board IR analog assertion for that probe using the current assertion-editor
+aggregation, relation, threshold, and timing settings. Pressing `X` removes
+assertions for that probe while keeping the probe. Removing a hovered badge
+deletes the underlying Board IR analog probe and any analog assertions that
+reference it, then re-parses the edited Board IR before updating the canvas.

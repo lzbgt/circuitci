@@ -1,7 +1,9 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogAssertionDraft, AnalogScenarioChoice, AnalogScenarioDraft, analog_scenario_choices,
-    append_analog_assertion, append_analog_transient_scenario,
+    AnalogAssertionDraft, AnalogProbeAssertionsRemoveDraft, AnalogScenarioChoice,
+    AnalogScenarioDraft, analog_scenario_choices, append_analog_assertion,
+    append_analog_transient_scenario, remove_analog_assertions_for_probe,
+    unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use crate::reports::ValidationReport;
@@ -272,6 +274,82 @@ impl CircuitCiApp {
                     self.analog_assertion_name.trim()
                 ),
             ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_add_canvas_probe_assertion(
+        &mut self,
+        scenario_name: &str,
+        probe_name: &str,
+    ) {
+        let requested_name = if self.analog_assertion_name.trim().is_empty()
+            || self.analog_assertion_name.trim() == "probe_above_min"
+        {
+            format!("{probe_name}_check")
+        } else {
+            self.analog_assertion_name.trim().to_string()
+        };
+        let assertion_name = match unique_analog_assertion_name(
+            &self.project_yaml,
+            scenario_name,
+            &requested_name,
+        ) {
+            Ok(name) => name,
+            Err(error) => {
+                self.record_error(error);
+                return;
+            }
+        };
+        let draft = AnalogAssertionDraft {
+            scenario_name: scenario_name.to_string(),
+            assertion_name: assertion_name.clone(),
+            probe_name: probe_name.to_string(),
+            aggregation: self.analog_assertion_aggregation.clone(),
+            relation: self.analog_assertion_relation.clone(),
+            threshold: self.analog_assertion_threshold,
+            at_us: self.waveform_cursor_a_us,
+            start_us: self.analog_assertion_start_us,
+            end_us: self.analog_assertion_end_us,
+        };
+        match append_analog_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = scenario_name.to_string();
+                self.analog_assertion_probe = probe_name.to_string();
+                self.analog_assertion_name = assertion_name.clone();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Analog assertion {assertion_name} added from canvas probe badge."),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_remove_canvas_probe_assertions(
+        &mut self,
+        scenario_name: &str,
+        probe_name: &str,
+    ) {
+        let draft = AnalogProbeAssertionsRemoveDraft {
+            scenario_name: scenario_name.to_string(),
+            probe_name: probe_name.to_string(),
+        };
+        match remove_analog_assertions_for_probe(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                if self.analog_assertion_scenario == draft.scenario_name
+                    && self.analog_assertion_probe == draft.probe_name
+                {
+                    self.analog_assertion_name.clear();
+                }
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Removed assertions for probe {} in scenario {}.",
+                        draft.probe_name, draft.scenario_name
+                    ),
+                );
+            }
             Err(error) => self.record_error(error),
         }
     }
