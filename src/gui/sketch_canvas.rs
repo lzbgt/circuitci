@@ -429,6 +429,15 @@ impl CircuitCiApp {
             && ui.input(|input| {
                 (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::D)
             });
+        let copy_pressed = response.hovered()
+            && ui.input(|input| {
+                (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::C)
+            });
+        let paste_pressed = response.hovered()
+            && ui.input(|input| {
+                (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::V)
+            });
+        let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
         if let Some(badge) = hovered_probe_badge {
             if quick_above_pressed {
                 self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
@@ -447,6 +456,12 @@ impl CircuitCiApp {
             } else if delete_pressed {
                 self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
             }
+        } else if paste_pressed {
+            self.apply_paste_sketch_clipboard(rect, pointer_hover);
+        } else if requested_toolbar_paste {
+            self.apply_paste_sketch_clipboard(rect, None);
+        } else if copy_pressed {
+            self.apply_copy_selected_sketch_items();
         } else if duplicate_pressed {
             self.apply_duplicate_selected_sketch_items();
         } else if delete_pressed {
@@ -499,6 +514,10 @@ impl CircuitCiApp {
             });
             response.on_hover_ui(|ui| {
                 sketch_wire_hover_tooltip(ui, edge);
+            });
+        } else {
+            response.context_menu(|ui| {
+                self.sketch_canvas_context_menu(ui, rect, pointer_hover);
             });
         }
     }
@@ -597,6 +616,11 @@ impl CircuitCiApp {
                     self.apply_duplicate_selected_sketch_items();
                     ui.close();
                 }
+                if ui.button("Copy Component").clicked() {
+                    self.set_single_sketch_selection(Some(node.selection.clone()));
+                    self.apply_copy_selected_sketch_items();
+                    ui.close();
+                }
                 if ui.button("Start Wire From Pin").clicked() {
                     let (pin, net) =
                         component_context_pin(snapshot, component_id, &self.wire_pin_id);
@@ -636,6 +660,25 @@ impl CircuitCiApp {
                 ui.strong(label);
                 ui.label("Open the YAML editor or use Fit Content for hidden graph items.");
             }
+        }
+    }
+
+    fn sketch_canvas_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        canvas: egui::Rect,
+        pointer_hover: Option<egui::Pos2>,
+    ) {
+        ui.strong("Canvas");
+        if ui
+            .add_enabled(
+                self.has_pasteable_sketch_clipboard(),
+                egui::Button::new("Paste Here"),
+            )
+            .clicked()
+        {
+            self.apply_paste_sketch_clipboard(canvas, pointer_hover);
+            ui.close();
         }
     }
 

@@ -181,6 +181,8 @@ pub struct CircuitCiApp {
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     selected_sketch_items: BTreeSet<SketchSelection>,
+    sketch_clipboard_components: Vec<String>,
+    sketch_paste_requested: bool,
     marquee_start: Option<egui::Pos2>,
     sketch_fit_requested: bool,
     sketch_group_action: Option<SketchGroupAction>,
@@ -304,6 +306,8 @@ impl Default for CircuitCiApp {
             project_snapshot: None,
             selected_sketch_item: None,
             selected_sketch_items: BTreeSet::new(),
+            sketch_clipboard_components: Vec::new(),
+            sketch_paste_requested: false,
             marquee_start: None,
             sketch_fit_requested: false,
             sketch_group_action: None,
@@ -516,8 +520,26 @@ impl CircuitCiApp {
                 {
                     self.apply_duplicate_selected_sketch_items();
                 }
+                if ui
+                    .add_enabled(
+                        self.has_duplicable_sketch_selection(),
+                        egui::Button::new("Copy"),
+                    )
+                    .clicked()
+                {
+                    self.apply_copy_selected_sketch_items();
+                }
+                if ui
+                    .add_enabled(
+                        self.has_pasteable_sketch_clipboard(),
+                        egui::Button::new("Paste"),
+                    )
+                    .clicked()
+                {
+                    self.sketch_paste_requested = true;
+                }
                 ui.label(
-                    "Middle/right drag pans; Shift+drag marquee selects; Cmd/Ctrl+D duplicates selected components; snap affects schematic node placement.",
+                    "Middle/right drag pans; Shift+drag marquee selects; Cmd/Ctrl+C copies, Cmd/Ctrl+V pastes, Cmd/Ctrl+D duplicates selected components; snap affects schematic node placement.",
                 );
             });
             if self.selected_sketch_items.len() > 1 {

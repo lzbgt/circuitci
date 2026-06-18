@@ -1,7 +1,8 @@
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
-    layout_sketch_graph, persisted_node_position_from_screen_with_snap, remove_component,
-    remove_net, sketch_graph_bounds,
+    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_net,
+    sketch_graph_bounds,
 };
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::{CircuitCiApp, SketchGroupAction};
@@ -251,6 +252,98 @@ impl CircuitCiApp {
             }
             Err(error) => self.record_error(error),
         }
+    }
+
+    pub(super) fn apply_copy_selected_sketch_items(&mut self) {
+        let component_ids = self.selected_component_ids();
+        if component_ids.is_empty() {
+            self.status = "Select at least one component to copy.".to_string();
+            return;
+        }
+        self.sketch_clipboard_components = component_ids;
+        self.status = format!(
+            "{} component(s) copied to sketch clipboard.",
+            self.sketch_clipboard_components.len()
+        );
+    }
+
+    pub(super) fn has_pasteable_sketch_clipboard(&self) -> bool {
+        !self.sketch_clipboard_components.is_empty()
+    }
+
+    pub(super) fn apply_paste_sketch_clipboard(
+        &mut self,
+        canvas: egui::Rect,
+        target_screen_position: Option<egui::Pos2>,
+    ) {
+        let component_ids = self.sketch_clipboard_components.clone();
+        if component_ids.is_empty() {
+            self.status = "Copy at least one component before pasting.".to_string();
+            return;
+        }
+        let target = target_screen_position
+            .filter(|position| canvas.contains(*position))
+            .unwrap_or_else(|| canvas.center());
+        match self.paste_components_at(&component_ids, canvas, target) {
+            Ok((updated, selections)) => {
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("{} component(s) pasted.", component_ids.len()),
+                );
+                self.selected_sketch_items = selections.into_iter().collect();
+                self.selected_sketch_item = self.selected_sketch_items.iter().next().cloned();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn paste_components_at(
+        &self,
+        component_ids: &[String],
+        canvas: egui::Rect,
+        target_screen_position: egui::Pos2,
+    ) -> anyhow::Result<(String, Vec<SketchSelection>)> {
+        let (duplicated, selections) = duplicate_components_with_local_nets(
+            &self.project_yaml,
+            component_ids,
+            egui::vec2(32.0, 32.0),
+        )?;
+        let snapshot = load_project_snapshot_from_yaml(&duplicated)?;
+        let viewport = self.sketch_viewport();
+        let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+        let selection_set = selections.iter().collect::<std::collections::BTreeSet<_>>();
+        let selected_nodes = graph
+            .nodes
+            .iter()
+            .filter(|node| selection_set.contains(&node.selection))
+            .collect::<Vec<_>>();
+        if selected_nodes.is_empty() {
+            return Ok((duplicated, selections));
+        }
+        let bounds = selected_nodes
+            .iter()
+            .map(|node| node.rect)
+            .reduce(|accumulator, rect| accumulator.union(rect))
+            .expect("selected_nodes is not empty");
+        let delta = target_screen_position - bounds.center();
+        let updates = selected_nodes
+            .iter()
+            .map(|node| {
+                let (x, y) = persisted_node_position_from_screen_with_snap(
+                    canvas,
+                    node.rect.center() + delta,
+                    node.rect,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
+                (node.selection.clone(), x, y)
+            })
+            .collect::<Vec<_>>();
+        Ok((
+            edit_schematic_node_positions(&duplicated, &updates)?,
+            selections,
+        ))
     }
 
     fn selected_component_ids(&self) -> Vec<String> {

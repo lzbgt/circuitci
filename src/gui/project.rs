@@ -177,6 +177,8 @@ impl CircuitCiApp {
                 self.project_yaml_dirty = false;
                 self.spice_deck_dirty = false;
                 self.spice_deck_text.clear();
+                self.sketch_clipboard_components.clear();
+                self.sketch_paste_requested = false;
                 self.clear_project_yaml_history();
                 self.stage = Stage::Sketch;
                 self.status = "Project YAML loaded.".to_string();

@@ -217,6 +217,93 @@ board:
 }
 
 #[test]
+fn copy_paste_components_places_duplicate_group_at_target() {
+    let yaml = "project:
+  name: paste_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: local
+        B: gnd
+    C1:
+      model: generic.analog.capacitor
+      pins:
+        A: local
+        B: gnd
+  nets:
+    local:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+  schematic:
+    node_positions:
+      component:R1:
+        x: 20.0
+        y: 30.0
+      component:C1:
+        x: 160.0
+        y: 30.0
+      net:local:
+        x: 90.0
+        y: 140.0
+";
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 360.0));
+    let target = egui::pos2(320.0, 240.0);
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..CircuitCiApp::default()
+    };
+    app.selected_sketch_items
+        .insert(SketchSelection::Component("R1".to_string()));
+    app.selected_sketch_items
+        .insert(SketchSelection::Component("C1".to_string()));
+
+    app.apply_copy_selected_sketch_items();
+    app.apply_paste_sketch_clipboard(canvas, Some(target));
+
+    validate_board_ir_yaml_text(&app.project_yaml).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+    assert!(
+        snapshot
+            .components_detail
+            .iter()
+            .any(|component| component.id == "R2"
+                && component.pins.iter().any(|pin| pin.net == "local_copy"))
+    );
+    assert!(
+        snapshot
+            .components_detail
+            .iter()
+            .any(|component| component.id == "C2"
+                && component.pins.iter().any(|pin| pin.net == "local_copy"))
+    );
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Component("R2".to_string()))
+    );
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Net("local_copy".to_string()))
+    );
+    assert_eq!(app.sketch_clipboard_components, vec!["C1", "R1"]);
+    assert_eq!(app.project_yaml_undo.len(), 1);
+
+    let graph = layout_sketch_graph_viewport(canvas, &snapshot, app.sketch_viewport());
+    let pasted_bounds = graph
+        .nodes
+        .iter()
+        .filter(|node| app.selected_sketch_items.contains(&node.selection))
+        .map(|node| node.rect)
+        .reduce(|accumulator, rect| accumulator.union(rect))
+        .unwrap();
+    assert!(pasted_bounds.center().distance(target) <= app.sketch_grid_step);
+}
+
+#[test]
 fn snapshot_derives_probe_badges_from_analog_probes() {
     let snapshot = load_project_snapshot_from_yaml(
         "project:
