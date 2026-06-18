@@ -23,6 +23,7 @@ mod shell;
 mod simulation;
 mod sketch;
 mod sketch_actions;
+mod sketch_alignment;
 mod sketch_bundles;
 mod sketch_canvas;
 mod sketch_canvas_interaction;

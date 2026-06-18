@@ -124,6 +124,9 @@ completion, overview-minimap event routing, and graph hover/runtime routing.
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe
 defaults, and viewport pan/zoom input.
+`src/gui/sketch_alignment.rs` owns transient alignment-guide derivation and
+drawing for component placement plus selected-node and selected-group drag
+affordances; it does not persist or mutate Board IR.
 `src/gui/sketch_canvas_interaction.rs` owns reusable canvas interaction
 primitives: viewport zoom math, schematic canvas sizing, wire target
 hit-testing, route-handle hit-testing, and placement orientation cycling.
@@ -286,8 +289,8 @@ form:
   Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
   Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
   for freehand lasso selection, multi-selection inspector summary/actions,
-  on-canvas selected-group frame/move handle with snap/free target feedback and
-  quick toolbar with rotate/flip/pin-side actions,
+  on-canvas selected-group frame/move handle with snap/free target feedback,
+  alignment guides, and quick toolbar with rotate/flip/pin-side actions,
   group drag/nudge/edge-align/center-align/distribute controls for
   multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected

@@ -23,8 +23,8 @@ use super::waveform::{
     waveform_probe_value_for_badge,
 };
 use super::{
-    CircuitCiApp, sketch_bundles, sketch_component_labels, sketch_connectivity, sketch_hierarchy,
-    sketch_minimap, sketch_net_labels,
+    CircuitCiApp, sketch_alignment, sketch_bundles, sketch_component_labels, sketch_connectivity,
+    sketch_hierarchy, sketch_minimap, sketch_net_labels,
 };
 
 impl CircuitCiApp {
@@ -613,19 +613,67 @@ impl CircuitCiApp {
                 placement_target_clear,
                 self.sketch_snap_enabled,
             );
-        }
-        if self.sketch_group_frame_drag.is_some()
-            && let Some(pointer) = ui.ctx().pointer_interact_pos()
-            && rect.contains(pointer)
-        {
-            let snapped = snap_screen_point_to_grid(
+            let excluded = std::collections::BTreeSet::new();
+            sketch_alignment::draw_alignment_guides(
+                &painter,
                 rect,
-                pointer,
-                viewport,
-                self.sketch_snap_enabled,
-                self.sketch_grid_step,
+                sketch_alignment::guides_for_rect(&graph, ghost, &excluded),
             );
-            draw_snap_feedback(&painter, snapped, true, self.sketch_snap_enabled);
+        }
+        if let Some(group_drag) = &self.sketch_group_frame_drag {
+            if let Some(pointer) = ui.ctx().pointer_interact_pos()
+                && rect.contains(pointer)
+            {
+                let snapped = snap_screen_point_to_grid(
+                    rect,
+                    pointer,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
+                draw_snap_feedback(&painter, snapped, true, self.sketch_snap_enabled);
+                if let Some(bounds) = sketch_alignment::moved_selection_bounds(
+                    &group_drag.node_starts,
+                    pointer - group_drag.pointer_start,
+                ) {
+                    let excluded = group_drag
+                        .node_starts
+                        .iter()
+                        .map(|(selection, _)| selection.clone())
+                        .collect();
+                    sketch_alignment::draw_alignment_guides(
+                        &painter,
+                        rect,
+                        sketch_alignment::guides_for_rect(&graph, bounds, &excluded),
+                    );
+                }
+            }
+        } else if response.dragged_by(egui::PointerButton::Primary)
+            && !self.sketch_pan_drag_active
+            && self.wire_from_component.is_none()
+            && self.sketch_wire_route_drag.is_none()
+            && self.sketch_net_label_drag.is_none()
+            && self.sketch_component_label_drag.is_none()
+            && self.sketch_selection_box_drag.is_none()
+            && self.sketch_selection_lasso_drag.is_none()
+        {
+            let mut excluded = self.selected_sketch_items.clone();
+            if let Some(selection) = &self.selected_sketch_item {
+                excluded.insert(selection.clone());
+            }
+            let selected_bounds = sketch_alignment::selection_bounds(
+                graph
+                    .nodes
+                    .iter()
+                    .filter(|node| excluded.contains(&node.selection)),
+            );
+            if let Some(bounds) = selected_bounds {
+                sketch_alignment::draw_alignment_guides(
+                    &painter,
+                    rect,
+                    sketch_alignment::guides_for_rect(&graph, bounds, &excluded),
+                );
+            }
         }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
