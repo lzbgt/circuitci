@@ -69,35 +69,99 @@ impl CircuitCiApp {
                 );
             }
             SketchGroupAction::AlignLeft => {
-                let Some(left) = self
-                    .selected_nodes(graph)
-                    .map(|node| node.rect.left())
-                    .reduce(f32::min)
-                else {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
                     return;
                 };
                 self.apply_selected_schematic_targets(
                     canvas,
                     graph,
                     viewport,
-                    |node| node.rect.center() + egui::vec2(left - node.rect.left(), 0.0),
+                    |node| node.rect.center() + egui::vec2(bounds.left() - node.rect.left(), 0.0),
                     "Selected sketch items aligned left.",
                 );
             }
-            SketchGroupAction::AlignTop => {
-                let Some(top) = self
-                    .selected_nodes(graph)
-                    .map(|node| node.rect.top())
-                    .reduce(f32::min)
-                else {
+            SketchGroupAction::AlignRight => {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
                     return;
                 };
                 self.apply_selected_schematic_targets(
                     canvas,
                     graph,
                     viewport,
-                    |node| node.rect.center() + egui::vec2(0.0, top - node.rect.top()),
+                    |node| node.rect.center() + egui::vec2(bounds.right() - node.rect.right(), 0.0),
+                    "Selected sketch items aligned right.",
+                );
+            }
+            SketchGroupAction::AlignTop => {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
+                    return;
+                };
+                self.apply_selected_schematic_targets(
+                    canvas,
+                    graph,
+                    viewport,
+                    |node| node.rect.center() + egui::vec2(0.0, bounds.top() - node.rect.top()),
                     "Selected sketch items aligned top.",
+                );
+            }
+            SketchGroupAction::AlignBottom => {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
+                    return;
+                };
+                self.apply_selected_schematic_targets(
+                    canvas,
+                    graph,
+                    viewport,
+                    |node| {
+                        node.rect.center() + egui::vec2(0.0, bounds.bottom() - node.rect.bottom())
+                    },
+                    "Selected sketch items aligned bottom.",
+                );
+            }
+            SketchGroupAction::AlignCenterX => {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
+                    return;
+                };
+                self.apply_selected_schematic_targets(
+                    canvas,
+                    graph,
+                    viewport,
+                    |node| {
+                        node.rect.center()
+                            + egui::vec2(bounds.center().x - node.rect.center().x, 0.0)
+                    },
+                    "Selected sketch items centered horizontally.",
+                );
+            }
+            SketchGroupAction::AlignCenterY => {
+                let Some(bounds) = self.selected_node_bounds(graph) else {
+                    return;
+                };
+                self.apply_selected_schematic_targets(
+                    canvas,
+                    graph,
+                    viewport,
+                    |node| {
+                        node.rect.center()
+                            + egui::vec2(0.0, bounds.center().y - node.rect.center().y)
+                    },
+                    "Selected sketch items centered vertically.",
+                );
+            }
+            SketchGroupAction::DistributeHorizontal => {
+                self.apply_distribute_selected_schematic_centers(
+                    canvas,
+                    graph,
+                    viewport,
+                    DistributionAxis::Horizontal,
+                );
+            }
+            SketchGroupAction::DistributeVertical => {
+                self.apply_distribute_selected_schematic_centers(
+                    canvas,
+                    graph,
+                    viewport,
+                    DistributionAxis::Vertical,
                 );
             }
         }
@@ -112,6 +176,12 @@ impl CircuitCiApp {
             .iter()
             .filter(|node| self.selected_sketch_items.contains(&node.selection))
             .filter(|node| !matches!(node.selection, SketchSelection::Overflow(_)))
+    }
+
+    fn selected_node_bounds(&self, graph: &sketch::SketchGraph) -> Option<egui::Rect> {
+        self.selected_nodes(graph)
+            .map(|node| node.rect)
+            .reduce(|accumulator, rect| accumulator.union(rect))
     }
 
     pub(super) fn apply_selected_schematic_screen_delta(
@@ -159,6 +229,48 @@ impl CircuitCiApp {
         if updates.is_empty() {
             return;
         }
+        match edit_schematic_node_positions(&self.project_yaml, &updates) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, message),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_distribute_selected_schematic_centers(
+        &mut self,
+        canvas: egui::Rect,
+        graph: &sketch::SketchGraph,
+        viewport: SketchViewport,
+        axis: DistributionAxis,
+    ) {
+        let mut nodes = self.selected_nodes(graph).collect::<Vec<_>>();
+        if nodes.len() < 3 {
+            self.status = "Select at least three sketch items to distribute.".to_string();
+            return;
+        }
+        nodes.sort_by(|left, right| axis.center(left).total_cmp(&axis.center(right)));
+        let first = axis.center(nodes[0]);
+        let last = axis.center(nodes[nodes.len() - 1]);
+        let step = (last - first) / (nodes.len() - 1) as f32;
+        let updates = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, node)| {
+                let target = axis.with_center(node.rect.center(), first + step * index as f32);
+                let (x, y) = persisted_node_position_from_screen_with_snap(
+                    canvas,
+                    target,
+                    node.rect,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
+                (node.selection.clone(), x, y)
+            })
+            .collect::<Vec<_>>();
+        let message = match axis {
+            DistributionAxis::Horizontal => "Selected sketch items distributed horizontally.",
+            DistributionAxis::Vertical => "Selected sketch items distributed vertically.",
+        };
         match edit_schematic_node_positions(&self.project_yaml, &updates) {
             Ok(updated) => self.apply_edited_project_yaml(updated, message),
             Err(error) => self.record_error(error),
@@ -401,5 +513,27 @@ impl CircuitCiApp {
         self.selected_sketch_item = None;
         self.selected_sketch_items.clear();
         self.apply_edited_project_yaml(updated, &format!("{removed} sketch item(s) removed."));
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DistributionAxis {
+    Horizontal,
+    Vertical,
+}
+
+impl DistributionAxis {
+    fn center(self, node: &sketch::SketchNode) -> f32 {
+        match self {
+            Self::Horizontal => node.rect.center().x,
+            Self::Vertical => node.rect.center().y,
+        }
+    }
+
+    fn with_center(self, center: egui::Pos2, value: f32) -> egui::Pos2 {
+        match self {
+            Self::Horizontal => egui::pos2(value, center.y),
+            Self::Vertical => egui::pos2(center.x, value),
+        }
     }
 }

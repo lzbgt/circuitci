@@ -66,7 +66,7 @@ owns visual-only symbol-style rendering: it may infer common glyph classes from
 reference designators and model IDs, but it must continue to persist only Board
 IR components, nets, pins, and optional schematic node positions/styles.
 `src/gui/sketch_actions.rs`
-owns sketch canvas selection, fit-content, multi-selected movement/alignment,
+owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and
 selected-component duplicate/copy/paste actions that compose lower-level sketch
 YAML mutations. Clipboard state may remember component IDs only; paste must

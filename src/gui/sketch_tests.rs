@@ -36,6 +36,16 @@ board:
 "
 }
 
+fn component_position(snapshot: &ProjectSnapshot, component_id: &str) -> (f64, f64) {
+    let position = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == component_id)
+        .and_then(|component| component.position)
+        .unwrap_or_else(|| panic!("component {component_id} has no schematic position"));
+    (position.x, position.y)
+}
+
 #[test]
 fn add_and_remove_component_emit_valid_yaml() {
     let edited = add_component(
@@ -1054,6 +1064,154 @@ board:
     assert!(app.project_yaml.contains("y: 32.0"));
     assert_eq!(app.selected_sketch_items.len(), 2);
     assert_eq!(app.project_yaml_undo.len(), 1);
+}
+
+#[test]
+fn group_alignment_actions_update_selected_edges_and_centers() {
+    let yaml = "project:
+  name: gui_group_align_test
+  version: 0.1.0
+board:
+  components:
+    U1:
+      model: generic.ic
+    U2:
+      model: generic.ic
+  nets: {}
+  schematic:
+    node_positions:
+      component:U1:
+        x: 20.0
+        y: 30.0
+      component:U2:
+        x: 260.0
+        y: 120.0
+";
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 360.0));
+    let viewport = SketchViewport {
+        pan: egui::Vec2::ZERO,
+        zoom: 1.0,
+    };
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(load_project_snapshot_from_yaml(yaml).unwrap()),
+        sketch_snap_enabled: false,
+        ..CircuitCiApp::default()
+    };
+    app.selected_sketch_items
+        .insert(SketchSelection::Component("U1".to_string()));
+    app.selected_sketch_items
+        .insert(SketchSelection::Component("U2".to_string()));
+
+    let graph =
+        layout_sketch_graph_viewport(canvas, app.project_snapshot.as_ref().unwrap(), viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::AlignRight,
+    );
+    let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+    assert_eq!(component_position(&snapshot, "U1"), (260.0, 30.0));
+    assert_eq!(component_position(&snapshot, "U2"), (260.0, 120.0));
+
+    let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::AlignBottom,
+    );
+    let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+    assert_eq!(component_position(&snapshot, "U1"), (260.0, 120.0));
+    assert_eq!(component_position(&snapshot, "U2"), (260.0, 120.0));
+
+    let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::AlignCenterX,
+    );
+    let graph =
+        layout_sketch_graph_viewport(canvas, app.project_snapshot.as_ref().unwrap(), viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::AlignCenterY,
+    );
+    validate_board_ir_yaml_text(&app.project_yaml).unwrap();
+    assert_eq!(app.project_yaml_undo.len(), 3);
+}
+
+#[test]
+fn group_distribution_actions_space_selected_centers_evenly() {
+    let yaml = "project:
+  name: gui_group_distribute_test
+  version: 0.1.0
+board:
+  components:
+    U1:
+      model: generic.ic
+    U2:
+      model: generic.ic
+    U3:
+      model: generic.ic
+  nets: {}
+  schematic:
+    node_positions:
+      component:U1:
+        x: 20.0
+        y: 40.0
+      component:U2:
+        x: 300.0
+        y: 120.0
+      component:U3:
+        x: 140.0
+        y: 260.0
+";
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 420.0));
+    let viewport = SketchViewport {
+        pan: egui::Vec2::ZERO,
+        zoom: 1.0,
+    };
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(load_project_snapshot_from_yaml(yaml).unwrap()),
+        sketch_snap_enabled: false,
+        ..CircuitCiApp::default()
+    };
+    for component_id in ["U1", "U2", "U3"] {
+        app.selected_sketch_items
+            .insert(SketchSelection::Component(component_id.to_string()));
+    }
+
+    let graph =
+        layout_sketch_graph_viewport(canvas, app.project_snapshot.as_ref().unwrap(), viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::DistributeHorizontal,
+    );
+    let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+    assert_eq!(component_position(&snapshot, "U1"), (20.0, 40.0));
+    assert_eq!(component_position(&snapshot, "U3"), (160.0, 260.0));
+    assert_eq!(component_position(&snapshot, "U2"), (300.0, 120.0));
+
+    let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+    app.apply_sketch_group_action(
+        canvas,
+        &graph,
+        viewport,
+        super::SketchGroupAction::DistributeVertical,
+    );
+    let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+    assert_eq!(component_position(&snapshot, "U1"), (20.0, 40.0));
+    assert_eq!(component_position(&snapshot, "U2"), (300.0, 150.0));
+    assert_eq!(component_position(&snapshot, "U3"), (160.0, 260.0));
+    assert_eq!(app.project_yaml_undo.len(), 2);
 }
 
 #[test]

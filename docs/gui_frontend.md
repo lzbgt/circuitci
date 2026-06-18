@@ -87,7 +87,7 @@ right-click context menus over component, net, wire, and probe badge targets.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
-fit-content application, multi-selected drag/nudge/alignment, and batched
+fit-content application, multi-selected drag/nudge/alignment/distribution, and batched
 selected-item deletion as validated Board IR YAML edits. It also owns the
 transient component clipboard used to copy selected components and paste
 duplicates at a target canvas location through validated Board IR mutations.
@@ -178,8 +178,8 @@ form:
   selection, pan/zoom plus reset-view and fit-content controls,
   schematic hierarchy search/select/fit/focus/isolate controls and object
   navigator search/select/fit controls,
-  Shift-drag marquee selection, group drag/nudge/left-
-  align/top-align controls for multi-selected sketch items, keyboard or button
+  Shift-drag marquee selection, group drag/nudge/edge-align/center-align/
+  distribute controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
   pin-to-pin and pin-to-net
@@ -257,8 +257,8 @@ The supported desktop simulation path is:
 12. rotate, flip, or choose pin side for selected components through
    `board.schematic.node_styles`,
 13. Shift-drag a marquee to select multiple visible components/nets,
-14. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
-   edit,
+14. drag, nudge, align edges/centers, or distribute multi-selected sketch nodes
+   as one validated Board IR edit,
 15. duplicate selected components with their internally referenced local nets
    as one validated Board IR edit while keeping external nets shared,
 16. copy selected components and paste them at the pointer or canvas center

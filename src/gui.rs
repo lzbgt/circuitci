@@ -92,7 +92,13 @@ impl Stage {
 enum SketchGroupAction {
     Nudge(egui::Vec2),
     AlignLeft,
+    AlignRight,
     AlignTop,
+    AlignBottom,
+    AlignCenterX,
+    AlignCenterY,
+    DistributeHorizontal,
+    DistributeVertical,
 }
 
 pub struct CircuitCiApp {
@@ -564,8 +570,26 @@ impl CircuitCiApp {
                     if ui.button("Align Left").clicked() {
                         self.sketch_group_action = Some(SketchGroupAction::AlignLeft);
                     }
+                    if ui.button("Align Right").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::AlignRight);
+                    }
                     if ui.button("Align Top").clicked() {
                         self.sketch_group_action = Some(SketchGroupAction::AlignTop);
+                    }
+                    if ui.button("Align Bottom").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::AlignBottom);
+                    }
+                    if ui.button("Center X").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::AlignCenterX);
+                    }
+                    if ui.button("Center Y").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::AlignCenterY);
+                    }
+                    if ui.button("Distribute X").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::DistributeHorizontal);
+                    }
+                    if ui.button("Distribute Y").clicked() {
+                        self.sketch_group_action = Some(SketchGroupAction::DistributeVertical);
                     }
                 });
             }
