@@ -73,7 +73,7 @@ mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
 highlight drawing, visible wire-route handles, direct wire-route drag editing
-and clearing, hover
+plus route-handle insertion/deletion and clearing, hover
 tooltips, context menus, and runtime tint display. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
