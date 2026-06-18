@@ -1183,6 +1183,7 @@ mod tests {
                 id: "R1".to_string(),
                 model: "generic.analog.resistor".to_string(),
                 part_number: None,
+                position: None,
                 pins: vec![
                     SketchPin {
                         pin: "A".to_string(),
@@ -1201,6 +1202,7 @@ mod tests {
                     nominal_voltage: None,
                     powered: None,
                     connections: vec!["R1.A".to_string()],
+                    position: None,
                 },
                 SketchNet {
                     id: "gnd".to_string(),
@@ -1208,6 +1210,7 @@ mod tests {
                     nominal_voltage: Some(0.0),
                     powered: Some(true),
                     connections: vec!["R1.B".to_string()],
+                    position: None,
                 },
             ],
         }

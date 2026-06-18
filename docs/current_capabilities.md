@@ -8,14 +8,15 @@ component models, runs deterministic validation scenarios, and emits
 machine-readable reports for agents and engineers before fabrication.
 
 It is not yet a full schematic editor, PCB layout editor, full EDA suite, RF/SI
-solver, or general-purpose analog simulator.
+solver, or general-purpose analog simulator, though the optional GUI now has a
+bounded schematic graph canvas for Board IR edits.
 
 ## Frontends
 
 | Area | Current support | Boundary |
 | --- | --- | --- |
 | CLI | Default `circuitci` binary for import, suggestion, validation, suites, and report generation. | Primary automation surface for CI and agents. |
-| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, project loading, visual Board IR component/net graph inspection, graph-node hover readouts for matching runtime waveform probes, structured scalar editing for existing component/net properties, add/remove controls for components and unreferenced nets, selected-component pin assignment/removal to existing nets, active-library model search with selected-component model assignment, generated-from-Board analog transient scenario creation, structured sample/min/max analog assertion authoring, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, A/B cursor values, min/max and delta waveform measurements, simulation artifact observation, and report viewing. | Workflow and observation shell; canvas schematic editing, visual wire routing, file-backed SPICE deck authoring, and advanced waveform math/channel analysis are future stages. |
+| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, project loading, visual Board IR component/net graph inspection, draggable graph-node positions, visual pin-to-net wire assignment, graph-node hover readouts for matching runtime waveform probes, structured scalar editing for existing component/net properties, add/remove controls for components and unreferenced nets, selected-component pin assignment/removal to existing nets, active-library model search with selected-component model assignment, generated-from-Board analog transient scenario creation, structured sample/min/max analog assertion authoring, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, A/B cursor values, min/max and delta waveform measurements, simulation artifact observation, and report viewing. | Workflow and observation shell; full symbol graphics, buses, hierarchical sheets, file-backed SPICE deck authoring, and advanced waveform math/channel analysis are future stages. |
 
 ## Evidence Import
 

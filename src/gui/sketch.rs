@@ -19,6 +19,7 @@ pub(super) struct SketchComponent {
     pub(super) model: String,
     pub(super) part_number: Option<String>,
     pub(super) pins: Vec<SketchPin>,
+    pub(super) position: Option<SketchPosition>,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +35,13 @@ pub(super) struct SketchNet {
     pub(super) nominal_voltage: Option<f64>,
     pub(super) powered: Option<bool>,
     pub(super) connections: Vec<String>,
+    pub(super) position: Option<SketchPosition>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SketchPosition {
+    pub(super) x: f64,
+    pub(super) y: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,6 +88,7 @@ pub(super) fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnaps
 }
 
 fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
+    let positions = project.board.schematic.node_positions;
     let components_detail: Vec<_> = project
         .board
         .components
@@ -88,6 +97,7 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             id: id.clone(),
             model: component.model.clone(),
             part_number: component.part_number.clone(),
+            position: sketch_position_for(&positions, &SketchSelection::Component(id.clone())),
             pins: component
                 .pins
                 .iter()
@@ -117,6 +127,7 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             nominal_voltage: net.nominal_voltage,
             powered: net.powered,
             connections: connections_by_net.remove(id).unwrap_or_default(),
+            position: sketch_position_for(&positions, &SketchSelection::Net(id.clone())),
         })
         .collect();
     ProjectSnapshot {
@@ -132,6 +143,18 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
         components_detail,
         nets_detail,
     }
+}
+
+fn sketch_position_for(
+    positions: &std::collections::BTreeMap<String, crate::board_ir::SchematicNodePosition>,
+    selection: &SketchSelection,
+) -> Option<SketchPosition> {
+    positions
+        .get(&schematic_node_key(selection)?)
+        .map(|position| SketchPosition {
+            x: position.x,
+            y: position.y,
+        })
 }
 
 pub(super) fn validate_board_ir_yaml_text(text: &str) -> Result<()> {
@@ -155,6 +178,48 @@ pub(super) fn edit_component_model(text: &str, component_id: &str, model: &str) 
         "model",
         Some(serde_yaml_ng::Value::String(model.trim().to_string())),
     )
+}
+
+pub(super) fn edit_schematic_node_position(
+    text: &str,
+    selection: &SketchSelection,
+    x: f64,
+    y: f64,
+) -> Result<String> {
+    if !x.is_finite() || !y.is_finite() {
+        anyhow::bail!("Schematic node position must be finite.");
+    }
+    let key = schematic_node_key(selection).with_context(
+        || "Only component and net nodes can be positioned on the schematic canvas.",
+    )?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let board = yaml
+            .as_mapping_mut()
+            .context("Board IR project must be a YAML object.")?
+            .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+            .context("Board IR project is missing board.")?
+            .as_mapping_mut()
+            .context("Board IR field board must be an object.")?;
+        let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
+        let positions =
+            ensure_child_mapping_mut(schematic, "node_positions", "schematic node positions")?;
+        let mut position = serde_yaml_ng::Mapping::new();
+        position.insert(
+            serde_yaml_ng::Value::String("x".to_string()),
+            serde_yaml_ng::to_value(x)?,
+        );
+        position.insert(
+            serde_yaml_ng::Value::String("y".to_string()),
+            serde_yaml_ng::to_value(y)?,
+        );
+        positions.insert(
+            serde_yaml_ng::Value::String(key),
+            serde_yaml_ng::Value::Mapping(position),
+        );
+    }
+    encode_edited_project_yaml(yaml)
 }
 
 pub(super) fn add_component(text: &str, component_id: &str, model: &str) -> Result<String> {
@@ -509,6 +574,15 @@ fn normalized_net_kind(kind: &str) -> Result<&str> {
         _ => anyhow::bail!("Unsupported net kind {kind}."),
     }
 }
+
+fn schematic_node_key(selection: &SketchSelection) -> Option<String> {
+    match selection {
+        SketchSelection::Component(id) => Some(format!("component:{id}")),
+        SketchSelection::Net(id) => Some(format!("net:{id}")),
+        SketchSelection::Overflow(_) => None,
+    }
+}
+
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
     let node_width = ((rect.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
@@ -524,29 +598,29 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     let mut nodes = Vec::new();
     let component_count = snapshot.components_detail.len().min(max_rows);
     for (index, component) in snapshot.components_detail.iter().take(max_rows).enumerate() {
-        let y = top + index as f32 * (node_height + row_gap);
+        let default = egui::pos2(left_x, top + index as f32 * (node_height + row_gap));
         nodes.push(SketchNode {
             selection: SketchSelection::Component(component.id.clone()),
             label: component.id.clone(),
             detail: compact_label(&component.model, 34),
-            rect: egui::Rect::from_min_size(
-                egui::pos2(left_x, y),
-                egui::vec2(node_width, node_height),
+            rect: node_rect_from_position(
+                rect,
+                component.position,
+                default,
+                node_width,
+                node_height,
             ),
         });
     }
 
     let net_count = snapshot.nets_detail.len().min(max_rows);
     for (index, net) in snapshot.nets_detail.iter().take(max_rows).enumerate() {
-        let y = top + index as f32 * (node_height + row_gap);
+        let default = egui::pos2(right_x, top + index as f32 * (node_height + row_gap));
         nodes.push(SketchNode {
             selection: SketchSelection::Net(net.id.clone()),
             label: net.id.clone(),
             detail: format!("{} / {} conn", net.kind, net.connections.len()),
-            rect: egui::Rect::from_min_size(
-                egui::pos2(right_x, y),
-                egui::vec2(node_width, node_height),
-            ),
+            rect: node_rect_from_position(rect, net.position, default, node_width, node_height),
         });
     }
 
@@ -606,6 +680,30 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     }
 
     SketchGraph { nodes, edges }
+}
+
+fn node_rect_from_position(
+    canvas: egui::Rect,
+    position: Option<SketchPosition>,
+    default: egui::Pos2,
+    width: f32,
+    height: f32,
+) -> egui::Rect {
+    let min = if let Some(position) = position {
+        egui::pos2(
+            canvas.left() + position.x as f32,
+            canvas.top() + position.y as f32,
+        )
+    } else {
+        default
+    };
+    let clamped = egui::pos2(
+        min.x
+            .clamp(canvas.left(), (canvas.right() - width).max(canvas.left())),
+        min.y
+            .clamp(canvas.top(), (canvas.bottom() - height).max(canvas.top())),
+    );
+    egui::Rect::from_min_size(clamped, egui::vec2(width, height))
 }
 
 fn push_overflow_hint(
@@ -669,9 +767,11 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        add_component, add_net, assign_component_pin, remove_component, remove_component_pin,
+        SketchPosition, SketchSelection, add_component, add_net, assign_component_pin,
+        edit_schematic_node_position, layout_sketch_graph, remove_component, remove_component_pin,
         remove_net, validate_board_ir_yaml_text,
     };
+    use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -754,5 +854,64 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("unsupported characters"));
+    }
+
+    #[test]
+    fn edit_schematic_node_position_emits_valid_yaml() {
+        let edited = edit_schematic_node_position(
+            editable_project_yaml(),
+            &SketchSelection::Component("R1".to_string()),
+            42.0,
+            84.0,
+        )
+        .unwrap();
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("component:R1"));
+        assert!(edited.contains("x: 42"));
+        assert!(edited.contains("y: 84"));
+    }
+
+    #[test]
+    fn sketch_graph_layout_uses_saved_node_position() {
+        let snapshot = ProjectSnapshot {
+            name: "positioned_graph".to_string(),
+            components: 1,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "R1".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                position: Some(SketchPosition { x: 50.0, y: 70.0 }),
+                pins: vec![SketchPin {
+                    pin: "A".to_string(),
+                    net: "net_a".to_string(),
+                }],
+            }],
+            nets_detail: vec![SketchNet {
+                id: "net_a".to_string(),
+                kind: "digital_or_analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["R1.A".to_string()],
+                position: Some(SketchPosition { x: 310.0, y: 70.0 }),
+            }],
+        };
+        let graph = layout_sketch_graph(
+            eframe::egui::Rect::from_min_size(
+                eframe::egui::pos2(10.0, 20.0),
+                eframe::egui::vec2(640.0, 320.0),
+            ),
+            &snapshot,
+        );
+        let component = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+            .unwrap();
+        assert_eq!(component.rect.left(), 60.0);
+        assert_eq!(component.rect.top(), 90.0);
+        assert_eq!(graph.edges.len(), 1);
     }
 }

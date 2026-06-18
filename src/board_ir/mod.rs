@@ -30,11 +30,25 @@ pub struct Board {
     #[serde(default)]
     pub nets: BTreeMap<String, NetSpec>,
     #[serde(default)]
+    pub schematic: BoardSchematic,
+    #[serde(default)]
     pub manufacturing: BoardManufacturing,
     #[serde(default)]
     pub runtime: BoardRuntime,
     #[serde(default)]
     pub layout: BoardLayout,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BoardSchematic {
+    #[serde(default)]
+    pub node_positions: BTreeMap<String, SchematicNodePosition>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicNodePosition {
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

@@ -25,9 +25,13 @@ owns Board IR graph snapshots, graph layout/drawing helpers, and structured
 scalar YAML edit helpers for existing components and nets. It may add or remove
 component entries and may remove only nets that are not referenced by component
 pins. It may assign or remove component pin bindings only when the component
-exists and any assigned target net exists. Visual wire routing should keep using
-these Board IR mutation helpers rather than introducing a parallel connection
-model. `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV
+exists and any assigned target net exists. It may persist schematic graph node
+positions under `board.schematic.node_positions`; it must not use
+`board.layout.placements` for schematic drag state because those coordinates
+are physical PCB evidence consumed by placement/layout validators. Visual wire
+routing should keep using these Board IR mutation helpers rather than
+introducing a parallel connection model. `src/gui/simulation.rs` owns the
+Simulation stage UI, waveform CSV
 parsing, plotting, cursor readouts, and min/max/delta measurements.
 It may display graph hover readouts for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
@@ -48,6 +52,9 @@ enrich these evidence families:
 
 - component graph: `board.components`, `board.nets`, and component
   `source` metadata;
+- schematic GUI evidence: `board.schematic.node_positions`, which stores
+  component/net graph positions for editor usability and is intentionally
+  separate from physical `board.layout.placements`;
 - board-level manufacturing facts: `board.manufacturing`, currently including
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
   `min_slot_edge_clearance_mm`, plus optional paste area-ratio and paste-spacing

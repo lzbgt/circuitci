@@ -143,6 +143,24 @@
             "additionalProperties": true
           }
         },
+        "schematic": {
+          "type": "object",
+          "properties": {
+            "node_positions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["x", "y"],
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "manufacturing": {
           "type": "object",
           "properties": {

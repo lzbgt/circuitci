@@ -12,9 +12,9 @@ use simulation::{WaveformView, load_report_waveforms, runtime_probe_lines_for_se
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
     draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
-    edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph, load_project_snapshot,
-    load_project_snapshot_from_yaml, remove_component, remove_component_pin, remove_net,
-    validate_board_ir_yaml_text,
+    edit_net_nominal_voltage, edit_net_powered, edit_schematic_node_position, layout_sketch_graph,
+    load_project_snapshot, load_project_snapshot_from_yaml, remove_component, remove_component_pin,
+    remove_net, validate_board_ir_yaml_text,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -91,6 +91,8 @@ pub struct CircuitCiApp {
     new_net_kind: String,
     pin_edit_id: String,
     pin_edit_net: String,
+    wire_pin_id: String,
+    wire_from_component: Option<String>,
     analog_scenario_name: String,
     analog_ground_net: String,
     analog_probe_net: String,
@@ -150,6 +152,8 @@ impl Default for CircuitCiApp {
             new_net_kind: "digital_or_analog".to_string(),
             pin_edit_id: "P1".to_string(),
             pin_edit_net: String::new(),
+            wire_pin_id: "P1".to_string(),
+            wire_from_component: None,
             analog_scenario_name: "gui_transient".to_string(),
             analog_ground_net: String::new(),
             analog_probe_net: String::new(),
@@ -707,7 +711,7 @@ impl CircuitCiApp {
 
     fn draw_board_graph(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         let desired_size = egui::vec2((ui.available_width() * 0.64).max(460.0), 340.0);
-        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 4.0, egui::Color32::from_gray(18));
         painter.rect_stroke(
@@ -722,6 +726,19 @@ impl CircuitCiApp {
             painter.line_segment(
                 [edge.start, edge.end],
                 egui::Stroke::new(1.0, egui::Color32::from_gray(72)),
+            );
+        }
+        if let Some(component_id) = &self.wire_from_component
+            && let Some(pointer) = ui.ctx().pointer_hover_pos()
+            && rect.contains(pointer)
+            && let Some(source) = graph
+                .nodes
+                .iter()
+                .find(|node| node.selection == SketchSelection::Component(component_id.clone()))
+        {
+            painter.line_segment(
+                [source.rect.center(), pointer],
+                egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
         }
         for node in &graph.nodes {
@@ -743,11 +760,42 @@ impl CircuitCiApp {
         if response.clicked()
             && let Some(position) = response.interact_pointer_pos()
         {
+            let clicked = graph
+                .nodes
+                .iter()
+                .find(|node| node.rect.contains(position))
+                .map(|node| node.selection.clone());
+            if let Some(SketchSelection::Net(net_id)) = &clicked
+                && let Some(component_id) = self.wire_from_component.clone()
+            {
+                self.apply_visual_wire(component_id, net_id.clone());
+            } else {
+                self.selected_sketch_item = clicked;
+            }
+        }
+
+        if response.drag_started()
+            && let Some(position) = response.interact_pointer_pos()
+        {
             self.selected_sketch_item = graph
                 .nodes
                 .iter()
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
+        }
+        if response.dragged()
+            && let (Some(selection), Some(position)) = (
+                self.selected_sketch_item.clone(),
+                response.interact_pointer_pos(),
+            )
+            && !matches!(selection, SketchSelection::Overflow(_))
+            && let Some(node) = graph.nodes.iter().find(|node| node.selection == selection)
+        {
+            let x = (position.x - rect.left() - node.rect.width() / 2.0)
+                .clamp(0.0, (rect.width() - node.rect.width()).max(0.0));
+            let y = (position.y - rect.top() - node.rect.height() / 2.0)
+                .clamp(0.0, (rect.height() - node.rect.height()).max(0.0));
+            self.apply_schematic_node_position(selection, x as f64, y as f64);
         }
 
         if let Some(node) = hovered_node {
@@ -829,6 +877,34 @@ impl CircuitCiApp {
                                 self.apply_remove_component_pin(&component.id);
                             }
                         });
+                        ui.separator();
+                        ui.label("Visual wire");
+                        ui.horizontal(|ui| {
+                            ui.label("pin");
+                            ui.text_edit_singleline(&mut self.wire_pin_id);
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Start Wire").clicked() {
+                                self.wire_from_component = Some(component.id.clone());
+                                if self.wire_pin_id.trim().is_empty() {
+                                    self.wire_pin_id = self.pin_edit_id.clone();
+                                }
+                                self.status = format!(
+                                    "Wire mode: click a net node to connect {}.{}.",
+                                    component.id,
+                                    self.wire_pin_id.trim()
+                                );
+                            }
+                            if ui.button("Cancel Wire").clicked() {
+                                self.wire_from_component = None;
+                            }
+                        });
+                        if let Some(source) = &self.wire_from_component {
+                            ui.label(format!(
+                                "Active: {source}.{} -> click a net",
+                                self.wire_pin_id.trim()
+                            ));
+                        }
                         if ui.button("Remove Component").clicked() {
                             self.apply_remove_component(&component.id);
                         }
@@ -1006,6 +1082,40 @@ impl CircuitCiApp {
                     self.pin_edit_id.trim()
                 ),
             ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_visual_wire(&mut self, component_id: String, net_id: String) {
+        match assign_component_pin(
+            &self.project_yaml,
+            &component_id,
+            &self.wire_pin_id,
+            &net_id,
+        ) {
+            Ok(updated) => {
+                self.pin_edit_id = self.wire_pin_id.clone();
+                self.pin_edit_net = net_id.clone();
+                self.wire_from_component = None;
+                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Visual wire assigned {component_id}.{} to {net_id}.",
+                        self.wire_pin_id.trim()
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_schematic_node_position(&mut self, selection: SketchSelection, x: f64, y: f64) {
+        match edit_schematic_node_position(&self.project_yaml, &selection, x, y) {
+            Ok(updated) => {
+                self.selected_sketch_item = Some(selection);
+                self.apply_edited_project_yaml(updated, "Schematic node position updated.");
+            }
             Err(error) => self.record_error(error),
         }
     }
@@ -1287,6 +1397,7 @@ board:
                 id: "R1".to_string(),
                 model: "generic.analog.resistor".to_string(),
                 part_number: None,
+                position: None,
                 pins: vec![SketchPin {
                     pin: "A".to_string(),
                     net: "net_a".to_string(),
@@ -1298,6 +1409,7 @@ board:
                 nominal_voltage: None,
                 powered: None,
                 connections: vec!["R1.A".to_string()],
+                position: None,
             }],
         };
         let graph = layout_sketch_graph(
