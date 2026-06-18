@@ -1,9 +1,10 @@
 use super::{
-    WaveformMathDraft, WaveformProbeQuantity, append_derived_waveform_probe,
+    WaveformMathDraft, WaveformProbeQuantity, WaveformTraceRef, append_derived_waveform_probe,
     derived_waveform_quantity, find_scope_probe, interpolated_value, parse_waveform_csv_text,
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection, sanitized_probe_name,
-    scope_plot_size, waveform_measurement, waveform_probe_quantity_from_label,
-    waveform_probe_value_for_badge, waveform_time_range_for_view,
+    scope_plot_size, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
+    waveform_time_range_for_view,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -365,6 +366,123 @@ fn pending_scope_probe_focus_selects_loaded_trace() {
     assert!(app.apply_pending_scope_probe_focus());
     assert_eq!(app.selected_waveform, 0);
     assert_eq!(app.selected_probe, 1);
+}
+
+#[test]
+fn scope_visible_traces_keep_selected_first_and_dedupe_pins() {
+    let waveform = parse_waveform_csv_text(
+        "time out_voltage current_probe aux_probe
+0.0 1.0 0.1 5.0
+1e-6 2.0 0.2 6.0
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let pinned = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 99,
+            probe_index: 0,
+        },
+    ];
+
+    assert_eq!(
+        scope_visible_trace_refs(&[waveform], 0, 0, &pinned),
+        vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 0,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+        ]
+    );
+}
+
+#[test]
+fn pinned_scope_trace_pruning_drops_invalid_loaded_refs() {
+    let waveform = parse_waveform_csv_text(
+        "time out_voltage current_probe
+0.0 1.0 0.1
+1e-6 2.0 0.2
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_pinned_traces: vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 9,
+            },
+            WaveformTraceRef {
+                waveform_index: 9,
+                probe_index: 0,
+            },
+        ],
+        ..Default::default()
+    };
+
+    app.prune_scope_trace_pins();
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }]
+    );
+}
+
+#[test]
+fn pinned_scope_refs_shift_after_probe_removal() {
+    let mut app = CircuitCiApp {
+        waveform_pinned_traces: vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 3,
+            },
+            WaveformTraceRef {
+                waveform_index: 1,
+                probe_index: 3,
+            },
+        ],
+        ..Default::default()
+    };
+
+    app.shift_scope_trace_pins_after_probe_removal(0, 1);
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 2,
+            },
+            WaveformTraceRef {
+                waveform_index: 1,
+                probe_index: 3,
+            },
+        ]
+    );
 }
 
 fn probe_snapshot() -> ProjectSnapshot {

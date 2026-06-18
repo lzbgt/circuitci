@@ -63,6 +63,7 @@ impl CircuitCiApp {
         if self.waveforms.is_empty() {
             return;
         }
+        self.prune_scope_trace_pins();
 
         self.waveform_selector(ui);
         self.waveform_probe_selector(ui);
@@ -148,6 +149,32 @@ impl CircuitCiApp {
                 }
             }
         });
+        ui.horizontal_wrapped(|ui| {
+            let pinned = self.selected_scope_trace_pinned();
+            if ui
+                .button(if pinned { "Unpin Trace" } else { "Pin Trace" })
+                .clicked()
+            {
+                self.toggle_selected_scope_trace_pin();
+            }
+            if ui
+                .add_enabled(
+                    !self.waveform_pinned_traces.is_empty(),
+                    egui::Button::new("Clear Pins"),
+                )
+                .clicked()
+            {
+                let count = self.waveform_pinned_traces.len();
+                self.waveform_pinned_traces.clear();
+                self.status = format!("Cleared {count} pinned scope trace(s).");
+            }
+            if !self.waveform_pinned_traces.is_empty() {
+                ui.label(format!(
+                    "{} pinned comparison trace(s)",
+                    self.waveform_pinned_traces.len()
+                ));
+            }
+        });
     }
 
     fn waveform_scope_plot(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
@@ -155,10 +182,16 @@ impl CircuitCiApp {
         if waveform.probes.is_empty() {
             return;
         }
+        let traces = scope_visible_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+            &self.waveform_pinned_traces,
+        );
         draw_waveform_plot_sized(
             ui,
-            waveform,
-            self.selected_probe,
+            &self.waveforms,
+            &traces,
             self.waveform_cursor_a_us,
             self.waveform_cursor_b_us,
             scope_plot_size(desired_size),
@@ -211,6 +244,45 @@ impl CircuitCiApp {
                 "Cursor A drives graph hover probes and runtime node tinting. Cursor B follows during playback/scrub.",
             );
         });
+    }
+
+    fn selected_scope_trace(&self) -> WaveformTraceRef {
+        WaveformTraceRef {
+            waveform_index: self.selected_waveform,
+            probe_index: self.selected_probe,
+        }
+    }
+
+    fn selected_scope_trace_pinned(&self) -> bool {
+        let selected = self.selected_scope_trace();
+        self.waveform_pinned_traces.contains(&selected)
+    }
+
+    fn toggle_selected_scope_trace_pin(&mut self) {
+        let selected = self.selected_scope_trace();
+        if !valid_waveform_trace(&self.waveforms, selected) {
+            return;
+        }
+        if let Some(index) = self
+            .waveform_pinned_traces
+            .iter()
+            .position(|trace| *trace == selected)
+        {
+            self.waveform_pinned_traces.remove(index);
+            self.status = "Selected scope trace unpinned.".to_string();
+        } else {
+            self.waveform_pinned_traces.push(selected);
+            let label = self.waveforms[selected.waveform_index].probes[selected.probe_index]
+                .label
+                .clone();
+            self.status = format!("Pinned scope trace {label} for comparison.");
+        }
+    }
+
+    fn prune_scope_trace_pins(&mut self) {
+        let waveforms = &self.waveforms;
+        self.waveform_pinned_traces
+            .retain(|trace| valid_waveform_trace(waveforms, *trace));
     }
 
     fn waveform_math_panel(&mut self, ui: &mut egui::Ui) {
@@ -379,25 +451,46 @@ impl CircuitCiApp {
     }
 
     fn apply_remove_selected_waveform_math_channel(&mut self) {
-        let Some(waveform) = self.waveforms.get_mut(self.selected_waveform) else {
+        let waveform_index = self.selected_waveform;
+        let removed_probe_index = self.selected_probe;
+        let Some((label, probe_count)) =
+            self.waveforms.get_mut(waveform_index).and_then(|waveform| {
+                let probe = waveform.probes.get(removed_probe_index)?;
+                if !probe.derived {
+                    return None;
+                }
+                let label = probe.label.clone();
+                waveform.probes.remove(removed_probe_index);
+                Some((label, waveform.probes.len()))
+            })
+        else {
             return;
         };
-        let Some(probe) = waveform.probes.get(self.selected_probe) else {
-            return;
-        };
-        if !probe.derived {
-            return;
-        }
-        let label = probe.label.clone();
-        waveform.probes.remove(self.selected_probe);
-        self.selected_probe = self.selected_probe.saturating_sub(1);
-        self.waveform_math_left = self
-            .waveform_math_left
-            .min(waveform.probes.len().saturating_sub(1));
-        self.waveform_math_right = self
-            .waveform_math_right
-            .min(waveform.probes.len().saturating_sub(1));
+        self.selected_probe = self.selected_probe.min(probe_count.saturating_sub(1));
+        self.shift_scope_trace_pins_after_probe_removal(waveform_index, removed_probe_index);
+        self.prune_scope_trace_pins();
+        self.waveform_math_left = self.waveform_math_left.min(probe_count.saturating_sub(1));
+        self.waveform_math_right = self.waveform_math_right.min(probe_count.saturating_sub(1));
         self.status = format!("Derived waveform channel {label} removed.");
+    }
+
+    fn shift_scope_trace_pins_after_probe_removal(
+        &mut self,
+        waveform_index: usize,
+        removed_probe_index: usize,
+    ) {
+        self.waveform_pinned_traces.retain_mut(|trace| {
+            if trace.waveform_index != waveform_index {
+                return true;
+            }
+            if trace.probe_index == removed_probe_index {
+                return false;
+            }
+            if trace.probe_index > removed_probe_index {
+                trace.probe_index -= 1;
+            }
+            true
+        });
     }
 
     fn apply_promote_waveform_channel(
@@ -519,6 +612,12 @@ pub(super) struct WaveformView {
     path: String,
     time_s: Vec<f64>,
     probes: Vec<WaveformProbe>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct WaveformTraceRef {
+    waveform_index: usize,
+    probe_index: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -1164,26 +1263,29 @@ fn waveform_measurement_panel(
 
 fn draw_waveform_plot_sized(
     ui: &mut egui::Ui,
-    waveform: &WaveformView,
-    probe_index: usize,
+    waveforms: &[WaveformView],
+    traces: &[WaveformTraceRef],
     cursor_a_us: f64,
     cursor_b_us: f64,
     desired_size: egui::Vec2,
 ) {
-    let probe = &waveform.probes[probe_index];
-    let Some((x_min, x_max)) = min_max(&waveform.time_s) else {
-        ui.label("Waveform has no time samples.");
+    let Some(primary) = traces
+        .first()
+        .and_then(|trace| waveform_trace(waveforms, *trace))
+    else {
+        ui.label("No valid scope trace is selected.");
         return;
     };
-    let Some((y_min, y_max)) = min_max(&probe.values) else {
-        ui.label("Selected probe has no samples.");
+    let Some((x_min, x_max, y_min, y_max)) = waveform_trace_bounds(waveforms, traces) else {
+        ui.label("Waveform has no time samples.");
         return;
     };
 
     ui.label(format!(
-        "{} samples from {}",
-        waveform.time_s.len(),
-        waveform.path
+        "{} samples from {}; showing {} trace(s)",
+        primary.0.time_s.len(),
+        primary.0.path,
+        traces.len()
     ));
     let (rect, _) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
     let painter = ui.painter_at(rect);
@@ -1245,21 +1347,46 @@ fn draw_waveform_plot_sized(
         );
     }
 
-    let points: Vec<_> = waveform
-        .time_s
-        .iter()
-        .copied()
-        .zip(probe.values.iter().copied())
-        .map(|(x, y)| map_point(x, y))
-        .collect();
-    if points.len() >= 2 {
-        painter.add(egui::Shape::line(
-            points,
-            egui::Stroke::new(2.0, egui::Color32::from_rgb(93, 185, 255)),
-        ));
+    let font = egui::FontId::monospace(12.0);
+    for (trace_order, trace) in traces.iter().copied().enumerate() {
+        let Some((trace_waveform, trace_probe)) = waveform_trace(waveforms, trace) else {
+            continue;
+        };
+        let color = scope_trace_color(trace_order);
+        let points: Vec<_> = trace_waveform
+            .time_s
+            .iter()
+            .copied()
+            .zip(trace_probe.values.iter().copied())
+            .map(|(x, y)| map_point(x, y))
+            .collect();
+        if points.len() >= 2 {
+            painter.add(egui::Shape::line(
+                points,
+                egui::Stroke::new(if trace_order == 0 { 2.4 } else { 1.8 }, color),
+            ));
+        }
+        if trace_order < 6 {
+            painter.text(
+                egui::pos2(
+                    plot_rect.left() + 8.0,
+                    plot_rect.top() + 14.0 + trace_order as f32 * 16.0,
+                ),
+                egui::Align2::LEFT_CENTER,
+                format!(
+                    "{}{}",
+                    if trace_order == 0 { "* " } else { "  " },
+                    trace_probe
+                        .expression
+                        .as_deref()
+                        .unwrap_or(&trace_probe.label)
+                ),
+                font.clone(),
+                color,
+            );
+        }
     }
 
-    let font = egui::FontId::monospace(12.0);
     painter.text(
         egui::pos2(plot_rect.left(), rect.bottom() - 22.0),
         egui::Align2::LEFT_CENTER,
@@ -1272,7 +1399,7 @@ fn draw_waveform_plot_sized(
         egui::Align2::LEFT_CENTER,
         format!(
             "{} {:.3e}..{:.3e}",
-            probe.expression.as_deref().unwrap_or(&probe.label),
+            primary.1.expression.as_deref().unwrap_or(&primary.1.label),
             y_min,
             y_max
         ),
@@ -1283,6 +1410,77 @@ fn draw_waveform_plot_sized(
 
 pub(super) fn scope_plot_size(available: egui::Vec2) -> egui::Vec2 {
     egui::vec2(available.x.max(560.0), available.y.max(360.0))
+}
+
+fn valid_waveform_trace(waveforms: &[WaveformView], trace: WaveformTraceRef) -> bool {
+    waveform_trace(waveforms, trace).is_some()
+}
+
+fn waveform_trace(
+    waveforms: &[WaveformView],
+    trace: WaveformTraceRef,
+) -> Option<(&WaveformView, &WaveformProbe)> {
+    let waveform = waveforms.get(trace.waveform_index)?;
+    let probe = waveform.probes.get(trace.probe_index)?;
+    Some((waveform, probe))
+}
+
+fn scope_visible_trace_refs(
+    waveforms: &[WaveformView],
+    selected_waveform: usize,
+    selected_probe: usize,
+    pinned: &[WaveformTraceRef],
+) -> Vec<WaveformTraceRef> {
+    let selected = WaveformTraceRef {
+        waveform_index: selected_waveform,
+        probe_index: selected_probe,
+    };
+    let mut traces = Vec::new();
+    if valid_waveform_trace(waveforms, selected) {
+        traces.push(selected);
+    }
+    for trace in pinned.iter().copied() {
+        if valid_waveform_trace(waveforms, trace) && !traces.contains(&trace) {
+            traces.push(trace);
+        }
+    }
+    traces
+}
+
+fn waveform_trace_bounds(
+    waveforms: &[WaveformView],
+    traces: &[WaveformTraceRef],
+) -> Option<(f64, f64, f64, f64)> {
+    let mut x_range: Option<(f64, f64)> = None;
+    let mut y_range: Option<(f64, f64)> = None;
+    for trace in traces.iter().copied() {
+        let (waveform, probe) = waveform_trace(waveforms, trace)?;
+        let (x_min, x_max) = min_max(&waveform.time_s)?;
+        let (y_min, y_max) = min_max(&probe.values)?;
+        x_range = Some(match x_range {
+            Some((left, right)) => (left.min(x_min), right.max(x_max)),
+            None => (x_min, x_max),
+        });
+        y_range = Some(match y_range {
+            Some((bottom, top)) => (bottom.min(y_min), top.max(y_max)),
+            None => (y_min, y_max),
+        });
+    }
+    let (x_min, x_max) = x_range?;
+    let (y_min, y_max) = y_range?;
+    Some((x_min, x_max, y_min, y_max))
+}
+
+fn scope_trace_color(index: usize) -> egui::Color32 {
+    const COLORS: [egui::Color32; 6] = [
+        egui::Color32::from_rgb(93, 185, 255),
+        egui::Color32::from_rgb(255, 196, 87),
+        egui::Color32::from_rgb(135, 220, 140),
+        egui::Color32::from_rgb(247, 118, 142),
+        egui::Color32::from_rgb(187, 154, 247),
+        egui::Color32::from_rgb(125, 207, 255),
+    ];
+    COLORS[index % COLORS.len()]
 }
 
 fn draw_cursor_line(

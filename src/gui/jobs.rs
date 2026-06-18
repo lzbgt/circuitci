@@ -514,6 +514,7 @@ impl CircuitCiApp {
                 self.report_markdown = output.markdown;
                 self.report = Some(output.report);
                 self.waveforms = waveforms;
+                self.waveform_pinned_traces.clear();
                 self.selected_waveform = 0;
                 self.selected_probe = 0;
                 self.apply_pending_scope_probe_focus();

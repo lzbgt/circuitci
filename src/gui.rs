@@ -67,7 +67,7 @@ use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
-use waveform::{WaveformView, waveform_time_range_for_view};
+use waveform::{WaveformTraceRef, WaveformView, waveform_time_range_for_view};
 
 pub fn run() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
@@ -340,6 +340,7 @@ pub struct CircuitCiApp {
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
+    waveform_pinned_traces: Vec<WaveformTraceRef>,
     pending_scope_probe: Option<ScopeProbeTarget>,
     waveform_math_left: usize,
     waveform_math_right: usize,
@@ -495,6 +496,7 @@ impl Default for CircuitCiApp {
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
+            waveform_pinned_traces: Vec::new(),
             pending_scope_probe: None,
             waveform_math_left: 0,
             waveform_math_right: 0,

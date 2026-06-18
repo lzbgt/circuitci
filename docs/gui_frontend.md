@@ -222,10 +222,10 @@ read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, the primary scope plot,
 simulation-time scrub/playback controls, cursor measurement tools, GUI-only
-derived waveform channels, promotion of representable derived channels to Board
-IR probes/assertions, pending schematic probe-to-scope focus, and
-graph-hover/runtime activity extraction from loaded waveform artifacts. Focused
-waveform and scope regressions live in
+transient trace pinning/comparison overlays, derived waveform channels,
+promotion of representable derived channels to Board IR probes/assertions,
+pending schematic probe-to-scope focus, and graph-hover/runtime activity
+extraction from loaded waveform artifacts. Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
 turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
@@ -337,8 +337,9 @@ form:
   selected component, and shows scenario suggestion YAML.
 - Simulation/Scopes: presents a runtime-first oscilloscope workspace linked
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform and
-  probe selection, play/scrub controls, and A/B cursor measurements. Scenario
-  setup is secondary and docked: users can append a generated-from-Board
+  probe selection, transient selected-probe trace pinning for multi-trace
+  comparison overlays, play/scrub controls, and A/B cursor measurements.
+  Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
   coverage plus readiness gaps with quick editor navigation, edit generated
