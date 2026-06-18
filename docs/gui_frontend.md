@@ -19,6 +19,7 @@ the default CLI dependency graph:
 circuitci-gui
   -> src/gui.rs
   -> src/gui/sketch.rs
+  -> src/gui/library.rs
   -> src/gui/simulation.rs
   -> src/gui/analog.rs
   -> Board IR loading
@@ -36,9 +37,13 @@ calls. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch graph
 layout/drawing helpers, and structured scalar YAML edit helpers for selected
 components and nets, including conservative add/remove operations for
 components and unreferenced nets plus validated component pin assignment.
+`src/gui/library.rs` owns component model browsing over the active project
+library set, text filtering, selected-model staging, and selected-component
+model assignment through the same Board IR YAML mutation path.
 `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
-plotting, and cursor measurement tools. `src/gui/analog.rs` owns structured
-analog transient scenario and assertion YAML generation for generated-from-Board
+plotting, cursor measurement tools, and graph-hover runtime probe extraction
+from loaded waveform artifacts. `src/gui/analog.rs` owns structured analog
+transient scenario and assertion YAML generation for generated-from-Board
 simulations.
 
 ## Workflow Shell
@@ -54,8 +59,11 @@ form:
   an inspector for component bindings and net connections, structured scalar
   edits for existing component and net properties, add/remove controls for
   components and unreferenced nets, pin-to-net assignment/removal for selected
-  components, and a raw Board IR YAML editor with parse-validated save.
-- Library: shows library bindings and scenario suggestion YAML.
+  components, graph-node hover readouts for matching runtime waveform probes,
+  and a raw Board IR YAML editor with parse-validated save.
+- Library: shows library bindings, searches the active component model set,
+  stages a model for new components, assigns a selected model to the selected
+  component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, add sample/min/max probe assertions, then
   runs validation through the engine, plots emitted CSV waveforms, provides A/B
@@ -83,15 +91,18 @@ The supported desktop simulation path is:
 4. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
 5. assign or remove selected component pin bindings to existing nets,
-6. edit Board IR YAML evidence when the project needs a correction outside the
+6. search the active model libraries and assign selected models to components,
+7. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-7. append a generated-from-Board analog transient scenario with a voltage probe,
-8. add sample or windowed min/max waveform assertions against declared probes,
-9. bind sourced component models,
-10. run declared validation and `analog_transient` scenarios,
-11. observe generated decks, plotted CSV waveforms, cursor values, min/max
+8. append a generated-from-Board analog transient scenario with a voltage probe,
+9. add sample or windowed min/max waveform assertions against declared probes,
+10. bind sourced component models,
+11. run declared validation and `analog_transient` scenarios,
+12. hover graph nodes to inspect matching voltage/current/power probe values at
+   the current waveform cursor,
+13. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-12. edit the project/model evidence and rerun.
+14. edit the project/model evidence and rerun.
 
 Full schematic-canvas editing, visual wire routing, advanced waveform math
 channels, arbitrary file-backed SPICE deck authoring, automatic arbitrary

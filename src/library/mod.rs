@@ -856,4 +856,10 @@ impl ComponentLibrary {
     pub fn get(&self, component_id: &str) -> Option<&ComponentModel> {
         self.models.get(component_id)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &ComponentModel)> {
+        self.models
+            .iter()
+            .map(|(component_id, model)| (component_id.as_str(), model))
+    }
 }

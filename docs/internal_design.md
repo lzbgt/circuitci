@@ -29,6 +29,12 @@ exists and any assigned target net exists. Visual wire routing should keep using
 these Board IR mutation helpers rather than introducing a parallel connection
 model. `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV
 parsing, plotting, cursor readouts, and min/max/delta measurements.
+It may display graph hover readouts for runtime waveform probes, but those
+values must come from report waveform artifacts and the shared waveform
+interpolation helpers rather than an unsynchronized live simulation model.
+`src/gui/library.rs` owns active-library model browsing, model filtering, and
+component model assignment through the same validated Board IR YAML mutation
+helpers used by the sketch inspector.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation
 and structured sample/min/max assertion authoring. It may derive node and pin
 bindings from Board IR for observation scenarios, but file-backed SPICE deck

@@ -4,10 +4,11 @@ use eframe::egui;
 use std::path::Path;
 
 mod analog;
+mod library;
 mod simulation;
 mod sketch;
 
-use simulation::{WaveformView, load_report_waveforms};
+use simulation::{WaveformView, load_report_waveforms, runtime_probe_lines_for_selection};
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
     draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -82,6 +83,8 @@ pub struct CircuitCiApp {
     suggestions_yaml: String,
     project_yaml: String,
     project_yaml_dirty: bool,
+    model_search: String,
+    selected_library_model: String,
     new_component_id: String,
     new_component_model: String,
     new_net_id: String,
@@ -139,6 +142,8 @@ impl Default for CircuitCiApp {
             suggestions_yaml: String::new(),
             project_yaml: String::new(),
             project_yaml_dirty: false,
+            model_search: String::new(),
+            selected_library_model: String::new(),
             new_component_id: "U_NEW".to_string(),
             new_component_model: "generic.schematic.imported_component".to_string(),
             new_net_id: "net_new".to_string(),
@@ -473,32 +478,6 @@ impl CircuitCiApp {
         }
     }
 
-    fn library_stage(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Library Binding");
-        ui.separator();
-        if let Some(snapshot) = &self.project_snapshot {
-            if snapshot.libraries.is_empty() {
-                ui.label("Project uses default library resolution.");
-            } else {
-                for library in &snapshot.libraries {
-                    ui.monospace(library);
-                }
-            }
-        }
-        if !self.suggestions_yaml.is_empty() {
-            ui.separator();
-            ui.label("Suggested scenarios");
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.suggestions_yaml)
-                        .font(egui::TextStyle::Monospace)
-                        .desired_rows(24)
-                        .lock_focus(true),
-                );
-            });
-        }
-    }
-
     fn reports_stage(&mut self, ui: &mut egui::Ui) {
         ui.heading("Reports");
         ui.separator();
@@ -753,6 +732,14 @@ impl CircuitCiApp {
             draw_sketch_node(&painter, node, selected);
         }
 
+        let hovered_node = if response.hovered() {
+            ui.ctx()
+                .pointer_hover_pos()
+                .and_then(|position| graph.nodes.iter().find(|node| node.rect.contains(position)))
+        } else {
+            None
+        };
+
         if response.clicked()
             && let Some(position) = response.interact_pointer_pos()
         {
@@ -761,6 +748,19 @@ impl CircuitCiApp {
                 .iter()
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
+        }
+
+        if let Some(node) = hovered_node {
+            let runtime_lines = runtime_probe_lines_for_selection(
+                &self.waveforms,
+                self.selected_waveform,
+                self.waveform_cursor_a_us,
+                &node.selection,
+                snapshot,
+            );
+            response.on_hover_ui(|ui| {
+                sketch_hover_tooltip(ui, node, &runtime_lines);
+            });
         }
     }
 
@@ -1163,6 +1163,20 @@ fn limitation_group(ui: &mut egui::Ui, limitations: &[Limitation]) {
 
 fn display_path(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+fn sketch_hover_tooltip(ui: &mut egui::Ui, node: &sketch::SketchNode, runtime_lines: &[String]) {
+    ui.strong(&node.label);
+    ui.label(&node.detail);
+    ui.separator();
+    ui.label("Runtime probes");
+    if runtime_lines.is_empty() {
+        ui.label("No matching waveform probe is loaded for this node.");
+    } else {
+        for line in runtime_lines {
+            ui.monospace(line);
+        }
+    }
 }
 
 #[cfg(test)]

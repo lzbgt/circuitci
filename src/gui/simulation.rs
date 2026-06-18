@@ -3,7 +3,7 @@ use super::analog::{
     AnalogAssertionDraft, AnalogScenarioChoice, AnalogScenarioDraft, analog_scenario_choices,
     append_analog_assertion, append_analog_transient_scenario,
 };
-use super::sketch::ProjectSnapshot;
+use super::sketch::{ProjectSnapshot, SketchSelection};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -357,6 +357,115 @@ pub(super) fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformVi
         .iter()
         .filter_map(|waveform| load_waveform_csv(Path::new(waveform), waveform).ok())
         .collect()
+}
+
+pub(super) fn runtime_probe_lines_for_selection(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+    selection: &SketchSelection,
+    snapshot: &ProjectSnapshot,
+) -> Vec<String> {
+    let Some(waveform) = waveforms.get(waveform_index) else {
+        return Vec::new();
+    };
+    let target = match runtime_probe_target(selection, snapshot) {
+        Some(target) => target,
+        None => return Vec::new(),
+    };
+    let cursor_s = cursor_us / 1e6;
+    let mut lines = Vec::new();
+    for probe in &waveform.probes {
+        if !probe_matches_target(&probe.label, &target) {
+            continue;
+        }
+        if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, cursor_s) {
+            lines.push(format!(
+                "{} @ {} = {} {}",
+                probe.label,
+                format_time_s(cursor_s),
+                format_value(value),
+                probe_unit(&probe.label)
+            ));
+        }
+        if lines.len() >= 6 {
+            break;
+        }
+    }
+    lines
+}
+
+struct RuntimeProbeTarget {
+    component_id: Option<String>,
+    net_ids: Vec<String>,
+}
+
+fn runtime_probe_target(
+    selection: &SketchSelection,
+    snapshot: &ProjectSnapshot,
+) -> Option<RuntimeProbeTarget> {
+    match selection {
+        SketchSelection::Net(net_id) => Some(RuntimeProbeTarget {
+            component_id: None,
+            net_ids: vec![net_id.clone()],
+        }),
+        SketchSelection::Component(component_id) => {
+            let component = snapshot
+                .components_detail
+                .iter()
+                .find(|component| &component.id == component_id)?;
+            let mut net_ids = Vec::new();
+            for pin in &component.pins {
+                if !net_ids.contains(&pin.net) {
+                    net_ids.push(pin.net.clone());
+                }
+            }
+            Some(RuntimeProbeTarget {
+                component_id: Some(component_id.clone()),
+                net_ids,
+            })
+        }
+        SketchSelection::Overflow(_) => None,
+    }
+}
+
+fn probe_matches_target(label: &str, target: &RuntimeProbeTarget) -> bool {
+    let normalized_label = normalized_probe_token(label);
+    if let Some(component_id) = &target.component_id {
+        let component = normalized_probe_token(component_id);
+        if !component.is_empty() && normalized_label.contains(&component) {
+            return true;
+        }
+    }
+    target.net_ids.iter().any(|net_id| {
+        let net = normalized_probe_token(net_id);
+        !net.is_empty() && normalized_label.contains(&net)
+    })
+}
+
+fn normalized_probe_token(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(|character| character.to_lowercase())
+        .collect()
+}
+
+fn probe_unit(label: &str) -> &'static str {
+    let normalized = label.trim().to_ascii_lowercase();
+    if normalized.starts_with("i(")
+        || normalized.starts_with("i_")
+        || normalized.contains("current")
+    {
+        "A"
+    } else if normalized.starts_with("p(")
+        || normalized.starts_with("p_")
+        || normalized.contains("power")
+    {
+        "W"
+    } else {
+        "V"
+    }
 }
 
 fn initialize_analog_net_defaults(
@@ -955,7 +1064,13 @@ fn format_value(value: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{interpolated_value, parse_waveform_csv_text, waveform_measurement};
+    use super::{
+        interpolated_value, parse_waveform_csv_text, runtime_probe_lines_for_selection,
+        waveform_measurement,
+    };
+    use crate::gui::sketch::{
+        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, SketchSelection,
+    };
 
     #[test]
     fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -1009,5 +1124,92 @@ mod tests {
         assert_eq!(measurement.full_min, 0.0);
         assert_eq!(measurement.full_max, 2.0);
         assert_eq!(measurement.window_max, 2.0);
+    }
+
+    #[test]
+    fn runtime_probe_lines_match_hovered_net() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out) i(R1)
+0.0 0.0 0.001
+1e-6 3.3 0.003
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let snapshot = probe_snapshot();
+        let lines = runtime_probe_lines_for_selection(
+            &[waveform],
+            0,
+            0.5,
+            &SketchSelection::Net("out".to_string()),
+            &snapshot,
+        );
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("v(out)"));
+        assert!(lines[0].contains("1.650000e0"));
+    }
+
+    #[test]
+    fn runtime_probe_lines_match_hovered_component() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out) i(R1)
+0.0 0.0 0.001
+1e-6 3.3 0.003
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let snapshot = probe_snapshot();
+        let lines = runtime_probe_lines_for_selection(
+            &[waveform],
+            0,
+            1.0,
+            &SketchSelection::Component("R1".to_string()),
+            &snapshot,
+        );
+        assert_eq!(lines.len(), 2);
+        assert!(lines.iter().any(|line| line.contains("v(out)")));
+        assert!(lines.iter().any(|line| line.contains("i(R1)")));
+    }
+
+    fn probe_snapshot() -> ProjectSnapshot {
+        ProjectSnapshot {
+            name: "probe_graph".to_string(),
+            components: 1,
+            nets: 2,
+            scenarios: 1,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "R1".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "A".to_string(),
+                        net: "out".to_string(),
+                    },
+                    SketchPin {
+                        pin: "B".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+            }],
+            nets_detail: vec![
+                SketchNet {
+                    id: "out".to_string(),
+                    kind: "digital_or_analog".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: vec!["R1.A".to_string()],
+                },
+                SketchNet {
+                    id: "gnd".to_string(),
+                    kind: "ground".to_string(),
+                    nominal_voltage: Some(0.0),
+                    powered: Some(true),
+                    connections: vec!["R1.B".to_string()],
+                },
+            ],
+        }
     }
 }
