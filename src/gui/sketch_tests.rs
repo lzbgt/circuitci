@@ -4,11 +4,14 @@ use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
     edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
-    edit_schematic_node_positions, hit_test_probe_badge, hit_test_wire, layout_sketch_graph,
+    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
     layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
     snap_screen_point_to_grid, validate_board_ir_yaml_text,
+};
+use super::sketch_probes::{
+    SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use eframe::egui;
@@ -141,29 +144,29 @@ scenarios:
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "rail_voltage"
             && probe.quantity.label() == "V"
-            && matches!(probe.target, super::sketch::SketchProbeTarget::Net(ref id) if id == "rail")
+            && matches!(probe.target, SketchProbeTarget::Net(ref id) if id == "rail")
     }));
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "r1_current"
             && probe.quantity.label() == "I"
-            && matches!(probe.target, super::sketch::SketchProbeTarget::Component(ref id) if id == "R1")
+            && matches!(probe.target, SketchProbeTarget::Component(ref id) if id == "R1")
     }));
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "r1_power"
             && probe.quantity.label() == "P"
-            && matches!(probe.target, super::sketch::SketchProbeTarget::Component(ref id) if id == "R1")
+            && matches!(probe.target, SketchProbeTarget::Component(ref id) if id == "R1")
     }));
 }
 
 #[test]
 fn layout_places_hit_testable_probe_badges() {
     let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
-    snapshot.probes.push(super::sketch::SketchProbe {
+    snapshot.probes.push(SketchProbe {
         scenario_name: "tran".to_string(),
         probe_name: "net_a_voltage".to_string(),
         expression: "V(net_a)".to_string(),
-        quantity: super::sketch::SketchProbeQuantity::Voltage,
-        target: super::sketch::SketchProbeTarget::Net("net_a".to_string()),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("net_a".to_string()),
     });
     let graph = layout_sketch_graph(
         egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),
@@ -171,7 +174,8 @@ fn layout_places_hit_testable_probe_badges() {
     );
 
     assert_eq!(graph.probe_badges.len(), 1);
-    let badge = hit_test_probe_badge(&graph, graph.probe_badges[0].rect.center()).unwrap();
+    let badge =
+        hit_test_probe_badge(&graph.probe_badges, graph.probe_badges[0].rect.center()).unwrap();
     assert_eq!(badge.probe.probe_name, "net_a_voltage");
 }
 

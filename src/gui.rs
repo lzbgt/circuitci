@@ -12,6 +12,7 @@ mod simulation;
 mod sketch;
 mod sketch_actions;
 mod sketch_inspector;
+mod sketch_probes;
 mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
@@ -22,11 +23,12 @@ use simulation::{
     runtime_probe_lines_for_selection, waveform_time_range_for_view,
 };
 use sketch::{
-    DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_probe_badge, draw_sketch_grid,
-    draw_sketch_node, draw_sketch_pin_anchor, edge_label_position, hit_test_probe_badge,
-    hit_test_wire, layout_sketch_graph_viewport, orthogonal_wire_points,
-    persisted_node_position_from_screen_with_snap, snap_screen_point_to_grid,
+    DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
+    draw_sketch_pin_anchor, edge_label_position, hit_test_wire, layout_sketch_graph_viewport,
+    orthogonal_wire_points, persisted_node_position_from_screen_with_snap,
+    snap_screen_point_to_grid,
 };
+use sketch_probes::{SketchProbeBadge, draw_probe_badge, hit_test_probe_badge};
 
 pub fn run() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
@@ -819,7 +821,7 @@ impl CircuitCiApp {
             None
         };
         let hovered_probe_badge =
-            pointer_hover.and_then(|position| hit_test_probe_badge(&graph, position));
+            pointer_hover.and_then(|position| hit_test_probe_badge(&graph.probe_badges, position));
         for edge in &graph.edges {
             let wire_selection = SketchSelection::Net(edge.net_id.clone());
             let selected = self.selection_is_selected(&wire_selection);
@@ -874,7 +876,7 @@ impl CircuitCiApp {
             && let Some(position) = response.interact_pointer_pos()
         {
             let multi_select = ui.input(|input| input.modifiers.shift || input.modifiers.command);
-            let clicked_probe_badge = hit_test_probe_badge(&graph, position);
+            let clicked_probe_badge = hit_test_probe_badge(&graph.probe_badges, position);
             let clicked_anchor = graph
                 .pin_anchors
                 .iter()
@@ -1022,12 +1024,16 @@ impl CircuitCiApp {
             self.apply_marquee_selection(egui::Rect::from_two_pos(start, end), &graph);
         }
 
-        if response.hovered()
+        let delete_pressed = response.hovered()
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Delete) || input.key_pressed(egui::Key::Backspace)
-            })
-        {
-            self.apply_delete_selected_sketch_item();
+            });
+        if delete_pressed {
+            if let Some(badge) = hovered_probe_badge {
+                self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
+            } else {
+                self.apply_delete_selected_sketch_item();
+            }
         }
 
         if let Some(badge) = hovered_probe_badge {
@@ -1212,7 +1218,7 @@ fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
     ui.label("Click this wire to select the net; start wire mode first to connect to it.");
 }
 
-fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &sketch::SketchProbeBadge) {
+fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &SketchProbeBadge) {
     ui.strong(format!(
         "{} probe {}",
         badge.probe.quantity.label(),
@@ -1222,6 +1228,7 @@ fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &sketch::SketchProbeBadg
     ui.label(format!("expression: {}", badge.probe.expression));
     ui.separator();
     ui.label("Click to open this probe in the Simulation stage.");
+    ui.label("Press Delete or Backspace while hovering to remove it.");
 }
 
 fn draw_wire_edge(

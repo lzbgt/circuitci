@@ -1,6 +1,7 @@
 use super::analog::{
-    AnalogCurrentProbeDraft, AnalogPowerProbeDraft, AnalogProbeDraft, analog_scenario_choices,
-    append_analog_current_probe, append_analog_power_probe, append_analog_voltage_probe,
+    AnalogCurrentProbeDraft, AnalogPowerProbeDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
+    analog_scenario_choices, append_analog_current_probe, append_analog_power_probe,
+    append_analog_voltage_probe, remove_analog_probe,
 };
 use super::sketch::{
     ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
@@ -376,6 +377,30 @@ impl CircuitCiApp {
                     updated,
                     &format!(
                         "Visual wire connected {source_component_id}.{source_pin_id} to {target_component_id}.{target_pin_id}."
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_remove_canvas_probe(&mut self, scenario_name: &str, probe_name: &str) {
+        let draft = AnalogProbeRemoveDraft {
+            scenario_name: scenario_name.to_string(),
+            probe_name: probe_name.to_string(),
+        };
+        match remove_analog_probe(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                if self.analog_probe_scenario == draft.scenario_name
+                    && self.analog_assertion_probe == draft.probe_name
+                {
+                    self.analog_assertion_probe.clear();
+                }
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Removed probe {} from scenario {}.",
+                        draft.probe_name, draft.scenario_name
                     ),
                 );
             }

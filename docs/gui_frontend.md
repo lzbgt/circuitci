@@ -23,6 +23,7 @@ circuitci-gui
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_inspector.rs
+  -> src/gui/sketch_probes.rs
   -> src/gui/sketch_symbols.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
@@ -67,6 +68,8 @@ insertion controls, and selected-component current-probe insertion for
 generated source branches, generated passive current-sense branches, or
 generated semiconductor current-sense branches, plus selected-component power
 probe insertion for those same supported branches.
+`src/gui/sketch_probes.rs` owns derived schematic voltage/current/power probe
+badge targeting, badge layout, badge hit-testing, and badge drawing.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
@@ -108,8 +111,10 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge clicks that open the corresponding
-  Simulation-stage probe context, selected-net voltage-probe insertion into
-  existing analog scenarios, selected-component current-probe insertion for
+  Simulation-stage probe context, hovered-badge deletion that removes the probe
+  and dependent assertions through a validated Board IR edit, selected-net
+  voltage-probe insertion into existing analog scenarios,
+  selected-component current-probe insertion for
   supported generated SPICE branches, selected-component power-probe insertion
   for supported generated SPICE branches, shared undo/redo for Board IR
   graph/property/wire/YAML edits, and a raw Board IR YAML editor with
@@ -187,8 +192,9 @@ The supported desktop simulation path is:
 26. scrub or play the simulation time cursor to drive graph runtime tinting,
 27. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-28. use visible schematic probe badges to find voltage/current/power probes and
-   jump to their Simulation-stage assertion/probe context,
+28. use visible schematic probe badges to find voltage/current/power probes,
+   jump to their Simulation-stage assertion/probe context, or remove a hovered
+   probe badge with Delete/Backspace,
 29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
 30. edit the project/model evidence and rerun.
@@ -230,4 +236,6 @@ probes. Voltage badges attach to Board IR nets only when the probe expression's
 SPICE node maps back through `analog.node_bindings`; current and power badges
 attach to components only when the expression references a generated/source
 branch that CircuitCI can map back to a Board IR component. The badges are not a
-second persisted probe model.
+second persisted probe model. Removing a hovered badge deletes the underlying
+Board IR analog probe and any analog assertions that reference it, then
+re-parses the edited Board IR before updating the canvas.

@@ -46,7 +46,9 @@ component pin assignment, visual wire assignment mutations, and selected-net
 voltage-probe insertion controls plus selected-component current-probe
 insertion for generated source branches plus generated passive and
 diode/BJT/MOSFET current-sense branches, and selected-component power-probe
-insertion for those same supported generated branches. Rendered pin anchors are UI
+insertion for those same supported generated branches. `src/gui/sketch_probes.rs`
+owns derived schematic voltage/current/power probe badge targeting, layout,
+hit-testing, and drawing. Rendered pin anchors are UI
 affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
@@ -87,12 +89,15 @@ normalized runtime activity values for graph tinting. It may display graph
 hover readouts and activity coloring for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
-Schematic probe badges are derived in `src/gui/sketch.rs` from existing analog
+Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing analog
 scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
 components only when their `I(...)` branch maps to a generated/source branch
 name CircuitCI can prove. Badge clicks select the existing scenario/probe in the
-Simulation stage; badges must not become a second persisted probe store.
+Simulation stage; Delete/Backspace on a hovered badge may remove the underlying
+Board IR probe through `src/gui/analog.rs` and must also remove assertions that
+reference that probe before re-parsing Board IR. Badges must not become a
+second persisted probe store.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.
@@ -111,8 +116,9 @@ sense source, or a bound diode/BJT/MOSFET model branch with CircuitCI's
 generated current-sense source. Selected-component power-probe insertion must
 use the same component set and compose explicit branch voltage and current
 expressions rather than relying on hidden waveform math.
-It must append normal Board IR analog probes rather than creating a GUI-only
-probe list. `src/gui/spice.rs` owns
+It must append or remove normal Board IR analog probes rather than creating a
+GUI-only probe list; probe removal must drop dependent assertions so analog
+scenarios do not retain dangling assertion references. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather

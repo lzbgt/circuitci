@@ -46,6 +46,12 @@ pub(super) struct AnalogPowerProbeDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogProbeRemoveDraft {
+    pub(super) scenario_name: String,
+    pub(super) probe_name: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioChoice {
     pub(super) name: String,
     pub(super) stop_time_us: f64,
@@ -338,6 +344,70 @@ pub(super) fn append_analog_power_probe(
     Ok(updated)
 }
 
+pub(super) fn remove_analog_probe(text: &str, draft: &AnalogProbeRemoveDraft) -> Result<String> {
+    validate_probe_remove_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if !analog
+        .probes
+        .iter()
+        .any(|probe| probe.name == draft.probe_name)
+    {
+        anyhow::bail!(
+            "Analog probe {} was not found in scenario {}.",
+            draft.probe_name,
+            scenario.name
+        );
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let probes = ensure_child_sequence_mut(analog_mapping, "probes", "analog probes")?;
+    let before_probe_count = probes.len();
+    probes.retain(|probe| {
+        probe
+            .as_mapping()
+            .and_then(|mapping| mapping.get(key("name")))
+            .and_then(serde_yaml_ng::Value::as_str)
+            != Some(draft.probe_name.as_str())
+    });
+    if probes.len() == before_probe_count {
+        anyhow::bail!(
+            "Analog probe {} was not found in scenario {}.",
+            draft.probe_name,
+            draft.scenario_name
+        );
+    }
+    if let Some(assertions) = analog_mapping
+        .get_mut(key("assertions"))
+        .and_then(serde_yaml_ng::Value::as_sequence_mut)
+    {
+        assertions.retain(|assertion| {
+            assertion
+                .as_mapping()
+                .and_then(|mapping| mapping.get(key("probe")))
+                .and_then(serde_yaml_ng::Value::as_str)
+                != Some(draft.probe_name.as_str())
+        });
+    }
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog probe YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 fn validate_draft(draft: &AnalogScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
@@ -401,6 +471,12 @@ fn validate_current_probe_draft(draft: &AnalogCurrentProbeDraft) -> Result<()> {
 fn validate_power_probe_draft(draft: &AnalogPowerProbeDraft) -> Result<()> {
     validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.component_id, "component id")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    Ok(())
+}
+
+fn validate_probe_remove_draft(draft: &AnalogProbeRemoveDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
     Ok(())
 }
@@ -973,8 +1049,9 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 mod tests {
     use super::{
         AnalogAssertionDraft, AnalogCurrentProbeDraft, AnalogPowerProbeDraft, AnalogProbeDraft,
-        AnalogScenarioDraft, append_analog_assertion, append_analog_current_probe,
-        append_analog_power_probe, append_analog_transient_scenario, append_analog_voltage_probe,
+        AnalogProbeRemoveDraft, AnalogScenarioDraft, append_analog_assertion,
+        append_analog_current_probe, append_analog_power_probe, append_analog_transient_scenario,
+        append_analog_voltage_probe, remove_analog_probe,
     };
     use std::path::Path;
 
@@ -1138,6 +1215,43 @@ board:
         edited = edited.replace("    - node: rail_5v\n      net: rail_5v\n", "");
         let error = append_analog_voltage_probe(&edited, &probe_draft()).unwrap_err();
         assert!(error.to_string().contains("node binding"));
+    }
+
+    #[test]
+    fn remove_analog_probe_drops_referencing_assertions() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let edited = remove_analog_probe(
+            &edited,
+            &AnalogProbeRemoveDraft {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "out_voltage".to_string(),
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert!(
+            analog
+                .probes
+                .iter()
+                .all(|probe| probe.name != "out_voltage")
+        );
+        assert!(analog.assertions.is_empty());
+    }
+
+    #[test]
+    fn remove_analog_probe_rejects_missing_probe() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let error = remove_analog_probe(
+            &edited,
+            &AnalogProbeRemoveDraft {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "missing_probe".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("was not found"));
     }
 
     #[test]
