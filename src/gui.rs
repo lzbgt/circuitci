@@ -21,6 +21,8 @@ use sketch::{
     remove_net, validate_board_ir_yaml_text,
 };
 
+const PROJECT_YAML_HISTORY_LIMIT: usize = 64;
+
 pub fn run() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -97,6 +99,8 @@ pub struct CircuitCiApp {
     suggestions_yaml: String,
     project_yaml: String,
     project_yaml_dirty: bool,
+    project_yaml_undo: Vec<String>,
+    project_yaml_redo: Vec<String>,
     model_search: String,
     selected_library_model: String,
     new_component_id: String,
@@ -170,6 +174,8 @@ impl Default for CircuitCiApp {
             suggestions_yaml: String::new(),
             project_yaml: String::new(),
             project_yaml_dirty: false,
+            project_yaml_undo: Vec::new(),
+            project_yaml_redo: Vec::new(),
             model_search: String::new(),
             selected_library_model: String::new(),
             new_component_id: "U_NEW".to_string(),
@@ -257,6 +263,28 @@ impl CircuitCiApp {
                         ui.close();
                     }
                 });
+                ui.menu_button("Edit", |ui| {
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml_undo.is_empty(),
+                            egui::Button::new("Undo"),
+                        )
+                        .clicked()
+                    {
+                        self.undo_project_yaml_edit();
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml_redo.is_empty(),
+                            egui::Button::new("Redo"),
+                        )
+                        .clicked()
+                    {
+                        self.redo_project_yaml_edit();
+                        ui.close();
+                    }
+                });
                 ui.menu_button("Workflow", |ui| {
                     for stage in Stage::ALL {
                         if ui.button(stage.label()).clicked() {
@@ -318,6 +346,33 @@ impl CircuitCiApp {
                     }
                     if ui.button("Suggest").clicked() {
                         self.suggest_scenarios();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml_undo.is_empty(),
+                            egui::Button::new("Undo"),
+                        )
+                        .clicked()
+                    {
+                        self.undo_project_yaml_edit();
+                    }
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml_redo.is_empty(),
+                            egui::Button::new("Redo"),
+                        )
+                        .clicked()
+                    {
+                        self.redo_project_yaml_edit();
+                    }
+                    if !self.project_yaml_undo.is_empty() || !self.project_yaml_redo.is_empty() {
+                        ui.label(format!(
+                            "{} undo / {} redo",
+                            self.project_yaml_undo.len(),
+                            self.project_yaml_redo.len()
+                        ));
                     }
                 });
                 ui.separator();
@@ -550,6 +605,24 @@ impl CircuitCiApp {
             if ui.button("Validate YAML").clicked() {
                 self.validate_project_yaml_text();
             }
+            if ui
+                .add_enabled(
+                    !self.project_yaml_undo.is_empty(),
+                    egui::Button::new("Undo"),
+                )
+                .clicked()
+            {
+                self.undo_project_yaml_edit();
+            }
+            if ui
+                .add_enabled(
+                    !self.project_yaml_redo.is_empty(),
+                    egui::Button::new("Redo"),
+                )
+                .clicked()
+            {
+                self.redo_project_yaml_edit();
+            }
             if self.project_yaml_dirty {
                 ui.label("Unsaved edits");
             }
@@ -558,6 +631,7 @@ impl CircuitCiApp {
         if self.project_yaml.is_empty() {
             ui.label("Load a project to edit its Board IR YAML.");
         } else {
+            let previous_yaml = self.project_yaml.clone();
             let response = egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.add(
                     egui::TextEdit::multiline(&mut self.project_yaml)
@@ -567,7 +641,7 @@ impl CircuitCiApp {
                 )
             });
             if response.inner.changed() {
-                self.project_yaml_dirty = true;
+                self.record_project_yaml_text_edit(previous_yaml);
             }
         }
     }
@@ -701,6 +775,7 @@ impl CircuitCiApp {
             Ok(text) => {
                 self.project_yaml = text;
                 self.project_yaml_dirty = false;
+                self.clear_project_yaml_history();
                 self.stage = Stage::Sketch;
                 self.status = "Project YAML loaded.".to_string();
                 self.push_diagnostic("Project YAML loaded into Sketch workspace.");
@@ -716,9 +791,17 @@ impl CircuitCiApp {
         }) {
             Ok(()) => {
                 self.project_yaml_dirty = false;
+                match load_project_snapshot_from_yaml(&self.project_yaml) {
+                    Ok(snapshot) => {
+                        self.project_snapshot = Some(snapshot);
+                    }
+                    Err(error) => {
+                        self.record_error(error);
+                        return;
+                    }
+                }
                 self.status = "Project YAML saved.".to_string();
                 self.push_diagnostic("Project YAML saved after schema parse validation.");
-                self.load_project_summary();
             }
             Err(error) => self.record_error(error),
         }
@@ -790,6 +873,27 @@ impl CircuitCiApp {
 
     fn sketch_edit_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.collapsing("Graph Edits", |ui| {
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        !self.project_yaml_undo.is_empty(),
+                        egui::Button::new("Undo"),
+                    )
+                    .clicked()
+                {
+                    self.undo_project_yaml_edit();
+                }
+                if ui
+                    .add_enabled(
+                        !self.project_yaml_redo.is_empty(),
+                        egui::Button::new("Redo"),
+                    )
+                    .clicked()
+                {
+                    self.redo_project_yaml_edit();
+                }
+                ui.label("Graph, property, wire, and YAML edits share one Board IR history.");
+            });
             egui::Grid::new("sketch_graph_edit_grid")
                 .num_columns(4)
                 .striped(true)
@@ -1318,6 +1422,7 @@ impl CircuitCiApp {
     fn apply_edited_project_yaml(&mut self, updated: String, message: &str) {
         match load_project_snapshot_from_yaml(&updated) {
             Ok(snapshot) => {
+                self.push_project_yaml_undo(self.project_yaml.clone());
                 self.project_yaml = updated;
                 self.project_yaml_dirty = true;
                 self.project_snapshot = Some(snapshot);
@@ -1326,6 +1431,75 @@ impl CircuitCiApp {
             }
             Err(error) => self.record_error(error),
         }
+    }
+
+    fn record_project_yaml_text_edit(&mut self, previous_yaml: String) {
+        self.push_project_yaml_undo(previous_yaml);
+        self.project_yaml_dirty = true;
+        if let Ok(snapshot) = load_project_snapshot_from_yaml(&self.project_yaml) {
+            self.project_snapshot = Some(snapshot);
+        }
+    }
+
+    fn undo_project_yaml_edit(&mut self) {
+        let Some(previous) = self.project_yaml_undo.pop() else {
+            return;
+        };
+        push_limited_history(
+            &mut self.project_yaml_redo,
+            self.project_yaml.clone(),
+            PROJECT_YAML_HISTORY_LIMIT,
+        );
+        self.restore_project_yaml_history_entry(previous, "Undo applied.");
+    }
+
+    fn redo_project_yaml_edit(&mut self) {
+        let Some(next) = self.project_yaml_redo.pop() else {
+            return;
+        };
+        push_limited_history(
+            &mut self.project_yaml_undo,
+            self.project_yaml.clone(),
+            PROJECT_YAML_HISTORY_LIMIT,
+        );
+        self.restore_project_yaml_history_entry(next, "Redo applied.");
+    }
+
+    fn restore_project_yaml_history_entry(&mut self, yaml: String, message: &str) {
+        self.project_yaml = yaml;
+        self.project_yaml_dirty = true;
+        if let Ok(snapshot) = load_project_snapshot_from_yaml(&self.project_yaml) {
+            self.project_snapshot = Some(snapshot);
+        }
+        self.status = message.to_string();
+        self.push_diagnostic(message);
+    }
+
+    fn push_project_yaml_undo(&mut self, previous_yaml: String) {
+        if previous_yaml.is_empty() {
+            return;
+        }
+        push_limited_history(
+            &mut self.project_yaml_undo,
+            previous_yaml,
+            PROJECT_YAML_HISTORY_LIMIT,
+        );
+        self.project_yaml_redo.clear();
+    }
+
+    fn clear_project_yaml_history(&mut self) {
+        self.project_yaml_undo.clear();
+        self.project_yaml_redo.clear();
+    }
+}
+
+fn push_limited_history(stack: &mut Vec<String>, value: String, limit: usize) {
+    if stack.last().is_some_and(|last| last == &value) {
+        return;
+    }
+    stack.push(value);
+    if stack.len() > limit {
+        stack.remove(0);
     }
 }
 
@@ -1447,9 +1621,12 @@ mod tests {
     use super::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchPin, edit_component_model,
         edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-        layout_sketch_graph, validate_board_ir_yaml_text,
+        layout_sketch_graph, load_project_snapshot_from_yaml, validate_board_ir_yaml_text,
     };
-    use super::{egui, optional_path, sanitized_project_name};
+    use super::{
+        CircuitCiApp, PROJECT_YAML_HISTORY_LIMIT, egui, optional_path, push_limited_history,
+        sanitized_project_name,
+    };
     use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
@@ -1515,6 +1692,64 @@ board:
         assert!(edited.contains("kind: power"));
         assert!(edited.contains("nominal_voltage: 3.3"));
         assert!(edited.contains("powered: true"));
+    }
+
+    #[test]
+    fn project_yaml_undo_redo_round_trips_validated_edit() {
+        let mut app = CircuitCiApp {
+            project_yaml: editable_project_yaml().to_string(),
+            project_snapshot: Some(
+                load_project_snapshot_from_yaml(editable_project_yaml()).unwrap(),
+            ),
+            ..CircuitCiApp::default()
+        };
+        let edited = edit_component_model(&app.project_yaml, "R1", "vendor.test.resistor").unwrap();
+        app.apply_edited_project_yaml(edited, "edited");
+
+        assert_eq!(app.project_yaml_undo.len(), 1);
+        assert!(app.project_yaml.contains("vendor.test.resistor"));
+
+        app.undo_project_yaml_edit();
+        assert!(app.project_yaml.contains("generic.analog.resistor"));
+        assert_eq!(app.project_yaml_redo.len(), 1);
+
+        app.redo_project_yaml_edit();
+        assert!(app.project_yaml.contains("vendor.test.resistor"));
+        assert_eq!(app.project_yaml_undo.len(), 1);
+    }
+
+    #[test]
+    fn project_yaml_branch_edit_clears_redo_stack() {
+        let mut app = CircuitCiApp {
+            project_yaml: editable_project_yaml().to_string(),
+            project_snapshot: Some(
+                load_project_snapshot_from_yaml(editable_project_yaml()).unwrap(),
+            ),
+            ..CircuitCiApp::default()
+        };
+        let edited = edit_component_model(&app.project_yaml, "R1", "vendor.test.resistor").unwrap();
+        app.apply_edited_project_yaml(edited, "edited");
+        app.undo_project_yaml_edit();
+        assert_eq!(app.project_yaml_redo.len(), 1);
+
+        let branched = edit_component_part_number(&app.project_yaml, "R1", "RC0603").unwrap();
+        app.apply_edited_project_yaml(branched, "branched");
+        assert!(app.project_yaml_redo.is_empty());
+        assert!(app.project_yaml.contains("RC0603"));
+    }
+
+    #[test]
+    fn project_yaml_history_is_capped() {
+        let mut history = Vec::new();
+        for index in 0..(PROJECT_YAML_HISTORY_LIMIT + 3) {
+            push_limited_history(
+                &mut history,
+                format!("snapshot-{index}"),
+                PROJECT_YAML_HISTORY_LIMIT,
+            );
+        }
+        assert_eq!(history.len(), PROJECT_YAML_HISTORY_LIMIT);
+        assert_eq!(history.first().unwrap(), "snapshot-3");
     }
 
     #[test]

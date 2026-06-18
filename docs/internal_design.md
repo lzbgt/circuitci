@@ -31,8 +31,13 @@ positions under `board.schematic.node_positions`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
-introducing a parallel connection model. `src/gui/simulation.rs` owns the
-Simulation stage UI, waveform CSV parsing, plotting, simulation-time
+introducing a parallel connection model. The GUI shared undo/redo history is a
+capped in-memory stack of Board IR YAML snapshots; graph, property, wire, and
+text edits should enter that history through the same application-level
+mutation boundary rather than keeping per-widget state. Loading or importing a
+different project clears history, while saving the current project preserves it
+so the user can still step backward from a saved edit. `src/gui/simulation.rs`
+owns the Simulation stage UI, waveform CSV parsing, plotting, simulation-time
 scrub/playback controls, cursor readouts, min/max/delta measurements, and
 normalized runtime activity values for graph tinting. It may display graph
 hover readouts and activity coloring for runtime waveform probes, but those

@@ -67,8 +67,9 @@ form:
   components and unreferenced nets, draggable component/net node positions,
   pin-to-net assignment/removal for selected components, visual wire assignment
   by starting from a component pin and clicking a net node, graph-node runtime
-  tinting and hover readouts for matching waveform probes, and a raw Board IR
-  YAML editor with parse-validated save.
+  tinting and hover readouts for matching waveform probes, shared undo/redo for
+  Board IR graph/property/wire/YAML edits, and a raw Board IR YAML editor with
+  parse-validated save.
 - Library: shows library bindings, searches the active component model set,
   stages a model for new components, assigns a selected model to the selected
   component, and shows scenario suggestion YAML.
@@ -103,21 +104,23 @@ The supported desktop simulation path is:
 6. assign or remove selected component pin bindings to existing nets,
 7. create a visual wire by selecting a source component pin and clicking a net
    node,
-8. search the active model libraries and assign selected models to components,
-9. edit Board IR YAML evidence when the project needs a correction outside the
+8. undo or redo Board IR graph/property/wire/YAML edits through the shared
+   editor history,
+9. search the active model libraries and assign selected models to components,
+10. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-10. append a generated-from-Board analog transient scenario with a voltage probe,
-11. add sample or windowed min/max waveform assertions against declared probes,
-12. load, edit, save, and rerun file-backed SPICE decks from declared analog
+11. append a generated-from-Board analog transient scenario with a voltage probe,
+12. add sample or windowed min/max waveform assertions against declared probes,
+13. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-13. bind sourced component models,
-14. run declared validation and `analog_transient` scenarios,
-15. scrub or play the simulation time cursor to drive graph runtime tinting,
-16. hover graph nodes to inspect matching voltage/current/power probe values at
+14. bind sourced component models,
+15. run declared validation and `analog_transient` scenarios,
+16. scrub or play the simulation time cursor to drive graph runtime tinting,
+17. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-17. observe generated decks, plotted CSV waveforms, cursor values, min/max
+18. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-18. edit the project/model evidence and rerun.
+19. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
 math channels, advanced SPICE source tooling, automatic arbitrary
