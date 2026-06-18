@@ -11,6 +11,8 @@ mod simulation;
 mod sketch;
 mod sketch_actions;
 mod sketch_symbols;
+#[cfg(test)]
+mod sketch_tests;
 mod spice;
 
 use project::{optional_path, sanitized_project_name};
@@ -19,11 +21,12 @@ use simulation::{
     runtime_probe_lines_for_selection, waveform_time_range_for_view,
 };
 use sketch::{
-    ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
-    connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor, edit_component_model,
-    edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-    edit_schematic_node_position, layout_sketch_graph_viewport,
-    persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
+    ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
+    assign_component_pin, connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor,
+    edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
+    edit_net_powered, edit_schematic_component_style, edit_schematic_node_position,
+    layout_sketch_graph_viewport, persisted_node_position_from_screen, remove_component,
+    remove_component_pin, remove_net,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -1251,6 +1254,40 @@ impl CircuitCiApp {
                             self.apply_component_part_number_edit(&component.id, &part_number);
                         }
 
+                        ui.separator();
+                        ui.label("Symbol placement");
+                        ui.horizontal(|ui| {
+                            ui.label(format!("{} deg", component.style.rotation_deg));
+                            if ui.button("Rotate").clicked() {
+                                let mut style = component.style;
+                                style.rotation_deg = (style.rotation_deg + 90).rem_euclid(360);
+                                self.apply_component_style_edit(&component.id, style);
+                            }
+                            let mirror_label = if component.style.mirrored {
+                                "Unflip"
+                            } else {
+                                "Flip"
+                            };
+                            if ui.button(mirror_label).clicked() {
+                                let mut style = component.style;
+                                style.mirrored = !style.mirrored;
+                                self.apply_component_style_edit(&component.id, style);
+                            }
+                        });
+                        let mut pin_side = component.style.pin_side;
+                        egui::ComboBox::from_label("Pin side")
+                            .selected_text(pin_side.as_str())
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut pin_side, SketchPinSide::Auto, "auto");
+                                ui.selectable_value(&mut pin_side, SketchPinSide::Left, "left");
+                                ui.selectable_value(&mut pin_side, SketchPinSide::Right, "right");
+                            });
+                        if pin_side != component.style.pin_side {
+                            let mut style = component.style;
+                            style.pin_side = pin_side;
+                            self.apply_component_style_edit(&component.id, style);
+                        }
+
                         ui.label(format!("pins: {}", component.pins.len()));
                         egui::ScrollArea::vertical()
                             .max_height(230.0)
@@ -1570,6 +1607,18 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_component_style_edit(&mut self, component_id: &str, style: SketchNodeStyle) {
+        match edit_schematic_component_style(&self.project_yaml, component_id, style) {
+            Ok(updated) => {
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.to_string(),
+                )));
+                self.apply_edited_project_yaml(updated, "Schematic symbol style updated.");
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_add_net(&mut self) {
         match add_net(&self.project_yaml, &self.new_net_id, &self.new_net_kind) {
             Ok(updated) => {
@@ -1728,9 +1777,9 @@ fn wire_preview_start(
 mod tests {
     use super::egui;
     use super::sketch::{
-        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, edit_component_model,
-        edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-        layout_sketch_graph, validate_board_ir_yaml_text,
+        ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin,
+        edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
+        edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
     };
 
     fn editable_project_yaml() -> &'static str {
@@ -1815,6 +1864,7 @@ board:
                     pin: "A".to_string(),
                     net: "net_a".to_string(),
                 }],
+                style: SketchNodeStyle::default(),
             }],
             nets_detail: vec![SketchNet {
                 id: "net_a".to_string(),

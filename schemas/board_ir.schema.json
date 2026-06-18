@@ -157,6 +157,18 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "node_styles": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "rotation_deg": { "enum": [0, 90, 180, 270] },
+                  "mirrored": { "type": "boolean" },
+                  "pin_side": { "enum": ["auto", "left", "right"] }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

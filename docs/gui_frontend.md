@@ -42,10 +42,10 @@ load, save, parse validation, import path/name helpers, and shared Board IR
 undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
 graph layout/drawing helpers, and structured scalar YAML edit helpers for
 selected components and nets, including conservative add/remove operations for
-components and unreferenced nets, persisted schematic node positions, drag
-updates, view-state pan/zoom transforms, fit-content bounds, Shift-drag marquee
-selection, model-aware pin-anchor rendering, and validated component pin
-assignment. `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
+components and unreferenced nets, persisted schematic node positions/styles,
+drag updates, view-state pan/zoom transforms, fit-content bounds, Shift-drag
+marquee selection, model-aware pin-anchor rendering, and validated component
+pin assignment. `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
 fit-content application, multi-selected drag/nudge/alignment, and batched
@@ -82,9 +82,10 @@ form:
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
-  scalar edits for existing component and net properties, add/remove controls
-  for components and unreferenced nets,
-  draggable component/net node positions, pan/zoom plus reset-view and
+  scalar edits for existing component and net properties, schematic-only
+  rotate/flip/pin-side controls for selected components, add/remove controls
+  for components and unreferenced nets, draggable component/net node positions,
+  pan/zoom plus reset-view and
   fit-content controls, Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -128,32 +129,34 @@ The supported desktop simulation path is:
 5. drag component/net graph nodes to persist `board.schematic.node_positions`,
 6. pan, zoom, reset, or fit the sketch viewport without changing Board IR
    evidence,
-7. Shift-drag a marquee to select multiple visible components/nets,
-8. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
+7. rotate, flip, or choose pin side for selected components through
+   `board.schematic.node_styles`,
+8. Shift-drag a marquee to select multiple visible components/nets,
+9. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
    edit,
-9. assign or remove selected component pin bindings to existing nets,
-10. create a visual wire by clicking a rendered source pin anchor and then a
+10. assign or remove selected component pin bindings to existing nets,
+11. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-11. delete selected components or unreferenced nets from the canvas or toolbar,
-12. undo or redo Board IR graph/property/wire/YAML edits through the shared
+12. delete selected components or unreferenced nets from the canvas or toolbar,
+13. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-13. search the active model libraries, insert selected models as sketched
+14. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-14. edit Board IR YAML evidence when the project needs a correction outside the
+15. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-15. append a generated-from-Board analog transient scenario with a voltage probe,
-16. add sample or windowed min/max waveform assertions against declared probes,
-17. load, edit, save, and rerun file-backed SPICE decks from declared analog
+16. append a generated-from-Board analog transient scenario with a voltage probe,
+17. add sample or windowed min/max waveform assertions against declared probes,
+18. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-18. bind sourced component models,
-19. run declared validation and `analog_transient` scenarios,
-20. scrub or play the simulation time cursor to drive graph runtime tinting,
-21. hover graph nodes to inspect matching voltage/current/power probe values at
+19. bind sourced component models,
+20. run declared validation and `analog_transient` scenarios,
+21. scrub or play the simulation time cursor to drive graph runtime tinting,
+22. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-22. observe generated decks, plotted CSV waveforms, cursor values, min/max
+23. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-23. edit the project/model evidence and rerun.
+24. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -166,4 +169,4 @@ a parallel EDA model.
 The sketch canvas symbol rendering is deliberately a view-layer affordance. It
 infers a compact glyph from the component reference designator and model ID, then
 continues to persist only Board IR components, nets, pins, and optional
-`board.schematic.node_positions`.
+`board.schematic.node_positions` / `board.schematic.node_styles`.

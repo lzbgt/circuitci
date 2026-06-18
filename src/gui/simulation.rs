@@ -1159,7 +1159,7 @@ mod tests {
         runtime_probe_lines_for_selection, waveform_measurement, waveform_time_range_for_view,
     };
     use crate::gui::sketch::{
-        ProjectSnapshot, SketchComponent, SketchNet, SketchPin, SketchSelection,
+        ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
     };
 
     #[test]
@@ -1343,6 +1343,7 @@ mod tests {
                         net: "gnd".to_string(),
                     },
                 ],
+                style: SketchNodeStyle::default(),
             }],
             nets_detail: vec![
                 SketchNet {

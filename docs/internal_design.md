@@ -33,7 +33,7 @@ source-backed model port declarations, but those nets are still ordinary Board
 IR sketch connections that the user can rewire. `src/gui/sketch_symbols.rs`
 owns visual-only symbol-style rendering: it may infer common glyph classes from
 reference designators and model IDs, but it must continue to persist only Board
-IR components, nets, pins, and optional schematic node positions.
+IR components, nets, pins, and optional schematic node positions/styles.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
 and selected-item deletion actions that compose lower-level sketch YAML
@@ -46,10 +46,13 @@ component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
 marquee selection are GUI view/selection state only; they must not be serialized
 as board evidence. Single-node and multi-node drag/alignment persistence must
 invert the viewport transform before writing `board.schematic.node_positions`.
+Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
+and remain schematic-only UI state.
 It may assign or remove component pin bindings only when the component exists
 and any assigned target net exists. It may persist schematic graph node
 positions under
-`board.schematic.node_positions`; it must not use
+`board.schematic.node_positions` and symbol orientation under
+`board.schematic.node_styles`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
@@ -87,8 +90,10 @@ enrich these evidence families:
 - component graph: `board.components`, `board.nets`, and component
   `source` metadata;
 - schematic GUI evidence: `board.schematic.node_positions`, which stores
-  component/net graph positions for editor usability and is intentionally
-  separate from physical `board.layout.placements`;
+  component/net graph positions for editor usability, and
+  `board.schematic.node_styles`, which stores schematic-only symbol rotation,
+  mirror, and pin-side preferences. Both are intentionally separate from
+  physical `board.layout.placements`;
 - board-level manufacturing facts: `board.manufacturing`, currently including
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
   `min_slot_edge_clearance_mm`, plus optional paste area-ratio and paste-spacing

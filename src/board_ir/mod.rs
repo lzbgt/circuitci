@@ -43,12 +43,32 @@ pub struct Board {
 pub struct BoardSchematic {
     #[serde(default)]
     pub node_positions: BTreeMap<String, SchematicNodePosition>,
+    #[serde(default)]
+    pub node_styles: BTreeMap<String, SchematicNodeStyle>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SchematicNodePosition {
     pub x: f64,
     pub y: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicNodeStyle {
+    #[serde(default)]
+    pub rotation_deg: Option<i32>,
+    #[serde(default)]
+    pub mirrored: Option<bool>,
+    #[serde(default)]
+    pub pin_side: Option<SchematicPinSide>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SchematicPinSide {
+    Auto,
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
