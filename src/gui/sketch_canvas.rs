@@ -265,6 +265,7 @@ impl CircuitCiApp {
             }) {
             wire_drag_target_at(
                 &graph,
+                &net_label_badges,
                 position,
                 |anchor| {
                     hierarchy_view
@@ -280,6 +281,11 @@ impl CircuitCiApp {
                     hierarchy_view
                         .as_ref()
                         .is_none_or(|view| view.interaction_visible(&node.selection))
+                },
+                |badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                    })
                 },
             )
             .filter(|target| !target.is_source_pin(component_id.as_str(), self.wire_pin_id.trim()))
@@ -389,6 +395,18 @@ impl CircuitCiApp {
             draw_sketch_node(&painter, node, selected, runtime_activity, opacity);
         }
         for badge in &net_label_badges {
+            let dragged = self
+                .sketch_net_label_drag
+                .as_ref()
+                .filter(|drag| drag.label_id == badge.id);
+            let badge = if let Some(drag) = dragged {
+                let mut badge = badge.clone();
+                badge.rect = egui::Rect::from_center_size(drag.current_center, badge.rect.size());
+                std::borrow::Cow::Owned(badge)
+            } else {
+                std::borrow::Cow::Borrowed(badge)
+            };
+            let badge = badge.as_ref();
             let selection = SketchSelection::Net(badge.net_id.clone());
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.interaction_visible(&selection) {
@@ -544,8 +562,19 @@ impl CircuitCiApp {
                     badge.external_targets.len()
                 );
             } else if let Some(badge) = clicked_net_label_badge {
-                self.set_single_sketch_selection(Some(SketchSelection::Net(badge.net_id.clone())));
-                self.status = format!("Selected net {} from schematic label.", badge.net_id);
+                if let Some(component_id) = self.wire_from_component.clone() {
+                    let route_points = self.pending_wire_route_points();
+                    self.apply_visual_wire_with_route(
+                        component_id,
+                        badge.net_id.clone(),
+                        route_points,
+                    );
+                } else {
+                    self.set_single_sketch_selection(Some(SketchSelection::Net(
+                        badge.net_id.clone(),
+                    )));
+                    self.status = format!("Selected net {} from schematic label.", badge.net_id);
+                }
             } else if let Some(badge) = clicked_bundle_badge {
                 self.select_net_bundle(&badge.bundle);
             } else if let Some(anchor) = clicked_anchor {
@@ -621,7 +650,18 @@ impl CircuitCiApp {
                         && node.rect.contains(position)
                 })
                 .map(|node| node.selection.clone());
-            let clicked_wire = if clicked_anchor.is_none() && clicked_node.is_none() {
+            let clicked_net_label_badge =
+                sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
+                    |badge| {
+                        hierarchy_view.as_ref().is_none_or(|view| {
+                            view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                        })
+                    },
+                );
+            let clicked_wire = if clicked_anchor.is_none()
+                && clicked_node.is_none()
+                && clicked_net_label_badge.is_none()
+            {
                 hit_test_wire(&graph, position).filter(|edge| {
                     hierarchy_view
                         .as_ref()
@@ -644,6 +684,17 @@ impl CircuitCiApp {
                     point_index,
                 });
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
+            } else if self.wire_from_component.is_none()
+                && !self.sketch_palette_place_armed
+                && !self.sketch_library_place_armed
+                && let Some(badge) = clicked_net_label_badge
+            {
+                self.sketch_net_label_drag = Some(super::SketchNetLabelDrag {
+                    label_id: badge.id.clone(),
+                    net_id: badge.net_id.clone(),
+                    current_center: badge.rect.center(),
+                });
+                self.set_single_sketch_selection(Some(SketchSelection::Net(badge.net_id.clone())));
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
@@ -710,9 +761,21 @@ impl CircuitCiApp {
                 );
             }
         } else if response.dragged_by(egui::PointerButton::Primary)
+            && let Some(position) = response.interact_pointer_pos()
+            && let Some(drag) = &mut self.sketch_net_label_drag
+        {
+            drag.current_center = snap_screen_point_to_grid(
+                rect,
+                position,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+            );
+        } else if response.dragged_by(egui::PointerButton::Primary)
             && !self.sketch_pan_drag_active
             && self.wire_from_component.is_none()
             && self.sketch_wire_route_drag.is_none()
+            && self.sketch_net_label_drag.is_none()
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -758,12 +821,24 @@ impl CircuitCiApp {
             self.apply_schematic_wire_route(rect, viewport, drag);
         }
         if response.drag_stopped_by(egui::PointerButton::Primary)
+            && let Some(drag) = self.sketch_net_label_drag.take()
+        {
+            self.apply_move_schematic_net_label_to(
+                rect,
+                viewport,
+                &drag.label_id,
+                &drag.net_id,
+                drag.current_center,
+            );
+        }
+        if response.drag_stopped_by(egui::PointerButton::Primary)
             && self.wire_from_component.is_some()
             && let Some(position) = response
                 .interact_pointer_pos()
                 .or_else(|| ui.ctx().pointer_hover_pos())
             && let Some(target) = wire_drag_target_at(
                 &graph,
+                &net_label_badges,
                 position,
                 |anchor| {
                     hierarchy_view
@@ -779,6 +854,11 @@ impl CircuitCiApp {
                     hierarchy_view
                         .as_ref()
                         .is_none_or(|view| view.interaction_visible(&node.selection))
+                },
+                |badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                    })
                 },
             )
         {
@@ -828,6 +908,9 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_wire_route_drag.is_some() {
             self.sketch_wire_route_drag = None;
             self.status = "Wire route edit canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_net_label_drag.is_some() {
+            self.sketch_net_label_drag = None;
+            self.status = "Net label move canceled.".to_string();
         } else if delete_pressed
             && self.wire_from_component.is_some()
             && !self.sketch_wire_draft.is_empty()
@@ -975,7 +1058,9 @@ impl CircuitCiApp {
                     route_points,
                 );
             }
-            WireDragTarget::NetNode { net_id, .. } | WireDragTarget::Wire { net_id, .. } => {
+            WireDragTarget::NetNode { net_id, .. }
+            | WireDragTarget::NetLabel { net_id, .. }
+            | WireDragTarget::Wire { net_id, .. } => {
                 self.apply_visual_wire_with_route(source_component_id, net_id, route_points);
             }
         }
@@ -1246,6 +1331,11 @@ pub(super) enum WireDragTarget {
         net_id: String,
         rect: egui::Rect,
     },
+    NetLabel {
+        net_id: String,
+        label_id: String,
+        rect: egui::Rect,
+    },
     Wire {
         net_id: String,
         source: String,
@@ -1260,6 +1350,7 @@ impl WireDragTarget {
         match self {
             WireDragTarget::Pin { pos, .. } => *pos,
             WireDragTarget::NetNode { rect, .. } => rect.center(),
+            WireDragTarget::NetLabel { rect, .. } => rect.center(),
             WireDragTarget::Wire { snap, .. } => *snap,
         }
     }
@@ -1289,10 +1380,12 @@ impl WireDragTarget {
 
 pub(super) fn wire_drag_target_at(
     graph: &sketch::SketchGraph,
+    net_label_badges: &[sketch_net_labels::SketchNetLabelBadge],
     position: egui::Pos2,
     anchor_visible: impl Fn(&sketch::SketchPinAnchor) -> bool,
     edge_visible: impl Fn(&sketch::SketchEdge) -> bool,
     node_visible: impl Fn(&sketch::SketchNode) -> bool,
+    label_visible: impl Fn(&sketch_net_labels::SketchNetLabelBadge) -> bool,
 ) -> Option<WireDragTarget> {
     if let Some(anchor) = graph
         .pin_anchors
@@ -1304,6 +1397,15 @@ pub(super) fn wire_drag_target_at(
             pin: anchor.pin.clone(),
             net: anchor.net.clone(),
             pos: anchor.pos,
+        });
+    }
+    if let Some(badge) = sketch_net_labels::hit_test_net_label_badge(net_label_badges, position)
+        .filter(|badge| label_visible(badge))
+    {
+        return Some(WireDragTarget::NetLabel {
+            net_id: badge.net_id.clone(),
+            label_id: badge.id.clone(),
+            rect: badge.rect,
         });
     }
     if let Some(node) = graph
@@ -1570,6 +1672,20 @@ fn draw_wire_drag_target(painter: &egui::Painter, target: &WireDragTarget) {
                 rect,
                 4.0,
                 egui::Color32::from_rgba_unmultiplied(255, 196, 87, 24),
+            );
+            painter.rect_stroke(
+                rect,
+                4.0,
+                egui::Stroke::new(2.0, color),
+                egui::StrokeKind::Inside,
+            );
+        }
+        WireDragTarget::NetLabel { rect, .. } => {
+            let rect = rect.expand(4.0);
+            painter.rect_filled(
+                rect,
+                4.0,
+                egui::Color32::from_rgba_unmultiplied(255, 196, 87, 28),
             );
             painter.rect_stroke(
                 rect,

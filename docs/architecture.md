@@ -56,8 +56,10 @@ keeps route display, hit-testing, insertion, and drag preview geometry
 consistent.
 Schematic named-net and off-page connector labels are also display metadata.
 They persist under `board.schematic.net_labels` with a label kind, net ID, and
-schematic position, but they only annotate an existing Board IR net. They do
-not create hidden net ties, sheet ports, buses, or physical layout evidence.
+schematic position, can be dragged to reposition, and can accept active-wire
+drops onto their underlying Board IR net. They only annotate an existing Board
+IR net and do not create hidden net ties, sheet ports, buses, or physical layout
+evidence.
 
 ## Core Contracts
 

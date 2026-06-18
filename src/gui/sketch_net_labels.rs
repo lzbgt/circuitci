@@ -47,6 +47,39 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn apply_move_schematic_net_label_to(
+        &mut self,
+        canvas: egui::Rect,
+        viewport: SketchViewport,
+        label_id: &str,
+        net_id: &str,
+        position: egui::Pos2,
+    ) {
+        let (x, y) = persisted_wire_route_point_from_screen_with_snap(
+            canvas,
+            position,
+            viewport,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        match edit_schematic_net_label_position(
+            &self.project_yaml,
+            label_id,
+            SketchPosition { x, y },
+        ) {
+            Ok(updated) => {
+                self.set_single_sketch_selection(Some(super::sketch::SketchSelection::Net(
+                    net_id.to_string(),
+                )));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Moved schematic net label {label_id}."),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     pub(super) fn net_label_context_menu(
         &mut self,
         ui: &mut egui::Ui,
@@ -239,6 +272,26 @@ pub(super) fn set_schematic_net_label_kind(
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn edit_schematic_net_label_position(
+    text: &str,
+    label_id: &str,
+    position: SketchPosition,
+) -> Result<String> {
+    let label_id = validated_graph_id(label_id, "net label")?;
+    validate_position(position)?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let labels = ensure_net_labels_mapping(&mut yaml)?;
+    let label = labels
+        .get_mut(key(label_id))
+        .with_context(|| format!("Schematic net label {label_id} was not found."))?
+        .as_mapping_mut()
+        .with_context(|| format!("Schematic net label {label_id} must be an object."))?;
+    label.insert(key("x"), serde_yaml_ng::to_value(position.x)?);
+    label.insert(key("y"), serde_yaml_ng::to_value(position.y)?);
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn remove_net_labels_for_net(yaml: &mut serde_yaml_ng::Value, net_id: &str) {
     let Some(labels) = yaml
         .as_mapping_mut()
@@ -422,7 +475,16 @@ board:
             set_schematic_net_label_kind(&edited, "label_sig", SketchNetLabelKind::OffPage)
                 .unwrap();
         assert!(converted.contains("kind: off_page"));
-        let removed = remove_schematic_net_label(&converted, "label_sig").unwrap();
+        let moved = edit_schematic_net_label_position(
+            &converted,
+            "label_sig",
+            SketchPosition { x: 128.0, y: 160.0 },
+        )
+        .unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&moved).unwrap();
+        assert_eq!(snapshot.net_labels[0].position.x, 128.0);
+        assert_eq!(snapshot.net_labels[0].position.y, 160.0);
+        let removed = remove_schematic_net_label(&moved, "label_sig").unwrap();
         let snapshot = load_project_snapshot_from_yaml(&removed).unwrap();
         assert!(snapshot.net_labels.is_empty());
     }

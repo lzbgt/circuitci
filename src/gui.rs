@@ -106,6 +106,13 @@ struct SketchWireRouteDrag {
     point_index: usize,
 }
 
+#[derive(Debug, Clone)]
+struct SketchNetLabelDrag {
+    label_id: String,
+    net_id: String,
+    current_center: egui::Pos2,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SketchGroupAction {
     Nudge(egui::Vec2),
@@ -238,6 +245,7 @@ pub struct CircuitCiApp {
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
+    sketch_net_label_drag: Option<SketchNetLabelDrag>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -376,6 +384,7 @@ impl Default for CircuitCiApp {
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             sketch_wire_route_drag: None,
+            sketch_net_label_drag: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,

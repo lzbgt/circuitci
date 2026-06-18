@@ -6,6 +6,7 @@ use super::sketch_canvas::{
     WireDragTarget, closest_point_on_edge, hit_test_wire_route_handle, placement_ghost_rect,
     wire_drag_target_at, wire_route_insert_index, zoom_viewport_around,
 };
+use super::sketch_net_labels::SketchNetLabelBadge;
 use super::sketch_probes::SketchProbeBadge;
 use super::sketch_symbols::SketchSymbolKind;
 use eframe::egui;
@@ -56,7 +57,9 @@ fn wire_drag_target_prefers_pin_then_net_then_wire() {
 
     match wire_drag_target_at(
         &graph,
+        &[],
         egui::pos2(100.0, 100.0),
+        |_| true,
         |_| true,
         |_| true,
         |_| true,
@@ -69,7 +72,9 @@ fn wire_drag_target_prefers_pin_then_net_then_wire() {
     }
     match wire_drag_target_at(
         &graph,
+        &[],
         egui::pos2(130.0, 110.0),
+        |_| true,
         |_| true,
         |_| true,
         |_| true,
@@ -82,7 +87,9 @@ fn wire_drag_target_prefers_pin_then_net_then_wire() {
     }
     match wire_drag_target_at(
         &graph,
+        &[],
         egui::pos2(120.0, 202.0),
+        |_| true,
         |_| true,
         |_| true,
         |_| true,
@@ -92,6 +99,56 @@ fn wire_drag_target_prefers_pin_then_net_then_wire() {
             assert_eq!(snap, egui::pos2(120.0, 200.0));
         }
         _ => panic!("expected wire net target"),
+    }
+}
+
+#[test]
+fn wire_drag_target_accepts_net_label_badges_before_wires() {
+    let graph = SketchGraph {
+        nodes: vec![SketchNode {
+            selection: SketchSelection::Net("node_net".to_string()),
+            label: "node_net".to_string(),
+            detail: String::new(),
+            symbol: SketchSymbolKind::Net,
+            style: Default::default(),
+            rect: egui::Rect::from_center_size(egui::pos2(120.0, 100.0), egui::vec2(90.0, 36.0)),
+        }],
+        pin_anchors: Vec::new(),
+        edges: vec![SketchEdge {
+            net_id: "wire_net".to_string(),
+            source: "R2.B".to_string(),
+            start: egui::pos2(20.0, 100.0),
+            end: egui::pos2(220.0, 100.0),
+            route: Vec::new(),
+        }],
+        probe_badges: Vec::<SketchProbeBadge>::new(),
+    };
+    let labels = vec![SketchNetLabelBadge {
+        id: "label_sig".to_string(),
+        net_id: "sig".to_string(),
+        kind: super::sketch::SketchNetLabelKind::Local,
+        rect: egui::Rect::from_center_size(egui::pos2(120.0, 100.0), egui::vec2(80.0, 24.0)),
+    }];
+
+    match wire_drag_target_at(
+        &graph,
+        &labels,
+        egui::pos2(120.0, 100.0),
+        |_| true,
+        |_| true,
+        |_| true,
+        |_| true,
+    ) {
+        Some(WireDragTarget::NetLabel {
+            net_id,
+            label_id,
+            rect,
+        }) => {
+            assert_eq!(net_id, "sig");
+            assert_eq!(label_id, "label_sig");
+            assert!(rect.contains(egui::pos2(120.0, 100.0)));
+        }
+        other => panic!("expected net label target, got {other:?}"),
     }
 }
 

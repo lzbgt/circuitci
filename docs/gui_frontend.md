@@ -128,9 +128,10 @@ dot-qualified, and common paired interface nets. Bundle overlays are a visual
 navigation aid over scalar Board IR nets and do not persist bus evidence.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge
-layout, drawing, hit-testing, conversion, deletion, and net-rename cleanup.
-Labels select and annotate ordinary Board IR nets; they do not create hidden
-net ties or hierarchical connectivity.
+layout, drawing, hit-testing, drag repositioning, active-wire target handling,
+conversion, deletion, and net-rename cleanup. Labels select and annotate
+ordinary Board IR nets; they do not create hidden net ties or hierarchical
+connectivity.
 `src/gui/sketch_hierarchy.rs` owns the Sketch-stage schematic hierarchy panel:
 it derives sheet-like groups from imported KiCad `source.instances[*].path`
 metadata and importer namespace prefixes such as `sheet__R1`, then selects or
@@ -242,7 +243,8 @@ form:
   direct schematic wire-route shaping by dragging a rendered wire segment or
   existing route handle, route-handle insertion/deletion from wire context
   menus, placed net-label/off-page connector badges that select the underlying
-  Board IR net and can be converted or deleted from their context menu,
+  Board IR net, can be moved by dragging, accept active-wire drops onto their
+  underlying net, and can be converted or deleted from their context menu,
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
@@ -339,7 +341,9 @@ The supported desktop simulation path is:
    the custom route without changing the underlying pin/net connectivity,
 21. place local named-net labels or off-page connector labels for a selected
    net, net node, or wire under `board.schematic.net_labels`; convert or delete
-   those label badges without changing the underlying Board IR net,
+   those label badges, drag them to reposition their schematic display point,
+   or finish an active wire on them without changing the underlying Board IR
+   net identity,
 22. inspect Board IR connections through orthogonal wire routes, net labels,
    junction dots, and clickable wire-to-net or label-to-net selection rendered
    over the persisted pin/net graph,
@@ -423,10 +427,11 @@ routes are also editor affordances. Snapping may update persisted schematic
 node positions, dragging a wire or one of its visible route handles may update
 `board.schematic.wire_routes` with display-only waypoints, active wire-mode
 blank-canvas bend clicks and wire context-menu route-handle insertion/deletion
-may update the same display metadata, and placing a local/off-page net label may
-update `board.schematic.net_labels` with a net reference, label kind, and
-schematic position. Clicking a net label selects the underlying Board IR net;
-clicking a wire may select its underlying Board IR net, but grid visibility,
+may update the same display metadata, and placing or dragging a local/off-page
+net label may update `board.schematic.net_labels` with a net reference, label
+kind, and schematic position. Clicking a net label selects the underlying Board
+IR net, and completing an active wire on a net label connects to that same
+underlying net. Clicking a wire may select its underlying Board IR net, but grid visibility,
 junction dot rendering, hit-test regions, named-net label rendering, custom
 schematic wire waypoints, and orthogonal routing style do not create independent
 electrical connectivity, hidden net ties, hierarchy ports, or physical PCB

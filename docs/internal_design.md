@@ -121,10 +121,12 @@ GUI-only navigation aids over scalar Board IR nets, not persisted bus
 topology/evidence. `src/gui/sketch_net_labels.rs` owns persisted schematic
 named-net and off-page connector labels under `board.schematic.net_labels`.
 Those labels may be placed from selected-net controls or net/wire context
-menus, clicked to select the underlying net, converted between local and
-off-page presentation, removed when their net is removed, and rewritten when a
-net is renamed. They annotate ordinary Board IR nets and must not create hidden
-connectivity, bus topology, sheet ports, or PCB evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
+menus, dragged to reposition their display point, clicked to select the
+underlying net, used as active-wire drop targets for that same underlying net,
+converted between local and off-page presentation, removed when their net is
+removed, and rewritten when a net is renamed. They annotate ordinary Board IR
+nets and must not create hidden connectivity, bus topology, sheet ports, or PCB
+evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
 hierarchy grouping for the Sketch stage. It may use imported KiCad
 `component.source.instances[*].path` records and importer-generated namespaced
 component IDs such as `sheet__R1` to select, multi-select, or fit related
@@ -150,9 +152,9 @@ hit-testing, and drawing. Rendered pin anchors are UI affordances derived from
 component pin bindings; clicking or dragging an anchor may start or complete a
 wire assignment. Pin-to-pin wiring should reuse a source or target pin net when
 one already exists, or create a generated Board IR net when both pins are
-unbound. Wire-drag previews may highlight and snap to a pin, net node, or
-rendered wire, but the persisted result must remain `board.nets` plus component `pins`,
-not a second edge list. Canvas pan/zoom, Home, Fit All, Fit
+unbound. Wire-drag previews may highlight and snap to a pin, net node, net
+label badge, or rendered wire, but the persisted result must remain
+`board.nets` plus component `pins`, not a second edge list. Canvas pan/zoom, Home, Fit All, Fit
 Selection, and marquee selection are GUI view/selection state only; they must
 not be serialized as board evidence. Fit commands should operate on current
 schematic graph bounds so imported designs can be recovered after pan/zoom and
@@ -170,8 +172,9 @@ retarget electrical connectivity, and it must not be treated as PCB copper
 route evidence. Wire hit-testing may select the underlying Board IR net,
 connect an active source pin to that net, add transient blank-canvas bend points
 while drawing an active source pin connection, drag a visible display waypoint
-for the specific rendered edge, or clear those display waypoints. Completing an
-active multi-bend wire may persist the pending bend points as
+for the specific rendered edge, drag a named-net label display point, finish an
+active source pin connection on a named-net label's underlying net, or clear
+those display waypoints. Completing an active multi-bend wire may persist the pending bend points as
 `board.schematic.wire_routes` in the same validated edit as the pin-to-net
 connection. None of those actions may persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
