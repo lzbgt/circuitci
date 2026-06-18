@@ -25,7 +25,9 @@ validated Board IR mutation helpers used by the inspector.
 Visible component reference/value labels are rendered directly on the
 schematic. Reference text derives from the component ID, value text derives
 from scalar SPICE evidence, and dragged label positions persist under
-`board.schematic.component_labels` as display metadata only.
+`board.schematic.component_labels` as display metadata only. The Sketch dock can
+temporarily hide reference or value labels, auto-arrange the visible labels
+around component symbols, or reset all custom label positions.
 
 Wire-route context menus can also insert a route handle at the pointer or delete
 one visible route handle, and dragging a routed wire segment inserts a waypoint

@@ -4,7 +4,8 @@ use eframe::egui;
 use super::CircuitCiApp;
 use super::sketch::{
     ProjectSnapshot, SketchComponent, SketchGraph, SketchPosition, SketchSelection, SketchViewport,
-    encode_edited_project_yaml, screen_wire_route_point_from_persisted, validated_graph_id,
+    encode_edited_project_yaml, layout_sketch_graph_viewport,
+    screen_wire_route_point_from_persisted, validated_graph_id,
 };
 use super::sketch_render::with_opacity;
 use super::sketch_spice::SketchSpiceKind;
@@ -39,7 +40,61 @@ pub(super) struct SketchComponentLabelBadge {
     pub(super) rect: egui::Rect,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct LabelArrangeOptions {
+    canvas: egui::Rect,
+    viewport: SketchViewport,
+    show_reference: bool,
+    show_value: bool,
+    snap_enabled: bool,
+    grid_step: f32,
+}
+
 impl CircuitCiApp {
+    pub(super) fn sketch_component_label_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        snapshot: &ProjectSnapshot,
+    ) {
+        egui::CollapsingHeader::new("Component Labels")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.checkbox(&mut self.sketch_reference_labels_visible, "Reference");
+                    ui.checkbox(&mut self.sketch_value_labels_visible, "Value");
+                });
+                let visible_count = visible_component_label_count(
+                    snapshot,
+                    self.sketch_reference_labels_visible,
+                    self.sketch_value_labels_visible,
+                );
+                ui.label(format!("{visible_count} visible labels"));
+                ui.horizontal_wrapped(|ui| {
+                    let can_arrange = visible_count > 0 && self.sketch_last_canvas_rect.is_some();
+                    if ui
+                        .add_enabled(can_arrange, egui::Button::new("Auto Arrange Visible"))
+                        .on_hover_text("Place visible component labels near their symbols and avoid overlaps.")
+                        .clicked()
+                    {
+                        self.apply_auto_arrange_schematic_component_labels(snapshot);
+                    }
+                    if ui
+                        .add_enabled(
+                            !snapshot.component_labels.is_empty(),
+                            egui::Button::new("Reset Positions"),
+                        )
+                        .on_hover_text("Clear all custom component reference/value label positions.")
+                        .clicked()
+                    {
+                        self.apply_reset_all_schematic_component_label_positions();
+                    }
+                });
+                ui.small(
+                    "Visibility is a transient view setting. Auto-arrange writes only display positions.",
+                );
+            });
+    }
+
     pub(super) fn apply_move_schematic_component_label_to(
         &mut self,
         canvas: egui::Rect,
@@ -102,6 +157,43 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn apply_auto_arrange_schematic_component_labels(&mut self, snapshot: &ProjectSnapshot) {
+        let Some(canvas) = self.sketch_last_canvas_rect else {
+            self.status =
+                "Open the schematic canvas before arranging component labels.".to_string();
+            return;
+        };
+        let viewport = self.sketch_viewport();
+        let graph = layout_sketch_graph_viewport(canvas, snapshot, viewport);
+        match arrange_schematic_component_label_positions(
+            &self.project_yaml,
+            snapshot,
+            &graph,
+            LabelArrangeOptions {
+                canvas,
+                viewport,
+                show_reference: self.sketch_reference_labels_visible,
+                show_value: self.sketch_value_labels_visible,
+                snap_enabled: self.sketch_snap_enabled,
+                grid_step: self.sketch_grid_step,
+            },
+        ) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(updated, "Component labels auto-arranged.");
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_reset_all_schematic_component_label_positions(&mut self) {
+        match remove_all_schematic_component_label_positions(&self.project_yaml) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(updated, "Component label positions reset.");
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
 }
 
 pub(super) fn layout_component_label_badges(
@@ -109,6 +201,8 @@ pub(super) fn layout_component_label_badges(
     graph: &SketchGraph,
     canvas: egui::Rect,
     viewport: SketchViewport,
+    show_reference: bool,
+    show_value: bool,
 ) -> Vec<SketchComponentLabelBadge> {
     let mut badges = Vec::new();
     for component in &snapshot.components_detail {
@@ -122,14 +216,16 @@ pub(super) fn layout_component_label_badges(
             .and_then(|labels| labels.reference)
             .map(|position| screen_position(canvas, viewport, position))
             .unwrap_or_else(|| node.rect.left_top() + egui::vec2(34.0, -12.0));
-        badges.push(label_badge(
-            &component.id,
-            SketchComponentLabelKind::Reference,
-            component.id.clone(),
-            reference_center,
-        ));
+        if show_reference {
+            badges.push(label_badge(
+                &component.id,
+                SketchComponentLabelKind::Reference,
+                component.id.clone(),
+                reference_center,
+            ));
+        }
 
-        if let Some(value) = component_value_label(component) {
+        if show_value && let Some(value) = component_value_label(component) {
             let value_center = label_positions
                 .and_then(|labels| labels.value)
                 .map(|position| screen_position(canvas, viewport, position))
@@ -143,6 +239,21 @@ pub(super) fn layout_component_label_badges(
         }
     }
     badges
+}
+
+fn visible_component_label_count(
+    snapshot: &ProjectSnapshot,
+    show_reference: bool,
+    show_value: bool,
+) -> usize {
+    snapshot
+        .components_detail
+        .iter()
+        .map(|component| {
+            usize::from(show_reference)
+                + usize::from(show_value && component_value_label(component).is_some())
+        })
+        .sum()
 }
 
 pub(super) fn draw_component_label_badge(
@@ -223,6 +334,85 @@ pub(super) fn edit_schematic_component_label_position(
     encode_edited_project_yaml(yaml)
 }
 
+fn arrange_schematic_component_label_positions(
+    text: &str,
+    snapshot: &ProjectSnapshot,
+    graph: &SketchGraph,
+    options: LabelArrangeOptions,
+) -> Result<String> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let mut occupied = graph
+        .nodes
+        .iter()
+        .map(|node| node.rect.expand(6.0))
+        .collect::<Vec<_>>();
+    let mut arranged = Vec::new();
+
+    for component in &snapshot.components_detail {
+        if !project.board.components.contains_key(&component.id) {
+            continue;
+        }
+        let Some(node) = graph.nodes.iter().find(
+            |node| matches!(&node.selection, SketchSelection::Component(id) if id == &component.id),
+        ) else {
+            continue;
+        };
+        if options.show_reference {
+            push_arranged_label(
+                &mut arranged,
+                &mut occupied,
+                options,
+                &component.id,
+                SketchComponentLabelKind::Reference,
+                component.id.clone(),
+                node.rect,
+            );
+        }
+        if options.show_value
+            && let Some(value) = component_value_label(component)
+        {
+            push_arranged_label(
+                &mut arranged,
+                &mut occupied,
+                options,
+                &component.id,
+                SketchComponentLabelKind::Value,
+                value,
+                node.rect,
+            );
+        }
+    }
+
+    if arranged.is_empty() {
+        anyhow::bail!("No visible component labels are available to arrange.");
+    }
+    for (component_id, kind, position) in arranged {
+        ensure_component_label_mapping(&mut yaml, &component_id)?
+            .insert(key(kind.field()), position_value(position)?);
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+fn remove_all_schematic_component_label_positions(text: &str) -> Result<String> {
+    let _project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    if let Some(schematic) = yaml
+        .as_mapping_mut()
+        .and_then(|project| project.get_mut(key("board")))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+        .and_then(|board| board.get_mut(key("schematic")))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+    {
+        schematic.remove(key("component_labels"));
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn remove_schematic_component_label_position(
     text: &str,
     component_id: &str,
@@ -292,6 +482,114 @@ fn persisted_component_label_position(
     SketchPosition { x, y }
 }
 
+fn push_arranged_label(
+    arranged: &mut Vec<(String, SketchComponentLabelKind, SketchPosition)>,
+    occupied: &mut Vec<egui::Rect>,
+    options: LabelArrangeOptions,
+    component_id: &str,
+    kind: SketchComponentLabelKind,
+    text: String,
+    node_rect: egui::Rect,
+) {
+    let center = best_label_center(node_rect, &text, kind, occupied);
+    let rect = label_rect(&text, center).expand(3.0);
+    occupied.push(rect);
+    arranged.push((
+        component_id.to_string(),
+        kind,
+        persisted_component_label_position(
+            options.canvas,
+            center,
+            options.viewport,
+            options.snap_enabled,
+            options.grid_step,
+        ),
+    ));
+}
+
+fn best_label_center(
+    node_rect: egui::Rect,
+    text: &str,
+    kind: SketchComponentLabelKind,
+    occupied: &[egui::Rect],
+) -> egui::Pos2 {
+    let candidates = label_candidate_centers(node_rect, text, kind);
+    candidates
+        .iter()
+        .copied()
+        .find(|candidate| {
+            let rect = label_rect(text, *candidate).expand(3.0);
+            occupied.iter().all(|occupied| !occupied.intersects(rect))
+        })
+        .unwrap_or_else(|| {
+            candidates
+                .iter()
+                .copied()
+                .min_by(|a, b| {
+                    let overlap_a = label_overlap_score(label_rect(text, *a), occupied);
+                    let overlap_b = label_overlap_score(label_rect(text, *b), occupied);
+                    overlap_a
+                        .partial_cmp(&overlap_b)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .unwrap_or(node_rect.center())
+        })
+}
+
+fn label_candidate_centers(
+    node_rect: egui::Rect,
+    text: &str,
+    kind: SketchComponentLabelKind,
+) -> Vec<egui::Pos2> {
+    let size = label_size(text);
+    let gap = 10.0;
+    let above = node_rect.top() - gap - size.y * 0.5;
+    let below = node_rect.bottom() + gap + size.y * 0.5;
+    let left = node_rect.left() - gap - size.x * 0.5;
+    let right = node_rect.right() + gap + size.x * 0.5;
+    let left_inside = node_rect.left() + size.x * 0.5;
+    let right_inside = node_rect.right() - size.x * 0.5;
+    let top_inside = node_rect.top() + 16.0;
+    let bottom_inside = node_rect.bottom() - 16.0;
+    match kind {
+        SketchComponentLabelKind::Reference => vec![
+            egui::pos2(left_inside, above),
+            egui::pos2(node_rect.center().x, above),
+            egui::pos2(right_inside, above),
+            egui::pos2(right, top_inside),
+            egui::pos2(left, top_inside),
+            egui::pos2(left_inside, below),
+            egui::pos2(node_rect.center().x, below),
+            egui::pos2(right_inside, below),
+        ],
+        SketchComponentLabelKind::Value => vec![
+            egui::pos2(left_inside, below),
+            egui::pos2(node_rect.center().x, below),
+            egui::pos2(right_inside, below),
+            egui::pos2(right, bottom_inside),
+            egui::pos2(left, bottom_inside),
+            egui::pos2(left_inside, above),
+            egui::pos2(node_rect.center().x, above),
+            egui::pos2(right_inside, above),
+        ],
+    }
+}
+
+fn label_overlap_score(rect: egui::Rect, occupied: &[egui::Rect]) -> f32 {
+    occupied
+        .iter()
+        .map(|other| overlap_area(rect, *other))
+        .sum()
+}
+
+fn overlap_area(a: egui::Rect, b: egui::Rect) -> f32 {
+    let left = a.left().max(b.left());
+    let right = a.right().min(b.right());
+    let top = a.top().max(b.top());
+    let bottom = a.bottom().min(b.bottom());
+    ((right - left).max(0.0)) * ((bottom - top).max(0.0))
+}
+
 fn screen_position(
     canvas: egui::Rect,
     viewport: SketchViewport,
@@ -306,13 +604,22 @@ fn label_badge(
     text: String,
     center: egui::Pos2,
 ) -> SketchComponentLabelBadge {
-    let width = (text.chars().count() as f32 * 7.0 + 18.0).clamp(44.0, 180.0);
+    let rect = label_rect(&text, center);
     SketchComponentLabelBadge {
         component_id: component_id.to_string(),
         kind,
         text,
-        rect: egui::Rect::from_center_size(center, egui::vec2(width, 22.0)),
+        rect,
     }
+}
+
+fn label_rect(text: &str, center: egui::Pos2) -> egui::Rect {
+    egui::Rect::from_center_size(center, label_size(text))
+}
+
+fn label_size(text: &str) -> egui::Vec2 {
+    let width = (text.chars().count() as f32 * 7.0 + 18.0).clamp(44.0, 180.0);
+    egui::vec2(width, 22.0)
 }
 
 fn component_value_label(component: &SketchComponent) -> Option<String> {
@@ -435,10 +742,15 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        SketchComponentLabelKind, edit_schematic_component_label_position, format_engineering,
-        remove_schematic_component_label_position,
+        LabelArrangeOptions, SketchComponentLabelKind, arrange_schematic_component_label_positions,
+        edit_schematic_component_label_position, format_engineering,
+        remove_all_schematic_component_label_positions, remove_schematic_component_label_position,
     };
-    use crate::gui::sketch::{SketchPosition, load_project_snapshot_from_yaml};
+    use crate::gui::sketch::{
+        SketchPosition, SketchViewport, layout_sketch_graph_viewport,
+        load_project_snapshot_from_yaml,
+    };
+    use eframe::egui;
 
     fn project_yaml() -> &'static str {
         "project:
@@ -503,5 +815,51 @@ board:
                 .get("R1")
                 .is_none_or(|labels| labels.reference.is_none())
         );
+    }
+
+    #[test]
+    fn arranges_visible_component_label_positions() {
+        let snapshot = load_project_snapshot_from_yaml(project_yaml()).unwrap();
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 480.0));
+        let viewport = SketchViewport {
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        };
+        let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+        let edited = arrange_schematic_component_label_positions(
+            project_yaml(),
+            &snapshot,
+            &graph,
+            LabelArrangeOptions {
+                canvas,
+                viewport,
+                show_reference: true,
+                show_value: true,
+                snap_enabled: false,
+                grid_step: 24.0,
+            },
+        )
+        .unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let labels = snapshot.component_labels.get("R1").unwrap();
+
+        assert!(labels.reference.is_some());
+        assert!(labels.value.is_some());
+        assert_ne!(labels.reference.unwrap().y, labels.value.unwrap().y);
+    }
+
+    #[test]
+    fn resets_all_component_label_positions() {
+        let edited = edit_schematic_component_label_position(
+            project_yaml(),
+            "R1",
+            SketchComponentLabelKind::Value,
+            SketchPosition { x: 120.0, y: 64.0 },
+        )
+        .unwrap();
+        let edited = remove_all_schematic_component_label_positions(&edited).unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+
+        assert!(snapshot.component_labels.is_empty());
     }
 }

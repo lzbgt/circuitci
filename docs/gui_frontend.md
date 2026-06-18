@@ -113,6 +113,8 @@ reference/value labels and display-only `board.schematic.component_labels`
 positions. Reference text derives from component IDs, value text derives from
 scalar SPICE evidence, dragging a label only moves schematic metadata, and
 double-click/context actions route back to the same inline ID/value editors.
+Its dock controls expose transient reference/value visibility plus
+auto-arrange/reset actions for persisted label positions.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, viewport input, hit-test routing, marquee and drag event routing,
 pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
@@ -245,8 +247,8 @@ form:
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
   scalar edits, rename controls, inline canvas component ID/value editing,
-  visible draggable component reference/value labels, a primitive palette that
-  places generic
+  visible draggable component reference/value labels with transient visibility
+  and auto-arranged display positions, a primitive palette that places generic
   resistors, capacitors, inductors, DC voltage/current sources, and pulse
   voltage/current sources at the current view, a canvas click, drag/drop release
   with orientation-aware snap ghost feedback, or a context-menu pointer with
@@ -467,7 +469,8 @@ continues to persist only Board IR components, nets, pins, and optional
 Visible component reference and scalar-value labels are also view-layer
 affordances: their text is derived from Board IR component IDs and scalar SPICE
 evidence, while optional dragged positions persist only under
-`board.schematic.component_labels`.
+`board.schematic.component_labels`. Reference/value visibility is transient GUI
+state; auto-arrange and reset only add or remove those display positions.
 The sketch grid, snap controls, net labels, junction dots, and orthogonal wire
 routes are also editor affordances. Snapping may update persisted schematic
 node positions, dragging a wire or one of its visible route handles may update

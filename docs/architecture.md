@@ -65,6 +65,8 @@ Schematic component reference/value labels are display metadata as well.
 and scalar SPICE evidence, while optional positions persist under
 `board.schematic.component_labels`; moving these labels does not rename
 components, change SPICE values, or create alternate sign-off evidence.
+Reference/value visibility controls are transient view state, while auto-arrange
+only writes display positions for the labels that are currently visible.
 
 ## Core Contracts
 

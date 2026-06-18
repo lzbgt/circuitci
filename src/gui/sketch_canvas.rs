@@ -85,7 +85,12 @@ impl CircuitCiApp {
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         let component_label_badges = sketch_component_labels::layout_component_label_badges(
-            snapshot, &graph, rect, viewport,
+            snapshot,
+            &graph,
+            rect,
+            viewport,
+            self.sketch_reference_labels_visible,
+            self.sketch_value_labels_visible,
         );
         let minimap = sketch_minimap::SketchMinimap::for_graph(rect, &minimap_graph);
         let connectivity_highlight =
@@ -214,7 +219,12 @@ impl CircuitCiApp {
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         let component_label_badges = sketch_component_labels::layout_component_label_badges(
-            snapshot, &graph, rect, viewport,
+            snapshot,
+            &graph,
+            rect,
+            viewport,
+            self.sketch_reference_labels_visible,
+            self.sketch_value_labels_visible,
         );
         let pointer_hover = if response.hovered() {
             ui.ctx().pointer_hover_pos()

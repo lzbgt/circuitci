@@ -235,6 +235,9 @@ scalar component-level SPICE evidence; persisted
 `board.schematic.component_labels` entries may store only optional display
 positions for those derived labels. Component rename mutations must rewrite
 component-label metadata keys so stale display positions do not remain.
+Reference/value visibility toggles are transient GUI state. Auto-arrange may
+write component-label positions, but it must not change component IDs, SPICE
+values, pins, nets, assertions, or analog evidence.
 `src/gui/sketch_palette.rs` owns primitive insertion for user-sketched generic
 R/C/L and independent voltage/current source components. Each insertion must
 create the component, editable pin nets, component-level SPICE evidence, and

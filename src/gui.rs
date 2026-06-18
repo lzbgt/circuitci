@@ -275,6 +275,8 @@ pub struct CircuitCiApp {
     sketch_net_label_net_kind: String,
     sketch_net_label_place_armed: bool,
     sketch_net_label_edit: Option<SketchNetLabelEdit>,
+    sketch_reference_labels_visible: bool,
+    sketch_value_labels_visible: bool,
     sketch_component_inline_edit: Option<SketchComponentInlineEdit>,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
@@ -424,6 +426,8 @@ impl Default for CircuitCiApp {
             sketch_net_label_net_kind: "digital_or_analog".to_string(),
             sketch_net_label_place_armed: false,
             sketch_net_label_edit: None,
+            sketch_reference_labels_visible: true,
+            sketch_value_labels_visible: true,
             sketch_component_inline_edit: None,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
@@ -585,6 +589,8 @@ impl CircuitCiApp {
             self.sketch_primitive_palette(ui);
             ui.separator();
             self.sketch_net_label_panel(ui, snapshot);
+            ui.separator();
+            self.sketch_component_label_panel(ui, snapshot);
             ui.separator();
             self.sketch_library_placement_panel(ui);
             ui.separator();
