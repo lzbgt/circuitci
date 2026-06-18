@@ -147,7 +147,8 @@ assignment, and model-backed component insertion/placement through the same
 Board IR YAML mutation path. Inserted components use the selected model's
 declared ports to seed editable Board IR pin bindings and generated per-pin
 nets, and Sketch-stage placement can target the current view center, an armed
-blank-canvas click, or the blank-canvas context-menu pointer.
+blank-canvas click, a drag/drop release with live ghost and snap feedback, or
+the blank-canvas context-menu pointer.
 `src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
 oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
@@ -175,9 +176,10 @@ file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
 actions for imported or hand-authored analog scenarios.
 `src/gui/sketch_palette.rs` owns schematic primitive insertion for generic
 passives and independent sources. Insertion can target the current view center,
-an armed blank-canvas click, or the blank-canvas context-menu pointer, and each
-path writes generated pin nets, component-level SPICE evidence, and schematic
-placement in one validated Board IR edit.
+an armed blank-canvas click, a drag/drop release with live ghost and snap
+feedback, or the blank-canvas context-menu pointer, and each path writes
+generated pin nets, component-level SPICE evidence, and schematic placement in
+one validated Board IR edit.
 
 ## Workflow Shell
 
@@ -198,8 +200,9 @@ form:
   anchors, an inspector for component bindings and net connections, structured
   scalar edits, rename controls, a primitive palette that places generic
   resistors, capacitors, inductors, DC voltage/current sources, and pulse
-  voltage/current sources at the current view, a canvas click, or a context-menu
-  pointer with pins, nets, SPICE evidence, and schematic placement, and
+  voltage/current sources at the current view, a canvas click, drag/drop release
+  with snap ghost feedback, or a context-menu pointer with pins, nets, SPICE
+  evidence, and schematic placement, and
   component-level SPICE primitive/value editing for existing
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls

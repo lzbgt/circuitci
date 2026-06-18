@@ -357,10 +357,18 @@ impl CircuitCiApp {
                     } else {
                         "Place On Canvas"
                     };
-                    if ui
-                        .add_enabled(can_insert, egui::Button::new(place_label))
-                        .clicked()
-                    {
+                    let place_response = ui.add_enabled(
+                        can_insert,
+                        egui::Button::new(place_label).sense(egui::Sense::click_and_drag()),
+                    );
+                    if place_response.drag_started() {
+                        self.sketch_palette_place_armed = true;
+                        self.sketch_library_place_armed = false;
+                        self.status = format!(
+                            "Drag to blank schematic space to place {}.",
+                            self.sketch_palette_kind.label()
+                        );
+                    } else if place_response.clicked() {
                         self.sketch_palette_place_armed = !self.sketch_palette_place_armed;
                         if self.sketch_palette_place_armed {
                             self.sketch_library_place_armed = false;
@@ -372,6 +380,10 @@ impl CircuitCiApp {
                             );
                         }
                     }
+                    place_response.on_hover_text(format!(
+                        "Click to arm placement, or drag {} onto blank schematic space.",
+                        self.sketch_palette_kind.label()
+                    ));
                     if self.sketch_palette_place_armed && ui.button("Cancel").clicked() {
                         self.sketch_palette_place_armed = false;
                         self.status = "Primitive placement canceled.".to_string();

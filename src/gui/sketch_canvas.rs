@@ -200,6 +200,12 @@ impl CircuitCiApp {
                 position,
             )
         });
+        let placement_target_clear = hovered_node.is_none()
+            && hovered_anchor.is_none()
+            && hovered_wire.is_none()
+            && hovered_probe_badge.is_none()
+            && hovered_bundle_badge.is_none()
+            && hovered_hierarchy_connector_badge.is_none();
         let wire_drag_target = if let Some(component_id) = &self.wire_from_component
             && let Some(position) = pointer_hover
             && rect.contains(position)
@@ -338,6 +344,21 @@ impl CircuitCiApp {
         if let Some(target) = &wire_drag_target {
             draw_wire_drag_target(&painter, target);
         }
+        if (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+            && let Some(pointer) = pointer_hover
+            && rect.contains(pointer)
+        {
+            let label = self.canvas_placement_label();
+            let ghost = placement_ghost_rect(
+                rect,
+                pointer,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+                placement_ghost_size(&label),
+            );
+            draw_placement_ghost(&painter, ghost, &label, placement_target_clear);
+        }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
                 .is_some_and(|hovered| hovered.net_id == badge.net_id);
@@ -360,6 +381,7 @@ impl CircuitCiApp {
             draw_probe_badge(&painter, badge, hovered, status, opacity);
         }
 
+        let mut placement_applied = false;
         if response.clicked_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
@@ -409,18 +431,14 @@ impl CircuitCiApp {
                 None
             };
             if (self.sketch_palette_place_armed || self.sketch_library_place_armed)
-                && clicked_probe_badge.is_none()
-                && clicked_hierarchy_connector_badge.is_none()
-                && clicked_bundle_badge.is_none()
-                && clicked_anchor.is_none()
-                && clicked.is_none()
-                && clicked_wire.is_none()
+                && placement_target_clear
             {
                 if self.sketch_palette_place_armed {
                     self.apply_insert_sketch_primitive_at(rect, position);
                 } else {
                     self.apply_insert_selected_library_model_at(rect, position);
                 }
+                placement_applied = true;
             } else if let Some(badge) = clicked_probe_badge {
                 self.open_probe_badge_in_simulation(badge);
             } else if let Some(badge) = clicked_hierarchy_connector_badge {
@@ -464,6 +482,19 @@ impl CircuitCiApp {
                 self.status = format!("Selected net {} from wire {}.", edge.net_id, edge.source);
             } else {
                 self.set_single_sketch_selection(clicked);
+            }
+        }
+        if !placement_applied
+            && (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+            && placement_target_clear
+            && ui.input(|input| input.pointer.any_released())
+            && let Some(position) = pointer_hover
+            && rect.contains(position)
+        {
+            if self.sketch_palette_place_armed {
+                self.apply_insert_sketch_primitive_at(rect, position);
+            } else {
+                self.apply_insert_selected_library_model_at(rect, position);
             }
         }
 
@@ -827,6 +858,16 @@ impl CircuitCiApp {
             WireDragTarget::NetNode { net_id, .. } | WireDragTarget::Wire { net_id, .. } => {
                 self.apply_visual_wire(source_component_id, net_id);
             }
+        }
+    }
+
+    fn canvas_placement_label(&self) -> String {
+        if self.sketch_palette_place_armed {
+            self.sketch_palette_kind.label().to_string()
+        } else if self.selected_library_model.trim().is_empty() {
+            "Library component".to_string()
+        } else {
+            self.selected_library_model.clone()
         }
     }
 
@@ -1365,6 +1406,73 @@ fn draw_wire_drag_target(painter: &egui::Painter, target: &WireDragTarget) {
     }
 }
 
+fn placement_ghost_rect(
+    canvas: egui::Rect,
+    pointer: egui::Pos2,
+    viewport: sketch::SketchViewport,
+    snap_enabled: bool,
+    grid_step: f32,
+    size: egui::Vec2,
+) -> egui::Rect {
+    let center = snap_screen_point_to_grid(canvas, pointer, viewport, snap_enabled, grid_step);
+    egui::Rect::from_center_size(center, size)
+}
+
+fn placement_ghost_size(label: &str) -> egui::Vec2 {
+    let width = (label.chars().count() as f32 * 7.0 + 56.0).clamp(120.0, 220.0);
+    egui::vec2(width, 72.0)
+}
+
+fn draw_placement_ghost(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    label: &str,
+    target_clear: bool,
+) {
+    let accent = if target_clear {
+        egui::Color32::from_rgb(95, 190, 255)
+    } else {
+        egui::Color32::from_rgb(255, 116, 116)
+    };
+    let fill = if target_clear {
+        egui::Color32::from_rgba_unmultiplied(38, 88, 112, 72)
+    } else {
+        egui::Color32::from_rgba_unmultiplied(112, 38, 38, 64)
+    };
+    painter.rect_filled(rect, 5.0, fill);
+    painter.rect_stroke(
+        rect,
+        5.0,
+        egui::Stroke::new(2.0, accent),
+        egui::StrokeKind::Inside,
+    );
+    let pin_y = rect.center().y;
+    painter.circle_filled(egui::pos2(rect.left(), pin_y), 4.0, accent);
+    painter.circle_filled(egui::pos2(rect.right(), pin_y), 4.0, accent);
+    let text = if target_clear {
+        label.to_string()
+    } else {
+        format!("{label} blocked")
+    };
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        compact_placement_label(&text),
+        egui::FontId::monospace(11.0),
+        egui::Color32::from_gray(238),
+    );
+}
+
+fn compact_placement_label(label: &str) -> String {
+    const MAX_CHARS: usize = 22;
+    if label.chars().count() <= MAX_CHARS {
+        return label.to_string();
+    }
+    let mut compact = label.chars().take(MAX_CHARS - 3).collect::<String>();
+    compact.push_str("...");
+    compact
+}
+
 fn draw_wire_points(painter: &egui::Painter, points: &[egui::Pos2], stroke: egui::Stroke) {
     for segment in points.windows(2) {
         painter.line_segment([segment[0], segment[1]], stroke);
@@ -1447,9 +1555,12 @@ fn wire_preview_start(
 
 #[cfg(test)]
 mod tests {
-    use super::{WireDragTarget, closest_point_on_wire, wire_drag_target_at, zoom_viewport_around};
+    use super::{
+        WireDragTarget, closest_point_on_wire, placement_ghost_rect, wire_drag_target_at,
+        zoom_viewport_around,
+    };
     use crate::gui::sketch::{
-        SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection,
+        SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection, SketchViewport,
     };
     use crate::gui::sketch_probes::SketchProbeBadge;
     use crate::gui::sketch_symbols::SketchSymbolKind;
@@ -1547,5 +1658,25 @@ mod tests {
             egui::pos2(220.0, 120.0),
         );
         assert_eq!(snap, egui::pos2(120.0, 75.0));
+    }
+
+    #[test]
+    fn placement_ghost_snaps_in_logical_canvas_space() {
+        let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(640.0, 360.0));
+        let viewport = SketchViewport {
+            zoom: 1.5,
+            pan: egui::vec2(30.0, -12.0),
+        };
+        let rect = placement_ghost_rect(
+            canvas,
+            egui::pos2(157.0, 112.0),
+            viewport,
+            true,
+            32.0,
+            egui::vec2(180.0, 92.0),
+        );
+
+        assert_eq!(rect.size(), egui::vec2(180.0, 92.0));
+        assert_eq!(rect.center(), egui::pos2(136.0, 104.0));
     }
 }

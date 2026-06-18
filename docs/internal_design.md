@@ -99,6 +99,9 @@ provenance from the duplicates, avoid copying PCB/layout evidence, and re-parse
 Board IR before committing the edit. Paste may reposition the duplicated group
 to a canvas target, but that placement must be written through
 `board.schematic.node_positions`, not physical layout evidence.
+Primitive and library placement may use click-to-arm, drag/drop, or context
+menu insertion, but the live placement ghost is GUI-only feedback and the
+drop result must still pass through the same validated Board IR mutation path.
 `src/gui/sketch_navigator.rs` owns derived searchable component,
 net-bundle, net, wire, and probe rows for the Sketch-stage object navigator.
 Navigator selection and fit actions may update GUI selection, analog probe
@@ -242,8 +245,8 @@ component model assignment, and model-backed component insertion/placement
 through the same validated Board IR YAML mutation helpers used by the sketch
 inspector. Canvas placement must write generated default pin nets and
 `board.schematic.node_positions` in one accepted YAML edit, whether the target
-is the current view center, an armed blank-canvas click, or the blank-canvas
-context menu pointer.
+is the current view center, an armed blank-canvas click, a drag/drop release
+with live ghost and snap feedback, or the blank-canvas context menu pointer.
 `src/gui/analog_models.rs` owns analog `model_files` listing and mutation. GUI
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the

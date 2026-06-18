@@ -274,14 +274,20 @@ impl CircuitCiApp {
                     } else {
                         "Place On Canvas"
                     };
-                    if ui
-                        .add_enabled(
-                            !self.project_yaml.trim().is_empty()
-                                && !self.new_component_id.trim().is_empty(),
-                            egui::Button::new(place_label),
-                        )
-                        .clicked()
-                    {
+                    let can_place = !self.project_yaml.trim().is_empty()
+                        && !self.new_component_id.trim().is_empty();
+                    let place_response = ui.add_enabled(
+                        can_place,
+                        egui::Button::new(place_label).sense(egui::Sense::click_and_drag()),
+                    );
+                    if place_response.drag_started() {
+                        self.sketch_library_place_armed = true;
+                        self.sketch_palette_place_armed = false;
+                        self.status = format!(
+                            "Drag to blank schematic space to place {}.",
+                            self.selected_library_model
+                        );
+                    } else if place_response.clicked() {
                         self.sketch_library_place_armed = !self.sketch_library_place_armed;
                         if self.sketch_library_place_armed {
                             self.sketch_palette_place_armed = false;
@@ -291,6 +297,10 @@ impl CircuitCiApp {
                             );
                         }
                     }
+                    place_response.on_hover_text(format!(
+                        "Click to arm placement, or drag {} onto blank schematic space.",
+                        self.selected_library_model
+                    ));
                     if self.sketch_library_place_armed && ui.button("Cancel").clicked() {
                         self.sketch_library_place_armed = false;
                         self.status = "Library placement canceled.".to_string();
