@@ -23,9 +23,10 @@ use simulation::{
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection,
     add_component, add_net, assign_component_pin, connect_component_pins, draw_sketch_grid,
-    draw_sketch_node, draw_sketch_pin_anchor, edit_component_model, edit_component_part_number,
-    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_component_style,
-    edit_schematic_node_position, layout_sketch_graph_viewport, orthogonal_wire_points,
+    draw_sketch_node, draw_sketch_pin_anchor, edge_label_position, edit_component_model,
+    edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
+    edit_schematic_component_style, edit_schematic_node_position, hit_test_wire,
+    layout_sketch_graph_viewport, orthogonal_wire_points,
     persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
     remove_net, snap_screen_point_to_grid,
 };
@@ -794,13 +795,30 @@ impl CircuitCiApp {
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
+        let pointer_hover = if response.hovered() {
+            ui.ctx().pointer_hover_pos()
+        } else {
+            None
+        };
+        let hovered_node = pointer_hover
+            .and_then(|position| graph.nodes.iter().find(|node| node.rect.contains(position)));
+        let hovered_anchor = pointer_hover.and_then(|position| {
+            graph
+                .pin_anchors
+                .iter()
+                .find(|anchor| anchor.pos.distance(position) <= 8.0)
+        });
+        let hovered_wire = if hovered_node.is_none() && hovered_anchor.is_none() {
+            pointer_hover.and_then(|position| hit_test_wire(&graph, position))
+        } else {
+            None
+        };
         for edge in &graph.edges {
-            draw_wire_polyline(
-                &painter,
-                edge.start,
-                edge.end,
-                egui::Stroke::new(1.0, egui::Color32::from_gray(72)),
-            );
+            let wire_selection = SketchSelection::Net(edge.net_id.clone());
+            let selected = self.selection_is_selected(&wire_selection);
+            let hovered = hovered_wire
+                .is_some_and(|wire| wire.net_id == edge.net_id && wire.source == edge.source);
+            draw_wire_edge(&painter, edge, selected, hovered, self.sketch_zoom);
         }
         if let Some(component_id) = &self.wire_from_component
             && let Some(pointer) = ui.ctx().pointer_hover_pos()
@@ -838,24 +856,6 @@ impl CircuitCiApp {
             draw_sketch_pin_anchor(&painter, anchor, active);
         }
 
-        let hovered_node = if response.hovered() {
-            ui.ctx()
-                .pointer_hover_pos()
-                .and_then(|position| graph.nodes.iter().find(|node| node.rect.contains(position)))
-        } else {
-            None
-        };
-        let hovered_anchor = if response.hovered() {
-            ui.ctx().pointer_hover_pos().and_then(|position| {
-                graph
-                    .pin_anchors
-                    .iter()
-                    .find(|anchor| anchor.pos.distance(position) <= 8.0)
-            })
-        } else {
-            None
-        };
-
         if response.clicked_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
@@ -869,6 +869,11 @@ impl CircuitCiApp {
                 .iter()
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
+            let clicked_wire = if clicked_anchor.is_none() && clicked.is_none() {
+                hit_test_wire(&graph, position)
+            } else {
+                None
+            };
             if let Some(anchor) = clicked_anchor {
                 if let Some(source_component_id) = self.wire_from_component.clone()
                     && !(source_component_id == anchor.component_id
@@ -896,10 +901,19 @@ impl CircuitCiApp {
                 && let Some(component_id) = self.wire_from_component.clone()
             {
                 self.apply_visual_wire(component_id, net_id.clone());
+            } else if let Some(edge) = clicked_wire
+                && let Some(component_id) = self.wire_from_component.clone()
+            {
+                self.apply_visual_wire(component_id, edge.net_id.clone());
             } else if multi_select {
                 if let Some(selection) = clicked {
                     self.toggle_sketch_selection(selection);
+                } else if let Some(edge) = clicked_wire {
+                    self.toggle_sketch_selection(SketchSelection::Net(edge.net_id.clone()));
                 }
+            } else if let Some(edge) = clicked_wire {
+                self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
+                self.status = format!("Selected net {} from wire {}.", edge.net_id, edge.source);
             } else {
                 self.set_single_sketch_selection(clicked);
             }
@@ -1004,6 +1018,10 @@ impl CircuitCiApp {
             );
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
+            });
+        } else if let Some(edge) = hovered_wire {
+            response.on_hover_ui(|ui| {
+                sketch_wire_hover_tooltip(ui, edge);
             });
         }
     }
@@ -1588,6 +1606,37 @@ fn sketch_pin_hover_tooltip(ui: &mut egui::Ui, anchor: &sketch::SketchPinAnchor)
     ui.label("Click this pin, then click another pin or net node to wire it.");
 }
 
+fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
+    ui.strong(format!("net {}", edge.net_id));
+    ui.label(format!("source: {}", edge.source));
+    ui.separator();
+    ui.label("Click this wire to select the net; start wire mode first to connect to it.");
+}
+
+fn draw_wire_edge(
+    painter: &egui::Painter,
+    edge: &sketch::SketchEdge,
+    selected: bool,
+    hovered: bool,
+    zoom: f32,
+) {
+    let color = if selected {
+        egui::Color32::from_rgb(93, 185, 255)
+    } else if hovered {
+        egui::Color32::from_rgb(255, 196, 87)
+    } else {
+        egui::Color32::from_gray(86)
+    };
+    let stroke_width = if selected || hovered { 2.0 } else { 1.0 };
+    let stroke = egui::Stroke::new(stroke_width, color);
+    let points = orthogonal_wire_points(edge.start, edge.end);
+    draw_wire_points(painter, &points, stroke);
+    draw_wire_junctions(painter, &points, color, selected || hovered);
+    if zoom > 0.45 || selected || hovered {
+        draw_wire_label(painter, edge, selected || hovered);
+    }
+}
+
 fn draw_wire_polyline(
     painter: &egui::Painter,
     start: egui::Pos2,
@@ -1595,9 +1644,61 @@ fn draw_wire_polyline(
     stroke: egui::Stroke,
 ) {
     let points = orthogonal_wire_points(start, end);
+    draw_wire_points(painter, &points, stroke);
+}
+
+fn draw_wire_points(painter: &egui::Painter, points: &[egui::Pos2], stroke: egui::Stroke) {
     for segment in points.windows(2) {
         painter.line_segment([segment[0], segment[1]], stroke);
     }
+}
+
+fn draw_wire_junctions(
+    painter: &egui::Painter,
+    points: &[egui::Pos2],
+    color: egui::Color32,
+    emphasized: bool,
+) {
+    let radius = if emphasized { 3.0 } else { 2.2 };
+    for point in points {
+        painter.circle_filled(*point, radius, color);
+    }
+}
+
+fn draw_wire_label(painter: &egui::Painter, edge: &sketch::SketchEdge, emphasized: bool) {
+    let label = compact_wire_label(&edge.net_id);
+    let pos = edge_label_position(edge);
+    let width = (label.len() as f32 * 7.0 + 8.0).clamp(24.0, 128.0);
+    let rect = egui::Rect::from_min_size(pos + egui::vec2(-4.0, -9.0), egui::vec2(width, 18.0));
+    let fill = if emphasized {
+        egui::Color32::from_rgba_unmultiplied(30, 48, 58, 232)
+    } else {
+        egui::Color32::from_rgba_unmultiplied(24, 24, 24, 210)
+    };
+    painter.rect_filled(rect, 2.0, fill);
+    painter.rect_stroke(
+        rect,
+        2.0,
+        egui::Stroke::new(1.0, egui::Color32::from_gray(76)),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        label,
+        egui::FontId::monospace(10.0),
+        egui::Color32::from_gray(225),
+    );
+}
+
+fn compact_wire_label(label: &str) -> String {
+    const MAX_CHARS: usize = 18;
+    if label.chars().count() <= MAX_CHARS {
+        return label.to_string();
+    }
+    let mut compact = label.chars().take(MAX_CHARS - 3).collect::<String>();
+    compact.push_str("...");
+    compact
 }
 
 fn wire_preview_start(

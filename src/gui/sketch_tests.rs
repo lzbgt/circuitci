@@ -3,11 +3,12 @@ use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
-    edit_schematic_component_style, edit_schematic_node_position, edit_schematic_node_positions,
-    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
-    orthogonal_wire_points, persisted_node_position_from_screen,
-    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
-    remove_net, sketch_graph_bounds, snap_screen_point_to_grid, validate_board_ir_yaml_text,
+    edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
+    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
+    layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
+    snap_screen_point_to_grid, validate_board_ir_yaml_text,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use eframe::egui;
@@ -609,6 +610,22 @@ fn orthogonal_wire_points_use_midpoint_route() {
             egui::pos2(90.0, 70.0),
         ]
     );
+}
+
+#[test]
+fn sketch_graph_edges_carry_net_metadata_for_wire_inspection() {
+    let snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let graph = layout_sketch_graph(canvas, &snapshot);
+    let edge = graph
+        .edges
+        .iter()
+        .find(|edge| edge.net_id == "net_a" && edge.source == "R1.A")
+        .unwrap();
+    let hit = hit_test_wire(&graph, edge_label_position(edge)).unwrap();
+
+    assert_eq!(hit.net_id, "net_a");
+    assert_eq!(hit.source, "R1.A");
 }
 
 #[test]

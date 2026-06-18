@@ -47,8 +47,9 @@ graph layout/drawing helpers, and structured scalar YAML edit helpers for
 selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions/styles,
 drag updates, view-state pan/zoom transforms, schematic grid/snap helpers,
-orthogonal wire visuals, fit-content bounds, Shift-drag marquee selection,
-model-aware pin-anchor rendering, and validated component pin assignment.
+orthogonal wire visuals, net label/junction rendering, wire hit-testing,
+fit-content bounds, Shift-drag marquee selection, model-aware pin-anchor
+rendering, and validated component pin assignment.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
@@ -89,7 +90,8 @@ form:
   scalar edits for existing component and net properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
-  schematic grid/snap controls, orthogonal wire visuals, pan/zoom plus reset-view and
+  schematic grid/snap controls, orthogonal wire visuals with net labels and
+  junction dots, clickable wire-to-net selection, pan/zoom plus reset-view and
   fit-content controls, Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -142,8 +144,9 @@ The supported desktop simulation path is:
 11. assign or remove selected component pin bindings to existing nets,
 12. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-13. inspect Board IR connections through orthogonal wire routes rendered over
-   the persisted pin/net graph,
+13. inspect Board IR connections through orthogonal wire routes, net labels,
+   junction dots, and clickable wire-to-net selection rendered over the
+   persisted pin/net graph,
 14. delete selected components or unreferenced nets from the canvas or toolbar,
 15. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
@@ -177,7 +180,9 @@ The sketch canvas symbol rendering is deliberately a view-layer affordance. It
 infers a compact glyph from the component reference designator and model ID, then
 continues to persist only Board IR components, nets, pins, and optional
 `board.schematic.node_positions` / `board.schematic.node_styles`.
-The sketch grid, snap controls, and orthogonal wire routes are also editor
-affordances. Snapping may update persisted schematic node positions, but grid
-visibility and orthogonal routing style do not create independent electrical
-connectivity or physical PCB placement evidence.
+The sketch grid, snap controls, net labels, junction dots, and orthogonal wire
+routes are also editor affordances. Snapping may update persisted schematic
+node positions, and clicking a wire may select its underlying Board IR net, but
+grid visibility, net-label placement, junction dot rendering, hit-test regions,
+and orthogonal routing style do not create independent electrical connectivity
+or physical PCB placement evidence.

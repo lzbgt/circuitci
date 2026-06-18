@@ -28,9 +28,10 @@ owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, structured scalar
 YAML edit helpers for existing components and nets, schematic grid/snap helpers,
-orthogonal wire visuals, and model-port default pin/net seeding for
-library-backed component insertion. It may add or remove component entries and
-may remove only nets that are not referenced by component pins. Inserted library
+orthogonal wire visuals, net label/junction rendering, wire hit-testing, and
+model-port default pin/net seeding for library-backed component insertion. It
+may add or remove component entries and may remove only nets that are not
+referenced by component pins. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
@@ -53,7 +54,8 @@ If snap is enabled, the snapped logical schematic coordinates are written to
 `board.schematic.node_positions`; grid visibility and grid spacing remain GUI
 editor state. Orthogonal wire routing is display-only and must render from
 component pin bindings and net membership rather than persisting a parallel edge
-list.
+list. Wire hit-testing may select the underlying Board IR net or connect an
+active source pin to that net, but it must not persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
 It may assign or remove component pin bindings only when the component exists
@@ -65,8 +67,9 @@ positions under
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
 introducing a parallel connection model. The rendered wire path may be
-orthogonal for readability, but the persisted connection is still only the
-target component pin's net binding. The GUI shared undo/redo history in
+orthogonal and may include net labels and junction dots for readability, but
+the persisted connection is still only the target component pin's net binding.
+The GUI shared undo/redo history in
 `src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
 graph, property, wire, and text edits should enter that history through the
 same application-level mutation boundary rather than keeping per-widget state.

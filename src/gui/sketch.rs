@@ -127,6 +127,8 @@ pub(super) struct SketchPinAnchor {
 
 #[derive(Debug)]
 pub(super) struct SketchEdge {
+    pub(super) net_id: String,
+    pub(super) source: String,
     pub(super) start: egui::Pos2,
     pub(super) end: egui::Pos2,
 }
@@ -1027,7 +1029,12 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                     .get(&(component.id.as_str(), pin.pin.as_str()))
                     .copied()
                     .unwrap_or(start);
-                edges.push(SketchEdge { start, end });
+                edges.push(SketchEdge {
+                    net_id: pin.net.clone(),
+                    source: format!("{}.{}", component.id, pin.pin),
+                    start,
+                    end,
+                });
                 if edges.len() >= 80 {
                     break;
                 }
@@ -1180,6 +1187,43 @@ pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<
     ]
 }
 
+pub(super) fn edge_label_position(edge: &SketchEdge) -> egui::Pos2 {
+    let points = orthogonal_wire_points(edge.start, edge.end);
+    let total = polyline_length(&points);
+    if total <= f32::EPSILON {
+        return edge.start;
+    }
+    let mut remaining = total / 2.0;
+    for segment in points.windows(2) {
+        let start = segment[0];
+        let end = segment[1];
+        let length = start.distance(end);
+        if remaining <= length {
+            let t = if length <= f32::EPSILON {
+                0.0
+            } else {
+                remaining / length
+            };
+            return start + (end - start) * t + egui::vec2(6.0, -6.0);
+        }
+        remaining -= length;
+    }
+    edge.end
+}
+
+pub(super) fn hit_test_wire(graph: &SketchGraph, position: egui::Pos2) -> Option<&SketchEdge> {
+    graph
+        .edges
+        .iter()
+        .filter_map(|edge| {
+            let distance =
+                distance_to_polyline(position, &orthogonal_wire_points(edge.start, edge.end));
+            (distance <= 6.0).then_some((distance, edge))
+        })
+        .min_by(|(left, _), (right, _)| left.total_cmp(right))
+        .map(|(_, edge)| edge)
+}
+
 pub(super) fn draw_sketch_grid(
     painter: &egui::Painter,
     canvas: egui::Rect,
@@ -1219,6 +1263,31 @@ pub(super) fn draw_sketch_grid(
 
 fn normalized_grid_step(grid_step: f32) -> f32 {
     grid_step.clamp(MIN_SKETCH_GRID_STEP, MAX_SKETCH_GRID_STEP)
+}
+
+fn polyline_length(points: &[egui::Pos2]) -> f32 {
+    points
+        .windows(2)
+        .map(|segment| segment[0].distance(segment[1]))
+        .sum()
+}
+
+fn distance_to_polyline(position: egui::Pos2, points: &[egui::Pos2]) -> f32 {
+    points
+        .windows(2)
+        .map(|segment| distance_to_segment(position, segment[0], segment[1]))
+        .fold(f32::INFINITY, f32::min)
+}
+
+fn distance_to_segment(position: egui::Pos2, start: egui::Pos2, end: egui::Pos2) -> f32 {
+    let segment = end - start;
+    let length_sq = segment.length_sq();
+    if length_sq <= f32::EPSILON {
+        return position.distance(start);
+    }
+    let t = ((position - start).dot(segment) / length_sq).clamp(0.0, 1.0);
+    let closest = start + segment * t;
+    position.distance(closest)
 }
 
 fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport: SketchViewport) {
