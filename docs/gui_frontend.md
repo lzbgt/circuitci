@@ -128,7 +128,7 @@ hit-testing, route-handle hit-testing, and placement orientation cycling.
 paint helpers, including runtime tinting, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns canvas-local
 tooltip and paint helpers for wires, route handles, wire previews, wire target
-affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe-badge, and blank-canvas
 targets, including route-handle actions and named-net/off-page label placement
 actions.
@@ -283,8 +283,8 @@ form:
   Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
   Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
   for freehand lasso selection, multi-selection inspector summary/actions,
-  on-canvas selected-group frame/move handle and quick toolbar with
-  rotate/flip/pin-side actions,
+  on-canvas selected-group frame/move handle with snap/free target feedback and
+  quick toolbar with rotate/flip/pin-side actions,
   group drag/nudge/edge-align/center-align/distribute controls for
   multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected

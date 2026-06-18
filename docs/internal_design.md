@@ -83,7 +83,7 @@ route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_ren
 painting, including runtime tinting, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
-wire target affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+wire target affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe badge, route-handle, and
 blank-canvas targets, including route handle insertion/deletion and
 custom-route clearing. Blank-canvas primary drag
@@ -117,7 +117,7 @@ Board IR before committing the edit. Paste may reposition the duplicated group
 to a canvas target, but that placement must be written through
 `board.schematic.node_positions`, not physical layout evidence.
 Primitive and library placement may use click-to-arm, drag/drop, or context
-menu insertion, but the live placement ghost is GUI-only feedback and the
+menu insertion, but the live placement ghost and snap/free target marker are GUI-only feedback and the
 drop result must still pass through the same validated Board IR mutation path.
 `src/gui/sketch_navigator.rs` owns derived searchable component,
 net-bundle, net, wire, and probe rows for the Sketch-stage object navigator.

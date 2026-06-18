@@ -367,6 +367,43 @@ pub(super) fn draw_placement_ghost(
     }
 }
 
+pub(super) fn draw_snap_feedback(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    target_clear: bool,
+    snap_enabled: bool,
+) {
+    let color = if target_clear {
+        egui::Color32::from_rgb(112, 210, 255)
+    } else {
+        egui::Color32::from_rgb(255, 126, 126)
+    };
+    let stroke = egui::Stroke::new(1.5, color);
+    painter.line_segment(
+        [
+            center + egui::vec2(-10.0, 0.0),
+            center + egui::vec2(10.0, 0.0),
+        ],
+        stroke,
+    );
+    painter.line_segment(
+        [
+            center + egui::vec2(0.0, -10.0),
+            center + egui::vec2(0.0, 10.0),
+        ],
+        stroke,
+    );
+    painter.circle_stroke(center, 5.0, stroke);
+    let label = if snap_enabled { "Snap" } else { "Free" };
+    painter.text(
+        center + egui::vec2(12.0, -12.0),
+        egui::Align2::LEFT_CENTER,
+        label,
+        egui::FontId::monospace(10.0),
+        color,
+    );
+}
+
 fn resolved_placement_pin_side(style: SketchNodeStyle) -> SketchPinSide {
     match style.pin_side {
         SketchPinSide::Left | SketchPinSide::Right => style.pin_side,

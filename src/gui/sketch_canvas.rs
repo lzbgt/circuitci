@@ -14,11 +14,11 @@ use super::sketch_canvas_interaction::{
 };
 use super::sketch_canvas_interaction::{next_pin_side, normalize_canvas_rotation};
 use super::sketch_canvas_render::{
-    draw_pending_wire_route_handles, draw_placement_ghost, draw_wire_drag_target, draw_wire_edge,
-    draw_wire_junctions, draw_wire_points, draw_wire_route_handles, draw_wire_route_preview,
-    placement_ghost_rect, placement_ghost_size, sketch_hover_tooltip, sketch_pin_hover_tooltip,
-    sketch_probe_badge_tooltip, sketch_wire_hover_tooltip, sketch_wire_route_handle_tooltip,
-    wire_preview_start,
+    draw_pending_wire_route_handles, draw_placement_ghost, draw_snap_feedback,
+    draw_wire_drag_target, draw_wire_edge, draw_wire_junctions, draw_wire_points,
+    draw_wire_route_handles, draw_wire_route_preview, placement_ghost_rect, placement_ghost_size,
+    sketch_hover_tooltip, sketch_pin_hover_tooltip, sketch_probe_badge_tooltip,
+    sketch_wire_hover_tooltip, sketch_wire_route_handle_tooltip, wire_preview_start,
 };
 use super::sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
@@ -615,6 +615,25 @@ impl CircuitCiApp {
                 placement_ghost_size(&label, style),
             );
             draw_placement_ghost(&painter, ghost, &label, placement_target_clear, style);
+            draw_snap_feedback(
+                &painter,
+                ghost.center(),
+                placement_target_clear,
+                self.sketch_snap_enabled,
+            );
+        }
+        if self.sketch_group_frame_drag.is_some()
+            && let Some(pointer) = ui.ctx().pointer_interact_pos()
+            && rect.contains(pointer)
+        {
+            let snapped = snap_screen_point_to_grid(
+                rect,
+                pointer,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+            );
+            draw_snap_feedback(&painter, snapped, true, self.sketch_snap_enabled);
         }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
