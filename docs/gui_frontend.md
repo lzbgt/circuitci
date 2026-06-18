@@ -19,6 +19,7 @@ the default CLI dependency graph:
 circuitci-gui
   -> src/gui.rs
   -> src/gui/sketch.rs
+  -> src/gui/simulation.rs
   -> src/gui/analog.rs
   -> Board IR loading
   -> component model binding
@@ -30,13 +31,14 @@ circuitci-gui
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
-`src/gui.rs` owns the application shell, stage routing, validation/report calls,
-and waveform observation. `src/gui/sketch.rs` owns the Board IR graph snapshot,
-sketch graph layout/drawing helpers, and structured scalar YAML edit helpers
-for selected components and nets, including conservative add/remove operations
-for components and unreferenced nets plus validated component pin assignment.
-`src/gui/analog.rs` owns structured analog transient scenario and assertion
-YAML generation for generated-from-Board simulations.
+`src/gui.rs` owns the application shell, stage routing, and validation/report
+calls. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch graph
+layout/drawing helpers, and structured scalar YAML edit helpers for selected
+components and nets, including conservative add/remove operations for
+components and unreferenced nets plus validated component pin assignment.
+`src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing, and
+plotting. `src/gui/analog.rs` owns structured analog transient scenario and
+assertion YAML generation for generated-from-Board simulations.
 
 ## Workflow Shell
 
