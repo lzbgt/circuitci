@@ -28,7 +28,10 @@ use sketch::{
     orthogonal_wire_points, persisted_node_position_from_screen_with_snap,
     snap_screen_point_to_grid,
 };
-use sketch_probes::{SketchProbeBadge, draw_probe_badge, hit_test_probe_badge};
+use sketch_probes::{
+    SketchProbeBadge, SketchProbeStatus, draw_probe_badge, hit_test_probe_badge,
+    probe_assertion_status,
+};
 
 pub fn run() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
@@ -869,7 +872,8 @@ impl CircuitCiApp {
                 hovered.probe.scenario_name == badge.probe.scenario_name
                     && hovered.probe.probe_name == badge.probe.probe_name
             });
-            draw_probe_badge(&painter, badge, hovered);
+            let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
+            draw_probe_badge(&painter, badge, hovered, status);
         }
 
         if response.clicked_by(egui::PointerButton::Primary)
@@ -1052,7 +1056,8 @@ impl CircuitCiApp {
 
         if let Some(badge) = hovered_probe_badge {
             response.on_hover_ui(|ui| {
-                sketch_probe_badge_tooltip(ui, badge);
+                let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
+                sketch_probe_badge_tooltip(ui, badge, status);
             });
         } else if let Some(anchor) = hovered_anchor {
             response.on_hover_ui(|ui| {
@@ -1232,7 +1237,11 @@ fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
     ui.label("Click this wire to select the net; start wire mode first to connect to it.");
 }
 
-fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &SketchProbeBadge) {
+fn sketch_probe_badge_tooltip(
+    ui: &mut egui::Ui,
+    badge: &SketchProbeBadge,
+    status: SketchProbeStatus,
+) {
     ui.strong(format!(
         "{} probe {}",
         badge.probe.quantity.label(),
@@ -1240,6 +1249,13 @@ fn sketch_probe_badge_tooltip(ui: &mut egui::Ui, badge: &SketchProbeBadge) {
     ));
     ui.label(format!("scenario: {}", badge.probe.scenario_name));
     ui.label(format!("expression: {}", badge.probe.expression));
+    ui.label(format!("assertion status: {}", status.label()));
+    if !badge.probe.assertion_names.is_empty() {
+        ui.label(format!(
+            "assertions: {}",
+            badge.probe.assertion_names.join(", ")
+        ));
+    }
     ui.separator();
     ui.label("Click to open this probe in the Simulation stage.");
     ui.label("Press A while hovering to add an assertion from current settings.");

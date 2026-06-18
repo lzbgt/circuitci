@@ -135,7 +135,8 @@ scenarios:
         - { name: rail_voltage, expression: 'V(rail_5v)', quantity: voltage }
         - { name: r1_current, expression: 'I(VCCI_R1)', quantity: current }
         - { name: r1_power, expression: 'V(rail_5v,out)*I(VCCI_R1)', quantity: power }
-      assertions: []
+      assertions:
+        - { name: rail_voltage_min, probe: rail_voltage, at_us: 5, relation: above, threshold_v: 4.5 }
 ",
     )
     .unwrap();
@@ -144,6 +145,7 @@ scenarios:
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "rail_voltage"
             && probe.quantity.label() == "V"
+            && probe.assertion_names == ["rail_voltage_min".to_string()]
             && matches!(probe.target, SketchProbeTarget::Net(ref id) if id == "rail")
     }));
     assert!(snapshot.probes.iter().any(|probe| {
@@ -167,6 +169,7 @@ fn layout_places_hit_testable_probe_badges() {
         expression: "V(net_a)".to_string(),
         quantity: SketchProbeQuantity::Voltage,
         target: SketchProbeTarget::Net("net_a".to_string()),
+        assertion_names: Vec::new(),
     });
     let graph = layout_sketch_graph(
         egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),

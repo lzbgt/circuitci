@@ -9,6 +9,7 @@ pub(super) struct SketchProbe {
     pub(super) expression: String,
     pub(super) quantity: SketchProbeQuantity,
     pub(super) target: SketchProbeTarget,
+    pub(super) assertion_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +39,25 @@ pub(super) enum SketchProbeTarget {
 pub(super) struct SketchProbeBadge {
     pub(super) probe: SketchProbe,
     pub(super) rect: egui::Rect,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchProbeStatus {
+    Unasserted,
+    Unknown,
+    Pass,
+    Fail,
+}
+
+impl SketchProbeStatus {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Unasserted => "no assertions",
+            Self::Unknown => "assertions not evaluated",
+            Self::Pass => "assertions passed",
+            Self::Fail => "assertion failed",
+        }
+    }
 }
 
 pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> Vec<SketchProbe> {
@@ -71,6 +91,12 @@ pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> 
                 expression: probe.expression.clone(),
                 quantity,
                 target,
+                assertion_names: analog
+                    .assertions
+                    .iter()
+                    .filter(|assertion| assertion.probe == probe.name)
+                    .map(|assertion| assertion.name.clone())
+                    .collect(),
             });
         }
     }
@@ -118,7 +144,44 @@ pub(super) fn hit_test_probe_badge(
         .find(|badge| badge.rect.expand(2.0).contains(position))
 }
 
-pub(super) fn draw_probe_badge(painter: &egui::Painter, badge: &SketchProbeBadge, hovered: bool) {
+pub(super) fn probe_assertion_status(
+    report: Option<&crate::reports::ValidationReport>,
+    probe: &SketchProbe,
+) -> SketchProbeStatus {
+    if probe.assertion_names.is_empty() {
+        return SketchProbeStatus::Unasserted;
+    }
+    let Some(report) = report else {
+        return SketchProbeStatus::Unknown;
+    };
+    let scenario_failures: Vec<_> = report
+        .failures
+        .iter()
+        .filter(|finding| finding.scenario == probe.scenario_name)
+        .collect();
+    let assertion_failed = probe.assertion_names.iter().any(|assertion_name| {
+        scenario_failures
+            .iter()
+            .any(|finding| finding_mentions_assertion(finding, assertion_name))
+    });
+    if assertion_failed {
+        SketchProbeStatus::Fail
+    } else if scenario_failures
+        .iter()
+        .any(|finding| !finding.message.contains("assertion "))
+    {
+        SketchProbeStatus::Unknown
+    } else {
+        SketchProbeStatus::Pass
+    }
+}
+
+pub(super) fn draw_probe_badge(
+    painter: &egui::Painter,
+    badge: &SketchProbeBadge,
+    hovered: bool,
+    status: SketchProbeStatus,
+) {
     let fill = match badge.probe.quantity {
         SketchProbeQuantity::Voltage => egui::Color32::from_rgb(52, 100, 166),
         SketchProbeQuantity::Current => egui::Color32::from_rgb(136, 86, 154),
@@ -128,6 +191,12 @@ pub(super) fn draw_probe_badge(painter: &egui::Painter, badge: &SketchProbeBadge
         egui::Color32::from_rgb(255, 226, 145)
     } else {
         egui::Color32::from_gray(36)
+    };
+    let status_color = match status {
+        SketchProbeStatus::Unasserted => egui::Color32::from_gray(150),
+        SketchProbeStatus::Unknown => egui::Color32::from_rgb(230, 190, 90),
+        SketchProbeStatus::Pass => egui::Color32::from_rgb(86, 190, 112),
+        SketchProbeStatus::Fail => egui::Color32::from_rgb(232, 83, 83),
     };
     painter.rect_filled(badge.rect, 3.0, fill);
     painter.rect_stroke(
@@ -143,6 +212,32 @@ pub(super) fn draw_probe_badge(painter: &egui::Painter, badge: &SketchProbeBadge
         egui::FontId::monospace(11.0),
         egui::Color32::WHITE,
     );
+    painter.circle_filled(
+        egui::pos2(badge.rect.right() - 3.5, badge.rect.top() + 3.5),
+        3.0,
+        status_color,
+    );
+    if status == SketchProbeStatus::Fail {
+        painter.text(
+            egui::pos2(badge.rect.right() - 3.5, badge.rect.top() + 3.2),
+            egui::Align2::CENTER_CENTER,
+            "!",
+            egui::FontId::monospace(7.0),
+            egui::Color32::WHITE,
+        );
+    }
+}
+
+fn finding_mentions_assertion(finding: &crate::reports::Finding, assertion_name: &str) -> bool {
+    finding
+        .message
+        .contains(&format!("assertion {assertion_name} "))
+        || finding
+            .message
+            .contains(&format!("assertion {assertion_name}."))
+        || finding
+            .message
+            .contains(&format!("assertion {assertion_name}:"))
 }
 
 fn sketch_probe_quantity(quantity: &crate::board_ir::AnalogQuantity) -> SketchProbeQuantity {
@@ -245,4 +340,106 @@ fn spice_element_suffix(component_id: &str) -> String {
         suffix.push('X');
     }
     suffix
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        SketchProbe, SketchProbeQuantity, SketchProbeStatus, SketchProbeTarget,
+        probe_assertion_status,
+    };
+    use crate::reports::{Finding, ValidationReport};
+
+    fn asserted_probe() -> SketchProbe {
+        SketchProbe {
+            scenario_name: "tran".to_string(),
+            probe_name: "rail_voltage".to_string(),
+            expression: "V(rail)".to_string(),
+            quantity: SketchProbeQuantity::Voltage,
+            target: SketchProbeTarget::Net("rail".to_string()),
+            assertion_names: vec!["rail_voltage_min".to_string()],
+        }
+    }
+
+    fn report(findings: Vec<Finding>) -> ValidationReport {
+        ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            findings,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        )
+    }
+
+    #[test]
+    fn probe_status_is_unasserted_without_assertions() {
+        let mut probe = asserted_probe();
+        probe.assertion_names.clear();
+        assert_eq!(
+            probe_assertion_status(Some(&report(Vec::new())), &probe),
+            SketchProbeStatus::Unasserted
+        );
+    }
+
+    #[test]
+    fn probe_status_is_unknown_before_validation() {
+        let probe = asserted_probe();
+        assert_eq!(
+            probe_assertion_status(None, &probe),
+            SketchProbeStatus::Unknown
+        );
+    }
+
+    #[test]
+    fn probe_status_fails_when_report_names_assertion() {
+        let probe = asserted_probe();
+        let finding = Finding::critical(
+            "SPICE_TRANSIENT_ANALYSIS",
+            "tran",
+            "Analog assertion rail_voltage_min failed: sampled probe rail_voltage measured 4.0 V.",
+        );
+        assert_eq!(
+            probe_assertion_status(Some(&report(vec![finding])), &probe),
+            SketchProbeStatus::Fail
+        );
+    }
+
+    #[test]
+    fn probe_status_passes_when_asserted_scenario_has_no_failures() {
+        let probe = asserted_probe();
+        assert_eq!(
+            probe_assertion_status(Some(&report(Vec::new())), &probe),
+            SketchProbeStatus::Pass
+        );
+    }
+
+    #[test]
+    fn probe_status_is_unknown_when_scenario_failed_before_assertions() {
+        let probe = asserted_probe();
+        let finding = Finding::critical(
+            "SPICE_TRANSIENT_ANALYSIS",
+            "tran",
+            "ngspice backend failed before waveform assertions were evaluated.",
+        );
+        assert_eq!(
+            probe_assertion_status(Some(&report(vec![finding])), &probe),
+            SketchProbeStatus::Unknown
+        );
+    }
+
+    #[test]
+    fn probe_status_passes_when_only_other_assertions_failed() {
+        let probe = asserted_probe();
+        let finding = Finding::critical(
+            "SPICE_TRANSIENT_ANALYSIS",
+            "tran",
+            "Analog assertion out_voltage_max failed: sampled probe out_voltage measured 6.0 V.",
+        );
+        assert_eq!(
+            probe_assertion_status(Some(&report(vec![finding])), &probe),
+            SketchProbeStatus::Pass
+        );
+    }
 }

@@ -89,17 +89,23 @@ normalized runtime activity values for graph tinting. It may display graph
 hover readouts and activity coloring for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
-Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing analog
-scenario probes: voltage expressions attach to Board IR nets through
+Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing
+analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
 components only when their `I(...)` branch maps to a generated/source branch
-name CircuitCI can prove. Badge clicks select the existing scenario/probe in the
-Simulation stage. Pressing `A` on a hovered badge may append a normal Board IR
-assertion using the current assertion-editor settings, pressing `X` may remove
-assertions for that probe while keeping the probe, and Delete/Backspace may
-remove the underlying Board IR probe through `src/gui/analog.rs` and must also
-remove assertions that reference that probe before re-parsing Board IR. Badges
-must not become a second persisted probe store.
+name CircuitCI can prove. Badge assertion-status markers are derived from the
+latest loaded `ValidationReport`, not from live simulation state. A badge is
+unasserted when no Board IR assertion references its probe, unknown when no
+report is loaded or the scenario had a non-assertion failure, failed when a
+report finding names one of the probe's assertions, and passed only when the
+latest report has no matching assertion failure. Badge clicks select the
+existing scenario/probe in the Simulation stage. Pressing `A` on a hovered badge
+may append a normal Board IR assertion using the current assertion-editor
+settings, pressing `X` may remove assertions for that probe while keeping the
+probe, and Delete/Backspace may remove the underlying Board IR probe through
+`src/gui/analog.rs` and must also remove assertions that reference that probe
+before re-parsing Board IR. Badges must not become a second persisted probe
+store.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.
