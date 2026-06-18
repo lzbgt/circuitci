@@ -251,15 +251,73 @@ pub fn validate_and_write_project_report(
     output: &Path,
     command: String,
 ) -> Result<ValidationReport> {
+    validate_and_write_project_report_with_progress(
+        project_path,
+        profile,
+        output,
+        command,
+        |_, _| {},
+    )
+}
+
+pub fn validate_and_write_project_report_with_progress<F>(
+    project_path: &Path,
+    profile: &str,
+    output: &Path,
+    command: String,
+    mut on_progress: F,
+) -> Result<ValidationReport>
+where
+    F: FnMut(&'static str, String),
+{
+    on_progress(
+        "Loading project",
+        format!("Parsing {}.", project_path.to_string_lossy()),
+    );
     let project = crate::board_ir::load_project(project_path)?;
+    on_progress(
+        "Loading models",
+        format!("Binding component library for {}.", project.project.name),
+    );
     let (library, library_findings) = crate::library::load_library(project_path, &project);
+    on_progress(
+        "Binding models",
+        format!(
+            "{} component(s), {} net(s), {} scenario(s).",
+            project.board.components.len(),
+            project.board.nets.len(),
+            project.scenarios.len()
+        ),
+    );
     let bound = crate::library::bind_project(&project, library, library_findings);
+    on_progress(
+        "Running validation",
+        format!(
+            "Executing {} declared check(s) across {} scenario(s).",
+            project
+                .scenarios
+                .iter()
+                .map(|scenario| scenario.checks.len())
+                .sum::<usize>(),
+            project.scenarios.len()
+        ),
+    );
     let mut outcome = crate::validation::validate(&bound, output);
+    on_progress("Applying profile coverage", format!("Profile {profile}."));
     outcome
         .limitations
         .extend(crate::validation::profile_coverage_limitations(
             profile, &project,
         ));
+    on_progress(
+        "Assembling report",
+        format!(
+            "{} finding(s), {} limitation(s), {} waveform artifact(s).",
+            outcome.findings.len(),
+            outcome.limitations.len(),
+            outcome.waveforms.len()
+        ),
+    );
     let report = ValidationReport::from_parts(
         project.project.name.clone(),
         profile.to_string(),
@@ -268,6 +326,10 @@ pub fn validate_and_write_project_report(
         outcome.artifacts,
         outcome.waveforms,
         command,
+    );
+    on_progress(
+        "Writing report",
+        format!("Writing {}.", output.to_string_lossy()),
     );
     write_reports(&report, output)?;
     Ok(report)

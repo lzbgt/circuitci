@@ -1098,19 +1098,32 @@ impl CircuitCiApp {
     }
 }
 
-fn validate_from_gui(
+fn validate_from_gui<F>(
     project_path: &Path,
     profile: &str,
     output: &Path,
-) -> Result<(ValidationReport, String)> {
+    mut on_progress: F,
+) -> Result<(ValidationReport, String)>
+where
+    F: FnMut(&'static str, String),
+{
     let command = format!(
         "circuitci-gui validate {} --profile {} --output {}",
         display_path(project_path),
         profile,
         display_path(output)
     );
-    let report =
-        crate::suite::validate_and_write_project_report(project_path, profile, output, command)?;
+    let report = crate::suite::validate_and_write_project_report_with_progress(
+        project_path,
+        profile,
+        output,
+        command,
+        &mut on_progress,
+    )?;
+    on_progress(
+        "Loading markdown report",
+        format!("Reading {}.", display_path(&output.join("report.md"))),
+    );
     let markdown = std::fs::read_to_string(output.join("report.md"))
         .with_context(|| format!("Failed to read {}.", output.join("report.md").display()))?;
     Ok((report, markdown))
@@ -1339,6 +1352,7 @@ mod tests {
         edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
         edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
     };
+    use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -1382,6 +1396,35 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("Board IR"));
+    }
+
+    #[test]
+    fn validate_from_gui_emits_phase_progress() {
+        let output = tempfile::tempdir().unwrap();
+        let mut stages = Vec::new();
+
+        let (report, markdown) = super::validate_from_gui(
+            Path::new("examples/good_current_source_load/project.yaml"),
+            "default",
+            output.path(),
+            |stage, _detail| stages.push(stage.to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(report.result, "pass");
+        assert!(markdown.contains("# CircuitCI Report"));
+        for expected in [
+            "Loading project",
+            "Loading models",
+            "Binding models",
+            "Running validation",
+            "Applying profile coverage",
+            "Assembling report",
+            "Writing report",
+            "Loading markdown report",
+        ] {
+            assert!(stages.iter().any(|stage| stage == expected), "{expected}");
+        }
     }
 
     #[test]

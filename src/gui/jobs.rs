@@ -108,9 +108,13 @@ impl CircuitCiApp {
                         thread_output_dir.display()
                     ),
                 );
-                let result =
-                    validate_from_gui(&thread_project_path, &thread_profile, &thread_output_dir)
-                        .map(|(report, markdown)| ValidationJobOutput { report, markdown });
+                let result = validate_from_gui(
+                    &thread_project_path,
+                    &thread_profile,
+                    &thread_output_dir,
+                    |stage, detail| send_background_progress(&sender, stage, detail),
+                )
+                .map(|(report, markdown)| ValidationJobOutput { report, markdown });
                 send_background_progress(
                     &sender,
                     "Validation finished",
