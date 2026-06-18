@@ -281,11 +281,11 @@ dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, the primary scope plot, simulation-time scrub/playback controls,
-cursor readouts, min/max/delta measurements, GUI-only derived waveform
-channels, promotion of representable derived channels to explicit Board IR
-analog probes/assertions, exact probe-value lookup, and normalized runtime
-activity values for graph tinting. It may display graph hover readouts,
-activity coloring, and derived difference,
+cursor readouts, min/max/delta measurements, pending schematic probe-to-scope
+focus, GUI-only derived waveform channels, promotion of representable derived
+channels to explicit Board IR analog probes/assertions, exact probe-value
+lookup, and normalized runtime activity values for graph tinting. It may
+display graph hover readouts, activity coloring, and derived difference,
 sum, product, or ratio channels for runtime waveform probes, but those values
 must come from report waveform artifacts and the shared waveform interpolation
 helpers rather than an unsynchronized live simulation model.
@@ -298,10 +298,12 @@ latest loaded `ValidationReport`, not from live simulation state. A badge is
 unasserted when no Board IR assertion references its probe, unknown when no
 report is loaded or the scenario had a non-assertion failure, failed when a
 report finding names one of the probe's assertions, and passed only when the
-latest report has no matching assertion failure. Badge clicks select the
-existing scenario/probe in the Simulation stage, whose selected-probe assertion
-table must be derived from Board IR assertions plus the latest `ValidationReport`
-and must not cache a parallel assertion model. Pressing `A` on a hovered badge
+latest report has no matching assertion failure. Badge clicks, object-navigator
+probe rows, and primary-toolbar scope actions select the existing scenario/probe
+in the Simulation stage and may focus a matching waveform trace when loaded; the
+selected-probe assertion table must still be derived from Board IR assertions
+plus the latest `ValidationReport` and must not cache a parallel assertion
+model. Pressing `A` on a hovered badge
 may append a normal Board IR assertion using the current assertion-editor
 settings. Pressing Shift+A or Shift+B on a hovered badge may append a normal
 sample assertion whose threshold is derived from an exact loaded waveform probe

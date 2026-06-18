@@ -223,8 +223,8 @@ editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, the primary scope plot,
 simulation-time scrub/playback controls, cursor measurement tools, GUI-only
 derived waveform channels, promotion of representable derived channels to Board
-IR probes/assertions, and graph-hover/runtime activity extraction from loaded
-waveform artifacts.
+IR probes/assertions, pending schematic probe-to-scope focus, and
+graph-hover/runtime activity extraction from loaded waveform artifacts.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
@@ -311,11 +311,13 @@ form:
   Board IR net, can be moved by dragging, accept active-wire drops onto their
   underlying net, and can be converted or deleted from their context menu,
   runtime tinting and hover readouts for
-  matching waveform probes, visible voltage/current/power probe badges derived
-  from analog scenario probes, badge pass/fail/unknown/unasserted markers
-  derived from the latest validation report, badge clicks that open the
-  corresponding Simulation-stage probe context, right-click probe-badge action
-  menus, right-click component/net/wire action menus, hovered-badge assertion
+  matching waveform probes, primary-toolbar probe controls that add voltage
+  probes for selected nets or current/power probes for selected components,
+  visible voltage/current/power probe badges derived from analog scenario
+  probes, badge pass/fail/unknown/unasserted markers derived from the latest
+  validation report, badge clicks that open and focus the corresponding
+  Simulation-stage scope/probe context, right-click probe-badge action menus,
+  right-click component/net/wire action menus, hovered-badge assertion
   creation/clearing, hovered-badge deletion that removes the probe and
   dependent assertions through a validated Board IR edit, selected-net
   voltage-probe insertion into existing analog scenarios,
@@ -466,14 +468,16 @@ The supported desktop simulation path is:
 39. scrub or play the simulation time cursor to drive graph runtime tinting,
 40. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-41. use visible schematic probe badges to find voltage/current/power probes,
-   see latest assertion pass/fail/unknown/unasserted status, jump to their
-   Simulation-stage selected-probe assertion panel, add an assertion from the
-   current assertion-editor settings with `A`, edit or delete one assertion
-   row from the selected-probe panel, quick-add an above-current-sample check
-   with Shift+A or a below-current-sample check with Shift+B, clear assertions
-   for the probe with `X`, use the right-click badge menu for the same probe
-   actions, or remove a hovered probe badge with Delete/Backspace,
+41. add schematic probes from the primary toolbar for the selected net or
+   component, use visible schematic probe badges to find voltage/current/power
+   probes, see latest assertion pass/fail/unknown/unasserted status, jump to
+   their Simulation-stage scope trace and selected-probe assertion panel after
+   waveform data is loaded, add an assertion from the current assertion-editor
+   settings with `A`, edit or delete one assertion row from the selected-probe
+   panel, quick-add an above-current-sample check with Shift+A or a
+   below-current-sample check with Shift+B, clear assertions for the probe with
+   `X`, use the right-click badge menu for the same probe actions, or remove a
+   hovered probe badge with Delete/Backspace,
 42. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, place local/off-page net labels, and delete
@@ -558,11 +562,15 @@ with a small 1% threshold margin so the current sample initially satisfies the
 new strict `above` or `below` check. If no waveform column matches the probe
 expression at the cursor, the quick action fails closed and leaves Board IR
 unchanged.
-Right-clicking a probe badge opens an explicit action menu for opening the
-probe in Simulation, adding an assertion from current settings, quick adding
-above/below cursor-sample assertions, clearing assertions, or removing the
-probe. These menu actions call the same validated Board IR mutation paths as
-the keyboard shortcuts.
+Clicking a probe badge, choosing a probe row in the object navigator, or using
+the primary toolbar scope action records the selected scenario/probe as the
+runtime scope target. If waveform artifacts are already loaded, the Scopes view
+selects the matching trace immediately; otherwise the target is applied after
+the next successful Run loads waveform CSV data. Right-clicking a probe badge
+opens an explicit action menu for opening the probe in Simulation, adding an
+assertion from current settings, quick adding above/below cursor-sample
+assertions, clearing assertions, or removing the probe. These menu actions call
+the same validated Board IR mutation paths as the keyboard shortcuts.
 Right-clicking a component, net node, or wire opens the common sketch action
 menu for that target. Component menus can inspect/select, start inline ID or
 supported scalar-value editing, start wire mode from an existing/default pin,

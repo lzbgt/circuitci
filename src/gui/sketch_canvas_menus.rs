@@ -5,20 +5,25 @@ use super::sketch_canvas_render::component_context_pin;
 use super::sketch_component_labels::{SketchComponentLabelBadge, SketchComponentLabelKind};
 use super::sketch_inline_edit::component_supports_inline_value;
 use super::sketch_probes::SketchProbeBadge;
-use super::{CircuitCiApp, Stage};
+use super::{CircuitCiApp, ScopeProbeTarget};
 
 impl CircuitCiApp {
     pub(super) fn open_probe_badge_in_simulation(&mut self, badge: &SketchProbeBadge) {
         self.analog_probe_scenario = badge.probe.scenario_name.clone();
         self.analog_assertion_scenario = badge.probe.scenario_name.clone();
         self.analog_assertion_probe = badge.probe.probe_name.clone();
-        self.stage = Stage::Simulation;
-        self.status = format!(
-            "Selected {} probe {} from scenario {}.",
-            badge.probe.quantity.label(),
-            badge.probe.probe_name,
-            badge.probe.scenario_name
-        );
+        self.open_scope_probe_target(ScopeProbeTarget {
+            scenario_name: badge.probe.scenario_name.clone(),
+            probe_name: badge.probe.probe_name.clone(),
+        });
+        if self.waveforms.is_empty() {
+            self.status = format!(
+                "Selected {} probe {} from scenario {}; run the model to load scope traces.",
+                badge.probe.quantity.label(),
+                badge.probe.probe_name,
+                badge.probe.scenario_name
+            );
+        }
     }
 
     pub(super) fn probe_badge_context_menu(

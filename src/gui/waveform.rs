@@ -1,16 +1,63 @@
-use super::CircuitCiApp;
 use super::analog::{
     AnalogAssertionDraft, AnalogExpressionProbeDraft, analog_scenario_choices,
     append_analog_assertion, append_analog_expression_probe, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::SketchProbe;
+use super::{CircuitCiApp, ScopeProbeTarget, Stage};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
 
 impl CircuitCiApp {
+    pub(super) fn open_scope_probe_target(&mut self, target: ScopeProbeTarget) {
+        self.pending_scope_probe = Some(target.clone());
+        let focused = self.focus_scope_probe(&target);
+        self.stage = Stage::Simulation;
+        if focused {
+            self.status = format!(
+                "Opened scope probe {} from scenario {}.",
+                target.probe_name, target.scenario_name
+            );
+        } else {
+            self.status = format!(
+                "Scope target {} from scenario {} selected; run the model to load matching traces.",
+                target.probe_name, target.scenario_name
+            );
+        }
+    }
+
+    pub(super) fn remember_scope_probe_target(&mut self, scenario_name: &str, probe_name: &str) {
+        self.pending_scope_probe = Some(ScopeProbeTarget {
+            scenario_name: scenario_name.trim().to_string(),
+            probe_name: probe_name.trim().to_string(),
+        });
+    }
+
+    pub(super) fn apply_pending_scope_probe_focus(&mut self) -> bool {
+        let Some(target) = self.pending_scope_probe.clone() else {
+            return false;
+        };
+        self.focus_scope_probe(&target)
+    }
+
+    fn focus_scope_probe(&mut self, target: &ScopeProbeTarget) -> bool {
+        let Some((waveform_index, probe_index)) =
+            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
+        else {
+            return false;
+        };
+        self.selected_waveform = waveform_index;
+        self.selected_probe = probe_index;
+        self.waveform_math_left = probe_index;
+        self.waveform_math_right = probe_index;
+        self.waveform_cursor_a_us = 0.0;
+        self.waveform_cursor_b_us = 0.0;
+        self.waveform_playing = false;
+        true
+    }
+
     pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
         self.waveform_scope_header(ui);
         if self.waveforms.is_empty() {
@@ -424,6 +471,46 @@ impl CircuitCiApp {
             },
         )
     }
+}
+
+fn find_scope_probe(
+    waveforms: &[WaveformView],
+    scenario_name: &str,
+    probe_name: &str,
+) -> Option<(usize, usize)> {
+    let scenario_name = scenario_name.trim();
+    let probe_name = probe_name.trim();
+    if probe_name.is_empty() {
+        return None;
+    }
+    waveforms
+        .iter()
+        .enumerate()
+        .find_map(|(waveform_index, waveform)| {
+            let scenario_matches = scenario_name.is_empty()
+                || waveform.label.contains(scenario_name)
+                || waveform.path.contains(scenario_name);
+            if !scenario_matches {
+                return None;
+            }
+            waveform
+                .probes
+                .iter()
+                .position(|probe| probe.label.trim().eq_ignore_ascii_case(probe_name))
+                .map(|probe_index| (waveform_index, probe_index))
+        })
+        .or_else(|| {
+            waveforms
+                .iter()
+                .enumerate()
+                .find_map(|(waveform_index, waveform)| {
+                    waveform
+                        .probes
+                        .iter()
+                        .position(|probe| probe.label.trim().eq_ignore_ascii_case(probe_name))
+                        .map(|probe_index| (waveform_index, probe_index))
+                })
+        })
 }
 
 #[derive(Debug, Clone)]
@@ -1373,7 +1460,7 @@ pub(super) fn format_value(value: f64) -> String {
 mod tests {
     use super::{
         WaveformMathDraft, WaveformProbeQuantity, append_derived_waveform_probe,
-        derived_waveform_quantity, interpolated_value, parse_waveform_csv_text,
+        derived_waveform_quantity, find_scope_probe, interpolated_value, parse_waveform_csv_text,
         runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
         sanitized_probe_name, scope_plot_size, waveform_measurement,
         waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
@@ -1383,6 +1470,7 @@ mod tests {
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
     };
     use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
+    use crate::gui::{CircuitCiApp, ScopeProbeTarget};
 
     #[test]
     fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -1689,6 +1777,55 @@ mod tests {
             waveform_time_range_for_view(&[waveform], 0),
             Some((0.0, 2.0))
         );
+    }
+
+    #[test]
+    fn scope_probe_selection_prefers_matching_scenario_path() {
+        let first = parse_waveform_csv_text(
+            "time out_voltage
+0.0 1.0
+1e-6 2.0
+",
+            "out/gui/other/waveform.csv",
+        )
+        .unwrap();
+        let second = parse_waveform_csv_text(
+            "time out_voltage current_probe
+0.0 3.0 0.1
+1e-6 4.0 0.2
+",
+            "out/gui/tran_main/waveform.csv",
+        )
+        .unwrap();
+
+        assert_eq!(
+            find_scope_probe(&[first, second], "tran_main", "out_voltage"),
+            Some((1, 0))
+        );
+    }
+
+    #[test]
+    fn pending_scope_probe_focus_selects_loaded_trace() {
+        let waveform = parse_waveform_csv_text(
+            "time out_voltage current_probe
+0.0 1.0 0.1
+1e-6 2.0 0.2
+",
+            "out/gui/tran_main/waveform.csv",
+        )
+        .unwrap();
+        let mut app = CircuitCiApp {
+            waveforms: vec![waveform],
+            pending_scope_probe: Some(ScopeProbeTarget {
+                scenario_name: "tran_main".to_string(),
+                probe_name: "current_probe".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        assert!(app.apply_pending_scope_probe_focus());
+        assert_eq!(app.selected_waveform, 0);
+        assert_eq!(app.selected_probe, 1);
     }
 
     fn probe_snapshot() -> ProjectSnapshot {

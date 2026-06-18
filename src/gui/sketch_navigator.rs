@@ -1,9 +1,9 @@
 use eframe::egui;
 
-use super::CircuitCiApp;
 use super::sketch::{self, ProjectSnapshot, SketchSelection};
 use super::sketch_bundles::{derive_net_bundles, find_net_bundle, net_bundle_graph_bounds};
 use super::sketch_probes::SketchProbeTarget;
+use super::{CircuitCiApp, ScopeProbeTarget};
 
 const MAX_NAVIGATOR_ROWS: usize = 96;
 
@@ -110,7 +110,10 @@ impl CircuitCiApp {
             self.analog_probe_scenario = scenario.clone();
             self.analog_assertion_scenario = scenario.clone();
             self.analog_assertion_probe = probe.clone();
-            self.status = format!("Selected probe {probe} from scenario {scenario}.");
+            self.open_scope_probe_target(ScopeProbeTarget {
+                scenario_name: scenario.clone(),
+                probe_name: probe.clone(),
+            });
         }
     }
 

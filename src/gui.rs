@@ -203,6 +203,12 @@ impl SketchSnapMode {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ScopeProbeTarget {
+    pub(super) scenario_name: String,
+    pub(super) probe_name: String,
+}
+
 pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
@@ -334,6 +340,7 @@ pub struct CircuitCiApp {
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
+    pending_scope_probe: Option<ScopeProbeTarget>,
     waveform_math_left: usize,
     waveform_math_right: usize,
     waveform_math_operation: String,
@@ -488,6 +495,7 @@ impl Default for CircuitCiApp {
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
+            pending_scope_probe: None,
             waveform_math_left: 0,
             waveform_math_right: 0,
             waveform_math_operation: "difference".to_string(),
@@ -581,8 +589,10 @@ impl CircuitCiApp {
                 self.run_schematic_model();
             }
             if ui.button("Scopes").clicked() {
+                self.apply_pending_scope_probe_focus();
                 self.stage = Stage::Simulation;
             }
+            self.schematic_probe_toolbar_controls(ui);
             if ui.button("Fit All").clicked() {
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
             }
@@ -624,6 +634,92 @@ impl CircuitCiApp {
             }
         });
         ui.separator();
+    }
+
+    fn schematic_probe_toolbar_controls(&mut self, ui: &mut egui::Ui) {
+        let Some(selection) = self.selected_sketch_item.clone() else {
+            ui.label("Select a net/component to probe");
+            return;
+        };
+        match selection {
+            SketchSelection::Net(net_id) => {
+                if ui.button("Probe V").clicked() {
+                    self.ensure_net_probe_defaults(&net_id);
+                    self.apply_add_voltage_probe_for_net(&net_id);
+                }
+                if ui.button("Scope V").clicked() {
+                    let target = self
+                        .scope_probe_for_selected_net(&net_id)
+                        .unwrap_or_else(|| {
+                            self.ensure_net_probe_defaults(&net_id);
+                            ScopeProbeTarget {
+                                scenario_name: self.analog_probe_scenario.clone(),
+                                probe_name: self.analog_canvas_probe_name.clone(),
+                            }
+                        });
+                    self.open_scope_probe_target(target);
+                }
+            }
+            SketchSelection::Component(component_id) => {
+                if ui.button("Probe I").clicked() {
+                    self.ensure_component_probe_defaults(&component_id);
+                    self.apply_add_current_probe_for_component(&component_id);
+                }
+                if ui.button("Probe P").clicked() {
+                    self.ensure_component_probe_defaults(&component_id);
+                    self.apply_add_power_probe_for_component(&component_id);
+                }
+                if ui.button("Scope Probe").clicked() {
+                    let target = self
+                        .scope_probe_for_selected_component(&component_id)
+                        .unwrap_or_else(|| {
+                            self.ensure_component_probe_defaults(&component_id);
+                            ScopeProbeTarget {
+                                scenario_name: self.analog_probe_scenario.clone(),
+                                probe_name: self.analog_canvas_component_probe_name.clone(),
+                            }
+                        });
+                    self.open_scope_probe_target(target);
+                }
+            }
+            SketchSelection::Overflow(_) => {
+                ui.label("Select a visible net/component to probe");
+            }
+        }
+    }
+
+    fn scope_probe_for_selected_net(&self, net_id: &str) -> Option<ScopeProbeTarget> {
+        self.project_snapshot
+            .as_ref()?
+            .probes
+            .iter()
+            .find(|probe| {
+                matches!(
+                    &probe.target,
+                    sketch_probes::SketchProbeTarget::Net(target) if target == net_id
+                )
+            })
+            .map(|probe| ScopeProbeTarget {
+                scenario_name: probe.scenario_name.clone(),
+                probe_name: probe.probe_name.clone(),
+            })
+    }
+
+    fn scope_probe_for_selected_component(&self, component_id: &str) -> Option<ScopeProbeTarget> {
+        self.project_snapshot
+            .as_ref()?
+            .probes
+            .iter()
+            .find(|probe| {
+                matches!(
+                    &probe.target,
+                    sketch_probes::SketchProbeTarget::Component(target) if target == component_id
+                )
+            })
+            .map(|probe| ScopeProbeTarget {
+                scenario_name: probe.scenario_name.clone(),
+                probe_name: probe.probe_name.clone(),
+            })
     }
 
     fn sketch_snap_toolbar_controls(&mut self, ui: &mut egui::Ui) {

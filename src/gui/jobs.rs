@@ -516,6 +516,7 @@ impl CircuitCiApp {
                 self.waveforms = waveforms;
                 self.selected_waveform = 0;
                 self.selected_probe = 0;
+                self.apply_pending_scope_probe_focus();
                 self.waveform_cursor_a_us = 0.0;
                 self.waveform_cursor_b_us = 0.0;
                 self.waveform_playing = false;

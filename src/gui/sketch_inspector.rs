@@ -922,6 +922,9 @@ impl CircuitCiApp {
             Ok(updated) => {
                 self.analog_assertion_scenario = self.analog_probe_scenario.clone();
                 self.analog_assertion_probe = self.analog_canvas_probe_name.trim().to_string();
+                let scenario_name = self.analog_probe_scenario.clone();
+                let probe_name = self.analog_canvas_probe_name.clone();
+                self.remember_scope_probe_target(&scenario_name, &probe_name);
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
@@ -949,6 +952,9 @@ impl CircuitCiApp {
                 self.analog_assertion_scenario = self.analog_probe_scenario.clone();
                 self.analog_assertion_probe =
                     self.analog_canvas_component_probe_name.trim().to_string();
+                let scenario_name = self.analog_probe_scenario.clone();
+                let probe_name = self.analog_canvas_component_probe_name.clone();
+                self.remember_scope_probe_target(&scenario_name, &probe_name);
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
@@ -978,6 +984,9 @@ impl CircuitCiApp {
                     .analog_canvas_component_power_probe_name
                     .trim()
                     .to_string();
+                let scenario_name = self.analog_probe_scenario.clone();
+                let probe_name = self.analog_canvas_component_power_probe_name.clone();
+                self.remember_scope_probe_target(&scenario_name, &probe_name);
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
