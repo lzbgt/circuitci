@@ -8,21 +8,31 @@ impl CircuitCiApp {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Import KiCad Schematic").clicked() {
+                    let can_start_job = self.background_job_elapsed_secs().is_none();
+                    if ui
+                        .add_enabled(can_start_job, egui::Button::new("Import KiCad Schematic"))
+                        .clicked()
+                    {
                         self.request_project_action(
                             PendingProjectAction::ImportKiCadSchematic,
                             Some(ui.ctx()),
                         );
                         ui.close();
                     }
-                    if ui.button("Import KiCad PCB").clicked() {
+                    if ui
+                        .add_enabled(can_start_job, egui::Button::new("Import KiCad PCB"))
+                        .clicked()
+                    {
                         self.request_project_action(
                             PendingProjectAction::ImportKiCadPcb,
                             Some(ui.ctx()),
                         );
                         ui.close();
                     }
-                    if ui.button("Import SPICE Deck").clicked() {
+                    if ui
+                        .add_enabled(can_start_job, egui::Button::new("Import SPICE Deck"))
+                        .clicked()
+                    {
                         self.request_project_action(
                             PendingProjectAction::ImportSpiceDeck,
                             Some(ui.ctx()),
@@ -57,7 +67,7 @@ impl CircuitCiApp {
                     }
                     if ui
                         .add_enabled(
-                            self.background_validation_elapsed_secs().is_none(),
+                            self.background_job_elapsed_secs().is_none(),
                             egui::Button::new("Validate"),
                         )
                         .clicked()
@@ -65,7 +75,10 @@ impl CircuitCiApp {
                         self.validate_project();
                         ui.close();
                     }
-                    if ui.button("Suggest Scenarios").clicked() {
+                    if ui
+                        .add_enabled(can_start_job, egui::Button::new("Suggest Scenarios"))
+                        .clicked()
+                    {
                         self.suggest_scenarios();
                         ui.close();
                     }
@@ -108,7 +121,7 @@ impl CircuitCiApp {
                 ui.menu_button("Simulation", |ui| {
                     if ui
                         .add_enabled(
-                            self.background_validation_elapsed_secs().is_none(),
+                            self.background_job_elapsed_secs().is_none(),
                             egui::Button::new("Run Validation + Analog Scenarios"),
                         )
                         .clicked()
@@ -119,13 +132,13 @@ impl CircuitCiApp {
                     }
                     if ui
                         .add_enabled(
-                            self.background_validation_elapsed_secs().is_some()
-                                && !self.background_validation_cancel_requested(),
-                            egui::Button::new("Cancel Background Validation"),
+                            self.background_job_elapsed_secs().is_some()
+                                && !self.background_job_cancel_requested(),
+                            egui::Button::new("Cancel Background Job"),
                         )
                         .clicked()
                     {
-                        self.cancel_background_validation();
+                        self.cancel_background_job();
                         ui.close();
                     }
                 });
@@ -190,14 +203,20 @@ impl CircuitCiApp {
                     }
                     if ui
                         .add_enabled(
-                            self.background_validation_elapsed_secs().is_none(),
+                            self.background_job_elapsed_secs().is_none(),
                             egui::Button::new("Validate"),
                         )
                         .clicked()
                     {
                         self.validate_project();
                     }
-                    if ui.button("Suggest").clicked() {
+                    if ui
+                        .add_enabled(
+                            self.background_job_elapsed_secs().is_none(),
+                            egui::Button::new("Suggest"),
+                        )
+                        .clicked()
+                    {
                         self.suggest_scenarios();
                     }
                 });
@@ -229,24 +248,25 @@ impl CircuitCiApp {
                     }
                 });
                 ui.separator();
-                if let Some(elapsed_secs) = self.background_validation_elapsed_secs() {
+                if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
+                    let label = self.background_job_label().unwrap_or("job");
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.add(egui::Spinner::new());
-                            let suffix = if self.background_validation_cancel_requested() {
+                            let suffix = if self.background_job_cancel_requested() {
                                 "cancel requested"
                             } else {
                                 "running"
                             };
-                            ui.label(format!("Validation {suffix} for {elapsed_secs:.1}s"));
+                            ui.label(format!("{label} {suffix} for {elapsed_secs:.1}s"));
                             if ui
                                 .add_enabled(
-                                    !self.background_validation_cancel_requested(),
+                                    !self.background_job_cancel_requested(),
                                     egui::Button::new("Cancel"),
                                 )
                                 .clicked()
                             {
-                                self.cancel_background_validation();
+                                self.cancel_background_job();
                             }
                         });
                     });
@@ -281,25 +301,24 @@ impl CircuitCiApp {
                     ui.strong("Status:");
                     ui.label(&self.status);
                 });
-                if let Some(elapsed_secs) = self.background_validation_elapsed_secs() {
+                if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
+                    let label = self.background_job_label().unwrap_or("job");
                     ui.horizontal(|ui| {
                         ui.add(egui::Spinner::new());
-                        let suffix = if self.background_validation_cancel_requested() {
+                        let suffix = if self.background_job_cancel_requested() {
                             "cancel requested"
                         } else {
                             "running"
                         };
-                        ui.label(format!(
-                            "Background validation {suffix}, {elapsed_secs:.1}s"
-                        ));
+                        ui.label(format!("Background {label} {suffix}, {elapsed_secs:.1}s"));
                         if ui
                             .add_enabled(
-                                !self.background_validation_cancel_requested(),
+                                !self.background_job_cancel_requested(),
                                 egui::Button::new("Cancel"),
                             )
                             .clicked()
                         {
-                            self.cancel_background_validation();
+                            self.cancel_background_job();
                         }
                     });
                 }

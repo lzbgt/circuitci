@@ -177,7 +177,7 @@ pub struct CircuitCiApp {
     waveform_cursor_b_us: f64,
     waveform_playing: bool,
     waveform_playback_speed: f64,
-    background_validation: Option<jobs::BackgroundValidationJob>,
+    background_job: Option<jobs::BackgroundGuiJob>,
 }
 
 impl Default for CircuitCiApp {
@@ -268,7 +268,7 @@ impl Default for CircuitCiApp {
             waveform_cursor_b_us: 0.0,
             waveform_playing: false,
             waveform_playback_speed: 1.0,
-            background_validation: None,
+            background_job: None,
         }
     }
 }
@@ -276,7 +276,7 @@ impl Default for CircuitCiApp {
 impl eframe::App for CircuitCiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_close_request(ctx);
-        self.poll_background_validation(ctx);
+        self.poll_background_job(ctx);
         self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
@@ -368,19 +368,6 @@ impl CircuitCiApp {
             if response.inner.changed() {
                 self.record_project_yaml_text_edit(previous_yaml);
             }
-        }
-    }
-
-    fn suggest_scenarios(&mut self) {
-        match suggest_from_gui(Path::new(&self.project_path), &self.profile) {
-            Ok(yaml) => {
-                self.status = "Scenario suggestions generated.".to_string();
-                self.suggestions_yaml = yaml;
-                self.stage = Stage::Library;
-                self.push_diagnostic("Scenario suggestion YAML updated.");
-                self.load_project_summary_unchecked();
-            }
-            Err(error) => self.record_error(error),
         }
     }
 

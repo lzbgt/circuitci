@@ -51,10 +51,10 @@ command wiring.
 `src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
 project, import, and output path fields. The dialogs are compiled only with the
 optional GUI feature and do not affect the default CLI build.
-`src/gui/jobs.rs` owns GUI background validation jobs. Validation and
-analog-scenario execution run on a worker thread and report back to the UI
-through a channel; cancel requests mark the in-flight result to be ignored when
-the engine call returns.
+`src/gui/jobs.rs` owns GUI background jobs for validation, scenario
+suggestions, and KiCad/SPICE import actions. Long-running work runs on a worker
+thread and reports back to the UI through a channel; cancel requests mark the
+in-flight result to be ignored when the engine or importer call returns.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
@@ -215,11 +215,13 @@ The supported desktop simulation path is:
 25. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
 26. bind sourced component models,
-27. run declared validation and `analog_transient` scenarios in a background
-   worker while the desktop shell remains responsive,
-28. cancel a running validation from the Simulation menu, left project panel, or
-   status panel; the current implementation ignores the worker result when it
-   returns rather than preempting an in-flight SPICE/backend call,
+27. run KiCad/SPICE imports, scenario suggestions, declared validation, and
+   `analog_transient` scenarios in background workers while the desktop shell
+   remains responsive,
+28. cancel a running background job from the Simulation menu, left project
+   panel, or status panel; the current implementation ignores the worker result
+   when it returns rather than preempting an in-flight importer, SPICE, or
+   backend call,
 29. scrub or play the simulation time cursor to drive graph runtime tinting,
 30. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,

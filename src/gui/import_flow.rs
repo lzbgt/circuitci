@@ -1,8 +1,6 @@
+use super::CircuitCiApp;
 use super::project::PendingProjectAction;
-use super::project::{optional_path, sanitized_project_name};
-use super::{CircuitCiApp, Stage};
 use eframe::egui;
-use std::path::Path;
 
 impl CircuitCiApp {
     pub(super) fn import_stage(&mut self, ui: &mut egui::Ui) {
@@ -49,7 +47,13 @@ impl CircuitCiApp {
                     ui.end_row();
                 });
             ui.horizontal(|ui| {
-                if ui.button("Import Schematic").clicked() {
+                if ui
+                    .add_enabled(
+                        self.background_job_elapsed_secs().is_none(),
+                        egui::Button::new("Import Schematic"),
+                    )
+                    .clicked()
+                {
                     self.request_project_action(
                         PendingProjectAction::ImportKiCadSchematic,
                         Some(ui.ctx()),
@@ -123,7 +127,13 @@ impl CircuitCiApp {
                     ui.end_row();
                 });
             ui.horizontal(|ui| {
-                if ui.button("Import SPICE Deck").clicked() {
+                if ui
+                    .add_enabled(
+                        self.background_job_elapsed_secs().is_none(),
+                        egui::Button::new("Import SPICE Deck"),
+                    )
+                    .clicked()
+                {
                     self.request_project_action(
                         PendingProjectAction::ImportSpiceDeck,
                         Some(ui.ctx()),
@@ -173,7 +183,13 @@ impl CircuitCiApp {
                     ui.end_row();
                 });
             ui.horizontal(|ui| {
-                if ui.button("Import PCB Evidence").clicked() {
+                if ui
+                    .add_enabled(
+                        self.background_job_elapsed_secs().is_none(),
+                        egui::Button::new("Import PCB Evidence"),
+                    )
+                    .clicked()
+                {
                     self.request_project_action(
                         PendingProjectAction::ImportKiCadPcb,
                         Some(ui.ctx()),
@@ -189,84 +205,5 @@ impl CircuitCiApp {
                 }
             });
         });
-    }
-
-    pub(super) fn import_kicad_schematic(&mut self) {
-        let schematic = Path::new(&self.import_schematic_path).to_path_buf();
-        let output = Path::new(&self.import_output_path).to_path_buf();
-        let mapping = optional_path(&self.import_mapping_path);
-        let name = if self.import_project_name.trim().is_empty() {
-            sanitized_project_name(&schematic, "imported_kicad_project")
-        } else {
-            self.import_project_name.trim().to_string()
-        };
-        let options = crate::importers::kicad::KicadImportOptions {
-            input: schematic,
-            output: output.clone(),
-            name,
-            default_model: self.import_default_model.trim().to_string(),
-            mapping,
-        };
-        match crate::importers::kicad_sch::import_kicad_schematic(&options) {
-            Ok(()) => {
-                self.project_path = output.to_string_lossy().into_owned();
-                self.import_pcb_project_path = self.project_path.clone();
-                self.status = "KiCad schematic imported.".to_string();
-                self.push_diagnostic("KiCad schematic imported to Board IR.");
-                self.load_project_summary_unchecked();
-            }
-            Err(error) => self.record_error(error),
-        }
-    }
-
-    pub(super) fn import_kicad_pcb(&mut self) {
-        let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
-            input: Path::new(&self.import_pcb_path).to_path_buf(),
-            project: Path::new(&self.import_pcb_project_path).to_path_buf(),
-            output: Path::new(&self.import_pcb_output_path).to_path_buf(),
-        };
-        match crate::importers::kicad_pcb::import_kicad_pcb_placements(&options) {
-            Ok(summary) => {
-                self.project_path = self.import_pcb_output_path.clone();
-                self.status = "KiCad PCB evidence imported.".to_string();
-                self.push_diagnostic(&format!(
-                    "KiCad PCB imported: {} placements, {} pads, {} route segments, {} vias.",
-                    summary.placements, summary.pads, summary.route_segments, summary.route_vias
-                ));
-                self.load_project_summary_unchecked();
-            }
-            Err(error) => self.record_error(error),
-        }
-    }
-
-    pub(super) fn import_spice_deck(&mut self) {
-        let deck = Path::new(&self.import_spice_deck_path).to_path_buf();
-        let output = Path::new(&self.import_spice_output_path).to_path_buf();
-        let name = if self.import_spice_project_name.trim().is_empty() {
-            sanitized_project_name(&deck, "imported_spice_project")
-        } else {
-            self.import_spice_project_name.trim().to_string()
-        };
-        let options = crate::importers::spice::SpiceImportOptions {
-            input: deck.clone(),
-            output: output.clone(),
-            name,
-            backend: self.import_spice_backend.trim().to_string(),
-            stop_time_us: self.import_spice_stop_time_us,
-            max_step_us: self.import_spice_max_step_us,
-        };
-        match crate::importers::spice::import_spice(&options) {
-            Ok(()) => {
-                self.project_path = output.to_string_lossy().into_owned();
-                self.status = "SPICE deck imported.".to_string();
-                self.push_diagnostic(&format!(
-                    "SPICE deck imported to Board IR from {}.",
-                    deck.display()
-                ));
-                self.load_project_summary_unchecked();
-                self.stage = Stage::Simulation;
-            }
-            Err(error) => self.record_error(error),
-        }
     }
 }
