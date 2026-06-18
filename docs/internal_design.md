@@ -42,9 +42,13 @@ component model assignment through the same validated Board IR YAML mutation
 helpers used by the sketch inspector.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation
 and structured sample/min/max assertion authoring. It may derive node and pin
-bindings from Board IR for observation scenarios, but file-backed SPICE deck
-editing and advanced waveform math/channel analysis should be separate focused
-modules so waveform sign-off semantics stay explicit.
+bindings from Board IR for observation scenarios. `src/gui/spice.rs` owns
+file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
+analog scenarios. It must resolve relative deck paths from the project YAML
+directory and keep the Board IR analog scenario as the source of truth, rather
+than introducing a second analog project model. Advanced waveform math/channel
+analysis should remain a separate focused module so waveform sign-off semantics
+stay explicit.
 
 ## Evidence Model
 

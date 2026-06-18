@@ -19,6 +19,8 @@ impl CircuitCiApp {
             self.analog_assertion_editor(ui);
             ui.separator();
         }
+        self.spice_deck_editor(ui);
+        ui.separator();
         if self.report.is_some() {
             self.waveform_view(ui);
             ui.separator();

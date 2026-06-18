@@ -22,6 +22,7 @@ circuitci-gui
   -> src/gui/library.rs
   -> src/gui/simulation.rs
   -> src/gui/analog.rs
+  -> src/gui/spice.rs
   -> Board IR loading
   -> component model binding
   -> scenario suggestions
@@ -46,7 +47,9 @@ model assignment through the same Board IR YAML mutation path.
 plotting, cursor measurement tools, and graph-hover runtime probe extraction
 from loaded waveform artifacts. `src/gui/analog.rs` owns structured analog
 transient scenario and assertion YAML generation for generated-from-Board
-simulations.
+simulations. `src/gui/spice.rs` owns file-backed SPICE deck discovery, loading,
+editing, saving, and save-and-run actions for imported or hand-authored analog
+scenarios.
 
 ## Workflow Shell
 
@@ -70,10 +73,11 @@ form:
   stages a model for new components, assigns a selected model to the selected
   component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
-  with ground/probe net selection, add sample/min/max probe assertions, then
-  runs validation through the engine, plots emitted CSV waveforms, provides A/B
-  cursor measurements with min/max and delta values, and lists generated SPICE
-  decks, artifacts, findings, and limitations.
+  with ground/probe net selection, add sample/min/max probe assertions, edit
+  file-backed SPICE decks declared by analog scenarios, then runs validation
+  through the engine, plots emitted CSV waveforms, provides A/B cursor
+  measurements with min/max and delta values, and lists generated SPICE decks,
+  artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. These are the
@@ -104,16 +108,19 @@ The supported desktop simulation path is:
    structured controls,
 10. append a generated-from-Board analog transient scenario with a voltage probe,
 11. add sample or windowed min/max waveform assertions against declared probes,
-12. bind sourced component models,
-13. run declared validation and `analog_transient` scenarios,
-14. hover graph nodes to inspect matching voltage/current/power probe values at
+12. load, edit, save, and rerun file-backed SPICE decks from declared analog
+   scenarios,
+13. bind sourced component models,
+14. run declared validation and `analog_transient` scenarios,
+15. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-15. observe generated decks, plotted CSV waveforms, cursor values, min/max
+16. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-16. edit the project/model evidence and rerun.
+17. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
-math channels, in-app file-backed SPICE deck authoring, automatic arbitrary
+math channels, advanced SPICE source tooling, automatic arbitrary
 schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
-stages. They must reuse the existing Board IR, importer, model, and validation
-contracts instead of creating a parallel EDA model.
+stages. Basic file-backed deck edits are supported, but must still reuse the
+existing Board IR, importer, model, and validation contracts instead of creating
+a parallel EDA model.

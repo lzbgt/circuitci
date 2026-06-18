@@ -7,6 +7,7 @@ mod analog;
 mod library;
 mod simulation;
 mod sketch;
+mod spice;
 
 use simulation::{WaveformView, load_report_waveforms, runtime_probe_lines_for_selection};
 use sketch::{
@@ -81,6 +82,10 @@ pub struct CircuitCiApp {
     import_spice_backend: String,
     import_spice_stop_time_us: f64,
     import_spice_max_step_us: f64,
+    spice_deck_scenario: String,
+    spice_deck_path: String,
+    spice_deck_text: String,
+    spice_deck_dirty: bool,
     stage: Stage,
     status: String,
     diagnostics: Vec<String>,
@@ -148,6 +153,10 @@ impl Default for CircuitCiApp {
             import_spice_backend: "auto".to_string(),
             import_spice_stop_time_us: 1000.0,
             import_spice_max_step_us: 1.0,
+            spice_deck_scenario: String::new(),
+            spice_deck_path: String::new(),
+            spice_deck_text: String::new(),
+            spice_deck_dirty: false,
             stage: Stage::Project,
             status: "Ready".to_string(),
             diagnostics: Vec::new(),

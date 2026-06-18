@@ -16,7 +16,7 @@ bounded schematic graph canvas for Board IR edits.
 | Area | Current support | Boundary |
 | --- | --- | --- |
 | CLI | Default `circuitci` binary for import, suggestion, validation, suites, and report generation. | Primary automation surface for CI and agents. |
-| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, SPICE deck import, project loading, visual Board IR component/net graph inspection, draggable graph-node positions, visual pin-to-net wire assignment, graph-node hover readouts for matching runtime waveform probes, structured scalar editing for existing component/net properties, add/remove controls for components and unreferenced nets, selected-component pin assignment/removal to existing nets, active-library model search with selected-component model assignment, generated-from-Board analog transient scenario creation, structured sample/min/max analog assertion authoring, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, A/B cursor values, min/max and delta waveform measurements, simulation artifact observation, and report viewing. | Workflow and observation shell; full symbol graphics, buses, hierarchical sheets, in-app SPICE deck authoring, and advanced waveform math/channel analysis are future stages. |
+| Desktop GUI | Optional `circuitci-gui` Rust desktop app behind `--features gui`, with EDA-style stages for KiCad schematic/PCB import, SPICE deck import, project loading, visual Board IR component/net graph inspection, draggable graph-node positions, visual pin-to-net wire assignment, graph-node hover readouts for matching runtime waveform probes, structured scalar editing for existing component/net properties, add/remove controls for components and unreferenced nets, selected-component pin assignment/removal to existing nets, active-library model search with selected-component model assignment, generated-from-Board analog transient scenario creation, structured sample/min/max analog assertion authoring, file-backed SPICE deck editing with save-and-run, Board IR YAML editing with parse-validated save, library suggestions, CSV waveform plotting, A/B cursor values, min/max and delta waveform measurements, simulation artifact observation, and report viewing. | Workflow and observation shell; full symbol graphics, buses, hierarchical sheets, advanced SPICE source/model management, and advanced waveform math/channel analysis are future stages. |
 
 ## Evidence Import
 
@@ -52,6 +52,8 @@ Current analog support:
 - `analog_transient` scenarios with `SPICE_TRANSIENT_ANALYSIS`.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
+- GUI editing and save-and-run for file-backed SPICE decks referenced by
+  analog scenarios.
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
 - Generated Board IR transient decks for passives, independent voltage and
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
