@@ -148,6 +148,13 @@ struct SketchSelectionLassoDrag {
 }
 
 #[derive(Debug, Clone)]
+struct SketchGroupFrameDrag {
+    pointer_start: egui::Pos2,
+    last_applied_delta: egui::Vec2,
+    node_starts: Vec<(SketchSelection, egui::Rect)>,
+}
+
+#[derive(Debug, Clone)]
 struct SketchNetLabelEdit {
     label_id: String,
     original_net_id: String,
@@ -268,6 +275,7 @@ pub struct CircuitCiApp {
     sketch_paste_requested: bool,
     sketch_selection_box_drag: Option<SketchSelectionBoxDrag>,
     sketch_selection_lasso_drag: Option<SketchSelectionLassoDrag>,
+    sketch_group_frame_drag: Option<SketchGroupFrameDrag>,
     sketch_viewport_command: Option<SketchViewportCommand>,
     sketch_group_action: Option<SketchGroupAction>,
     sketch_zoom: f32,
@@ -418,6 +426,7 @@ impl Default for CircuitCiApp {
             sketch_paste_requested: false,
             sketch_selection_box_drag: None,
             sketch_selection_lasso_drag: None,
+            sketch_group_frame_drag: None,
             sketch_viewport_command: None,
             sketch_group_action: None,
             sketch_zoom: 1.0,

@@ -107,6 +107,29 @@ impl CircuitCiApp {
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
+        let selection_frame_response = self.sketch_selection_frame(ui, rect, &graph);
+        if selection_frame_response
+            .as_ref()
+            .is_some_and(|response| response.drag_started_by(egui::PointerButton::Primary))
+            && let Some(pointer_start) = selection_frame_response
+                .as_ref()
+                .and_then(|response| response.interact_pointer_pos())
+        {
+            let node_starts = graph
+                .nodes
+                .iter()
+                .filter(|node| self.selected_sketch_items.contains(&node.selection))
+                .filter(|node| !matches!(node.selection, SketchSelection::Overflow(_)))
+                .map(|node| (node.selection.clone(), node.rect))
+                .collect::<Vec<_>>();
+            if !node_starts.is_empty() {
+                self.sketch_group_frame_drag = Some(super::SketchGroupFrameDrag {
+                    pointer_start,
+                    last_applied_delta: egui::Vec2::ZERO,
+                    node_starts,
+                });
+            }
+        }
         let pointer_hover = if response.hovered() {
             ui.ctx().pointer_hover_pos()
         } else {
@@ -812,6 +835,7 @@ impl CircuitCiApp {
 
         if response.drag_started_by(egui::PointerButton::Primary)
             && !pointer_over_minimap
+            && self.sketch_group_frame_drag.is_none()
             && let Some(position) = response.interact_pointer_pos()
         {
             let clicked_anchor = graph.pin_anchors.iter().find(|anchor| {
@@ -953,7 +977,32 @@ impl CircuitCiApp {
                 }
             }
         }
-        if let Some(selection_box) = &self.sketch_selection_box_drag
+        let group_drag_update = self
+            .sketch_group_frame_drag
+            .as_ref()
+            .and_then(|group_drag| {
+                if !ui.input(|input| input.pointer.primary_down()) {
+                    return None;
+                }
+                let position = ui.ctx().pointer_interact_pos()?;
+                let delta = position - group_drag.pointer_start;
+                if (delta - group_drag.last_applied_delta).length_sq() <= f32::EPSILON {
+                    return None;
+                }
+                Some((group_drag.node_starts.clone(), delta))
+            });
+        if let Some((node_starts, delta)) = group_drag_update {
+            self.apply_schematic_node_rect_delta(
+                rect,
+                viewport,
+                &node_starts,
+                delta,
+                "Selected sketch group moved.",
+            );
+            if let Some(group_drag) = &mut self.sketch_group_frame_drag {
+                group_drag.last_applied_delta = delta;
+            }
+        } else if let Some(selection_box) = &self.sketch_selection_box_drag
             && let Some(current) = response
                 .interact_pointer_pos()
                 .or_else(|| ui.ctx().pointer_hover_pos())
@@ -1164,6 +1213,10 @@ impl CircuitCiApp {
         if response.drag_stopped_by(egui::PointerButton::Primary) {
             self.sketch_pan_drag_active = false;
         }
+        if self.sketch_group_frame_drag.is_some() && !ui.input(|input| input.pointer.primary_down())
+        {
+            self.sketch_group_frame_drag = None;
+        }
 
         let delete_pressed = response.hovered()
             && ui.input(|input| {
@@ -1219,6 +1272,9 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_selection_lasso_drag.is_some() {
             self.sketch_selection_lasso_drag = None;
             self.status = "Selection lasso canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_group_frame_drag.is_some() {
+            self.sketch_group_frame_drag = None;
+            self.status = "Group move canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.sketch_wire_route_drag.is_some() {
             self.sketch_wire_route_drag = None;
             self.status = "Wire route edit canceled.".to_string();

@@ -7,6 +7,8 @@ use super::sketch_actions::sketch_selection_bounds;
 use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
 
 const QUICK_TOOLBAR_SIZE: egui::Vec2 = egui::vec2(396.0, 34.0);
+const GROUP_HANDLE_SIZE: egui::Vec2 = egui::vec2(66.0, 22.0);
+const GROUP_CORNER_HANDLE_SIZE: egui::Vec2 = egui::vec2(8.0, 8.0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SketchMultiSelectionSummary {
@@ -159,6 +161,7 @@ impl CircuitCiApp {
             || self.sketch_wire_route_drag.is_some()
             || self.sketch_net_label_drag.is_some()
             || self.sketch_component_label_drag.is_some()
+            || self.sketch_group_frame_drag.is_some()
             || self.wire_from_component.is_some()
             || self.sketch_palette_place_armed
             || self.sketch_library_place_armed
@@ -210,6 +213,83 @@ impl CircuitCiApp {
                     });
                 });
             });
+    }
+
+    pub(super) fn sketch_selection_frame(
+        &self,
+        ui: &mut egui::Ui,
+        canvas: egui::Rect,
+        graph: &sketch::SketchGraph,
+    ) -> Option<egui::Response> {
+        if self.selected_sketch_items.len() <= 1
+            || self.sketch_selection_box_drag.is_some()
+            || self.sketch_selection_lasso_drag.is_some()
+            || self.sketch_wire_route_drag.is_some()
+            || self.sketch_net_label_drag.is_some()
+            || self.sketch_component_label_drag.is_some()
+            || self.wire_from_component.is_some()
+            || self.sketch_palette_place_armed
+            || self.sketch_library_place_armed
+            || self.sketch_net_label_place_armed
+        {
+            return None;
+        }
+        let bounds = sketch_selection_bounds(graph, &self.selected_sketch_items)?;
+        let frame = bounds.expand(7.0);
+        let painter = ui.painter();
+        painter.rect_stroke(
+            frame,
+            3.0,
+            egui::Stroke::new(1.5, egui::Color32::from_rgb(255, 205, 92)),
+            egui::StrokeKind::Outside,
+        );
+        for corner in group_corner_handle_rects(frame) {
+            painter.rect_filled(corner, 2.0, egui::Color32::from_rgb(255, 205, 92));
+            painter.rect_stroke(
+                corner,
+                2.0,
+                egui::Stroke::new(1.0, egui::Color32::from_gray(24)),
+                egui::StrokeKind::Inside,
+            );
+        }
+        let handle = group_move_handle_rect(canvas, frame);
+        let response = ui.interact(
+            handle,
+            egui::Id::new("sketch_selection_group_move_handle"),
+            egui::Sense::click_and_drag(),
+        );
+        let fill = if response.dragged() {
+            egui::Color32::from_rgb(255, 180, 64)
+        } else if response.hovered() {
+            egui::Color32::from_rgb(255, 218, 128)
+        } else {
+            egui::Color32::from_rgb(44, 40, 30)
+        };
+        painter.rect_filled(handle, 4.0, fill);
+        painter.rect_stroke(
+            handle,
+            4.0,
+            egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 205, 92)),
+            egui::StrokeKind::Inside,
+        );
+        painter.text(
+            handle.center(),
+            egui::Align2::CENTER_CENTER,
+            "Move",
+            egui::FontId::monospace(11.0),
+            if response.dragged() || response.hovered() {
+                egui::Color32::from_gray(18)
+            } else {
+                egui::Color32::from_rgb(255, 226, 145)
+            },
+        );
+        if response.hovered() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grab);
+        }
+        if response.dragged() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::Grabbing);
+        }
+        Some(response.on_hover_text("Drag to move selected schematic items"))
     }
 }
 
@@ -286,6 +366,26 @@ fn quick_toolbar_position(
         below_y.min(max_y)
     };
     egui::pos2(x, y.max(min_y))
+}
+
+fn group_move_handle_rect(canvas: egui::Rect, frame: egui::Rect) -> egui::Rect {
+    let gap = 8.0;
+    let min_x = canvas.left() + gap;
+    let max_x = (canvas.right() - GROUP_HANDLE_SIZE.x - gap).max(min_x);
+    let x = (frame.left() + 8.0).clamp(min_x, max_x);
+    let min_y = canvas.top() + gap;
+    let max_y = (canvas.bottom() - GROUP_HANDLE_SIZE.y - gap).max(min_y);
+    let y = (frame.top() + 8.0).clamp(min_y, max_y);
+    egui::Rect::from_min_size(egui::pos2(x, y), GROUP_HANDLE_SIZE)
+}
+
+fn group_corner_handle_rects(frame: egui::Rect) -> [egui::Rect; 4] {
+    [
+        egui::Rect::from_center_size(frame.left_top(), GROUP_CORNER_HANDLE_SIZE),
+        egui::Rect::from_center_size(frame.right_top(), GROUP_CORNER_HANDLE_SIZE),
+        egui::Rect::from_center_size(frame.left_bottom(), GROUP_CORNER_HANDLE_SIZE),
+        egui::Rect::from_center_size(frame.right_bottom(), GROUP_CORNER_HANDLE_SIZE),
+    ]
 }
 
 #[cfg(test)]
@@ -365,5 +465,16 @@ board:
         assert!(pos.y.is_finite());
         assert!(pos.x >= canvas.left());
         assert!(pos.y >= canvas.top());
+    }
+
+    #[test]
+    fn group_move_handle_stays_inside_canvas() {
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(220.0, 160.0));
+        let frame = egui::Rect::from_min_size(egui::pos2(190.0, 130.0), egui::vec2(80.0, 60.0));
+
+        let handle = group_move_handle_rect(canvas, frame);
+
+        assert!(canvas.contains(handle.left_top()));
+        assert!(canvas.contains(handle.right_bottom()));
     }
 }

@@ -267,6 +267,37 @@ impl CircuitCiApp {
         );
     }
 
+    pub(super) fn apply_schematic_node_rect_delta(
+        &mut self,
+        canvas: egui::Rect,
+        viewport: SketchViewport,
+        node_starts: &[(SketchSelection, egui::Rect)],
+        screen_delta: egui::Vec2,
+        message: &str,
+    ) {
+        if screen_delta.length_sq() <= f32::EPSILON || node_starts.is_empty() {
+            return;
+        }
+        let updates = node_starts
+            .iter()
+            .map(|(selection, rect)| {
+                let (x, y) = persisted_node_position_from_screen_with_snap(
+                    canvas,
+                    rect.center() + screen_delta,
+                    *rect,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
+                (selection.clone(), x, y)
+            })
+            .collect::<Vec<_>>();
+        match edit_schematic_node_positions(&self.project_yaml, &updates) {
+            Ok(updated) => self.apply_edited_project_yaml(updated, message),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_selected_schematic_targets(
         &mut self,
         canvas: egui::Rect,
