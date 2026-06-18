@@ -177,6 +177,11 @@ expressions rather than relying on hidden waveform math.
 The branch expression derivation itself lives in `src/gui/analog_branches.rs`
 and must fail closed for unsupported subcircuits, file-backed deck internals, or
 components that lack the required model/pin evidence.
+Structured source-stimulus editing lives in `src/gui/analog_stimulus.rs` and
+mutates only existing generated-scenario source primitives on Board IR
+components (`dc_v`, `dc_a`, `pulse`, or `current_pulse`). It must not create a
+second scenario-local stimulus store, and it must reject stale UI state when the
+scenario, component, or primitive kind no longer matches the current Board IR.
 It must append or remove normal Board IR analog probes and assertions rather
 than creating a GUI-only probe list; selected-probe assertion summaries must be
 recomputed from Board IR plus the latest report, assertion clearing for a probe

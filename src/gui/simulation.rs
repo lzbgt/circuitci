@@ -11,6 +11,10 @@ use super::analog_models::{
     analog_model_file_scenarios, append_analog_model_file, model_file_sha256,
     remove_analog_model_file,
 };
+use super::analog_stimulus::{
+    AnalogStimulusChoice, AnalogStimulusDraft, AnalogStimulusKind, AnalogStimulusPulseDraft,
+    analog_stimulus_choices, replace_analog_stimulus,
+};
 use super::sketch::ProjectSnapshot;
 use super::sketch_probes::SketchProbe;
 use super::waveform::{format_value, quick_assertion_margin, waveform_probe_value_for_badge};
@@ -23,6 +27,8 @@ impl CircuitCiApp {
         ui.separator();
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+            self.analog_stimulus_editor(ui);
             ui.separator();
             self.analog_model_file_manager(ui);
             ui.separator();
@@ -116,6 +122,147 @@ impl CircuitCiApp {
             if ui.button("Add Analog Scenario").clicked() {
                 self.apply_add_analog_scenario();
             }
+        });
+    }
+
+    fn analog_stimulus_editor(&mut self, ui: &mut egui::Ui) {
+        let choices = match analog_stimulus_choices(&self.project_yaml) {
+            Ok(choices) => choices,
+            Err(error) => {
+                ui.collapsing("Source Stimulus", |ui| {
+                    ui.label(format!("Source stimuli unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("Source Stimulus", |ui| {
+            if choices.is_empty() {
+                ui.label("No generated analog scenario source primitives are available.");
+                ui.label("Add a generated scenario containing DC or pulse source components.");
+                return;
+            }
+            initialize_analog_stimulus_defaults(
+                &choices,
+                &mut self.analog_stimulus_scenario,
+                &mut self.analog_stimulus_component,
+                &mut self.analog_stimulus_dc_value,
+                &mut self.analog_stimulus_initial_value,
+                &mut self.analog_stimulus_pulsed_value,
+                &mut self.analog_stimulus_delay_us,
+                &mut self.analog_stimulus_rise_us,
+                &mut self.analog_stimulus_fall_us,
+                &mut self.analog_stimulus_width_us,
+                &mut self.analog_stimulus_period_us,
+            );
+            let selected = selected_analog_stimulus_choice(
+                &choices,
+                &self.analog_stimulus_scenario,
+                &self.analog_stimulus_component,
+            )
+            .or_else(|| choices.first());
+            let Some(selected) = selected else {
+                return;
+            };
+            let selected_kind = selected.kind;
+            egui::Grid::new("analog_stimulus_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Source");
+                    let previous_scenario = self.analog_stimulus_scenario.clone();
+                    let previous_component = self.analog_stimulus_component.clone();
+                    analog_stimulus_combo(
+                        ui,
+                        &mut self.analog_stimulus_scenario,
+                        &mut self.analog_stimulus_component,
+                        &choices,
+                    );
+                    if self.analog_stimulus_scenario != previous_scenario
+                        || self.analog_stimulus_component != previous_component
+                    {
+                        load_selected_analog_stimulus_values(
+                            &choices,
+                            &self.analog_stimulus_scenario,
+                            &self.analog_stimulus_component,
+                            &mut self.analog_stimulus_dc_value,
+                            &mut self.analog_stimulus_initial_value,
+                            &mut self.analog_stimulus_pulsed_value,
+                            &mut self.analog_stimulus_delay_us,
+                            &mut self.analog_stimulus_rise_us,
+                            &mut self.analog_stimulus_fall_us,
+                            &mut self.analog_stimulus_width_us,
+                            &mut self.analog_stimulus_period_us,
+                        );
+                    }
+                    ui.end_row();
+
+                    ui.label("Primitive");
+                    ui.label(selected_kind.label());
+                    ui.end_row();
+
+                    if selected_kind.is_pulse() {
+                        ui.label("Initial");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stimulus_initial_value)
+                                .speed(stimulus_value_speed(selected_kind))
+                                .suffix(selected_kind.value_unit()),
+                        );
+                        ui.end_row();
+
+                        ui.label("Pulsed");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stimulus_pulsed_value)
+                                .speed(stimulus_value_speed(selected_kind))
+                                .suffix(selected_kind.value_unit()),
+                        );
+                        ui.end_row();
+
+                        for (label, value, min) in [
+                            ("Delay", &mut self.analog_stimulus_delay_us, 0.0),
+                            ("Rise", &mut self.analog_stimulus_rise_us, 0.0),
+                            ("Fall", &mut self.analog_stimulus_fall_us, 0.0),
+                            ("Width", &mut self.analog_stimulus_width_us, 0.001),
+                            ("Period", &mut self.analog_stimulus_period_us, 0.001),
+                        ] {
+                            ui.label(label);
+                            ui.add(
+                                egui::DragValue::new(value)
+                                    .speed(0.1)
+                                    .range(min..=1_000_000.0)
+                                    .suffix(" us"),
+                            );
+                            ui.end_row();
+                        }
+                    } else {
+                        ui.label("Value");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_stimulus_dc_value)
+                                .speed(stimulus_value_speed(selected_kind))
+                                .suffix(selected_kind.value_unit()),
+                        );
+                        ui.end_row();
+                    }
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Reload Source Values").clicked() {
+                    load_selected_analog_stimulus_values(
+                        &choices,
+                        &self.analog_stimulus_scenario,
+                        &self.analog_stimulus_component,
+                        &mut self.analog_stimulus_dc_value,
+                        &mut self.analog_stimulus_initial_value,
+                        &mut self.analog_stimulus_pulsed_value,
+                        &mut self.analog_stimulus_delay_us,
+                        &mut self.analog_stimulus_rise_us,
+                        &mut self.analog_stimulus_fall_us,
+                        &mut self.analog_stimulus_width_us,
+                        &mut self.analog_stimulus_period_us,
+                    );
+                }
+                if ui.button("Save Source Stimulus").clicked() {
+                    self.apply_replace_analog_stimulus(selected_kind);
+                }
+            });
         });
     }
 
@@ -485,6 +632,35 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_replace_analog_stimulus(&mut self, kind: AnalogStimulusKind) {
+        let draft = AnalogStimulusDraft {
+            scenario_name: self.analog_stimulus_scenario.clone(),
+            component_id: self.analog_stimulus_component.clone(),
+            kind,
+            dc_value: self.analog_stimulus_dc_value,
+            pulse: AnalogStimulusPulseDraft {
+                initial: self.analog_stimulus_initial_value,
+                pulsed: self.analog_stimulus_pulsed_value,
+                delay_us: self.analog_stimulus_delay_us,
+                rise_us: self.analog_stimulus_rise_us,
+                fall_us: self.analog_stimulus_fall_us,
+                width_us: self.analog_stimulus_width_us,
+                period_us: self.analog_stimulus_period_us,
+            },
+        };
+        match replace_analog_stimulus(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Source stimulus {} in scenario {} updated.",
+                    draft.component_id.trim(),
+                    draft.scenario_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn refresh_analog_model_file_sha(&mut self) {
         match model_file_sha256(Path::new(&self.project_path), &self.analog_model_path) {
             Ok(sha256) => {
@@ -842,6 +1018,102 @@ fn initialize_model_file_scenario_default(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn initialize_analog_stimulus_defaults(
+    choices: &[AnalogStimulusChoice],
+    scenario_name: &mut String,
+    component_id: &mut String,
+    dc_value: &mut f64,
+    initial_value: &mut f64,
+    pulsed_value: &mut f64,
+    delay_us: &mut f64,
+    rise_us: &mut f64,
+    fall_us: &mut f64,
+    width_us: &mut f64,
+    period_us: &mut f64,
+) {
+    let selected_missing =
+        selected_analog_stimulus_choice(choices, scenario_name, component_id).is_none();
+    if (scenario_name.is_empty() || component_id.is_empty() || selected_missing)
+        && let Some(choice) = choices.first()
+    {
+        *scenario_name = choice.scenario_name.clone();
+        *component_id = choice.component_id.clone();
+        load_analog_stimulus_choice_values(
+            choice,
+            dc_value,
+            initial_value,
+            pulsed_value,
+            delay_us,
+            rise_us,
+            fall_us,
+            width_us,
+            period_us,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_selected_analog_stimulus_values(
+    choices: &[AnalogStimulusChoice],
+    scenario_name: &str,
+    component_id: &str,
+    dc_value: &mut f64,
+    initial_value: &mut f64,
+    pulsed_value: &mut f64,
+    delay_us: &mut f64,
+    rise_us: &mut f64,
+    fall_us: &mut f64,
+    width_us: &mut f64,
+    period_us: &mut f64,
+) {
+    if let Some(choice) = selected_analog_stimulus_choice(choices, scenario_name, component_id) {
+        load_analog_stimulus_choice_values(
+            choice,
+            dc_value,
+            initial_value,
+            pulsed_value,
+            delay_us,
+            rise_us,
+            fall_us,
+            width_us,
+            period_us,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_analog_stimulus_choice_values(
+    choice: &AnalogStimulusChoice,
+    dc_value: &mut f64,
+    initial_value: &mut f64,
+    pulsed_value: &mut f64,
+    delay_us: &mut f64,
+    rise_us: &mut f64,
+    fall_us: &mut f64,
+    width_us: &mut f64,
+    period_us: &mut f64,
+) {
+    *dc_value = choice.dc_value;
+    *initial_value = choice.pulse.initial;
+    *pulsed_value = choice.pulse.pulsed;
+    *delay_us = choice.pulse.delay_us;
+    *rise_us = choice.pulse.rise_us;
+    *fall_us = choice.pulse.fall_us;
+    *width_us = choice.pulse.width_us;
+    *period_us = choice.pulse.period_us;
+}
+
+fn selected_analog_stimulus_choice<'a>(
+    choices: &'a [AnalogStimulusChoice],
+    scenario_name: &str,
+    component_id: &str,
+) -> Option<&'a AnalogStimulusChoice> {
+    choices
+        .iter()
+        .find(|choice| choice.scenario_name == scenario_name && choice.component_id == component_id)
+}
+
 fn analog_scenario_combo(
     ui: &mut egui::Ui,
     id: &str,
@@ -878,6 +1150,41 @@ fn analog_model_scenario_combo(
                 ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
             }
         });
+}
+
+fn analog_stimulus_combo(
+    ui: &mut egui::Ui,
+    scenario_name: &mut String,
+    component_id: &mut String,
+    choices: &[AnalogStimulusChoice],
+) {
+    let label = selected_analog_stimulus_choice(choices, scenario_name, component_id)
+        .map(AnalogStimulusChoice::label)
+        .unwrap_or_else(|| "select source".to_string());
+    egui::ComboBox::from_id_salt("analog_stimulus_source")
+        .selected_text(label)
+        .show_ui(ui, |ui| {
+            for choice in choices {
+                if ui
+                    .selectable_label(
+                        choice.scenario_name == *scenario_name
+                            && choice.component_id == *component_id,
+                        choice.label(),
+                    )
+                    .clicked()
+                {
+                    *scenario_name = choice.scenario_name.clone();
+                    *component_id = choice.component_id.clone();
+                }
+            }
+        });
+}
+
+fn stimulus_value_speed(kind: AnalogStimulusKind) -> f64 {
+    match kind {
+        AnalogStimulusKind::DcVoltage | AnalogStimulusKind::PulseVoltage => 0.1,
+        AnalogStimulusKind::DcCurrent | AnalogStimulusKind::PulseCurrent => 0.001,
+    }
 }
 
 fn analog_probe_combo(

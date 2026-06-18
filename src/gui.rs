@@ -9,6 +9,7 @@ mod analog;
 mod analog_assertion_edit_tests;
 mod analog_branches;
 mod analog_models;
+mod analog_stimulus;
 mod file_dialogs;
 mod import_flow;
 mod jobs;
@@ -165,6 +166,16 @@ pub struct CircuitCiApp {
     analog_model_scenario: String,
     analog_model_path: String,
     analog_model_sha256: String,
+    analog_stimulus_scenario: String,
+    analog_stimulus_component: String,
+    analog_stimulus_dc_value: f64,
+    analog_stimulus_initial_value: f64,
+    analog_stimulus_pulsed_value: f64,
+    analog_stimulus_delay_us: f64,
+    analog_stimulus_rise_us: f64,
+    analog_stimulus_fall_us: f64,
+    analog_stimulus_width_us: f64,
+    analog_stimulus_period_us: f64,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     selected_sketch_items: BTreeSet<SketchSelection>,
@@ -260,6 +271,16 @@ impl Default for CircuitCiApp {
             analog_model_scenario: String::new(),
             analog_model_path: String::new(),
             analog_model_sha256: String::new(),
+            analog_stimulus_scenario: String::new(),
+            analog_stimulus_component: String::new(),
+            analog_stimulus_dc_value: 0.0,
+            analog_stimulus_initial_value: 0.0,
+            analog_stimulus_pulsed_value: 3.3,
+            analog_stimulus_delay_us: 0.0,
+            analog_stimulus_rise_us: 1.0,
+            analog_stimulus_fall_us: 1.0,
+            analog_stimulus_width_us: 10.0,
+            analog_stimulus_period_us: 20.0,
             project_snapshot: None,
             selected_sketch_item: None,
             selected_sketch_items: BTreeSet::new(),
