@@ -7,8 +7,9 @@ use super::analog::{
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::analog_generated::{
-    AnalogGeneratedComponentDraft, AnalogGeneratedScenario, analog_generated_scenarios,
-    exclude_generated_component, include_generated_component,
+    AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft, AnalogGeneratedScenario,
+    AnalogGeneratedSettingsDraft, analog_generated_scenarios, exclude_generated_component,
+    include_generated_component, replace_generated_node_binding, replace_generated_settings,
 };
 use super::analog_models::{
     AnalogModelFileDraft, AnalogModelFileRemoveDraft, AnalogModelFileScenario,
@@ -31,6 +32,8 @@ impl CircuitCiApp {
         ui.separator();
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+            self.analog_generated_settings_editor(ui);
             ui.separator();
             self.analog_generated_components_editor(ui);
             ui.separator();
@@ -228,6 +231,149 @@ impl CircuitCiApp {
                         }
                     });
             }
+        });
+    }
+
+    fn analog_generated_settings_editor(&mut self, ui: &mut egui::Ui) {
+        let scenarios = match analog_generated_scenarios(&self.project_yaml) {
+            Ok(scenarios) => scenarios,
+            Err(error) => {
+                ui.collapsing("Generated Scenario Settings", |ui| {
+                    ui.label(format!("Generated settings unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("Generated Scenario Settings", |ui| {
+            if scenarios.is_empty() {
+                ui.label("No generated_from_board analog scenario is available.");
+                return;
+            }
+            initialize_generated_settings_defaults(
+                &scenarios,
+                &mut self.analog_generated_scenario,
+                &mut self.analog_generated_ground_net,
+                &mut self.analog_generated_stop_time_us,
+                &mut self.analog_generated_max_step_us,
+                &mut self.analog_generated_node_net,
+                &mut self.analog_generated_node_name,
+            );
+            let selected_scenario =
+                selected_generated_scenario(&scenarios, &self.analog_generated_scenario)
+                    .or_else(|| scenarios.first());
+            let Some(selected_scenario) = selected_scenario else {
+                return;
+            };
+            egui::Grid::new("analog_generated_settings_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Scenario");
+                    let previous_scenario = self.analog_generated_scenario.clone();
+                    generated_scenario_combo(ui, &mut self.analog_generated_scenario, &scenarios);
+                    if self.analog_generated_scenario != previous_scenario {
+                        load_generated_settings_values(
+                            selected_generated_scenario(
+                                &scenarios,
+                                &self.analog_generated_scenario,
+                            )
+                            .or_else(|| scenarios.first())
+                            .expect("scenarios is not empty"),
+                            &mut self.analog_generated_ground_net,
+                            &mut self.analog_generated_stop_time_us,
+                            &mut self.analog_generated_max_step_us,
+                            &mut self.analog_generated_node_net,
+                            &mut self.analog_generated_node_name,
+                        );
+                    }
+                    ui.end_row();
+
+                    ui.label("Ground net");
+                    generated_net_combo(
+                        ui,
+                        "analog_generated_ground_net",
+                        selected_scenario,
+                        &mut self.analog_generated_ground_net,
+                    );
+                    ui.end_row();
+
+                    ui.label("Stop time");
+                    ui.add(
+                        egui::DragValue::new(&mut self.analog_generated_stop_time_us)
+                            .speed(1.0)
+                            .range(0.001..=1_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+
+                    ui.label("Max step");
+                    ui.add(
+                        egui::DragValue::new(&mut self.analog_generated_max_step_us)
+                            .speed(0.1)
+                            .range(0.001..=1_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+
+                    ui.label("Node net");
+                    generated_net_combo(
+                        ui,
+                        "analog_generated_node_net",
+                        selected_scenario,
+                        &mut self.analog_generated_node_net,
+                    );
+                    ui.end_row();
+
+                    ui.label("SPICE node");
+                    ui.text_edit_singleline(&mut self.analog_generated_node_name);
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Save Settings").clicked() {
+                    self.apply_replace_generated_settings();
+                }
+                if ui.button("Save Node Binding").clicked() {
+                    self.apply_replace_generated_node_binding();
+                }
+                if ui.button("Reload Selected").clicked() {
+                    load_generated_settings_values(
+                        selected_scenario,
+                        &mut self.analog_generated_ground_net,
+                        &mut self.analog_generated_stop_time_us,
+                        &mut self.analog_generated_max_step_us,
+                        &mut self.analog_generated_node_net,
+                        &mut self.analog_generated_node_name,
+                    );
+                }
+            });
+            ui.label("Node bindings");
+            egui::Grid::new("analog_generated_node_bindings")
+                .num_columns(3)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.strong("Net");
+                    ui.strong("Kind");
+                    ui.strong("SPICE node");
+                    ui.end_row();
+                    for net in &selected_scenario.board_nets {
+                        let node = selected_scenario
+                            .node_bindings
+                            .iter()
+                            .find(|binding| binding.net == net.id)
+                            .map(|binding| binding.node.as_str())
+                            .unwrap_or("unbound");
+                        if ui
+                            .selectable_label(self.analog_generated_node_net == net.id, &net.id)
+                            .clicked()
+                        {
+                            self.analog_generated_node_net = net.id.clone();
+                            self.analog_generated_node_name = node.to_string();
+                        }
+                        ui.label(&net.kind);
+                        ui.monospace(node);
+                        ui.end_row();
+                    }
+                });
         });
     }
 
@@ -784,6 +930,43 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_replace_generated_settings(&mut self) {
+        let draft = AnalogGeneratedSettingsDraft {
+            scenario_name: self.analog_generated_scenario.clone(),
+            ground_net: self.analog_generated_ground_net.clone(),
+            stop_time_us: self.analog_generated_stop_time_us,
+            max_step_us: self.analog_generated_max_step_us,
+        };
+        match replace_generated_settings(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Generated scenario {} settings updated.",
+                    draft.scenario_name
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_replace_generated_node_binding(&mut self) {
+        let draft = AnalogGeneratedNodeBindingDraft {
+            scenario_name: self.analog_generated_scenario.clone(),
+            net: self.analog_generated_node_net.clone(),
+            node: self.analog_generated_node_name.clone(),
+        };
+        match replace_generated_node_binding(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Generated scenario {} node binding for {} updated.",
+                    draft.scenario_name, draft.net
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_replace_analog_stimulus(&mut self, kind: AnalogStimulusKind) {
         let draft = AnalogStimulusDraft {
             scenario_name: self.analog_stimulus_scenario.clone(),
@@ -1199,6 +1382,89 @@ fn initialize_generated_component_defaults(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn initialize_generated_settings_defaults(
+    scenarios: &[AnalogGeneratedScenario],
+    scenario_name: &mut String,
+    ground_net: &mut String,
+    stop_time_us: &mut f64,
+    max_step_us: &mut f64,
+    node_net: &mut String,
+    node_name: &mut String,
+) {
+    let scenario_missing = selected_generated_scenario(scenarios, scenario_name).is_none();
+    if (scenario_name.is_empty() || scenario_missing)
+        && let Some(scenario) = scenarios.first()
+    {
+        *scenario_name = scenario.name.clone();
+        load_generated_settings_values(
+            scenario,
+            ground_net,
+            stop_time_us,
+            max_step_us,
+            node_net,
+            node_name,
+        );
+        return;
+    }
+    let Some(scenario) = selected_generated_scenario(scenarios, scenario_name) else {
+        return;
+    };
+    if ground_net.is_empty()
+        || !scenario
+            .board_nets
+            .iter()
+            .any(|net| net.id == *ground_net && net.kind == "ground")
+    {
+        *ground_net = scenario.ground_net.clone();
+    }
+    if *stop_time_us <= 0.0 || *max_step_us <= 0.0 || *max_step_us > *stop_time_us {
+        *stop_time_us = scenario.stop_time_us;
+        *max_step_us = scenario.max_step_us;
+    }
+    let node_net_missing = !scenario.board_nets.iter().any(|net| net.id == *node_net);
+    if node_net.is_empty() || node_net_missing {
+        load_generated_node_binding_values(scenario, node_net, node_name);
+    }
+}
+
+fn load_generated_settings_values(
+    scenario: &AnalogGeneratedScenario,
+    ground_net: &mut String,
+    stop_time_us: &mut f64,
+    max_step_us: &mut f64,
+    node_net: &mut String,
+    node_name: &mut String,
+) {
+    *ground_net = scenario.ground_net.clone();
+    *stop_time_us = scenario.stop_time_us;
+    *max_step_us = scenario.max_step_us;
+    load_generated_node_binding_values(scenario, node_net, node_name);
+}
+
+fn load_generated_node_binding_values(
+    scenario: &AnalogGeneratedScenario,
+    node_net: &mut String,
+    node_name: &mut String,
+) {
+    if let Some(binding) = scenario
+        .node_bindings
+        .iter()
+        .find(|binding| binding.net == scenario.ground_net)
+        .or_else(|| scenario.node_bindings.first())
+    {
+        *node_net = binding.net.clone();
+        *node_name = binding.node.clone();
+    } else if let Some(net) = scenario.board_nets.first() {
+        *node_net = net.id.clone();
+        *node_name = if net.id == scenario.ground_net {
+            "0".to_string()
+        } else {
+            net.id.clone()
+        };
+    }
+}
+
 fn selected_generated_scenario<'a>(
     scenarios: &'a [AnalogGeneratedScenario],
     scenario_name: &str,
@@ -1374,6 +1640,29 @@ fn generated_component_combo(
         .show_ui(ui, |ui| {
             for component in &scenario.board_components {
                 ui.selectable_value(selected, component.id.clone(), component.label());
+            }
+        });
+}
+
+fn generated_net_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    scenario: &AnalogGeneratedScenario,
+    selected: &mut String,
+) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select net".to_string()
+        } else {
+            selected.clone()
+        })
+        .show_ui(ui, |ui| {
+            for net in &scenario.board_nets {
+                ui.selectable_value(
+                    selected,
+                    net.id.clone(),
+                    format!("{} ({})", net.id, net.kind),
+                );
             }
         });
 }

@@ -107,7 +107,8 @@ selection, add, hash computation, and remove mutations for declared analog
 scenarios.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
 generation for generated-from-Board simulations. `src/gui/analog_generated.rs`
-owns generated scenario component membership and associated pin-binding repair.
+owns generated scenario analysis settings, ground/node mapping, component
+membership, and associated pin-binding repair.
 `src/gui/analog_branches.rs`
 owns supported source/passive/semiconductor branch current and power expression
 derivation for component probes. `src/gui/analog_stimulus.rs` owns structured
@@ -161,8 +162,9 @@ form:
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
-  with ground/probe net selection, add selected-net voltage probes to existing
-  analog scenarios, inspect a selected probe badge's assertion rows with
+  with ground/probe net selection, edit generated scenario stop time/max step,
+  ground net, SPICE node bindings, and component membership, add selected-net
+  voltage probes to existing analog scenarios, inspect a selected probe badge's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for
   that selected probe, quick-add cursor-sampled above/below assertions from a

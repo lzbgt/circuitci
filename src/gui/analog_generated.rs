@@ -8,10 +8,42 @@ pub(super) struct AnalogGeneratedComponentDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogGeneratedSettingsDraft {
+    pub(super) scenario_name: String,
+    pub(super) ground_net: String,
+    pub(super) stop_time_us: f64,
+    pub(super) max_step_us: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogGeneratedNodeBindingDraft {
+    pub(super) scenario_name: String,
+    pub(super) net: String,
+    pub(super) node: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogGeneratedScenario {
     pub(super) name: String,
+    pub(super) ground_net: String,
+    pub(super) stop_time_us: f64,
+    pub(super) max_step_us: f64,
     pub(super) components: Vec<String>,
+    pub(super) board_nets: Vec<AnalogGeneratedNetChoice>,
+    pub(super) node_bindings: Vec<AnalogGeneratedNodeBindingChoice>,
     pub(super) board_components: Vec<AnalogGeneratedComponentChoice>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogGeneratedNetChoice {
+    pub(super) id: String,
+    pub(super) kind: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogGeneratedNodeBindingChoice {
+    pub(super) net: String,
+    pub(super) node: String,
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +80,27 @@ pub(super) fn analog_generated_scenarios(text: &str) -> Result<Vec<AnalogGenerat
                 generated.components.iter().map(String::as_str).collect();
             Some(AnalogGeneratedScenario {
                 name: scenario.name.clone(),
+                ground_net: generated.ground_net.clone(),
+                stop_time_us: analog.analysis.stop_time_us,
+                max_step_us: analog.analysis.max_step_us,
                 components: generated.components.clone(),
+                board_nets: project
+                    .board
+                    .nets
+                    .iter()
+                    .map(|(net_id, net)| AnalogGeneratedNetChoice {
+                        id: net_id.clone(),
+                        kind: net_kind_label(&net.kind).to_string(),
+                    })
+                    .collect(),
+                node_bindings: analog
+                    .node_bindings
+                    .iter()
+                    .map(|binding| AnalogGeneratedNodeBindingChoice {
+                        net: binding.net.clone(),
+                        node: binding.node.clone(),
+                    })
+                    .collect(),
                 board_components: project
                     .board
                     .components
@@ -62,6 +114,123 @@ pub(super) fn analog_generated_scenarios(text: &str) -> Result<Vec<AnalogGenerat
             })
         })
         .collect())
+}
+
+pub(super) fn replace_generated_settings(
+    text: &str,
+    draft: &AnalogGeneratedSettingsDraft,
+) -> Result<String> {
+    validate_generated_settings_draft(draft)?;
+    let scenario_name = draft.scenario_name.trim();
+    let ground_net = draft.ground_net.trim();
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = generated_scenario(&project, scenario_name)?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("generated_scenario checked");
+    let ground_spec = project
+        .board
+        .nets
+        .get(ground_net)
+        .with_context(|| format!("Ground net {ground_net} was not found."))?;
+    if ground_spec.kind != crate::board_ir::NetKind::Ground {
+        anyhow::bail!(
+            "Ground net {} must have kind ground.",
+            draft.ground_net.trim()
+        );
+    }
+    let ground_net = draft.ground_net.trim();
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let generated_mapping = child_mapping_mut(analog_mapping, "generated", "analog.generated")?;
+    insert_string(generated_mapping, "ground_net", ground_net);
+    let analysis_mapping = child_mapping_mut(analog_mapping, "analysis", "analog analysis")?;
+    insert_number(analysis_mapping, "stop_time_us", draft.stop_time_us)?;
+    insert_number(analysis_mapping, "max_step_us", draft.max_step_us)?;
+
+    let mut used_nodes: BTreeSet<String> = analog
+        .node_bindings
+        .iter()
+        .map(|binding| binding.node.clone())
+        .collect();
+    used_nodes.remove("0");
+    {
+        let node_bindings =
+            ensure_child_sequence_mut(analog_mapping, "node_bindings", "analog node bindings")?;
+        retarget_ground_node_binding(node_bindings, ground_net, &mut used_nodes);
+    }
+    sync_pin_bindings_for_all_generated_components(&project, analog_mapping, scenario_name)?;
+
+    serialize_validated(
+        yaml,
+        "Edited generated settings YAML is not valid Board IR.",
+    )
+}
+
+pub(super) fn replace_generated_node_binding(
+    text: &str,
+    draft: &AnalogGeneratedNodeBindingDraft,
+) -> Result<String> {
+    validate_generated_node_binding_draft(draft)?;
+    let scenario_name = draft.scenario_name.trim();
+    let net = draft.net.trim();
+    let node = draft.node.trim();
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = generated_scenario(&project, scenario_name)?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("generated_scenario checked");
+    let generated = analog
+        .generated
+        .as_ref()
+        .expect("generated_scenario checked");
+    project
+        .board
+        .nets
+        .get(net)
+        .with_context(|| format!("Net {net} was not found."))?;
+    if net == generated.ground_net && node != "0" {
+        anyhow::bail!(
+            "Ground net {} must remain bound to SPICE node 0.",
+            generated.ground_net
+        );
+    }
+    if net != generated.ground_net && node == "0" {
+        anyhow::bail!(
+            "Only ground net {} may use SPICE node 0.",
+            generated.ground_net
+        );
+    }
+    if analog
+        .node_bindings
+        .iter()
+        .any(|binding| binding.net != net && binding.node == node)
+    {
+        anyhow::bail!("SPICE node {node} is already bound to another net.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    {
+        let node_bindings =
+            ensure_child_sequence_mut(analog_mapping, "node_bindings", "analog node bindings")?;
+        upsert_node_binding(node_bindings, net, node);
+    }
+    sync_pin_bindings_for_net(&project, analog_mapping, scenario_name, net)?;
+
+    serialize_validated(
+        yaml,
+        "Edited generated node binding YAML is not valid Board IR.",
+    )
 }
 
 pub(super) fn include_generated_component(
@@ -232,6 +401,29 @@ fn validate_generated_component_draft(draft: &AnalogGeneratedComponentDraft) -> 
     Ok(())
 }
 
+fn validate_generated_settings_draft(draft: &AnalogGeneratedSettingsDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.ground_net, "ground net")?;
+    if !draft.stop_time_us.is_finite()
+        || !draft.max_step_us.is_finite()
+        || draft.stop_time_us <= 0.0
+        || draft.max_step_us <= 0.0
+        || draft.max_step_us > draft.stop_time_us
+    {
+        anyhow::bail!(
+            "Stop time and max step must be finite positive values, with max step no larger than stop time."
+        );
+    }
+    Ok(())
+}
+
+fn validate_generated_node_binding_draft(draft: &AnalogGeneratedNodeBindingDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.net, "net")?;
+    validated_spice_node(&draft.node)?;
+    Ok(())
+}
+
 fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
     let value = value.trim();
     if value.is_empty() {
@@ -242,6 +434,30 @@ fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
         .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.'))
     {
         anyhow::bail!("{label} {value} contains unsupported characters.");
+    }
+    Ok(value)
+}
+
+fn validated_spice_node(value: &str) -> Result<&str> {
+    let value = value.trim();
+    if value.is_empty() {
+        anyhow::bail!("SPICE node must not be blank.");
+    }
+    if value == "0" {
+        return Ok(value);
+    }
+    if !value
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        anyhow::bail!("SPICE node {value} contains unsupported characters.");
+    }
+    if value
+        .chars()
+        .next()
+        .is_some_and(|character| character.is_ascii_digit())
+    {
+        anyhow::bail!("SPICE node {value} must not start with a digit unless it is ground node 0.");
     }
     Ok(value)
 }
@@ -339,6 +555,183 @@ fn pin_binding_value(component_id: &str, pin_id: &str, node: &str) -> serde_yaml
     serde_yaml_ng::Value::Mapping(binding)
 }
 
+fn retarget_ground_node_binding(
+    node_bindings: &mut Vec<serde_yaml_ng::Value>,
+    ground_net: &str,
+    used_nodes: &mut BTreeSet<String>,
+) {
+    let mut ground_binding_found = false;
+    for binding in node_bindings.iter_mut() {
+        let Some(mapping) = binding.as_mapping_mut() else {
+            continue;
+        };
+        let net = mapping
+            .get(key("net"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            .map(str::to_string);
+        let node = mapping
+            .get(key("node"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            .map(str::to_string);
+        match (net.as_deref(), node.as_deref()) {
+            (Some(net), _) if net == ground_net => {
+                mapping.insert(key("node"), serde_yaml_ng::Value::String("0".to_string()));
+                ground_binding_found = true;
+            }
+            (Some(net), Some("0")) => {
+                let node = unique_node_name(net, used_nodes);
+                mapping.insert(key("node"), serde_yaml_ng::Value::String(node));
+            }
+            _ => {}
+        }
+    }
+    if !ground_binding_found {
+        let mut binding = serde_yaml_ng::Mapping::new();
+        insert_string(&mut binding, "node", "0");
+        insert_string(&mut binding, "net", ground_net);
+        node_bindings.push(serde_yaml_ng::Value::Mapping(binding));
+    }
+}
+
+fn upsert_node_binding(node_bindings: &mut Vec<serde_yaml_ng::Value>, net: &str, node: &str) {
+    for binding in node_bindings.iter_mut() {
+        let Some(mapping) = binding.as_mapping_mut() else {
+            continue;
+        };
+        if mapping
+            .get(key("net"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            == Some(net)
+        {
+            mapping.insert(key("node"), serde_yaml_ng::Value::String(node.to_string()));
+            return;
+        }
+    }
+    let mut binding = serde_yaml_ng::Mapping::new();
+    insert_string(&mut binding, "node", node);
+    insert_string(&mut binding, "net", net);
+    node_bindings.push(serde_yaml_ng::Value::Mapping(binding));
+}
+
+fn sync_pin_bindings_for_all_generated_components(
+    project: &crate::board_ir::BoardProject,
+    analog_mapping: &mut serde_yaml_ng::Mapping,
+    scenario_name: &str,
+) -> Result<()> {
+    let scenario = generated_scenario(project, scenario_name)?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("generated_scenario checked");
+    let generated = analog
+        .generated
+        .as_ref()
+        .expect("generated_scenario checked");
+    let nets: BTreeSet<String> = generated
+        .components
+        .iter()
+        .filter_map(|component_id| project.board.components.get(component_id))
+        .flat_map(|component| component.pins.values().cloned())
+        .collect();
+    for net in nets {
+        sync_pin_bindings_for_net(project, analog_mapping, scenario_name, &net)?;
+    }
+    Ok(())
+}
+
+fn sync_pin_bindings_for_net(
+    project: &crate::board_ir::BoardProject,
+    analog_mapping: &mut serde_yaml_ng::Mapping,
+    scenario_name: &str,
+    net: &str,
+) -> Result<()> {
+    let scenario = generated_scenario(project, scenario_name)?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .expect("generated_scenario checked");
+    let generated = analog
+        .generated
+        .as_ref()
+        .expect("generated_scenario checked");
+    let node = node_binding_for_net(analog_mapping, net)
+        .with_context(|| format!("Net {net} does not have an analog node binding."))?;
+    let endpoints: BTreeSet<(String, String)> = generated
+        .components
+        .iter()
+        .filter_map(|component_id| {
+            project
+                .board
+                .components
+                .get(component_id)
+                .map(|component| (component_id, component))
+        })
+        .flat_map(|(component_id, component)| {
+            component
+                .pins
+                .iter()
+                .filter(move |(_, pin_net)| *pin_net == net)
+                .map(move |(pin_id, _)| (component_id.clone(), pin_id.clone()))
+        })
+        .collect();
+    let pin_bindings =
+        ensure_child_sequence_mut(analog_mapping, "pin_bindings", "analog pin bindings")?;
+    for (component_id, pin_id) in endpoints {
+        upsert_pin_binding(pin_bindings, &component_id, &pin_id, &node);
+    }
+    Ok(())
+}
+
+fn node_binding_for_net(analog_mapping: &serde_yaml_ng::Mapping, net: &str) -> Option<String> {
+    analog_mapping
+        .get(key("node_bindings"))?
+        .as_sequence()?
+        .iter()
+        .find_map(|binding| {
+            let mapping = binding.as_mapping()?;
+            (mapping
+                .get(key("net"))
+                .and_then(serde_yaml_ng::Value::as_str)
+                == Some(net))
+            .then(|| {
+                mapping
+                    .get(key("node"))
+                    .and_then(serde_yaml_ng::Value::as_str)
+                    .map(str::to_string)
+            })?
+        })
+}
+
+fn upsert_pin_binding(
+    pin_bindings: &mut Vec<serde_yaml_ng::Value>,
+    component_id: &str,
+    pin_id: &str,
+    node: &str,
+) {
+    for binding in pin_bindings.iter_mut() {
+        let Some(mapping) = binding.as_mapping_mut() else {
+            continue;
+        };
+        let endpoint = mapping
+            .get(key("endpoint"))
+            .and_then(serde_yaml_ng::Value::as_mapping);
+        if endpoint.is_some_and(|endpoint| {
+            endpoint
+                .get(key("component"))
+                .and_then(serde_yaml_ng::Value::as_str)
+                == Some(component_id)
+                && endpoint
+                    .get(key("pin"))
+                    .and_then(serde_yaml_ng::Value::as_str)
+                    == Some(pin_id)
+        }) {
+            mapping.insert(key("node"), serde_yaml_ng::Value::String(node.to_string()));
+            return;
+        }
+    }
+    pin_bindings.push(pin_binding_value(component_id, pin_id, node));
+}
+
 fn unique_node_name(net: &str, used_nodes: &mut BTreeSet<String>) -> String {
     let base = sanitize_node_name(net);
     if used_nodes.insert(base.clone()) {
@@ -384,6 +777,14 @@ fn serialize_validated(yaml: serde_yaml_ng::Value, context: &str) -> Result<Stri
     Ok(updated)
 }
 
+fn insert_number(mapping: &mut serde_yaml_ng::Mapping, name: &str, value: f64) -> Result<()> {
+    mapping.insert(
+        key(name),
+        serde_yaml_ng::to_value(value).context("Failed to encode generated scenario number.")?,
+    );
+    Ok(())
+}
+
 fn insert_string(mapping: &mut serde_yaml_ng::Mapping, name: &str, value: &str) {
     mapping.insert(key(name), serde_yaml_ng::Value::String(value.to_string()));
 }
@@ -392,11 +793,20 @@ fn key(name: &str) -> serde_yaml_ng::Value {
     serde_yaml_ng::Value::String(name.to_string())
 }
 
+fn net_kind_label(kind: &crate::board_ir::NetKind) -> &'static str {
+    match kind {
+        crate::board_ir::NetKind::Power => "power",
+        crate::board_ir::NetKind::Ground => "ground",
+        crate::board_ir::NetKind::DigitalOrAnalog => "digital_or_analog",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogGeneratedComponentDraft, analog_generated_scenarios, exclude_generated_component,
-        include_generated_component,
+        AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft,
+        AnalogGeneratedSettingsDraft, analog_generated_scenarios, exclude_generated_component,
+        include_generated_component, replace_generated_node_binding, replace_generated_settings,
     };
 
     fn project_yaml() -> &'static str {
@@ -452,6 +862,15 @@ scenarios:
         let scenarios = analog_generated_scenarios(project_yaml()).unwrap();
         assert_eq!(scenarios.len(), 1);
         assert_eq!(scenarios[0].components, vec!["V1", "R1"]);
+        assert_eq!(scenarios[0].ground_net, "gnd");
+        assert_eq!(scenarios[0].stop_time_us, 100.0);
+        assert_eq!(scenarios[0].max_step_us, 1.0);
+        assert!(
+            scenarios[0]
+                .node_bindings
+                .iter()
+                .any(|binding| binding.net == "gnd" && binding.node == "0")
+        );
         let c1 = scenarios[0]
             .board_components
             .iter()
@@ -535,5 +954,119 @@ scenarios:
         )
         .unwrap_err();
         assert!(error.to_string().contains("at least one component"));
+    }
+
+    #[test]
+    fn replace_generated_settings_updates_timing_and_retargets_ground_node() {
+        let edited = replace_generated_settings(
+            project_yaml(),
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_transient".to_string(),
+                ground_net: "out".to_string(),
+                stop_time_us: 250.0,
+                max_step_us: 2.5,
+            },
+        )
+        .unwrap_err();
+        assert!(edited.to_string().contains("must have kind ground"));
+
+        let yaml = project_yaml().replace("out: {kind: digital_or_analog}", "out: {kind: ground}");
+        let edited = replace_generated_settings(
+            &yaml,
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_transient".to_string(),
+                ground_net: "out".to_string(),
+                stop_time_us: 250.0,
+                max_step_us: 2.5,
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert_eq!(analog.generated.as_ref().unwrap().ground_net, "out");
+        assert_eq!(analog.analysis.stop_time_us, 250.0);
+        assert_eq!(analog.analysis.max_step_us, 2.5);
+        assert!(
+            analog
+                .node_bindings
+                .iter()
+                .any(|binding| binding.net == "out" && binding.node == "0")
+        );
+        assert!(
+            analog
+                .node_bindings
+                .iter()
+                .any(|binding| binding.net == "gnd" && binding.node != "0")
+        );
+    }
+
+    #[test]
+    fn replace_generated_settings_rejects_invalid_timing() {
+        let error = replace_generated_settings(
+            project_yaml(),
+            &AnalogGeneratedSettingsDraft {
+                scenario_name: "generated_transient".to_string(),
+                ground_net: "gnd".to_string(),
+                stop_time_us: 1.0,
+                max_step_us: 2.0,
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("max step"));
+    }
+
+    #[test]
+    fn replace_generated_node_binding_updates_generated_pin_bindings() {
+        let edited = replace_generated_node_binding(
+            project_yaml(),
+            &AnalogGeneratedNodeBindingDraft {
+                scenario_name: "generated_transient".to_string(),
+                net: "rail_5v".to_string(),
+                node: "vcc".to_string(),
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        assert!(
+            analog
+                .node_bindings
+                .iter()
+                .any(|binding| binding.net == "rail_5v" && binding.node == "vcc")
+        );
+        assert!(
+            analog
+                .pin_bindings
+                .iter()
+                .filter(|binding| binding.endpoint.component == "V1"
+                    || binding.endpoint.component == "R1")
+                .filter(|binding| binding.endpoint.pin == "P" || binding.endpoint.pin == "A")
+                .all(|binding| binding.node == "vcc")
+        );
+    }
+
+    #[test]
+    fn replace_generated_node_binding_rejects_duplicate_and_bad_ground_nodes() {
+        let duplicate = replace_generated_node_binding(
+            project_yaml(),
+            &AnalogGeneratedNodeBindingDraft {
+                scenario_name: "generated_transient".to_string(),
+                net: "out".to_string(),
+                node: "rail_5v".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(duplicate.to_string().contains("already bound"));
+
+        let ground = replace_generated_node_binding(
+            project_yaml(),
+            &AnalogGeneratedNodeBindingDraft {
+                scenario_name: "generated_transient".to_string(),
+                net: "gnd".to_string(),
+                node: "gnd_node".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(ground.to_string().contains("node 0"));
     }
 }
