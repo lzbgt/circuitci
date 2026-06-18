@@ -28,55 +28,148 @@ use std::path::Path;
 
 impl CircuitCiApp {
     pub(super) fn simulation_stage(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Simulation And Observation");
+        self.scope_run_toolbar(ui);
         ui.separator();
-        if let Some(snapshot) = self.project_snapshot.clone() {
-            self.analog_scenario_editor(ui, &snapshot);
-            ui.separator();
-            self.analog_generated_overview_panel(ui);
-            ui.separator();
-            self.analog_generated_settings_editor(ui);
-            ui.separator();
-            self.analog_generated_components_editor(ui);
-            ui.separator();
-            self.analog_stimulus_editor(ui);
-            ui.separator();
-            self.analog_model_file_manager(ui);
-            ui.separator();
-            self.selected_probe_assertions_panel(ui);
-            ui.separator();
-            self.analog_assertion_editor(ui);
-            ui.separator();
-        }
-        self.spice_deck_editor(ui);
-        ui.separator();
-        if self.report.is_some() {
-            self.waveform_view(ui);
-            ui.separator();
-            let report = self.report.as_ref().expect("checked above");
-            ui.label("Waveforms");
-            if report.waveforms.is_empty() {
-                ui.label("No waveform artifacts were emitted by the current scenario set.");
-            } else {
-                for waveform in &report.waveforms {
-                    ui.monospace(waveform);
-                }
-            }
-            ui.add_space(8.0);
-            ui.label("Artifacts");
-            if report.artifacts.is_empty() {
-                ui.label("No artifacts were emitted.");
-            } else {
-                for artifact in &report.artifacts {
-                    ui.monospace(artifact);
-                }
-            }
-            ui.separator();
-            self.findings_view(ui, report);
-        } else {
-            ui.label(
-                "Run validation to observe SPICE waveforms, generated decks, and rule findings.",
+
+        let available = ui.available_size();
+        let side_width = (available.x * 0.30).clamp(320.0, 420.0);
+        let gap = 8.0;
+        if available.x >= 980.0 {
+            let scope_size = egui::vec2(
+                (available.x - side_width - gap).max(560.0),
+                available.y.max(520.0),
             );
+            ui.horizontal_top(|ui| {
+                self.waveform_scope_view(ui, scope_size);
+                ui.add_space(gap);
+                ui.allocate_ui_with_layout(
+                    egui::vec2(side_width, scope_size.y),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| self.scope_side_dock(ui),
+                );
+            });
+        } else {
+            self.waveform_scope_view(
+                ui,
+                egui::vec2(available.x.max(560.0), (available.y * 0.62).max(360.0)),
+            );
+            ui.separator();
+            self.scope_side_dock(ui);
+        }
+    }
+
+    fn scope_run_toolbar(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            ui.heading("Scopes");
+            if ui.button("Model").clicked() {
+                self.stage = super::Stage::Sketch;
+            }
+            if ui
+                .add_enabled(
+                    self.background_job_elapsed_secs().is_none() && self.project_snapshot.is_some(),
+                    egui::Button::new("Run"),
+                )
+                .clicked()
+            {
+                self.run_scope_model();
+            }
+            if ui.button("Fit Time").clicked()
+                && let Some((start_us, end_us)) = super::waveform::waveform_time_range_for_view(
+                    &self.waveforms,
+                    self.selected_waveform,
+                )
+            {
+                self.waveform_cursor_a_us = start_us;
+                self.waveform_cursor_b_us = end_us;
+            }
+            if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
+                let label = self.background_job_label().unwrap_or("job");
+                ui.add(egui::Spinner::new());
+                ui.label(format!("{label} running for {elapsed_secs:.1}s"));
+                if ui
+                    .add_enabled(
+                        !self.background_job_cancel_requested(),
+                        egui::Button::new("Cancel"),
+                    )
+                    .clicked()
+                {
+                    self.cancel_background_job();
+                }
+            }
+            if let Some(report) = &self.report {
+                ui.label(format!(
+                    "result {}: critical {} / warning {} / info {}",
+                    report.result,
+                    report.summary.critical,
+                    report.summary.warning,
+                    report.summary.info
+                ));
+            }
+        });
+    }
+
+    fn run_scope_model(&mut self) {
+        if self.project_yaml_dirty {
+            self.save_project_yaml();
+            if self.project_yaml_dirty {
+                return;
+            }
+        }
+        self.validate_project();
+    }
+
+    fn scope_side_dock(&mut self, ui: &mut egui::Ui) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            self.waveform_controls_panel(ui);
+            ui.separator();
+            if let Some(snapshot) = self.project_snapshot.clone() {
+                self.analog_scenario_editor(ui, &snapshot);
+                self.analog_generated_overview_panel(ui);
+                self.analog_generated_settings_editor(ui);
+                self.analog_generated_components_editor(ui);
+                self.analog_stimulus_editor(ui);
+                self.analog_model_file_manager(ui);
+                self.selected_probe_assertions_panel(ui);
+                self.analog_assertion_editor(ui);
+            }
+            self.spice_deck_editor(ui);
+            self.scope_artifacts_and_findings(ui);
+        });
+    }
+
+    fn scope_artifacts_and_findings(&mut self, ui: &mut egui::Ui) {
+        if self.report.is_some() {
+            ui.separator();
+            let report = self.report.clone().expect("checked above");
+            egui::CollapsingHeader::new("Artifacts")
+                .default_open(false)
+                .show(ui, |ui| {
+                    ui.label("Waveforms");
+                    if report.waveforms.is_empty() {
+                        ui.label("No waveform artifacts were emitted by the current scenario set.");
+                    } else {
+                        for waveform in &report.waveforms {
+                            ui.monospace(waveform);
+                        }
+                    }
+                    ui.add_space(8.0);
+                    ui.label("Artifacts");
+                    if report.artifacts.is_empty() {
+                        ui.label("No artifacts were emitted.");
+                    } else {
+                        for artifact in &report.artifacts {
+                            ui.monospace(artifact);
+                        }
+                    }
+                });
+            egui::CollapsingHeader::new("Findings")
+                .default_open(false)
+                .show(ui, |ui| {
+                    self.findings_view(ui, &report);
+                });
+        } else {
+            ui.separator();
+            ui.label("Run validation to observe SPICE waveforms, generated decks, and findings.");
         }
     }
 

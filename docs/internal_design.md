@@ -25,6 +25,13 @@ scene, Run and scope/observation controls remain directly reachable from that
 scene, and project/library/import/YAML details must stay secondary or docked so
 they do not shrink the model view into a preview pane.
 
+The Simulation stage should follow the same convention from the runtime side:
+it is a Scopes workspace first, with the oscilloscope plot, waveform/probe
+selection, and play/scrub controls treated as the primary view. Analog scenario,
+model-file, assertion, deck, artifact, and finding editors may be available in
+secondary docks, but they must not force the runtime view back into a
+form-heavy page.
+
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, the `eframe`
 update loop, and shared validation/report command helpers. `src/gui/shell.rs`
@@ -168,13 +175,15 @@ history before executing the action; canceled actions must leave the current
 workspace untouched. Native path pickers in `src/gui/file_dialogs.rs` only
 populate existing project/import/output path fields or request the same guarded
 project load action; they must not bypass validation, import, save, or the
-dirty-state guard. `src/gui/simulation.rs` owns the Simulation stage UI and
-analog scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
-parsing, plotting, simulation-time scrub/playback controls, cursor readouts,
-min/max/delta measurements, GUI-only derived waveform channels, promotion of
-representable derived channels to explicit Board IR analog probes/assertions,
-exact probe-value lookup, and normalized runtime activity values for graph tinting. It
-may display graph hover readouts, activity coloring, and derived difference,
+dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
+keeping the runtime oscilloscope primary while analog scenario/model/assertion
+panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
+CSV parsing, the primary scope plot, simulation-time scrub/playback controls,
+cursor readouts, min/max/delta measurements, GUI-only derived waveform
+channels, promotion of representable derived channels to explicit Board IR
+analog probes/assertions, exact probe-value lookup, and normalized runtime
+activity values for graph tinting. It may display graph hover readouts,
+activity coloring, and derived difference,
 sum, product, or ratio channels for runtime waveform probes, but those values
 must come from report waveform artifacts and the shared waveform interpolation
 helpers rather than an unsynchronized live simulation model.

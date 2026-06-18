@@ -11,17 +11,51 @@ use eframe::egui;
 use std::path::Path;
 
 impl CircuitCiApp {
-    pub(super) fn waveform_view(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.strong("Waveform Viewer");
-            if self.waveforms.is_empty() {
-                ui.label("No parsed CSV waveform is available.");
-            }
-        });
+    pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
+        self.waveform_scope_header(ui);
         if self.waveforms.is_empty() {
             return;
         }
 
+        self.waveform_selector(ui);
+        self.waveform_probe_selector(ui);
+        self.waveform_playback_panel(ui);
+        self.waveform_scope_plot(ui, desired_size);
+    }
+
+    pub(super) fn waveform_controls_panel(&mut self, ui: &mut egui::Ui) {
+        if self.waveforms.is_empty() {
+            ui.label("Run a simulation to load scope traces.");
+            return;
+        }
+        self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
+        let waveform = &self.waveforms[self.selected_waveform];
+        if waveform.probes.is_empty() {
+            ui.label("Waveform has no probe columns.");
+            return;
+        }
+        self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
+        self.waveform_math_panel(ui);
+        let waveform = &self.waveforms[self.selected_waveform];
+        waveform_measurement_panel(
+            ui,
+            waveform,
+            self.selected_probe,
+            &mut self.waveform_cursor_a_us,
+            &mut self.waveform_cursor_b_us,
+        );
+    }
+
+    fn waveform_scope_header(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.strong("Scopes");
+            if self.waveforms.is_empty() {
+                ui.label("No parsed CSV waveform is available. Run the schematic model first.");
+            }
+        });
+    }
+
+    fn waveform_selector(&mut self, ui: &mut egui::Ui) {
         self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
         ui.horizontal_wrapped(|ui| {
             for (index, waveform) in self.waveforms.iter().enumerate() {
@@ -40,50 +74,47 @@ impl CircuitCiApp {
                 }
             }
         });
+    }
 
-        {
-            let waveform = &self.waveforms[self.selected_waveform];
-            if waveform.probes.is_empty() {
-                ui.label("Waveform has no probe columns.");
-                return;
-            }
-
-            self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
-            ui.horizontal_wrapped(|ui| {
-                for (index, probe) in waveform.probes.iter().enumerate() {
-                    if ui
-                        .selectable_label(self.selected_probe == index, &probe.label)
-                        .clicked()
-                    {
-                        self.selected_probe = index;
-                        self.waveform_math_left =
-                            self.waveform_math_left.min(waveform.probes.len() - 1);
-                        self.waveform_math_right =
-                            self.waveform_math_right.min(waveform.probes.len() - 1);
-                        self.waveform_cursor_a_us = 0.0;
-                        self.waveform_cursor_b_us = 0.0;
-                        self.waveform_playing = false;
-                    }
-                }
-            });
+    fn waveform_probe_selector(&mut self, ui: &mut egui::Ui) {
+        let waveform = &self.waveforms[self.selected_waveform];
+        if waveform.probes.is_empty() {
+            ui.label("Waveform has no probe columns.");
+            return;
         }
 
-        self.waveform_math_panel(ui);
-        self.waveform_playback_panel(ui);
+        self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
+        ui.horizontal_wrapped(|ui| {
+            for (index, probe) in waveform.probes.iter().enumerate() {
+                if ui
+                    .selectable_label(self.selected_probe == index, &probe.label)
+                    .clicked()
+                {
+                    self.selected_probe = index;
+                    self.waveform_math_left =
+                        self.waveform_math_left.min(waveform.probes.len() - 1);
+                    self.waveform_math_right =
+                        self.waveform_math_right.min(waveform.probes.len() - 1);
+                    self.waveform_cursor_a_us = 0.0;
+                    self.waveform_cursor_b_us = 0.0;
+                    self.waveform_playing = false;
+                }
+            }
+        });
+    }
+
+    fn waveform_scope_plot(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
         let waveform = &self.waveforms[self.selected_waveform];
-        waveform_measurement_panel(
-            ui,
-            waveform,
-            self.selected_probe,
-            &mut self.waveform_cursor_a_us,
-            &mut self.waveform_cursor_b_us,
-        );
-        draw_waveform_plot(
+        if waveform.probes.is_empty() {
+            return;
+        }
+        draw_waveform_plot_sized(
             ui,
             waveform,
             self.selected_probe,
             self.waveform_cursor_a_us,
             self.waveform_cursor_b_us,
+            scope_plot_size(desired_size),
         );
     }
 
@@ -1044,12 +1075,13 @@ fn waveform_measurement_panel(
     });
 }
 
-fn draw_waveform_plot(
+fn draw_waveform_plot_sized(
     ui: &mut egui::Ui,
     waveform: &WaveformView,
     probe_index: usize,
     cursor_a_us: f64,
     cursor_b_us: f64,
+    desired_size: egui::Vec2,
 ) {
     let probe = &waveform.probes[probe_index];
     let Some((x_min, x_max)) = min_max(&waveform.time_s) else {
@@ -1066,7 +1098,6 @@ fn draw_waveform_plot(
         waveform.time_s.len(),
         waveform.path
     ));
-    let desired_size = egui::vec2(ui.available_width().max(360.0), 300.0);
     let (rect, _) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 4.0, egui::Color32::from_gray(16));
@@ -1161,6 +1192,10 @@ fn draw_waveform_plot(
         font,
         egui::Color32::LIGHT_GRAY,
     );
+}
+
+pub(super) fn scope_plot_size(available: egui::Vec2) -> egui::Vec2 {
+    egui::vec2(available.x.max(560.0), available.y.max(360.0))
 }
 
 fn draw_cursor_line(
@@ -1340,8 +1375,9 @@ mod tests {
         WaveformMathDraft, WaveformProbeQuantity, append_derived_waveform_probe,
         derived_waveform_quantity, interpolated_value, parse_waveform_csv_text,
         runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
-        sanitized_probe_name, waveform_measurement, waveform_probe_quantity_from_label,
-        waveform_probe_value_for_badge, waveform_time_range_for_view,
+        sanitized_probe_name, scope_plot_size, waveform_measurement,
+        waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
+        waveform_time_range_for_view,
     };
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -1360,6 +1396,18 @@ mod tests {
         assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
         assert_eq!(waveform.probes[1].label, "i(load)");
         assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+    }
+
+    #[test]
+    fn scope_plot_size_prefers_oscilloscope_workspace() {
+        assert_eq!(
+            scope_plot_size(eframe::egui::vec2(1100.0, 640.0)),
+            eframe::egui::vec2(1100.0, 640.0)
+        );
+        assert_eq!(
+            scope_plot_size(eframe::egui::vec2(320.0, 180.0)),
+            eframe::egui::vec2(560.0, 360.0)
+        );
     }
 
     #[test]

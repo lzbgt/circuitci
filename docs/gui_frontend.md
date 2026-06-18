@@ -140,15 +140,16 @@ library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
 mutation path. Inserted components use the selected model's declared ports to
 seed editable Board IR pin bindings and generated per-pin nets.
-`src/gui/simulation.rs` owns the Simulation stage UI and analog
+`src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
+oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
-`src/gui/waveform.rs` owns waveform CSV
-parsing, plotting, simulation-time scrub/playback controls, cursor measurement
-tools, GUI-only derived waveform channels, promotion of representable derived
-channels to Board IR probes/assertions, and graph-hover/runtime activity
-extraction from loaded waveform artifacts.
+`src/gui/waveform.rs` owns waveform CSV parsing, the primary scope plot,
+simulation-time scrub/playback controls, cursor measurement tools, GUI-only
+derived waveform channels, promotion of representable derived channels to Board
+IR probes/assertions, and graph-hover/runtime activity extraction from loaded
+waveform artifacts.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
@@ -220,21 +221,26 @@ form:
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
-- Simulation: can append a generated-from-Board `analog_transient` scenario
-  with ground/probe net selection, audit generated scenario timing/backend,
-  source/probe/assertion/model-file/node-binding coverage plus readiness gaps with quick editor navigation, edit generated
-  scenario stop time/max step, ground net, SPICE node bindings, and component membership, add selected-net
-  voltage probes to existing analog scenarios, inspect a selected probe badge's assertion rows with
+- Simulation/Scopes: presents a runtime-first oscilloscope workspace linked
+  from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform and
+  probe selection, play/scrub controls, and A/B cursor measurements. Scenario
+  setup is secondary and docked: users can append a generated-from-Board
+  `analog_transient` scenario with ground/probe net selection, audit generated
+  scenario timing/backend, source/probe/assertion/model-file/node-binding
+  coverage plus readiness gaps with quick editor navigation, edit generated
+  scenario stop time/max step, ground net, SPICE node bindings, and component
+  membership, add selected-net voltage probes to existing analog scenarios,
+  inspect a selected probe badge's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for
   that selected probe, quick-add cursor-sampled above/below assertions from a
   hovered schematic probe badge, add sample/min/max probe assertions, edit
-  file-backed SPICE decks declared by analog scenarios, then runs validation through the engine,
-  plots emitted CSV waveforms, adds GUI-only derived difference/sum/product/ratio
-  channels, can promote representable derived channels to explicit analog probes
-  or probes plus assertions, provides simulation-time scrub/playback, A/B cursor measurements with
-  min/max and delta values, and lists generated SPICE
-  decks, artifacts, findings, and limitations.
+  file-backed SPICE decks declared by analog scenarios, run validation through
+  the engine, plot emitted CSV waveforms, add GUI-only derived
+  difference/sum/product/ratio channels, promote representable derived channels
+  to explicit analog probes or probes plus assertions, and inspect generated
+  SPICE decks, artifacts, findings, and limitations without turning the scope
+  view into a form-first page.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. Load, import,
