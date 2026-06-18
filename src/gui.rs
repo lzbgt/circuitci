@@ -1098,14 +1098,16 @@ impl CircuitCiApp {
     }
 }
 
-fn validate_from_gui<F>(
+fn validate_from_gui<F, C>(
     project_path: &Path,
     profile: &str,
     output: &Path,
     mut on_progress: F,
+    should_cancel: C,
 ) -> Result<(ValidationReport, String)>
 where
     F: FnMut(&'static str, String),
+    C: Fn() -> bool,
 {
     let command = format!(
         "circuitci-gui validate {} --profile {} --output {}",
@@ -1113,12 +1115,13 @@ where
         profile,
         display_path(output)
     );
-    let report = crate::suite::validate_and_write_project_report_with_progress(
+    let report = crate::suite::validate_and_write_project_report_with_progress_and_cancel(
         project_path,
         profile,
         output,
         command,
         &mut on_progress,
+        should_cancel,
     )?;
     on_progress(
         "Loading markdown report",
@@ -1408,6 +1411,7 @@ board:
             "default",
             output.path(),
             |stage, _detail| stages.push(stage.to_string()),
+            || false,
         )
         .unwrap();
 

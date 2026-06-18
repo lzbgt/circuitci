@@ -270,6 +270,28 @@ pub fn validate_and_write_project_report_with_progress<F>(
 where
     F: FnMut(&'static str, String),
 {
+    validate_and_write_project_report_with_progress_and_cancel(
+        project_path,
+        profile,
+        output,
+        command,
+        &mut on_progress,
+        || false,
+    )
+}
+
+pub fn validate_and_write_project_report_with_progress_and_cancel<F, C>(
+    project_path: &Path,
+    profile: &str,
+    output: &Path,
+    command: String,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<ValidationReport>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
     on_progress(
         "Loading project",
         format!("Parsing {}.", project_path.to_string_lossy()),
@@ -302,7 +324,12 @@ where
             project.scenarios.len()
         ),
     );
-    let mut outcome = crate::validation::validate_with_progress(&bound, output, &mut on_progress);
+    let mut outcome = crate::validation::validate_with_progress_and_cancel(
+        &bound,
+        output,
+        &mut on_progress,
+        should_cancel,
+    );
     on_progress("Applying profile coverage", format!("Profile {profile}."));
     outcome
         .limitations

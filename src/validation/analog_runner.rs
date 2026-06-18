@@ -35,15 +35,34 @@ pub(super) struct NgspiceRunError {
     pub(super) artifacts: Vec<PathBuf>,
 }
 
-pub(super) fn run_ngspice(
+pub(super) struct NgspiceRunOptions<'a, F, C>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    pub(super) output: &'a Path,
+    pub(super) operating_probe_expressions: &'a [String],
+    pub(super) on_progress: F,
+    pub(super) should_cancel: C,
+}
+
+pub(super) fn run_ngspice<F, C>(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
     backend: &str,
-    output: &Path,
     source_netlist: &Path,
-    operating_probe_expressions: &[String],
-    mut on_progress: impl FnMut(&'static str, String),
-) -> Result<NgspiceRun, NgspiceRunError> {
+    options: NgspiceRunOptions<'_, F, C>,
+) -> Result<NgspiceRun, NgspiceRunError>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let NgspiceRunOptions {
+        output,
+        operating_probe_expressions,
+        mut on_progress,
+        should_cancel,
+    } = options;
     let analog = scenario
         .analog
         .as_ref()
@@ -106,6 +125,7 @@ pub(super) fn run_ngspice(
         &wrapper,
         Duration::from_secs(60),
         Some(&embedded_commands),
+        should_cancel,
     )
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     let mut log_text = String::new();
@@ -250,6 +270,7 @@ fn run_solver_with_timeout(
     wrapper: &Path,
     timeout: Duration,
     embedded_commands: Option<&EmbeddedCommands>,
+    should_cancel: impl Fn() -> bool,
 ) -> Result<SolverOutput, String> {
     if backend == "embedded_ngspice" {
         let commands = embedded_commands
@@ -299,6 +320,17 @@ fn run_solver_with_timeout(
                 return Err(format!(
                     "ngspice transient analysis exceeded {} seconds and was terminated. Stdout bytes: {}, stderr bytes: {}.",
                     timeout.as_secs(),
+                    output.stdout.len(),
+                    output.stderr.len()
+                ));
+            }
+            Ok(None) if should_cancel() => {
+                let _ = child.kill();
+                let output = child.wait_with_output().map_err(|error| {
+                    format!("Failed to collect canceled ngspice output: {error}")
+                })?;
+                return Err(format!(
+                    "ngspice transient analysis was canceled and the external process was terminated. Stdout bytes: {}, stderr bytes: {}.",
                     output.stdout.len(),
                     output.stderr.len()
                 ));
@@ -1069,6 +1101,38 @@ mod tests {
 
         let absolute = rewrite_include_line(".lib /tmp/model.lib", dir.path());
         assert_eq!(absolute, ".lib /tmp/model.lib");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_solver_cancellation_kills_child_process() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::time::{Duration, Instant};
+
+        let dir = tempfile::tempdir().unwrap();
+        let wrapper = dir.path().join("wrapper.cir");
+        std::fs::write(&wrapper, ".end\n").unwrap();
+        let solver = dir.path().join("fake_solver.sh");
+        std::fs::write(&solver, "#!/bin/sh\nsleep 10\n").unwrap();
+        let mut permissions = std::fs::metadata(&solver).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&solver, permissions).unwrap();
+
+        let started = Instant::now();
+        let solver = solver.to_string_lossy().into_owned();
+        let error = match super::run_solver_with_timeout(
+            &solver,
+            &wrapper,
+            Duration::from_secs(30),
+            None,
+            || true,
+        ) {
+            Ok(_) => panic!("canceled solver should not complete successfully"),
+            Err(error) => error,
+        };
+
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert!(error.contains("was canceled"));
     }
 
     #[test]

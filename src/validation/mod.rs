@@ -172,6 +172,19 @@ pub fn validate_with_progress<F>(
 where
     F: FnMut(&'static str, String),
 {
+    validate_with_progress_and_cancel(bound, output, &mut on_progress, || false)
+}
+
+pub fn validate_with_progress_and_cancel<F, C>(
+    bound: &BoundBoard<'_>,
+    output: &Path,
+    mut on_progress: F,
+    should_cancel: C,
+) -> ValidationOutcome
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
     let mut findings = bound.findings.clone();
     let mut limitations = model_quality_limitations(bound);
     if matches!(
@@ -193,6 +206,19 @@ where
     let mut added_control_line_limitation = false;
 
     for scenario in &bound.project.scenarios {
+        if should_cancel() {
+            findings.push(Finding::critical(
+                "VALIDATION_CANCELED",
+                "validation",
+                "Validation was canceled before all scenarios completed.",
+            ));
+            return ValidationOutcome {
+                findings,
+                limitations,
+                artifacts,
+                waveforms,
+            };
+        }
         if !SUPPORTED_SCENARIO_TYPES.contains(&scenario.scenario_type.as_str()) {
             limitations.push(Limitation {
                 id: "UNSUPPORTED_SCENARIO".to_string(),
@@ -470,14 +496,18 @@ where
                     io_voltage::validate_io_voltage_compatible(bound, scenario, &mut findings)
                 }
                 SPICE_TRANSIENT_ANALYSIS if scenario.scenario_type == "analog_transient" => {
+                    let mut sinks = analog_spice::AnalogTransientSinks {
+                        findings: &mut findings,
+                        artifacts: &mut artifacts,
+                        waveforms: &mut waveforms,
+                    };
                     analog_spice::validate_spice_transient_with_progress(
                         bound,
                         scenario,
-                        &mut findings,
-                        &mut artifacts,
-                        &mut waveforms,
+                        &mut sinks,
                         output,
                         &mut on_progress,
+                        &should_cancel,
                     )
                 }
                 MOTOR_BRIDGE_BUDGET_VALID if scenario.scenario_type == "motor_drive" => {

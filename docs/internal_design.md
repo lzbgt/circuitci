@@ -26,12 +26,15 @@ routing, the left project panel, the status panel, Project/Reports views, and
 finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
 state, worker-thread launch, channel polling, stale-result rejection, and
 cancel-request handling for validation, scenario suggestion, and KiCad/SPICE
-import actions. Canceling a background job must not try to kill a Rust thread,
-importer, or backend process directly; it marks the current result as ignored
-when the worker returns. Active job events and recent job records are capped,
-in-memory workflow diagnostics with stage, label, outcome, elapsed time, detail,
-and optional output path; they must not be serialized into Board IR or treated
-as design evidence. Validation progress should be emitted from the same path
+import actions. Canceling a background job must not try to kill a Rust thread.
+It sets a shared worker cancellation flag, terminates interruptible external
+ngspice child processes during validation, and marks the current result as
+ignored when the worker returns. Synchronous importer work and embedded backend
+calls are still non-preemptive unless their internals expose safe cancellation
+points. Active job events and recent job records are capped, in-memory workflow
+diagnostics with stage, label, outcome, elapsed time, detail, and optional
+output path; they must not be serialized into Board IR or treated as design
+evidence. Validation progress should be emitted from the same path
 that loads the project, binds models, executes scenarios, prepares and runs
 analog transients, loads waveform artifacts, applies profile coverage,
 assembles reports, and writes artifacts so the GUI does not drift from headless

@@ -5,6 +5,8 @@ use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -18,6 +20,7 @@ pub(super) struct BackgroundGuiJob {
     label: &'static str,
     target: String,
     canceled: bool,
+    cancel_token: Arc<AtomicBool>,
     events: Vec<BackgroundJobEvent>,
 }
 
@@ -94,7 +97,7 @@ impl CircuitCiApp {
         let profile = self.profile.clone();
         let output_dir = PathBuf::from(self.output_dir.clone());
         let target = format!("{} -> {}", project_path.display(), output_dir.display());
-        self.start_background_job("validation", target, move |sender| {
+        self.start_background_job("validation", target, move |sender, cancel_token| {
             let thread_project_path = project_path.clone();
             let thread_profile = profile.clone();
             let thread_output_dir = output_dir.clone();
@@ -113,6 +116,7 @@ impl CircuitCiApp {
                     &thread_profile,
                     &thread_output_dir,
                     |stage, detail| send_background_progress(&sender, stage, detail),
+                    || cancel_token.load(Ordering::Relaxed),
                 )
                 .map(|(report, markdown)| ValidationJobOutput { report, markdown });
                 send_background_progress(
@@ -136,30 +140,34 @@ impl CircuitCiApp {
         let project_path = PathBuf::from(self.project_path.clone());
         let profile = self.profile.clone();
         let target = format!("{} ({profile})", project_path.display());
-        self.start_background_job("scenario suggestions", target, move |sender| {
-            let thread_project_path = project_path.clone();
-            let thread_profile = profile.clone();
-            thread::spawn(move || {
-                send_background_progress(
-                    &sender,
-                    "Generating suggestions",
-                    format!("{} ({thread_profile})", thread_project_path.display()),
-                );
-                let result = suggest_from_gui(&thread_project_path, &thread_profile);
-                send_background_progress(
-                    &sender,
-                    "Suggestions finished",
-                    "Applying generated scenario YAML.".to_string(),
-                );
-                let _ = sender.send(BackgroundJobMessage::Finished(
-                    BackgroundJobResult::Suggestions(Box::new(SuggestionJobResult {
-                        project_path: thread_project_path,
-                        profile: thread_profile,
-                        result,
-                    })),
-                ));
-            });
-        });
+        self.start_background_job(
+            "scenario suggestions",
+            target,
+            move |sender, _cancel_token| {
+                let thread_project_path = project_path.clone();
+                let thread_profile = profile.clone();
+                thread::spawn(move || {
+                    send_background_progress(
+                        &sender,
+                        "Generating suggestions",
+                        format!("{} ({thread_profile})", thread_project_path.display()),
+                    );
+                    let result = suggest_from_gui(&thread_project_path, &thread_profile);
+                    send_background_progress(
+                        &sender,
+                        "Suggestions finished",
+                        "Applying generated scenario YAML.".to_string(),
+                    );
+                    let _ = sender.send(BackgroundJobMessage::Finished(
+                        BackgroundJobResult::Suggestions(Box::new(SuggestionJobResult {
+                            project_path: thread_project_path,
+                            profile: thread_profile,
+                            result,
+                        })),
+                    ));
+                });
+            },
+        );
     }
 
     pub(super) fn import_kicad_schematic(&mut self) {
@@ -175,40 +183,44 @@ impl CircuitCiApp {
         let state_key = self.kicad_schematic_import_key();
         let prior_project_path = self.project_path.clone();
         let target = format!("{} -> {}", schematic.display(), output.display());
-        self.start_background_job("KiCad schematic import", target, move |sender| {
-            thread::spawn(move || {
-                let options = crate::importers::kicad::KicadImportOptions {
-                    input: schematic,
-                    output: output.clone(),
-                    name,
-                    default_model,
-                    mapping,
-                };
-                let result = crate::importers::kicad_sch::import_kicad_schematic_with_progress(
-                    &options,
-                    |stage, detail| send_background_progress(&sender, stage, detail),
-                );
-                let output_project_path = output.clone();
-                send_background_progress(
-                    &sender,
-                    "Schematic import finished",
-                    format!("Writing {}.", output_project_path.display()),
-                );
-                let _ = sender.send(BackgroundJobMessage::Finished(
-                    BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
-                        kind: ImportProjectKind::KiCadSchematic,
-                        prior_project_path,
-                        state_key,
-                        output_project_path,
-                        import_pcb_project_path: Some(output.to_string_lossy().into_owned()),
-                        next_stage: None,
-                        success_status: "KiCad schematic imported.",
-                        success_diagnostic: "KiCad schematic imported to Board IR.".to_string(),
-                        result,
-                    })),
-                ));
-            });
-        });
+        self.start_background_job(
+            "KiCad schematic import",
+            target,
+            move |sender, _cancel_token| {
+                thread::spawn(move || {
+                    let options = crate::importers::kicad::KicadImportOptions {
+                        input: schematic,
+                        output: output.clone(),
+                        name,
+                        default_model,
+                        mapping,
+                    };
+                    let result = crate::importers::kicad_sch::import_kicad_schematic_with_progress(
+                        &options,
+                        |stage, detail| send_background_progress(&sender, stage, detail),
+                    );
+                    let output_project_path = output.clone();
+                    send_background_progress(
+                        &sender,
+                        "Schematic import finished",
+                        format!("Writing {}.", output_project_path.display()),
+                    );
+                    let _ = sender.send(BackgroundJobMessage::Finished(
+                        BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
+                            kind: ImportProjectKind::KiCadSchematic,
+                            prior_project_path,
+                            state_key,
+                            output_project_path,
+                            import_pcb_project_path: Some(output.to_string_lossy().into_owned()),
+                            next_stage: None,
+                            success_status: "KiCad schematic imported.",
+                            success_diagnostic: "KiCad schematic imported to Board IR.".to_string(),
+                            result,
+                        })),
+                    ));
+                });
+            },
+        );
     }
 
     pub(super) fn import_kicad_pcb(&mut self) {
@@ -223,7 +235,7 @@ impl CircuitCiApp {
             project.display(),
             output.display()
         );
-        self.start_background_job("KiCad PCB import", target, move |sender| {
+        self.start_background_job("KiCad PCB import", target, move |sender, _cancel_token| {
             thread::spawn(move || {
                 let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
                     input,
@@ -281,7 +293,7 @@ impl CircuitCiApp {
         let state_key = self.spice_import_key();
         let prior_project_path = self.project_path.clone();
         let target = format!("{} -> {}", deck.display(), output.display());
-        self.start_background_job("SPICE deck import", target, move |sender| {
+        self.start_background_job("SPICE deck import", target, move |sender, _cancel_token| {
             thread::spawn(move || {
                 let options = crate::importers::spice::SpiceImportOptions {
                     input: deck.clone(),
@@ -325,9 +337,10 @@ impl CircuitCiApp {
             return;
         };
         job.canceled = true;
-        self.status = "Cancel requested; background result will be ignored.".to_string();
+        job.cancel_token.store(true, Ordering::Relaxed);
+        self.status = "Cancel requested; worker will stop where supported.".to_string();
         self.push_diagnostic(
-            "Background jobs cannot interrupt an in-flight engine/importer call yet; the result will be ignored.",
+            "Cancel requested. External ngspice validation runs are terminated where possible; importer and embedded calls still finish before their result is ignored.",
         );
     }
 
@@ -422,7 +435,7 @@ impl CircuitCiApp {
 
     fn start_background_job<F>(&mut self, label: &'static str, target: String, spawn: F)
     where
-        F: FnOnce(mpsc::Sender<BackgroundJobMessage>),
+        F: FnOnce(mpsc::Sender<BackgroundJobMessage>, Arc<AtomicBool>),
     {
         if self.background_job.is_some() {
             self.status = "Background job already running.".to_string();
@@ -431,13 +444,15 @@ impl CircuitCiApp {
         }
 
         let (sender, receiver) = mpsc::channel();
-        spawn(sender);
+        let cancel_token = Arc::new(AtomicBool::new(false));
+        spawn(sender, Arc::clone(&cancel_token));
         self.background_job = Some(BackgroundGuiJob {
             receiver,
             started_at: Instant::now(),
             label,
             target,
             canceled: false,
+            cancel_token,
             events: Vec::new(),
         });
         self.status = format!("Background {label} running.");
@@ -737,11 +752,11 @@ fn send_background_progress(
 #[cfg(test)]
 mod tests {
     use super::{
-        BACKGROUND_JOB_EVENT_LIMIT, BACKGROUND_JOB_HISTORY_LIMIT, BackgroundJobMessage,
-        BackgroundJobProgress, CircuitCiApp, ImportProjectJobResult, ImportProjectKind,
-        ValidationJobResult,
+        BACKGROUND_JOB_EVENT_LIMIT, BACKGROUND_JOB_HISTORY_LIMIT, BackgroundJobProgress,
+        CircuitCiApp, ImportProjectJobResult, ImportProjectKind, ValidationJobResult,
     };
     use std::path::PathBuf;
+    use std::sync::atomic::Ordering;
 
     #[test]
     fn cancel_without_job_is_noop() {
@@ -753,7 +768,11 @@ mod tests {
     #[test]
     fn progress_messages_update_active_job_events() {
         let mut app = CircuitCiApp::default();
-        app.start_background_job("validation", "project -> out".to_string(), |_sender| {});
+        app.start_background_job(
+            "validation",
+            "project -> out".to_string(),
+            |_sender, _cancel_token| {},
+        );
         app.push_background_job_event(BackgroundJobProgress {
             stage: "Loading project",
             detail: "project.yaml".to_string(),
@@ -769,7 +788,11 @@ mod tests {
     #[test]
     fn progress_event_history_is_capped() {
         let mut app = CircuitCiApp::default();
-        app.start_background_job("validation", "project -> out".to_string(), |_sender| {});
+        app.start_background_job(
+            "validation",
+            "project -> out".to_string(),
+            |_sender, _cancel_token| {},
+        );
         for index in 0..(BACKGROUND_JOB_EVENT_LIMIT + 2) {
             app.push_background_job_event(BackgroundJobProgress {
                 stage: "Step",
@@ -780,6 +803,26 @@ mod tests {
         let events = app.background_job_events().expect("active job");
         assert_eq!(events.len(), BACKGROUND_JOB_EVENT_LIMIT);
         assert_eq!(events[0].detail, "event 2");
+    }
+
+    #[test]
+    fn cancel_sets_worker_cancel_token() {
+        let mut app = CircuitCiApp::default();
+        app.start_background_job(
+            "validation",
+            "project -> out".to_string(),
+            |_sender, _cancel_token| {},
+        );
+
+        app.cancel_background_job();
+
+        let job = app.background_job.as_ref().expect("active job");
+        assert!(job.canceled);
+        assert!(job.cancel_token.load(Ordering::Relaxed));
+        assert_eq!(
+            app.status,
+            "Cancel requested; worker will stop where supported."
+        );
     }
 
     #[test]

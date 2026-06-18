@@ -15,25 +15,34 @@ use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
 use super::analog_runner::{
-    BackendSelection, backend_name, embedded_solver_unavailable, external_backend_unavailable,
-    run_ngspice, select_backend,
+    BackendSelection, NgspiceRunOptions, backend_name, embedded_solver_unavailable,
+    external_backend_unavailable, run_ngspice, select_backend,
 };
 use super::analog_soa::evaluate_soa_limits;
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
 
-pub(super) fn validate_spice_transient_with_progress<F>(
+pub(super) struct AnalogTransientSinks<'a> {
+    pub(super) findings: &'a mut Vec<Finding>,
+    pub(super) artifacts: &'a mut Vec<String>,
+    pub(super) waveforms: &'a mut Vec<String>,
+}
+
+pub(super) fn validate_spice_transient_with_progress<F, C>(
     bound: &BoundBoard<'_>,
     scenario: &Scenario,
-    findings: &mut Vec<Finding>,
-    artifacts: &mut Vec<String>,
-    waveforms: &mut Vec<String>,
+    sinks: &mut AnalogTransientSinks<'_>,
     output: &Path,
     mut on_progress: F,
+    should_cancel: C,
 ) where
     F: FnMut(&'static str, String),
+    C: Fn() -> bool,
 {
+    let findings = &mut *sinks.findings;
+    let artifacts = &mut *sinks.artifacts;
+    let waveforms = &mut *sinks.waveforms;
     on_progress(
         "Preparing analog transient",
         format!("Checking analog scenario {}.", scenario.name),
@@ -46,6 +55,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
         );
         return;
     };
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
+    }
 
     on_progress(
         "Checking analog model evidence",
@@ -67,6 +80,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
             scenario,
             "analog_transient requires node_bindings and pin_bindings.",
         );
+        return;
+    }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
         return;
     }
     for model_file in &analog.model_files {
@@ -119,6 +136,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
             }
         }
         push_artifact(artifacts, &path);
+    }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
     }
     let mut bound_nodes = BTreeSet::new();
     for binding in &analog.node_bindings {
@@ -189,6 +210,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
             );
             return;
         }
+    }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
     }
 
     if analog.analysis.analysis_type != "tran" {
@@ -302,6 +327,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
         );
         findings.push(finding);
     }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
+        return;
+    }
 
     let run_dir = output
         .join("analog")
@@ -319,6 +348,10 @@ pub(super) fn validate_spice_transient_with_progress<F>(
                 run_dir.display()
             ),
         ));
+        return;
+    }
+    if should_cancel() {
+        push_canceled_finding(findings, scenario);
         return;
     }
     on_progress(
@@ -401,10 +434,13 @@ pub(super) fn validate_spice_transient_with_progress<F>(
         bound,
         scenario,
         backend,
-        output,
         &source_netlist,
-        &operating_expressions,
-        &mut on_progress,
+        NgspiceRunOptions {
+            output,
+            operating_probe_expressions: &operating_expressions,
+            on_progress: &mut on_progress,
+            should_cancel,
+        },
     ) {
         Ok(run) => {
             on_progress(
@@ -454,6 +490,14 @@ pub(super) fn validate_spice_transient_with_progress<F>(
             findings.push(finding);
         }
     }
+}
+
+fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
+    findings.push(Finding::critical(
+        "VALIDATION_CANCELED",
+        &scenario.name,
+        "Analog transient validation was canceled before completion.",
+    ));
 }
 
 fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
