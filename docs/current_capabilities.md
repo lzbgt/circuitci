@@ -32,9 +32,11 @@ net with an explicit net kind, place the label at the view center or by canvas
 click/context menu, or rename the selected net to the typed name. Users can
 double-click or context-edit a placed label with existing-net autocomplete:
 choosing an existing net retargets that label, while typing a missing net
-renames the underlying Board IR net through the validated rename path. Users can
-drag labels to reposition them and finish an active wire on a label to connect
-to that label's underlying net; converting, moving, or deleting labels does not
+renames the underlying Board IR net through the validated rename path. Selecting
+a net traces its wires, peer labels, and connected pin anchors, and label
+context menus can jump to the next peer label on the same net. Users can drag
+labels to reposition them and finish an active wire on a label to connect to
+that label's underlying net; converting, moving, or deleting labels does not
 create hidden net ties, hierarchical ports, or PCB
 evidence.
 

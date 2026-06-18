@@ -28,6 +28,7 @@ mod sketch_canvas;
 mod sketch_canvas_menus;
 #[cfg(test)]
 mod sketch_canvas_tests;
+mod sketch_connectivity;
 mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inspector;

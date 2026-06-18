@@ -410,6 +410,8 @@ impl CircuitCiApp {
         &mut self,
         ui: &mut egui::Ui,
         badge: &SketchNetLabelBadge,
+        badges: &[SketchNetLabelBadge],
+        canvas: egui::Rect,
     ) {
         ui.strong(format!("{} {}", badge.kind.label(), badge.net_id));
         if ui.button("Inspect Net").clicked() {
@@ -420,6 +422,17 @@ impl CircuitCiApp {
         }
         if ui.button("Edit Label").clicked() {
             self.begin_net_label_inline_edit(badge);
+            ui.close();
+        }
+        let peer_count = badges
+            .iter()
+            .filter(|peer| peer.net_id == badge.net_id && peer.id != badge.id)
+            .count();
+        if ui
+            .add_enabled(peer_count > 0, egui::Button::new("Next Peer Label"))
+            .clicked()
+        {
+            self.focus_next_peer_net_label(badge, badges, canvas);
             ui.close();
         }
         ui.separator();
@@ -451,6 +464,36 @@ impl CircuitCiApp {
             ui.close();
         }
     }
+
+    fn focus_next_peer_net_label(
+        &mut self,
+        current: &SketchNetLabelBadge,
+        badges: &[SketchNetLabelBadge],
+        canvas: egui::Rect,
+    ) {
+        let Some(next) = next_peer_net_label(current, badges) else {
+            return;
+        };
+        self.sketch_pan += canvas.center() - next.rect.center();
+        self.set_single_sketch_selection(Some(SketchSelection::Net(next.net_id.clone())));
+        self.status = format!(
+            "Centered peer {} for net {}.",
+            next.kind.label(),
+            next.net_id
+        );
+    }
+}
+
+fn next_peer_net_label<'a>(
+    current: &SketchNetLabelBadge,
+    badges: &'a [SketchNetLabelBadge],
+) -> Option<&'a SketchNetLabelBadge> {
+    let peers: Vec<_> = badges
+        .iter()
+        .filter(|badge| badge.net_id == current.net_id)
+        .collect();
+    let current_index = peers.iter().position(|badge| badge.id == current.id)?;
+    peers.get((current_index + 1) % peers.len()).copied()
 }
 
 pub(super) fn layout_net_label_badges(
@@ -845,6 +888,15 @@ board:
 "
     }
 
+    fn badge(id: &str, net_id: &str) -> SketchNetLabelBadge {
+        SketchNetLabelBadge {
+            id: id.to_string(),
+            net_id: net_id.to_string(),
+            kind: SketchNetLabelKind::Local,
+            rect: egui::Rect::from_min_size(egui::Pos2::ZERO, egui::Vec2::splat(24.0)),
+        }
+    }
+
     #[test]
     fn append_convert_and_remove_schematic_net_label() {
         let edited = append_schematic_net_label(
@@ -879,6 +931,20 @@ board:
         let removed = remove_schematic_net_label(&moved, "label_sig").unwrap();
         let snapshot = load_project_snapshot_from_yaml(&removed).unwrap();
         assert!(snapshot.net_labels.is_empty());
+    }
+
+    #[test]
+    fn next_peer_net_label_cycles_same_net_labels_only() {
+        let labels = [
+            badge("label_sig", "sig"),
+            badge("label_other", "other"),
+            badge("offpage_sig", "sig"),
+        ];
+
+        let next = next_peer_net_label(&labels[0], &labels).unwrap();
+        assert_eq!(next.id, "offpage_sig");
+        let wrapped = next_peer_net_label(next, &labels).unwrap();
+        assert_eq!(wrapped.id, "label_sig");
     }
 
     #[test]

@@ -20,7 +20,9 @@ use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
     waveform_probe_value_for_badge,
 };
-use super::{CircuitCiApp, analog, sketch_bundles, sketch_hierarchy, sketch_net_labels};
+use super::{
+    CircuitCiApp, analog, sketch_bundles, sketch_connectivity, sketch_hierarchy, sketch_net_labels,
+};
 
 impl CircuitCiApp {
     pub(super) fn draw_board_graph_sized(
@@ -75,6 +77,12 @@ impl CircuitCiApp {
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
+        let connectivity_highlight =
+            sketch_connectivity::SketchConnectivityHighlight::from_selection(
+                self.selected_sketch_items
+                    .iter()
+                    .chain(self.selected_sketch_item.iter()),
+            );
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
@@ -435,6 +443,7 @@ impl CircuitCiApp {
             };
             let active = self.wire_from_component.as_ref() == Some(&anchor.component_id)
                 && self.wire_pin_id.trim() == anchor.pin;
+            let connected = connectivity_highlight.anchor_connected(anchor);
             let target = wire_drag_target.as_ref().is_some_and(|target| {
                 matches!(
                     target,
@@ -445,7 +454,7 @@ impl CircuitCiApp {
                     } if component_id == &anchor.component_id && pin == &anchor.pin
                 )
             });
-            draw_sketch_pin_anchor(&painter, anchor, active || target, opacity);
+            draw_sketch_pin_anchor(&painter, anchor, active || target || connected, opacity);
         }
         if let Some(target) = &wire_drag_target {
             draw_wire_drag_target(&painter, target);
@@ -989,7 +998,7 @@ impl CircuitCiApp {
             });
         } else if let Some(badge) = hovered_net_label_badge {
             response.context_menu(|ui| {
-                self.net_label_context_menu(ui, badge);
+                self.net_label_context_menu(ui, badge, &net_label_badges, rect);
             });
             response.on_hover_ui(|ui| {
                 sketch_net_labels::net_label_tooltip(ui, badge);

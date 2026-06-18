@@ -126,11 +126,14 @@ missing Board IR net with an explicit net kind before placing the display
 badge. Labels may be dragged to reposition their display point, double-clicked
 or context-edited with existing-net autocomplete, clicked to select the
 underlying net, used as active-wire drop targets for that same underlying net,
-converted between local and off-page presentation, removed when their net is
-removed, and rewritten when a net is renamed. Inline editing to an existing net
-retargets only that label; inline editing to a missing net renames the
-underlying Board IR net through `sketch_rename`. They annotate ordinary Board IR
-nets and must not create hidden connectivity, bus topology, sheet ports, or PCB
+cycled to the next peer label on the same net, converted between local and
+off-page presentation, removed when their net is removed, and rewritten when a
+net is renamed. Inline editing to an existing net retargets only that label;
+inline editing to a missing net renames the underlying Board IR net through
+`sketch_rename`. Selecting a net may transiently highlight matching wires, peer
+labels, and connected pin anchors, but this derived trace is not persisted. They
+annotate ordinary Board IR nets and must not create hidden connectivity, bus
+topology, sheet ports, or PCB
 evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
 hierarchy grouping for the Sketch stage. It may use imported KiCad
 `component.source.instances[*].path` records and importer-generated namespaced
