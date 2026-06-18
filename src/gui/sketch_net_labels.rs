@@ -3,10 +3,12 @@ use eframe::egui;
 
 use super::CircuitCiApp;
 use super::sketch::{
-    ProjectSnapshot, SketchNetLabelKind, SketchPosition, SketchViewport,
-    encode_edited_project_yaml, persisted_wire_route_point_from_screen_with_snap,
-    screen_wire_route_point_from_persisted, validated_graph_id, with_opacity,
+    ProjectSnapshot, SketchNetLabelKind, SketchPosition, SketchSelection, SketchViewport,
+    encode_edited_project_yaml, ensure_board_child_mapping_mut, normalized_net_kind,
+    persisted_wire_route_point_from_screen_with_snap, screen_wire_route_point_from_persisted,
+    validated_graph_id, with_opacity,
 };
+use super::sketch_rename::rename_net;
 
 #[derive(Debug, Clone)]
 pub(super) struct SketchNetLabelBadge {
@@ -17,6 +19,116 @@ pub(super) struct SketchNetLabelBadge {
 }
 
 impl CircuitCiApp {
+    pub(super) fn sketch_net_label_panel(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        ui.collapsing("Named Net Labels", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Net");
+                ui.text_edit_singleline(&mut self.sketch_net_label_net_id);
+            });
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt("sketch_net_label_kind")
+                    .selected_text(self.sketch_net_label_kind.label())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.sketch_net_label_kind,
+                            SketchNetLabelKind::Local,
+                            SketchNetLabelKind::Local.label(),
+                        );
+                        ui.selectable_value(
+                            &mut self.sketch_net_label_kind,
+                            SketchNetLabelKind::OffPage,
+                            SketchNetLabelKind::OffPage.label(),
+                        );
+                    });
+                egui::ComboBox::from_id_salt("sketch_net_label_net_kind")
+                    .selected_text(&self.sketch_net_label_net_kind)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.sketch_net_label_net_kind,
+                            "digital_or_analog".to_string(),
+                            "digital_or_analog",
+                        );
+                        ui.selectable_value(
+                            &mut self.sketch_net_label_net_kind,
+                            "power".to_string(),
+                            "power",
+                        );
+                        ui.selectable_value(
+                            &mut self.sketch_net_label_net_kind,
+                            "ground".to_string(),
+                            "ground",
+                        );
+                    });
+            });
+            let net_id = self.sketch_net_label_net_id.trim();
+            let net_exists = snapshot.nets_detail.iter().any(|net| net.id == net_id);
+            if net_id.is_empty() {
+                ui.label("Type a Board IR net ID to place a label.");
+            } else if net_exists {
+                ui.label("Existing net will be reused.");
+            } else {
+                ui.label("Missing net will be created with the selected kind.");
+            }
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        !self.project_yaml.trim().is_empty(),
+                        egui::Button::new("Place At View Center"),
+                    )
+                    .clicked()
+                    && let Some(canvas) = self.sketch_last_canvas_rect
+                {
+                    self.apply_add_or_create_schematic_net_label_at(
+                        canvas,
+                        self.sketch_viewport(),
+                        canvas.center(),
+                    );
+                }
+                let place_label = if self.sketch_net_label_place_armed {
+                    "Placement Armed"
+                } else {
+                    "Place On Canvas"
+                };
+                if ui
+                    .add_enabled(
+                        !self.project_yaml.trim().is_empty(),
+                        egui::Button::new(place_label),
+                    )
+                    .clicked()
+                {
+                    self.sketch_net_label_place_armed = !self.sketch_net_label_place_armed;
+                    if self.sketch_net_label_place_armed {
+                        self.sketch_palette_place_armed = false;
+                        self.sketch_library_place_armed = false;
+                        self.status =
+                            "Click blank schematic space to place a named net label.".to_string();
+                    }
+                }
+                if self.sketch_net_label_place_armed && ui.button("Cancel").clicked() {
+                    self.sketch_net_label_place_armed = false;
+                    self.status = "Named net label placement canceled.".to_string();
+                }
+            });
+            if let Some(SketchSelection::Net(net_id)) = self.selected_sketch_item.clone() {
+                ui.horizontal(|ui| {
+                    if ui.button("Load Selected Net").clicked() {
+                        self.sketch_net_label_net_id = net_id.clone();
+                    }
+                    if ui
+                        .add_enabled(
+                            !self.sketch_net_label_net_id.trim().is_empty()
+                                && self.sketch_net_label_net_id.trim() != net_id,
+                            egui::Button::new("Rename Selected To Typed"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_rename_selected_net_to_typed_label(&net_id);
+                    }
+                });
+            }
+        });
+    }
+
     pub(super) fn apply_add_schematic_net_label_at(
         &mut self,
         canvas: egui::Rect,
@@ -41,6 +153,65 @@ impl CircuitCiApp {
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Placed {} for net {net_id}.", kind.label()),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_add_or_create_schematic_net_label_at(
+        &mut self,
+        canvas: egui::Rect,
+        viewport: SketchViewport,
+        position: egui::Pos2,
+    ) {
+        let (x, y) = persisted_wire_route_point_from_screen_with_snap(
+            canvas,
+            position,
+            viewport,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        let net_id = self.sketch_net_label_net_id.trim().to_string();
+        match append_or_create_schematic_net_label(
+            &self.project_yaml,
+            &net_id,
+            &self.sketch_net_label_net_kind,
+            self.sketch_net_label_kind,
+            SketchPosition { x, y },
+        ) {
+            Ok((updated, created_net)) => {
+                self.sketch_net_label_place_armed = false;
+                self.set_single_sketch_selection(Some(super::sketch::SketchSelection::Net(
+                    net_id.clone(),
+                )));
+                let status = if created_net {
+                    format!(
+                        "Created net {net_id} and placed {}.",
+                        self.sketch_net_label_kind.label()
+                    )
+                } else {
+                    format!(
+                        "Placed {} for existing net {net_id}.",
+                        self.sketch_net_label_kind.label()
+                    )
+                };
+                self.apply_edited_project_yaml(updated, &status);
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_rename_selected_net_to_typed_label(&mut self, selected_net: &str) {
+        let new_id = self.sketch_net_label_net_id.trim().to_string();
+        match rename_net(&self.project_yaml, selected_net, &new_id) {
+            Ok(updated) => {
+                self.set_single_sketch_selection(Some(super::sketch::SketchSelection::Net(
+                    new_id.clone(),
+                )));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Net {selected_net} renamed to {new_id}."),
                 );
             }
             Err(error) => self.record_error(error),
@@ -238,6 +409,36 @@ pub(super) fn append_schematic_net_label(
     let labels = ensure_net_labels_mapping(&mut yaml)?;
     labels.insert(key(&label_id), label_value(net_id, kind, position)?);
     encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn append_or_create_schematic_net_label(
+    text: &str,
+    net_id: &str,
+    net_kind: &str,
+    kind: SketchNetLabelKind,
+    position: SketchPosition,
+) -> Result<(String, bool)> {
+    let net_id = validated_graph_id(net_id, "net")?;
+    let net_kind = normalized_net_kind(net_kind)?;
+    validate_position(position)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let created_net = !project.board.nets.contains_key(net_id);
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    if created_net {
+        let nets = ensure_board_child_mapping_mut(&mut yaml, "nets")?;
+        let mut net = serde_yaml_ng::Mapping::new();
+        net.insert(
+            key("kind"),
+            serde_yaml_ng::Value::String(net_kind.to_string()),
+        );
+        nets.insert(key(net_id), serde_yaml_ng::Value::Mapping(net));
+    }
+    let label_id = next_label_id(&project, net_id, kind);
+    let labels = ensure_net_labels_mapping(&mut yaml)?;
+    labels.insert(key(&label_id), label_value(net_id, kind, position)?);
+    Ok((encode_edited_project_yaml(yaml)?, created_net))
 }
 
 pub(super) fn remove_schematic_net_label(text: &str, label_id: &str) -> Result<String> {
@@ -500,5 +701,69 @@ board:
         .unwrap_err();
 
         assert!(error.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn append_or_create_schematic_net_label_creates_missing_net() {
+        let (edited, created) = append_or_create_schematic_net_label(
+            project_yaml(),
+            "typed_bus",
+            "power",
+            SketchNetLabelKind::OffPage,
+            SketchPosition { x: 128.0, y: 160.0 },
+        )
+        .unwrap();
+
+        assert!(created);
+        validate_board_ir_yaml_text(&edited).unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let net = snapshot
+            .nets_detail
+            .iter()
+            .find(|net| net.id == "typed_bus")
+            .expect("created net is present");
+        assert_eq!(net.kind, "power");
+        assert_eq!(snapshot.net_labels.len(), 1);
+        assert_eq!(snapshot.net_labels[0].id, "offpage_typed_bus");
+        assert_eq!(snapshot.net_labels[0].net_id, "typed_bus");
+        assert_eq!(snapshot.net_labels[0].kind, SketchNetLabelKind::OffPage);
+    }
+
+    #[test]
+    fn append_or_create_schematic_net_label_reuses_existing_net() {
+        let (edited, created) = append_or_create_schematic_net_label(
+            project_yaml(),
+            "sig",
+            "ground",
+            SketchNetLabelKind::Local,
+            SketchPosition { x: 32.0, y: 48.0 },
+        )
+        .unwrap();
+
+        assert!(!created);
+        validate_board_ir_yaml_text(&edited).unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let net = snapshot
+            .nets_detail
+            .iter()
+            .find(|net| net.id == "sig")
+            .expect("existing net is present");
+        assert_eq!(net.kind, "digital_or_analog");
+        assert_eq!(snapshot.net_labels.len(), 1);
+        assert_eq!(snapshot.net_labels[0].id, "label_sig");
+    }
+
+    #[test]
+    fn append_or_create_schematic_net_label_rejects_unknown_net_kind() {
+        let error = append_or_create_schematic_net_label(
+            project_yaml(),
+            "typed_bus",
+            "mystery",
+            SketchNetLabelKind::Local,
+            SketchPosition { x: 32.0, y: 48.0 },
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("Unsupported net kind"));
     }
 }

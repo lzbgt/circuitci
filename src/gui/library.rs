@@ -283,6 +283,7 @@ impl CircuitCiApp {
                     if place_response.drag_started() {
                         self.sketch_library_place_armed = true;
                         self.sketch_palette_place_armed = false;
+                        self.sketch_net_label_place_armed = false;
                         self.status = format!(
                             "Drag to blank schematic space to place {}.",
                             self.selected_library_model
@@ -291,6 +292,7 @@ impl CircuitCiApp {
                         self.sketch_library_place_armed = !self.sketch_library_place_armed;
                         if self.sketch_library_place_armed {
                             self.sketch_palette_place_armed = false;
+                            self.sketch_net_label_place_armed = false;
                             self.status = format!(
                                 "Click blank schematic space to place {}.",
                                 self.selected_library_model

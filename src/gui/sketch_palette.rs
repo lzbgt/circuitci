@@ -364,6 +364,7 @@ impl CircuitCiApp {
                     if place_response.drag_started() {
                         self.sketch_palette_place_armed = true;
                         self.sketch_library_place_armed = false;
+                        self.sketch_net_label_place_armed = false;
                         self.status = format!(
                             "Drag to blank schematic space to place {}.",
                             self.sketch_palette_kind.label()
@@ -372,6 +373,7 @@ impl CircuitCiApp {
                         self.sketch_palette_place_armed = !self.sketch_palette_place_armed;
                         if self.sketch_palette_place_armed {
                             self.sketch_library_place_armed = false;
+                            self.sketch_net_label_place_armed = false;
                         }
                         if self.sketch_palette_place_armed {
                             self.status = format!(

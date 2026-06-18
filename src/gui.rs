@@ -46,7 +46,7 @@ mod spice;
 mod waveform;
 
 use project::PendingProjectAction;
-use sketch::{DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection};
+use sketch::{DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchSelection};
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
@@ -242,6 +242,10 @@ pub struct CircuitCiApp {
     sketch_palette_value: f64,
     sketch_palette_place_armed: bool,
     sketch_library_place_armed: bool,
+    sketch_net_label_net_id: String,
+    sketch_net_label_kind: SketchNetLabelKind,
+    sketch_net_label_net_kind: String,
+    sketch_net_label_place_armed: bool,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
@@ -381,6 +385,10 @@ impl Default for CircuitCiApp {
             ),
             sketch_palette_place_armed: false,
             sketch_library_place_armed: false,
+            sketch_net_label_net_id: "sig".to_string(),
+            sketch_net_label_kind: SketchNetLabelKind::Local,
+            sketch_net_label_net_kind: "digital_or_analog".to_string(),
+            sketch_net_label_place_armed: false,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             sketch_wire_route_drag: None,
@@ -538,6 +546,8 @@ impl CircuitCiApp {
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             self.sketch_primitive_palette(ui);
+            ui.separator();
+            self.sketch_net_label_panel(ui, snapshot);
             ui.separator();
             self.sketch_library_placement_panel(ui);
             ui.separator();

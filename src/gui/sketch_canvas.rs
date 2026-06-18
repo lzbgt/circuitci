@@ -166,7 +166,8 @@ impl CircuitCiApp {
             &response,
             blank_canvas_hovered
                 && !self.sketch_palette_place_armed
-                && !self.sketch_library_place_armed,
+                && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed,
         );
         let viewport = self.sketch_viewport();
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
@@ -449,7 +450,9 @@ impl CircuitCiApp {
         if let Some(target) = &wire_drag_target {
             draw_wire_drag_target(&painter, target);
         }
-        if (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+        if (self.sketch_palette_place_armed
+            || self.sketch_library_place_armed
+            || self.sketch_net_label_place_armed)
             && let Some(pointer) = pointer_hover
             && rect.contains(pointer)
         {
@@ -543,13 +546,17 @@ impl CircuitCiApp {
             } else {
                 None
             };
-            if (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+            if (self.sketch_palette_place_armed
+                || self.sketch_library_place_armed
+                || self.sketch_net_label_place_armed)
                 && placement_target_clear
             {
                 if self.sketch_palette_place_armed {
                     self.apply_insert_sketch_primitive_at(rect, position);
-                } else {
+                } else if self.sketch_library_place_armed {
                     self.apply_insert_selected_library_model_at(rect, position);
+                } else {
+                    self.apply_add_or_create_schematic_net_label_at(rect, viewport, position);
                 }
                 placement_applied = true;
             } else if let Some(badge) = clicked_probe_badge {
@@ -618,7 +625,9 @@ impl CircuitCiApp {
             }
         }
         if !placement_applied
-            && (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+            && (self.sketch_palette_place_armed
+                || self.sketch_library_place_armed
+                || self.sketch_net_label_place_armed)
             && placement_target_clear
             && ui.input(|input| input.pointer.any_released())
             && let Some(position) = pointer_hover
@@ -626,8 +635,10 @@ impl CircuitCiApp {
         {
             if self.sketch_palette_place_armed {
                 self.apply_insert_sketch_primitive_at(rect, position);
-            } else {
+            } else if self.sketch_library_place_armed {
                 self.apply_insert_selected_library_model_at(rect, position);
+            } else {
+                self.apply_add_or_create_schematic_net_label_at(rect, viewport, position);
             }
         }
 
@@ -675,6 +686,7 @@ impl CircuitCiApp {
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed
                 && let Some((edge, point_index)) = hovered_route_handle
             {
                 self.sketch_wire_route_drag = Some(super::SketchWireRouteDrag {
@@ -687,6 +699,7 @@ impl CircuitCiApp {
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed
                 && let Some(badge) = clicked_net_label_badge
             {
                 self.sketch_net_label_drag = Some(super::SketchNetLabelDrag {
@@ -698,6 +711,7 @@ impl CircuitCiApp {
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed
                 && let Some(edge) = clicked_wire
             {
                 let preview = snap_screen_point_to_grid(
@@ -896,10 +910,13 @@ impl CircuitCiApp {
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
         if cancel_canvas_mode_pressed
-            && (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+            && (self.sketch_palette_place_armed
+                || self.sketch_library_place_armed
+                || self.sketch_net_label_place_armed)
         {
             self.sketch_palette_place_armed = false;
             self.sketch_library_place_armed = false;
+            self.sketch_net_label_place_armed = false;
             self.status = "Canvas placement canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.wire_from_component.is_some() {
             self.wire_from_component = None;
@@ -1011,9 +1028,14 @@ impl CircuitCiApp {
             response.context_menu(|ui| {
                 self.sketch_canvas_context_menu(ui, rect, pointer_hover);
             });
-            if self.sketch_palette_place_armed || self.sketch_library_place_armed {
+            if self.sketch_palette_place_armed
+                || self.sketch_library_place_armed
+                || self.sketch_net_label_place_armed
+            {
                 let label = if self.sketch_palette_place_armed {
                     self.sketch_palette_kind.label()
+                } else if self.sketch_net_label_place_armed {
+                    self.sketch_net_label_kind.label()
                 } else {
                     self.selected_library_model.as_str()
                 };
@@ -1209,6 +1231,13 @@ impl CircuitCiApp {
     fn canvas_placement_label(&self) -> String {
         if self.sketch_palette_place_armed {
             self.sketch_palette_kind.label().to_string()
+        } else if self.sketch_net_label_place_armed {
+            let net_id = self.sketch_net_label_net_id.trim();
+            if net_id.is_empty() {
+                self.sketch_net_label_kind.label().to_string()
+            } else {
+                format!("{} {}", self.sketch_net_label_kind.label(), net_id)
+            }
         } else if self.selected_library_model.trim().is_empty() {
             "Library component".to_string()
         } else {

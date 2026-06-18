@@ -1128,7 +1128,7 @@ pub(super) fn validated_graph_id<'a>(id: &'a str, label: &str) -> Result<&'a str
     Ok(id)
 }
 
-fn normalized_net_kind(kind: &str) -> Result<&str> {
+pub(super) fn normalized_net_kind(kind: &str) -> Result<&str> {
     match kind {
         "power" | "ground" | "digital_or_analog" => Ok(kind),
         _ => anyhow::bail!("Unsupported net kind {kind}."),

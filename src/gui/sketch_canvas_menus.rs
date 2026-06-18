@@ -205,6 +205,22 @@ impl CircuitCiApp {
         }
         if ui
             .add_enabled(
+                !self.project_yaml.trim().is_empty()
+                    && !self.sketch_net_label_net_id.trim().is_empty(),
+                egui::Button::new(format!(
+                    "Place {} {}",
+                    self.sketch_net_label_kind.label(),
+                    self.sketch_net_label_net_id.trim()
+                )),
+            )
+            .clicked()
+        {
+            let target = pointer_hover.unwrap_or_else(|| canvas.center());
+            self.apply_add_or_create_schematic_net_label_at(canvas, self.sketch_viewport(), target);
+            ui.close();
+        }
+        if ui
+            .add_enabled(
                 self.has_pasteable_sketch_clipboard(),
                 egui::Button::new("Paste Here"),
             )
