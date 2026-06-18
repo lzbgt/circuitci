@@ -5,8 +5,9 @@ use super::sketch::{
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
     edit_schematic_component_style, edit_schematic_node_position, edit_schematic_node_positions,
     layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
-    persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
-    sketch_graph_bounds, validate_board_ir_yaml_text,
+    orthogonal_wire_points, persisted_node_position_from_screen,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
+    remove_net, sketch_graph_bounds, snap_screen_point_to_grid, validate_board_ir_yaml_text,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use eframe::egui;
@@ -563,6 +564,54 @@ fn persisted_node_position_inverts_viewport_transform() {
 }
 
 #[test]
+fn persisted_node_position_snaps_to_grid_after_viewport_inverse() {
+    let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
+    let viewport = SketchViewport {
+        pan: egui::vec2(12.0, -8.0),
+        zoom: 2.0,
+    };
+    let screen_node = egui::Rect::from_min_size(egui::pos2(62.0, 62.0), egui::vec2(300.0, 184.0));
+    let (x, y) = persisted_node_position_from_screen_with_snap(
+        canvas,
+        egui::pos2(62.0 + 150.0, 62.0 + 92.0),
+        screen_node,
+        viewport,
+        true,
+        16.0,
+    );
+
+    assert_eq!(x, 16.0);
+    assert_eq!(y, 32.0);
+}
+
+#[test]
+fn screen_point_snap_rounds_in_logical_canvas_space() {
+    let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
+    let viewport = SketchViewport {
+        pan: egui::vec2(12.0, -8.0),
+        zoom: 2.0,
+    };
+    let snapped = snap_screen_point_to_grid(canvas, egui::pos2(89.0, 73.0), viewport, true, 16.0);
+
+    assert_eq!(snapped, egui::pos2(86.0, 66.0));
+}
+
+#[test]
+fn orthogonal_wire_points_use_midpoint_route() {
+    let points = orthogonal_wire_points(egui::pos2(10.0, 20.0), egui::pos2(90.0, 70.0));
+
+    assert_eq!(
+        points,
+        vec![
+            egui::pos2(10.0, 20.0),
+            egui::pos2(50.0, 20.0),
+            egui::pos2(50.0, 70.0),
+            egui::pos2(90.0, 70.0),
+        ]
+    );
+}
+
+#[test]
 fn multi_selected_items_delete_as_one_validated_edit() {
     let yaml = "project:
   name: gui_delete_test
@@ -657,7 +706,7 @@ board:
     validate_board_ir_yaml_text(&app.project_yaml).unwrap();
     assert!(app.project_yaml.contains("x: 32.0"));
     assert!(app.project_yaml.contains("x: 272.0"));
-    assert!(app.project_yaml.contains("y: 38.0"));
+    assert!(app.project_yaml.contains("y: 32.0"));
     assert_eq!(app.selected_sketch_items.len(), 2);
     assert_eq!(app.project_yaml_undo.len(), 1);
 }

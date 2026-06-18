@@ -21,12 +21,13 @@ use simulation::{
     runtime_probe_lines_for_selection, waveform_time_range_for_view,
 };
 use sketch::{
-    ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
-    assign_component_pin, connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor,
-    edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
-    edit_net_powered, edit_schematic_component_style, edit_schematic_node_position,
-    layout_sketch_graph_viewport, persisted_node_position_from_screen, remove_component,
-    remove_component_pin, remove_net,
+    DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection,
+    add_component, add_net, assign_component_pin, connect_component_pins, draw_sketch_grid,
+    draw_sketch_node, draw_sketch_pin_anchor, edit_component_model, edit_component_part_number,
+    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_component_style,
+    edit_schematic_node_position, layout_sketch_graph_viewport, orthogonal_wire_points,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
+    remove_net, snap_screen_point_to_grid,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -147,6 +148,9 @@ pub struct CircuitCiApp {
     sketch_group_action: Option<SketchGroupAction>,
     sketch_zoom: f32,
     sketch_pan: egui::Vec2,
+    sketch_grid_enabled: bool,
+    sketch_snap_enabled: bool,
+    sketch_grid_step: f32,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -228,6 +232,9 @@ impl Default for CircuitCiApp {
             sketch_group_action: None,
             sketch_zoom: 1.0,
             sketch_pan: egui::Vec2::ZERO,
+            sketch_grid_enabled: true,
+            sketch_snap_enabled: true,
+            sketch_grid_step: DEFAULT_SKETCH_GRID_STEP,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -873,6 +880,14 @@ impl CircuitCiApp {
                 if ui.button("Reset Pan").clicked() {
                     self.sketch_pan = egui::Vec2::ZERO;
                 }
+                ui.checkbox(&mut self.sketch_grid_enabled, "Grid");
+                ui.checkbox(&mut self.sketch_snap_enabled, "Snap");
+                ui.add(
+                    egui::DragValue::new(&mut self.sketch_grid_step)
+                        .range(4.0..=96.0)
+                        .speed(1.0)
+                        .suffix(" grid"),
+                );
                 if ui
                     .add_enabled(
                         self.has_deletable_sketch_selection(),
@@ -883,7 +898,7 @@ impl CircuitCiApp {
                     self.apply_delete_selected_sketch_item();
                 }
                 ui.label(
-                    "Middle/right drag pans; Shift+drag marquee selects; pinch or trackpad zoom changes canvas scale.",
+                    "Middle/right drag pans; Shift+drag marquee selects; snap affects schematic node placement.",
                 );
             });
             if self.selected_sketch_items.len() > 1 {
@@ -972,13 +987,22 @@ impl CircuitCiApp {
         }
         self.handle_sketch_viewport_input(ui, rect, &response);
         let viewport = self.sketch_viewport();
+        draw_sketch_grid(
+            &painter,
+            rect,
+            viewport,
+            self.sketch_grid_enabled,
+            self.sketch_grid_step,
+        );
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
         for edge in &graph.edges {
-            painter.line_segment(
-                [edge.start, edge.end],
+            draw_wire_polyline(
+                &painter,
+                edge.start,
+                edge.end,
                 egui::Stroke::new(1.0, egui::Color32::from_gray(72)),
             );
         }
@@ -987,8 +1011,17 @@ impl CircuitCiApp {
             && rect.contains(pointer)
             && let Some(source) = wire_preview_start(&graph, component_id, &self.wire_pin_id)
         {
-            painter.line_segment(
-                [source, pointer],
+            let pointer = snap_screen_point_to_grid(
+                rect,
+                pointer,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+            );
+            draw_wire_polyline(
+                &painter,
+                source,
+                pointer,
                 egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
         }
@@ -1132,8 +1165,14 @@ impl CircuitCiApp {
                     "Selected sketch items moved.",
                 );
             } else {
-                let (x, y) =
-                    persisted_node_position_from_screen(rect, position, node.rect, viewport);
+                let (x, y) = persisted_node_position_from_screen_with_snap(
+                    rect,
+                    position,
+                    node.rect,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
                 self.apply_schematic_node_position(selection, x, y);
             }
         }
@@ -1751,6 +1790,18 @@ fn sketch_pin_hover_tooltip(ui: &mut egui::Ui, anchor: &sketch::SketchPinAnchor)
     ui.label(format!("net: {}", anchor.net));
     ui.separator();
     ui.label("Click this pin, then click another pin or net node to wire it.");
+}
+
+fn draw_wire_polyline(
+    painter: &egui::Painter,
+    start: egui::Pos2,
+    end: egui::Pos2,
+    stroke: egui::Stroke,
+) {
+    let points = orthogonal_wire_points(start, end);
+    for segment in points.windows(2) {
+        painter.line_segment([segment[0], segment[1]], stroke);
+    }
 }
 
 fn wire_preview_start(

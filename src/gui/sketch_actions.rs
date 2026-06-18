@@ -1,7 +1,7 @@
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
-    layout_sketch_graph, persisted_node_position_from_screen, remove_component, remove_net,
-    sketch_graph_bounds,
+    layout_sketch_graph, persisted_node_position_from_screen_with_snap, remove_component,
+    remove_net, sketch_graph_bounds,
 };
 use super::{CircuitCiApp, SketchGroupAction};
 use eframe::egui;
@@ -143,11 +143,13 @@ impl CircuitCiApp {
         let updates = self
             .selected_nodes(graph)
             .map(|node| {
-                let (x, y) = persisted_node_position_from_screen(
+                let (x, y) = persisted_node_position_from_screen_with_snap(
                     canvas,
                     target_center(node),
                     node.rect,
                     viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
                 );
                 (node.selection.clone(), x, y)
             })

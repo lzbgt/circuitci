@@ -4,6 +4,10 @@ use std::path::Path;
 
 use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, draw_symbol_glyph};
 
+pub(super) const DEFAULT_SKETCH_GRID_STEP: f32 = 16.0;
+const MIN_SKETCH_GRID_STEP: f32 = 4.0;
+const MAX_SKETCH_GRID_STEP: f32 = 96.0;
+
 #[derive(Debug, Clone)]
 pub(super) struct ProjectSnapshot {
     pub(super) name: String,
@@ -1116,6 +1120,105 @@ pub(super) fn persisted_node_position_from_screen(
     let y = (logical_position.y - canvas.top() - logical_height / 2.0)
         .clamp(0.0, (canvas.height() - logical_height).max(0.0));
     (x as f64, y as f64)
+}
+
+pub(super) fn persisted_node_position_from_screen_with_snap(
+    canvas: egui::Rect,
+    screen_position: egui::Pos2,
+    screen_node_rect: egui::Rect,
+    viewport: SketchViewport,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> (f64, f64) {
+    let (x, y) =
+        persisted_node_position_from_screen(canvas, screen_position, screen_node_rect, viewport);
+    snap_schematic_position(x, y, snap_enabled, grid_step)
+}
+
+pub(super) fn snap_schematic_position(
+    x: f64,
+    y: f64,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> (f64, f64) {
+    if !snap_enabled {
+        return (x, y);
+    }
+    let step = normalized_grid_step(grid_step) as f64;
+    ((x / step).round() * step, (y / step).round() * step)
+}
+
+pub(super) fn snap_screen_point_to_grid(
+    canvas: egui::Rect,
+    screen_position: egui::Pos2,
+    viewport: SketchViewport,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> egui::Pos2 {
+    if !snap_enabled {
+        return screen_position;
+    }
+    let logical = inverse_viewport_pos(screen_position, canvas, viewport);
+    let step = normalized_grid_step(grid_step);
+    let snapped = egui::pos2(
+        canvas.left() + ((logical.x - canvas.left()) / step).round() * step,
+        canvas.top() + ((logical.y - canvas.top()) / step).round() * step,
+    );
+    transform_viewport_pos(snapped, canvas, viewport)
+}
+
+pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<egui::Pos2> {
+    if (start.x - end.x).abs() <= 0.5 || (start.y - end.y).abs() <= 0.5 {
+        return vec![start, end];
+    }
+    let mid_x = (start.x + end.x) / 2.0;
+    vec![
+        start,
+        egui::pos2(mid_x, start.y),
+        egui::pos2(mid_x, end.y),
+        end,
+    ]
+}
+
+pub(super) fn draw_sketch_grid(
+    painter: &egui::Painter,
+    canvas: egui::Rect,
+    viewport: SketchViewport,
+    grid_enabled: bool,
+    grid_step: f32,
+) {
+    if !grid_enabled {
+        return;
+    }
+    let step = normalized_grid_step(grid_step);
+    let screen_step = step * viewport.zoom.clamp(0.25, 4.0);
+    if screen_step < 6.0 {
+        return;
+    }
+    let visible_min = inverse_viewport_pos(canvas.min, canvas, viewport);
+    let visible_max = inverse_viewport_pos(canvas.max, canvas, viewport);
+    let color = egui::Color32::from_gray(34);
+    let stroke = egui::Stroke::new(1.0, color);
+
+    let mut x = (visible_min.x / step).floor() * step;
+    while x <= visible_max.x {
+        let top = transform_viewport_pos(egui::pos2(x, visible_min.y), canvas, viewport);
+        let bottom = transform_viewport_pos(egui::pos2(x, visible_max.y), canvas, viewport);
+        painter.line_segment([top, bottom], stroke);
+        x += step;
+    }
+
+    let mut y = (visible_min.y / step).floor() * step;
+    while y <= visible_max.y {
+        let left = transform_viewport_pos(egui::pos2(visible_min.x, y), canvas, viewport);
+        let right = transform_viewport_pos(egui::pos2(visible_max.x, y), canvas, viewport);
+        painter.line_segment([left, right], stroke);
+        y += step;
+    }
+}
+
+fn normalized_grid_step(grid_step: f32) -> f32 {
+    grid_step.clamp(MIN_SKETCH_GRID_STEP, MAX_SKETCH_GRID_STEP)
 }
 
 fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport: SketchViewport) {

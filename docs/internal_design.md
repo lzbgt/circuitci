@@ -25,12 +25,13 @@ routing, import command wiring, and validation/report calls. `src/gui/project.rs
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, structured scalar
-YAML edit helpers for existing components and nets, and model-port default
-pin/net seeding for library-backed component insertion. It may add or remove
-component entries and may remove only nets that are not referenced by component
-pins. Inserted library components may create generated per-pin nets from
-source-backed model port declarations, but those nets are still ordinary Board
-IR sketch connections that the user can rewire. `src/gui/sketch_symbols.rs`
+YAML edit helpers for existing components and nets, schematic grid/snap helpers,
+orthogonal wire visuals, and model-port default pin/net seeding for
+library-backed component insertion. It may add or remove component entries and
+may remove only nets that are not referenced by component pins. Inserted library
+components may create generated per-pin nets from source-backed model port
+declarations, but those nets are still ordinary Board IR sketch connections
+that the user can rewire. `src/gui/sketch_symbols.rs`
 owns visual-only symbol-style rendering: it may infer common glyph classes from
 reference designators and model IDs, but it must continue to persist only Board
 IR components, nets, pins, and optional schematic node positions/styles.
@@ -46,6 +47,11 @@ component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
 marquee selection are GUI view/selection state only; they must not be serialized
 as board evidence. Single-node and multi-node drag/alignment persistence must
 invert the viewport transform before writing `board.schematic.node_positions`.
+If snap is enabled, the snapped logical schematic coordinates are written to
+`board.schematic.node_positions`; grid visibility and grid spacing remain GUI
+editor state. Orthogonal wire routing is display-only and must render from
+component pin bindings and net membership rather than persisting a parallel edge
+list.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
 It may assign or remove component pin bindings only when the component exists
@@ -56,7 +62,9 @@ positions under
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
-introducing a parallel connection model. The GUI shared undo/redo history in
+introducing a parallel connection model. The rendered wire path may be
+orthogonal for readability, but the persisted connection is still only the
+target component pin's net binding. The GUI shared undo/redo history in
 `src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
 graph, property, wire, and text edits should enter that history through the
 same application-level mutation boundary rather than keeping per-widget state.
