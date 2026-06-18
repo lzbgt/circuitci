@@ -18,7 +18,9 @@ the default CLI dependency graph:
 ```text
 circuitci-gui
   -> src/gui.rs
+  -> src/gui/shell.rs
   -> src/gui/import_flow.rs
+  -> src/gui/file_dialogs.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
@@ -39,9 +41,12 @@ circuitci-gui
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
-`src/gui.rs` owns the application shell, stage routing, menus, and
-validation/report calls. `src/gui/import_flow.rs` owns the Import stage UI and
-KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+`src/gui.rs` owns application state and validation/report command calls.
+`src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow stage bar,
+left project panel, status panel, central stage routing, Project landing view,
+Reports view, and finding/limitation rendering. `src/gui/import_flow.rs` owns
+the Import stage UI and KiCad schematic, KiCad PCB, and SPICE deck import
+command wiring.
 `src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
 project, import, and output path fields. The dialogs are compiled only with the
 optional GUI feature and do not affect the default CLI build.

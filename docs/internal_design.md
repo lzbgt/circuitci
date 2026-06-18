@@ -20,9 +20,11 @@ file-backed SPICE decks, and report artifacts so headless agents can reproduce
 GUI actions.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
-logic in one source file. `src/gui.rs` owns application state, menus, stage
-routing, and validation/report calls. `src/gui/import_flow.rs` owns the Import
-stage UI plus KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+logic in one source file. `src/gui.rs` owns application state and
+validation/report command calls. `src/gui/shell.rs` owns menus, workflow stage
+routing, the left project panel, the status panel, Project/Reports views, and
+finding/limitation rendering. `src/gui/import_flow.rs` owns the Import stage UI
+plus KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
