@@ -740,7 +740,7 @@ pub(super) fn board_child_mapping_mut<'a>(
         .with_context(|| format!("Board IR board.{field} must be an object."))
 }
 
-fn ensure_board_child_mapping_mut<'a>(
+pub(super) fn ensure_board_child_mapping_mut<'a>(
     yaml: &'a mut serde_yaml_ng::Value,
     field: &str,
 ) -> Result<&'a mut serde_yaml_ng::Mapping> {

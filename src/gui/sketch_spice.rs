@@ -35,7 +35,7 @@ impl SketchSpiceKind {
         }
     }
 
-    fn device_prefix(self) -> &'static str {
+    pub(super) fn device_prefix(self) -> &'static str {
         match self {
             Self::Resistor => "R",
             Self::Capacitor => "C",
@@ -45,11 +45,11 @@ impl SketchSpiceKind {
         }
     }
 
-    fn is_passive(self) -> bool {
+    pub(super) fn is_passive(self) -> bool {
         matches!(self, Self::Resistor | Self::Capacitor | Self::Inductor)
     }
 
-    fn requires_pins(self) -> (&'static str, &'static str) {
+    pub(super) fn requires_pins(self) -> (&'static str, &'static str) {
         if self.is_passive() {
             ("A", "B")
         } else {
@@ -123,7 +123,7 @@ pub(super) struct SketchSpicePulse {
 }
 
 impl SketchSpicePulse {
-    fn default_for(kind: SketchSpiceKind) -> Self {
+    pub(super) fn default_for(kind: SketchSpiceKind) -> Self {
         let (initial, pulsed) = match kind {
             SketchSpiceKind::PulseVoltageSource => (0.0, 3.3),
             SketchSpiceKind::PulseCurrentSource => (0.0, 0.1),
@@ -429,7 +429,7 @@ fn pulse_mapping_value(pulse: &SketchSpicePulse, voltage: bool) -> Result<serde_
     Ok(serde_yaml_ng::Value::Mapping(mapping))
 }
 
-fn default_value(kind: SketchSpiceKind) -> f64 {
+pub(super) fn default_value(kind: SketchSpiceKind) -> f64 {
     match kind {
         SketchSpiceKind::Resistor => 1000.0,
         SketchSpiceKind::Capacitor => 1e-6,

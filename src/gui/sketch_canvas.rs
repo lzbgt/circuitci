@@ -29,6 +29,7 @@ impl CircuitCiApp {
     ) {
         let desired_size = schematic_canvas_size(desired_size);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
+        self.sketch_last_canvas_rect = Some(rect);
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 4.0, egui::Color32::from_gray(18));
         painter.rect_stroke(
@@ -48,7 +49,6 @@ impl CircuitCiApp {
         if let Some(target) = self.sketch_hierarchy_fit_target.take() {
             self.fit_sketch_hierarchy_target(rect, snapshot, &target);
         }
-        self.handle_sketch_viewport_input(ui, rect, &response);
         let viewport = self.sketch_viewport();
         draw_sketch_grid(
             &painter,
@@ -128,6 +128,14 @@ impl CircuitCiApp {
                 position,
             )
         });
+        let blank_canvas_hovered = hovered_node.is_none()
+            && hovered_anchor.is_none()
+            && hovered_wire.is_none()
+            && hovered_probe_badge.is_none()
+            && hovered_bundle_badge.is_none()
+            && hovered_hierarchy_connector_badge.is_none();
+        self.handle_sketch_viewport_input(ui, rect, &response, blank_canvas_hovered);
+        let viewport = self.sketch_viewport();
         for edge in &graph.edges {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.edge_visible(edge) {
@@ -351,6 +359,8 @@ impl CircuitCiApp {
                 .map(|node| node.selection.clone());
             if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
                 self.marquee_start = Some(position);
+            } else if clicked_node.is_none() {
+                self.sketch_pan_drag_active = true;
             } else if clicked_node.is_some() {
                 let multi_selected_hit = clicked_node
                     .as_ref()
@@ -378,6 +388,7 @@ impl CircuitCiApp {
                 egui::StrokeKind::Inside,
             );
         } else if response.dragged_by(egui::PointerButton::Primary)
+            && !self.sketch_pan_drag_active
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -416,6 +427,9 @@ impl CircuitCiApp {
                 .or_else(|| ui.ctx().pointer_hover_pos())
         {
             self.apply_marquee_selection(egui::Rect::from_two_pos(start, end), &graph);
+        }
+        if response.drag_stopped_by(egui::PointerButton::Primary) {
+            self.sketch_pan_drag_active = false;
         }
 
         let delete_pressed = response.hovered()
@@ -766,33 +780,65 @@ impl CircuitCiApp {
         ui: &egui::Ui,
         rect: egui::Rect,
         response: &egui::Response,
+        blank_canvas_hovered: bool,
     ) {
+        if response.drag_started_by(egui::PointerButton::Primary)
+            && blank_canvas_hovered
+            && !ui.input(|input| input.modifiers.shift)
+        {
+            self.sketch_pan_drag_active = true;
+        }
         if response.dragged_by(egui::PointerButton::Middle)
             || response.dragged_by(egui::PointerButton::Secondary)
+            || self.sketch_pan_drag_active
         {
             let delta = ui.input(|input| input.pointer.delta());
             self.sketch_pan += delta;
         }
 
         if response.hovered() {
-            let zoom_delta = ui.input(|input| input.zoom_delta());
+            let (zoom_delta, scroll_delta, pointer) = ui.input(|input| {
+                (
+                    input.zoom_delta(),
+                    input.smooth_scroll_delta,
+                    input.pointer.hover_pos(),
+                )
+            });
             if (zoom_delta - 1.0).abs() > f32::EPSILON {
-                self.zoom_sketch_canvas(zoom_delta, rect, rect.center());
+                self.zoom_sketch_canvas(zoom_delta, rect, pointer.unwrap_or(rect.center()));
+            } else if blank_canvas_hovered && scroll_delta != egui::Vec2::ZERO {
+                self.sketch_pan += scroll_delta;
             }
         }
     }
 
     fn zoom_sketch_canvas(&mut self, zoom_delta: f32, canvas: egui::Rect, focus: egui::Pos2) {
-        let old_zoom = self.sketch_zoom.clamp(0.25, 4.0);
-        let new_zoom = (old_zoom * zoom_delta).clamp(0.25, 4.0);
-        if (new_zoom - old_zoom).abs() <= f32::EPSILON {
-            return;
-        }
-        let focus_offset = focus - canvas.min;
-        let logical_focus = (focus_offset - self.sketch_pan) / old_zoom;
-        self.sketch_pan = focus_offset - logical_focus * new_zoom;
+        let (new_zoom, new_pan) =
+            zoom_viewport_around(self.sketch_zoom, self.sketch_pan, zoom_delta, canvas, focus);
         self.sketch_zoom = new_zoom;
+        self.sketch_pan = new_pan;
     }
+}
+
+fn zoom_viewport_around(
+    current_zoom: f32,
+    current_pan: egui::Vec2,
+    zoom_delta: f32,
+    canvas: egui::Rect,
+    focus: egui::Pos2,
+) -> (f32, egui::Vec2) {
+    let old_zoom = current_zoom.clamp(0.25, 4.0);
+    let new_zoom = (old_zoom * zoom_delta).clamp(0.25, 4.0);
+    if (new_zoom - old_zoom).abs() <= f32::EPSILON {
+        return (old_zoom, current_pan);
+    }
+    let focus = egui::pos2(
+        focus.x.clamp(canvas.left(), canvas.right()),
+        focus.y.clamp(canvas.top(), canvas.bottom()),
+    );
+    let focus_offset = focus - canvas.min;
+    let logical_focus = (focus_offset - current_pan) / old_zoom;
+    (new_zoom, focus_offset - logical_focus * new_zoom)
 }
 
 pub(super) fn schematic_canvas_size(available: egui::Vec2) -> egui::Vec2 {
@@ -1003,4 +1049,25 @@ fn wire_preview_start(
                 .find(|node| node.selection == SketchSelection::Component(component_id.to_string()))
                 .map(|node| node.rect.center())
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::zoom_viewport_around;
+    use eframe::egui;
+
+    #[test]
+    fn zoom_viewport_keeps_pointer_logical_focus_stable() {
+        let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
+        let focus = egui::pos2(300.0, 200.0);
+        let pan = egui::vec2(40.0, -20.0);
+        let old_zoom = 1.25;
+        let logical_before = (focus - canvas.min - pan) / old_zoom;
+
+        let (new_zoom, new_pan) = zoom_viewport_around(old_zoom, pan, 1.4, canvas, focus);
+        let logical_after = (focus - canvas.min - new_pan) / new_zoom;
+
+        assert!((logical_before.x - logical_after.x).abs() < 1e-3);
+        assert!((logical_before.y - logical_after.y).abs() < 1e-3);
+    }
 }

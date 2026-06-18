@@ -29,6 +29,7 @@ mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inspector;
 mod sketch_navigator;
+mod sketch_palette;
 mod sketch_probes;
 mod sketch_rename;
 mod sketch_spice;
@@ -42,6 +43,7 @@ use project::PendingProjectAction;
 use sketch::{DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection};
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_navigator::SketchNavigatorTarget;
+use sketch_spice::SketchSpiceKind;
 use waveform::{WaveformView, waveform_time_range_for_view};
 
 pub fn run() -> eframe::Result<()> {
@@ -206,6 +208,11 @@ pub struct CircuitCiApp {
     sketch_hierarchy_fit_target: Option<SketchHierarchyTarget>,
     sketch_navigator_query: String,
     sketch_navigator_fit_target: Option<SketchNavigatorTarget>,
+    sketch_palette_kind: SketchSpiceKind,
+    sketch_palette_component_id: String,
+    sketch_palette_value: f64,
+    sketch_last_canvas_rect: Option<egui::Rect>,
+    sketch_pan_drag_active: bool,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -333,6 +340,13 @@ impl Default for CircuitCiApp {
             sketch_hierarchy_fit_target: None,
             sketch_navigator_query: String::new(),
             sketch_navigator_fit_target: None,
+            sketch_palette_kind: SketchSpiceKind::Resistor,
+            sketch_palette_component_id: "R1".to_string(),
+            sketch_palette_value: sketch_palette::default_primitive_value(
+                SketchSpiceKind::Resistor,
+            ),
+            sketch_last_canvas_rect: None,
+            sketch_pan_drag_active: false,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -473,6 +487,8 @@ impl CircuitCiApp {
 
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         egui::ScrollArea::vertical().show(ui, |ui| {
+            self.sketch_primitive_palette(ui);
+            ui.separator();
             self.sketch_inspector(ui, snapshot);
             ui.separator();
             self.sketch_hierarchy_panel(ui, snapshot);
@@ -611,7 +627,7 @@ impl CircuitCiApp {
                     self.sketch_paste_requested = true;
                 }
                 ui.label(
-                    "Middle/right drag pans; Shift+drag marquee selects; Cmd/Ctrl+C copies, Cmd/Ctrl+V pastes, Cmd/Ctrl+D duplicates selected components; snap affects schematic node placement.",
+                    "Drag blank canvas or use touchpad scroll to pan; pinch/Cmd-scroll zooms around the pointer; Shift+drag marquee selects; Cmd/Ctrl+C copies, Cmd/Ctrl+V pastes, Cmd/Ctrl+D duplicates selected components.",
                 );
             });
             if self.selected_sketch_items.len() > 1 {

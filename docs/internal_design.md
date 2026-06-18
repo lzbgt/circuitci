@@ -71,7 +71,10 @@ default pin/net seeding for library-backed component insertion.
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, wire preview drawing, hover tooltips, context menus, and runtime tint
-display. Inserted library
+display. Blank-canvas primary drag and touchpad scroll should pan the schematic
+viewport, pointer-focused pinch/Cmd-scroll should zoom around the cursor,
+Shift-drag remains marquee selection, and component drags must only move
+objects when the drag starts on a component. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
@@ -128,7 +131,9 @@ target pin net when one already exists, or create a generated Board IR net when
 both pins are unbound. The persisted result must remain `board.nets` plus
 component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
 marquee selection are GUI view/selection state only; they must not be serialized
-as board evidence. Single-node and multi-node drag/alignment persistence must
+as board evidence. Fit-content should operate on the current transformed
+schematic graph bounds so imported designs can be recovered after pan/zoom.
+Single-node and multi-node drag/alignment persistence must
 invert the viewport transform before writing `board.schematic.node_positions`.
 If snap is enabled, the snapped logical schematic coordinates are written to
 `board.schematic.node_positions`; grid visibility and grid spacing remain GUI
@@ -162,6 +167,11 @@ pins and independent-source primitives have `P`/`N` pins before writing
 component-level `spice` evidence, reject non-finite or nonsensical numeric
 values, update exact generated/source branch probe expressions when the
 primitive prefix changes, and reparse Board IR before accepting the edit.
+`src/gui/sketch_palette.rs` owns primitive insertion for user-sketched generic
+R/C/L and independent voltage/current source components. Each insertion must
+create the component, editable pin nets, component-level SPICE evidence, and
+schematic placement together through the same validated Board IR YAML mutation
+path; the palette must not create a separate temporary schematic model.
 The GUI shared undo/redo history in
 `src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
 graph, property, wire, and text edits should enter that history through the

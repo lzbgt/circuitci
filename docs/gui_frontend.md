@@ -165,6 +165,9 @@ DC and pulse source-primitive listing and value/timing mutation for components
 included in generated analog scenarios. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
 actions for imported or hand-authored analog scenarios.
+`src/gui/sketch_palette.rs` owns schematic primitive insertion for generic
+passives and independent sources, including generated pin nets, component-level
+SPICE evidence, and schematic placement in one validated Board IR edit.
 
 ## Workflow Shell
 
@@ -183,8 +186,11 @@ form:
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
-  scalar edits, rename controls, and component-level SPICE primitive/value
-  editing for existing component properties, schematic-only
+  scalar edits, rename controls, a primitive palette that inserts generic
+  resistors, capacitors, inductors, DC voltage/current sources, and pulse
+  voltage/current sources with pins, nets, SPICE evidence, and schematic
+  placement, and component-level SPICE primitive/value editing for existing
+  component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
   schematic grid/snap controls, orthogonal wire visuals with net labels and
@@ -192,7 +198,9 @@ form:
   and common paired interface nets, derived schematic hierarchy sheet groups
   from imported source paths and namespaced component IDs, off-sheet connector
   badges for focused nets with external endpoints, clickable wire-to-net
-  selection, pan/zoom plus reset-view and fit-content controls,
+  selection, blank-canvas drag and touchpad-scroll viewport panning,
+  pointer-focused pinch/Cmd-scroll zoom, plus reset-view and fit-content
+  controls,
   schematic hierarchy search/select/fit/focus/isolate controls and object
   navigator search/select/fit controls,
   Shift-drag marquee selection, group drag/nudge/edge-align/center-align/
