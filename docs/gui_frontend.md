@@ -30,6 +30,7 @@ circuitci-gui
   -> src/gui/sketch_symbols.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
+  -> src/gui/analog_overview.rs
   -> src/gui/analog.rs
   -> src/gui/analog_tests.rs (GUI test builds only)
   -> src/gui/spice.rs
@@ -99,7 +100,9 @@ assignment, and model-backed component insertion through the same Board IR YAML
 mutation path. Inserted components use the selected model's declared ports to
 seed editable Board IR pin bindings and generated per-pin nets.
 `src/gui/simulation.rs` owns the Simulation stage UI and analog
-scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
+scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
+read-only generated scenario audit snapshot shown before edit panels.
+`src/gui/waveform.rs` owns waveform CSV
 parsing, plotting, simulation-time scrub/playback controls, cursor measurement
 tools, GUI-only derived waveform channels, promotion of representable derived
 channels to Board IR probes/assertions, and graph-hover/runtime activity
@@ -165,8 +168,9 @@ form:
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
-  with ground/probe net selection, edit generated scenario stop time/max step,
-  ground net, SPICE node bindings, and component membership, add selected-net
+  with ground/probe net selection, audit generated scenario timing/backend,
+  source/probe/assertion/model-file/node-binding coverage, edit generated
+  scenario stop time/max step, ground net, SPICE node bindings, and component membership, add selected-net
   voltage probes to existing analog scenarios, inspect a selected probe badge's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for

@@ -10,6 +10,7 @@ mod analog_assertion_edit_tests;
 mod analog_branches;
 mod analog_generated;
 mod analog_models;
+mod analog_overview;
 mod analog_stimulus;
 #[cfg(test)]
 mod analog_tests;

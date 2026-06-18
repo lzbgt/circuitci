@@ -161,6 +161,11 @@ same validated Board IR YAML mutation helpers used by the sketch inspector.
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the
 target analog scenario.
+`src/gui/analog_overview.rs` owns read-only generated analog scenario audit
+snapshots for Simulation-stage display. It may summarize timing/backend,
+included components, source primitives, probes, assertions, model files, and
+node bindings from Board IR, but it must not introduce a second analog netlist
+or sign-off model.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
 selected-net voltage-probe insertion, selected-component source, passive, and
 semiconductor current-probe insertion, selected-component source, passive, and
