@@ -294,6 +294,8 @@ impl CircuitCiApp {
                 {
                     self.selected_waveform = index;
                     self.selected_probe = 0;
+                    self.waveform_cursor_a_us = 0.0;
+                    self.waveform_cursor_b_us = 0.0;
                 }
             }
         });
@@ -312,11 +314,26 @@ impl CircuitCiApp {
                     .clicked()
                 {
                     self.selected_probe = index;
+                    self.waveform_cursor_a_us = 0.0;
+                    self.waveform_cursor_b_us = 0.0;
                 }
             }
         });
 
-        draw_waveform_plot(ui, waveform, self.selected_probe);
+        waveform_measurement_panel(
+            ui,
+            waveform,
+            self.selected_probe,
+            &mut self.waveform_cursor_a_us,
+            &mut self.waveform_cursor_b_us,
+        );
+        draw_waveform_plot(
+            ui,
+            waveform,
+            self.selected_probe,
+            self.waveform_cursor_a_us,
+            self.waveform_cursor_b_us,
+        );
     }
 }
 
@@ -568,7 +585,96 @@ fn parse_waveform_float(value: &str) -> Option<f64> {
         .filter(|number| number.is_finite())
 }
 
-fn draw_waveform_plot(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: usize) {
+fn waveform_measurement_panel(
+    ui: &mut egui::Ui,
+    waveform: &WaveformView,
+    probe_index: usize,
+    cursor_a_us: &mut f64,
+    cursor_b_us: &mut f64,
+) {
+    let Some((start_us, end_us)) = waveform_time_range_us(waveform) else {
+        return;
+    };
+    if *cursor_a_us < start_us || *cursor_a_us > end_us {
+        *cursor_a_us = start_us;
+    }
+    if *cursor_b_us < start_us || *cursor_b_us > end_us {
+        *cursor_b_us = end_us;
+    }
+
+    ui.group(|ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.strong("Measurements");
+            ui.label(format!(
+                "range {}",
+                format_time_s((end_us - start_us) / 1e6)
+            ));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Cursor A");
+            ui.add(
+                egui::DragValue::new(cursor_a_us)
+                    .speed(((end_us - start_us) / 200.0).max(0.001))
+                    .range(start_us..=end_us)
+                    .suffix(" us"),
+            );
+            ui.label("Cursor B");
+            ui.add(
+                egui::DragValue::new(cursor_b_us)
+                    .speed(((end_us - start_us) / 200.0).max(0.001))
+                    .range(start_us..=end_us)
+                    .suffix(" us"),
+            );
+        });
+
+        if let Some(measurement) =
+            waveform_measurement(waveform, probe_index, *cursor_a_us, *cursor_b_us)
+        {
+            egui::Grid::new("waveform_measurements")
+                .num_columns(4)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("A");
+                    ui.monospace(format_time_s(measurement.cursor_a.time_s));
+                    ui.label("value");
+                    ui.monospace(format_value(measurement.cursor_a.value));
+                    ui.end_row();
+
+                    ui.label("B");
+                    ui.monospace(format_time_s(measurement.cursor_b.time_s));
+                    ui.label("value");
+                    ui.monospace(format_value(measurement.cursor_b.value));
+                    ui.end_row();
+
+                    ui.label("Delta");
+                    ui.monospace(format_time_s(measurement.delta_t_s));
+                    ui.label("value");
+                    ui.monospace(format_value(measurement.delta_value));
+                    ui.end_row();
+
+                    ui.label("Probe min");
+                    ui.monospace(format_value(measurement.full_min));
+                    ui.label("max");
+                    ui.monospace(format_value(measurement.full_max));
+                    ui.end_row();
+
+                    ui.label("Cursor min");
+                    ui.monospace(format_value(measurement.window_min));
+                    ui.label("max");
+                    ui.monospace(format_value(measurement.window_max));
+                    ui.end_row();
+                });
+        }
+    });
+}
+
+fn draw_waveform_plot(
+    ui: &mut egui::Ui,
+    waveform: &WaveformView,
+    probe_index: usize,
+    cursor_a_us: f64,
+    cursor_b_us: f64,
+) {
     let probe = &waveform.probes[probe_index];
     let Some((x_min, x_max)) = min_max(&waveform.time_s) else {
         ui.label("Waveform has no time samples.");
@@ -605,6 +711,25 @@ fn draw_waveform_plot(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: u
             plot_rect.bottom() - y_ratio * plot_rect.height(),
         )
     };
+
+    draw_cursor_line(
+        &painter,
+        plot_rect,
+        cursor_a_us / 1e6,
+        x_min,
+        x_span,
+        egui::Color32::from_rgb(255, 196, 87),
+        "A",
+    );
+    draw_cursor_line(
+        &painter,
+        plot_rect,
+        cursor_b_us / 1e6,
+        x_min,
+        x_span,
+        egui::Color32::from_rgb(135, 220, 140),
+        "B",
+    );
 
     for tick in 0..=4 {
         let ratio = tick as f32 / 4.0;
@@ -657,6 +782,33 @@ fn draw_waveform_plot(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: u
     );
 }
 
+fn draw_cursor_line(
+    painter: &egui::Painter,
+    plot_rect: egui::Rect,
+    time_s: f64,
+    x_min: f64,
+    x_span: f64,
+    color: egui::Color32,
+    label: &str,
+) {
+    let ratio = ((time_s - x_min) / x_span).clamp(0.0, 1.0) as f32;
+    let x = plot_rect.left() + ratio * plot_rect.width();
+    painter.line_segment(
+        [
+            egui::pos2(x, plot_rect.top()),
+            egui::pos2(x, plot_rect.bottom()),
+        ],
+        egui::Stroke::new(1.5, color),
+    );
+    painter.text(
+        egui::pos2(x + 4.0, plot_rect.top() + 8.0),
+        egui::Align2::LEFT_CENTER,
+        label,
+        egui::FontId::monospace(12.0),
+        color,
+    );
+}
+
 fn draw_plot_frame(painter: &egui::Painter, rect: egui::Rect) {
     let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(96));
     painter.line_segment([rect.left_top(), rect.right_top()], stroke);
@@ -679,9 +831,131 @@ fn positive_span(min: f64, max: f64) -> f64 {
     if span.abs() < f64::EPSILON { 1.0 } else { span }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct WaveformCursor {
+    time_s: f64,
+    value: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WaveformMeasurement {
+    cursor_a: WaveformCursor,
+    cursor_b: WaveformCursor,
+    delta_t_s: f64,
+    delta_value: f64,
+    full_min: f64,
+    full_max: f64,
+    window_min: f64,
+    window_max: f64,
+}
+
+fn waveform_measurement(
+    waveform: &WaveformView,
+    probe_index: usize,
+    cursor_a_us: f64,
+    cursor_b_us: f64,
+) -> Option<WaveformMeasurement> {
+    let probe = waveform.probes.get(probe_index)?;
+    let full_range = min_max(&probe.values)?;
+    let cursor_a = cursor_measurement(waveform, probe, cursor_a_us)?;
+    let cursor_b = cursor_measurement(waveform, probe, cursor_b_us)?;
+    let (start_s, end_s) = ordered_pair(cursor_a.time_s, cursor_b.time_s);
+    let window_range = window_min_max(&waveform.time_s, &probe.values, start_s, end_s).unwrap_or((
+        cursor_a.value.min(cursor_b.value),
+        cursor_a.value.max(cursor_b.value),
+    ));
+    Some(WaveformMeasurement {
+        cursor_a,
+        cursor_b,
+        delta_t_s: cursor_b.time_s - cursor_a.time_s,
+        delta_value: cursor_b.value - cursor_a.value,
+        full_min: full_range.0,
+        full_max: full_range.1,
+        window_min: window_range.0,
+        window_max: window_range.1,
+    })
+}
+
+fn cursor_measurement(
+    waveform: &WaveformView,
+    probe: &WaveformProbe,
+    cursor_us: f64,
+) -> Option<WaveformCursor> {
+    let cursor_s = cursor_us / 1e6;
+    Some(WaveformCursor {
+        time_s: cursor_s,
+        value: interpolated_value(&waveform.time_s, &probe.values, cursor_s)?,
+    })
+}
+
+fn waveform_time_range_us(waveform: &WaveformView) -> Option<(f64, f64)> {
+    let first = *waveform.time_s.first()? * 1e6;
+    let last = *waveform.time_s.last()? * 1e6;
+    Some((first, last))
+}
+
+fn interpolated_value(times: &[f64], values: &[f64], time_s: f64) -> Option<f64> {
+    if times.len() != values.len() || times.is_empty() || !time_s.is_finite() {
+        return None;
+    }
+    if time_s <= times[0] {
+        return Some(values[0]);
+    }
+    let last_index = times.len() - 1;
+    if time_s >= times[last_index] {
+        return Some(values[last_index]);
+    }
+    for index in 1..times.len() {
+        let left_t = times[index - 1];
+        let right_t = times[index];
+        if time_s <= right_t {
+            let span = right_t - left_t;
+            if span.abs() < f64::EPSILON {
+                return Some(values[index]);
+            }
+            let ratio = (time_s - left_t) / span;
+            return Some(values[index - 1] + ratio * (values[index] - values[index - 1]));
+        }
+    }
+    None
+}
+
+fn window_min_max(times: &[f64], values: &[f64], start_s: f64, end_s: f64) -> Option<(f64, f64)> {
+    if times.len() != values.len() || times.is_empty() {
+        return None;
+    }
+    let start_value = interpolated_value(times, values, start_s)?;
+    let end_value = interpolated_value(times, values, end_s)?;
+    let mut min = start_value.min(end_value);
+    let mut max = start_value.max(end_value);
+    for (time, value) in times.iter().copied().zip(values.iter().copied()) {
+        if time >= start_s && time <= end_s {
+            min = min.min(value);
+            max = max.max(value);
+        }
+    }
+    Some((min, max))
+}
+
+fn ordered_pair(left: f64, right: f64) -> (f64, f64) {
+    if left <= right {
+        (left, right)
+    } else {
+        (right, left)
+    }
+}
+
+fn format_time_s(value: f64) -> String {
+    format!("{value:.6e} s")
+}
+
+fn format_value(value: f64) -> String {
+    format!("{value:.6e}")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::parse_waveform_csv_text;
+    use super::{interpolated_value, parse_waveform_csv_text, waveform_measurement};
 
     #[test]
     fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -708,5 +982,32 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("non-increasing time"));
+    }
+
+    #[test]
+    fn interpolation_returns_linear_value_between_samples() {
+        let value = interpolated_value(&[0.0, 1.0e-6, 2.0e-6], &[0.0, 2.0, 4.0], 1.5e-6).unwrap();
+        assert!((value - 3.0).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn waveform_measurement_reports_cursor_delta_and_ranges() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 1.0
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let measurement = waveform_measurement(&waveform, 0, 0.5, 1.5).unwrap();
+        assert!((measurement.cursor_a.value - 1.0).abs() < 1.0e-12);
+        assert!((measurement.cursor_b.value - 1.5).abs() < 1.0e-12);
+        assert!((measurement.delta_t_s - 1.0e-6).abs() < 1.0e-18);
+        assert!((measurement.delta_value - 0.5).abs() < 1.0e-12);
+        assert_eq!(measurement.full_min, 0.0);
+        assert_eq!(measurement.full_max, 2.0);
+        assert_eq!(measurement.window_max, 2.0);
     }
 }

@@ -108,6 +108,8 @@ pub struct CircuitCiApp {
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
+    waveform_cursor_a_us: f64,
+    waveform_cursor_b_us: f64,
 }
 
 impl Default for CircuitCiApp {
@@ -163,6 +165,8 @@ impl Default for CircuitCiApp {
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
+            waveform_cursor_a_us: 0.0,
+            waveform_cursor_b_us: 0.0,
         }
     }
 }
@@ -641,6 +645,8 @@ impl CircuitCiApp {
                 self.waveforms = waveforms;
                 self.selected_waveform = 0;
                 self.selected_probe = 0;
+                self.waveform_cursor_a_us = 0.0;
+                self.waveform_cursor_b_us = 0.0;
                 self.stage = if waveform_count == 0 {
                     Stage::Reports
                 } else {

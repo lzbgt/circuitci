@@ -28,11 +28,12 @@ pins. It may assign or remove component pin bindings only when the component
 exists and any assigned target net exists. Visual wire routing should keep using
 these Board IR mutation helpers rather than introducing a parallel connection
 model. `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV
-parsing, and plotting. `src/gui/analog.rs` owns generated-from-Board analog
-transient scenario creation and structured sample/min/max assertion authoring.
-It may derive node and pin bindings from Board IR for observation scenarios, but
-file-backed SPICE deck editing and advanced waveform measurements should be
-separate focused modules so waveform sign-off semantics stay explicit.
+parsing, plotting, cursor readouts, and min/max/delta measurements.
+`src/gui/analog.rs` owns generated-from-Board analog transient scenario creation
+and structured sample/min/max assertion authoring. It may derive node and pin
+bindings from Board IR for observation scenarios, but file-backed SPICE deck
+editing and advanced waveform math/channel analysis should be separate focused
+modules so waveform sign-off semantics stay explicit.
 
 ## Evidence Model
 

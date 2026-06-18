@@ -36,9 +36,10 @@ calls. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch graph
 layout/drawing helpers, and structured scalar YAML edit helpers for selected
 components and nets, including conservative add/remove operations for
 components and unreferenced nets plus validated component pin assignment.
-`src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing, and
-plotting. `src/gui/analog.rs` owns structured analog transient scenario and
-assertion YAML generation for generated-from-Board simulations.
+`src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
+plotting, and cursor measurement tools. `src/gui/analog.rs` owns structured
+analog transient scenario and assertion YAML generation for generated-from-Board
+simulations.
 
 ## Workflow Shell
 
@@ -57,8 +58,9 @@ form:
 - Library: shows library bindings and scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, add sample/min/max probe assertions, then
-  runs validation through the engine, plots emitted CSV waveforms, and lists
-  generated SPICE decks, artifacts, findings, and limitations.
+  runs validation through the engine, plots emitted CSV waveforms, provides A/B
+  cursor measurements with min/max and delta values, and lists generated SPICE
+  decks, artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. These are the
@@ -87,12 +89,12 @@ The supported desktop simulation path is:
 8. add sample or windowed min/max waveform assertions against declared probes,
 9. bind sourced component models,
 10. run declared validation and `analog_transient` scenarios,
-11. observe generated decks, plotted CSV waveforms, findings, and report
-   artifacts,
+11. observe generated decks, plotted CSV waveforms, cursor values, min/max
+   measurements, findings, and report artifacts,
 12. edit the project/model evidence and rerun.
 
-Full schematic-canvas editing, visual wire routing, advanced waveform
-cursors/measurements, arbitrary file-backed SPICE deck authoring, automatic
-arbitrary schematic-to-SPICE conversion, and vendor macromodel acquisition are
-future GUI stages. They must reuse the existing Board IR, importer, model, and
-validation contracts instead of creating a parallel EDA model.
+Full schematic-canvas editing, visual wire routing, advanced waveform math
+channels, arbitrary file-backed SPICE deck authoring, automatic arbitrary
+schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
+stages. They must reuse the existing Board IR, importer, model, and validation
+contracts instead of creating a parallel EDA model.
