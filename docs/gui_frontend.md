@@ -229,9 +229,11 @@ The supported desktop simulation path is:
 29. review recent background job outcomes in the status panel, including
    elapsed time, output path, and a compact diagnostic detail,
 30. watch active background job stages in the status panel as imports,
-   suggestions, validation, and analog simulation advance; validation reports
-   project loading, model loading/binding, scenario execution, profile coverage,
-   report assembly, report writing, and markdown report loading,
+   suggestions, validation, and analog simulation advance; KiCad/SPICE imports
+   report parser, mapping/load, Board IR build/merge, and write phases, while
+   validation reports project loading, model loading/binding, scenario
+   execution, profile coverage, report assembly, report writing, and markdown
+   report loading,
 31. scrub or play the simulation time cursor to drive graph runtime tinting,
 32. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,

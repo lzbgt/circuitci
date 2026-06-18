@@ -203,7 +203,25 @@ struct ProbeYaml {
 struct AssertionYaml {}
 
 pub fn import_spice(options: &SpiceImportOptions) -> Result<()> {
+    import_spice_with_progress(options, |_, _| {})
+}
+
+pub fn import_spice_with_progress<F>(options: &SpiceImportOptions, mut on_progress: F) -> Result<()>
+where
+    F: FnMut(&'static str, String),
+{
+    on_progress(
+        "Parsing SPICE deck",
+        format!("Reading {}.", options.input.display()),
+    );
     let deck = parse_spice_deck(&options.input)?;
+    on_progress(
+        "Preparing output",
+        format!(
+            "Creating output directory for {}.",
+            options.output.display()
+        ),
+    );
     let output_dir = options.output.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(output_dir).with_context(|| {
         format!(
@@ -211,7 +229,20 @@ pub fn import_spice(options: &SpiceImportOptions) -> Result<()> {
             output_dir.display()
         )
     })?;
+    on_progress(
+        "Building Board IR",
+        format!(
+            "{} element(s), {} include(s), {} node(s).",
+            deck.elements.len(),
+            deck.includes.len(),
+            deck.nodes.len()
+        ),
+    );
     let project = build_project_yaml(options, &deck, output_dir)?;
+    on_progress(
+        "Serializing Board IR",
+        format!("Writing {}.", options.output.display()),
+    );
     let mut yaml = serde_yaml_ng::to_string(&project)?;
     yaml.insert_str(
         0,
@@ -877,7 +908,10 @@ fn sanitize_identifier(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{logical_lines, parse_spice_deck, parse_spice_number};
+    use super::{
+        SpiceImportOptions, import_spice_with_progress, logical_lines, parse_spice_deck,
+        parse_spice_number,
+    };
 
     #[test]
     fn spice_suffix_numbers_parse() {
@@ -920,5 +954,34 @@ C1 out 0 100n
         assert!(parsed.nodes.contains("out"));
         assert!(parsed.nodes.contains("0"));
         assert_eq!(parsed.tran.unwrap().stop_time_us, 10.0);
+    }
+
+    #[test]
+    fn import_spice_with_progress_emits_phases() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("imported.project.yaml");
+        let mut stages = Vec::new();
+
+        import_spice_with_progress(
+            &SpiceImportOptions {
+                input: "examples/import_spice_rc/deck.cir".into(),
+                output,
+                name: "progress_spice".to_string(),
+                backend: "auto".to_string(),
+                stop_time_us: 1000.0,
+                max_step_us: 1.0,
+            },
+            |stage, _detail| stages.push(stage.to_string()),
+        )
+        .unwrap();
+
+        for expected in [
+            "Parsing SPICE deck",
+            "Preparing output",
+            "Building Board IR",
+            "Serializing Board IR",
+        ] {
+            assert!(stages.iter().any(|stage| stage == expected), "{expected}");
+        }
     }
 }

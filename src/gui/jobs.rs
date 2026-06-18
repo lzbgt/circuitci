@@ -177,11 +177,6 @@ impl CircuitCiApp {
         let target = format!("{} -> {}", schematic.display(), output.display());
         self.start_background_job("KiCad schematic import", target, move |sender| {
             thread::spawn(move || {
-                send_background_progress(
-                    &sender,
-                    "Parsing schematic",
-                    format!("Reading {}.", schematic.display()),
-                );
                 let options = crate::importers::kicad::KicadImportOptions {
                     input: schematic,
                     output: output.clone(),
@@ -189,7 +184,10 @@ impl CircuitCiApp {
                     default_model,
                     mapping,
                 };
-                let result = crate::importers::kicad_sch::import_kicad_schematic(&options);
+                let result = crate::importers::kicad_sch::import_kicad_schematic_with_progress(
+                    &options,
+                    |stage, detail| send_background_progress(&sender, stage, detail),
+                );
                 let output_project_path = output.clone();
                 send_background_progress(
                     &sender,
@@ -227,28 +225,24 @@ impl CircuitCiApp {
         );
         self.start_background_job("KiCad PCB import", target, move |sender| {
             thread::spawn(move || {
-                send_background_progress(
-                    &sender,
-                    "Parsing PCB",
-                    format!("Reading {}.", input.display()),
-                );
                 let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
                     input,
                     project,
                     output: output.clone(),
                 };
-                let result =
-                    crate::importers::kicad_pcb::import_kicad_pcb_placements(&options).map(
-                        |summary| {
-                            format!(
+                let result = crate::importers::kicad_pcb::import_kicad_pcb_placements_with_progress(
+                    &options,
+                    |stage, detail| send_background_progress(&sender, stage, detail),
+                )
+                .map(|summary| {
+                    format!(
                                 "KiCad PCB imported: {} placements, {} pads, {} route segments, {} vias.",
                                 summary.placements,
                                 summary.pads,
                                 summary.route_segments,
                                 summary.route_vias
                             )
-                        },
-                    );
+                });
                 let (result, success_diagnostic) = match result {
                     Ok(diagnostic) => (Ok(()), diagnostic),
                     Err(error) => (Err(error), String::new()),
@@ -289,11 +283,6 @@ impl CircuitCiApp {
         let target = format!("{} -> {}", deck.display(), output.display());
         self.start_background_job("SPICE deck import", target, move |sender| {
             thread::spawn(move || {
-                send_background_progress(
-                    &sender,
-                    "Parsing SPICE deck",
-                    format!("Reading {}.", deck.display()),
-                );
                 let options = crate::importers::spice::SpiceImportOptions {
                     input: deck.clone(),
                     output: output.clone(),
@@ -302,7 +291,10 @@ impl CircuitCiApp {
                     stop_time_us,
                     max_step_us,
                 };
-                let result = crate::importers::spice::import_spice(&options);
+                let result = crate::importers::spice::import_spice_with_progress(
+                    &options,
+                    |stage, detail| send_background_progress(&sender, stage, detail),
+                );
                 send_background_progress(
                     &sender,
                     "SPICE import finished",

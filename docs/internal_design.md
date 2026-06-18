@@ -34,7 +34,10 @@ and optional output path; they must not be serialized into Board IR or treated
 as design evidence. Validation progress should be emitted from the same path
 that loads the project, binds models, executes scenarios, applies profile
 coverage, assembles reports, and writes artifacts so the GUI does not drift
-from headless validation semantics.
+from headless validation semantics. KiCad/SPICE import progress should be
+emitted inside the importer entry points that parse source files, load mappings
+or Board IR inputs, build or merge Board IR evidence, and write output YAML;
+GUI jobs should only route those events to the status panel.
 `src/gui/import_flow.rs` owns the Import stage UI plus KiCad
 schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`

@@ -33,7 +33,7 @@ normalized board, layout, library, scenario, and process evidence.
 | --- | --- |
 | `board_ir` | Deserialize project YAML into components, nets, layout evidence, manufacturing metadata, and scenarios. |
 | `library` | Load component model packs, bind board components to exact `component_id` values, and emit binding findings. |
-| `importers` | Convert external artifacts into Board IR while preserving provenance and failing closed on unsupported constructs. |
+| `importers` | Convert external artifacts into Board IR while preserving provenance and failing closed on unsupported constructs. KiCad/SPICE importers expose optional progress callbacks for GUI parser, mapping/load, Board IR build/merge, and write-stage reporting while keeping CLI calls on the same no-op-progress behavior. |
 | `scenario_suggestions` | Inspect bound board evidence and propose runnable or non-runnable scenario YAML templates. |
 | `validation` | Dispatch scenario checks and collect deterministic findings. |
 | `validation::manufacturing` | Static fabrication/manufacturing rules over Gerber, Excellon, layout, and process-preset evidence. |

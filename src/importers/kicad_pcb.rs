@@ -203,7 +203,25 @@ struct ZoneYaml {
 pub fn import_kicad_pcb_placements(
     options: &KicadPcbPlacementImportOptions,
 ) -> Result<KicadPcbImportSummary> {
+    import_kicad_pcb_placements_with_progress(options, |_, _| {})
+}
+
+pub fn import_kicad_pcb_placements_with_progress<F>(
+    options: &KicadPcbPlacementImportOptions,
+    mut on_progress: F,
+) -> Result<KicadPcbImportSummary>
+where
+    F: FnMut(&'static str, String),
+{
+    on_progress(
+        "Parsing KiCad PCB",
+        format!("Reading {}.", options.input.display()),
+    );
     let parsed_pcb = parse_kicad_pcb(&options.input)?;
+    on_progress(
+        "Loading Board IR",
+        format!("Reading {}.", options.project.display()),
+    );
     let text = fs::read_to_string(&options.project).with_context(|| {
         format!(
             "Failed to read Board IR project {}",
@@ -216,6 +234,16 @@ pub fn import_kicad_pcb_placements(
             options.project.display()
         )
     })?;
+    on_progress(
+        "Merging PCB evidence",
+        format!(
+            "{} placement(s), {} pad set(s), {} route(s), {} zone group(s).",
+            parsed_pcb.placements.len(),
+            parsed_pcb.pads.len(),
+            parsed_pcb.routes.len(),
+            parsed_pcb.zones.len()
+        ),
+    );
     let summary = merge_pcb_into_project(&mut project_yaml, &parsed_pcb)?;
     if summary.placements == 0 {
         bail!(
@@ -225,6 +253,10 @@ pub fn import_kicad_pcb_placements(
         );
     }
     if let Some(parent) = options.output.parent() {
+        on_progress(
+            "Preparing output",
+            format!("Creating output directory {}.", parent.display()),
+        );
         fs::create_dir_all(parent).with_context(|| {
             format!(
                 "Failed to create import output directory {}",
@@ -236,6 +268,10 @@ pub fn import_kicad_pcb_placements(
         &mut project_yaml,
         options.project.parent().unwrap_or_else(|| Path::new(".")),
     )?;
+    on_progress(
+        "Serializing Board IR",
+        format!("Writing {}.", options.output.display()),
+    );
     let mut yaml = serde_yaml_ng::to_string(&project_yaml)?;
     yaml.insert_str(
         0,
@@ -1529,4 +1565,37 @@ fn ensure_mapping_field_mut<'a>(mapping: &'a mut Mapping, key: &str) -> Result<&
         .expect("field was inserted when absent")
         .as_mapping_mut()
         .with_context(|| format!("Board IR field {key} must be an object."))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{KicadPcbPlacementImportOptions, import_kicad_pcb_placements_with_progress};
+
+    #[test]
+    fn import_kicad_pcb_with_progress_emits_phases() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("wheel_imported_pcb.project.yaml");
+        let mut stages = Vec::new();
+
+        let summary = import_kicad_pcb_placements_with_progress(
+            &KicadPcbPlacementImportOptions {
+                input: "demos/smart_robot/kicad/wheel_actuator/wheel_actuator.kicad_pcb".into(),
+                project: "demos/smart_robot/circuitci/wheel_actuator/project.yaml".into(),
+                output,
+            },
+            |stage, _detail| stages.push(stage.to_string()),
+        )
+        .unwrap();
+
+        assert!(summary.placements > 0);
+        for expected in [
+            "Parsing KiCad PCB",
+            "Loading Board IR",
+            "Merging PCB evidence",
+            "Preparing output",
+            "Serializing Board IR",
+        ] {
+            assert!(stages.iter().any(|stage| stage == expected), "{expected}");
+        }
+    }
 }
