@@ -13,10 +13,11 @@ APIs used by the CLI. It must not grow a second project model, a second
 validation dispatcher, or an in-house analog solver.
 
 The GUI stages are allowed to organize user workflow around project loading,
-sketch/model review, library suggestions, simulation artifact observation, and
-report viewing. Schematic-canvas editing and waveform plotting should still
-persist through Board IR, importer metadata, generated SPICE decks, and report
-artifacts so headless agents can reproduce GUI actions.
+KiCad/SPICE import, sketch/model review, library suggestions, simulation
+artifact observation, and report viewing. Schematic-canvas editing and waveform
+plotting should still persist through Board IR, importer metadata, generated or
+file-backed SPICE decks, and report artifacts so headless agents can reproduce
+GUI actions.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, menus, stage

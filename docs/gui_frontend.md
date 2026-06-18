@@ -55,8 +55,9 @@ form:
 
 - Project: choose a Board IR project and output directory, then load or
   validate it.
-- Import: import native KiCad schematic evidence into Board IR, or enrich an
-  imported Board IR project with KiCad PCB placement/routing evidence.
+- Import: import native KiCad schematic evidence or SPICE decks into Board IR,
+  or enrich an imported Board IR project with KiCad PCB placement/routing
+  evidence.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   an inspector for component bindings and net connections, structured scalar
   edits for existing component and net properties, add/remove controls for
@@ -88,7 +89,7 @@ missing.
 
 The supported desktop simulation path is:
 
-1. load Board IR or import KiCad schematic/PCB evidence,
+1. load Board IR or import KiCad schematic/PCB/SPICE evidence,
 2. inspect the imported/sketched component and net graph,
 3. edit selected component model/part-number and net kind/voltage/powered
    fields through structured controls,
@@ -112,7 +113,7 @@ The supported desktop simulation path is:
 16. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
-math channels, arbitrary file-backed SPICE deck authoring, automatic arbitrary
+math channels, in-app file-backed SPICE deck authoring, automatic arbitrary
 schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
 stages. They must reuse the existing Board IR, importer, model, and validation
 contracts instead of creating a parallel EDA model.

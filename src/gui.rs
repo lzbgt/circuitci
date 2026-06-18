@@ -75,6 +75,12 @@ pub struct CircuitCiApp {
     import_pcb_path: String,
     import_pcb_project_path: String,
     import_pcb_output_path: String,
+    import_spice_deck_path: String,
+    import_spice_output_path: String,
+    import_spice_project_name: String,
+    import_spice_backend: String,
+    import_spice_stop_time_us: f64,
+    import_spice_max_step_us: f64,
     stage: Stage,
     status: String,
     diagnostics: Vec<String>,
@@ -136,6 +142,12 @@ impl Default for CircuitCiApp {
                 .to_string(),
             import_pcb_output_path: "out/gui_import/wheel_actuator_with_pcb.project.yaml"
                 .to_string(),
+            import_spice_deck_path: "examples/import_spice_rc/deck.cir".to_string(),
+            import_spice_output_path: "out/gui_import/imported_spice.project.yaml".to_string(),
+            import_spice_project_name: String::new(),
+            import_spice_backend: "auto".to_string(),
+            import_spice_stop_time_us: 1000.0,
+            import_spice_max_step_us: 1.0,
             stage: Stage::Project,
             status: "Ready".to_string(),
             diagnostics: Vec::new(),
@@ -201,6 +213,10 @@ impl CircuitCiApp {
                     }
                     if ui.button("Import KiCad PCB").clicked() {
                         self.import_kicad_pcb();
+                        ui.close();
+                    }
+                    if ui.button("Import SPICE Deck").clicked() {
+                        self.import_spice_deck();
                         ui.close();
                     }
                     if ui.button("Load Project").clicked() {
@@ -396,6 +412,63 @@ impl CircuitCiApp {
 
         ui.add_space(10.0);
         ui.group(|ui| {
+            ui.strong("SPICE Deck To Board IR");
+            egui::Grid::new("spice_import_grid")
+                .num_columns(2)
+                .spacing([12.0, 6.0])
+                .show(ui, |ui| {
+                    ui.label("Deck");
+                    ui.text_edit_singleline(&mut self.import_spice_deck_path);
+                    ui.end_row();
+                    ui.label("Output project");
+                    ui.text_edit_singleline(&mut self.import_spice_output_path);
+                    ui.end_row();
+                    ui.label("Project name");
+                    ui.text_edit_singleline(&mut self.import_spice_project_name);
+                    ui.end_row();
+                    ui.label("Backend");
+                    egui::ComboBox::from_id_salt("spice_import_backend")
+                        .selected_text(&self.import_spice_backend)
+                        .show_ui(ui, |ui| {
+                            for backend in ["auto", "ngspice", "xyce", "embedded_ngspice"] {
+                                ui.selectable_value(
+                                    &mut self.import_spice_backend,
+                                    backend.to_string(),
+                                    backend,
+                                );
+                            }
+                        });
+                    ui.end_row();
+                    ui.label("Stop time");
+                    ui.add(
+                        egui::DragValue::new(&mut self.import_spice_stop_time_us)
+                            .speed(10.0)
+                            .range(0.001..=1_000_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+                    ui.label("Max step");
+                    ui.add(
+                        egui::DragValue::new(&mut self.import_spice_max_step_us)
+                            .speed(0.1)
+                            .range(0.001..=1_000_000_000.0)
+                            .suffix(" us"),
+                    );
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Import SPICE Deck").clicked() {
+                    self.import_spice_deck();
+                }
+                if ui.button("Use As Project").clicked() {
+                    self.project_path = self.import_spice_output_path.clone();
+                    self.load_project_summary();
+                }
+            });
+        });
+
+        ui.add_space(10.0);
+        ui.group(|ui| {
             ui.strong("KiCad PCB Layout Evidence");
             egui::Grid::new("kicad_pcb_import_grid")
                 .num_columns(2)
@@ -565,6 +638,37 @@ impl CircuitCiApp {
                     summary.placements, summary.pads, summary.route_segments, summary.route_vias
                 ));
                 self.load_project_summary();
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn import_spice_deck(&mut self) {
+        let deck = Path::new(&self.import_spice_deck_path).to_path_buf();
+        let output = Path::new(&self.import_spice_output_path).to_path_buf();
+        let name = if self.import_spice_project_name.trim().is_empty() {
+            sanitized_project_name(&deck, "imported_spice_project")
+        } else {
+            self.import_spice_project_name.trim().to_string()
+        };
+        let options = crate::importers::spice::SpiceImportOptions {
+            input: deck.clone(),
+            output: output.clone(),
+            name,
+            backend: self.import_spice_backend.trim().to_string(),
+            stop_time_us: self.import_spice_stop_time_us,
+            max_step_us: self.import_spice_max_step_us,
+        };
+        match crate::importers::spice::import_spice(&options) {
+            Ok(()) => {
+                self.project_path = output.to_string_lossy().into_owned();
+                self.status = "SPICE deck imported.".to_string();
+                self.push_diagnostic(&format!(
+                    "SPICE deck imported to Board IR from {}.",
+                    deck.display()
+                ));
+                self.load_project_summary();
+                self.stage = Stage::Simulation;
             }
             Err(error) => self.record_error(error),
         }
