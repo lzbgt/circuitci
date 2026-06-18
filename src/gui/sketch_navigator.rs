@@ -2,6 +2,7 @@ use eframe::egui;
 
 use super::CircuitCiApp;
 use super::sketch::{self, ProjectSnapshot, SketchSelection};
+use super::sketch_bundles::{derive_net_bundles, find_net_bundle, net_bundle_graph_bounds};
 use super::sketch_probes::SketchProbeTarget;
 
 const MAX_NAVIGATOR_ROWS: usize = 96;
@@ -10,6 +11,7 @@ const MAX_NAVIGATOR_ROWS: usize = 96;
 pub(super) enum SketchNavigatorTarget {
     Component(String),
     Net(String),
+    Bundle(String),
     Wire { net_id: String, source: String },
     Probe { scenario: String, probe: String },
 }
@@ -26,6 +28,9 @@ impl SketchNavigatorTarget {
     fn selection(&self, snapshot: &ProjectSnapshot) -> Option<SketchSelection> {
         match self {
             Self::Component(id) => Some(SketchSelection::Component(id.clone())),
+            Self::Bundle(label) => find_net_bundle(snapshot, label)
+                .and_then(|bundle| bundle.members.first().cloned())
+                .map(SketchSelection::Net),
             Self::Net(id) | Self::Wire { net_id: id, .. } => Some(SketchSelection::Net(id.clone())),
             Self::Probe { scenario, probe } => snapshot
                 .probes
@@ -87,6 +92,12 @@ impl CircuitCiApp {
         snapshot: &ProjectSnapshot,
         target: &SketchNavigatorTarget,
     ) {
+        if let SketchNavigatorTarget::Bundle(label) = target
+            && let Some(bundle) = find_net_bundle(snapshot, label)
+        {
+            self.select_net_bundle(&bundle);
+            return;
+        }
         if let Some(selection) = target.selection(snapshot) {
             self.set_single_sketch_selection(Some(selection.clone()));
             self.status = match selection {
@@ -110,7 +121,7 @@ impl CircuitCiApp {
         target: &SketchNavigatorTarget,
     ) {
         let graph = sketch::layout_sketch_graph(canvas, snapshot);
-        let Some(bounds) = navigator_target_bounds(&graph, target) else {
+        let Some(bounds) = navigator_target_bounds(&graph, snapshot, target) else {
             self.status =
                 "Navigator target is not visible in the current sketch layout.".to_string();
             return;
@@ -152,6 +163,18 @@ pub(super) fn sketch_navigator_rows(
             });
         }
     }
+    for bundle in derive_net_bundles(snapshot) {
+        rows.push(SketchNavigatorRow {
+            kind: "bundle",
+            label: bundle.label.clone(),
+            detail: format!(
+                "{} nets: {}",
+                bundle.members.len(),
+                compact_members(&bundle.members)
+            ),
+            target: SketchNavigatorTarget::Bundle(bundle.label),
+        });
+    }
     for net in &snapshot.nets_detail {
         rows.push(SketchNavigatorRow {
             kind: "net",
@@ -190,6 +213,7 @@ fn filter_navigator_rows(rows: Vec<SketchNavigatorRow>, query: &str) -> Vec<Sket
 
 fn navigator_target_bounds(
     graph: &sketch::SketchGraph,
+    snapshot: &ProjectSnapshot,
     target: &SketchNavigatorTarget,
 ) -> Option<egui::Rect> {
     match target {
@@ -203,6 +227,10 @@ fn navigator_target_bounds(
             .iter()
             .find(|node| node.selection == SketchSelection::Net(id.clone()))
             .map(|node| node.rect.expand(36.0)),
+        SketchNavigatorTarget::Bundle(label) => {
+            let bundle = find_net_bundle(snapshot, label)?;
+            net_bundle_graph_bounds(graph, &bundle)
+        }
         SketchNavigatorTarget::Wire { net_id, source } => graph
             .edges
             .iter()
@@ -223,6 +251,14 @@ fn navigator_target_bounds(
             })
             .map(|badge| badge.rect.expand(64.0)),
     }
+}
+
+fn compact_members(members: &[String]) -> String {
+    let mut values = members.iter().take(4).cloned().collect::<Vec<_>>();
+    if members.len() > values.len() {
+        values.push(format!("{} more", members.len() - values.len()));
+    }
+    values.join(", ")
 }
 
 fn fit_viewport_to_bounds(app: &mut CircuitCiApp, canvas: egui::Rect, bounds: egui::Rect) {
@@ -261,7 +297,7 @@ mod tests {
         ProjectSnapshot {
             name: "navigator".to_string(),
             components: 1,
-            nets: 1,
+            nets: 3,
             scenarios: 1,
             libraries: Vec::new(),
             components_detail: vec![SketchComponent {
@@ -281,14 +317,32 @@ mod tests {
                 position: Some(SketchPosition { x: 10.0, y: 20.0 }),
                 style: SketchNodeStyle::default(),
             }],
-            nets_detail: vec![SketchNet {
-                id: "rail".to_string(),
-                kind: "power".to_string(),
-                nominal_voltage: Some(5.0),
-                powered: Some(true),
-                connections: vec!["R1.A".to_string()],
-                position: None,
-            }],
+            nets_detail: vec![
+                SketchNet {
+                    id: "rail".to_string(),
+                    kind: "power".to_string(),
+                    nominal_voltage: Some(5.0),
+                    powered: Some(true),
+                    connections: vec!["R1.A".to_string()],
+                    position: None,
+                },
+                SketchNet {
+                    id: "robot_canh".to_string(),
+                    kind: "digital_or_analog".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: Vec::new(),
+                    position: None,
+                },
+                SketchNet {
+                    id: "robot_canl".to_string(),
+                    kind: "digital_or_analog".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: Vec::new(),
+                    position: None,
+                },
+            ],
             probes: vec![SketchProbe {
                 scenario_name: "tran".to_string(),
                 probe_name: "rail_v".to_string(),
@@ -323,6 +377,11 @@ mod tests {
                 && row.target == SketchNavigatorTarget::Net("rail".to_string())
         }));
         assert!(rows.iter().any(|row| {
+            row.kind == "bundle"
+                && row.label == "robot"
+                && row.target == SketchNavigatorTarget::Bundle("robot".to_string())
+        }));
+        assert!(rows.iter().any(|row| {
             row.kind == "probe"
                 && row.label == "tran:rail_v"
                 && row.target
@@ -346,5 +405,8 @@ mod tests {
         let by_detail = sketch_navigator_rows(&snapshot(), "RC0603");
         assert_eq!(by_detail.len(), 1);
         assert_eq!(by_detail[0].kind, "component");
+
+        let by_bundle = sketch_navigator_rows(&snapshot(), "robot");
+        assert!(by_bundle.iter().any(|row| row.kind == "bundle"));
     }
 }

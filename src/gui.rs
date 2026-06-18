@@ -23,6 +23,7 @@ mod shell;
 mod simulation;
 mod sketch;
 mod sketch_actions;
+mod sketch_bundles;
 mod sketch_inspector;
 mod sketch_navigator;
 mod sketch_probes;
@@ -612,6 +613,7 @@ impl CircuitCiApp {
             self.sketch_grid_step,
         );
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
+        let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
@@ -635,6 +637,9 @@ impl CircuitCiApp {
         };
         let hovered_probe_badge =
             pointer_hover.and_then(|position| hit_test_probe_badge(&graph.probe_badges, position));
+        let hovered_bundle_badge = pointer_hover.and_then(|position| {
+            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position)
+        });
         for edge in &graph.edges {
             let wire_selection = SketchSelection::Net(edge.net_id.clone());
             let selected = self.selection_is_selected(&wire_selection);
@@ -660,6 +665,11 @@ impl CircuitCiApp {
                 pointer,
                 egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
+        }
+        for badge in &bundle_badges {
+            let hovered = hovered_bundle_badge
+                .is_some_and(|hovered| hovered.bundle.label == badge.bundle.label);
+            sketch_bundles::draw_net_bundle_overlay(&painter, badge, hovered);
         }
         for node in &graph.nodes {
             let selected = self.selection_is_selected(&node.selection);
@@ -691,6 +701,8 @@ impl CircuitCiApp {
         {
             let multi_select = ui.input(|input| input.modifiers.shift || input.modifiers.command);
             let clicked_probe_badge = hit_test_probe_badge(&graph.probe_badges, position);
+            let clicked_bundle_badge =
+                sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position);
             let clicked_anchor = graph
                 .pin_anchors
                 .iter()
@@ -707,6 +719,8 @@ impl CircuitCiApp {
             };
             if let Some(badge) = clicked_probe_badge {
                 self.open_probe_badge_in_simulation(badge);
+            } else if let Some(badge) = clicked_bundle_badge {
+                self.select_net_bundle(&badge.bundle);
             } else if let Some(anchor) = clicked_anchor {
                 if let Some(source_component_id) = self.wire_from_component.clone()
                     && !(source_component_id == anchor.component_id
@@ -876,6 +890,10 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
                 sketch_probe_badge_tooltip(ui, badge, status, sampled_value);
+            });
+        } else if let Some(badge) = hovered_bundle_badge {
+            response.on_hover_ui(|ui| {
+                sketch_bundles::net_bundle_tooltip(ui, badge);
             });
         } else if let Some(node) = hovered_node {
             response.context_menu(|ui| {

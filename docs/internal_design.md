@@ -64,9 +64,14 @@ IR components, nets, pins, and optional schematic node positions/styles.
 owns sketch canvas selection, fit-content, multi-selected movement/alignment,
 and selected-item deletion actions that compose lower-level sketch YAML
 mutations. `src/gui/sketch_navigator.rs` owns derived searchable component,
-net, wire, and probe rows for the Sketch-stage object navigator. Navigator
-selection and fit actions may update GUI selection, analog probe editor context,
-and viewport state, but they must not mutate Board IR by themselves. `src/gui/sketch_inspector.rs` owns the selected component/net
+net-bundle, net, wire, and probe rows for the Sketch-stage object navigator.
+Navigator selection and fit actions may update GUI selection, analog probe
+editor context, and viewport state, but they must not mutate Board IR by
+themselves. `src/gui/sketch_bundles.rs` owns conservative derived grouping for
+bracketed, dot-qualified, and common paired interface nets, plus visual
+bundle trunks/badges and bundle multi-selection. Bundle overlays must remain
+GUI-only navigation aids over scalar Board IR nets, not persisted bus
+topology/evidence. `src/gui/sketch_inspector.rs` owns the selected component/net
 inspector, structured scalar YAML edit actions, conservative component and
 unreferenced-net add/remove operations, schematic symbol style edits, validated
 component pin assignment, visual wire assignment mutations, and selected-net

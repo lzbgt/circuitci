@@ -25,6 +25,7 @@ circuitci-gui
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
+  -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_navigator.rs
   -> src/gui/sketch_probes.rs
@@ -85,8 +86,12 @@ rendered pin anchor and can terminate on another pin anchor or an existing net
 node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
 creates a generated Board IR net through the same mutation path instead of
 introducing a second connection model.
+`src/gui/sketch_bundles.rs` owns conservative, derived net-bundle grouping,
+overlay drawing, badge hit-testing, and bundle multi-selection for bracketed,
+dot-qualified, and common paired interface nets. Bundle overlays are a visual
+navigation aid over scalar Board IR nets and do not persist bus evidence.
 `src/gui/sketch_navigator.rs` owns the Sketch-stage object navigator: it
-derives searchable component, net, wire, and probe rows from the active
+derives searchable component, net-bundle, net, wire, and probe rows from the active
 `ProjectSnapshot`, selects the corresponding canvas target, and fits the
 viewport to visible navigator targets without writing Board IR.
 `src/gui/sketch_inspector.rs` owns the selected component/net inspector,
@@ -148,8 +153,9 @@ form:
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
   schematic grid/snap controls, orthogonal wire visuals with net labels and
-  junction dots, clickable wire-to-net selection, pan/zoom plus reset-view and
-  fit-content controls, object navigator search/select/fit controls,
+  junction dots, derived net-bundle trunks/badges for bracketed, dot-qualified,
+  and common paired interface nets, clickable wire-to-net selection, pan/zoom
+  plus reset-view and fit-content controls, object navigator search/select/fit controls,
   Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -217,7 +223,7 @@ The supported desktop simulation path is:
 7. snap dragged schematic positions to the visible grid when snap is enabled,
 8. pan, zoom, reset, or fit the sketch viewport without changing Board IR
    evidence,
-9. search components, nets, wires, and probe badges in the object navigator,
+9. search components, net bundles, nets, wires, and probe badges in the object navigator,
    select matching canvas targets, and fit the viewport to visible targets
    without changing Board IR evidence,
 10. rotate, flip, or choose pin side for selected components through
