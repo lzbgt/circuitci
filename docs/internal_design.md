@@ -111,10 +111,15 @@ editing Board IR. The probe badge right-click menu may expose these same
 actions, but it must call the same validated mutation paths as the keyboard
 shortcuts rather than creating separate menu-only behavior. Pressing `X` may
 remove assertions for that probe while keeping the probe, and Delete/Backspace
-may remove the underlying Board IR probe through `src/gui/analog.rs` and must
-also remove assertions that reference that probe.
-before re-parsing Board IR. Badges must not become a second persisted probe
-store.
+may remove the underlying Board IR probe through `src/gui/analog.rs`; probe
+removal must also remove assertions that reference that probe before re-parsing
+Board IR. Badges must not become a second persisted probe store. Component,
+net, and wire context menus in `src/gui.rs` are interaction routing only. They
+may select/inspect the target, start or complete visual wire mode, add
+supported voltage/current/power probes, or delete through the existing
+validated Board IR mutation helpers. Rendered wire menus operate on the
+underlying Board IR net; the drawn wire must not become a separately persisted
+edge object.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.

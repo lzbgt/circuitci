@@ -596,7 +596,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) {
+    pub(super) fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) {
         let draft = AnalogProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             net_id: net_id.to_string(),
@@ -618,7 +618,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_add_current_probe_for_component(&mut self, component_id: &str) {
+    pub(super) fn apply_add_current_probe_for_component(&mut self, component_id: &str) {
         let draft = AnalogCurrentProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -645,7 +645,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_add_power_probe_for_component(&mut self, component_id: &str) {
+    pub(super) fn apply_add_power_probe_for_component(&mut self, component_id: &str) {
         let draft = AnalogPowerProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -675,7 +675,7 @@ impl CircuitCiApp {
     }
 }
 
-fn default_probe_name_for_net(net_id: &str) -> String {
+pub(super) fn default_probe_name_for_net(net_id: &str) -> String {
     let name = sanitized_probe_stem(net_id);
     if name.is_empty() {
         "net_voltage".to_string()
@@ -684,7 +684,7 @@ fn default_probe_name_for_net(net_id: &str) -> String {
     }
 }
 
-fn default_current_probe_name_for_component(component_id: &str) -> String {
+pub(super) fn default_current_probe_name_for_component(component_id: &str) -> String {
     let name = sanitized_probe_stem(component_id);
     if name.is_empty() {
         "component_current".to_string()
@@ -693,7 +693,7 @@ fn default_current_probe_name_for_component(component_id: &str) -> String {
     }
 }
 
-fn default_power_probe_name_for_component(component_id: &str) -> String {
+pub(super) fn default_power_probe_name_for_component(component_id: &str) -> String {
     let name = sanitized_probe_stem(component_id);
     if name.is_empty() {
         "component_power".to_string()

@@ -31,6 +31,10 @@ use sketch::{
     orthogonal_wire_points, persisted_node_position_from_screen_with_snap,
     snap_screen_point_to_grid,
 };
+use sketch_inspector::{
+    default_current_probe_name_for_component, default_power_probe_name_for_component,
+    default_probe_name_for_net,
+};
 use sketch_probes::{
     SketchProbeBadge, SketchProbeStatus, draw_probe_badge, hit_test_probe_badge,
     probe_assertion_status,
@@ -1072,11 +1076,10 @@ impl CircuitCiApp {
                 let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
                 sketch_probe_badge_tooltip(ui, badge, status, sampled_value);
             });
-        } else if let Some(anchor) = hovered_anchor {
-            response.on_hover_ui(|ui| {
-                sketch_pin_hover_tooltip(ui, anchor);
-            });
         } else if let Some(node) = hovered_node {
+            response.context_menu(|ui| {
+                self.sketch_node_context_menu(ui, node, snapshot);
+            });
             let runtime_lines = runtime_probe_lines_for_selection(
                 &self.waveforms,
                 self.selected_waveform,
@@ -1087,7 +1090,14 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
             });
+        } else if let Some(anchor) = hovered_anchor {
+            response.on_hover_ui(|ui| {
+                sketch_pin_hover_tooltip(ui, anchor);
+            });
         } else if let Some(edge) = hovered_wire {
+            response.context_menu(|ui| {
+                self.sketch_wire_context_menu(ui, edge);
+            });
             response.on_hover_ui(|ui| {
                 sketch_wire_hover_tooltip(ui, edge);
             });
@@ -1167,6 +1177,135 @@ impl CircuitCiApp {
         if ui.button("Remove Probe").clicked() {
             self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
             ui.close();
+        }
+    }
+
+    fn sketch_node_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        node: &sketch::SketchNode,
+        snapshot: &ProjectSnapshot,
+    ) {
+        match &node.selection {
+            SketchSelection::Component(component_id) => {
+                ui.strong(format!("Component {component_id}"));
+                if ui.button("Inspect Component").clicked() {
+                    self.set_single_sketch_selection(Some(node.selection.clone()));
+                    ui.close();
+                }
+                if ui.button("Start Wire From Pin").clicked() {
+                    let (pin, net) =
+                        component_context_pin(snapshot, component_id, &self.wire_pin_id);
+                    self.set_single_sketch_selection(Some(node.selection.clone()));
+                    self.pin_edit_id = pin.clone();
+                    self.pin_edit_net = net;
+                    self.wire_pin_id = pin.clone();
+                    self.wire_from_component = Some(component_id.clone());
+                    self.status = format!(
+                        "Wire mode: click another pin, net, or wire to connect {component_id}.{pin}."
+                    );
+                    ui.close();
+                }
+                ui.separator();
+                if ui.button("Add Current Probe").clicked() {
+                    self.ensure_component_probe_defaults(component_id);
+                    self.apply_add_current_probe_for_component(component_id);
+                    ui.close();
+                }
+                if ui.button("Add Power Probe").clicked() {
+                    self.ensure_component_probe_defaults(component_id);
+                    self.apply_add_power_probe_for_component(component_id);
+                    ui.close();
+                }
+                ui.separator();
+                if ui.button("Delete Component").clicked() {
+                    self.set_single_sketch_selection(Some(node.selection.clone()));
+                    self.apply_delete_selected_sketch_item();
+                    ui.close();
+                }
+            }
+            SketchSelection::Net(net_id) => {
+                ui.strong(format!("Net {net_id}"));
+                self.net_context_menu(ui, net_id, "Inspect Net", "Delete Net");
+            }
+            SketchSelection::Overflow(label) => {
+                ui.strong(label);
+                ui.label("Open the YAML editor or use Fit Content for hidden graph items.");
+            }
+        }
+    }
+
+    fn sketch_wire_context_menu(&mut self, ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
+        ui.strong(format!("Wire {}", edge.net_id));
+        ui.label(format!("source: {}", edge.source));
+        self.net_context_menu(ui, &edge.net_id, "Inspect Wire Net", "Delete Wire Net");
+    }
+
+    fn net_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        net_id: &str,
+        inspect_label: &str,
+        delete_label: &str,
+    ) {
+        if ui.button(inspect_label).clicked() {
+            self.set_single_sketch_selection(Some(SketchSelection::Net(net_id.to_string())));
+            ui.close();
+        }
+        if let Some(component_id) = self.wire_from_component.clone()
+            && ui.button("Connect Active Wire Here").clicked()
+        {
+            self.apply_visual_wire(component_id, net_id.to_string());
+            ui.close();
+        }
+        ui.separator();
+        if ui.button("Add Voltage Probe").clicked() {
+            self.ensure_net_probe_defaults(net_id);
+            self.apply_add_voltage_probe_for_net(net_id);
+            ui.close();
+        }
+        ui.separator();
+        if ui.button(delete_label).clicked() {
+            self.set_single_sketch_selection(Some(SketchSelection::Net(net_id.to_string())));
+            self.apply_delete_selected_sketch_item();
+            ui.close();
+        }
+    }
+
+    fn ensure_net_probe_defaults(&mut self, net_id: &str) {
+        self.ensure_canvas_probe_scenario();
+        if self.analog_canvas_probe_name.trim().is_empty() {
+            self.analog_canvas_probe_name = default_probe_name_for_net(net_id);
+        }
+    }
+
+    fn ensure_component_probe_defaults(&mut self, component_id: &str) {
+        self.ensure_canvas_probe_scenario();
+        if self.analog_canvas_component_probe_name.trim().is_empty() {
+            self.analog_canvas_component_probe_name =
+                default_current_probe_name_for_component(component_id);
+        }
+        if self
+            .analog_canvas_component_power_probe_name
+            .trim()
+            .is_empty()
+        {
+            self.analog_canvas_component_power_probe_name =
+                default_power_probe_name_for_component(component_id);
+        }
+    }
+
+    fn ensure_canvas_probe_scenario(&mut self) {
+        let Ok(choices) = analog::analog_scenario_choices(&self.project_yaml) else {
+            return;
+        };
+        if (self.analog_probe_scenario.is_empty()
+            || !choices
+                .iter()
+                .any(|choice| choice.name == self.analog_probe_scenario))
+            && let Some(choice) = choices.first()
+        {
+            self.analog_probe_scenario = choice.name.clone();
         }
     }
 
@@ -1326,6 +1465,32 @@ fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
     ui.label("Click this wire to select the net; start wire mode first to connect to it.");
 }
 
+fn component_context_pin(
+    snapshot: &ProjectSnapshot,
+    component_id: &str,
+    preferred_pin: &str,
+) -> (String, String) {
+    let Some(component) = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == component_id)
+    else {
+        return ("P1".to_string(), String::new());
+    };
+    if let Some(pin) = component
+        .pins
+        .iter()
+        .find(|pin| pin.pin == preferred_pin.trim())
+    {
+        return (pin.pin.clone(), pin.net.clone());
+    }
+    component
+        .pins
+        .first()
+        .map(|pin| (pin.pin.clone(), pin.net.clone()))
+        .unwrap_or_else(|| ("P1".to_string(), String::new()))
+}
+
 fn sketch_probe_badge_tooltip(
     ui: &mut egui::Ui,
     badge: &SketchProbeBadge,
@@ -1471,6 +1636,7 @@ fn wire_preview_start(
 
 #[cfg(test)]
 mod tests {
+    use super::component_context_pin;
     use super::egui;
     use super::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin,
@@ -1541,6 +1707,49 @@ board:
         assert!(edited.contains("kind: power"));
         assert!(edited.contains("nominal_voltage: 3.3"));
         assert!(edited.contains("powered: true"));
+    }
+
+    #[test]
+    fn component_context_pin_prefers_existing_wire_pin_then_first_pin() {
+        let snapshot = ProjectSnapshot {
+            name: "graph".to_string(),
+            components: 1,
+            nets: 2,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "U1".to_string(),
+                model: "generic.ic".to_string(),
+                part_number: None,
+                position: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "VCC".to_string(),
+                        net: "rail".to_string(),
+                    },
+                    SketchPin {
+                        pin: "GND".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+                style: SketchNodeStyle::default(),
+            }],
+            nets_detail: Vec::new(),
+            probes: Vec::new(),
+        };
+
+        assert_eq!(
+            component_context_pin(&snapshot, "U1", " GND "),
+            ("GND".to_string(), "gnd".to_string())
+        );
+        assert_eq!(
+            component_context_pin(&snapshot, "U1", "OUT"),
+            ("VCC".to_string(), "rail".to_string())
+        );
+        assert_eq!(
+            component_context_pin(&snapshot, "MISSING", "OUT"),
+            ("P1".to_string(), String::new())
+        );
     }
 
     #[test]

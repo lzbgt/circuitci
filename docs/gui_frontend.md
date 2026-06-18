@@ -113,8 +113,9 @@ form:
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
   derived from the latest validation report, badge clicks that open the
   corresponding Simulation-stage probe context, right-click probe-badge action
-  menus, hovered-badge assertion creation/clearing, hovered-badge deletion that
-  removes the probe and dependent assertions through a validated Board IR edit, selected-net
+  menus, right-click component/net/wire action menus, hovered-badge assertion
+  creation/clearing, hovered-badge deletion that removes the probe and
+  dependent assertions through a validated Board IR edit, selected-net
   voltage-probe insertion into existing analog scenarios,
   selected-component current-probe insertion for
   supported generated SPICE branches, selected-component power-probe insertion
@@ -206,9 +207,13 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-29. observe generated decks, plotted CSV waveforms, cursor values, min/max
+29. use right-click component, net, and wire menus for common sketch actions
+   such as inspect/select, start wire, connect an active wire, add voltage,
+   current, or power probes, and delete through the same validated Board IR
+   mutation paths as the inspector and keyboard actions,
+30. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-30. edit the project/model evidence and rerun.
+31. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -266,6 +271,13 @@ probe in Simulation, adding an assertion from current settings, quick adding
 above/below cursor-sample assertions, clearing assertions, or removing the
 probe. These menu actions call the same validated Board IR mutation paths as
 the keyboard shortcuts.
+Right-clicking a component, net node, or wire opens the common sketch action
+menu for that target. Component menus can inspect/select, start wire mode from
+an existing/default pin, add current or power probes, or delete the component.
+Net and wire menus can inspect/select the underlying net, connect the active
+wire to that net, add a voltage probe, or delete the net through the existing
+net-removal rules; a wire is still just a rendered view of Board IR pin-to-net
+bindings, not a separate persisted edge model.
 Removing a hovered badge deletes the underlying Board IR analog probe and any
 analog assertions that reference it, then re-parses the edited Board IR before
 updating the canvas. The Simulation stage mirrors the selected badge context in
