@@ -10,13 +10,15 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const BACKGROUND_JOB_HISTORY_LIMIT: usize = 16;
+const BACKGROUND_JOB_EVENT_LIMIT: usize = 12;
 
 pub(super) struct BackgroundGuiJob {
-    receiver: Receiver<BackgroundJobResult>,
+    receiver: Receiver<BackgroundJobMessage>,
     started_at: Instant,
     label: &'static str,
     target: String,
     canceled: bool,
+    events: Vec<BackgroundJobEvent>,
 }
 
 pub(super) struct BackgroundJobRecord {
@@ -25,6 +27,22 @@ pub(super) struct BackgroundJobRecord {
     pub(super) elapsed_secs: f32,
     pub(super) detail: String,
     pub(super) output_path: Option<String>,
+}
+
+pub(super) struct BackgroundJobEvent {
+    pub(super) stage: String,
+    pub(super) detail: String,
+    pub(super) elapsed_secs: f32,
+}
+
+enum BackgroundJobMessage {
+    Progress(BackgroundJobProgress),
+    Finished(BackgroundJobResult),
+}
+
+struct BackgroundJobProgress {
+    stage: &'static str,
+    detail: String,
 }
 
 enum BackgroundJobResult {
@@ -81,17 +99,31 @@ impl CircuitCiApp {
             let thread_profile = profile.clone();
             let thread_output_dir = output_dir.clone();
             thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Preparing validation",
+                    format!(
+                        "{} -> {}",
+                        thread_project_path.display(),
+                        thread_output_dir.display()
+                    ),
+                );
                 let result =
                     validate_from_gui(&thread_project_path, &thread_profile, &thread_output_dir)
                         .map(|(report, markdown)| ValidationJobOutput { report, markdown });
-                let _ = sender.send(BackgroundJobResult::Validation(Box::new(
-                    ValidationJobResult {
+                send_background_progress(
+                    &sender,
+                    "Validation finished",
+                    "Applying report and waveform artifacts.".to_string(),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(
+                    BackgroundJobResult::Validation(Box::new(ValidationJobResult {
                         project_path: thread_project_path,
                         profile: thread_profile,
                         output_dir: thread_output_dir,
                         result,
-                    },
-                )));
+                    })),
+                ));
             });
         });
     }
@@ -104,14 +136,24 @@ impl CircuitCiApp {
             let thread_project_path = project_path.clone();
             let thread_profile = profile.clone();
             thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Generating suggestions",
+                    format!("{} ({thread_profile})", thread_project_path.display()),
+                );
                 let result = suggest_from_gui(&thread_project_path, &thread_profile);
-                let _ = sender.send(BackgroundJobResult::Suggestions(Box::new(
-                    SuggestionJobResult {
+                send_background_progress(
+                    &sender,
+                    "Suggestions finished",
+                    "Applying generated scenario YAML.".to_string(),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(
+                    BackgroundJobResult::Suggestions(Box::new(SuggestionJobResult {
                         project_path: thread_project_path,
                         profile: thread_profile,
                         result,
-                    },
-                )));
+                    })),
+                ));
             });
         });
     }
@@ -131,6 +173,11 @@ impl CircuitCiApp {
         let target = format!("{} -> {}", schematic.display(), output.display());
         self.start_background_job("KiCad schematic import", target, move |sender| {
             thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Parsing schematic",
+                    format!("Reading {}.", schematic.display()),
+                );
                 let options = crate::importers::kicad::KicadImportOptions {
                     input: schematic,
                     output: output.clone(),
@@ -140,8 +187,13 @@ impl CircuitCiApp {
                 };
                 let result = crate::importers::kicad_sch::import_kicad_schematic(&options);
                 let output_project_path = output.clone();
-                let _ = sender.send(BackgroundJobResult::ImportProject(Box::new(
-                    ImportProjectJobResult {
+                send_background_progress(
+                    &sender,
+                    "Schematic import finished",
+                    format!("Writing {}.", output_project_path.display()),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(
+                    BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
                         kind: ImportProjectKind::KiCadSchematic,
                         prior_project_path,
                         state_key,
@@ -151,8 +203,8 @@ impl CircuitCiApp {
                         success_status: "KiCad schematic imported.",
                         success_diagnostic: "KiCad schematic imported to Board IR.".to_string(),
                         result,
-                    },
-                )));
+                    })),
+                ));
             });
         });
     }
@@ -171,6 +223,11 @@ impl CircuitCiApp {
         );
         self.start_background_job("KiCad PCB import", target, move |sender| {
             thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Parsing PCB",
+                    format!("Reading {}.", input.display()),
+                );
                 let options = crate::importers::kicad_pcb::KicadPcbPlacementImportOptions {
                     input,
                     project,
@@ -192,7 +249,12 @@ impl CircuitCiApp {
                     Ok(diagnostic) => (Ok(()), diagnostic),
                     Err(error) => (Err(error), String::new()),
                 };
-                let _ = sender.send(BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
+                send_background_progress(
+                    &sender,
+                    "PCB import finished",
+                    "Applying placement, pad, route, and board-outline evidence.".to_string(),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
                     kind: ImportProjectKind::KiCadPcb,
                     prior_project_path,
                     state_key,
@@ -202,7 +264,7 @@ impl CircuitCiApp {
                     success_status: "KiCad PCB evidence imported.",
                     success_diagnostic,
                     result,
-                })));
+                }))));
             });
         });
     }
@@ -223,6 +285,11 @@ impl CircuitCiApp {
         let target = format!("{} -> {}", deck.display(), output.display());
         self.start_background_job("SPICE deck import", target, move |sender| {
             thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Parsing SPICE deck",
+                    format!("Reading {}.", deck.display()),
+                );
                 let options = crate::importers::spice::SpiceImportOptions {
                     input: deck.clone(),
                     output: output.clone(),
@@ -232,8 +299,13 @@ impl CircuitCiApp {
                     max_step_us,
                 };
                 let result = crate::importers::spice::import_spice(&options);
-                let _ = sender.send(BackgroundJobResult::ImportProject(Box::new(
-                    ImportProjectJobResult {
+                send_background_progress(
+                    &sender,
+                    "SPICE import finished",
+                    format!("Writing {}.", output.display()),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(
+                    BackgroundJobResult::ImportProject(Box::new(ImportProjectJobResult {
                         kind: ImportProjectKind::SpiceDeck,
                         prior_project_path,
                         state_key,
@@ -246,8 +318,8 @@ impl CircuitCiApp {
                             deck.display()
                         ),
                         result,
-                    },
-                )));
+                    })),
+                ));
             });
         });
     }
@@ -281,50 +353,80 @@ impl CircuitCiApp {
         self.background_job.as_ref().is_some_and(|job| job.canceled)
     }
 
+    pub(super) fn background_job_events(&self) -> Option<&[BackgroundJobEvent]> {
+        self.background_job
+            .as_ref()
+            .map(|job| job.events.as_slice())
+    }
+
     pub(super) fn poll_background_job(&mut self, ctx: &egui::Context) {
-        let Some(job) = &self.background_job else {
-            return;
-        };
-        match job.receiver.try_recv() {
-            Ok(result) => {
-                let label = job.label;
-                let target = job.target.clone();
-                let elapsed_secs = job.started_at.elapsed().as_secs_f32();
-                let canceled = self.background_job.as_ref().is_some_and(|job| job.canceled);
-                self.background_job = None;
-                if canceled {
-                    self.status = "Background job canceled.".to_string();
-                    self.push_diagnostic("Ignored canceled background job result.");
-                    self.push_background_job_record(label, "canceled", elapsed_secs, target, None);
+        loop {
+            let Some(message) = self
+                .background_job
+                .as_ref()
+                .map(|job| job.receiver.try_recv())
+            else {
+                return;
+            };
+            match message {
+                Ok(BackgroundJobMessage::Progress(progress)) => {
+                    self.push_background_job_event(progress);
+                }
+                Ok(BackgroundJobMessage::Finished(result)) => {
+                    let Some(job) = &self.background_job else {
+                        return;
+                    };
+                    let label = job.label;
+                    let target = job.target.clone();
+                    let elapsed_secs = job.started_at.elapsed().as_secs_f32();
+                    let canceled = job.canceled;
+                    self.background_job = None;
+                    if canceled {
+                        self.status = "Background job canceled.".to_string();
+                        self.push_diagnostic("Ignored canceled background job result.");
+                        self.push_background_job_record(
+                            label,
+                            "canceled",
+                            elapsed_secs,
+                            target,
+                            None,
+                        );
+                        return;
+                    }
+                    self.apply_background_job_result(result, elapsed_secs);
                     return;
                 }
-                self.apply_background_job_result(result, elapsed_secs);
-            }
-            Err(TryRecvError::Empty) => {
-                ctx.request_repaint_after(Duration::from_millis(100));
-            }
-            Err(TryRecvError::Disconnected) => {
-                let label = job.label;
-                let target = job.target.clone();
-                let elapsed_secs = job.started_at.elapsed().as_secs_f32();
-                self.background_job = None;
-                self.push_background_job_record(
-                    label,
-                    "failed",
-                    elapsed_secs,
-                    format!("{target}: worker exited before returning a result."),
-                    None,
-                );
-                self.record_error(anyhow::anyhow!(
-                    "Background worker exited before returning a result."
-                ));
+                Err(TryRecvError::Empty) => {
+                    ctx.request_repaint_after(Duration::from_millis(100));
+                    return;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    let Some(job) = &self.background_job else {
+                        return;
+                    };
+                    let label = job.label;
+                    let target = job.target.clone();
+                    let elapsed_secs = job.started_at.elapsed().as_secs_f32();
+                    self.background_job = None;
+                    self.push_background_job_record(
+                        label,
+                        "failed",
+                        elapsed_secs,
+                        format!("{target}: worker exited before returning a result."),
+                        None,
+                    );
+                    self.record_error(anyhow::anyhow!(
+                        "Background worker exited before returning a result."
+                    ));
+                    return;
+                }
             }
         }
     }
 
     fn start_background_job<F>(&mut self, label: &'static str, target: String, spawn: F)
     where
-        F: FnOnce(mpsc::Sender<BackgroundJobResult>),
+        F: FnOnce(mpsc::Sender<BackgroundJobMessage>),
     {
         if self.background_job.is_some() {
             self.status = "Background job already running.".to_string();
@@ -340,6 +442,7 @@ impl CircuitCiApp {
             label,
             target,
             canceled: false,
+            events: Vec::new(),
         });
         self.status = format!("Background {label} running.");
         self.push_diagnostic(&format!("Background {label} started."));
@@ -585,6 +688,23 @@ impl ImportProjectKind {
 }
 
 impl CircuitCiApp {
+    fn push_background_job_event(&mut self, progress: BackgroundJobProgress) {
+        let Some(job) = &mut self.background_job else {
+            return;
+        };
+        let event = BackgroundJobEvent {
+            stage: progress.stage.to_string(),
+            detail: progress.detail,
+            elapsed_secs: job.started_at.elapsed().as_secs_f32(),
+        };
+        self.status = format!("Background {}: {}", job.label, event.stage);
+        job.events.push(event);
+        if job.events.len() > BACKGROUND_JOB_EVENT_LIMIT {
+            let overflow = job.events.len() - BACKGROUND_JOB_EVENT_LIMIT;
+            job.events.drain(0..overflow);
+        }
+    }
+
     fn push_background_job_record(
         &mut self,
         label: &str,
@@ -607,10 +727,22 @@ impl CircuitCiApp {
     }
 }
 
+fn send_background_progress(
+    sender: &mpsc::Sender<BackgroundJobMessage>,
+    stage: &'static str,
+    detail: String,
+) {
+    let _ = sender.send(BackgroundJobMessage::Progress(BackgroundJobProgress {
+        stage,
+        detail,
+    }));
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BACKGROUND_JOB_HISTORY_LIMIT, CircuitCiApp, ImportProjectJobResult, ImportProjectKind,
+        BACKGROUND_JOB_EVENT_LIMIT, BACKGROUND_JOB_HISTORY_LIMIT, BackgroundJobMessage,
+        BackgroundJobProgress, CircuitCiApp, ImportProjectJobResult, ImportProjectKind,
         ValidationJobResult,
     };
     use std::path::PathBuf;
@@ -620,6 +752,38 @@ mod tests {
         let mut app = CircuitCiApp::default();
         app.cancel_background_job();
         assert!(app.background_job_elapsed_secs().is_none());
+    }
+
+    #[test]
+    fn progress_messages_update_active_job_events() {
+        let mut app = CircuitCiApp::default();
+        app.start_background_job("validation", "project -> out".to_string(), |_sender| {});
+        app.push_background_job_event(BackgroundJobProgress {
+            stage: "Loading project",
+            detail: "project.yaml".to_string(),
+        });
+
+        let events = app.background_job_events().expect("active job");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].stage, "Loading project");
+        assert_eq!(events[0].detail, "project.yaml");
+        assert_eq!(app.status, "Background validation: Loading project");
+    }
+
+    #[test]
+    fn progress_event_history_is_capped() {
+        let mut app = CircuitCiApp::default();
+        app.start_background_job("validation", "project -> out".to_string(), |_sender| {});
+        for index in 0..(BACKGROUND_JOB_EVENT_LIMIT + 2) {
+            app.push_background_job_event(BackgroundJobProgress {
+                stage: "Step",
+                detail: format!("event {index}"),
+            });
+        }
+
+        let events = app.background_job_events().expect("active job");
+        assert_eq!(events.len(), BACKGROUND_JOB_EVENT_LIMIT);
+        assert_eq!(events[0].detail, "event 2");
     }
 
     #[test]

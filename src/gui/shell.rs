@@ -326,6 +326,30 @@ impl CircuitCiApp {
                         }
                     });
                 }
+                if let Some(events) = self
+                    .background_job_events()
+                    .filter(|events| !events.is_empty())
+                {
+                    egui::CollapsingHeader::new(format!("Current Job Events ({})", events.len()))
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            egui::Grid::new("background_job_events_grid")
+                                .num_columns(3)
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    ui.strong("Elapsed");
+                                    ui.strong("Stage");
+                                    ui.strong("Detail");
+                                    ui.end_row();
+                                    for event in events.iter().rev() {
+                                        ui.label(format!("{:.1}s", event.elapsed_secs));
+                                        ui.label(&event.stage);
+                                        ui.label(&event.detail);
+                                        ui.end_row();
+                                    }
+                                });
+                        });
+                }
                 if !self.background_job_history.is_empty() {
                     egui::CollapsingHeader::new(format!(
                         "Background Job History ({})",
