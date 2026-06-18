@@ -5,8 +5,8 @@ use super::sketch::{
     draw_sketch_pin_anchor, edge_label_position, edit_schematic_wire_route, hit_test_wire,
     layout_sketch_graph_viewport, orthogonal_wire_points,
     persisted_node_position_from_screen_with_snap,
-    persisted_wire_route_point_from_screen_with_snap, sketch_wire_points,
-    snap_screen_point_to_grid, with_opacity,
+    persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
+    sketch_wire_points, snap_screen_point_to_grid, with_opacity,
 };
 use super::sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
@@ -98,9 +98,9 @@ impl CircuitCiApp {
                     && anchor.pos.distance(position) <= 8.0
             })
         });
-        let hovered_wire = if hovered_node.is_none() && hovered_anchor.is_none() {
+        let hovered_route_handle = if hovered_node.is_none() && hovered_anchor.is_none() {
             pointer_hover.and_then(|position| {
-                hit_test_wire(&graph, position).filter(|edge| {
+                hit_test_wire_route_handle(&graph, position).filter(|(edge, _)| {
                     hierarchy_view
                         .as_ref()
                         .is_none_or(|view| view.edge_visible(edge))
@@ -109,6 +109,19 @@ impl CircuitCiApp {
         } else {
             None
         };
+        let hovered_wire =
+            if hovered_node.is_none() && hovered_anchor.is_none() && hovered_route_handle.is_none()
+            {
+                pointer_hover.and_then(|position| {
+                    hit_test_wire(&graph, position).filter(|edge| {
+                        hierarchy_view
+                            .as_ref()
+                            .is_none_or(|view| view.edge_visible(edge))
+                    })
+                })
+            } else {
+                None
+            };
         let hovered_probe_badge = pointer_hover.and_then(|position| {
             hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
                 hierarchy_view
@@ -131,6 +144,7 @@ impl CircuitCiApp {
         });
         let blank_canvas_hovered = hovered_node.is_none()
             && hovered_anchor.is_none()
+            && hovered_route_handle.is_none()
             && hovered_wire.is_none()
             && hovered_probe_badge.is_none()
             && hovered_bundle_badge.is_none()
@@ -261,6 +275,9 @@ impl CircuitCiApp {
                 self.sketch_zoom,
                 opacity,
             );
+            if selected || hovered || target || !edge.route.is_empty() {
+                draw_wire_route_handles(&painter, edge, hovered_route_handle, opacity);
+            }
         }
         if let Some(drag) = &self.sketch_wire_route_drag
             && let Some(edge) = graph
@@ -268,7 +285,7 @@ impl CircuitCiApp {
                 .iter()
                 .find(|edge| edge.net_id == drag.net_id && edge.source == drag.source)
         {
-            draw_wire_route_preview(&painter, edge, drag.preview);
+            draw_wire_route_preview(&painter, edge, &drag.points);
         }
         if let Some(component_id) = &self.wire_from_component
             && let Some(pointer) = ui.ctx().pointer_hover_pos()
@@ -541,6 +558,18 @@ impl CircuitCiApp {
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
+                && let Some((edge, point_index)) = hovered_route_handle
+            {
+                self.sketch_wire_route_drag = Some(super::SketchWireRouteDrag {
+                    net_id: edge.net_id.clone(),
+                    source: edge.source.clone(),
+                    points: edge.route.clone(),
+                    point_index,
+                });
+                self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
+            } else if self.wire_from_component.is_none()
+                && !self.sketch_palette_place_armed
+                && !self.sketch_library_place_armed
                 && let Some(edge) = clicked_wire
             {
                 let preview = snap_screen_point_to_grid(
@@ -553,7 +582,8 @@ impl CircuitCiApp {
                 self.sketch_wire_route_drag = Some(super::SketchWireRouteDrag {
                     net_id: edge.net_id.clone(),
                     source: edge.source.clone(),
-                    preview,
+                    points: vec![preview],
+                    point_index: 0,
                 });
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
             } else if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
@@ -590,13 +620,15 @@ impl CircuitCiApp {
             && let Some(position) = response.interact_pointer_pos()
             && let Some(drag) = &mut self.sketch_wire_route_drag
         {
-            drag.preview = snap_screen_point_to_grid(
-                rect,
-                position,
-                viewport,
-                self.sketch_snap_enabled,
-                self.sketch_grid_step,
-            );
+            if let Some(point) = drag.points.get_mut(drag.point_index) {
+                *point = snap_screen_point_to_grid(
+                    rect,
+                    position,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                );
+            }
         } else if response.dragged_by(egui::PointerButton::Primary)
             && !self.sketch_pan_drag_active
             && self.wire_from_component.is_none()
@@ -785,6 +817,13 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 sketch_pin_hover_tooltip(ui, anchor);
             });
+        } else if let Some((edge, index)) = hovered_route_handle {
+            response.context_menu(|ui| {
+                self.sketch_wire_context_menu(ui, edge);
+            });
+            response.on_hover_ui(|ui| {
+                sketch_wire_route_handle_tooltip(ui, edge, index);
+            });
         } else if let Some(edge) = hovered_wire {
             response.context_menu(|ui| {
                 self.sketch_wire_context_menu(ui, edge);
@@ -924,20 +963,39 @@ impl CircuitCiApp {
         viewport: sketch::SketchViewport,
         drag: super::SketchWireRouteDrag,
     ) {
-        let (x, y) = persisted_wire_route_point_from_screen_with_snap(
-            canvas,
-            drag.preview,
-            viewport,
-            self.sketch_snap_enabled,
-            self.sketch_grid_step,
-        );
-        match edit_schematic_wire_route(&self.project_yaml, &drag.source, &drag.net_id, &[(x, y)]) {
+        let points: Vec<_> = drag
+            .points
+            .iter()
+            .map(|point| {
+                persisted_wire_route_point_from_screen_with_snap(
+                    canvas,
+                    *point,
+                    viewport,
+                    self.sketch_snap_enabled,
+                    self.sketch_grid_step,
+                )
+            })
+            .collect();
+        match edit_schematic_wire_route(&self.project_yaml, &drag.source, &drag.net_id, &points) {
             Ok(updated) => {
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Wire route {} -> {} edited.", drag.source, drag.net_id),
                 );
                 self.set_single_sketch_selection(Some(SketchSelection::Net(drag.net_id)));
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_schematic_wire_route(&mut self, edge: &sketch::SketchEdge) {
+        match remove_schematic_wire_route(&self.project_yaml, &edge.source, &edge.net_id) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Wire route {} -> {} cleared.", edge.source, edge.net_id),
+                );
+                self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
             }
             Err(error) => self.record_error(error),
         }
@@ -1064,6 +1122,17 @@ impl CircuitCiApp {
     fn sketch_wire_context_menu(&mut self, ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
         ui.strong(format!("Wire {}", edge.net_id));
         ui.label(format!("source: {}", edge.source));
+        if ui
+            .add_enabled(
+                !edge.route.is_empty(),
+                egui::Button::new("Clear Custom Route"),
+            )
+            .clicked()
+        {
+            self.apply_remove_schematic_wire_route(edge);
+            ui.close();
+        }
+        ui.separator();
         self.net_context_menu(ui, &edge.net_id, "Inspect Wire Net", "Delete Wire Net");
     }
 
@@ -1353,6 +1422,18 @@ fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {
     ui.separator();
     ui.label("Click this wire to select the net; drag it to shape the schematic route.");
     ui.label("Start wire mode first to connect another pin to it.");
+    if !edge.route.is_empty() {
+        ui.label("Right-click to clear the custom schematic route.");
+    }
+}
+
+fn sketch_wire_route_handle_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge, index: usize) {
+    ui.strong(format!("wire route handle {}", index + 1));
+    ui.label(format!("net: {}", edge.net_id));
+    ui.label(format!("source: {}", edge.source));
+    ui.separator();
+    ui.label("Drag this handle to refine the schematic route.");
+    ui.label("Right-click the wire to clear the custom route.");
 }
 
 pub(super) fn component_context_pin(
@@ -1443,12 +1524,49 @@ fn draw_wire_edge(
     }
 }
 
+fn draw_wire_route_handles(
+    painter: &egui::Painter,
+    edge: &sketch::SketchEdge,
+    hovered: Option<(&sketch::SketchEdge, usize)>,
+    opacity: f32,
+) {
+    if edge.route.is_empty() {
+        return;
+    }
+    let opacity = opacity.clamp(0.0, 1.0);
+    for (index, point) in edge.route.iter().enumerate() {
+        let hovered = hovered.is_some_and(|(hovered_edge, hovered_index)| {
+            hovered_index == index
+                && hovered_edge.net_id == edge.net_id
+                && hovered_edge.source == edge.source
+        });
+        let fill = if hovered {
+            egui::Color32::from_rgb(255, 196, 87)
+        } else {
+            egui::Color32::from_rgb(32, 126, 223)
+        };
+        painter.circle_filled(
+            *point,
+            if hovered { 5.5 } else { 4.5 },
+            with_opacity(fill, opacity),
+        );
+        painter.circle_stroke(
+            *point,
+            if hovered { 7.5 } else { 6.5 },
+            egui::Stroke::new(1.5, with_opacity(egui::Color32::WHITE, opacity)),
+        );
+    }
+}
+
 fn draw_wire_route_preview(
     painter: &egui::Painter,
     edge: &sketch::SketchEdge,
-    waypoint: egui::Pos2,
+    route_points: &[egui::Pos2],
 ) {
-    let points = vec![edge.start, waypoint, edge.end];
+    let mut points = Vec::with_capacity(route_points.len() + 2);
+    points.push(edge.start);
+    points.extend(route_points.iter().copied());
+    points.push(edge.end);
     draw_wire_points(
         painter,
         &points,
@@ -1460,6 +1578,24 @@ fn draw_wire_route_preview(
         egui::Color32::from_rgb(255, 196, 87),
         true,
     );
+}
+
+fn hit_test_wire_route_handle(
+    graph: &sketch::SketchGraph,
+    position: egui::Pos2,
+) -> Option<(&sketch::SketchEdge, usize)> {
+    graph
+        .edges
+        .iter()
+        .flat_map(|edge| {
+            edge.route
+                .iter()
+                .enumerate()
+                .map(move |(index, point)| (edge, index, point.distance(position)))
+        })
+        .filter(|(_, _, distance)| *distance <= 8.0)
+        .min_by(|(_, _, left), (_, _, right)| left.total_cmp(right))
+        .map(|(edge, index, _)| (edge, index))
 }
 
 fn draw_wire_polyline(
@@ -1658,8 +1794,8 @@ fn wire_preview_start(
 #[cfg(test)]
 mod tests {
     use super::{
-        WireDragTarget, closest_point_on_edge, placement_ghost_rect, wire_drag_target_at,
-        zoom_viewport_around,
+        WireDragTarget, closest_point_on_edge, hit_test_wire_route_handle, placement_ghost_rect,
+        wire_drag_target_at, zoom_viewport_around,
     };
     use crate::gui::sketch::{
         SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection, SketchViewport,
@@ -1764,6 +1900,28 @@ mod tests {
         };
         let snap = closest_point_on_edge(egui::pos2(150.0, 75.0), &edge);
         assert_eq!(snap, egui::pos2(120.0, 75.0));
+    }
+
+    #[test]
+    fn route_handle_hit_test_targets_nearest_custom_waypoint() {
+        let graph = SketchGraph {
+            nodes: Vec::new(),
+            pin_anchors: Vec::new(),
+            edges: vec![SketchEdge {
+                net_id: "net_a".to_string(),
+                source: "R1.A".to_string(),
+                start: egui::pos2(20.0, 20.0),
+                end: egui::pos2(220.0, 120.0),
+                route: vec![egui::pos2(80.0, 40.0), egui::pos2(160.0, 96.0)],
+            }],
+            probe_badges: Vec::<SketchProbeBadge>::new(),
+        };
+
+        let (edge, index) = hit_test_wire_route_handle(&graph, egui::pos2(162.0, 98.0)).unwrap();
+
+        assert_eq!(edge.net_id, "net_a");
+        assert_eq!(index, 1);
+        assert!(hit_test_wire_route_handle(&graph, egui::pos2(120.0, 120.0)).is_none());
     }
 
     #[test]

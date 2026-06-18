@@ -438,6 +438,42 @@ pub(super) fn edit_schematic_wire_route(
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn remove_schematic_wire_route(
+    text: &str,
+    source: &str,
+    net_id: &str,
+) -> Result<String> {
+    let (component_id, pin_id) = parse_wire_source(source)?;
+    let net_id = validated_graph_id(net_id, "net")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.nets.contains_key(net_id) {
+        anyhow::bail!("Board IR net {net_id} was not found.");
+    }
+    let pin_net = component_pin_net(&project, component_id, pin_id)?
+        .with_context(|| format!("Board IR pin {source} is not connected to a net."))?;
+    if pin_net != net_id {
+        anyhow::bail!("Board IR pin {source} is connected to {pin_net}, not {net_id}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    if let Some(routes) = yaml
+        .as_mapping_mut()
+        .and_then(|project| project.get_mut(serde_yaml_ng::Value::String("board".to_string())))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+        .and_then(|board| board.get_mut(serde_yaml_ng::Value::String("schematic".to_string())))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+        .and_then(|schematic| {
+            schematic.get_mut(serde_yaml_ng::Value::String("wire_routes".to_string()))
+        })
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+    {
+        routes.remove(serde_yaml_ng::Value::String(wire_route_key(source, net_id)));
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn edit_schematic_component_style(
     text: &str,
     component_id: &str,

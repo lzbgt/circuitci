@@ -6,8 +6,9 @@ use super::sketch::{
     edit_schematic_node_positions, edit_schematic_wire_route, hit_test_wire, layout_sketch_graph,
     layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
-    remove_component, remove_component_pin, remove_net, sketch_graph_bounds, sketch_wire_points,
-    snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
+    remove_component, remove_component_pin, remove_net, remove_schematic_wire_route,
+    sketch_graph_bounds, sketch_wire_points, snap_screen_point_to_grid,
+    validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -1117,6 +1118,25 @@ fn edit_schematic_wire_route_rejects_wrong_net() {
             .unwrap_err();
 
     assert!(error.to_string().contains("not gnd"));
+}
+
+#[test]
+fn remove_schematic_wire_route_clears_only_display_metadata() {
+    let routed =
+        edit_schematic_wire_route(editable_project_yaml(), "R1.A", "net_a", &[(128.0, 144.0)])
+            .unwrap();
+    let edited = remove_schematic_wire_route(&routed, "R1.A", "net_a").unwrap();
+
+    validate_board_ir_yaml_text(&edited).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    assert!(snapshot.wire_routes.is_empty());
+    assert!(snapshot.components_detail.iter().any(|component| {
+        component.id == "R1"
+            && component
+                .pins
+                .iter()
+                .any(|pin| pin.pin == "A" && pin.net == "net_a")
+    }));
 }
 
 #[test]

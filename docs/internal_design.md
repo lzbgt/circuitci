@@ -72,7 +72,8 @@ library-backed component insertion.
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
-highlight drawing, direct wire-route drag editing, hover
+highlight drawing, visible wire-route handles, direct wire-route drag editing
+and clearing, hover
 tooltips, context menus, and runtime tint display. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
@@ -155,8 +156,9 @@ list. A custom schematic route may persist display-only waypoints under
 may only shape the rendered pin-to-net edge. It must not create, remove, or
 retarget electrical connectivity, and it must not be treated as PCB copper
 route evidence. Wire hit-testing may select the underlying Board IR net,
-connect an active source pin to that net, or drag a display waypoint for the
-specific rendered edge, but it must not persist a separate wire object.
+connect an active source pin to that net, drag a visible display waypoint for
+the specific rendered edge, or clear those display waypoints. None of those
+actions may persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
 Rename actions must rewrite explicit Board IR IDs rather than introducing a

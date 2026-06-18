@@ -96,7 +96,8 @@ impl Stage {
 struct SketchWireRouteDrag {
     net_id: String,
     source: String,
-    preview: egui::Pos2,
+    points: Vec<egui::Pos2>,
+    point_index: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
