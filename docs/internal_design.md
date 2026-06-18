@@ -107,10 +107,12 @@ settings. Pressing Shift+A or Shift+B on a hovered badge may append a normal
 sample assertion whose threshold is derived from an exact loaded waveform probe
 match at the current cursor with a small pass-at-current-sample margin; if no
 matching waveform column is loaded, the quick action must fail closed without
-editing Board IR. Pressing `X` may remove assertions for that probe while
-keeping the probe, and Delete/Backspace may remove the underlying Board IR
-probe through `src/gui/analog.rs` and must also remove assertions that reference
-that probe.
+editing Board IR. The probe badge right-click menu may expose these same
+actions, but it must call the same validated mutation paths as the keyboard
+shortcuts rather than creating separate menu-only behavior. Pressing `X` may
+remove assertions for that probe while keeping the probe, and Delete/Backspace
+may remove the underlying Board IR probe through `src/gui/analog.rs` and must
+also remove assertions that reference that probe.
 before re-parsing Board IR. Badges must not become a second persisted probe
 store.
 `src/gui/library.rs` owns active-library model browsing, model filtering,

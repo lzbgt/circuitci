@@ -901,16 +901,7 @@ impl CircuitCiApp {
                 None
             };
             if let Some(badge) = clicked_probe_badge {
-                self.analog_probe_scenario = badge.probe.scenario_name.clone();
-                self.analog_assertion_scenario = badge.probe.scenario_name.clone();
-                self.analog_assertion_probe = badge.probe.probe_name.clone();
-                self.stage = Stage::Simulation;
-                self.status = format!(
-                    "Selected {} probe {} from scenario {}.",
-                    badge.probe.quantity.label(),
-                    badge.probe.probe_name,
-                    badge.probe.scenario_name
-                );
+                self.open_probe_badge_in_simulation(badge);
             } else if let Some(anchor) = clicked_anchor {
                 if let Some(source_component_id) = self.wire_from_component.clone()
                     && !(source_component_id == anchor.component_id
@@ -1074,6 +1065,9 @@ impl CircuitCiApp {
                 self.waveform_cursor_a_us,
                 &badge.probe,
             );
+            response.context_menu(|ui| {
+                self.probe_badge_context_menu(ui, badge, sampled_value);
+            });
             response.on_hover_ui(|ui| {
                 let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
                 sketch_probe_badge_tooltip(ui, badge, status, sampled_value);
@@ -1097,6 +1091,82 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 sketch_wire_hover_tooltip(ui, edge);
             });
+        }
+    }
+
+    fn open_probe_badge_in_simulation(&mut self, badge: &SketchProbeBadge) {
+        self.analog_probe_scenario = badge.probe.scenario_name.clone();
+        self.analog_assertion_scenario = badge.probe.scenario_name.clone();
+        self.analog_assertion_probe = badge.probe.probe_name.clone();
+        self.stage = Stage::Simulation;
+        self.status = format!(
+            "Selected {} probe {} from scenario {}.",
+            badge.probe.quantity.label(),
+            badge.probe.probe_name,
+            badge.probe.scenario_name
+        );
+    }
+
+    fn probe_badge_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        badge: &SketchProbeBadge,
+        sampled_value: Option<f64>,
+    ) {
+        ui.strong(format!(
+            "{} probe {}",
+            badge.probe.quantity.label(),
+            badge.probe.probe_name
+        ));
+        if ui.button("Open in Simulation").clicked() {
+            self.open_probe_badge_in_simulation(badge);
+            ui.close();
+        }
+        ui.separator();
+        if ui.button("Add Assertion From Settings").clicked() {
+            self.apply_add_canvas_probe_assertion(
+                &badge.probe.scenario_name,
+                &badge.probe.probe_name,
+            );
+            ui.close();
+        }
+        if ui
+            .add_enabled(
+                sampled_value.is_some(),
+                egui::Button::new("Quick Require Above Cursor Sample"),
+            )
+            .clicked()
+        {
+            self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
+            ui.close();
+        }
+        if ui
+            .add_enabled(
+                sampled_value.is_some(),
+                egui::Button::new("Quick Require Below Cursor Sample"),
+            )
+            .clicked()
+        {
+            self.apply_quick_canvas_probe_assertion(&badge.probe, "below");
+            ui.close();
+        }
+        ui.separator();
+        if ui
+            .add_enabled(
+                !badge.probe.assertion_names.is_empty(),
+                egui::Button::new("Clear Probe Assertions"),
+            )
+            .clicked()
+        {
+            self.apply_remove_canvas_probe_assertions(
+                &badge.probe.scenario_name,
+                &badge.probe.probe_name,
+            );
+            ui.close();
+        }
+        if ui.button("Remove Probe").clicked() {
+            self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
+            ui.close();
         }
     }
 
@@ -1283,6 +1353,7 @@ fn sketch_probe_badge_tooltip(
     }
     ui.separator();
     ui.label("Click to open this probe in the Simulation stage.");
+    ui.label("Right-click to open probe actions.");
     ui.label("Press A while hovering to add an assertion from current settings.");
     ui.label("Press Shift+A while hovering to require above the cursor sample.");
     ui.label("Press Shift+B while hovering to require below the cursor sample.");

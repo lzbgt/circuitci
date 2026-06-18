@@ -112,9 +112,9 @@ form:
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
   derived from the latest validation report, badge clicks that open the
-  corresponding Simulation-stage probe context, hovered-badge assertion
-  creation/clearing, hovered-badge deletion that removes the probe and
-  dependent assertions through a validated Board IR edit, selected-net
+  corresponding Simulation-stage probe context, right-click probe-badge action
+  menus, hovered-badge assertion creation/clearing, hovered-badge deletion that
+  removes the probe and dependent assertions through a validated Board IR edit, selected-net
   voltage-probe insertion into existing analog scenarios,
   selected-component current-probe insertion for
   supported generated SPICE branches, selected-component power-probe insertion
@@ -204,7 +204,8 @@ The supported desktop simulation path is:
    current assertion-editor settings with `A`, edit or delete one assertion
    row from the selected-probe panel, quick-add an above-current-sample check
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
-   for the probe with `X`, or remove a hovered probe badge with Delete/Backspace,
+   for the probe with `X`, use the right-click badge menu for the same probe
+   actions, or remove a hovered probe badge with Delete/Backspace,
 29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
 30. edit the project/model evidence and rerun.
@@ -260,6 +261,11 @@ with a small 1% threshold margin so the current sample initially satisfies the
 new strict `above` or `below` check. If no waveform column matches the probe
 expression at the cursor, the quick action fails closed and leaves Board IR
 unchanged.
+Right-clicking a probe badge opens an explicit action menu for opening the
+probe in Simulation, adding an assertion from current settings, quick adding
+above/below cursor-sample assertions, clearing assertions, or removing the
+probe. These menu actions call the same validated Board IR mutation paths as
+the keyboard shortcuts.
 Removing a hovered badge deletes the underlying Board IR analog probe and any
 analog assertions that reference it, then re-parses the edited Board IR before
 updating the canvas. The Simulation stage mirrors the selected badge context in
