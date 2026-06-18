@@ -73,7 +73,7 @@ load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot, 
 graph layout/drawing helpers, persisted schematic node positions/styles, drag
 updates, view-state pan/zoom transforms, schematic grid/snap helpers,
 orthogonal wire visuals, net label/junction rendering, wire hit-testing,
-fit-content bounds, Shift-drag marquee selection, and model-aware pin-anchor
+fit-content bounds, bounded full-list logical layout for pannable imported designs, Shift-drag marquee selection, and model-aware pin-anchor
 rendering.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.

@@ -226,7 +226,7 @@ fn navigator_target_bounds(
 }
 
 fn fit_viewport_to_bounds(app: &mut CircuitCiApp, canvas: egui::Rect, bounds: egui::Rect) {
-    let padding = 48.0;
+    let padding = 80.0;
     let available =
         (canvas.size() - egui::vec2(padding * 2.0, padding * 2.0)).max(egui::Vec2::splat(1.0));
     let content = bounds.size().max(egui::Vec2::splat(1.0));

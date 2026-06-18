@@ -50,7 +50,7 @@ schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
-owns Board IR graph snapshots, graph layout/drawing helpers, schematic
+owns Board IR graph snapshots, graph layout/drawing helpers, bounded full-list logical layout for pannable imported designs, schematic
 grid/snap helpers, orthogonal wire visuals, net label/junction rendering, wire
 hit-testing, and model-port default pin/net seeding for library-backed
 component insertion. Inserted library

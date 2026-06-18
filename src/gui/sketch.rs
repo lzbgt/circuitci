@@ -10,6 +10,8 @@ use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, draw_symbol
 pub(super) const DEFAULT_SKETCH_GRID_STEP: f32 = 16.0;
 const MIN_SKETCH_GRID_STEP: f32 = 4.0;
 const MAX_SKETCH_GRID_STEP: f32 = 96.0;
+const MAX_SKETCH_ITEMS_PER_SIDE: usize = 512;
+const MAX_SKETCH_EDGES: usize = 512;
 
 #[derive(Debug, Clone)]
 pub(super) struct ProjectSnapshot {
@@ -943,19 +945,15 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     let left_x = rect.left() + margin;
     let right_x = rect.right() - margin - node_width;
     let top = rect.top() + margin;
-    let max_component_rows = ((rect.height() - 2.0 * margin) / (component_height + row_gap))
-        .floor()
-        .max(1.0) as usize;
-    let max_net_rows = ((rect.height() - 2.0 * margin) / (net_height + row_gap))
-        .floor()
-        .max(1.0) as usize;
-
     let mut nodes = Vec::new();
-    let component_count = snapshot.components_detail.len().min(max_component_rows);
+    let component_count = snapshot
+        .components_detail
+        .len()
+        .min(MAX_SKETCH_ITEMS_PER_SIDE);
     for (index, component) in snapshot
         .components_detail
         .iter()
-        .take(max_component_rows)
+        .take(component_count)
         .enumerate()
     {
         let default = egui::pos2(left_x, top + index as f32 * (component_height + row_gap));
@@ -978,8 +976,8 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         });
     }
 
-    let net_count = snapshot.nets_detail.len().min(max_net_rows);
-    for (index, net) in snapshot.nets_detail.iter().take(max_net_rows).enumerate() {
+    let net_count = snapshot.nets_detail.len().min(MAX_SKETCH_ITEMS_PER_SIDE);
+    for (index, net) in snapshot.nets_detail.iter().take(net_count).enumerate() {
         let default = egui::pos2(right_x, top + index as f32 * (net_height + row_gap));
         nodes.push(SketchNode {
             selection: SketchSelection::Net(net.id.clone()),
@@ -1043,12 +1041,12 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                     start,
                     end,
                 });
-                if edges.len() >= 80 {
+                if edges.len() >= MAX_SKETCH_EDGES {
                     break;
                 }
             }
         }
-        if edges.len() >= 80 {
+        if edges.len() >= MAX_SKETCH_EDGES {
             break;
         }
     }
@@ -1419,13 +1417,7 @@ fn node_rect_from_position(
     } else {
         default
     };
-    let clamped = egui::pos2(
-        min.x
-            .clamp(canvas.left(), (canvas.right() - width).max(canvas.left())),
-        min.y
-            .clamp(canvas.top(), (canvas.bottom() - height).max(canvas.top())),
-    );
-    egui::Rect::from_min_size(clamped, egui::vec2(width, height))
+    egui::Rect::from_min_size(min, egui::vec2(width, height))
 }
 
 fn push_overflow_hint(

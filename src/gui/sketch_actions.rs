@@ -177,7 +177,7 @@ impl CircuitCiApp {
             self.sketch_pan = egui::Vec2::ZERO;
             return;
         };
-        let padding = 28.0;
+        let padding = 80.0;
         let available =
             (canvas.size() - egui::vec2(padding * 2.0, padding * 2.0)).max(egui::Vec2::splat(1.0));
         let content = bounds.size().max(egui::Vec2::splat(1.0));

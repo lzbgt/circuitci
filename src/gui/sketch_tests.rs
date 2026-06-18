@@ -831,6 +831,50 @@ board:
 }
 
 #[test]
+fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
+    let components_detail = (0..8)
+        .map(|index| SketchComponent {
+            id: format!("U{index}"),
+            model: "generic.ic".to_string(),
+            part_number: None,
+            pins: vec![SketchPin {
+                pin: "OUT".to_string(),
+                net: "net_a".to_string(),
+            }],
+            position: None,
+            style: SketchNodeStyle::default(),
+        })
+        .collect();
+    let snapshot = ProjectSnapshot {
+        name: "pannable".to_string(),
+        components: 8,
+        nets: 1,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail,
+        nets_detail: vec![SketchNet {
+            id: "net_a".to_string(),
+            kind: "digital_or_analog".to_string(),
+            nominal_voltage: None,
+            powered: None,
+            connections: vec!["U7.OUT".to_string()],
+            position: None,
+        }],
+        probes: Vec::new(),
+    };
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 220.0));
+
+    let graph = layout_sketch_graph(canvas, &snapshot);
+    let last = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("U7".to_string()))
+        .unwrap();
+
+    assert!(last.rect.top() > canvas.bottom());
+}
+
+#[test]
 fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
     let snapshot = ProjectSnapshot {
         name: "fit".to_string(),
