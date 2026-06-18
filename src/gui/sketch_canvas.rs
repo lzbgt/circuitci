@@ -21,8 +21,13 @@ use super::waveform::{
 use super::{CircuitCiApp, Stage, analog, sketch_bundles, sketch_hierarchy};
 
 impl CircuitCiApp {
-    pub(super) fn draw_board_graph(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
-        let desired_size = egui::vec2((ui.available_width() * 0.64).max(460.0), 340.0);
+    pub(super) fn draw_board_graph_sized(
+        &mut self,
+        ui: &mut egui::Ui,
+        snapshot: &ProjectSnapshot,
+        desired_size: egui::Vec2,
+    ) {
+        let desired_size = schematic_canvas_size(desired_size);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 4.0, egui::Color32::from_gray(18));
@@ -788,6 +793,10 @@ impl CircuitCiApp {
         self.sketch_pan = focus_offset - logical_focus * new_zoom;
         self.sketch_zoom = new_zoom;
     }
+}
+
+pub(super) fn schematic_canvas_size(available: egui::Vec2) -> egui::Vec2 {
+    egui::vec2(available.x.max(560.0), available.y.max(520.0))
 }
 
 fn sketch_hover_tooltip(ui: &mut egui::Ui, node: &sketch::SketchNode, runtime_lines: &[String]) {

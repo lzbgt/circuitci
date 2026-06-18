@@ -19,6 +19,12 @@ plotting should still persist through Board IR, importer metadata, generated or
 file-backed SPICE decks, and report artifacts so headless agents can reproduce
 GUI actions.
 
+The Sketch stage should follow a schematic-first editor convention similar to
+modeling tools such as Simulink: the schematic canvas is the mandatory primary
+scene, Run and scope/observation controls remain directly reachable from that
+scene, and project/library/import/YAML details must stay secondary or docked so
+they do not shrink the model view into a preview pane.
+
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, the `eframe`
 update loop, and shared validation/report command helpers. `src/gui/shell.rs`

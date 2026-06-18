@@ -53,7 +53,10 @@ dependencies unless `--features gui` is explicitly enabled.
 validation/report command helpers.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow stage bar,
 left project panel, status panel, central stage routing, Project landing view,
-Reports view, and finding/limitation rendering. `src/gui/import_flow.rs` owns
+Reports view, and finding/limitation rendering. The Sketch stage intentionally
+hides the project side panel so the schematic canvas becomes the primary model
+view, with project/import/library details available through other stages or
+docked secondary panels. `src/gui/import_flow.rs` owns
 the Import stage UI and KiCad schematic, KiCad PCB, and SPICE deck import
 command wiring.
 `src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
@@ -174,6 +177,8 @@ form:
   evidence. Import source and output paths can be typed or selected with native
   open/save dialogs.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
+  a schematic-first model-editor layout with a dominant canvas, compact Run
+  control, secondary detail/navigation dock, and collapsed YAML editor,
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured

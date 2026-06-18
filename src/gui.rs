@@ -359,7 +359,9 @@ impl eframe::App for CircuitCiApp {
         self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
-        self.left_panel(ctx);
+        if self.stage != Stage::Sketch {
+            self.left_panel(ctx);
+        }
         self.bottom_panel(ctx);
         self.central_panel(ctx);
         self.unsaved_project_action_dialog(ctx);
@@ -368,88 +370,146 @@ impl eframe::App for CircuitCiApp {
 
 impl CircuitCiApp {
     fn sketch_stage(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Sketch Workspace");
-        ui.separator();
-        ui.label("Edit the Board IR YAML evidence directly, save it, then rerun validation and waveform observation through the same engine path.");
-        ui.add_space(8.0);
-        if let Some(snapshot) = &self.project_snapshot {
-            egui::Grid::new("sketch_grid").striped(true).show(ui, |ui| {
-                ui.label("Board graph");
-                ui.label(format!(
-                    "{} components, {} nets",
-                    snapshot.components, snapshot.nets
-                ));
-                ui.end_row();
-                ui.label("Scenario set");
-                ui.label(format!("{} scenarios", snapshot.scenarios));
-                ui.end_row();
-            });
-        }
+        self.schematic_run_toolbar(ui);
         if let Some(snapshot) = self.project_snapshot.clone() {
-            ui.separator();
             self.sketch_edit_toolbar(ui);
-            self.sketch_hierarchy_panel(ui, &snapshot);
-            self.sketch_navigator_panel(ui, &snapshot);
             ui.separator();
-            ui.horizontal(|ui| {
-                self.draw_board_graph(ui, &snapshot);
-                self.sketch_inspector(ui, &snapshot);
+
+            let available = ui.available_size();
+            let side_width = (available.x * 0.28).clamp(300.0, 380.0);
+            let gap = 8.0;
+            if available.x >= 900.0 {
+                let canvas_size = egui::vec2(
+                    (available.x - side_width - gap).max(560.0),
+                    available.y.max(520.0),
+                );
+                ui.horizontal_top(|ui| {
+                    self.draw_board_graph_sized(ui, &snapshot, canvas_size);
+                    ui.add_space(gap);
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(side_width, canvas_size.y),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| self.schematic_side_dock(ui, &snapshot),
+                    );
+                });
+            } else {
+                self.draw_board_graph_sized(
+                    ui,
+                    &snapshot,
+                    egui::vec2(available.x.max(560.0), available.y.max(520.0)),
+                );
+                ui.separator();
+                self.schematic_side_dock(ui, &snapshot);
+            }
+        } else {
+            ui.centered_and_justified(|ui| {
+                ui.label("Load or import a project to open the schematic workspace.");
             });
         }
-        ui.horizontal(|ui| {
-            if ui.button("Load YAML").clicked() {
-                self.request_project_action(
-                    PendingProjectAction::LoadProjectYaml {
-                        path: self.project_path.clone(),
-                    },
-                    Some(ui.ctx()),
-                );
+    }
+
+    fn schematic_run_toolbar(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            ui.heading("Schematic");
+            if let Some(snapshot) = &self.project_snapshot {
+                ui.label(format!(
+                    "{} components / {} nets / {} scenarios",
+                    snapshot.components, snapshot.nets, snapshot.scenarios
+                ));
+            } else {
+                ui.label("No project loaded");
             }
-            if ui.button("Save YAML").clicked() {
+            if ui
+                .add_enabled(
+                    self.background_job_elapsed_secs().is_none() && self.project_snapshot.is_some(),
+                    egui::Button::new("Run"),
+                )
+                .clicked()
+            {
+                self.run_schematic_model();
+            }
+            if ui.button("Scopes").clicked() {
+                self.stage = Stage::Simulation;
+            }
+            if ui.button("Fit").clicked() {
+                self.sketch_fit_requested = true;
+            }
+            if ui.button("Save").clicked() {
                 self.save_project_yaml();
             }
             if ui.button("Validate YAML").clicked() {
                 self.validate_project_yaml_text();
             }
-            if ui
-                .add_enabled(
-                    !self.project_yaml_undo.is_empty(),
-                    egui::Button::new("Undo"),
-                )
-                .clicked()
-            {
-                self.undo_project_yaml_edit();
-            }
-            if ui
-                .add_enabled(
-                    !self.project_yaml_redo.is_empty(),
-                    egui::Button::new("Redo"),
-                )
-                .clicked()
-            {
-                self.redo_project_yaml_edit();
-            }
             if self.project_yaml_dirty {
                 ui.label("Unsaved edits");
             }
+            if let Some(elapsed_secs) = self.background_job_elapsed_secs() {
+                let label = self.background_job_label().unwrap_or("job");
+                ui.add(egui::Spinner::new());
+                ui.label(format!("{label} running for {elapsed_secs:.1}s"));
+                if ui
+                    .add_enabled(
+                        !self.background_job_cancel_requested(),
+                        egui::Button::new("Cancel"),
+                    )
+                    .clicked()
+                {
+                    self.cancel_background_job();
+                }
+            }
         });
         ui.separator();
-        if self.project_yaml.is_empty() {
-            ui.label("Load a project to edit its Board IR YAML.");
-        } else {
-            let previous_yaml = self.project_yaml.clone();
-            let response = egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.project_yaml)
-                        .font(egui::TextStyle::Monospace)
-                        .desired_rows(36)
-                        .lock_focus(true),
-                )
-            });
-            if response.inner.changed() {
-                self.record_project_yaml_text_edit(previous_yaml);
+    }
+
+    fn run_schematic_model(&mut self) {
+        if self.project_yaml_dirty {
+            self.save_project_yaml();
+            if self.project_yaml_dirty {
+                return;
             }
         }
+        self.validate_project();
+    }
+
+    fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            self.sketch_inspector(ui, snapshot);
+            ui.separator();
+            self.sketch_hierarchy_panel(ui, snapshot);
+            self.sketch_navigator_panel(ui, snapshot);
+            ui.separator();
+            egui::CollapsingHeader::new("Board IR YAML")
+                .default_open(false)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("Reload YAML").clicked() {
+                            self.request_project_action(
+                                PendingProjectAction::LoadProjectYaml {
+                                    path: self.project_path.clone(),
+                                },
+                                Some(ui.ctx()),
+                            );
+                        }
+                        if ui.button("Save YAML").clicked() {
+                            self.save_project_yaml();
+                        }
+                    });
+                    if self.project_yaml.is_empty() {
+                        ui.label("Load a project to edit Board IR YAML.");
+                    } else {
+                        let previous_yaml = self.project_yaml.clone();
+                        let response = ui.add(
+                            egui::TextEdit::multiline(&mut self.project_yaml)
+                                .font(egui::TextStyle::Monospace)
+                                .desired_rows(18)
+                                .lock_focus(true),
+                        );
+                        if response.changed() {
+                            self.record_project_yaml_text_edit(previous_yaml);
+                        }
+                    }
+                });
+        });
     }
 
     fn record_error(&mut self, error: anyhow::Error) {

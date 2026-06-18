@@ -10,6 +10,7 @@ use super::sketch::{
     remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
     snap_screen_point_to_grid, validate_board_ir_yaml_text,
 };
+use super::sketch_canvas::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
@@ -154,6 +155,18 @@ fn add_component_with_ports_suffixes_existing_generated_net() {
 
     validate_board_ir_yaml_text(&edited).unwrap();
     assert!(edited.contains("VIN: u2_vin_2"));
+}
+
+#[test]
+fn schematic_canvas_size_prefers_model_editor_space() {
+    assert_eq!(
+        schematic_canvas_size(egui::vec2(1200.0, 720.0)),
+        egui::vec2(1200.0, 720.0)
+    );
+    assert_eq!(
+        schematic_canvas_size(egui::vec2(320.0, 240.0)),
+        egui::vec2(560.0, 520.0)
+    );
 }
 
 #[test]
