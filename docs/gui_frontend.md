@@ -65,7 +65,8 @@ add/remove operations, schematic symbol style edits, validated component pin
 assignment, visual wire assignment mutations, selected-net voltage-probe
 insertion controls, and selected-component current-probe insertion for
 generated source branches, generated passive current-sense branches, or
-generated semiconductor current-sense branches.
+generated semiconductor current-sense branches, plus selected-component power
+probe insertion for those same supported branches.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
@@ -107,7 +108,8 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, selected-net voltage-probe insertion into existing
   analog scenarios, selected-component current-probe insertion for supported
-  generated SPICE branches, shared undo/redo for Board IR
+  generated SPICE branches, selected-component power-probe insertion for
+  supported generated SPICE branches, shared undo/redo for Board IR
   graph/property/wire/YAML edits, and a raw Board IR YAML editor with
   parse-validated save.
 - Library: shows library bindings, searches the active component model set,
@@ -173,17 +175,19 @@ The supported desktop simulation path is:
    target generated-from-Board scenario includes a source primitive branch or a
    passive/diode/BJT/MOSFET branch where CircuitCI can generate a current-sense
    source,
-21. add sample or windowed min/max waveform assertions against declared probes,
-22. load, edit, save, and rerun file-backed SPICE decks from declared analog
+21. select a supported component branch and append a power probe that composes
+   the branch voltage and branch current as an explicit Board IR power probe,
+22. add sample or windowed min/max waveform assertions against declared probes,
+23. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-23. bind sourced component models,
-24. run declared validation and `analog_transient` scenarios,
-25. scrub or play the simulation time cursor to drive graph runtime tinting,
-26. hover graph nodes to inspect matching voltage/current/power probe values at
+24. bind sourced component models,
+25. run declared validation and `analog_transient` scenarios,
+26. scrub or play the simulation time cursor to drive graph runtime tinting,
+27. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-27. observe generated decks, plotted CSV waveforms, cursor values, min/max
+28. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-28. edit the project/model evidence and rerun.
+29. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -212,5 +216,7 @@ only for generated-from-Board analog scenarios and only when the component
 branch is source-backed by a Board IR voltage/current source primitive, by a
 Board IR resistor/capacitor/inductor primitive with a generated zero-volt
 current-sense source, or by a bound diode/BJT/MOSFET model branch with
-CircuitCI's generated zero-volt current-sense source. Subcircuit internals and
-file-backed deck branch probes still require explicit deck/model evidence.
+CircuitCI's generated zero-volt current-sense source. It appends power probes
+for the same supported component set by composing explicit branch voltage and
+branch current expressions. Subcircuit internals and file-backed deck branch
+probes still require explicit deck/model evidence.

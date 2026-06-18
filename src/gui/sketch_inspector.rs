@@ -1,6 +1,6 @@
 use super::analog::{
-    AnalogCurrentProbeDraft, AnalogProbeDraft, analog_scenario_choices,
-    append_analog_current_probe, append_analog_voltage_probe,
+    AnalogCurrentProbeDraft, AnalogPowerProbeDraft, AnalogProbeDraft, analog_scenario_choices,
+    append_analog_current_probe, append_analog_power_probe, append_analog_voltage_probe,
 };
 use super::sketch::{
     ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
@@ -532,6 +532,10 @@ impl CircuitCiApp {
             self.analog_canvas_component_probe_name =
                 default_current_probe_name_for_component(component_id);
         }
+        if self.analog_canvas_component_power_probe_name.is_empty() {
+            self.analog_canvas_component_power_probe_name =
+                default_power_probe_name_for_component(component_id);
+        }
         egui::ComboBox::from_id_salt("canvas_component_probe_scenario")
             .selected_text(&self.analog_probe_scenario)
             .show_ui(ui, |ui| {
@@ -543,6 +547,7 @@ impl CircuitCiApp {
                     );
                 }
             });
+        ui.label("Current");
         ui.horizontal(|ui| {
             ui.text_edit_singleline(&mut self.analog_canvas_component_probe_name);
             if ui.button("Use Component").clicked() {
@@ -552,6 +557,17 @@ impl CircuitCiApp {
         });
         if ui.button("Add Current Probe").clicked() {
             self.apply_add_current_probe_for_component(component_id);
+        }
+        ui.label("Power");
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut self.analog_canvas_component_power_probe_name);
+            if ui.button("Use Component").clicked() {
+                self.analog_canvas_component_power_probe_name =
+                    default_power_probe_name_for_component(component_id);
+            }
+        });
+        if ui.button("Add Power Probe").clicked() {
+            self.apply_add_power_probe_for_component(component_id);
         }
     }
 
@@ -603,6 +619,35 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn apply_add_power_probe_for_component(&mut self, component_id: &str) {
+        let draft = AnalogPowerProbeDraft {
+            scenario_name: self.analog_probe_scenario.clone(),
+            component_id: component_id.to_string(),
+            probe_name: self.analog_canvas_component_power_probe_name.clone(),
+        };
+        match append_analog_power_probe(
+            &self.project_yaml,
+            std::path::Path::new(&self.project_path),
+            &draft,
+        ) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = self.analog_probe_scenario.clone();
+                self.analog_assertion_probe = self
+                    .analog_canvas_component_power_probe_name
+                    .trim()
+                    .to_string();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Power probe {} added for component {component_id}.",
+                        self.analog_canvas_component_power_probe_name.trim()
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
 }
 
 fn default_probe_name_for_net(net_id: &str) -> String {
@@ -623,6 +668,15 @@ fn default_current_probe_name_for_component(component_id: &str) -> String {
     }
 }
 
+fn default_power_probe_name_for_component(component_id: &str) -> String {
+    let name = sanitized_probe_stem(component_id);
+    if name.is_empty() {
+        "component_power".to_string()
+    } else {
+        format!("{name}_power")
+    }
+}
+
 fn sanitized_probe_stem(value: &str) -> String {
     let mut name = String::new();
     for character in value.trim().chars() {
@@ -637,7 +691,10 @@ fn sanitized_probe_stem(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_current_probe_name_for_component, default_probe_name_for_net};
+    use super::{
+        default_current_probe_name_for_component, default_power_probe_name_for_component,
+        default_probe_name_for_net,
+    };
 
     #[test]
     fn default_probe_name_sanitizes_canvas_net_ids() {
@@ -662,6 +719,19 @@ mod tests {
         assert_eq!(
             default_current_probe_name_for_component("///"),
             "component_current"
+        );
+    }
+
+    #[test]
+    fn default_power_probe_name_sanitizes_canvas_component_ids() {
+        assert_eq!(default_power_probe_name_for_component("R1"), "R1_power");
+        assert_eq!(
+            default_power_probe_name_for_component(" load/r "),
+            "load_r_power"
+        );
+        assert_eq!(
+            default_power_probe_name_for_component("///"),
+            "component_power"
         );
     }
 }

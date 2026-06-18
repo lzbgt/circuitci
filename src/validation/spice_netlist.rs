@@ -296,9 +296,7 @@ fn expression_references_branch_current(expression: &str, branch_lowercase: &str
         .flat_map(char::to_lowercase)
         .collect();
     let current = format!("i({branch_lowercase})");
-    normalized == current
-        || normalized == format!("-{current}")
-        || normalized == format!("abs({current})")
+    normalized.contains(&current)
 }
 
 fn mosfet_body_node(
@@ -745,5 +743,69 @@ scenarios:
         let text = std::fs::read_to_string(deck).unwrap();
         assert!(!text.contains("VCCI_R1"));
         assert!(text.contains("R1 in out 1000"));
+    }
+
+    #[test]
+    fn generated_passive_inserts_current_sense_for_power_probe_expression() {
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(
+            "project:
+  name: passive_power_sense_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: in
+        B: out
+  nets:
+    in:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: with_power_probe
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [R1]
+      model_files: []
+      node_bindings:
+        - { net: in, node: in }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: in }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: r1_power, expression: 'V(in,out)*I(VCCI_R1)', quantity: power }
+      assertions: []
+",
+        )
+        .unwrap();
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        assert!(text.contains("VCCI_R1 in cci_r1_a 0"));
+        assert!(text.contains("R1 cci_r1_a out 1000"));
     }
 }
