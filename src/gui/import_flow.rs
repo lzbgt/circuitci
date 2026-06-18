@@ -18,13 +18,28 @@ impl CircuitCiApp {
                 .spacing([12.0, 6.0])
                 .show(ui, |ui| {
                     ui.label("Schematic");
-                    ui.text_edit_singleline(&mut self.import_schematic_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_schematic_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_import_schematic_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Mapping");
-                    ui.text_edit_singleline(&mut self.import_mapping_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_mapping_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_import_mapping_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Output project");
-                    ui.text_edit_singleline(&mut self.import_output_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_output_path);
+                        if ui.button("Choose").clicked() {
+                            self.pick_import_output_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Project name");
                     ui.text_edit_singleline(&mut self.import_project_name);
@@ -59,10 +74,20 @@ impl CircuitCiApp {
                 .spacing([12.0, 6.0])
                 .show(ui, |ui| {
                     ui.label("Deck");
-                    ui.text_edit_singleline(&mut self.import_spice_deck_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_spice_deck_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_import_spice_deck_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Output project");
-                    ui.text_edit_singleline(&mut self.import_spice_output_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_spice_output_path);
+                        if ui.button("Choose").clicked() {
+                            self.pick_import_spice_output_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Project name");
                     ui.text_edit_singleline(&mut self.import_spice_project_name);
@@ -123,13 +148,28 @@ impl CircuitCiApp {
                 .spacing([12.0, 6.0])
                 .show(ui, |ui| {
                     ui.label("PCB");
-                    ui.text_edit_singleline(&mut self.import_pcb_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_pcb_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_import_pcb_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Input project");
-                    ui.text_edit_singleline(&mut self.import_pcb_project_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_pcb_project_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_import_pcb_project_path();
+                        }
+                    });
                     ui.end_row();
                     ui.label("Output project");
-                    ui.text_edit_singleline(&mut self.import_pcb_output_path);
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.import_pcb_output_path);
+                        if ui.button("Choose").clicked() {
+                            self.pick_import_pcb_output_path();
+                        }
+                    });
                     ui.end_row();
                 });
             ui.horizontal(|ui| {

@@ -7,6 +7,7 @@ use std::path::Path;
 mod analog;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
+mod file_dialogs;
 mod import_flow;
 mod library;
 mod project;
@@ -308,6 +309,10 @@ impl CircuitCiApp {
                         );
                         ui.close();
                     }
+                    if ui.button("Open Project...").clicked() {
+                        self.pick_and_request_project_load(ui.ctx());
+                        ui.close();
+                    }
                     if ui.button("Load Project").clicked() {
                         self.request_project_action(
                             PendingProjectAction::LoadProjectSummary {
@@ -410,9 +415,22 @@ impl CircuitCiApp {
                 ui.heading("CircuitCI");
                 ui.separator();
                 ui.label("Project");
-                ui.text_edit_singleline(&mut self.project_path);
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(&mut self.project_path);
+                    if ui.button("Browse").clicked() {
+                        self.pick_project_path();
+                    }
+                    if ui.button("Open").clicked() {
+                        self.pick_and_request_project_load(ui.ctx());
+                    }
+                });
                 ui.label("Output");
-                ui.text_edit_singleline(&mut self.output_dir);
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(&mut self.output_dir);
+                    if ui.button("Folder").clicked() {
+                        self.pick_output_dir();
+                    }
+                });
                 ui.label("Profile");
                 ui.text_edit_singleline(&mut self.profile);
                 ui.horizontal(|ui| {

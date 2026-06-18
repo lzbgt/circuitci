@@ -42,6 +42,9 @@ dependencies unless `--features gui` is explicitly enabled.
 `src/gui.rs` owns the application shell, stage routing, menus, and
 validation/report calls. `src/gui/import_flow.rs` owns the Import stage UI and
 KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+`src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
+project, import, and output path fields. The dialogs are compiled only with the
+optional GUI feature and do not affect the default CLI build.
 `src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
@@ -89,11 +92,12 @@ actions for imported or hand-authored analog scenarios.
 The first GUI slice provides EDA-style stages rather than a single command
 form:
 
-- Project: choose a Board IR project and output directory, then load or
-  validate it.
+- Project: choose a Board IR project and output directory by typing paths or
+  using native file/folder pickers, then load or validate it.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
-  evidence.
+  evidence. Import source and output paths can be typed or selected with native
+  open/save dialogs.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
@@ -155,55 +159,57 @@ missing.
 The supported desktop simulation path is:
 
 1. load Board IR or import KiCad schematic/PCB/SPICE evidence,
-2. inspect the imported/sketched component and net graph,
-3. edit selected component model/part-number and net kind/voltage/powered
+2. choose project, output, KiCad, and SPICE import paths through native
+   open/save/folder dialogs or direct text entry,
+3. inspect the imported/sketched component and net graph,
+4. edit selected component model/part-number and net kind/voltage/powered
    fields through structured controls,
-4. add components, add nets, or remove selected components and unreferenced
+5. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
-5. drag component/net graph nodes to persist `board.schematic.node_positions`,
-6. snap dragged schematic positions to the visible grid when snap is enabled,
-7. pan, zoom, reset, or fit the sketch viewport without changing Board IR
+6. drag component/net graph nodes to persist `board.schematic.node_positions`,
+7. snap dragged schematic positions to the visible grid when snap is enabled,
+8. pan, zoom, reset, or fit the sketch viewport without changing Board IR
    evidence,
-8. rotate, flip, or choose pin side for selected components through
+9. rotate, flip, or choose pin side for selected components through
    `board.schematic.node_styles`,
-9. Shift-drag a marquee to select multiple visible components/nets,
-10. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
+10. Shift-drag a marquee to select multiple visible components/nets,
+11. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
    edit,
-11. assign or remove selected component pin bindings to existing nets,
-12. create a visual wire by clicking a rendered source pin anchor and then a
+12. assign or remove selected component pin bindings to existing nets,
+13. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-13. inspect Board IR connections through orthogonal wire routes, net labels,
+14. inspect Board IR connections through orthogonal wire routes, net labels,
    junction dots, and clickable wire-to-net selection rendered over the
    persisted pin/net graph,
-14. delete selected components or unreferenced nets from the canvas or toolbar,
-15. undo or redo Board IR graph/property/wire/YAML edits through the shared
+15. delete selected components or unreferenced nets from the canvas or toolbar,
+16. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-16. receive an unsaved-change confirmation before load/import/quit replaces
+17. receive an unsaved-change confirmation before load/import/quit replaces
    dirty Board IR YAML or loaded file-backed SPICE deck edits,
-17. search the active model libraries, insert selected models as sketched
+18. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-18. edit Board IR YAML evidence when the project needs a correction outside the
+19. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-19. append a generated-from-Board analog transient scenario with a voltage probe,
-20. select a net or wire on the sketch canvas and append another voltage probe
+20. append a generated-from-Board analog transient scenario with a voltage probe,
+21. select a net or wire on the sketch canvas and append another voltage probe
    to an existing analog scenario when that scenario has a node binding for the
    net,
-21. select a component on the sketch canvas and append a current probe when the
+22. select a component on the sketch canvas and append a current probe when the
    target generated-from-Board scenario includes a source primitive branch or a
    passive/diode/BJT/MOSFET branch where CircuitCI can generate a current-sense
    source,
-22. select a supported component branch and append a power probe that composes
+23. select a supported component branch and append a power probe that composes
    the branch voltage and branch current as an explicit Board IR power probe,
-23. add sample or windowed min/max waveform assertions against declared probes,
-24. load, edit, save, and rerun file-backed SPICE decks from declared analog
+24. add sample or windowed min/max waveform assertions against declared probes,
+25. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-25. bind sourced component models,
-26. run declared validation and `analog_transient` scenarios,
-27. scrub or play the simulation time cursor to drive graph runtime tinting,
-28. hover graph nodes to inspect matching voltage/current/power probe values at
+26. bind sourced component models,
+27. run declared validation and `analog_transient` scenarios,
+28. scrub or play the simulation time cursor to drive graph runtime tinting,
+29. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-29. use visible schematic probe badges to find voltage/current/power probes,
+30. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
@@ -211,13 +217,13 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-30. use right-click component, net, and wire menus for common sketch actions
+31. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, and delete through the same validated Board IR
    mutation paths as the inspector and keyboard actions,
-31. observe generated decks, plotted CSV waveforms, cursor values, min/max
+32. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-32. edit the project/model evidence and rerun.
+33. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source

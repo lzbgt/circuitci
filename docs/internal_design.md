@@ -86,7 +86,10 @@ edit. Load, import, and quit actions must pass through the `src/gui/project.rs`
 pending-action dirty-state guard when Board IR YAML or a loaded file-backed
 SPICE deck has unsaved edits. Confirmed discard may clear editor state and
 history before executing the action; canceled actions must leave the current
-workspace untouched. `src/gui/simulation.rs`
+workspace untouched. Native path pickers in `src/gui/file_dialogs.rs` only
+populate existing project/import/output path fields or request the same guarded
+project load action; they must not bypass validation, import, save, or the
+dirty-state guard. `src/gui/simulation.rs`
 owns the Simulation stage UI, waveform CSV parsing, plotting, simulation-time
 scrub/playback controls, cursor readouts, min/max/delta measurements, and
 normalized runtime activity values for graph tinting. It may display graph
