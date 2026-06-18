@@ -45,8 +45,10 @@ updates, and validated component pin assignment. Visual wire creation reuses
 the same pin-to-net mutation path instead of introducing a second connection
 model.
 `src/gui/library.rs` owns component model browsing over the active project
-library set, text filtering, selected-model staging, and selected-component
-model assignment through the same Board IR YAML mutation path.
+library set, text filtering, selected-model staging, selected-component model
+assignment, and model-backed component insertion through the same Board IR YAML
+mutation path. Inserted components use the selected model's declared ports to
+seed editable Board IR pin bindings and generated per-pin nets.
 `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
 plotting, simulation-time scrub/playback controls, cursor measurement tools,
 and graph-hover/runtime activity extraction from loaded waveform artifacts.
@@ -75,8 +77,9 @@ form:
   Board IR graph/property/wire/YAML edits, and a raw Board IR YAML editor with
   parse-validated save.
 - Library: shows library bindings, searches the active component model set,
-  stages a model for new components, assigns a selected model to the selected
-  component, and shows scenario suggestion YAML.
+  stages a model for new components, inserts selected models as Board IR
+  components with generated default pin nets, assigns a selected model to the
+  selected component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, add sample/min/max probe assertions, edit
   file-backed SPICE decks declared by analog scenarios, then runs validation
@@ -110,7 +113,9 @@ The supported desktop simulation path is:
    node,
 8. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-9. search the active model libraries and assign selected models to components,
+9. search the active model libraries, insert selected models as sketched
+   components with generated pin nets, and assign selected models to existing
+   components,
 10. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
 11. append a generated-from-Board analog transient scenario with a voltage probe,

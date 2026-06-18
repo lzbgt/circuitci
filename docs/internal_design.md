@@ -24,12 +24,16 @@ logic in one source file. `src/gui.rs` owns application state, menus, stage
 routing, import command wiring, and validation/report calls. `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
-owns Board IR graph snapshots, graph layout/drawing helpers, and structured
-scalar YAML edit helpers for existing components and nets. It may add or remove
+owns Board IR graph snapshots, graph layout/drawing helpers, structured scalar
+YAML edit helpers for existing components and nets, and model-port default
+pin/net seeding for library-backed component insertion. It may add or remove
 component entries and may remove only nets that are not referenced by component
-pins. It may assign or remove component pin bindings only when the component
-exists and any assigned target net exists. It may persist schematic graph node
-positions under `board.schematic.node_positions`; it must not use
+pins. Inserted library components may create generated per-pin nets from
+source-backed model port declarations, but those nets are still ordinary Board
+IR sketch connections that the user can rewire. It may assign or remove
+component pin bindings only when the component exists and any assigned target
+net exists. It may persist schematic graph node positions under
+`board.schematic.node_positions`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
@@ -46,9 +50,9 @@ normalized runtime activity values for graph tinting. It may display graph
 hover readouts and activity coloring for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
-`src/gui/library.rs` owns active-library model browsing, model filtering, and
-component model assignment through the same validated Board IR YAML mutation
-helpers used by the sketch inspector.
+`src/gui/library.rs` owns active-library model browsing, model filtering,
+component model assignment, and model-backed component insertion through the
+same validated Board IR YAML mutation helpers used by the sketch inspector.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation
 and structured sample/min/max assertion authoring. It may derive node and pin
 bindings from Board IR for observation scenarios. `src/gui/spice.rs` owns

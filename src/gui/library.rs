@@ -1,8 +1,15 @@
 use super::CircuitCiApp;
-use super::sketch::{SketchSelection, edit_component_model};
+use super::sketch::{SketchSelection, add_component_with_ports, edit_component_model};
 use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
+
+#[derive(Debug, Clone)]
+struct ModelPortEntry {
+    id: String,
+    kind: String,
+    required: bool,
+}
 
 #[derive(Debug, Clone)]
 struct ModelBrowserEntry {
@@ -10,8 +17,17 @@ struct ModelBrowserEntry {
     category: String,
     source: String,
     confidence: String,
-    ports: usize,
+    ports: Vec<ModelPortEntry>,
     features: Vec<&'static str>,
+}
+
+impl ModelBrowserEntry {
+    fn port_pairs(&self) -> Vec<(String, String)> {
+        self.ports
+            .iter()
+            .map(|port| (port.id.clone(), port.kind.clone()))
+            .collect()
+    }
 }
 
 impl CircuitCiApp {
@@ -85,6 +101,11 @@ impl CircuitCiApp {
             }
         });
 
+        let selected_entry = entries
+            .iter()
+            .find(|entry| entry.id == self.selected_library_model)
+            .cloned();
+
         ui.horizontal(|ui| {
             let can_apply =
                 selected_component.is_some() && !self.selected_library_model.trim().is_empty();
@@ -106,6 +127,39 @@ impl CircuitCiApp {
             }
         });
 
+        ui.horizontal(|ui| {
+            ui.label("Insert ID");
+            ui.text_edit_singleline(&mut self.new_component_id);
+            let can_insert = selected_entry.is_some() && !self.new_component_id.trim().is_empty();
+            if ui
+                .add_enabled(can_insert, egui::Button::new("Insert Selected Model"))
+                .clicked()
+                && let Some(entry) = selected_entry.clone()
+            {
+                self.apply_insert_selected_library_model(entry);
+            }
+        });
+        if let Some(entry) = &selected_entry {
+            let ports = entry
+                .ports
+                .iter()
+                .take(8)
+                .map(|port| {
+                    if port.required {
+                        format!("{}:{}*", port.id, port.kind)
+                    } else {
+                        format!("{}:{}", port.id, port.kind)
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            if ports.is_empty() {
+                ui.label("Selected model declares no ports.");
+            } else {
+                ui.label(format!("Selected model ports: {ports}"));
+            }
+        }
+
         let filtered = filtered_entries(&entries, &self.model_search);
         ui.label(format!("{} of {} model(s)", filtered.len(), entries.len()));
         egui::ScrollArea::vertical()
@@ -126,10 +180,14 @@ impl CircuitCiApp {
                             ui.monospace(&entry.id);
                             ui.label(&entry.category);
                             ui.label(format!("{} / {}", entry.source, entry.confidence));
-                            ui.label(entry.ports.to_string());
+                            ui.label(entry.ports.len().to_string());
                             ui.label(entry.features.join(", "));
                             if ui.button("Select").clicked() {
                                 self.selected_library_model = entry.id.clone();
+                                self.new_component_model = entry.id.clone();
+                                self.new_component_id =
+                                    next_component_id(&self.project_yaml, entry)
+                                        .unwrap_or_else(|| self.new_component_id.clone());
                             }
                             ui.end_row();
                         }
@@ -150,6 +208,29 @@ impl CircuitCiApp {
                     self.selected_library_model
                 ),
             ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_insert_selected_library_model(&mut self, entry: ModelBrowserEntry) {
+        match add_component_with_ports(
+            &self.project_yaml,
+            &self.new_component_id,
+            &entry.id,
+            &entry.port_pairs(),
+        ) {
+            Ok(updated) => {
+                let component_id = self.new_component_id.trim().to_string();
+                self.selected_library_model = entry.id.clone();
+                self.new_component_model = entry.id.clone();
+                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Component {component_id} inserted from {}.", entry.id),
+                );
+                self.new_component_id =
+                    next_component_id(&self.project_yaml, &entry).unwrap_or(component_id);
+            }
             Err(error) => self.record_error(error),
         }
     }
@@ -177,7 +258,15 @@ fn model_browser_entries(
             category: model.category.clone(),
             source: model.model_quality.source.clone(),
             confidence: model.model_quality.confidence.clone(),
-            ports: model.ports.len(),
+            ports: model
+                .ports
+                .iter()
+                .map(|(id, port)| ModelPortEntry {
+                    id: id.clone(),
+                    kind: port_kind_name(&port.kind).to_string(),
+                    required: port.required,
+                })
+                .collect(),
             features: model_features(model),
         })
         .collect();
@@ -200,11 +289,17 @@ fn filtered_entries<'a>(
                 return true;
             }
             let haystack = format!(
-                "{} {} {} {} {}",
+                "{} {} {} {} {} {}",
                 entry.id,
                 entry.category,
                 entry.source,
                 entry.confidence,
+                entry
+                    .ports
+                    .iter()
+                    .map(|port| format!("{} {}", port.id, port.kind))
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 entry.features.join(" ")
             )
             .to_ascii_lowercase();
@@ -217,6 +312,51 @@ fn selected_component_id(selection: Option<&SketchSelection>) -> Option<&str> {
     match selection {
         Some(SketchSelection::Component(component_id)) => Some(component_id.as_str()),
         _ => None,
+    }
+}
+
+fn next_component_id(project_yaml: &str, entry: &ModelBrowserEntry) -> Option<String> {
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(project_yaml).ok()?;
+    let prefix = component_prefix(entry);
+    for index in 1..10_000 {
+        let candidate = format!("{prefix}{index}");
+        if !project.board.components.contains_key(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+fn component_prefix(entry: &ModelBrowserEntry) -> &'static str {
+    let category = entry.category.to_ascii_lowercase();
+    let id = entry.id.to_ascii_lowercase();
+    if category.contains("connector") || id.contains("connector") || id.contains("jst") {
+        "J"
+    } else if category.contains("resistor") || id.contains("resistor") {
+        "R"
+    } else if category.contains("capacitor") || id.contains("capacitor") {
+        "C"
+    } else if category.contains("inductor") || id.contains("inductor") {
+        "L"
+    } else if category.contains("diode") || id.contains("diode") {
+        "D"
+    } else if category.contains("cable") || id.contains("cable") || id.contains("harness") {
+        "W"
+    } else if category.contains("motor") || id.contains("motor") {
+        "M"
+    } else {
+        "U"
+    }
+}
+
+fn port_kind_name(kind: &crate::library::PortKind) -> &'static str {
+    match kind {
+        crate::library::PortKind::ElectricalPower => "electrical_power",
+        crate::library::PortKind::ElectricalGround => "electrical_ground",
+        crate::library::PortKind::DigitalElectricalInput => "digital_electrical_input",
+        crate::library::PortKind::DigitalElectricalOutput => "digital_electrical_output",
+        crate::library::PortKind::DigitalElectricalIo => "digital_electrical_io",
+        crate::library::PortKind::Passive => "passive",
     }
 }
 
@@ -269,7 +409,7 @@ fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{filtered_entries, model_browser_entries};
+    use super::{filtered_entries, model_browser_entries, next_component_id};
     use std::path::Path;
 
     fn project_yaml() -> &'static str {
@@ -308,5 +448,38 @@ board:
                 .iter()
                 .all(|entry| entry.id.contains("tps") || entry.features.contains(&"power"))
         );
+    }
+
+    #[test]
+    fn model_browser_exposes_model_ports() {
+        let entries = model_browser_entries(project_yaml(), Path::new(".")).unwrap();
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id == "vendor.ti.tps54331_5v")
+            .unwrap();
+
+        assert!(
+            entry
+                .ports
+                .iter()
+                .any(|port| port.id == "VIN" && port.kind == "electrical_power")
+        );
+        assert!(
+            entry
+                .ports
+                .iter()
+                .any(|port| port.id == "GND" && port.kind == "electrical_ground")
+        );
+    }
+
+    #[test]
+    fn next_component_id_uses_model_category_prefix() {
+        let entries = model_browser_entries(project_yaml(), Path::new(".")).unwrap();
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id == "vendor.ti.tps54331_5v")
+            .unwrap();
+
+        assert_eq!(next_component_id(project_yaml(), entry).unwrap(), "U1");
     }
 }

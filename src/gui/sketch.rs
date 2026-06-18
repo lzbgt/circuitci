@@ -247,6 +247,59 @@ pub(super) fn add_component(text: &str, component_id: &str, model: &str) -> Resu
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn add_component_with_ports(
+    text: &str,
+    component_id: &str,
+    model: &str,
+    ports: &[(String, String)],
+) -> Result<String> {
+    let component_id = validated_graph_id(component_id, "component")?;
+    let model = model.trim();
+    if model.is_empty() {
+        anyhow::bail!("Component model must not be blank.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let components = ensure_board_child_mapping_mut(&mut yaml, "components")?;
+        let component_key = serde_yaml_ng::Value::String(component_id.to_string());
+        if components.contains_key(&component_key) {
+            anyhow::bail!("Board IR component {component_id} already exists.");
+        }
+    }
+
+    let pin_nets = default_pin_nets(&mut yaml, component_id, ports)?;
+    {
+        let components = ensure_board_child_mapping_mut(&mut yaml, "components")?;
+        let mut component = serde_yaml_ng::Mapping::new();
+        component.insert(
+            serde_yaml_ng::Value::String("model".to_string()),
+            serde_yaml_ng::Value::String(model.to_string()),
+        );
+        if !pin_nets.is_empty() {
+            let pins = pin_nets
+                .into_iter()
+                .map(|(pin, net)| {
+                    (
+                        serde_yaml_ng::Value::String(pin),
+                        serde_yaml_ng::Value::String(net),
+                    )
+                })
+                .collect();
+            component.insert(
+                serde_yaml_ng::Value::String("pins".to_string()),
+                serde_yaml_ng::Value::Mapping(pins),
+            );
+        }
+        components.insert(
+            serde_yaml_ng::Value::String(component_id.to_string()),
+            serde_yaml_ng::Value::Mapping(component),
+        );
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn remove_component(text: &str, component_id: &str) -> Result<String> {
     let mut yaml: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
@@ -520,6 +573,59 @@ fn ensure_child_mapping_mut<'a>(
         .with_context(|| format!("Board IR {label} must be an object."))
 }
 
+fn default_pin_nets(
+    yaml: &mut serde_yaml_ng::Value,
+    component_id: &str,
+    ports: &[(String, String)],
+) -> Result<Vec<(String, String)>> {
+    let mut pin_nets = Vec::new();
+    for (pin_id, port_kind) in ports {
+        let pin_id = validated_graph_id(pin_id, "pin")?.to_string();
+        let net_id = insert_default_pin_net(yaml, component_id, &pin_id, port_kind)?;
+        pin_nets.push((pin_id, net_id));
+    }
+    Ok(pin_nets)
+}
+
+fn insert_default_pin_net(
+    yaml: &mut serde_yaml_ng::Value,
+    component_id: &str,
+    pin_id: &str,
+    port_kind: &str,
+) -> Result<String> {
+    let base = generated_net_base(component_id, pin_id);
+    let net_kind = default_net_kind_for_port(port_kind);
+    let nets = ensure_board_child_mapping_mut(yaml, "nets")?;
+    let mut net_id = base.clone();
+    let mut suffix = 2;
+    while nets.contains_key(serde_yaml_ng::Value::String(net_id.clone())) {
+        net_id = format!("{base}_{suffix}");
+        suffix += 1;
+    }
+    let mut net = serde_yaml_ng::Mapping::new();
+    net.insert(
+        serde_yaml_ng::Value::String("kind".to_string()),
+        serde_yaml_ng::Value::String(net_kind.to_string()),
+    );
+    nets.insert(
+        serde_yaml_ng::Value::String(net_id.clone()),
+        serde_yaml_ng::Value::Mapping(net),
+    );
+    Ok(net_id)
+}
+
+fn generated_net_base(component_id: &str, pin_id: &str) -> String {
+    format!("{component_id}_{pin_id}").to_ascii_lowercase()
+}
+
+fn default_net_kind_for_port(port_kind: &str) -> &'static str {
+    match port_kind {
+        "electrical_power" => "power",
+        "electrical_ground" => "ground",
+        _ => "digital_or_analog",
+    }
+}
+
 fn child_mapping_mut<'a>(
     mapping: &'a mut serde_yaml_ng::Mapping,
     field: &str,
@@ -788,9 +894,9 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        SketchPosition, SketchSelection, add_component, add_net, assign_component_pin,
-        edit_schematic_node_position, layout_sketch_graph, remove_component, remove_component_pin,
-        remove_net, validate_board_ir_yaml_text,
+        SketchPosition, SketchSelection, add_component, add_component_with_ports, add_net,
+        assign_component_pin, edit_schematic_node_position, layout_sketch_graph, remove_component,
+        remove_component_pin, remove_net, validate_board_ir_yaml_text,
     };
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 
@@ -828,6 +934,42 @@ board:
         let edited = remove_component(&edited, "U2").unwrap();
         validate_board_ir_yaml_text(&edited).unwrap();
         assert!(!edited.contains("U2:"));
+    }
+
+    #[test]
+    fn add_component_with_ports_creates_default_pin_nets() {
+        let ports = vec![
+            ("VIN".to_string(), "electrical_power".to_string()),
+            ("GND".to_string(), "electrical_ground".to_string()),
+            ("OUT".to_string(), "digital_electrical_output".to_string()),
+        ];
+        let edited = add_component_with_ports(
+            editable_project_yaml(),
+            "U2",
+            "vendor.example.power_stage",
+            &ports,
+        )
+        .unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("U2:"));
+        assert!(edited.contains("VIN: u2_vin"));
+        assert!(edited.contains("GND: u2_gnd"));
+        assert!(edited.contains("OUT: u2_out"));
+        assert!(edited.contains("u2_vin:\n      kind: power"));
+        assert!(edited.contains("u2_gnd:\n      kind: ground"));
+        assert!(edited.contains("u2_out:\n      kind: digital_or_analog"));
+    }
+
+    #[test]
+    fn add_component_with_ports_suffixes_existing_generated_net() {
+        let ports = vec![("VIN".to_string(), "electrical_power".to_string())];
+        let project = add_net(editable_project_yaml(), "u2_vin", "power").unwrap();
+        let edited =
+            add_component_with_ports(&project, "U2", "vendor.example.power_stage", &ports).unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("VIN: u2_vin_2"));
     }
 
     #[test]
