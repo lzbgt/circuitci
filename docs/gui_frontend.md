@@ -100,7 +100,8 @@ seed editable Board IR pin bindings and generated per-pin nets.
 `src/gui/simulation.rs` owns the Simulation stage UI and analog
 scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
 parsing, plotting, simulation-time scrub/playback controls, cursor measurement
-tools, GUI-only derived waveform channels, and graph-hover/runtime activity
+tools, GUI-only derived waveform channels, promotion of representable derived
+channels to Board IR probes/assertions, and graph-hover/runtime activity
 extraction from loaded waveform artifacts.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
@@ -171,7 +172,8 @@ form:
   hovered schematic probe badge, add sample/min/max probe assertions, edit
   file-backed SPICE decks declared by analog scenarios, then runs validation through the engine,
   plots emitted CSV waveforms, adds GUI-only derived difference/sum/product/ratio
-  channels, provides simulation-time scrub/playback, A/B cursor measurements with
+  channels, can promote representable derived channels to explicit analog probes
+  or probes plus assertions, provides simulation-time scrub/playback, A/B cursor measurements with
   min/max and delta values, and lists generated SPICE
   decks, artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
@@ -271,11 +273,12 @@ The supported desktop simulation path is:
    current, or power probes, and delete through the same validated Board IR
    mutation paths as the inspector and keyboard actions,
 35. observe generated decks, plotted CSV waveforms, derived waveform math
-   channels, cursor values, min/max measurements, findings, and report artifacts,
+   channels, promote representable derived channels to persistent probes/assertions,
+   cursor values, min/max measurements, findings, and report artifacts,
 36. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
-schematic sheets, advanced persisted waveform-analysis sign-off, advanced SPICE source
+schematic sheets, advanced multi-channel waveform-analysis sign-off, advanced SPICE source
 tooling, automatic arbitrary
 schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
 stages. Basic file-backed deck edits are supported, but must still reuse the

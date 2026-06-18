@@ -48,6 +48,14 @@ pub(super) struct AnalogPowerProbeDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogExpressionProbeDraft {
+    pub(super) scenario_name: String,
+    pub(super) probe_name: String,
+    pub(super) expression: String,
+    pub(super) quantity: String,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogProbeRemoveDraft {
     pub(super) scenario_name: String,
     pub(super) probe_name: String,
@@ -468,6 +476,52 @@ pub(super) fn append_analog_power_probe(
     Ok(updated)
 }
 
+pub(super) fn append_analog_expression_probe(
+    text: &str,
+    draft: &AnalogExpressionProbeDraft,
+) -> Result<String> {
+    validate_expression_probe_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if analog
+        .probes
+        .iter()
+        .any(|probe| probe.name == draft.probe_name)
+    {
+        anyhow::bail!(
+            "Analog probe {} already exists in scenario {}.",
+            draft.probe_name,
+            scenario.name
+        );
+    }
+    validate_probe_contract(draft.expression.trim(), draft.quantity.trim())?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let probes = ensure_child_sequence_mut(analog_mapping, "probes", "analog probes")?;
+    let mut probe = serde_yaml_ng::Mapping::new();
+    insert_string(&mut probe, "name", draft.probe_name.trim());
+    insert_string(&mut probe, "expression", draft.expression.trim());
+    insert_string(&mut probe, "quantity", draft.quantity.trim());
+    probes.push(serde_yaml_ng::Value::Mapping(probe));
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog expression probe YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 pub(super) fn remove_analog_probe(text: &str, draft: &AnalogProbeRemoveDraft) -> Result<String> {
     validate_probe_remove_draft(draft)?;
     let project: crate::board_ir::BoardProject =
@@ -828,6 +882,41 @@ fn validate_power_probe_draft(draft: &AnalogPowerProbeDraft) -> Result<()> {
     validated_id(&draft.component_id, "component id")?;
     validated_id(&draft.probe_name, "probe name")?;
     Ok(())
+}
+
+fn validate_expression_probe_draft(draft: &AnalogExpressionProbeDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if draft.expression.trim().is_empty() {
+        anyhow::bail!("Analog probe expression must not be blank.");
+    }
+    if !matches!(draft.quantity.trim(), "voltage" | "current" | "power") {
+        anyhow::bail!("Analog probe quantity {} is not supported.", draft.quantity);
+    }
+    Ok(())
+}
+
+fn validate_probe_contract(expression: &str, quantity: &str) -> Result<()> {
+    let normalized = expression.trim().to_ascii_lowercase().replace(' ', "");
+    let valid = match quantity {
+        "voltage" => normalized.starts_with("v("),
+        "current" => {
+            normalized.starts_with("i(")
+                || normalized.starts_with("-i(")
+                || normalized.starts_with("abs(i(")
+        }
+        "power" => {
+            normalized.contains("v(") && normalized.contains("i(") && normalized.contains('*')
+        }
+        _ => false,
+    };
+    if valid {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "Expression {expression} is not consistent with declared {quantity} quantity."
+        );
+    }
 }
 
 fn validate_probe_remove_draft(draft: &AnalogProbeRemoveDraft) -> Result<()> {
@@ -1317,12 +1406,12 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogAssertionDraft, AnalogCurrentProbeDraft, AnalogPowerProbeDraft,
-        AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
-        AnalogScenarioDraft, analog_probe_assertion_summaries, append_analog_assertion,
-        append_analog_current_probe, append_analog_power_probe, append_analog_transient_scenario,
-        append_analog_voltage_probe, remove_analog_assertions_for_probe, remove_analog_probe,
-        unique_analog_assertion_name,
+        AnalogAssertionDraft, AnalogCurrentProbeDraft, AnalogExpressionProbeDraft,
+        AnalogPowerProbeDraft, AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft,
+        AnalogProbeRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
+        append_analog_assertion, append_analog_current_probe, append_analog_expression_probe,
+        append_analog_power_probe, append_analog_transient_scenario, append_analog_voltage_probe,
+        remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
     };
     use crate::reports::{Finding, ValidationReport};
     use std::path::Path;
@@ -1551,6 +1640,44 @@ board:
         edited = edited.replace("    - node: rail_5v\n      net: rail_5v\n", "");
         let error = append_analog_voltage_probe(&edited, &probe_draft()).unwrap_err();
         assert!(error.to_string().contains("node binding"));
+    }
+
+    #[test]
+    fn append_analog_expression_probe_emits_valid_yaml() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_expression_probe(
+            &edited,
+            &AnalogExpressionProbeDraft {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "load_power_math".to_string(),
+                expression: "V(rail_5v,out)*I(VCCI_R1)".to_string(),
+                quantity: "power".to_string(),
+            },
+        )
+        .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "load_power_math"
+                && probe.expression == "V(rail_5v,out)*I(VCCI_R1)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Power
+        }));
+    }
+
+    #[test]
+    fn append_analog_expression_probe_rejects_quantity_mismatch() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let error = append_analog_expression_probe(
+            &edited,
+            &AnalogExpressionProbeDraft {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "bad_math".to_string(),
+                expression: "V(out)".to_string(),
+                quantity: "current".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("not consistent"));
     }
 
     #[test]

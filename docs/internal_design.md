@@ -116,8 +116,9 @@ project load action; they must not bypass validation, import, save, or the
 dirty-state guard. `src/gui/simulation.rs` owns the Simulation stage UI and
 analog scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
 parsing, plotting, simulation-time scrub/playback controls, cursor readouts,
-min/max/delta measurements, GUI-only derived waveform channels, exact
-probe-value lookup, and normalized runtime activity values for graph tinting. It
+min/max/delta measurements, GUI-only derived waveform channels, promotion of
+representable derived channels to explicit Board IR analog probes/assertions,
+exact probe-value lookup, and normalized runtime activity values for graph tinting. It
 may display graph hover readouts, activity coloring, and derived difference,
 sum, product, or ratio channels for runtime waveform probes, but those values
 must come from report waveform artifacts and the shared waveform interpolation
@@ -202,9 +203,11 @@ dangling assertion references.
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather
-than introducing a second analog project model. GUI-derived waveform math
-channels must remain observation-only; persistent sign-off semantics still need
-explicit Board IR probes and assertions.
+than introducing a second analog project model. GUI-derived waveform math channels must remain observation-only until explicitly
+promoted. Promotion may only create Board IR analog probes for representable
+voltage/current/power expressions and may optionally add an assertion through the
+same structured assertion validation path; dimensionless ratios must remain
+GUI-only until the schema has a quantity for them.
 
 ## Evidence Model
 

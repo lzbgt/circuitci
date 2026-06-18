@@ -1,4 +1,8 @@
 use super::CircuitCiApp;
+use super::analog::{
+    AnalogAssertionDraft, AnalogExpressionProbeDraft, analog_scenario_choices,
+    append_analog_assertion, append_analog_expression_probe, unique_analog_assertion_name,
+};
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::SketchProbe;
 use crate::reports::ValidationReport;
@@ -147,6 +151,18 @@ impl CircuitCiApp {
             .probes
             .get(self.selected_probe)
             .is_some_and(|probe| probe.derived);
+        let selected_promotion = waveform
+            .probes
+            .get(self.selected_probe)
+            .filter(|probe| probe.derived)
+            .map(|probe| WaveformPromotionChoice {
+                label: probe.label.clone(),
+                expression: probe
+                    .expression
+                    .clone()
+                    .unwrap_or_else(|| probe.label.clone()),
+                quantity: probe.promoted_quantity,
+            });
         self.waveform_math_left = self.waveform_math_left.min(probe_labels.len() - 1);
         self.waveform_math_right = self.waveform_math_right.min(probe_labels.len() - 1);
         if self.waveform_math_right == self.waveform_math_left && probe_labels.len() > 1 {
@@ -197,6 +213,67 @@ impl CircuitCiApp {
                     self.apply_remove_selected_waveform_math_channel();
                 }
             });
+            if let Some(promotion) = selected_promotion {
+                ui.separator();
+                self.waveform_promotion_panel(ui, &promotion);
+            }
+        });
+    }
+
+    fn waveform_promotion_panel(&mut self, ui: &mut egui::Ui, promotion: &WaveformPromotionChoice) {
+        ui.strong("Promote Selected Derived Channel");
+        let Some(quantity) = promotion.quantity else {
+            ui.label("This derived channel is dimensionless or mixed-unit and cannot be promoted as a Board IR analog probe.");
+            return;
+        };
+        let choices = match analog_scenario_choices(&self.project_yaml) {
+            Ok(choices) => choices,
+            Err(error) => {
+                ui.label(format!("Analog scenarios unavailable: {error}"));
+                return;
+            }
+        };
+        if choices.is_empty() {
+            ui.label("No analog scenario is available.");
+            return;
+        }
+        if self.waveform_promote_scenario.is_empty()
+            || !choices
+                .iter()
+                .any(|choice| choice.name == self.waveform_promote_scenario)
+        {
+            self.waveform_promote_scenario = choices[0].name.clone();
+        }
+        if self.waveform_promote_probe_name.is_empty() {
+            self.waveform_promote_probe_name = sanitized_probe_name(&promotion.label);
+        }
+        egui::Grid::new("waveform_promote_probe")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Scenario");
+                waveform_analog_scenario_combo(ui, &choices, &mut self.waveform_promote_scenario);
+                ui.end_row();
+
+                ui.label("Probe name");
+                ui.text_edit_singleline(&mut self.waveform_promote_probe_name);
+                ui.end_row();
+
+                ui.label("Quantity");
+                ui.monospace(quantity.label());
+                ui.end_row();
+
+                ui.label("Expression");
+                ui.monospace(&promotion.expression);
+                ui.end_row();
+            });
+        ui.horizontal(|ui| {
+            if ui.button("Promote As Board IR Probe").clicked() {
+                self.apply_promote_waveform_channel(promotion, quantity, false);
+            }
+            if ui.button("Promote + Add Assertion").clicked() {
+                self.apply_promote_waveform_channel(promotion, quantity, true);
+            }
         });
     }
 
@@ -244,6 +321,78 @@ impl CircuitCiApp {
             .min(waveform.probes.len().saturating_sub(1));
         self.status = format!("Derived waveform channel {label} removed.");
     }
+
+    fn apply_promote_waveform_channel(
+        &mut self,
+        promotion: &WaveformPromotionChoice,
+        quantity: WaveformProbeQuantity,
+        add_assertion: bool,
+    ) {
+        let draft = AnalogExpressionProbeDraft {
+            scenario_name: self.waveform_promote_scenario.clone(),
+            probe_name: self.waveform_promote_probe_name.clone(),
+            expression: promotion.expression.clone(),
+            quantity: quantity.label().to_string(),
+        };
+        match append_analog_expression_probe(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = draft.scenario_name.clone();
+                self.analog_assertion_probe = draft.probe_name.clone();
+                let updated = if add_assertion {
+                    match self.append_assertion_for_promoted_waveform(&updated, &draft) {
+                        Ok(updated) => updated,
+                        Err(error) => {
+                            self.record_error(error);
+                            return;
+                        }
+                    }
+                } else {
+                    updated
+                };
+                let status = if add_assertion {
+                    format!(
+                        "Derived waveform channel {} promoted as analog probe {} with assertion.",
+                        promotion.label, draft.probe_name
+                    )
+                } else {
+                    format!(
+                        "Derived waveform channel {} promoted as analog probe {}.",
+                        promotion.label, draft.probe_name
+                    )
+                };
+                self.apply_edited_project_yaml(updated, &status);
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn append_assertion_for_promoted_waveform(
+        &self,
+        yaml: &str,
+        probe: &AnalogExpressionProbeDraft,
+    ) -> anyhow::Result<String> {
+        let requested_name = if self.analog_assertion_name.trim().is_empty() {
+            format!("{}_check", probe.probe_name.trim())
+        } else {
+            sanitized_probe_name(&self.analog_assertion_name)
+        };
+        let assertion_name =
+            unique_analog_assertion_name(yaml, &probe.scenario_name, &requested_name)?;
+        append_analog_assertion(
+            yaml,
+            &AnalogAssertionDraft {
+                scenario_name: probe.scenario_name.clone(),
+                assertion_name,
+                probe_name: probe.probe_name.clone(),
+                aggregation: self.analog_assertion_aggregation.clone(),
+                relation: self.analog_assertion_relation.clone(),
+                threshold: self.analog_assertion_threshold,
+                at_us: self.analog_assertion_at_us,
+                start_us: self.analog_assertion_start_us,
+                end_us: self.analog_assertion_end_us,
+            },
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -260,6 +409,31 @@ struct WaveformProbe {
     values: Vec<f64>,
     derived: bool,
     expression: Option<String>,
+    promoted_quantity: Option<WaveformProbeQuantity>,
+}
+
+#[derive(Debug, Clone)]
+struct WaveformPromotionChoice {
+    label: String,
+    expression: String,
+    quantity: Option<WaveformProbeQuantity>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WaveformProbeQuantity {
+    Voltage,
+    Current,
+    Power,
+}
+
+impl WaveformProbeQuantity {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Voltage => "voltage",
+            Self::Current => "current",
+            Self::Power => "power",
+        }
+    }
 }
 
 pub(super) fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
@@ -516,6 +690,7 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
         .into_iter()
         .zip(probe_values)
         .map(|(label, values)| WaveformProbe {
+            promoted_quantity: waveform_probe_quantity_from_label(&label),
             label,
             values,
             derived: false,
@@ -617,6 +792,8 @@ fn append_derived_waveform_probe(
         anyhow::bail!("Derived waveform channel produced a non-finite sample.");
     }
     let expression = format!("{} {} {}", left.label, operation.symbol(), right.label);
+    let promoted_quantity =
+        derived_waveform_quantity(operation, left.promoted_quantity, right.promoted_quantity);
     let label = unique_waveform_probe_label(
         waveform,
         &derived_waveform_label(&draft.label, operation, &left.label, &right.label),
@@ -626,8 +803,45 @@ fn append_derived_waveform_probe(
         values,
         derived: true,
         expression: Some(expression),
+        promoted_quantity,
     });
     Ok(waveform.probes.len() - 1)
+}
+
+fn waveform_probe_quantity_from_label(label: &str) -> Option<WaveformProbeQuantity> {
+    let normalized = label.trim().to_ascii_lowercase().replace(' ', "");
+    if normalized.starts_with("v(") {
+        Some(WaveformProbeQuantity::Voltage)
+    } else if normalized.starts_with("i(")
+        || normalized.starts_with("-i(")
+        || normalized.starts_with("abs(i(")
+    {
+        Some(WaveformProbeQuantity::Current)
+    } else if normalized.contains("v(") && normalized.contains("i(") && normalized.contains('*') {
+        Some(WaveformProbeQuantity::Power)
+    } else {
+        None
+    }
+}
+
+fn derived_waveform_quantity(
+    operation: WaveformMathOperation,
+    left: Option<WaveformProbeQuantity>,
+    right: Option<WaveformProbeQuantity>,
+) -> Option<WaveformProbeQuantity> {
+    match operation {
+        WaveformMathOperation::Difference | WaveformMathOperation::Sum => {
+            (left == right).then_some(left).flatten()
+        }
+        WaveformMathOperation::Product => match (left, right) {
+            (Some(WaveformProbeQuantity::Voltage), Some(WaveformProbeQuantity::Current))
+            | (Some(WaveformProbeQuantity::Current), Some(WaveformProbeQuantity::Voltage)) => {
+                Some(WaveformProbeQuantity::Power)
+            }
+            _ => None,
+        },
+        WaveformMathOperation::Ratio => None,
+    }
 }
 
 fn derived_waveform_label(
@@ -697,6 +911,41 @@ fn waveform_math_operation_combo(ui: &mut egui::Ui, selected: &mut String) {
                 ui.selectable_value(selected, operation.label().to_string(), operation.label());
             }
         });
+}
+
+fn waveform_analog_scenario_combo(
+    ui: &mut egui::Ui,
+    choices: &[super::analog::AnalogScenarioChoice],
+    selected: &mut String,
+) {
+    egui::ComboBox::from_id_salt("waveform_promote_scenario")
+        .selected_text(if selected.is_empty() {
+            "select scenario"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for choice in choices {
+                ui.selectable_value(selected, choice.name.clone(), &choice.name);
+            }
+        });
+}
+
+fn sanitized_probe_name(label: &str) -> String {
+    let mut name = String::new();
+    for character in label.trim().chars() {
+        if character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.') {
+            name.push(character);
+        } else if !name.ends_with('_') {
+            name.push('_');
+        }
+    }
+    let name = name.trim_matches('_');
+    if name.is_empty() {
+        "derived_probe".to_string()
+    } else {
+        name.to_string()
+    }
 }
 
 fn split_waveform_fields(line: &str) -> Vec<&str> {
@@ -1088,10 +1337,11 @@ pub(super) fn format_value(value: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        WaveformMathDraft, append_derived_waveform_probe, interpolated_value,
-        parse_waveform_csv_text, runtime_probe_activity_for_selection,
-        runtime_probe_lines_for_selection, waveform_measurement, waveform_probe_value_for_badge,
-        waveform_time_range_for_view,
+        WaveformMathDraft, WaveformProbeQuantity, append_derived_waveform_probe,
+        derived_waveform_quantity, interpolated_value, parse_waveform_csv_text,
+        runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
+        sanitized_probe_name, waveform_measurement, waveform_probe_quantity_from_label,
+        waveform_probe_value_for_badge, waveform_time_range_for_view,
     };
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -1230,6 +1480,10 @@ mod tests {
         .unwrap();
         assert_eq!(waveform.probes[index].label, "v(load) * i(load)");
         assert_eq!(waveform.probes[index].values, vec![0.5, 1.0]);
+        assert_eq!(
+            waveform.probes[index].promoted_quantity,
+            Some(WaveformProbeQuantity::Power)
+        );
     }
 
     #[test]
@@ -1253,6 +1507,35 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("zero sample"));
+    }
+
+    #[test]
+    fn derived_waveform_quantity_infers_promotable_channels() {
+        assert_eq!(
+            waveform_probe_quantity_from_label("V(out)"),
+            Some(WaveformProbeQuantity::Voltage)
+        );
+        assert_eq!(
+            waveform_probe_quantity_from_label("I(VCCI_R1)"),
+            Some(WaveformProbeQuantity::Current)
+        );
+        assert_eq!(
+            derived_waveform_quantity(
+                super::WaveformMathOperation::Difference,
+                Some(WaveformProbeQuantity::Voltage),
+                Some(WaveformProbeQuantity::Voltage),
+            ),
+            Some(WaveformProbeQuantity::Voltage)
+        );
+        assert_eq!(
+            derived_waveform_quantity(
+                super::WaveformMathOperation::Ratio,
+                Some(WaveformProbeQuantity::Voltage),
+                Some(WaveformProbeQuantity::Current),
+            ),
+            None
+        );
+        assert_eq!(sanitized_probe_name("V(out) * I(load)"), "V_out_I_load");
     }
 
     #[test]
