@@ -6,7 +6,10 @@ use std::path::Path;
 mod analog;
 mod sketch;
 
-use analog::{AnalogScenarioDraft, append_analog_transient_scenario};
+use analog::{
+    AnalogAssertionDraft, AnalogScenarioChoice, AnalogScenarioDraft, analog_scenario_choices,
+    append_analog_assertion, append_analog_transient_scenario,
+};
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
     draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -93,6 +96,15 @@ pub struct CircuitCiApp {
     analog_probe_name: String,
     analog_stop_time_us: f64,
     analog_max_step_us: f64,
+    analog_assertion_scenario: String,
+    analog_assertion_name: String,
+    analog_assertion_probe: String,
+    analog_assertion_aggregation: String,
+    analog_assertion_relation: String,
+    analog_assertion_threshold: f64,
+    analog_assertion_at_us: f64,
+    analog_assertion_start_us: f64,
+    analog_assertion_end_us: f64,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     waveforms: Vec<WaveformView>,
@@ -139,6 +151,15 @@ impl Default for CircuitCiApp {
             analog_probe_name: "probe_voltage".to_string(),
             analog_stop_time_us: 100.0,
             analog_max_step_us: 1.0,
+            analog_assertion_scenario: String::new(),
+            analog_assertion_name: "probe_above_min".to_string(),
+            analog_assertion_probe: String::new(),
+            analog_assertion_aggregation: "sample".to_string(),
+            analog_assertion_relation: "above".to_string(),
+            analog_assertion_threshold: 0.0,
+            analog_assertion_at_us: 50.0,
+            analog_assertion_start_us: 0.0,
+            analog_assertion_end_us: 100.0,
             project_snapshot: None,
             selected_sketch_item: None,
             waveforms: Vec::new(),
@@ -482,6 +503,8 @@ impl CircuitCiApp {
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
             ui.separator();
+            self.analog_assertion_editor(ui);
+            ui.separator();
         }
         if self.report.is_some() {
             self.waveform_view(ui);
@@ -565,6 +588,130 @@ impl CircuitCiApp {
                 });
             if ui.button("Add Analog Scenario").clicked() {
                 self.apply_add_analog_scenario();
+            }
+        });
+    }
+
+    fn analog_assertion_editor(&mut self, ui: &mut egui::Ui) {
+        let choices = match analog_scenario_choices(&self.project_yaml) {
+            Ok(choices) => choices,
+            Err(error) => {
+                ui.collapsing("Analog Assertion", |ui| {
+                    ui.label(format!("Analog scenarios unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("Analog Assertion", |ui| {
+            if choices.is_empty() {
+                ui.label("No analog scenario is available. Add one first.");
+                return;
+            }
+            initialize_analog_assertion_defaults(
+                &choices,
+                &mut self.analog_assertion_scenario,
+                &mut self.analog_assertion_probe,
+                &mut self.analog_assertion_end_us,
+            );
+            let selected_scenario = choices
+                .iter()
+                .find(|scenario| scenario.name == self.analog_assertion_scenario);
+            egui::Grid::new("analog_assertion_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Scenario");
+                    analog_scenario_combo(
+                        ui,
+                        "analog_assertion_scenario",
+                        &mut self.analog_assertion_scenario,
+                        &choices,
+                    );
+                    ui.end_row();
+
+                    ui.label("Assertion");
+                    ui.text_edit_singleline(&mut self.analog_assertion_name);
+                    ui.end_row();
+
+                    ui.label("Probe");
+                    analog_probe_combo(
+                        ui,
+                        "analog_assertion_probe",
+                        &mut self.analog_assertion_probe,
+                        selected_scenario,
+                    );
+                    ui.end_row();
+
+                    ui.label("Aggregation");
+                    string_combo(
+                        ui,
+                        "analog_assertion_aggregation",
+                        &mut self.analog_assertion_aggregation,
+                        &["sample", "min", "max"],
+                    );
+                    ui.end_row();
+
+                    ui.label("Relation");
+                    string_combo(
+                        ui,
+                        "analog_assertion_relation",
+                        &mut self.analog_assertion_relation,
+                        &["above", "below"],
+                    );
+                    ui.end_row();
+
+                    ui.label("Threshold");
+                    let unit = selected_scenario
+                        .and_then(|scenario| {
+                            scenario
+                                .probes
+                                .iter()
+                                .find(|probe| probe.name == self.analog_assertion_probe)
+                        })
+                        .map(|probe| match probe.quantity.as_str() {
+                            "current" => " A",
+                            "power" => " W",
+                            _ => " V",
+                        })
+                        .unwrap_or(" V");
+                    ui.add(
+                        egui::DragValue::new(&mut self.analog_assertion_threshold)
+                            .speed(0.1)
+                            .suffix(unit),
+                    );
+                    ui.end_row();
+
+                    if self.analog_assertion_aggregation == "sample" {
+                        ui.label("At");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_at_us)
+                                .speed(1.0)
+                                .range(0.0..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+                    } else {
+                        ui.label("Start");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_start_us)
+                                .speed(1.0)
+                                .range(0.0..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+
+                        ui.label("End");
+                        ui.add(
+                            egui::DragValue::new(&mut self.analog_assertion_end_us)
+                                .speed(1.0)
+                                .range(0.0..=1_000_000.0)
+                                .suffix(" us"),
+                        );
+                        ui.end_row();
+                    }
+                });
+            if ui.button("Add Analog Assertion").clicked() {
+                self.apply_add_analog_assertion();
             }
         });
     }
@@ -1154,6 +1301,30 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_add_analog_assertion(&mut self) {
+        let draft = AnalogAssertionDraft {
+            scenario_name: self.analog_assertion_scenario.clone(),
+            assertion_name: self.analog_assertion_name.clone(),
+            probe_name: self.analog_assertion_probe.clone(),
+            aggregation: self.analog_assertion_aggregation.clone(),
+            relation: self.analog_assertion_relation.clone(),
+            threshold: self.analog_assertion_threshold,
+            at_us: self.analog_assertion_at_us,
+            start_us: self.analog_assertion_start_us,
+            end_us: self.analog_assertion_end_us,
+        };
+        match append_analog_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Analog assertion {} added.",
+                    self.analog_assertion_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn waveform_view(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.strong("Waveform Viewer");
@@ -1292,6 +1463,95 @@ fn net_combo(ui: &mut egui::Ui, id: &str, selected: &mut String, snapshot: &Proj
         .show_ui(ui, |ui| {
             for net in &snapshot.nets_detail {
                 ui.selectable_value(selected, net.id.clone(), &net.id);
+            }
+        });
+}
+
+fn initialize_analog_assertion_defaults(
+    choices: &[AnalogScenarioChoice],
+    scenario_name: &mut String,
+    probe_name: &mut String,
+    end_us: &mut f64,
+) {
+    let scenario_missing = !choices
+        .iter()
+        .any(|scenario| scenario.name == *scenario_name);
+    if (scenario_name.is_empty() || scenario_missing)
+        && let Some(scenario) = choices.first()
+    {
+        *scenario_name = scenario.name.clone();
+        *end_us = scenario.stop_time_us;
+    }
+    let selected_scenario = choices
+        .iter()
+        .find(|scenario| scenario.name == *scenario_name)
+        .or_else(|| choices.first());
+    if let Some(scenario) = selected_scenario {
+        let probe_missing = !scenario
+            .probes
+            .iter()
+            .any(|probe| probe.name == *probe_name);
+        if (probe_name.is_empty() || probe_missing)
+            && let Some(probe) = scenario.probes.first()
+        {
+            *probe_name = probe.name.clone();
+        }
+        if *end_us <= 0.0 || *end_us > scenario.stop_time_us {
+            *end_us = scenario.stop_time_us;
+        }
+    }
+}
+
+fn analog_scenario_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    selected: &mut String,
+    choices: &[AnalogScenarioChoice],
+) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select scenario"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for scenario in choices {
+                ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
+            }
+        });
+}
+
+fn analog_probe_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    selected: &mut String,
+    scenario: Option<&AnalogScenarioChoice>,
+) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select probe"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            if let Some(scenario) = scenario {
+                for probe in &scenario.probes {
+                    ui.selectable_value(
+                        selected,
+                        probe.name.clone(),
+                        format!("{} ({})", probe.name, probe.quantity),
+                    );
+                }
+            }
+        });
+}
+
+fn string_combo(ui: &mut egui::Ui, id: &str, selected: &mut String, values: &[&str]) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(selected.as_str())
+        .show_ui(ui, |ui| {
+            for value in values {
+                ui.selectable_value(selected, (*value).to_string(), *value);
             }
         });
 }

@@ -10,6 +10,32 @@ pub(super) struct AnalogScenarioDraft {
     pub(super) max_step_us: f64,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct AnalogAssertionDraft {
+    pub(super) scenario_name: String,
+    pub(super) assertion_name: String,
+    pub(super) probe_name: String,
+    pub(super) aggregation: String,
+    pub(super) relation: String,
+    pub(super) threshold: f64,
+    pub(super) at_us: f64,
+    pub(super) start_us: f64,
+    pub(super) end_us: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogScenarioChoice {
+    pub(super) name: String,
+    pub(super) stop_time_us: f64,
+    pub(super) probes: Vec<AnalogProbeChoice>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogProbeChoice {
+    pub(super) name: String,
+    pub(super) quantity: String,
+}
+
 pub(super) fn append_analog_transient_scenario(
     text: &str,
     draft: &AnalogScenarioDraft,
@@ -51,6 +77,79 @@ pub(super) fn append_analog_transient_scenario(
     Ok(updated)
 }
 
+pub(super) fn analog_scenario_choices(text: &str) -> Result<Vec<AnalogScenarioChoice>> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    Ok(project
+        .scenarios
+        .iter()
+        .filter_map(|scenario| {
+            let analog = scenario.analog.as_ref()?;
+            Some(AnalogScenarioChoice {
+                name: scenario.name.clone(),
+                stop_time_us: analog.analysis.stop_time_us,
+                probes: analog
+                    .probes
+                    .iter()
+                    .map(|probe| AnalogProbeChoice {
+                        name: probe.name.clone(),
+                        quantity: quantity_label(&probe.quantity).to_string(),
+                    })
+                    .collect(),
+            })
+        })
+        .collect())
+}
+
+pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) -> Result<String> {
+    validate_assertion_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if analog
+        .assertions
+        .iter()
+        .any(|assertion| assertion.name == draft.assertion_name)
+    {
+        anyhow::bail!(
+            "Analog assertion {} already exists in scenario {}.",
+            draft.assertion_name,
+            scenario.name
+        );
+    }
+    let probe = analog
+        .probes
+        .iter()
+        .find(|probe| probe.name == draft.probe_name)
+        .with_context(|| {
+            format!(
+                "Probe {} was not found in scenario {}.",
+                draft.probe_name, scenario.name
+            )
+        })?;
+    validate_assertion_timing(draft, analog.analysis.stop_time_us)?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let assertions = ensure_child_sequence_mut(analog_mapping, "assertions", "analog assertions")?;
+    assertions.push(assertion_value(draft, &probe.quantity)?);
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited assertion YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 fn validate_draft(draft: &AnalogScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
@@ -69,6 +168,54 @@ fn validate_draft(draft: &AnalogScenarioDraft) -> Result<()> {
         anyhow::bail!(
             "Analog transient stop time and max step must be finite and positive, and max step must not exceed stop time."
         );
+    }
+    Ok(())
+}
+
+fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.assertion_name, "assertion name")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    if !matches!(draft.aggregation.as_str(), "sample" | "min" | "max") {
+        anyhow::bail!(
+            "Analog assertion aggregation {} is not supported.",
+            draft.aggregation
+        );
+    }
+    if !matches!(draft.relation.as_str(), "above" | "below") {
+        anyhow::bail!(
+            "Analog assertion relation {} is not supported.",
+            draft.relation
+        );
+    }
+    if !draft.threshold.is_finite() {
+        anyhow::bail!("Analog assertion threshold must be finite.");
+    }
+    Ok(())
+}
+
+fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) -> Result<()> {
+    match draft.aggregation.as_str() {
+        "sample" => {
+            if !draft.at_us.is_finite() || draft.at_us < 0.0 || draft.at_us > stop_time_us {
+                anyhow::bail!(
+                    "Sample assertion time must be finite and within the scenario stop time."
+                );
+            }
+        }
+        "min" | "max" => {
+            if !draft.start_us.is_finite()
+                || !draft.end_us.is_finite()
+                || draft.start_us < 0.0
+                || draft.end_us < draft.start_us
+                || draft.end_us > stop_time_us
+            {
+                anyhow::bail!(
+                    "Window assertion bounds must be finite, ordered, and within the scenario stop time."
+                );
+            }
+        }
+        _ => unreachable!("aggregation was validated"),
     }
     Ok(())
 }
@@ -250,6 +397,45 @@ fn pin_bindings(
     Ok(bindings)
 }
 
+fn assertion_value(
+    draft: &AnalogAssertionDraft,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> Result<serde_yaml_ng::Value> {
+    let mut assertion = serde_yaml_ng::Mapping::new();
+    insert_string(&mut assertion, "name", draft.assertion_name.trim());
+    insert_string(&mut assertion, "probe", draft.probe_name.trim());
+    if draft.aggregation != "sample" {
+        insert_string(&mut assertion, "aggregation", &draft.aggregation);
+    }
+    match draft.aggregation.as_str() {
+        "sample" => insert_number(&mut assertion, "at_us", draft.at_us)?,
+        "min" | "max" => {
+            insert_number(&mut assertion, "start_us", draft.start_us)?;
+            insert_number(&mut assertion, "end_us", draft.end_us)?;
+        }
+        _ => unreachable!("aggregation was validated"),
+    }
+    insert_string(&mut assertion, "relation", &draft.relation);
+    insert_number(&mut assertion, threshold_field(quantity), draft.threshold)?;
+    Ok(serde_yaml_ng::Value::Mapping(assertion))
+}
+
+fn threshold_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => "threshold_v",
+        crate::board_ir::AnalogQuantity::Current => "threshold_a",
+        crate::board_ir::AnalogQuantity::Power => "threshold_w",
+    }
+}
+
+fn quantity_label(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => "voltage",
+        crate::board_ir::AnalogQuantity::Current => "current",
+        crate::board_ir::AnalogQuantity::Power => "power",
+    }
+}
+
 fn ensure_sequence_field_mut<'a>(
     yaml: &'a mut serde_yaml_ng::Value,
     field: &str,
@@ -266,6 +452,54 @@ fn ensure_sequence_field_mut<'a>(
         .expect("field was inserted when absent")
         .as_sequence_mut()
         .with_context(|| format!("Board IR field {field} must be a list."))
+}
+
+fn scenario_mapping_mut<'a>(
+    yaml: &'a mut serde_yaml_ng::Value,
+    scenario_name: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    let scenarios = ensure_sequence_field_mut(yaml, "scenarios")?;
+    for scenario in scenarios {
+        let Some(mapping) = scenario.as_mapping_mut() else {
+            continue;
+        };
+        let is_target = mapping
+            .get(key("name"))
+            .and_then(serde_yaml_ng::Value::as_str)
+            == Some(scenario_name);
+        if is_target {
+            return Ok(mapping);
+        }
+    }
+    anyhow::bail!("Scenario {scenario_name} was not found.");
+}
+
+fn child_mapping_mut<'a>(
+    mapping: &'a mut serde_yaml_ng::Mapping,
+    field: &str,
+    label: &str,
+) -> Result<&'a mut serde_yaml_ng::Mapping> {
+    mapping
+        .get_mut(key(field))
+        .with_context(|| format!("{label} must declare {field}."))?
+        .as_mapping_mut()
+        .with_context(|| format!("{label} {field} must be a YAML object."))
+}
+
+fn ensure_child_sequence_mut<'a>(
+    mapping: &'a mut serde_yaml_ng::Mapping,
+    field: &str,
+    label: &str,
+) -> Result<&'a mut Vec<serde_yaml_ng::Value>> {
+    let key = key(field);
+    if !mapping.contains_key(&key) {
+        mapping.insert(key.clone(), serde_yaml_ng::Value::Sequence(Vec::new()));
+    }
+    mapping
+        .get_mut(&key)
+        .expect("field was inserted when absent")
+        .as_sequence_mut()
+        .with_context(|| format!("{label} must be a YAML list."))
 }
 
 fn mapping_value<'a>(pairs: impl Iterator<Item = (&'a str, &'a str)>) -> serde_yaml_ng::Value {
@@ -294,7 +528,10 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 
 #[cfg(test)]
 mod tests {
-    use super::{AnalogScenarioDraft, append_analog_transient_scenario};
+    use super::{
+        AnalogAssertionDraft, AnalogScenarioDraft, append_analog_assertion,
+        append_analog_transient_scenario,
+    };
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -335,6 +572,20 @@ board:
         }
     }
 
+    fn assertion_draft() -> AnalogAssertionDraft {
+        AnalogAssertionDraft {
+            scenario_name: "gui_transient".to_string(),
+            assertion_name: "out_above_min".to_string(),
+            probe_name: "out_voltage".to_string(),
+            aggregation: "sample".to_string(),
+            relation: "above".to_string(),
+            threshold: 1.0,
+            at_us: 50.0,
+            start_us: 0.0,
+            end_us: 100.0,
+        }
+    }
+
     #[test]
     fn append_analog_transient_scenario_emits_valid_yaml() {
         let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
@@ -362,5 +613,33 @@ board:
         draft.probe_net = "missing".to_string();
         let error = append_analog_transient_scenario(editable_project_yaml(), &draft).unwrap_err();
         assert!(error.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn append_analog_assertion_emits_valid_yaml() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+        assert_eq!(assertion.name, "out_above_min");
+        assert_eq!(assertion.threshold_v, Some(1.0));
+        assert_eq!(assertion.at_us, Some(50.0));
+    }
+
+    #[test]
+    fn append_analog_assertion_rejects_duplicate_assertion() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let error = append_analog_assertion(&edited, &assertion_draft()).unwrap_err();
+        assert!(error.to_string().contains("already exists"));
+    }
+
+    #[test]
+    fn append_analog_assertion_rejects_out_of_range_sample() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let mut draft = assertion_draft();
+        draft.at_us = 101.0;
+        let error = append_analog_assertion(&edited, &draft).unwrap_err();
+        assert!(error.to_string().contains("stop time"));
     }
 }
