@@ -529,14 +529,34 @@ pub(super) fn edit_schematic_component_style(
     component_id: &str,
     style: SketchNodeStyle,
 ) -> Result<String> {
-    let component_id = validated_graph_id(component_id, "component")?;
-    if !matches!(style.rotation_deg, 0 | 90 | 180 | 270) {
-        anyhow::bail!("Schematic node rotation must be 0, 90, 180, or 270 degrees.");
+    edit_schematic_component_styles(text, &[(component_id.to_string(), style)])
+}
+
+pub(super) fn edit_schematic_component_styles(
+    text: &str,
+    styles: &[(String, SketchNodeStyle)],
+) -> Result<String> {
+    if styles.is_empty() {
+        return Ok(text.to_string());
+    }
+    let component_styles: Vec<(String, SketchNodeStyle)> = styles
+        .iter()
+        .map(|(component_id, style)| {
+            Ok((
+                validated_graph_id(component_id, "component")?.to_string(),
+                *style,
+            ))
+        })
+        .collect::<Result<_>>()?;
+    for (_, style) in &component_styles {
+        validate_schematic_node_style(*style)?;
     }
     let project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
-    if !project.board.components.contains_key(component_id) {
-        anyhow::bail!("Board IR component {component_id} was not found.");
+    for (component_id, _) in &component_styles {
+        if !project.board.components.contains_key(component_id) {
+            anyhow::bail!("Board IR component {component_id} was not found.");
+        }
     }
 
     let mut yaml: serde_yaml_ng::Value =
@@ -551,25 +571,41 @@ pub(super) fn edit_schematic_component_style(
             .context("Board IR field board must be an object.")?;
         let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
         let styles = ensure_child_mapping_mut(schematic, "node_styles", "schematic node styles")?;
-        let mut node_style = serde_yaml_ng::Mapping::new();
-        node_style.insert(
-            serde_yaml_ng::Value::String("rotation_deg".to_string()),
-            serde_yaml_ng::to_value(style.rotation_deg)?,
-        );
-        node_style.insert(
-            serde_yaml_ng::Value::String("mirrored".to_string()),
-            serde_yaml_ng::to_value(style.mirrored)?,
-        );
-        node_style.insert(
-            serde_yaml_ng::Value::String("pin_side".to_string()),
-            serde_yaml_ng::Value::String(style.pin_side.as_str().to_string()),
-        );
-        styles.insert(
-            serde_yaml_ng::Value::String(format!("component:{component_id}")),
-            serde_yaml_ng::Value::Mapping(node_style),
-        );
+        for (component_id, style) in component_styles {
+            styles.insert(
+                serde_yaml_ng::Value::String(format!("component:{component_id}")),
+                serde_yaml_ng::Value::Mapping(schematic_node_style_mapping(style)?),
+            );
+        }
     }
     encode_edited_project_yaml(yaml)
+}
+
+fn validate_schematic_node_style(style: SketchNodeStyle) -> Result<()> {
+    if !matches!(style.rotation_deg, 0 | 90 | 180 | 270) {
+        anyhow::bail!("Schematic node rotation must be 0, 90, 180, or 270 degrees.");
+    }
+    Ok(())
+}
+
+pub(super) fn schematic_node_style_mapping(
+    style: SketchNodeStyle,
+) -> Result<serde_yaml_ng::Mapping> {
+    validate_schematic_node_style(style)?;
+    let mut node_style = serde_yaml_ng::Mapping::new();
+    node_style.insert(
+        serde_yaml_ng::Value::String("rotation_deg".to_string()),
+        serde_yaml_ng::to_value(style.rotation_deg)?,
+    );
+    node_style.insert(
+        serde_yaml_ng::Value::String("mirrored".to_string()),
+        serde_yaml_ng::to_value(style.mirrored)?,
+    );
+    node_style.insert(
+        serde_yaml_ng::Value::String("pin_side".to_string()),
+        serde_yaml_ng::Value::String(style.pin_side.as_str().to_string()),
+    );
+    Ok(node_style)
 }
 
 pub(super) fn add_component(text: &str, component_id: &str, model: &str) -> Result<String> {

@@ -250,9 +250,14 @@ pub(super) fn placement_ghost_rect(
     egui::Rect::from_center_size(center, size)
 }
 
-pub(super) fn placement_ghost_size(label: &str) -> egui::Vec2 {
+pub(super) fn placement_ghost_size(label: &str, rotation_deg: i32) -> egui::Vec2 {
     let width = (label.chars().count() as f32 * 7.0 + 56.0).clamp(120.0, 220.0);
-    egui::vec2(width, 72.0)
+    let size = egui::vec2(width, 72.0);
+    if matches!(rotation_deg.rem_euclid(360), 90 | 270) {
+        egui::vec2(size.y.max(88.0), size.x.min(180.0))
+    } else {
+        size
+    }
 }
 
 pub(super) fn draw_placement_ghost(
@@ -260,6 +265,7 @@ pub(super) fn draw_placement_ghost(
     rect: egui::Rect,
     label: &str,
     target_clear: bool,
+    rotation_deg: i32,
 ) {
     let accent = if target_clear {
         egui::Color32::from_rgb(95, 190, 255)
@@ -279,8 +285,16 @@ pub(super) fn draw_placement_ghost(
         egui::StrokeKind::Inside,
     );
     let pin_y = rect.center().y;
-    painter.circle_filled(egui::pos2(rect.left(), pin_y), 4.0, accent);
-    painter.circle_filled(egui::pos2(rect.right(), pin_y), 4.0, accent);
+    match rotation_deg.rem_euclid(360) {
+        90 | 270 => {
+            painter.circle_filled(egui::pos2(rect.center().x, rect.top()), 4.0, accent);
+            painter.circle_filled(egui::pos2(rect.center().x, rect.bottom()), 4.0, accent);
+        }
+        _ => {
+            painter.circle_filled(egui::pos2(rect.left(), pin_y), 4.0, accent);
+            painter.circle_filled(egui::pos2(rect.right(), pin_y), 4.0, accent);
+        }
+    }
     let text = if target_clear {
         label.to_string()
     } else {
@@ -293,6 +307,15 @@ pub(super) fn draw_placement_ghost(
         egui::FontId::monospace(11.0),
         egui::Color32::from_gray(238),
     );
+    if rotation_deg.rem_euclid(360) != 0 {
+        painter.text(
+            rect.right_top() + egui::vec2(-6.0, 6.0),
+            egui::Align2::RIGHT_TOP,
+            format!("{} deg", rotation_deg.rem_euclid(360)),
+            egui::FontId::monospace(9.5),
+            egui::Color32::from_gray(216),
+        );
+    }
 }
 
 fn compact_placement_label(label: &str) -> String {

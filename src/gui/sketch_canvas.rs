@@ -1,9 +1,10 @@
 use eframe::egui;
 
 use super::sketch::{
-    self, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
-    draw_sketch_pin_anchor, edit_schematic_wire_route, hit_test_wire, layout_sketch_graph,
-    layout_sketch_graph_viewport, persisted_node_position_from_screen_with_snap,
+    self, ProjectSnapshot, SketchNodeStyle, SketchSelection, draw_sketch_grid, draw_sketch_node,
+    draw_sketch_pin_anchor, edit_schematic_component_styles, edit_schematic_wire_route,
+    hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
+    persisted_node_position_from_screen_with_snap,
     persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
     sketch_wire_points, snap_screen_point_to_grid,
 };
@@ -494,9 +495,15 @@ impl CircuitCiApp {
                 viewport,
                 self.sketch_snap_enabled,
                 self.sketch_grid_step,
-                placement_ghost_size(&label),
+                placement_ghost_size(&label, self.canvas_placement_rotation_deg()),
             );
-            draw_placement_ghost(&painter, ghost, &label, placement_target_clear);
+            draw_placement_ghost(
+                &painter,
+                ghost,
+                &label,
+                placement_target_clear,
+                self.canvas_placement_rotation_deg(),
+            );
         }
         for badge in &hierarchy_connector_badges {
             let hovered = hovered_hierarchy_connector_badge
@@ -942,6 +949,10 @@ impl CircuitCiApp {
             && ui.input(|input| {
                 (input.modifiers.command || input.modifiers.ctrl) && input.key_pressed(egui::Key::V)
             });
+        let rotate_clockwise_pressed = response.hovered()
+            && ui.input(|input| !input.modifiers.shift && input.key_pressed(egui::Key::R));
+        let rotate_counter_clockwise_pressed = response.hovered()
+            && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::R));
         let cancel_canvas_mode_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
@@ -964,6 +975,10 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_net_label_drag.is_some() {
             self.sketch_net_label_drag = None;
             self.status = "Net label move canceled.".to_string();
+        } else if rotate_clockwise_pressed && self.component_placement_armed() {
+            self.rotate_canvas_placement(90);
+        } else if rotate_counter_clockwise_pressed && self.component_placement_armed() {
+            self.rotate_canvas_placement(-90);
         } else if delete_pressed
             && self.wire_from_component.is_some()
             && !self.sketch_wire_draft.is_empty()
@@ -995,6 +1010,10 @@ impl CircuitCiApp {
             self.apply_copy_selected_sketch_items();
         } else if duplicate_pressed {
             self.apply_duplicate_selected_sketch_items();
+        } else if rotate_clockwise_pressed {
+            self.apply_rotate_selected_sketch_components(90);
+        } else if rotate_counter_clockwise_pressed {
+            self.apply_rotate_selected_sketch_components(-90);
         } else if delete_pressed {
             self.apply_delete_selected_sketch_item();
         }
@@ -1266,7 +1285,7 @@ impl CircuitCiApp {
     }
 
     fn canvas_placement_label(&self) -> String {
-        if self.sketch_palette_place_armed {
+        let mut label = if self.sketch_palette_place_armed {
             self.sketch_palette_kind.label().to_string()
         } else if self.sketch_net_label_place_armed {
             let net_id = self.sketch_net_label_net_id.trim();
@@ -1279,6 +1298,84 @@ impl CircuitCiApp {
             "Library component".to_string()
         } else {
             self.selected_library_model.clone()
+        };
+        let rotation = self.canvas_placement_rotation_deg();
+        if rotation != 0 && (self.sketch_palette_place_armed || self.sketch_library_place_armed) {
+            label = format!("{label} {rotation} deg");
+        }
+        label
+    }
+
+    fn canvas_placement_rotation_deg(&self) -> i32 {
+        if self.sketch_palette_place_armed || self.sketch_library_place_armed {
+            normalize_canvas_rotation(self.sketch_placement_rotation_deg)
+        } else {
+            0
+        }
+    }
+
+    fn component_placement_armed(&self) -> bool {
+        self.sketch_palette_place_armed || self.sketch_library_place_armed
+    }
+
+    fn rotate_canvas_placement(&mut self, delta_deg: i32) {
+        self.sketch_placement_rotation_deg =
+            normalize_canvas_rotation(self.sketch_placement_rotation_deg + delta_deg);
+        self.status = format!(
+            "Canvas placement rotation set to {} deg.",
+            self.sketch_placement_rotation_deg
+        );
+    }
+
+    pub(super) fn placement_node_style(&self) -> SketchNodeStyle {
+        SketchNodeStyle {
+            rotation_deg: normalize_canvas_rotation(self.sketch_placement_rotation_deg),
+            ..Default::default()
+        }
+    }
+
+    fn apply_rotate_selected_sketch_components(&mut self, delta_deg: i32) {
+        let Some(snapshot) = &self.project_snapshot else {
+            return;
+        };
+        let mut selected_components = self
+            .selected_sketch_items
+            .iter()
+            .chain(self.selected_sketch_item.iter())
+            .filter_map(|selection| match selection {
+                SketchSelection::Component(component_id) => Some(component_id.clone()),
+                _ => None,
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        if selected_components.is_empty() {
+            self.status = "Select one or more components before rotating.".to_string();
+            return;
+        }
+        let mut edits = Vec::with_capacity(selected_components.len());
+        for component_id in std::mem::take(&mut selected_components) {
+            let Some(component) = snapshot
+                .components_detail
+                .iter()
+                .find(|component| component.id == component_id)
+            else {
+                continue;
+            };
+            let mut style = component.style;
+            style.rotation_deg = normalize_canvas_rotation(style.rotation_deg + delta_deg);
+            edits.push((component_id, style));
+        }
+        if edits.is_empty() {
+            return;
+        }
+        match edit_schematic_component_styles(&self.project_yaml, &edits) {
+            Ok(updated) => {
+                let count = edits.len();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Rotated {count} selected component(s)."),
+                );
+            }
+            Err(error) => self.record_error(error),
         }
     }
 
@@ -1362,6 +1459,10 @@ impl CircuitCiApp {
         self.sketch_zoom = new_zoom;
         self.sketch_pan = new_pan;
     }
+}
+
+fn normalize_canvas_rotation(rotation_deg: i32) -> i32 {
+    rotation_deg.rem_euclid(360) / 90 * 90
 }
 
 pub(super) fn zoom_viewport_around(

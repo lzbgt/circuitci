@@ -1,6 +1,7 @@
 use super::CircuitCiApp;
 use super::sketch::{
-    SketchSelection, add_component_with_ports, edit_component_model, edit_schematic_node_positions,
+    SketchNodeStyle, SketchSelection, add_component_with_ports, edit_component_model,
+    edit_schematic_component_style, edit_schematic_node_positions,
     persisted_node_position_from_screen_with_snap,
 };
 use anyhow::{Context, Result};
@@ -344,7 +345,14 @@ impl CircuitCiApp {
             self.sketch_snap_enabled,
             self.sketch_grid_step,
         );
-        match insert_library_model_component_at(&self.project_yaml, &component_id, &entry, x, y) {
+        match insert_library_model_component_at(
+            &self.project_yaml,
+            &component_id,
+            &entry,
+            x,
+            y,
+            self.placement_node_style(),
+        ) {
             Ok(updated) => {
                 self.selected_library_model = entry.id.clone();
                 self.new_component_model = entry.id.clone();
@@ -400,16 +408,22 @@ fn insert_library_model_component_at(
     entry: &ModelBrowserEntry,
     x: f64,
     y: f64,
+    style: SketchNodeStyle,
 ) -> Result<String> {
     let inserted = insert_library_model_component(text, component_id, entry)?;
-    edit_schematic_node_positions(
+    let positioned = edit_schematic_node_positions(
         &inserted,
         &[(
             SketchSelection::Component(component_id.trim().to_string()),
             x,
             y,
         )],
-    )
+    )?;
+    if style == SketchNodeStyle::default() {
+        Ok(positioned)
+    } else {
+        edit_schematic_component_style(&positioned, component_id, style)
+    }
 }
 
 fn model_browser_entries(
@@ -673,8 +687,15 @@ board:
             .find(|entry| entry.id == "vendor.ti.tps54331_5v")
             .unwrap();
 
-        let edited =
-            insert_library_model_component_at(project_yaml(), "U1", entry, 144.0, 96.0).unwrap();
+        let edited = insert_library_model_component_at(
+            project_yaml(),
+            "U1",
+            entry,
+            144.0,
+            96.0,
+            Default::default(),
+        )
+        .unwrap();
         let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
         let component = snapshot
             .components_detail
@@ -689,6 +710,38 @@ board:
     }
 
     #[test]
+    fn library_model_insert_at_persists_requested_schematic_rotation() {
+        let entries = model_browser_entries(project_yaml(), Path::new(".")).unwrap();
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id == "vendor.ti.tps54331_5v")
+            .unwrap();
+
+        let edited = insert_library_model_component_at(
+            project_yaml(),
+            "U1",
+            entry,
+            144.0,
+            96.0,
+            crate::gui::sketch::SketchNodeStyle {
+                rotation_deg: 270,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "U1")
+            .unwrap();
+
+        assert_eq!(component.style.rotation_deg, 270);
+        assert!(edited.contains("component:U1:"));
+        assert!(edited.contains("rotation_deg: 270"));
+    }
+
+    #[test]
     fn app_canvas_library_placement_inserts_at_clicked_position_and_disarms() {
         let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 320.0));
         let mut app = CircuitCiApp {
@@ -697,6 +750,7 @@ board:
             selected_library_model: "vendor.ti.tps54331_5v".to_string(),
             new_component_id: "U1".to_string(),
             sketch_library_place_armed: true,
+            sketch_placement_rotation_deg: 180,
             sketch_snap_enabled: false,
             ..Default::default()
         };
@@ -712,6 +766,7 @@ board:
         let position = component.position.unwrap();
         assert_eq!(position.x, 210.0);
         assert_eq!(position.y, 154.0);
+        assert_eq!(component.style.rotation_deg, 180);
         assert!(!app.sketch_library_place_armed);
         assert_eq!(
             app.selected_sketch_item,

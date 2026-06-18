@@ -1,7 +1,8 @@
 use super::CircuitCiApp;
 use super::sketch::{
-    SketchSelection, encode_edited_project_yaml, ensure_board_child_mapping_mut,
-    persisted_node_position_from_screen_with_snap, validated_graph_id,
+    SketchNodeStyle, SketchSelection, encode_edited_project_yaml, ensure_board_child_mapping_mut,
+    persisted_node_position_from_screen_with_snap, schematic_node_style_mapping,
+    validated_graph_id,
 };
 use super::sketch_spice::{SketchSpiceKind, SketchSpicePulse, default_value, draft_from_existing};
 use anyhow::{Context, Result};
@@ -14,6 +15,7 @@ pub(super) struct SketchPrimitiveInsertDraft {
     pub(super) value: f64,
     pub(super) x: f64,
     pub(super) y: f64,
+    pub(super) style: SketchNodeStyle,
 }
 
 pub(super) fn insert_primitive_component(
@@ -55,6 +57,7 @@ pub(super) fn insert_primitive_component(
         ],
     )?;
     insert_primitive_position(&mut yaml, component_id, draft.x, draft.y)?;
+    insert_primitive_style(&mut yaml, component_id, draft.style)?;
 
     encode_edited_project_yaml(yaml)
 }
@@ -182,6 +185,31 @@ fn insert_primitive_position(
     positions.insert(
         key(&format!("component:{component_id}")),
         serde_yaml_ng::Value::Mapping(position),
+    );
+    Ok(())
+}
+
+fn insert_primitive_style(
+    yaml: &mut serde_yaml_ng::Value,
+    component_id: &str,
+    style: SketchNodeStyle,
+) -> Result<()> {
+    if style == SketchNodeStyle::default() {
+        return Ok(());
+    }
+    let project = yaml
+        .as_mapping_mut()
+        .context("Board IR project must be a YAML object.")?;
+    let board = project
+        .get_mut(key("board"))
+        .context("Board IR project is missing board.")?
+        .as_mapping_mut()
+        .context("Board IR field board must be an object.")?;
+    let schematic = ensure_child_mapping_mut(board, "schematic", "schematic")?;
+    let styles = ensure_child_mapping_mut(schematic, "node_styles", "node styles")?;
+    styles.insert(
+        key(&format!("component:{component_id}")),
+        serde_yaml_ng::Value::Mapping(schematic_node_style_mapping(style)?),
     );
     Ok(())
 }
@@ -419,6 +447,7 @@ impl CircuitCiApp {
             value: self.sketch_palette_value,
             x,
             y,
+            style: self.placement_node_style(),
         };
         match insert_primitive_component(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -547,6 +576,7 @@ board:
                 value: 1e-6,
                 x: 96.0,
                 y: 128.0,
+                style: Default::default(),
             },
         )
         .unwrap();
@@ -575,6 +605,7 @@ board:
                 value: 5.0,
                 x: 10.0,
                 y: 20.0,
+                style: Default::default(),
             },
         )
         .unwrap();
@@ -584,6 +615,35 @@ board:
         assert!(edited.contains("v1_p:\n      kind: power"));
         assert!(edited.contains("v1_n:\n      kind: ground"));
         assert!(edited.contains("dc_v: 5.0"));
+    }
+
+    #[test]
+    fn inserts_primitive_with_requested_schematic_rotation() {
+        let edited = insert_primitive_component(
+            project_yaml(),
+            &SketchPrimitiveInsertDraft {
+                component_id: "L1".to_string(),
+                kind: SketchSpiceKind::Inductor,
+                value: 1e-3,
+                x: 10.0,
+                y: 20.0,
+                style: crate::gui::sketch::SketchNodeStyle {
+                    rotation_deg: 90,
+                    ..Default::default()
+                },
+            },
+        )
+        .unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "L1")
+            .unwrap();
+
+        assert_eq!(component.style.rotation_deg, 90);
+        assert!(edited.contains("node_styles:"));
+        assert!(edited.contains("component:L1:"));
     }
 
     #[test]
@@ -608,6 +668,7 @@ board:
                 value: 1000.0,
                 x: 0.0,
                 y: 0.0,
+                style: Default::default(),
             },
         )
         .unwrap_err();
@@ -623,6 +684,7 @@ board:
             sketch_palette_component_id: "R2".to_string(),
             sketch_palette_value: 2200.0,
             sketch_palette_place_armed: true,
+            sketch_placement_rotation_deg: 90,
             sketch_snap_enabled: false,
             ..Default::default()
         };
@@ -638,6 +700,7 @@ board:
         let position = component.position.unwrap();
         assert_eq!(position.x, 210.0);
         assert_eq!(position.y, 154.0);
+        assert_eq!(component.style.rotation_deg, 90);
         assert!(!app.sketch_palette_place_armed);
         assert_eq!(
             app.selected_sketch_item,

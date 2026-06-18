@@ -190,8 +190,9 @@ active source pin connection on a named-net label's underlying net, or clear
 those display waypoints. Completing an active multi-bend wire may persist the pending bend points as
 `board.schematic.wire_routes` in the same validated edit as the pin-to-net
 connection. None of those actions may persist a separate wire object.
-Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
-and remain schematic-only UI state.
+Rotate/flip/pin-side editor actions and canvas `R` / `Shift+R` selected-component
+rotation shortcuts must write `board.schematic.node_styles` and remain
+schematic-only UI state.
 Rename actions must rewrite explicit Board IR IDs rather than introducing a
 display alias. Component rename must move `board.components` keys, schematic
 component metadata keys, generated analog component lists, analog pin-binding
@@ -284,9 +285,11 @@ edge object.
 component model assignment, and model-backed component insertion/placement
 through the same validated Board IR YAML mutation helpers used by the sketch
 inspector. Canvas placement must write generated default pin nets and
-`board.schematic.node_positions` in one accepted YAML edit, whether the target
-is the current view center, an armed blank-canvas click, a drag/drop release
-with live ghost and snap feedback, or the blank-canvas context menu pointer.
+`board.schematic.node_positions` plus non-default schematic orientation in
+`board.schematic.node_styles` in one accepted YAML edit, whether the target is
+the current view center, an armed blank-canvas click, a drag/drop release with
+orientation-aware live ghost and snap feedback, or the blank-canvas context
+menu pointer.
 `src/gui/analog_models.rs` owns analog `model_files` listing and mutation. GUI
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the

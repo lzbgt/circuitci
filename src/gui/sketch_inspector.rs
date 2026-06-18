@@ -707,7 +707,11 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_component_style_edit(&mut self, component_id: &str, style: SketchNodeStyle) {
+    pub(super) fn apply_component_style_edit(
+        &mut self,
+        component_id: &str,
+        style: SketchNodeStyle,
+    ) {
         match edit_schematic_component_style(&self.project_yaml, component_id, style) {
             Ok(updated) => {
                 self.set_single_sketch_selection(Some(SketchSelection::Component(

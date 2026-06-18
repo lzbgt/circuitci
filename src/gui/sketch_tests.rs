@@ -2,13 +2,13 @@ use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
-    edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
-    edit_schematic_node_positions, edit_schematic_wire_route, hit_test_wire, layout_sketch_graph,
-    layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
-    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
-    remove_component, remove_component_pin, remove_net, remove_schematic_wire_route,
-    sketch_graph_bounds, sketch_wire_points, snap_screen_point_to_grid,
-    validate_board_ir_yaml_text, wire_route_key,
+    edge_label_position, edit_schematic_component_style, edit_schematic_component_styles,
+    edit_schematic_node_position, edit_schematic_node_positions, edit_schematic_wire_route,
+    hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
+    load_project_snapshot_from_yaml, orthogonal_wire_points, persisted_node_position_from_screen,
+    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
+    remove_net, remove_schematic_wire_route, sketch_graph_bounds, sketch_wire_points,
+    snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -620,6 +620,41 @@ fn edit_schematic_component_style_emits_valid_yaml() {
     assert!(edited.contains("rotation_deg: 90"));
     assert!(edited.contains("mirrored: true"));
     assert!(edited.contains("pin_side: left"));
+}
+
+#[test]
+fn edit_schematic_component_styles_rotates_multiple_components_in_one_yaml_edit() {
+    let with_c1 = add_component(editable_project_yaml(), "C1", "generic.analog.capacitor").unwrap();
+    let edited = edit_schematic_component_styles(
+        &with_c1,
+        &[
+            (
+                "R1".to_string(),
+                SketchNodeStyle {
+                    rotation_deg: 90,
+                    ..Default::default()
+                },
+            ),
+            (
+                "C1".to_string(),
+                SketchNodeStyle {
+                    rotation_deg: 270,
+                    ..Default::default()
+                },
+            ),
+        ],
+    )
+    .unwrap();
+
+    validate_board_ir_yaml_text(&edited).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    let by_id: std::collections::BTreeMap<_, _> = snapshot
+        .components_detail
+        .iter()
+        .map(|component| (component.id.as_str(), component.style.rotation_deg))
+        .collect();
+    assert_eq!(by_id["R1"], 90);
+    assert_eq!(by_id["C1"], 270);
 }
 
 #[test]

@@ -173,7 +173,9 @@ Board IR YAML mutation path. Inserted components use the selected model's
 declared ports to seed editable Board IR pin bindings and generated per-pin
 nets, and Sketch-stage placement can target the current view center, an armed
 blank-canvas click, a drag/drop release with live ghost and snap feedback, or
-the blank-canvas context-menu pointer.
+the blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
+placement ghosts before insertion, and the accepted placement persists that
+schematic-only orientation under `board.schematic.node_styles`.
 `src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
 oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
@@ -204,7 +206,9 @@ passives and independent sources. Insertion can target the current view center,
 an armed blank-canvas click, a drag/drop release with live ghost and snap
 feedback, or the blank-canvas context-menu pointer, and each path writes
 generated pin nets, component-level SPICE evidence, and schematic placement in
-one validated Board IR edit.
+one validated Board IR edit. Armed primitive placement shares the same
+`R` / `Shift+R` rotation shortcuts and persists the accepted orientation as
+schematic-only node style metadata.
 
 ## Workflow Shell
 
@@ -226,8 +230,9 @@ form:
   scalar edits, rename controls, a primitive palette that places generic
   resistors, capacitors, inductors, DC voltage/current sources, and pulse
   voltage/current sources at the current view, a canvas click, drag/drop release
-  with snap ghost feedback, or a context-menu pointer with pins, nets, SPICE
-  evidence, and schematic placement, and
+  with orientation-aware snap ghost feedback, or a context-menu pointer with
+  pins, nets, SPICE evidence, schematic placement, and optional schematic
+  orientation, and
   component-level SPICE primitive/value editing for existing
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
@@ -332,7 +337,8 @@ The supported desktop simulation path is:
    KiCad sheet or importer-namespace groups without changing Board IR evidence,
 11. inspect off-sheet connector badges on focused nets to see which external
    component pins still use the same flattened Board IR net,
-12. rotate, flip, or choose pin side for selected components through
+12. rotate selected components from the canvas with `R` / `Shift+R`, or rotate,
+   flip, or choose pin side through the inspector; all write
    `board.schematic.node_styles`,
 13. Shift-drag a marquee to select multiple visible components/nets,
 14. drag, nudge, align edges/centers, or distribute multi-selected sketch nodes
