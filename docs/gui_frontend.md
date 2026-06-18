@@ -97,9 +97,11 @@ library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
 mutation path. Inserted components use the selected model's declared ports to
 seed editable Board IR pin bindings and generated per-pin nets.
-`src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
-plotting, simulation-time scrub/playback controls, cursor measurement tools,
-and graph-hover/runtime activity extraction from loaded waveform artifacts.
+`src/gui/simulation.rs` owns the Simulation stage UI and analog
+scenario/model/assertion panels. `src/gui/waveform.rs` owns waveform CSV
+parsing, plotting, simulation-time scrub/playback controls, cursor measurement
+tools, and graph-hover/runtime activity extraction from loaded waveform
+artifacts.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.

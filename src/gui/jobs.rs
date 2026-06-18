@@ -1,5 +1,5 @@
 use super::project::{optional_path, sanitized_project_name};
-use super::simulation::load_report_waveforms;
+use super::waveform::load_report_waveforms;
 use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::cancellation;
 use crate::reports::ValidationReport;

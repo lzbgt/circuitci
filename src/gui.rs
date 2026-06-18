@@ -23,12 +23,9 @@ mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
 mod spice;
+mod waveform;
 
 use project::PendingProjectAction;
-use simulation::{
-    WaveformView, runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
-    waveform_probe_value_for_badge, waveform_time_range_for_view,
-};
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
     draw_sketch_pin_anchor, edge_label_position, hit_test_wire, layout_sketch_graph_viewport,
@@ -42,6 +39,10 @@ use sketch_inspector::{
 use sketch_probes::{
     SketchProbeBadge, SketchProbeStatus, draw_probe_badge, hit_test_probe_badge,
     probe_assertion_status,
+};
+use waveform::{
+    WaveformView, runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
+    waveform_probe_value_for_badge, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
