@@ -32,6 +32,7 @@ mod sketch_connectivity;
 mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inspector;
+mod sketch_minimap;
 mod sketch_navigator;
 mod sketch_net_labels;
 mod sketch_palette;

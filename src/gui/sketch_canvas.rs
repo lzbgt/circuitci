@@ -3,7 +3,8 @@ use eframe::egui;
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
     draw_sketch_pin_anchor, edge_label_position, edit_schematic_wire_route, hit_test_wire,
-    layout_sketch_graph_viewport, persisted_node_position_from_screen_with_snap,
+    layout_sketch_graph, layout_sketch_graph_viewport,
+    persisted_node_position_from_screen_with_snap,
     persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
     sketch_wire_points, snap_screen_point_to_grid, with_opacity,
 };
@@ -21,7 +22,8 @@ use super::waveform::{
     waveform_probe_value_for_badge,
 };
 use super::{
-    CircuitCiApp, analog, sketch_bundles, sketch_connectivity, sketch_hierarchy, sketch_net_labels,
+    CircuitCiApp, analog, sketch_bundles, sketch_connectivity, sketch_hierarchy, sketch_minimap,
+    sketch_net_labels,
 };
 
 impl CircuitCiApp {
@@ -61,6 +63,7 @@ impl CircuitCiApp {
             self.sketch_grid_step,
         );
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
+        let minimap_graph = layout_sketch_graph(rect, snapshot);
         let hierarchy_view = self.sketch_hierarchy_view(snapshot);
         if let Some(view) = &hierarchy_view {
             painter.text(
@@ -77,6 +80,7 @@ impl CircuitCiApp {
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
+        let minimap = sketch_minimap::SketchMinimap::for_graph(rect, &minimap_graph);
         let connectivity_highlight =
             sketch_connectivity::SketchConnectivityHighlight::from_selection(
                 self.selected_sketch_items
@@ -91,6 +95,8 @@ impl CircuitCiApp {
         } else {
             None
         };
+        let pointer_over_minimap = pointer_hover
+            .is_some_and(|position| minimap.is_some_and(|map| map.rect.contains(position)));
         let hovered_node = pointer_hover.and_then(|position| {
             graph.nodes.iter().find(|node| {
                 hierarchy_view
@@ -167,7 +173,8 @@ impl CircuitCiApp {
             && hovered_probe_badge.is_none()
             && hovered_bundle_badge.is_none()
             && hovered_hierarchy_connector_badge.is_none()
-            && hovered_net_label_badge.is_none();
+            && hovered_net_label_badge.is_none()
+            && !pointer_over_minimap;
         self.handle_sketch_viewport_input(
             ui,
             rect,
@@ -459,6 +466,18 @@ impl CircuitCiApp {
         if let Some(target) = &wire_drag_target {
             draw_wire_drag_target(&painter, target);
         }
+        if let Some(minimap) = minimap {
+            minimap.draw(&painter, rect, &minimap_graph, viewport);
+            let over_minimap =
+                pointer_hover.is_some_and(|position| minimap.rect.contains(position));
+            if over_minimap
+                && ui.input(|input| input.pointer.primary_clicked() || input.pointer.primary_down())
+                && let Some(position) = pointer_hover
+            {
+                self.sketch_pan = minimap.pan_for_focus(rect, viewport, position);
+                self.status = "Schematic overview panned viewport.".to_string();
+            }
+        }
         if (self.sketch_palette_place_armed
             || self.sketch_library_place_armed
             || self.sketch_net_label_place_armed)
@@ -500,6 +519,7 @@ impl CircuitCiApp {
 
         let mut placement_applied = false;
         if response.clicked_by(egui::PointerButton::Primary)
+            && !pointer_over_minimap
             && let Some(position) = response.interact_pointer_pos()
         {
             let multi_select = ui.input(|input| input.modifiers.shift || input.modifiers.command);
@@ -641,6 +661,7 @@ impl CircuitCiApp {
                 || self.sketch_net_label_place_armed)
             && placement_target_clear
             && ui.input(|input| input.pointer.any_released())
+            && !pointer_over_minimap
             && let Some(position) = pointer_hover
             && rect.contains(position)
         {
@@ -654,6 +675,7 @@ impl CircuitCiApp {
         }
 
         if response.drag_started_by(egui::PointerButton::Primary)
+            && !pointer_over_minimap
             && let Some(position) = response.interact_pointer_pos()
         {
             let clicked_anchor = graph.pin_anchors.iter().find(|anchor| {

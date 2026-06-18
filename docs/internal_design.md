@@ -171,9 +171,12 @@ Single-node and multi-node drag/alignment persistence must
 invert the viewport transform before writing `board.schematic.node_positions`.
 If snap is enabled, the snapped logical schematic coordinates are written to
 `board.schematic.node_positions`; grid visibility and grid spacing remain GUI
-editor state. Orthogonal wire routing is display-only and must render from
-component pin bindings and net membership rather than persisting a parallel edge
-list. A custom schematic route may persist display-only waypoints under
+editor state. The schematic minimap/overview is also GUI-only viewport state:
+it renders current graph bounds and maps pointer clicks or drags to `sketch_pan`
+without persisting model evidence. Orthogonal wire routing is display-only and
+must render from component pin bindings and net membership rather than
+persisting a parallel edge list. A custom schematic route may persist
+display-only waypoints under
 `board.schematic.wire_routes` keyed by `component.pin->net`, but that metadata
 may only shape the rendered pin-to-net edge. It must not create, remove, or
 retarget electrical connectivity, and it must not be treated as PCB copper

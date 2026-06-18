@@ -145,6 +145,10 @@ It also owns transient focus/isolate view filters that dim or hide unrelated
 canvas objects while preserving the same flattened Board IR connectivity.
 When a focused net is also used by components outside the focused group, it
 draws an off-sheet connector badge listing those external component pins.
+`src/gui/sketch_minimap.rs` owns the transient schematic overview/minimap that
+summarizes current graph bounds, draws the visible viewport rectangle, and maps
+click/drag interaction back into `sketch_pan` for fast navigation. It does not
+persist Board IR, hierarchy, bus, or layout evidence.
 `src/gui/sketch_navigator.rs` owns the Sketch-stage object navigator: it
 derives searchable component, net-bundle, net, wire, and probe rows from the active
 `ProjectSnapshot`, selects the corresponding canvas target, and fits the
@@ -226,8 +230,9 @@ form:
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
-  schematic grid/snap controls, orthogonal wire visuals with net labels,
-  placed local/off-page named-net labels, and junction dots, derived
+  schematic grid/snap controls, overview-minimap click/drag panning,
+  orthogonal wire visuals with net labels, placed local/off-page named-net
+  labels, and junction dots, derived
   net-bundle trunks/badges for bracketed, dot-qualified,
   and common paired interface nets, derived schematic hierarchy sheet groups
   from imported source paths and namespaced component IDs, off-sheet connector
