@@ -17,9 +17,9 @@ use simulation::{
 };
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
-    draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
-    edit_net_nominal_voltage, edit_net_powered, edit_schematic_node_position, layout_sketch_graph,
-    remove_component, remove_component_pin, remove_net,
+    draw_sketch_node, draw_sketch_pin_anchor, edit_component_model, edit_component_part_number,
+    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_node_position,
+    layout_sketch_graph, remove_component, remove_component_pin, remove_net,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -888,13 +888,10 @@ impl CircuitCiApp {
         if let Some(component_id) = &self.wire_from_component
             && let Some(pointer) = ui.ctx().pointer_hover_pos()
             && rect.contains(pointer)
-            && let Some(source) = graph
-                .nodes
-                .iter()
-                .find(|node| node.selection == SketchSelection::Component(component_id.clone()))
+            && let Some(source) = wire_preview_start(&graph, component_id, &self.wire_pin_id)
         {
             painter.line_segment(
-                [source.rect.center(), pointer],
+                [source, pointer],
                 egui::Stroke::new(2.0, egui::Color32::from_rgb(255, 196, 87)),
             );
         }
@@ -912,6 +909,11 @@ impl CircuitCiApp {
             );
             draw_sketch_node(&painter, node, selected, runtime_activity);
         }
+        for anchor in &graph.pin_anchors {
+            let active = self.wire_from_component.as_ref() == Some(&anchor.component_id)
+                && self.wire_pin_id.trim() == anchor.pin;
+            draw_sketch_pin_anchor(&painter, anchor, active);
+        }
 
         let hovered_node = if response.hovered() {
             ui.ctx()
@@ -920,16 +922,41 @@ impl CircuitCiApp {
         } else {
             None
         };
+        let hovered_anchor = if response.hovered() {
+            ui.ctx().pointer_hover_pos().and_then(|position| {
+                graph
+                    .pin_anchors
+                    .iter()
+                    .find(|anchor| anchor.pos.distance(position) <= 8.0)
+            })
+        } else {
+            None
+        };
 
         if response.clicked()
             && let Some(position) = response.interact_pointer_pos()
         {
+            let clicked_anchor = graph
+                .pin_anchors
+                .iter()
+                .find(|anchor| anchor.pos.distance(position) <= 8.0);
             let clicked = graph
                 .nodes
                 .iter()
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
-            if let Some(SketchSelection::Net(net_id)) = &clicked
+            if let Some(anchor) = clicked_anchor {
+                self.selected_sketch_item =
+                    Some(SketchSelection::Component(anchor.component_id.clone()));
+                self.pin_edit_id = anchor.pin.clone();
+                self.pin_edit_net = anchor.net.clone();
+                self.wire_pin_id = anchor.pin.clone();
+                self.wire_from_component = Some(anchor.component_id.clone());
+                self.status = format!(
+                    "Wire mode: click a net node to connect {}.{}.",
+                    anchor.component_id, anchor.pin
+                );
+            } else if let Some(SketchSelection::Net(net_id)) = &clicked
                 && let Some(component_id) = self.wire_from_component.clone()
             {
                 self.apply_visual_wire(component_id, net_id.clone());
@@ -962,7 +989,11 @@ impl CircuitCiApp {
             self.apply_schematic_node_position(selection, x as f64, y as f64);
         }
 
-        if let Some(node) = hovered_node {
+        if let Some(anchor) = hovered_anchor {
+            response.on_hover_ui(|ui| {
+                sketch_pin_hover_tooltip(ui, anchor);
+            });
+        } else if let Some(node) = hovered_node {
             let runtime_lines = runtime_probe_lines_for_selection(
                 &self.waveforms,
                 self.selected_waveform,
@@ -1433,6 +1464,33 @@ fn sketch_hover_tooltip(ui: &mut egui::Ui, node: &sketch::SketchNode, runtime_li
             ui.monospace(line);
         }
     }
+}
+
+fn sketch_pin_hover_tooltip(ui: &mut egui::Ui, anchor: &sketch::SketchPinAnchor) {
+    ui.strong(format!("{}.{}", anchor.component_id, anchor.pin));
+    ui.label(format!("net: {}", anchor.net));
+    ui.separator();
+    ui.label("Click this pin, then click a net node to rewire it.");
+}
+
+fn wire_preview_start(
+    graph: &sketch::SketchGraph,
+    component_id: &str,
+    pin_id: &str,
+) -> Option<egui::Pos2> {
+    let pin_id = pin_id.trim();
+    graph
+        .pin_anchors
+        .iter()
+        .find(|anchor| anchor.component_id == component_id && anchor.pin == pin_id)
+        .map(|anchor| anchor.pos)
+        .or_else(|| {
+            graph
+                .nodes
+                .iter()
+                .find(|node| node.selection == SketchSelection::Component(component_id.to_string()))
+                .map(|node| node.rect.center())
+        })
 }
 
 #[cfg(test)]

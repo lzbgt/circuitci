@@ -30,9 +30,12 @@ pin/net seeding for library-backed component insertion. It may add or remove
 component entries and may remove only nets that are not referenced by component
 pins. Inserted library components may create generated per-pin nets from
 source-backed model port declarations, but those nets are still ordinary Board
-IR sketch connections that the user can rewire. It may assign or remove
-component pin bindings only when the component exists and any assigned target
-net exists. It may persist schematic graph node positions under
+IR sketch connections that the user can rewire. Rendered pin anchors are UI
+affordances derived from component pin bindings; clicking an anchor may start a
+wire assignment, but the persisted result must remain the component `pins` map,
+not a second edge list. It may assign or remove component pin bindings only
+when the component exists and any assigned target net exists. It may persist
+schematic graph node positions under
 `board.schematic.node_positions`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire

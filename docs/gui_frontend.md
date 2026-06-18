@@ -41,9 +41,10 @@ undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
 graph layout/drawing helpers, and structured scalar YAML edit helpers for
 selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
-updates, and validated component pin assignment. Visual wire creation reuses
-the same pin-to-net mutation path instead of introducing a second connection
-model.
+updates, model-aware pin-anchor rendering, and validated component pin
+assignment. Visual wire creation can start from a rendered pin anchor and
+reuses the same pin-to-net mutation path instead of introducing a second
+connection model.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
@@ -68,14 +69,14 @@ form:
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
-  an inspector for component bindings and net connections, structured scalar
-  edits for existing component and net properties, add/remove controls for
-  components and unreferenced nets, draggable component/net node positions,
-  pin-to-net assignment/removal for selected components, visual wire assignment
-  by starting from a component pin and clicking a net node, graph-node runtime
-  tinting and hover readouts for matching waveform probes, shared undo/redo for
-  Board IR graph/property/wire/YAML edits, and a raw Board IR YAML editor with
-  parse-validated save.
+  rendered component pin anchors, an inspector for component bindings and net
+  connections, structured scalar edits for existing component and net
+  properties, add/remove controls for components and unreferenced nets,
+  draggable component/net node positions, pin-to-net assignment/removal for
+  selected components, visual wire assignment by clicking a component pin anchor
+  and then a net node, graph-node runtime tinting and hover readouts for
+  matching waveform probes, shared undo/redo for Board IR graph/property/wire/
+  YAML edits, and a raw Board IR YAML editor with parse-validated save.
 - Library: shows library bindings, searches the active component model set,
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
@@ -109,7 +110,7 @@ The supported desktop simulation path is:
    nets through validated graph controls,
 5. drag component/net graph nodes to persist `board.schematic.node_positions`,
 6. assign or remove selected component pin bindings to existing nets,
-7. create a visual wire by selecting a source component pin and clicking a net
+7. create a visual wire by clicking a rendered source pin anchor and then a net
    node,
 8. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,

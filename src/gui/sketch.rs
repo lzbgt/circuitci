@@ -60,6 +60,7 @@ impl SketchSelection {
 #[derive(Debug)]
 pub(super) struct SketchGraph {
     pub(super) nodes: Vec<SketchNode>,
+    pub(super) pin_anchors: Vec<SketchPinAnchor>,
     pub(super) edges: Vec<SketchEdge>,
 }
 
@@ -69,6 +70,15 @@ pub(super) struct SketchNode {
     pub(super) label: String,
     pub(super) detail: String,
     pub(super) rect: egui::Rect,
+}
+
+#[derive(Debug)]
+pub(super) struct SketchPinAnchor {
+    pub(super) component_id: String,
+    pub(super) pin: String,
+    pub(super) net: String,
+    pub(super) pos: egui::Pos2,
+    pub(super) label_pos: egui::Pos2,
 }
 
 #[derive(Debug)]
@@ -692,41 +702,53 @@ fn schematic_node_key(selection: &SketchSelection) -> Option<String> {
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
     let node_width = ((rect.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
-    let node_height = 44.0;
+    let component_height = 92.0;
+    let net_height = 44.0;
     let row_gap = 10.0;
     let left_x = rect.left() + margin;
     let right_x = rect.right() - margin - node_width;
     let top = rect.top() + margin;
-    let max_rows = ((rect.height() - 2.0 * margin) / (node_height + row_gap))
+    let max_component_rows = ((rect.height() - 2.0 * margin) / (component_height + row_gap))
+        .floor()
+        .max(1.0) as usize;
+    let max_net_rows = ((rect.height() - 2.0 * margin) / (net_height + row_gap))
         .floor()
         .max(1.0) as usize;
 
     let mut nodes = Vec::new();
-    let component_count = snapshot.components_detail.len().min(max_rows);
-    for (index, component) in snapshot.components_detail.iter().take(max_rows).enumerate() {
-        let default = egui::pos2(left_x, top + index as f32 * (node_height + row_gap));
+    let component_count = snapshot.components_detail.len().min(max_component_rows);
+    for (index, component) in snapshot
+        .components_detail
+        .iter()
+        .take(max_component_rows)
+        .enumerate()
+    {
+        let default = egui::pos2(left_x, top + index as f32 * (component_height + row_gap));
         nodes.push(SketchNode {
             selection: SketchSelection::Component(component.id.clone()),
             label: component.id.clone(),
-            detail: compact_label(&component.model, 34),
+            detail: compact_label(
+                &format!("{} / {} pins", component.model, component.pins.len()),
+                34,
+            ),
             rect: node_rect_from_position(
                 rect,
                 component.position,
                 default,
                 node_width,
-                node_height,
+                component_height,
             ),
         });
     }
 
-    let net_count = snapshot.nets_detail.len().min(max_rows);
-    for (index, net) in snapshot.nets_detail.iter().take(max_rows).enumerate() {
-        let default = egui::pos2(right_x, top + index as f32 * (node_height + row_gap));
+    let net_count = snapshot.nets_detail.len().min(max_net_rows);
+    for (index, net) in snapshot.nets_detail.iter().take(max_net_rows).enumerate() {
+        let default = egui::pos2(right_x, top + index as f32 * (net_height + row_gap));
         nodes.push(SketchNode {
             selection: SketchSelection::Net(net.id.clone()),
             label: net.id.clone(),
             detail: format!("{} / {} conn", net.kind, net.connections.len()),
-            rect: node_rect_from_position(rect, net.position, default, node_width, node_height),
+            rect: node_rect_from_position(rect, net.position, default, node_width, net_height),
         });
     }
 
@@ -744,6 +766,27 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         }
     }
 
+    let mut pin_anchors = Vec::new();
+    for component in snapshot.components_detail.iter().take(component_count) {
+        let Some(node) = nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component(component.id.clone()))
+        else {
+            continue;
+        };
+        for anchor in component_pin_anchors(component, node.rect) {
+            pin_anchors.push(anchor);
+        }
+    }
+
+    let mut pin_anchor_positions = std::collections::BTreeMap::new();
+    for anchor in &pin_anchors {
+        pin_anchor_positions.insert(
+            (anchor.component_id.as_str(), anchor.pin.as_str()),
+            anchor.pos,
+        );
+    }
+
     let mut edges = Vec::new();
     for component in snapshot.components_detail.iter().take(component_count) {
         let Some(start) = component_centers.get(component.id.as_str()).copied() else {
@@ -751,6 +794,10 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         };
         for pin in &component.pins {
             if let Some(end) = net_centers.get(pin.net.as_str()).copied() {
+                let start = pin_anchor_positions
+                    .get(&(component.id.as_str(), pin.pin.as_str()))
+                    .copied()
+                    .unwrap_or(start);
                 edges.push(SketchEdge { start, end });
                 if edges.len() >= 80 {
                     break;
@@ -766,9 +813,9 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         push_overflow_hint(
             &mut nodes,
             left_x,
-            rect.bottom() - margin - node_height,
+            rect.bottom() - margin - component_height,
             node_width,
-            node_height,
+            component_height,
             snapshot.components_detail.len() - component_count,
             "more components",
         );
@@ -777,15 +824,51 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         push_overflow_hint(
             &mut nodes,
             right_x,
-            rect.bottom() - margin - node_height,
+            rect.bottom() - margin - net_height,
             node_width,
-            node_height,
+            net_height,
             snapshot.nets_detail.len() - net_count,
             "more nets",
         );
     }
 
-    SketchGraph { nodes, edges }
+    SketchGraph {
+        nodes,
+        pin_anchors,
+        edges,
+    }
+}
+
+fn component_pin_anchors(component: &SketchComponent, rect: egui::Rect) -> Vec<SketchPinAnchor> {
+    let visible_count = component.pins.len().min(8);
+    if visible_count == 0 {
+        return Vec::new();
+    }
+    component
+        .pins
+        .iter()
+        .take(visible_count)
+        .enumerate()
+        .map(|(index, pin)| {
+            let y = pin_anchor_y(rect, index, visible_count);
+            SketchPinAnchor {
+                component_id: component.id.clone(),
+                pin: pin.pin.clone(),
+                net: pin.net.clone(),
+                pos: egui::pos2(rect.right(), y),
+                label_pos: egui::pos2(rect.right() - 8.0, y),
+            }
+        })
+        .collect()
+}
+
+fn pin_anchor_y(rect: egui::Rect, index: usize, count: usize) -> f32 {
+    if count <= 1 {
+        return rect.center().y;
+    }
+    let top = rect.top() + 30.0;
+    let bottom = rect.bottom() - 12.0;
+    top + (bottom - top) * index as f32 / (count - 1) as f32
 }
 
 fn node_rect_from_position(
@@ -862,6 +945,31 @@ pub(super) fn draw_sketch_node(
         egui::Align2::LEFT_CENTER,
         compact_label(&node.detail, 34),
         egui::FontId::monospace(11.0),
+        egui::Color32::LIGHT_GRAY,
+    );
+}
+
+pub(super) fn draw_sketch_pin_anchor(
+    painter: &egui::Painter,
+    anchor: &SketchPinAnchor,
+    active: bool,
+) {
+    let fill = if active {
+        egui::Color32::from_rgb(255, 196, 87)
+    } else {
+        egui::Color32::from_rgb(115, 166, 224)
+    };
+    painter.circle_filled(anchor.pos, 4.0, fill);
+    painter.circle_stroke(
+        anchor.pos,
+        4.0,
+        egui::Stroke::new(1.0, egui::Color32::from_gray(18)),
+    );
+    painter.text(
+        anchor.label_pos,
+        egui::Align2::RIGHT_CENTER,
+        compact_label(&anchor.pin, 10),
+        egui::FontId::monospace(10.5),
         egui::Color32::LIGHT_GRAY,
     );
 }
@@ -1076,5 +1184,71 @@ board:
         assert_eq!(component.rect.left(), 60.0);
         assert_eq!(component.rect.top(), 90.0);
         assert_eq!(graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn sketch_graph_layout_renders_pin_anchors() {
+        let snapshot = ProjectSnapshot {
+            name: "pin_graph".to_string(),
+            components: 1,
+            nets: 2,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "U1".to_string(),
+                model: "vendor.example.dual_pin".to_string(),
+                part_number: None,
+                position: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "VIN".to_string(),
+                        net: "vin".to_string(),
+                    },
+                    SketchPin {
+                        pin: "GND".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+            }],
+            nets_detail: vec![
+                SketchNet {
+                    id: "vin".to_string(),
+                    kind: "power".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: vec!["U1.VIN".to_string()],
+                    position: None,
+                },
+                SketchNet {
+                    id: "gnd".to_string(),
+                    kind: "ground".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: vec!["U1.GND".to_string()],
+                    position: None,
+                },
+            ],
+        };
+        let graph = layout_sketch_graph(
+            eframe::egui::Rect::from_min_size(
+                eframe::egui::pos2(0.0, 0.0),
+                eframe::egui::vec2(720.0, 360.0),
+            ),
+            &snapshot,
+        );
+
+        assert_eq!(graph.pin_anchors.len(), 2);
+        let vin_anchor = graph
+            .pin_anchors
+            .iter()
+            .find(|anchor| anchor.component_id == "U1" && anchor.pin == "VIN")
+            .unwrap();
+        assert_eq!(vin_anchor.net, "vin");
+        assert!(
+            graph
+                .edges
+                .iter()
+                .any(|edge| edge.start.distance(vin_anchor.pos) < 0.01)
+        );
     }
 }
