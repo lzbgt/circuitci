@@ -41,8 +41,9 @@ undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
 graph layout/drawing helpers, and structured scalar YAML edit helpers for
 selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
-updates, view-state pan/zoom transforms, model-aware pin-anchor rendering, and
-validated component pin assignment. Visual wire creation can start from a
+updates, view-state pan/zoom transforms, fit-content bounds, Shift-drag marquee
+selection, model-aware pin-anchor rendering, and validated component pin
+assignment. Visual wire creation can start from a
 rendered pin anchor and can terminate on another pin anchor or an existing net
 node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
 creates a generated Board IR net through the same mutation path instead of
@@ -74,9 +75,11 @@ form:
   rendered component pin anchors, an inspector for component bindings and net
   connections, structured scalar edits for existing component and net
   properties, add/remove controls for components and unreferenced nets,
-  draggable component/net node positions, pan/zoom plus reset-view controls,
-  keyboard or button deletion for selected components/nets, pin-to-net
-  assignment/removal for selected components, visual pin-to-pin and pin-to-net
+  draggable component/net node positions, pan/zoom plus reset-view and
+  fit-content controls, Shift-drag marquee selection, keyboard or button
+  deletion for selected components/nets, batched deletion of multi-selected
+  sketch items, pin-to-net assignment/removal for selected components, visual
+  pin-to-pin and pin-to-net
   wire assignment by clicking component pin anchors or net nodes, graph-node
   runtime tinting and hover readouts for
   matching waveform probes, shared undo/redo for Board IR graph/property/wire/
@@ -113,31 +116,32 @@ The supported desktop simulation path is:
 4. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
 5. drag component/net graph nodes to persist `board.schematic.node_positions`,
-6. pan, zoom, or reset the sketch viewport without changing Board IR
+6. pan, zoom, reset, or fit the sketch viewport without changing Board IR
    evidence,
-7. assign or remove selected component pin bindings to existing nets,
-8. create a visual wire by clicking a rendered source pin anchor and then a
+7. Shift-drag a marquee to select multiple visible components/nets,
+8. assign or remove selected component pin bindings to existing nets,
+9. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-9. delete selected components or unreferenced nets from the canvas or toolbar,
-10. undo or redo Board IR graph/property/wire/YAML edits through the shared
+10. delete selected components or unreferenced nets from the canvas or toolbar,
+11. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-11. search the active model libraries, insert selected models as sketched
+12. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-12. edit Board IR YAML evidence when the project needs a correction outside the
+13. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-13. append a generated-from-Board analog transient scenario with a voltage probe,
-14. add sample or windowed min/max waveform assertions against declared probes,
-15. load, edit, save, and rerun file-backed SPICE decks from declared analog
+14. append a generated-from-Board analog transient scenario with a voltage probe,
+15. add sample or windowed min/max waveform assertions against declared probes,
+16. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-16. bind sourced component models,
-17. run declared validation and `analog_transient` scenarios,
-18. scrub or play the simulation time cursor to drive graph runtime tinting,
-19. hover graph nodes to inspect matching voltage/current/power probe values at
+17. bind sourced component models,
+18. run declared validation and `analog_transient` scenarios,
+19. scrub or play the simulation time cursor to drive graph runtime tinting,
+20. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-20. observe generated decks, plotted CSV waveforms, cursor values, min/max
+21. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-21. edit the project/model evidence and rerun.
+22. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
 math channels, advanced SPICE source tooling, automatic arbitrary

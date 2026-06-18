@@ -14,7 +14,7 @@ impl CircuitCiApp {
                 let loaded_name = snapshot.name.clone();
                 self.status = format!("Loaded {}", snapshot.name);
                 self.project_snapshot = Some(snapshot);
-                self.selected_sketch_item = None;
+                self.set_single_sketch_selection(None);
                 if !self.project_yaml_dirty {
                     self.load_project_yaml();
                 }

@@ -223,7 +223,9 @@ impl CircuitCiApp {
                 let component_id = self.new_component_id.trim().to_string();
                 self.selected_library_model = entry.id.clone();
                 self.new_component_model = entry.id.clone();
-                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.clone(),
+                )));
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Component {component_id} inserted from {}.", entry.id),

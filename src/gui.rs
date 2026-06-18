@@ -1,6 +1,7 @@
 use crate::reports::{Finding, Limitation, ValidationReport};
 use anyhow::{Context, Result};
 use eframe::egui;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 mod analog;
@@ -19,8 +20,9 @@ use sketch::{
     ProjectSnapshot, SketchSelection, SketchViewport, add_component, add_net, assign_component_pin,
     connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor, edit_component_model,
     edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-    edit_schematic_node_position, layout_sketch_graph_viewport,
+    edit_schematic_node_position, layout_sketch_graph, layout_sketch_graph_viewport,
     persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
+    sketch_graph_bounds,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -128,6 +130,9 @@ pub struct CircuitCiApp {
     analog_assertion_end_us: f64,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
+    selected_sketch_items: BTreeSet<SketchSelection>,
+    marquee_start: Option<egui::Pos2>,
+    sketch_fit_requested: bool,
     sketch_zoom: f32,
     sketch_pan: egui::Vec2,
     waveforms: Vec<WaveformView>,
@@ -205,6 +210,9 @@ impl Default for CircuitCiApp {
             analog_assertion_end_us: 100.0,
             project_snapshot: None,
             selected_sketch_item: None,
+            selected_sketch_items: BTreeSet::new(),
+            marquee_start: None,
+            sketch_fit_requested: false,
             sketch_zoom: 1.0,
             sketch_pan: egui::Vec2::ZERO,
             waveforms: Vec::new(),
@@ -846,19 +854,24 @@ impl CircuitCiApp {
                     self.sketch_zoom = 1.0;
                     self.sketch_pan = egui::Vec2::ZERO;
                 }
+                if ui.button("Fit Content").clicked() {
+                    self.sketch_fit_requested = true;
+                }
                 if ui.button("Reset Pan").clicked() {
                     self.sketch_pan = egui::Vec2::ZERO;
                 }
                 if ui
                     .add_enabled(
-                        self.selected_sketch_item.is_some(),
+                        self.has_deletable_sketch_selection(),
                         egui::Button::new("Delete Selected"),
                     )
                     .clicked()
                 {
                     self.apply_delete_selected_sketch_item();
                 }
-                ui.label("Middle/right drag pans; pinch or trackpad zoom changes canvas scale.");
+                ui.label(
+                    "Middle/right drag pans; Shift+drag marquee selects; pinch or trackpad zoom changes canvas scale.",
+                );
             });
             egui::Grid::new("sketch_graph_edit_grid")
                 .num_columns(4)
@@ -913,6 +926,10 @@ impl CircuitCiApp {
             egui::StrokeKind::Inside,
         );
 
+        if self.sketch_fit_requested {
+            self.fit_sketch_content(rect, snapshot);
+            self.sketch_fit_requested = false;
+        }
         self.handle_sketch_viewport_input(ui, rect, &response);
         let viewport = self.sketch_viewport();
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
@@ -933,10 +950,7 @@ impl CircuitCiApp {
             );
         }
         for node in &graph.nodes {
-            let selected = self
-                .selected_sketch_item
-                .as_ref()
-                .is_some_and(|selection| selection.matches(node));
+            let selected = self.selection_is_selected(&node.selection);
             let runtime_activity = runtime_probe_activity_for_selection(
                 &self.waveforms,
                 self.selected_waveform,
@@ -973,6 +987,7 @@ impl CircuitCiApp {
         if response.clicked_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
+            let multi_select = ui.input(|input| input.modifiers.shift || input.modifiers.command);
             let clicked_anchor = graph
                 .pin_anchors
                 .iter()
@@ -993,8 +1008,9 @@ impl CircuitCiApp {
                         anchor.pin.clone(),
                     );
                 } else {
-                    self.selected_sketch_item =
-                        Some(SketchSelection::Component(anchor.component_id.clone()));
+                    self.set_single_sketch_selection(Some(SketchSelection::Component(
+                        anchor.component_id.clone(),
+                    )));
                     self.pin_edit_id = anchor.pin.clone();
                     self.pin_edit_net = anchor.net.clone();
                     self.wire_pin_id = anchor.pin.clone();
@@ -1008,21 +1024,47 @@ impl CircuitCiApp {
                 && let Some(component_id) = self.wire_from_component.clone()
             {
                 self.apply_visual_wire(component_id, net_id.clone());
+            } else if multi_select {
+                if let Some(selection) = clicked {
+                    self.toggle_sketch_selection(selection);
+                }
             } else {
-                self.selected_sketch_item = clicked;
+                self.set_single_sketch_selection(clicked);
             }
         }
 
         if response.drag_started_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
-            self.selected_sketch_item = graph
+            let clicked_node = graph
                 .nodes
                 .iter()
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
+            if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
+                self.marquee_start = Some(position);
+            } else if clicked_node.is_some() {
+                self.set_single_sketch_selection(clicked_node);
+            }
         }
-        if response.dragged_by(egui::PointerButton::Primary)
+        if let Some(start) = self.marquee_start
+            && let Some(current) = response
+                .interact_pointer_pos()
+                .or_else(|| ui.ctx().pointer_hover_pos())
+        {
+            let marquee = egui::Rect::from_two_pos(start, current);
+            painter.rect_filled(
+                marquee,
+                0.0,
+                egui::Color32::from_rgba_unmultiplied(93, 185, 255, 24),
+            );
+            painter.rect_stroke(
+                marquee,
+                0.0,
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(93, 185, 255)),
+                egui::StrokeKind::Inside,
+            );
+        } else if response.dragged_by(egui::PointerButton::Primary)
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -1032,6 +1074,15 @@ impl CircuitCiApp {
         {
             let (x, y) = persisted_node_position_from_screen(rect, position, node.rect, viewport);
             self.apply_schematic_node_position(selection, x, y);
+        }
+
+        if response.drag_stopped_by(egui::PointerButton::Primary)
+            && let Some(start) = self.marquee_start.take()
+            && let Some(end) = response
+                .interact_pointer_pos()
+                .or_else(|| ui.ctx().pointer_hover_pos())
+        {
+            self.apply_marquee_selection(egui::Rect::from_two_pos(start, end), &graph);
         }
 
         if response.hovered()
@@ -1060,11 +1111,70 @@ impl CircuitCiApp {
         }
     }
 
+    fn selection_is_selected(&self, selection: &SketchSelection) -> bool {
+        self.selected_sketch_items.contains(selection)
+            || self
+                .selected_sketch_item
+                .as_ref()
+                .is_some_and(|selected| selected == selection)
+    }
+
+    fn set_single_sketch_selection(&mut self, selection: Option<SketchSelection>) {
+        self.selected_sketch_item = selection;
+        self.selected_sketch_items.clear();
+    }
+
+    fn toggle_sketch_selection(&mut self, selection: SketchSelection) {
+        if matches!(selection, SketchSelection::Overflow(_)) {
+            return;
+        }
+        if !self.selected_sketch_items.remove(&selection) {
+            self.selected_sketch_items.insert(selection.clone());
+        }
+        self.selected_sketch_item = self.selected_sketch_items.iter().next().cloned();
+    }
+
+    fn apply_marquee_selection(&mut self, marquee: egui::Rect, graph: &sketch::SketchGraph) {
+        self.selected_sketch_items = graph
+            .nodes
+            .iter()
+            .filter(|node| !matches!(node.selection, SketchSelection::Overflow(_)))
+            .filter(|node| marquee.intersects(node.rect))
+            .map(|node| node.selection.clone())
+            .collect();
+        self.selected_sketch_item = self.selected_sketch_items.iter().next().cloned();
+        self.status = format!(
+            "{} sketch item(s) selected.",
+            self.selected_sketch_items.len()
+        );
+    }
+
     fn sketch_viewport(&self) -> SketchViewport {
         SketchViewport {
             pan: self.sketch_pan,
             zoom: self.sketch_zoom.clamp(0.25, 4.0),
         }
+    }
+
+    fn fit_sketch_content(&mut self, canvas: egui::Rect, snapshot: &ProjectSnapshot) {
+        let graph = layout_sketch_graph(canvas, snapshot);
+        let Some(bounds) = sketch_graph_bounds(&graph) else {
+            self.sketch_zoom = 1.0;
+            self.sketch_pan = egui::Vec2::ZERO;
+            return;
+        };
+        let padding = 28.0;
+        let available =
+            (canvas.size() - egui::vec2(padding * 2.0, padding * 2.0)).max(egui::Vec2::splat(1.0));
+        let content = bounds.size().max(egui::Vec2::splat(1.0));
+        let zoom = (available.x / content.x)
+            .min(available.y / content.y)
+            .clamp(0.25, 4.0);
+        let fitted_size = content * zoom;
+        let target_min =
+            canvas.min + egui::vec2(padding, padding) + (available - fitted_size) / 2.0;
+        self.sketch_zoom = zoom;
+        self.sketch_pan = target_min - canvas.min - (bounds.min - canvas.min) * zoom;
     }
 
     fn handle_sketch_viewport_input(
@@ -1101,6 +1211,10 @@ impl CircuitCiApp {
     }
 
     fn apply_delete_selected_sketch_item(&mut self) {
+        if !self.selected_sketch_items.is_empty() {
+            self.apply_delete_selected_sketch_items();
+            return;
+        }
         match self.selected_sketch_item.clone() {
             Some(SketchSelection::Component(component_id)) => {
                 self.apply_remove_component(&component_id);
@@ -1112,6 +1226,52 @@ impl CircuitCiApp {
                 self.status = "No deletable sketch item selected.".to_string();
             }
         }
+    }
+
+    fn has_deletable_sketch_selection(&self) -> bool {
+        self.selected_sketch_item
+            .as_ref()
+            .is_some_and(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+            || self
+                .selected_sketch_items
+                .iter()
+                .any(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+    }
+
+    fn apply_delete_selected_sketch_items(&mut self) {
+        let mut updated = self.project_yaml.clone();
+        let mut removed = 0usize;
+        for selection in self.selected_sketch_items.iter() {
+            if let SketchSelection::Component(component_id) = selection {
+                match remove_component(&updated, component_id) {
+                    Ok(next) => {
+                        updated = next;
+                        removed += 1;
+                    }
+                    Err(error) => {
+                        self.record_error(error);
+                        return;
+                    }
+                }
+            }
+        }
+        for selection in self.selected_sketch_items.iter() {
+            if let SketchSelection::Net(net_id) = selection {
+                match remove_net(&updated, net_id) {
+                    Ok(next) => {
+                        updated = next;
+                        removed += 1;
+                    }
+                    Err(error) => {
+                        self.record_error(error);
+                        return;
+                    }
+                }
+            }
+        }
+        self.selected_sketch_item = None;
+        self.selected_sketch_items.clear();
+        self.apply_edited_project_yaml(updated, &format!("{removed} sketch item(s) removed."));
     }
 
     fn advance_waveform_playback(&mut self, ctx: &egui::Context) {
@@ -1348,7 +1508,9 @@ impl CircuitCiApp {
         ) {
             Ok(updated) => {
                 let component_id = self.new_component_id.trim().to_string();
-                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.clone(),
+                )));
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Component {component_id} added."),
@@ -1361,7 +1523,7 @@ impl CircuitCiApp {
     fn apply_remove_component(&mut self, component_id: &str) {
         match remove_component(&self.project_yaml, component_id) {
             Ok(updated) => {
-                self.selected_sketch_item = None;
+                self.set_single_sketch_selection(None);
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Component {component_id} removed."),
@@ -1423,7 +1585,9 @@ impl CircuitCiApp {
                 self.pin_edit_id = self.wire_pin_id.clone();
                 self.pin_edit_net = net_id.clone();
                 self.wire_from_component = None;
-                self.selected_sketch_item = Some(SketchSelection::Component(component_id.clone()));
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.clone(),
+                )));
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
@@ -1453,8 +1617,9 @@ impl CircuitCiApp {
             Ok(updated) => {
                 self.pin_edit_id = target_pin_id.clone();
                 self.wire_from_component = None;
-                self.selected_sketch_item =
-                    Some(SketchSelection::Component(target_component_id.clone()));
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    target_component_id.clone(),
+                )));
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
@@ -1469,7 +1634,7 @@ impl CircuitCiApp {
     fn apply_schematic_node_position(&mut self, selection: SketchSelection, x: f64, y: f64) {
         match edit_schematic_node_position(&self.project_yaml, &selection, x, y) {
             Ok(updated) => {
-                self.selected_sketch_item = Some(selection);
+                self.set_single_sketch_selection(Some(selection));
                 self.apply_edited_project_yaml(updated, "Schematic node position updated.");
             }
             Err(error) => self.record_error(error),
@@ -1480,7 +1645,7 @@ impl CircuitCiApp {
         match add_net(&self.project_yaml, &self.new_net_id, &self.new_net_kind) {
             Ok(updated) => {
                 let net_id = self.new_net_id.trim().to_string();
-                self.selected_sketch_item = Some(SketchSelection::Net(net_id.clone()));
+                self.set_single_sketch_selection(Some(SketchSelection::Net(net_id.clone())));
                 self.apply_edited_project_yaml(updated, &format!("Net {net_id} added."));
             }
             Err(error) => self.record_error(error),
@@ -1490,7 +1655,7 @@ impl CircuitCiApp {
     fn apply_remove_net(&mut self, net_id: &str) {
         match remove_net(&self.project_yaml, net_id) {
             Ok(updated) => {
-                self.selected_sketch_item = None;
+                self.set_single_sketch_selection(None);
                 self.apply_edited_project_yaml(updated, &format!("Net {net_id} removed."));
             }
             Err(error) => self.record_error(error),

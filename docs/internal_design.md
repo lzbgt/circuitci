@@ -35,9 +35,10 @@ affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
 both pins are unbound. The persisted result must remain `board.nets` plus
-component `pins`, not a second edge list. Canvas pan/zoom is GUI view state
-only; it must not be serialized as board evidence, and drag persistence must
-invert the viewport transform before writing `board.schematic.node_positions`.
+component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
+marquee selection are GUI view/selection state only; they must not be serialized
+as board evidence, and drag persistence must invert the viewport transform
+before writing `board.schematic.node_positions`.
 It may assign or remove component pin bindings only when the component exists
 and any assigned target net exists. It may persist schematic graph node
 positions under

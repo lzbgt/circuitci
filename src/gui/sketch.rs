@@ -50,17 +50,11 @@ pub(super) struct SketchViewport {
     pub(super) zoom: f32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum SketchSelection {
     Component(String),
     Net(String),
     Overflow(String),
-}
-
-impl SketchSelection {
-    pub(super) fn matches(&self, node: &SketchNode) -> bool {
-        self == &node.selection
-    }
 }
 
 #[derive(Debug)]
@@ -943,6 +937,33 @@ pub(super) fn layout_sketch_graph_viewport(
     graph
 }
 
+pub(super) fn sketch_graph_bounds(graph: &SketchGraph) -> Option<egui::Rect> {
+    let mut bounds: Option<egui::Rect> = None;
+    let mut include_rect = |rect: egui::Rect| {
+        bounds = Some(bounds.map_or(rect, |current| current.union(rect)));
+    };
+    for node in &graph.nodes {
+        if matches!(node.selection, SketchSelection::Overflow(_)) {
+            continue;
+        }
+        include_rect(node.rect);
+    }
+    for anchor in &graph.pin_anchors {
+        include_rect(egui::Rect::from_center_size(
+            anchor.pos,
+            egui::vec2(10.0, 10.0),
+        ));
+        include_rect(egui::Rect::from_center_size(
+            anchor.label_pos,
+            egui::vec2(56.0, 14.0),
+        ));
+    }
+    for edge in &graph.edges {
+        include_rect(egui::Rect::from_two_pos(edge.start, edge.end));
+    }
+    bounds
+}
+
 pub(super) fn persisted_node_position_from_screen(
     canvas: egui::Rect,
     screen_position: egui::Pos2,
@@ -1168,9 +1189,11 @@ mod tests {
     use super::{
         SketchPosition, SketchSelection, SketchViewport, add_component, add_component_with_ports,
         add_net, assign_component_pin, connect_component_pins, edit_schematic_node_position,
-        layout_sketch_graph, layout_sketch_graph_viewport, persisted_node_position_from_screen,
-        remove_component, remove_component_pin, remove_net, validate_board_ir_yaml_text,
+        layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+        persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
+        sketch_graph_bounds, validate_board_ir_yaml_text,
     };
+    use crate::gui::CircuitCiApp;
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
     use eframe::egui;
 
@@ -1499,6 +1522,42 @@ board:
     }
 
     #[test]
+    fn sketch_graph_bounds_excludes_overflow_hints() {
+        let snapshot = ProjectSnapshot {
+            name: "bounds".to_string(),
+            components: 1,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "U1".to_string(),
+                model: "generic.ic".to_string(),
+                part_number: None,
+                position: Some(SketchPosition { x: 20.0, y: 30.0 }),
+                pins: vec![SketchPin {
+                    pin: "OUT".to_string(),
+                    net: "net_a".to_string(),
+                }],
+            }],
+            nets_detail: vec![SketchNet {
+                id: "net_a".to_string(),
+                kind: "digital_or_analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["U1.OUT".to_string()],
+                position: Some(SketchPosition { x: 360.0, y: 90.0 }),
+            }],
+        };
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+        let graph = layout_sketch_graph(canvas, &snapshot);
+        let bounds = super::sketch_graph_bounds(&graph).unwrap();
+
+        assert!(bounds.left() <= 20.0);
+        assert!(bounds.right() >= 360.0);
+        assert!(bounds.bottom() >= 90.0);
+    }
+
+    #[test]
     fn persisted_node_position_inverts_viewport_transform() {
         let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
         let viewport = SketchViewport {
@@ -1516,5 +1575,97 @@ board:
 
         assert_eq!(x, 20.0);
         assert_eq!(y, 30.0);
+    }
+
+    #[test]
+    fn multi_selected_items_delete_as_one_validated_edit() {
+        let yaml = "project:
+  name: gui_delete_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+        B: gnd
+  nets:
+    net_a:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+    loose:
+      kind: digital_or_analog
+";
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(load_project_snapshot_from_yaml(yaml).unwrap()),
+            ..CircuitCiApp::default()
+        };
+        app.selected_sketch_items
+            .insert(SketchSelection::Component("R1".to_string()));
+        app.selected_sketch_items
+            .insert(SketchSelection::Net("loose".to_string()));
+
+        app.apply_delete_selected_sketch_item();
+
+        validate_board_ir_yaml_text(&app.project_yaml).unwrap();
+        assert!(!app.project_yaml.contains("R1:"));
+        assert!(!app.project_yaml.contains("loose:"));
+        assert!(app.project_yaml.contains("gnd:"));
+        assert!(app.selected_sketch_items.is_empty());
+        assert_eq!(app.project_yaml_undo.len(), 1);
+    }
+
+    #[test]
+    fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
+        let snapshot = ProjectSnapshot {
+            name: "fit".to_string(),
+            components: 2,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![
+                SketchComponent {
+                    id: "U1".to_string(),
+                    model: "generic.ic".to_string(),
+                    part_number: None,
+                    position: Some(SketchPosition { x: 20.0, y: 40.0 }),
+                    pins: vec![SketchPin {
+                        pin: "OUT".to_string(),
+                        net: "far_net".to_string(),
+                    }],
+                },
+                SketchComponent {
+                    id: "U2".to_string(),
+                    model: "generic.ic".to_string(),
+                    part_number: None,
+                    position: Some(SketchPosition { x: 820.0, y: 420.0 }),
+                    pins: vec![SketchPin {
+                        pin: "IN".to_string(),
+                        net: "far_net".to_string(),
+                    }],
+                },
+            ],
+            nets_detail: vec![SketchNet {
+                id: "far_net".to_string(),
+                kind: "digital_or_analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["U1.OUT".to_string(), "U2.IN".to_string()],
+                position: Some(SketchPosition { x: 460.0, y: 240.0 }),
+            }],
+        };
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+        let mut app = CircuitCiApp::default();
+
+        app.fit_sketch_content(canvas, &snapshot);
+        let graph = layout_sketch_graph_viewport(canvas, &snapshot, app.sketch_viewport());
+        let bounds = sketch_graph_bounds(&graph).unwrap();
+        let viewport = canvas.shrink(24.0);
+
+        assert!(app.sketch_zoom < 1.0);
+        assert!(viewport.contains(bounds.left_top()));
+        assert!(viewport.contains(bounds.right_bottom()));
     }
 }
