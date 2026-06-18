@@ -196,12 +196,31 @@ pub(super) fn edit_schematic_node_position(
     x: f64,
     y: f64,
 ) -> Result<String> {
-    if !x.is_finite() || !y.is_finite() {
-        anyhow::bail!("Schematic node position must be finite.");
+    edit_schematic_node_positions(text, &[(selection.clone(), x, y)])
+}
+
+pub(super) fn edit_schematic_node_positions(
+    text: &str,
+    positions_to_set: &[(SketchSelection, f64, f64)],
+) -> Result<String> {
+    if positions_to_set.is_empty() {
+        anyhow::bail!("At least one schematic node position is required.");
     }
-    let key = schematic_node_key(selection).with_context(
-        || "Only component and net nodes can be positioned on the schematic canvas.",
-    )?;
+    for (_, x, y) in positions_to_set {
+        if !x.is_finite() || !y.is_finite() {
+            anyhow::bail!("Schematic node position must be finite.");
+        }
+    }
+    let keyed_positions = positions_to_set
+        .iter()
+        .map(|(selection, x, y)| {
+            let key = schematic_node_key(selection).with_context(
+                || "Only component and net nodes can be positioned on the schematic canvas.",
+            )?;
+            Ok((key, *x, *y))
+        })
+        .collect::<Result<Vec<_>>>()?;
+
     let mut yaml: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
     {
@@ -215,19 +234,21 @@ pub(super) fn edit_schematic_node_position(
         let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
         let positions =
             ensure_child_mapping_mut(schematic, "node_positions", "schematic node positions")?;
-        let mut position = serde_yaml_ng::Mapping::new();
-        position.insert(
-            serde_yaml_ng::Value::String("x".to_string()),
-            serde_yaml_ng::to_value(x)?,
-        );
-        position.insert(
-            serde_yaml_ng::Value::String("y".to_string()),
-            serde_yaml_ng::to_value(y)?,
-        );
-        positions.insert(
-            serde_yaml_ng::Value::String(key),
-            serde_yaml_ng::Value::Mapping(position),
-        );
+        for (key, x, y) in keyed_positions {
+            let mut position = serde_yaml_ng::Mapping::new();
+            position.insert(
+                serde_yaml_ng::Value::String("x".to_string()),
+                serde_yaml_ng::to_value(x)?,
+            );
+            position.insert(
+                serde_yaml_ng::Value::String("y".to_string()),
+                serde_yaml_ng::to_value(y)?,
+            );
+            positions.insert(
+                serde_yaml_ng::Value::String(key),
+                serde_yaml_ng::Value::Mapping(position),
+            );
+        }
     }
     encode_edited_project_yaml(yaml)
 }
@@ -1189,9 +1210,9 @@ mod tests {
     use super::{
         SketchPosition, SketchSelection, SketchViewport, add_component, add_component_with_ports,
         add_net, assign_component_pin, connect_component_pins, edit_schematic_node_position,
-        layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
-        persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
-        sketch_graph_bounds, validate_board_ir_yaml_text,
+        edit_schematic_node_positions, layout_sketch_graph, layout_sketch_graph_viewport,
+        load_project_snapshot_from_yaml, persisted_node_position_from_screen, remove_component,
+        remove_component_pin, remove_net, sketch_graph_bounds, validate_board_ir_yaml_text,
     };
     use crate::gui::CircuitCiApp;
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
@@ -1361,6 +1382,23 @@ board:
         assert!(edited.contains("component:R1"));
         assert!(edited.contains("x: 42"));
         assert!(edited.contains("y: 84"));
+    }
+
+    #[test]
+    fn edit_schematic_node_positions_batches_valid_yaml() {
+        let edited = edit_schematic_node_positions(
+            editable_project_yaml(),
+            &[
+                (SketchSelection::Component("R1".to_string()), 42.0, 24.0),
+                (SketchSelection::Net("net_a".to_string()), 220.0, 36.0),
+            ],
+        )
+        .unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("component:R1"));
+        assert!(edited.contains("net:net_a"));
+        assert!(edited.contains("x: 220"));
     }
 
     #[test]
@@ -1614,6 +1652,66 @@ board:
         assert!(!app.project_yaml.contains("loose:"));
         assert!(app.project_yaml.contains("gnd:"));
         assert!(app.selected_sketch_items.is_empty());
+        assert_eq!(app.project_yaml_undo.len(), 1);
+    }
+
+    #[test]
+    fn group_screen_delta_moves_selected_items_as_one_edit() {
+        let yaml = "project:
+  name: gui_group_move_test
+  version: 0.1.0
+board:
+  components:
+    U1:
+      model: generic.ic
+      pins:
+        OUT: net_a
+    U2:
+      model: generic.ic
+      pins:
+        IN: net_a
+  nets:
+    net_a:
+      kind: digital_or_analog
+  schematic:
+    node_positions:
+      component:U1:
+        x: 20.0
+        y: 30.0
+      component:U2:
+        x: 260.0
+        y: 30.0
+";
+        let snapshot = load_project_snapshot_from_yaml(yaml).unwrap();
+        let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+        let viewport = SketchViewport {
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        };
+        let graph = layout_sketch_graph_viewport(canvas, &snapshot, viewport);
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(snapshot),
+            ..CircuitCiApp::default()
+        };
+        app.selected_sketch_items
+            .insert(SketchSelection::Component("U1".to_string()));
+        app.selected_sketch_items
+            .insert(SketchSelection::Component("U2".to_string()));
+
+        app.apply_selected_schematic_screen_delta(
+            canvas,
+            &graph,
+            viewport,
+            egui::vec2(12.0, 8.0),
+            "moved",
+        );
+
+        validate_board_ir_yaml_text(&app.project_yaml).unwrap();
+        assert!(app.project_yaml.contains("x: 32.0"));
+        assert!(app.project_yaml.contains("x: 272.0"));
+        assert!(app.project_yaml.contains("y: 38.0"));
+        assert_eq!(app.selected_sketch_items.len(), 2);
         assert_eq!(app.project_yaml_undo.len(), 1);
     }
 

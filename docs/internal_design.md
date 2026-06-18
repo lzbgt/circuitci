@@ -30,15 +30,18 @@ pin/net seeding for library-backed component insertion. It may add or remove
 component entries and may remove only nets that are not referenced by component
 pins. Inserted library components may create generated per-pin nets from
 source-backed model port declarations, but those nets are still ordinary Board
-IR sketch connections that the user can rewire. Rendered pin anchors are UI
+IR sketch connections that the user can rewire. `src/gui/sketch_actions.rs`
+owns sketch canvas selection, fit-content, multi-selected movement/alignment,
+and selected-item deletion actions that compose lower-level sketch YAML
+mutations. Rendered pin anchors are UI
 affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
 both pins are unbound. The persisted result must remain `board.nets` plus
 component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
 marquee selection are GUI view/selection state only; they must not be serialized
-as board evidence, and drag persistence must invert the viewport transform
-before writing `board.schematic.node_positions`.
+as board evidence. Single-node and multi-node drag/alignment persistence must
+invert the viewport transform before writing `board.schematic.node_positions`.
 It may assign or remove component pin bindings only when the component exists
 and any assigned target net exists. It may persist schematic graph node
 positions under

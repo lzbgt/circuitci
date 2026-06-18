@@ -20,6 +20,7 @@ circuitci-gui
   -> src/gui.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
+  -> src/gui/sketch_actions.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
   -> src/gui/analog.rs
@@ -43,7 +44,10 @@ selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
 updates, view-state pan/zoom transforms, fit-content bounds, Shift-drag marquee
 selection, model-aware pin-anchor rendering, and validated component pin
-assignment. Visual wire creation can start from a
+assignment. `src/gui/sketch_actions.rs` owns canvas selection state operations,
+fit-content application, multi-selected drag/nudge/alignment, and batched
+selected-item deletion as validated Board IR YAML edits. Visual wire creation
+can start from a
 rendered pin anchor and can terminate on another pin anchor or an existing net
 node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
 creates a generated Board IR net through the same mutation path instead of
@@ -76,7 +80,8 @@ form:
   connections, structured scalar edits for existing component and net
   properties, add/remove controls for components and unreferenced nets,
   draggable component/net node positions, pan/zoom plus reset-view and
-  fit-content controls, Shift-drag marquee selection, keyboard or button
+  fit-content controls, Shift-drag marquee selection, group drag/nudge/left-
+  align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
   pin-to-pin and pin-to-net
@@ -119,29 +124,31 @@ The supported desktop simulation path is:
 6. pan, zoom, reset, or fit the sketch viewport without changing Board IR
    evidence,
 7. Shift-drag a marquee to select multiple visible components/nets,
-8. assign or remove selected component pin bindings to existing nets,
-9. create a visual wire by clicking a rendered source pin anchor and then a
+8. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
+   edit,
+9. assign or remove selected component pin bindings to existing nets,
+10. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-10. delete selected components or unreferenced nets from the canvas or toolbar,
-11. undo or redo Board IR graph/property/wire/YAML edits through the shared
+11. delete selected components or unreferenced nets from the canvas or toolbar,
+12. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-12. search the active model libraries, insert selected models as sketched
+13. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-13. edit Board IR YAML evidence when the project needs a correction outside the
+14. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-14. append a generated-from-Board analog transient scenario with a voltage probe,
-15. add sample or windowed min/max waveform assertions against declared probes,
-16. load, edit, save, and rerun file-backed SPICE decks from declared analog
+15. append a generated-from-Board analog transient scenario with a voltage probe,
+16. add sample or windowed min/max waveform assertions against declared probes,
+17. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-17. bind sourced component models,
-18. run declared validation and `analog_transient` scenarios,
-19. scrub or play the simulation time cursor to drive graph runtime tinting,
-20. hover graph nodes to inspect matching voltage/current/power probe values at
+18. bind sourced component models,
+19. run declared validation and `analog_transient` scenarios,
+20. scrub or play the simulation time cursor to drive graph runtime tinting,
+21. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-21. observe generated decks, plotted CSV waveforms, cursor values, min/max
+22. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-22. edit the project/model evidence and rerun.
+23. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
 math channels, advanced SPICE source tooling, automatic arbitrary
