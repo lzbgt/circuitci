@@ -29,8 +29,9 @@ pub(super) fn sketch_hover_tooltip(
 pub(super) fn sketch_pin_hover_tooltip(ui: &mut egui::Ui, anchor: &sketch::SketchPinAnchor) {
     ui.strong(format!("{}.{}", anchor.component_id, anchor.pin));
     ui.label(format!("net: {}", anchor.net));
+    ui.label(format!("net kind: {}", anchor.kind));
     ui.separator();
-    ui.label("Click this pin, then click another pin or net node to wire it.");
+    ui.label("Click or drag this pin, then release on another pin, net, wire, or net label.");
 }
 
 pub(super) fn sketch_wire_hover_tooltip(ui: &mut egui::Ui, edge: &sketch::SketchEdge) {

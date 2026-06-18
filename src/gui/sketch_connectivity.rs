@@ -50,6 +50,7 @@ mod tests {
             component_id: "R1".to_string(),
             pin: "A".to_string(),
             net: "sig".to_string(),
+            kind: "digital_or_analog".to_string(),
             pos: egui::pos2(0.0, 0.0),
             label_pos: egui::pos2(0.0, 0.0),
             label_align: egui::Align2::LEFT_CENTER,

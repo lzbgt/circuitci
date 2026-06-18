@@ -159,8 +159,11 @@ diode/BJT/MOSFET current-sense branches, and selected-component power-probe
 insertion for those same supported generated branches. `src/gui/sketch_probes.rs`
 owns derived schematic voltage/current/power probe badge targeting, layout,
 hit-testing, and drawing. Rendered pin anchors are UI affordances derived from
-component pin bindings; clicking or dragging an anchor may start or complete a
-wire assignment. Pin-to-pin wiring should reuse a source or target pin net when
+component pin bindings and connected net kind. They may show color and
+pin/kind chips for hover, selection, connectivity, and active wire targeting,
+but must not persist a second port or connectivity model. Clicking or dragging
+an anchor may start or complete a wire assignment. Pin-to-pin wiring should
+reuse a source or target pin net when
 one already exists, or create a generated Board IR net when both pins are
 unbound. Wire-drag previews may highlight and snap to a pin, net node, net
 label badge, or rendered wire, but the persisted result must remain

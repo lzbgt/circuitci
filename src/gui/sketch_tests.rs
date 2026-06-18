@@ -155,6 +155,21 @@ fn add_component_with_ports_creates_default_pin_nets() {
     assert!(edited.contains("u2_vin:\n      kind: power"));
     assert!(edited.contains("u2_gnd:\n      kind: ground"));
     assert!(edited.contains("u2_out:\n      kind: digital_or_analog"));
+
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 340.0)),
+        &snapshot,
+    );
+    let pin_kinds = graph
+        .pin_anchors
+        .iter()
+        .filter(|anchor| anchor.component_id == "U2")
+        .map(|anchor| (anchor.pin.as_str(), anchor.kind.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    assert_eq!(pin_kinds["VIN"], "power");
+    assert_eq!(pin_kinds["GND"], "ground");
+    assert_eq!(pin_kinds["OUT"], "digital_or_analog");
 }
 
 #[test]

@@ -42,6 +42,7 @@ fn wire_drag_target_prefers_pin_then_net_then_wire() {
             component_id: "R1".to_string(),
             pin: "A".to_string(),
             net: "net_a".to_string(),
+            kind: "digital_or_analog".to_string(),
             pos: egui::pos2(100.0, 100.0),
             label_pos: egui::pos2(104.0, 100.0),
             label_align: egui::Align2::LEFT_CENTER,

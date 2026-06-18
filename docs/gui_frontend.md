@@ -85,7 +85,10 @@ graph layout helpers, persisted schematic node positions/styles, view-state
 transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
 hit-testing, fit-all and fit-selection bounds, bounded full-list logical layout
 for pannable imported designs, and model-aware pin-anchor layout/rendering
-primitives. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
+primitives. Pin anchors are colored from the connected Board IR net kind and
+show compact pin/kind chips while hovered, selected, connected-highlighted, or
+used as an active wire target; this is a canvas affordance, not another
+connectivity model. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
 geometry helpers used for custom route display, hit-testing, insertion, active
 wire previews, and drag previews. `src/gui/sketch_wire_draft.rs` owns the
 transient in-progress wire-bend points while a pin connection is being drawn.
@@ -105,7 +108,7 @@ pin-anchor drag-to-wire completion, direct schematic wire-route drag editing,
 active multi-bend wire drawing, overview-minimap event routing, and graph
 hover/runtime routing. `src/gui/sketch_canvas_render.rs` owns canvas-local
 tooltip and paint helpers for wires, route handles, wire previews, wire target
-affordances, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
+affordances, kind-aware pin chips, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe-badge, and blank-canvas
 targets, including route-handle actions and named-net/off-page label placement
 actions.

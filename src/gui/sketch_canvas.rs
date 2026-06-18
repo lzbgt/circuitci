@@ -465,7 +465,18 @@ impl CircuitCiApp {
                     } if component_id == &anchor.component_id && pin == &anchor.pin
                 )
             });
-            draw_sketch_pin_anchor(&painter, anchor, active || target || connected, opacity);
+            let hovered = hovered_anchor.is_some_and(|hovered| {
+                hovered.component_id == anchor.component_id && hovered.pin == anchor.pin
+            });
+            let component_selected = self
+                .selection_is_selected(&SketchSelection::Component(anchor.component_id.clone()));
+            draw_sketch_pin_anchor(
+                &painter,
+                anchor,
+                active || target || connected,
+                hovered || active || target || connected || component_selected,
+                opacity,
+            );
         }
         if let Some(target) = &wire_drag_target {
             draw_wire_drag_target(&painter, target);

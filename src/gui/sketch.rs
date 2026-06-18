@@ -164,6 +164,7 @@ pub(super) struct SketchPinAnchor {
     pub(super) component_id: String,
     pub(super) pin: String,
     pub(super) net: String,
+    pub(super) kind: String,
     pub(super) pos: egui::Pos2,
     pub(super) label_pos: egui::Pos2,
     pub(super) label_align: egui::Align2,
@@ -1247,6 +1248,11 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     }
 
     let mut pin_anchors = Vec::new();
+    let net_kinds = snapshot
+        .nets_detail
+        .iter()
+        .map(|net| (net.id.as_str(), net.kind.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
     for component in snapshot.components_detail.iter().take(component_count) {
         let Some(node) = nodes
             .iter()
@@ -1254,7 +1260,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         else {
             continue;
         };
-        for anchor in component_pin_anchors(component, node.rect) {
+        for anchor in component_pin_anchors(component, node.rect, &net_kinds) {
             pin_anchors.push(anchor);
         }
     }
@@ -1641,7 +1647,11 @@ fn inverse_viewport_pos(
     canvas.min + (pos - canvas.min - viewport.pan) / zoom
 }
 
-fn component_pin_anchors(component: &SketchComponent, rect: egui::Rect) -> Vec<SketchPinAnchor> {
+fn component_pin_anchors(
+    component: &SketchComponent,
+    rect: egui::Rect,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> Vec<SketchPinAnchor> {
     let visible_count = component.pins.len().min(8);
     if visible_count == 0 {
         return Vec::new();
@@ -1670,6 +1680,11 @@ fn component_pin_anchors(component: &SketchComponent, rect: egui::Rect) -> Vec<S
                 component_id: component.id.clone(),
                 pin: pin.pin.clone(),
                 net: pin.net.clone(),
+                kind: net_kinds
+                    .get(pin.net.as_str())
+                    .copied()
+                    .unwrap_or("unresolved")
+                    .to_string(),
                 pos: egui::pos2(x, y),
                 label_pos: egui::pos2(x + label_offset, y),
                 label_align,
@@ -1787,20 +1802,61 @@ pub(super) fn draw_sketch_pin_anchor(
     painter: &egui::Painter,
     anchor: &SketchPinAnchor,
     active: bool,
+    labeled: bool,
     opacity: f32,
 ) {
     let opacity = normalized_opacity(opacity);
     let fill = if active {
         egui::Color32::from_rgb(255, 196, 87)
     } else {
-        egui::Color32::from_rgb(115, 166, 224)
+        pin_kind_color(&anchor.kind)
     };
-    painter.circle_filled(anchor.pos, 4.0, with_opacity(fill, opacity));
+    let radius = if labeled || active { 5.0 } else { 4.0 };
+    painter.circle_filled(anchor.pos, radius, with_opacity(fill, opacity));
     painter.circle_stroke(
         anchor.pos,
-        4.0,
+        radius,
         egui::Stroke::new(1.0, with_opacity(egui::Color32::from_gray(18), opacity)),
     );
+    if labeled {
+        let text = compact_label(
+            &format!("{}:{}", anchor.pin, compact_pin_kind(&anchor.kind)),
+            18,
+        );
+        let text_width = (text.chars().count() as f32 * 6.5 + 12.0).clamp(34.0, 118.0);
+        let rect = match anchor.label_align {
+            egui::Align2::LEFT_CENTER => egui::Rect::from_min_size(
+                anchor.label_pos - egui::vec2(2.0, 10.0),
+                egui::vec2(text_width, 20.0),
+            ),
+            _ => egui::Rect::from_min_size(
+                anchor.label_pos - egui::vec2(text_width - 2.0, 10.0),
+                egui::vec2(text_width, 20.0),
+            ),
+        };
+        painter.rect_filled(
+            rect,
+            4.0,
+            with_opacity(
+                egui::Color32::from_rgba_unmultiplied(18, 25, 34, 235),
+                opacity,
+            ),
+        );
+        painter.rect_stroke(
+            rect,
+            4.0,
+            egui::Stroke::new(1.0, with_opacity(fill, opacity)),
+            egui::StrokeKind::Inside,
+        );
+        painter.text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            text,
+            egui::FontId::monospace(10.5),
+            with_opacity(egui::Color32::WHITE, opacity),
+        );
+        return;
+    }
     painter.text(
         anchor.label_pos,
         anchor.label_align,
@@ -1808,6 +1864,24 @@ pub(super) fn draw_sketch_pin_anchor(
         egui::FontId::monospace(10.5),
         with_opacity(egui::Color32::LIGHT_GRAY, opacity),
     );
+}
+
+fn pin_kind_color(kind: &str) -> egui::Color32 {
+    match kind {
+        "power" => egui::Color32::from_rgb(234, 105, 105),
+        "ground" => egui::Color32::from_rgb(120, 195, 132),
+        "digital" | "digital_or_analog" => egui::Color32::from_rgb(115, 166, 224),
+        "analog" => egui::Color32::from_rgb(169, 139, 238),
+        _ => egui::Color32::from_rgb(170, 178, 189),
+    }
+}
+
+fn compact_pin_kind(kind: &str) -> &str {
+    match kind {
+        "digital_or_analog" => "dig/an",
+        "unresolved" => "missing",
+        other => other,
+    }
 }
 
 fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
