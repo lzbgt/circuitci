@@ -105,6 +105,13 @@ enum SketchGroupAction {
     DistributeVertical,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SketchViewportCommand {
+    FitAll,
+    FitSelection,
+    Home,
+}
+
 pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
@@ -196,7 +203,7 @@ pub struct CircuitCiApp {
     sketch_clipboard_components: Vec<String>,
     sketch_paste_requested: bool,
     marquee_start: Option<egui::Pos2>,
-    sketch_fit_requested: bool,
+    sketch_viewport_command: Option<SketchViewportCommand>,
     sketch_group_action: Option<SketchGroupAction>,
     sketch_zoom: f32,
     sketch_pan: egui::Vec2,
@@ -328,7 +335,7 @@ impl Default for CircuitCiApp {
             sketch_clipboard_components: Vec::new(),
             sketch_paste_requested: false,
             marquee_start: None,
-            sketch_fit_requested: false,
+            sketch_viewport_command: None,
             sketch_group_action: None,
             sketch_zoom: 1.0,
             sketch_pan: egui::Vec2::ZERO,
@@ -445,8 +452,20 @@ impl CircuitCiApp {
             if ui.button("Scopes").clicked() {
                 self.stage = Stage::Simulation;
             }
-            if ui.button("Fit").clicked() {
-                self.sketch_fit_requested = true;
+            if ui.button("Fit All").clicked() {
+                self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+            }
+            if ui
+                .add_enabled(
+                    self.has_fit_selection_target(),
+                    egui::Button::new("Fit Selection"),
+                )
+                .clicked()
+            {
+                self.sketch_viewport_command = Some(SketchViewportCommand::FitSelection);
+            }
+            if ui.button("Home").clicked() {
+                self.sketch_viewport_command = Some(SketchViewportCommand::Home);
             }
             if ui.button("Save").clicked() {
                 self.save_project_yaml();
@@ -573,11 +592,19 @@ impl CircuitCiApp {
                     self.sketch_zoom = (self.sketch_zoom * 1.2).clamp(0.25, 4.0);
                 }
                 if ui.button("Reset View").clicked() {
-                    self.sketch_zoom = 1.0;
-                    self.sketch_pan = egui::Vec2::ZERO;
+                    self.sketch_viewport_command = Some(SketchViewportCommand::Home);
                 }
-                if ui.button("Fit Content").clicked() {
-                    self.sketch_fit_requested = true;
+                if ui.button("Fit All").clicked() {
+                    self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+                }
+                if ui
+                    .add_enabled(
+                        self.has_fit_selection_target(),
+                        egui::Button::new("Fit Selection"),
+                    )
+                    .clicked()
+                {
+                    self.sketch_viewport_command = Some(SketchViewportCommand::FitSelection);
                 }
                 if ui.button("Reset Pan").clicked() {
                     self.sketch_pan = egui::Vec2::ZERO;

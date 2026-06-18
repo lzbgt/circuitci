@@ -39,9 +39,8 @@ impl CircuitCiApp {
             egui::StrokeKind::Inside,
         );
 
-        if self.sketch_fit_requested {
-            self.fit_sketch_content(rect, snapshot);
-            self.sketch_fit_requested = false;
+        if let Some(command) = self.sketch_viewport_command.take() {
+            self.apply_sketch_viewport_command(rect, snapshot, command);
         }
         if let Some(target) = self.sketch_navigator_fit_target.take() {
             self.fit_sketch_navigator_target(rect, snapshot, &target);
@@ -136,6 +135,64 @@ impl CircuitCiApp {
             && hovered_hierarchy_connector_badge.is_none();
         self.handle_sketch_viewport_input(ui, rect, &response, blank_canvas_hovered);
         let viewport = self.sketch_viewport();
+        let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
+        let hierarchy_connector_badges = hierarchy_view
+            .as_ref()
+            .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
+            .unwrap_or_default();
+        let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
+        let pointer_hover = if response.hovered() {
+            ui.ctx().pointer_hover_pos()
+        } else {
+            None
+        };
+        let hovered_node = pointer_hover.and_then(|position| {
+            graph.nodes.iter().find(|node| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.interaction_visible(&node.selection))
+                    && node.rect.contains(position)
+            })
+        });
+        let hovered_anchor = pointer_hover.and_then(|position| {
+            graph.pin_anchors.iter().find(|anchor| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.anchor_visible(anchor))
+                    && anchor.pos.distance(position) <= 8.0
+            })
+        });
+        let hovered_wire = if hovered_node.is_none() && hovered_anchor.is_none() {
+            pointer_hover.and_then(|position| {
+                hit_test_wire(&graph, position).filter(|edge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.edge_visible(edge))
+                })
+            })
+        } else {
+            None
+        };
+        let hovered_probe_badge = pointer_hover.and_then(|position| {
+            hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.probe_badge_visible(badge))
+            })
+        });
+        let hovered_bundle_badge = pointer_hover.and_then(|position| {
+            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(|badge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.bundle_badge_visible(badge))
+            })
+        });
+        let hovered_hierarchy_connector_badge = pointer_hover.and_then(|position| {
+            sketch_hierarchy::hit_test_hierarchy_connector_badge(
+                &hierarchy_connector_badges,
+                position,
+            )
+        });
         for edge in &graph.edges {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.edge_visible(edge) {
@@ -677,7 +734,7 @@ impl CircuitCiApp {
             }
             SketchSelection::Overflow(label) => {
                 ui.strong(label);
-                ui.label("Open the YAML editor or use Fit Content for hidden graph items.");
+                ui.label("Open the YAML editor or use Fit All for hidden graph items.");
             }
         }
     }

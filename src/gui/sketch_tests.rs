@@ -1,4 +1,3 @@
-use super::CircuitCiApp;
 use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
@@ -17,6 +16,7 @@ use super::sketch_probes::{
 };
 use super::sketch_rename::{rename_component, rename_net};
 use super::sketch_symbols::SketchSymbolKind;
+use super::{CircuitCiApp, SketchViewportCommand};
 use eframe::egui;
 
 fn editable_project_yaml() -> &'static str {
@@ -1398,6 +1398,98 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
     assert!(app.sketch_zoom < 1.0);
     assert!(viewport.contains(bounds.left_top()));
     assert!(viewport.contains(bounds.right_bottom()));
+}
+
+#[test]
+fn fit_selected_sketch_content_places_selection_inside_canvas() {
+    let snapshot = ProjectSnapshot {
+        name: "fit_selection".to_string(),
+        components: 2,
+        nets: 1,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: vec![
+            SketchComponent {
+                id: "U1".to_string(),
+                model: "generic.ic".to_string(),
+                part_number: None,
+                spice: None,
+                position: Some(SketchPosition { x: 20.0, y: 40.0 }),
+                pins: vec![SketchPin {
+                    pin: "OUT".to_string(),
+                    net: "far_net".to_string(),
+                }],
+                style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
+            },
+            SketchComponent {
+                id: "U2".to_string(),
+                model: "generic.ic".to_string(),
+                part_number: None,
+                spice: None,
+                position: Some(SketchPosition { x: 880.0, y: 520.0 }),
+                pins: vec![SketchPin {
+                    pin: "IN".to_string(),
+                    net: "far_net".to_string(),
+                }],
+                style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
+            },
+        ],
+        nets_detail: vec![SketchNet {
+            id: "far_net".to_string(),
+            kind: "digital_or_analog".to_string(),
+            nominal_voltage: None,
+            powered: None,
+            connections: vec!["U1.OUT".to_string(), "U2.IN".to_string()],
+            position: Some(SketchPosition { x: 460.0, y: 280.0 }),
+        }],
+        probes: Vec::new(),
+    };
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let mut app = CircuitCiApp {
+        sketch_zoom: 3.0,
+        sketch_pan: egui::vec2(-900.0, -400.0),
+        ..Default::default()
+    };
+    app.set_single_sketch_selection(Some(SketchSelection::Net("far_net".to_string())));
+
+    app.apply_sketch_viewport_command(canvas, &snapshot, SketchViewportCommand::FitSelection);
+
+    let graph = layout_sketch_graph_viewport(canvas, &snapshot, app.sketch_viewport());
+    let net_node = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Net("far_net".to_string()))
+        .unwrap();
+    let viewport = canvas.shrink(24.0);
+    assert!(viewport.contains(net_node.rect.center()));
+    assert!(app.status.starts_with("Fit 1 selected"));
+}
+
+#[test]
+fn home_viewport_command_resets_zoom_and_pan() {
+    let snapshot = ProjectSnapshot {
+        name: "home".to_string(),
+        components: 0,
+        nets: 0,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: Vec::new(),
+        nets_detail: Vec::new(),
+        probes: Vec::new(),
+    };
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let mut app = CircuitCiApp {
+        sketch_zoom: 2.4,
+        sketch_pan: egui::vec2(-180.0, 95.0),
+        ..Default::default()
+    };
+
+    app.apply_sketch_viewport_command(canvas, &snapshot, SketchViewportCommand::Home);
+
+    assert_eq!(app.sketch_zoom, 1.0);
+    assert_eq!(app.sketch_pan, egui::Vec2::ZERO);
 }
 
 #[test]

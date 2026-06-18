@@ -80,8 +80,9 @@ undo/redo history, and the unsaved-change confirmation guard used before
 load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot,
 graph layout helpers, persisted schematic node positions/styles, view-state
 transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
-hit-testing, fit-content bounds, bounded full-list logical layout for pannable
-imported designs, and model-aware pin-anchor layout/rendering primitives.
+hit-testing, fit-all and fit-selection bounds, bounded full-list logical layout
+for pannable imported designs, and model-aware pin-anchor layout/rendering
+primitives.
 `src/gui/sketch_duplicate.rs` owns the selected-component/local-net duplication
 YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_rename.rs` owns structured component/net rename mutations that
@@ -99,10 +100,11 @@ right-click context menus over component, net, wire, and probe badge targets.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
-fit-content application, multi-selected drag/nudge/alignment/distribution, and batched
-selected-item deletion as validated Board IR YAML edits. It also owns the
-transient component clipboard used to copy selected components and paste
-duplicates at a target canvas location through validated Board IR mutations.
+fit-all/fit-selection/home viewport commands, multi-selected
+drag/nudge/alignment/distribution, and batched selected-item deletion as
+validated Board IR YAML edits. It also owns the transient component clipboard
+used to copy selected components and paste duplicates at a target canvas
+location through validated Board IR mutations.
 Visual wire creation can start from a
 rendered pin anchor and can terminate on another pin anchor or an existing net
 node. Pin-to-pin wiring reuses an existing pin net when possible and otherwise
@@ -199,7 +201,7 @@ form:
   from imported source paths and namespaced component IDs, off-sheet connector
   badges for focused nets with external endpoints, clickable wire-to-net
   selection, blank-canvas drag and touchpad-scroll viewport panning,
-  pointer-focused pinch/Cmd-scroll zoom, plus reset-view and fit-content
+  pointer-focused pinch/Cmd-scroll zoom, plus Home, Fit All, and Fit Selection
   controls,
   schematic hierarchy search/select/fit/focus/isolate controls and object
   navigator search/select/fit controls,
@@ -275,8 +277,8 @@ The supported desktop simulation path is:
    nets through validated graph controls,
 6. drag component/net graph nodes to persist `board.schematic.node_positions`,
 7. snap dragged schematic positions to the visible grid when snap is enabled,
-8. pan, zoom, reset, or fit the sketch viewport without changing Board IR
-   evidence,
+8. pan, zoom, Home-reset, Fit All, or Fit Selection the sketch viewport without
+   changing Board IR evidence,
 9. search components, net bundles, nets, wires, and probe badges in the object navigator,
    select matching canvas targets, and fit the viewport to visible targets
    without changing Board IR evidence,

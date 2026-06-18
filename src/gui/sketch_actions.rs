@@ -5,7 +5,7 @@ use super::sketch::{
     sketch_graph_bounds,
 };
 use super::sketch_duplicate::duplicate_components_with_local_nets;
-use super::{CircuitCiApp, SketchGroupAction};
+use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
 use eframe::egui;
 
 impl CircuitCiApp {
@@ -289,6 +289,28 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn apply_sketch_viewport_command(
+        &mut self,
+        canvas: egui::Rect,
+        snapshot: &ProjectSnapshot,
+        command: SketchViewportCommand,
+    ) {
+        match command {
+            SketchViewportCommand::FitAll => {
+                self.fit_sketch_content(canvas, snapshot);
+                self.status = "Fit all schematic content.".to_string();
+            }
+            SketchViewportCommand::FitSelection => {
+                self.fit_selected_sketch_content(canvas, snapshot);
+            }
+            SketchViewportCommand::Home => {
+                self.sketch_zoom = 1.0;
+                self.sketch_pan = egui::Vec2::ZERO;
+                self.status = "Schematic viewport reset.".to_string();
+            }
+        }
+    }
+
     pub(super) fn fit_sketch_content(&mut self, canvas: egui::Rect, snapshot: &ProjectSnapshot) {
         let graph = layout_sketch_graph(canvas, snapshot);
         let Some(bounds) = sketch_graph_bounds(&graph) else {
@@ -296,20 +318,126 @@ impl CircuitCiApp {
             self.sketch_pan = egui::Vec2::ZERO;
             return;
         };
-        let padding = 80.0;
-        let available =
-            (canvas.size() - egui::vec2(padding * 2.0, padding * 2.0)).max(egui::Vec2::splat(1.0));
-        let content = bounds.size().max(egui::Vec2::splat(1.0));
-        let zoom = (available.x / content.x)
-            .min(available.y / content.y)
-            .clamp(0.25, 4.0);
-        let fitted_size = content * zoom;
-        let target_min =
-            canvas.min + egui::vec2(padding, padding) + (available - fitted_size) / 2.0;
-        self.sketch_zoom = zoom;
-        self.sketch_pan = target_min - canvas.min - (bounds.min - canvas.min) * zoom;
+        fit_viewport_to_bounds(self, canvas, bounds);
     }
 
+    pub(super) fn fit_selected_sketch_content(
+        &mut self,
+        canvas: egui::Rect,
+        snapshot: &ProjectSnapshot,
+    ) {
+        let selected = self.selected_sketch_selection_set();
+        if selected.is_empty() {
+            self.status = "Select a component or net before fitting selection.".to_string();
+            return;
+        }
+        let graph = layout_sketch_graph(canvas, snapshot);
+        let Some(bounds) = sketch_selection_bounds(&graph, &selected) else {
+            self.status =
+                "Selected schematic item is not visible in the current graph.".to_string();
+            return;
+        };
+        fit_viewport_to_bounds(self, canvas, bounds.expand(48.0));
+        self.status = format!("Fit {} selected schematic item(s).", selected.len());
+    }
+
+    pub(super) fn has_fit_selection_target(&self) -> bool {
+        self.selected_sketch_items
+            .iter()
+            .any(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+            || self
+                .selected_sketch_item
+                .as_ref()
+                .is_some_and(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+    }
+
+    fn selected_sketch_selection_set(&self) -> std::collections::BTreeSet<SketchSelection> {
+        if self.selected_sketch_items.is_empty() {
+            return self
+                .selected_sketch_item
+                .clone()
+                .filter(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+                .into_iter()
+                .collect();
+        }
+        self.selected_sketch_items
+            .iter()
+            .filter(|selection| !matches!(selection, SketchSelection::Overflow(_)))
+            .cloned()
+            .collect()
+    }
+}
+
+fn fit_viewport_to_bounds(app: &mut CircuitCiApp, canvas: egui::Rect, bounds: egui::Rect) {
+    let padding = 80.0;
+    let available =
+        (canvas.size() - egui::vec2(padding * 2.0, padding * 2.0)).max(egui::Vec2::splat(1.0));
+    let content = bounds.size().max(egui::Vec2::splat(1.0));
+    let zoom = (available.x / content.x)
+        .min(available.y / content.y)
+        .clamp(0.25, 4.0);
+    let fitted_size = content * zoom;
+    let target_min = canvas.min + egui::vec2(padding, padding) + (available - fitted_size) / 2.0;
+    app.sketch_zoom = zoom;
+    app.sketch_pan = target_min - canvas.min - (bounds.min - canvas.min) * zoom;
+}
+
+fn sketch_selection_bounds(
+    graph: &sketch::SketchGraph,
+    selected: &std::collections::BTreeSet<SketchSelection>,
+) -> Option<egui::Rect> {
+    let selected_components = selected
+        .iter()
+        .filter_map(|selection| match selection {
+            SketchSelection::Component(component_id) => Some(component_id.as_str()),
+            SketchSelection::Net(_) | SketchSelection::Overflow(_) => None,
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    let selected_nets = selected
+        .iter()
+        .filter_map(|selection| match selection {
+            SketchSelection::Net(net_id) => Some(net_id.as_str()),
+            SketchSelection::Component(_) | SketchSelection::Overflow(_) => None,
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    let mut bounds: Option<egui::Rect> = None;
+    let mut include_rect = |rect: egui::Rect| {
+        bounds = Some(bounds.map_or(rect, |current| current.union(rect)));
+    };
+    for node in &graph.nodes {
+        if selected.contains(&node.selection) {
+            include_rect(node.rect);
+        }
+    }
+    for anchor in &graph.pin_anchors {
+        if selected_components.contains(anchor.component_id.as_str())
+            || selected_nets.contains(anchor.net.as_str())
+        {
+            include_rect(egui::Rect::from_center_size(
+                anchor.pos,
+                egui::vec2(12.0, 12.0),
+            ));
+            include_rect(egui::Rect::from_center_size(
+                anchor.label_pos,
+                egui::vec2(64.0, 18.0),
+            ));
+        }
+    }
+    for edge in &graph.edges {
+        let source_component = edge
+            .source
+            .split_once('.')
+            .map_or(edge.source.as_str(), |(component, _)| component);
+        if selected_nets.contains(edge.net_id.as_str())
+            || selected_components.contains(source_component)
+        {
+            include_rect(egui::Rect::from_two_pos(edge.start, edge.end));
+        }
+    }
+    bounds
+}
+
+impl CircuitCiApp {
     pub(super) fn apply_delete_selected_sketch_item(&mut self) {
         if !self.selected_sketch_items.is_empty() {
             self.apply_delete_selected_sketch_items();

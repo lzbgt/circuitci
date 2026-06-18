@@ -129,10 +129,11 @@ affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
 both pins are unbound. The persisted result must remain `board.nets` plus
-component `pins`, not a second edge list. Canvas pan/zoom, fit-content, and
-marquee selection are GUI view/selection state only; they must not be serialized
-as board evidence. Fit-content should operate on the current transformed
-schematic graph bounds so imported designs can be recovered after pan/zoom.
+component `pins`, not a second edge list. Canvas pan/zoom, Home, Fit All, Fit
+Selection, and marquee selection are GUI view/selection state only; they must
+not be serialized as board evidence. Fit commands should operate on current
+schematic graph bounds so imported designs can be recovered after pan/zoom and
+selected components/nets can become the viewport focus.
 Single-node and multi-node drag/alignment persistence must
 invert the viewport transform before writing `board.schematic.node_positions`.
 If snap is enabled, the snapped logical schematic coordinates are written to
