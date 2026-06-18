@@ -74,6 +74,19 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn pick_analog_model_file_path(&mut self) {
+        if let Some(path) = pick_file_dialog(
+            "Open SPICE Model Or Include",
+            &self.analog_model_path,
+            &[(
+                "SPICE model/include",
+                &["lib", "sub", "mod", "cir", "sp", "spice"],
+            )],
+        ) {
+            self.analog_model_path = path_for_project_yaml(path, &self.project_path);
+        }
+    }
+
     pub(super) fn pick_import_spice_output_path(&mut self) {
         if let Some(path) = save_file_dialog(
             "Save Imported SPICE Project",
@@ -179,9 +192,28 @@ fn path_to_string(path: PathBuf) -> String {
     path.to_string_lossy().into_owned()
 }
 
+fn path_for_project_yaml(path: PathBuf, project_path: &str) -> String {
+    let project_dir = Path::new(project_path.trim())
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let Ok(canonical_project_dir) = project_dir.canonicalize() else {
+        return path_to_string(path);
+    };
+    let Ok(canonical_path) = path.canonicalize() else {
+        return path_to_string(path);
+    };
+    canonical_path
+        .strip_prefix(&canonical_project_dir)
+        .map(Path::to_path_buf)
+        .map(path_to_string)
+        .unwrap_or_else(|_| path_to_string(canonical_path))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{directory_for_dialog, file_name_for_dialog};
+    use super::{directory_for_dialog, file_name_for_dialog, path_for_project_yaml};
+    use std::fs;
     use std::path::{Path, PathBuf};
 
     #[test]
@@ -200,5 +232,21 @@ mod tests {
             Some("project.yaml")
         );
         assert_eq!(file_name_for_dialog(""), None);
+    }
+
+    #[test]
+    fn project_model_paths_are_relative_when_possible() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("project.yaml");
+        let model_dir = dir.path().join("models");
+        let model = model_dir.join("vendor.lib");
+        fs::create_dir_all(&model_dir).unwrap();
+        fs::write(&project, "").unwrap();
+        fs::write(&model, "").unwrap();
+
+        assert_eq!(
+            path_for_project_yaml(model, project.to_str().unwrap()),
+            "models/vendor.lib"
+        );
     }
 }

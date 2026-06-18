@@ -6,6 +6,11 @@ use super::analog::{
     append_analog_assertion, append_analog_transient_scenario, remove_analog_assertion,
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
+use super::analog_models::{
+    AnalogModelFileDraft, AnalogModelFileRemoveDraft, AnalogModelFileScenario,
+    analog_model_file_scenarios, append_analog_model_file, model_file_sha256,
+    remove_analog_model_file,
+};
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::SketchProbe;
 use crate::reports::ValidationReport;
@@ -19,6 +24,8 @@ impl CircuitCiApp {
         ui.separator();
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+            self.analog_model_file_manager(ui);
             ui.separator();
             self.selected_probe_assertions_panel(ui);
             ui.separator();
@@ -109,6 +116,107 @@ impl CircuitCiApp {
                 });
             if ui.button("Add Analog Scenario").clicked() {
                 self.apply_add_analog_scenario();
+            }
+        });
+    }
+
+    fn analog_model_file_manager(&mut self, ui: &mut egui::Ui) {
+        let scenarios = match analog_model_file_scenarios(&self.project_yaml) {
+            Ok(scenarios) => scenarios,
+            Err(error) => {
+                ui.collapsing("SPICE Model Files", |ui| {
+                    ui.label(format!("Analog model files unavailable: {error}"));
+                });
+                return;
+            }
+        };
+        ui.collapsing("SPICE Model Files", |ui| {
+            if scenarios.is_empty() {
+                ui.label("No analog scenario is available. Add one first.");
+                return;
+            }
+            initialize_model_file_scenario_default(&scenarios, &mut self.analog_model_scenario);
+            egui::Grid::new("analog_model_file_editor")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Scenario");
+                    analog_model_scenario_combo(
+                        ui,
+                        "analog_model_file_scenario",
+                        &mut self.analog_model_scenario,
+                        &scenarios,
+                    );
+                    ui.end_row();
+
+                    ui.label("Model/include path");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.analog_model_path);
+                        if ui.button("Browse").clicked() {
+                            self.pick_analog_model_file_path();
+                            self.refresh_analog_model_file_sha();
+                        }
+                    });
+                    ui.end_row();
+
+                    ui.label("SHA-256");
+                    ui.horizontal(|ui| {
+                        ui.monospace(if self.analog_model_sha256.is_empty() {
+                            "not computed"
+                        } else {
+                            self.analog_model_sha256.as_str()
+                        });
+                        if ui.button("Compute").clicked() {
+                            self.refresh_analog_model_file_sha();
+                        }
+                    });
+                    ui.end_row();
+                });
+            ui.horizontal(|ui| {
+                if ui.button("Add Model File").clicked() {
+                    self.apply_add_analog_model_file();
+                }
+                if ui.button("Clear Fields").clicked() {
+                    self.analog_model_path.clear();
+                    self.analog_model_sha256.clear();
+                }
+            });
+
+            let selected = scenarios
+                .iter()
+                .find(|scenario| scenario.name == self.analog_model_scenario)
+                .or_else(|| scenarios.first());
+            if let Some(scenario) = selected {
+                ui.separator();
+                ui.strong(format!("{} model files", scenario.name));
+                if scenario.model_files.is_empty() {
+                    ui.label("No model/include files declared for this scenario.");
+                } else {
+                    egui::Grid::new("analog_model_file_list")
+                        .num_columns(3)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.strong("Path");
+                            ui.strong("SHA-256");
+                            ui.strong("Actions");
+                            ui.end_row();
+                            for model_file in &scenario.model_files {
+                                ui.monospace(&model_file.path);
+                                if let Some(sha256) = &model_file.sha256 {
+                                    ui.monospace(sha256);
+                                } else {
+                                    ui.label("missing");
+                                }
+                                if ui.button("Remove").clicked() {
+                                    self.apply_remove_analog_model_file(
+                                        &scenario.name,
+                                        &model_file.path,
+                                    );
+                                }
+                                ui.end_row();
+                            }
+                        });
+                }
             }
         });
     }
@@ -372,6 +480,59 @@ impl CircuitCiApp {
                 &format!(
                     "Analog assertion {} added.",
                     self.analog_assertion_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn refresh_analog_model_file_sha(&mut self) {
+        match model_file_sha256(Path::new(&self.project_path), &self.analog_model_path) {
+            Ok(sha256) => {
+                self.analog_model_sha256 = sha256;
+                self.status = "SPICE model file hash computed.".to_string();
+                self.push_diagnostic("Computed SHA-256 for selected SPICE model file.");
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_model_file(&mut self) {
+        if self.analog_model_sha256.trim().is_empty() {
+            self.refresh_analog_model_file_sha();
+            if self.analog_model_sha256.trim().is_empty() {
+                return;
+            }
+        }
+        let draft = AnalogModelFileDraft {
+            scenario_name: self.analog_model_scenario.clone(),
+            path: self.analog_model_path.clone(),
+            sha256: self.analog_model_sha256.clone(),
+        };
+        match append_analog_model_file(&self.project_yaml, Path::new(&self.project_path), &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Analog model file {} added to scenario {}.",
+                    draft.path.trim(),
+                    draft.scenario_name.trim()
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_remove_analog_model_file(&mut self, scenario_name: &str, path: &str) {
+        let draft = AnalogModelFileRemoveDraft {
+            scenario_name: scenario_name.to_string(),
+            path: path.to_string(),
+        };
+        match remove_analog_model_file(&self.project_yaml, &draft) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Analog model file {} removed from scenario {}.",
+                    draft.path, draft.scenario_name
                 ),
             ),
             Err(error) => self.record_error(error),
@@ -970,6 +1131,20 @@ fn initialize_analog_assertion_defaults(
     }
 }
 
+fn initialize_model_file_scenario_default(
+    scenarios: &[AnalogModelFileScenario],
+    scenario_name: &mut String,
+) {
+    let scenario_missing = !scenarios
+        .iter()
+        .any(|scenario| scenario.name == *scenario_name);
+    if (scenario_name.is_empty() || scenario_missing)
+        && let Some(scenario) = scenarios.first()
+    {
+        *scenario_name = scenario.name.clone();
+    }
+}
+
 fn analog_scenario_combo(
     ui: &mut egui::Ui,
     id: &str,
@@ -984,6 +1159,25 @@ fn analog_scenario_combo(
         })
         .show_ui(ui, |ui| {
             for scenario in choices {
+                ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
+            }
+        });
+}
+
+fn analog_model_scenario_combo(
+    ui: &mut egui::Ui,
+    id: &str,
+    selected: &mut String,
+    scenarios: &[AnalogModelFileScenario],
+) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(if selected.is_empty() {
+            "select scenario"
+        } else {
+            selected.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for scenario in scenarios {
                 ui.selectable_value(selected, scenario.name.clone(), &scenario.name);
             }
         });

@@ -100,6 +100,9 @@ seed editable Board IR pin bindings and generated per-pin nets.
 `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
 plotting, simulation-time scrub/playback controls, cursor measurement tools,
 and graph-hover/runtime activity extraction from loaded waveform artifacts.
+`src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
+selection, add, hash computation, and remove mutations for declared analog
+scenarios.
 `src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
 generation for generated-from-Board simulations. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
@@ -222,7 +225,8 @@ The supported desktop simulation path is:
 24. add sample or windowed min/max waveform assertions against declared probes,
 25. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-26. bind sourced component models,
+26. browse, hash, add, and remove SHA-backed SPICE model/include files for
+   declared analog scenarios,
 27. run KiCad/SPICE imports, scenario suggestions, declared validation, and
    `analog_transient` scenarios in background workers while the desktop shell
    remains responsive,

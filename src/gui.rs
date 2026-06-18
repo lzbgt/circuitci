@@ -7,6 +7,7 @@ use std::path::Path;
 mod analog;
 #[cfg(test)]
 mod analog_assertion_edit_tests;
+mod analog_models;
 mod file_dialogs;
 mod import_flow;
 mod jobs;
@@ -159,6 +160,9 @@ pub struct CircuitCiApp {
     analog_canvas_probe_name: String,
     analog_canvas_component_probe_name: String,
     analog_canvas_component_power_probe_name: String,
+    analog_model_scenario: String,
+    analog_model_path: String,
+    analog_model_sha256: String,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
     selected_sketch_items: BTreeSet<SketchSelection>,
@@ -251,6 +255,9 @@ impl Default for CircuitCiApp {
             analog_canvas_probe_name: String::new(),
             analog_canvas_component_probe_name: String::new(),
             analog_canvas_component_power_probe_name: String::new(),
+            analog_model_scenario: String::new(),
+            analog_model_path: String::new(),
+            analog_model_sha256: String::new(),
             project_snapshot: None,
             selected_sketch_item: None,
             selected_sketch_items: BTreeSet::new(),
