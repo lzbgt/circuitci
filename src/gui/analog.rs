@@ -58,6 +58,19 @@ pub(super) struct AnalogProbeAssertionsRemoveDraft {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct AnalogAssertionRemoveDraft {
+    pub(super) scenario_name: String,
+    pub(super) assertion_name: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogAssertionReplaceDraft {
+    pub(super) scenario_name: String,
+    pub(super) original_assertion_name: String,
+    pub(super) replacement: AnalogAssertionDraft,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioChoice {
     pub(super) name: String,
     pub(super) stop_time_us: f64,
@@ -94,6 +107,7 @@ pub(super) struct AnalogProbeAssertionSummary {
     pub(super) relation: String,
     pub(super) threshold: String,
     pub(super) timing: String,
+    pub(super) draft: AnalogAssertionDraft,
     pub(super) status: AnalogAssertionUiStatus,
     pub(super) failure_message: Option<String>,
 }
@@ -218,6 +232,18 @@ pub(super) fn analog_probe_assertion_summaries(
                 relation: relation_label(&assertion.relation).to_string(),
                 threshold: assertion_threshold_label(assertion, &probe.quantity),
                 timing: assertion_timing_label(assertion),
+                draft: AnalogAssertionDraft {
+                    scenario_name: scenario_name.to_string(),
+                    assertion_name: assertion.name.clone(),
+                    probe_name: assertion.probe.clone(),
+                    aggregation: aggregation_label(&assertion.aggregation).to_string(),
+                    relation: relation_label(&assertion.relation).to_string(),
+                    threshold: assertion_threshold_value(assertion, &probe.quantity)
+                        .unwrap_or_default(),
+                    at_us: assertion.at_us.unwrap_or_default(),
+                    start_us: assertion.start_us.unwrap_or_default(),
+                    end_us: assertion.end_us.unwrap_or_default(),
+                },
                 status,
                 failure_message: failure.map(|finding| finding.message.clone()),
             }
@@ -562,6 +588,144 @@ pub(super) fn remove_analog_assertions_for_probe(
     Ok(updated)
 }
 
+pub(super) fn remove_analog_assertion(
+    text: &str,
+    draft: &AnalogAssertionRemoveDraft,
+) -> Result<String> {
+    validate_assertion_remove_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if !analog
+        .assertions
+        .iter()
+        .any(|assertion| assertion.name == draft.assertion_name)
+    {
+        anyhow::bail!(
+            "Analog assertion {} was not found in scenario {}.",
+            draft.assertion_name,
+            scenario.name
+        );
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let assertions = ensure_child_sequence_mut(analog_mapping, "assertions", "analog assertions")?;
+    let before_assertion_count = assertions.len();
+    assertions.retain(|assertion| {
+        assertion
+            .as_mapping()
+            .and_then(|mapping| mapping.get(key("name")))
+            .and_then(serde_yaml_ng::Value::as_str)
+            != Some(draft.assertion_name.as_str())
+    });
+    if assertions.len() == before_assertion_count {
+        anyhow::bail!(
+            "Analog assertion {} was not found in scenario {}.",
+            draft.assertion_name,
+            draft.scenario_name
+        );
+    }
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog assertion YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
+pub(super) fn replace_analog_assertion(
+    text: &str,
+    draft: &AnalogAssertionReplaceDraft,
+) -> Result<String> {
+    validate_assertion_replace_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if !analog
+        .assertions
+        .iter()
+        .any(|assertion| assertion.name == draft.original_assertion_name)
+    {
+        anyhow::bail!(
+            "Analog assertion {} was not found in scenario {}.",
+            draft.original_assertion_name,
+            scenario.name
+        );
+    }
+    if draft.original_assertion_name != draft.replacement.assertion_name
+        && analog
+            .assertions
+            .iter()
+            .any(|assertion| assertion.name == draft.replacement.assertion_name)
+    {
+        anyhow::bail!(
+            "Analog assertion {} already exists in scenario {}.",
+            draft.replacement.assertion_name,
+            scenario.name
+        );
+    }
+    let probe = analog
+        .probes
+        .iter()
+        .find(|probe| probe.name == draft.replacement.probe_name)
+        .with_context(|| {
+            format!(
+                "Probe {} was not found in scenario {}.",
+                draft.replacement.probe_name, scenario.name
+            )
+        })?;
+    validate_assertion_timing(&draft.replacement, analog.analysis.stop_time_us)?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let assertions = ensure_child_sequence_mut(analog_mapping, "assertions", "analog assertions")?;
+    let mut replaced = false;
+    for assertion in assertions.iter_mut() {
+        let is_target = assertion
+            .as_mapping()
+            .and_then(|mapping| mapping.get(key("name")))
+            .and_then(serde_yaml_ng::Value::as_str)
+            == Some(draft.original_assertion_name.as_str());
+        if is_target {
+            *assertion = assertion_value(&draft.replacement, &probe.quantity)?;
+            replaced = true;
+            break;
+        }
+    }
+    if !replaced {
+        anyhow::bail!(
+            "Analog assertion {} was not found in scenario {}.",
+            draft.original_assertion_name,
+            draft.scenario_name
+        );
+    }
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog assertion YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 pub(super) fn unique_analog_assertion_name(
     text: &str,
     scenario_name: &str,
@@ -673,6 +837,22 @@ fn validate_probe_remove_draft(draft: &AnalogProbeRemoveDraft) -> Result<()> {
 fn validate_probe_assertions_remove_draft(draft: &AnalogProbeAssertionsRemoveDraft) -> Result<()> {
     validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
+    Ok(())
+}
+
+fn validate_assertion_remove_draft(draft: &AnalogAssertionRemoveDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.assertion_name, "assertion name")?;
+    Ok(())
+}
+
+fn validate_assertion_replace_draft(draft: &AnalogAssertionReplaceDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.original_assertion_name, "assertion name")?;
+    if draft.replacement.scenario_name != draft.scenario_name {
+        anyhow::bail!("Replacement assertion scenario must match the edited scenario.");
+    }
+    validate_assertion_draft(&draft.replacement)?;
     Ok(())
 }
 
@@ -966,6 +1146,17 @@ fn assertion_threshold_label(
             .threshold_w
             .map(|value| format!("{value:.6} W"))
             .unwrap_or_else(|| "missing power threshold".to_string()),
+    }
+}
+
+fn assertion_threshold_value(
+    assertion: &crate::board_ir::AnalogAssertion,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> Option<f64> {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => assertion.threshold_v,
+        crate::board_ir::AnalogQuantity::Current => assertion.threshold_a,
+        crate::board_ir::AnalogQuantity::Power => assertion.threshold_w,
     }
 }
 

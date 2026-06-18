@@ -129,8 +129,10 @@ expressions rather than relying on hidden waveform math.
 It must append or remove normal Board IR analog probes and assertions rather
 than creating a GUI-only probe list; selected-probe assertion summaries must be
 recomputed from Board IR plus the latest report, assertion clearing for a probe
-must leave the probe itself intact, and probe removal must drop dependent
-assertions so analog scenarios do not retain dangling assertion references.
+must leave the probe itself intact, row-level assertion edits/deletes must
+replace or remove exactly one named Board IR assertion after revalidation, and
+probe removal must drop dependent assertions so analog scenarios do not retain
+dangling assertion references.
 `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML

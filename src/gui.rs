@@ -5,6 +5,8 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 mod analog;
+#[cfg(test)]
+mod analog_assertion_edit_tests;
 mod import_flow;
 mod library;
 mod project;
@@ -136,6 +138,7 @@ pub struct CircuitCiApp {
     analog_max_step_us: f64,
     analog_assertion_scenario: String,
     analog_assertion_name: String,
+    analog_assertion_edit_original: String,
     analog_assertion_probe: String,
     analog_assertion_aggregation: String,
     analog_assertion_relation: String,
@@ -224,6 +227,7 @@ impl Default for CircuitCiApp {
             analog_max_step_us: 1.0,
             analog_assertion_scenario: String::new(),
             analog_assertion_name: "probe_above_min".to_string(),
+            analog_assertion_edit_original: String::new(),
             analog_assertion_probe: String::new(),
             analog_assertion_aggregation: "sample".to_string(),
             analog_assertion_relation: "above".to_string(),

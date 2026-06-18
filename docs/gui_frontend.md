@@ -128,8 +128,9 @@ form:
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, add selected-net voltage probes to existing
   analog scenarios, inspect a selected probe badge's assertion rows with
-  threshold/timing/status/failure details, add or clear assertions for that
-  selected probe, add sample/min/max probe assertions, edit file-backed SPICE
+  threshold/timing/status/failure details, edit or delete one assertion without
+  clearing sibling checks on that selected probe, add or clear assertions for
+  that selected probe, add sample/min/max probe assertions, edit file-backed SPICE
   decks declared by analog scenarios, then runs validation through the engine,
   plots emitted CSV waveforms, provides simulation-time scrub/playback, A/B
   cursor measurements with min/max and delta values, and lists generated SPICE
@@ -199,8 +200,9 @@ The supported desktop simulation path is:
 28. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
-   current assertion-editor settings with `A`, clear assertions for the probe
-   with `X`, or remove a hovered probe badge with Delete/Backspace,
+   current assertion-editor settings with `A`, edit or delete one assertion
+   row from the selected-probe panel, clear assertions for the probe with `X`,
+   or remove a hovered probe badge with Delete/Backspace,
 29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
 30. edit the project/model evidence and rerun.
@@ -255,3 +257,6 @@ analog assertions that reference it, then re-parses the edited Board IR before
 updating the canvas. The Simulation stage mirrors the selected badge context in
 a compact assertion table that shows each assertion name, aggregation, relation,
 threshold, timing, latest status, and matching failure message when one exists.
+Each row can be loaded into the structured assertion editor for name,
+threshold, aggregation, relation, or timing changes, or deleted without removing
+the probe or sibling assertions.

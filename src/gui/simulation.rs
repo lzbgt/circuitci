@@ -1,9 +1,10 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogProbeAssertionsRemoveDraft,
-    AnalogScenarioChoice, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    analog_scenario_choices, append_analog_assertion, append_analog_transient_scenario,
-    remove_analog_assertions_for_probe, unique_analog_assertion_name,
+    AnalogAssertionDraft, AnalogAssertionRemoveDraft, AnalogAssertionReplaceDraft,
+    AnalogAssertionUiStatus, AnalogProbeAssertionsRemoveDraft, AnalogScenarioChoice,
+    AnalogScenarioDraft, analog_probe_assertion_summaries, analog_scenario_choices,
+    append_analog_assertion, append_analog_transient_scenario, remove_analog_assertion,
+    remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use crate::reports::ValidationReport;
@@ -229,8 +230,23 @@ impl CircuitCiApp {
                         ui.end_row();
                     }
                 });
-            if ui.button("Add Analog Assertion").clicked() {
-                self.apply_add_analog_assertion();
+            if self.analog_assertion_edit_original.trim().is_empty() {
+                if ui.button("Add Analog Assertion").clicked() {
+                    self.apply_add_analog_assertion();
+                }
+            } else {
+                ui.horizontal(|ui| {
+                    ui.label(format!(
+                        "Editing {}",
+                        self.analog_assertion_edit_original.trim()
+                    ));
+                    if ui.button("Save Assertion").clicked() {
+                        self.apply_replace_analog_assertion();
+                    }
+                    if ui.button("Cancel Edit").clicked() {
+                        self.analog_assertion_edit_original.clear();
+                    }
+                });
             }
         });
     }
@@ -276,7 +292,7 @@ impl CircuitCiApp {
                 return;
             }
             egui::Grid::new("selected_probe_assertions")
-                .num_columns(5)
+                .num_columns(6)
                 .striped(true)
                 .show(ui, |ui| {
                     ui.strong("Status");
@@ -284,6 +300,7 @@ impl CircuitCiApp {
                     ui.strong("Check");
                     ui.strong("Timing");
                     ui.strong("Failure");
+                    ui.strong("Actions");
                     ui.end_row();
                     for row in rows {
                         ui.colored_label(assertion_status_color(row.status), row.status.label());
@@ -298,6 +315,17 @@ impl CircuitCiApp {
                         } else {
                             ui.label("");
                         }
+                        ui.horizontal(|ui| {
+                            if ui.button("Edit").clicked() {
+                                self.load_analog_assertion_editor(&row.draft, &row.name);
+                            }
+                            if ui.button("Delete").clicked() {
+                                self.apply_remove_analog_assertion(
+                                    &row.draft.scenario_name,
+                                    &row.name,
+                                );
+                            }
+                        });
                         ui.end_row();
                     }
                 });
@@ -349,6 +377,73 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_replace_analog_assertion(&mut self) {
+        let original_assertion_name = self.analog_assertion_edit_original.trim().to_string();
+        let draft = AnalogAssertionReplaceDraft {
+            scenario_name: self.analog_assertion_scenario.clone(),
+            original_assertion_name: original_assertion_name.clone(),
+            replacement: AnalogAssertionDraft {
+                scenario_name: self.analog_assertion_scenario.clone(),
+                assertion_name: self.analog_assertion_name.clone(),
+                probe_name: self.analog_assertion_probe.clone(),
+                aggregation: self.analog_assertion_aggregation.clone(),
+                relation: self.analog_assertion_relation.clone(),
+                threshold: self.analog_assertion_threshold,
+                at_us: self.analog_assertion_at_us,
+                start_us: self.analog_assertion_start_us,
+                end_us: self.analog_assertion_end_us,
+            },
+        };
+        match replace_analog_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_assertion_edit_original.clear();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Analog assertion {original_assertion_name} updated."),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn load_analog_assertion_editor(&mut self, draft: &AnalogAssertionDraft, original_name: &str) {
+        self.analog_assertion_scenario = draft.scenario_name.clone();
+        self.analog_assertion_name = draft.assertion_name.clone();
+        self.analog_assertion_edit_original = original_name.to_string();
+        self.analog_assertion_probe = draft.probe_name.clone();
+        self.analog_assertion_aggregation = draft.aggregation.clone();
+        self.analog_assertion_relation = draft.relation.clone();
+        self.analog_assertion_threshold = draft.threshold;
+        self.analog_assertion_at_us = draft.at_us;
+        self.analog_assertion_start_us = draft.start_us;
+        self.analog_assertion_end_us = draft.end_us;
+        self.status = format!("Editing analog assertion {original_name}.");
+    }
+
+    fn apply_remove_analog_assertion(&mut self, scenario_name: &str, assertion_name: &str) {
+        let draft = AnalogAssertionRemoveDraft {
+            scenario_name: scenario_name.to_string(),
+            assertion_name: assertion_name.to_string(),
+        };
+        match remove_analog_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                if self.analog_assertion_scenario == draft.scenario_name
+                    && self.analog_assertion_edit_original == draft.assertion_name
+                {
+                    self.analog_assertion_edit_original.clear();
+                }
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Removed assertion {} in scenario {}.",
+                        draft.assertion_name, draft.scenario_name
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     pub(super) fn apply_add_canvas_probe_assertion(
         &mut self,
         scenario_name: &str,
@@ -388,6 +483,7 @@ impl CircuitCiApp {
                 self.analog_assertion_scenario = scenario_name.to_string();
                 self.analog_assertion_probe = probe_name.to_string();
                 self.analog_assertion_name = assertion_name.clone();
+                self.analog_assertion_edit_original.clear();
                 self.apply_edited_project_yaml(
                     updated,
                     &format!("Analog assertion {assertion_name} added from canvas probe badge."),
@@ -412,6 +508,7 @@ impl CircuitCiApp {
                     && self.analog_assertion_probe == draft.probe_name
                 {
                     self.analog_assertion_name.clear();
+                    self.analog_assertion_edit_original.clear();
                 }
                 self.apply_edited_project_yaml(
                     updated,
