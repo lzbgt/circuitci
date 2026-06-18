@@ -78,6 +78,7 @@ scenarios:
 | component spice | optional primitive evidence | `spice.primitive` supports `resistor`/`value_ohm`, `capacitor`/`value_f`, `inductor`/`value_h`, voltage-source primitives, and current-source primitives for analog or static support-network checks. |
 | component source | optional metadata map | Importers preserve source traceability such as KiCad pin electrical types, KiCad `format`/`instances` provenance, or JLC/EasyEDA BOM/CPL assembly fields. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
+| schematic GUI metadata | optional `board.schematic` map | Editor-only graph positions, symbol styles, and schematic wire display waypoints. These fields do not define electrical connectivity or PCB layout evidence. |
 | manufacturing | optional board map | Board-level fabrication or assembly metadata that is true for the whole board, such as stencil thickness from an order record. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |
 | layout footprints | optional component map | Imported footprint drawing evidence for body/courtyard-aware layout checks. |
@@ -95,6 +96,17 @@ scenarios:
 
 Behavioral rules use declared `powered` states. Physical voltage/current
 waveforms require an `analog_transient` scenario and a SPICE-class backend.
+
+## Schematic GUI Metadata
+
+Desktop schematic editing may persist display metadata under `board.schematic`.
+`node_positions` stores component/net graph positions, `node_styles` stores
+schematic-only symbol orientation and pin-side preferences, and `wire_routes`
+stores optional display waypoints keyed by `component.pin->net`. A
+`wire_routes` entry changes how the Sketch canvas draws that one pin-to-net
+edge, but the electrical connection remains the component pin's net binding in
+`board.components`; it is not a PCB trace, route, bus, or second connectivity
+model.
 
 ## Manufacturing Metadata
 

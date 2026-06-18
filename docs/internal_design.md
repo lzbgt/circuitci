@@ -65,13 +65,14 @@ owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout helpers, bounded full-list logical
 layout for pannable imported designs, schematic grid/snap helpers, orthogonal
-wire geometry, wire hit-testing, shared sketch YAML helpers, and model-port
-default pin/net seeding for library-backed component insertion.
+wire geometry, schematic wire route waypoint metadata, wire hit-testing,
+shared sketch YAML helpers, and model-port default pin/net seeding for
+library-backed component insertion.
 `src/gui/sketch_duplicate.rs` owns selected-component duplication YAML
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
-highlight drawing, hover
+highlight drawing, direct wire-route drag editing, hover
 tooltips, context menus, and runtime tint display. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
@@ -149,8 +150,13 @@ If snap is enabled, the snapped logical schematic coordinates are written to
 `board.schematic.node_positions`; grid visibility and grid spacing remain GUI
 editor state. Orthogonal wire routing is display-only and must render from
 component pin bindings and net membership rather than persisting a parallel edge
-list. Wire hit-testing may select the underlying Board IR net or connect an
-active source pin to that net, but it must not persist a separate wire object.
+list. A custom schematic route may persist display-only waypoints under
+`board.schematic.wire_routes` keyed by `component.pin->net`, but that metadata
+may only shape the rendered pin-to-net edge. It must not create, remove, or
+retarget electrical connectivity, and it must not be treated as PCB copper
+route evidence. Wire hit-testing may select the underlying Board IR net,
+connect an active source pin to that net, or drag a display waypoint for the
+specific rendered edge, but it must not persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
 Rename actions must rewrite explicit Board IR IDs rather than introducing a
@@ -319,8 +325,10 @@ enrich these evidence families:
 - schematic GUI evidence: `board.schematic.node_positions`, which stores
   component/net graph positions for editor usability, and
   `board.schematic.node_styles`, which stores schematic-only symbol rotation,
-  mirror, and pin-side preferences. Both are intentionally separate from
-  physical `board.layout.placements`;
+  mirror, and pin-side preferences, and `board.schematic.wire_routes`, which
+  stores display-only pin-to-net route waypoints. These are intentionally
+  separate from physical `board.layout.placements` and
+  `board.layout.routes`;
 - board-level manufacturing facts: `board.manufacturing`, currently including
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and
   `min_slot_edge_clearance_mm`, plus optional paste area-ratio and paste-spacing

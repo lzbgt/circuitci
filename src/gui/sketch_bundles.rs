@@ -328,6 +328,7 @@ mod tests {
                 })
                 .collect(),
             probes: Vec::new(),
+            wire_routes: Default::default(),
         }
     }
 

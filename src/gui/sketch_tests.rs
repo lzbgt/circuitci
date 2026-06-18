@@ -3,11 +3,11 @@ use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
     edge_label_position, edit_schematic_component_style, edit_schematic_node_position,
-    edit_schematic_node_positions, hit_test_wire, layout_sketch_graph,
+    edit_schematic_node_positions, edit_schematic_wire_route, hit_test_wire, layout_sketch_graph,
     layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
-    remove_component, remove_component_pin, remove_net, sketch_graph_bounds,
-    snap_screen_point_to_grid, validate_board_ir_yaml_text,
+    remove_component, remove_component_pin, remove_net, sketch_graph_bounds, sketch_wire_points,
+    snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -65,6 +65,10 @@ board:
       net:out: { x: 90.0, y: 120.0 }
     node_styles:
       component:R1: { rotation_deg: 90, mirrored: true, pin_side: left }
+    wire_routes:
+      R1.B->out:
+        points:
+          - { x: 140.0, y: 150.0 }
 scenarios:
   - name: tran
     type: analog_transient
@@ -566,6 +570,7 @@ fn layout_assigns_common_component_symbol_kinds() {
             position: None,
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
 
     let graph = layout_sketch_graph(
@@ -784,6 +789,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
             position: Some(SketchPosition { x: 310.0, y: 70.0 }),
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -848,6 +854,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
             },
         ],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let graph = layout_sketch_graph(
         eframe::egui::Rect::from_min_size(
@@ -902,6 +909,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
             position: Some(SketchPosition { x: 300.0, y: 30.0 }),
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph_viewport(
@@ -954,6 +962,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
             position: Some(SketchPosition { x: 360.0, y: 90.0 }),
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let graph = layout_sketch_graph(canvas, &snapshot);
@@ -1045,6 +1054,69 @@ fn sketch_graph_edges_carry_net_metadata_for_wire_inspection() {
 
     assert_eq!(hit.net_id, "net_a");
     assert_eq!(hit.source, "R1.A");
+}
+
+#[test]
+fn sketch_graph_edges_use_schematic_wire_routes_for_display() {
+    let yaml = "project:
+  name: routed_wire_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins: { A: net_a, B: gnd }
+  nets:
+    net_a: { kind: digital_or_analog }
+    gnd: { kind: ground }
+  schematic:
+    node_positions:
+      component:R1: { x: 10.0, y: 20.0 }
+      net:net_a: { x: 300.0, y: 100.0 }
+    wire_routes:
+      R1.A->net_a:
+        points:
+          - { x: 180.0, y: 140.0 }
+";
+    let snapshot = load_project_snapshot_from_yaml(yaml).unwrap();
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let graph = layout_sketch_graph(canvas, &snapshot);
+    let edge = graph
+        .edges
+        .iter()
+        .find(|edge| edge.net_id == "net_a" && edge.source == "R1.A")
+        .unwrap();
+    let points = sketch_wire_points(edge);
+
+    assert_eq!(edge.route, vec![egui::pos2(180.0, 140.0)]);
+    assert!(points.contains(&egui::pos2(180.0, 140.0)));
+    let hit = hit_test_wire(&graph, egui::pos2(180.0, 140.0)).unwrap();
+    assert_eq!(hit.source, "R1.A");
+}
+
+#[test]
+fn edit_schematic_wire_route_emits_valid_display_metadata() {
+    let edited =
+        edit_schematic_wire_route(editable_project_yaml(), "R1.A", "net_a", &[(128.0, 144.0)])
+            .unwrap();
+    validate_board_ir_yaml_text(&edited).unwrap();
+    assert!(edited.contains("wire_routes:"));
+    assert!(edited.contains("R1.A->net_a:"));
+
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    assert_eq!(
+        snapshot.wire_routes.get(&wire_route_key("R1.A", "net_a")),
+        Some(&vec![SketchPosition { x: 128.0, y: 144.0 }])
+    );
+}
+
+#[test]
+fn edit_schematic_wire_route_rejects_wrong_net() {
+    let error =
+        edit_schematic_wire_route(editable_project_yaml(), "R1.A", "gnd", &[(128.0, 144.0)])
+            .unwrap_err();
+
+    assert!(error.to_string().contains("not gnd"));
 }
 
 #[test]
@@ -1328,6 +1400,7 @@ fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
             position: None,
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 220.0));
 
@@ -1386,6 +1459,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
             position: Some(SketchPosition { x: 460.0, y: 240.0 }),
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp::default();
@@ -1445,6 +1519,7 @@ fn fit_selected_sketch_content_places_selection_inside_canvas() {
             position: Some(SketchPosition { x: 460.0, y: 280.0 }),
         }],
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp {
@@ -1478,6 +1553,7 @@ fn home_viewport_command_resets_zoom_and_pan() {
         components_detail: Vec::new(),
         nets_detail: Vec::new(),
         probes: Vec::new(),
+        wire_routes: Default::default(),
     };
     let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
     let mut app = CircuitCiApp {
@@ -1531,6 +1607,8 @@ fn rename_component_updates_board_schematic_and_generated_analog_refs() {
             .iter()
             .all(|item| item.id != "R1")
     );
+    assert!(snapshot.wire_routes.contains_key("R_SENSE.B->out"));
+    assert!(!snapshot.wire_routes.contains_key("R1.B->out"));
 }
 
 #[test]
@@ -1561,6 +1639,8 @@ fn rename_net_updates_pins_schematic_and_generated_analog_refs() {
     );
 
     let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    assert!(snapshot.wire_routes.contains_key("R1.B->sense_out"));
+    assert!(!snapshot.wire_routes.contains_key("R1.B->out"));
     assert!(snapshot.nets_detail.iter().any(|item| {
         item.id == "sense_out"
             && item

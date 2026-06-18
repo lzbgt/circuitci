@@ -92,6 +92,13 @@ impl Stage {
     }
 }
 
+#[derive(Debug, Clone)]
+struct SketchWireRouteDrag {
+    net_id: String,
+    source: String,
+    preview: egui::Pos2,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SketchGroupAction {
     Nudge(egui::Vec2),
@@ -222,6 +229,7 @@ pub struct CircuitCiApp {
     sketch_library_place_armed: bool,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
+    sketch_wire_route_drag: Option<SketchWireRouteDrag>,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -358,6 +366,7 @@ impl Default for CircuitCiApp {
             sketch_library_place_armed: false,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
+            sketch_wire_route_drag: None,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -1007,6 +1016,7 @@ board:
             }],
             nets_detail: Vec::new(),
             probes: Vec::new(),
+            wire_routes: Default::default(),
         };
 
         assert_eq!(
@@ -1053,6 +1063,7 @@ board:
                 position: None,
             }],
             probes: Vec::new(),
+            wire_routes: Default::default(),
         };
         let graph = layout_sketch_graph(
             egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0)),

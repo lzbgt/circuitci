@@ -353,6 +353,7 @@ mod tests {
                 target: SketchProbeTarget::Net("rail".to_string()),
                 assertion_names: Vec::new(),
             }],
+            wire_routes: Default::default(),
         }
     }
 

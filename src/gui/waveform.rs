@@ -1736,6 +1736,7 @@ mod tests {
                 },
             ],
             probes: Vec::new(),
+            wire_routes: Default::default(),
         }
     }
 }

@@ -24,6 +24,7 @@ pub(super) struct ProjectSnapshot {
     pub(super) components_detail: Vec<SketchComponent>,
     pub(super) nets_detail: Vec<SketchNet>,
     pub(super) probes: Vec<SketchProbe>,
+    pub(super) wire_routes: std::collections::BTreeMap<String, Vec<SketchPosition>>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,7 +55,7 @@ pub(super) struct SketchNet {
     pub(super) position: Option<SketchPosition>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct SketchPosition {
     pub(super) x: f64,
     pub(super) y: f64,
@@ -141,6 +142,7 @@ pub(super) struct SketchEdge {
     pub(super) source: String,
     pub(super) start: egui::Pos2,
     pub(super) end: egui::Pos2,
+    pub(super) route: Vec<egui::Pos2>,
 }
 
 pub(super) fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
@@ -157,6 +159,7 @@ pub(super) fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnaps
 fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
     let positions = &project.board.schematic.node_positions;
     let styles = &project.board.schematic.node_styles;
+    let wire_routes = &project.board.schematic.wire_routes;
     let probes = derive_project_probes(&project);
     let components_detail: Vec<_> = project
         .board
@@ -228,6 +231,22 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
         components_detail,
         nets_detail,
         probes,
+        wire_routes: wire_routes
+            .iter()
+            .map(|(key, route)| {
+                (
+                    key.clone(),
+                    route
+                        .points
+                        .iter()
+                        .map(|point| SketchPosition {
+                            x: point.x,
+                            y: point.y,
+                        })
+                        .collect(),
+                )
+            })
+            .collect(),
     }
 }
 
@@ -347,6 +366,74 @@ pub(super) fn edit_schematic_node_positions(
                 serde_yaml_ng::Value::Mapping(position),
             );
         }
+    }
+    encode_edited_project_yaml(yaml)
+}
+
+pub(super) fn edit_schematic_wire_route(
+    text: &str,
+    source: &str,
+    net_id: &str,
+    points: &[(f64, f64)],
+) -> Result<String> {
+    let (component_id, pin_id) = parse_wire_source(source)?;
+    let net_id = validated_graph_id(net_id, "net")?;
+    if points.is_empty() {
+        anyhow::bail!("At least one schematic wire route point is required.");
+    }
+    for (x, y) in points {
+        if !x.is_finite() || !y.is_finite() {
+            anyhow::bail!("Schematic wire route points must be finite.");
+        }
+    }
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.nets.contains_key(net_id) {
+        anyhow::bail!("Board IR net {net_id} was not found.");
+    }
+    let pin_net = component_pin_net(&project, component_id, pin_id)?
+        .with_context(|| format!("Board IR pin {source} is not connected to a net."))?;
+    if pin_net != net_id {
+        anyhow::bail!("Board IR pin {source} is connected to {pin_net}, not {net_id}.");
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let board = yaml
+            .as_mapping_mut()
+            .context("Board IR project must be a YAML object.")?
+            .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+            .context("Board IR project is missing board.")?
+            .as_mapping_mut()
+            .context("Board IR field board must be an object.")?;
+        let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
+        let routes = ensure_child_mapping_mut(schematic, "wire_routes", "schematic wire routes")?;
+        let mut route = serde_yaml_ng::Mapping::new();
+        route.insert(
+            serde_yaml_ng::Value::String("points".to_string()),
+            serde_yaml_ng::Value::Sequence(
+                points
+                    .iter()
+                    .map(|(x, y)| -> Result<serde_yaml_ng::Value> {
+                        let mut point = serde_yaml_ng::Mapping::new();
+                        point.insert(
+                            serde_yaml_ng::Value::String("x".to_string()),
+                            serde_yaml_ng::to_value(*x)?,
+                        );
+                        point.insert(
+                            serde_yaml_ng::Value::String("y".to_string()),
+                            serde_yaml_ng::to_value(*y)?,
+                        );
+                        Ok(serde_yaml_ng::Value::Mapping(point))
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+        );
+        routes.insert(
+            serde_yaml_ng::Value::String(wire_route_key(source, net_id)),
+            serde_yaml_ng::Value::Mapping(route),
+        );
     }
     encode_edited_project_yaml(yaml)
 }
@@ -862,6 +949,21 @@ fn component_pin_net(
     Ok(component.pins.get(pin_id).cloned())
 }
 
+fn parse_wire_source(source: &str) -> Result<(&str, &str)> {
+    let (component_id, pin_id) = source
+        .trim()
+        .split_once('.')
+        .with_context(|| format!("Schematic wire source {source} must be component.pin."))?;
+    Ok((
+        validated_graph_id(component_id, "source component")?,
+        validated_graph_id(pin_id, "source pin")?,
+    ))
+}
+
+pub(super) fn wire_route_key(source: &str, net_id: &str) -> String {
+    format!("{}->{}", source.trim(), net_id.trim())
+}
+
 fn insert_generated_wire_net(
     yaml: &mut serde_yaml_ng::Value,
     component_id: &str,
@@ -1058,6 +1160,24 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                     source: format!("{}.{}", component.id, pin.pin),
                     start,
                     end,
+                    route: snapshot
+                        .wire_routes
+                        .get(&wire_route_key(
+                            &format!("{}.{}", component.id, pin.pin),
+                            &pin.net,
+                        ))
+                        .map(|points| {
+                            points
+                                .iter()
+                                .map(|point| {
+                                    egui::pos2(
+                                        rect.left() + point.x as f32,
+                                        rect.top() + point.y as f32,
+                                    )
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default(),
                 });
                 if edges.len() >= MAX_SKETCH_EDGES {
                     break;
@@ -1134,7 +1254,10 @@ pub(super) fn sketch_graph_bounds(graph: &SketchGraph) -> Option<egui::Rect> {
         ));
     }
     for edge in &graph.edges {
-        include_rect(egui::Rect::from_two_pos(edge.start, edge.end));
+        let points = sketch_wire_points(edge);
+        for segment in points.windows(2) {
+            include_rect(egui::Rect::from_two_pos(segment[0], segment[1]));
+        }
     }
     for badge in &graph.probe_badges {
         include_rect(badge.rect);
@@ -1204,6 +1327,22 @@ pub(super) fn snap_screen_point_to_grid(
     transform_viewport_pos(snapped, canvas, viewport)
 }
 
+pub(super) fn persisted_wire_route_point_from_screen_with_snap(
+    canvas: egui::Rect,
+    screen_position: egui::Pos2,
+    viewport: SketchViewport,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> (f64, f64) {
+    let snapped =
+        snap_screen_point_to_grid(canvas, screen_position, viewport, snap_enabled, grid_step);
+    let logical = inverse_viewport_pos(snapped, canvas, viewport);
+    (
+        (logical.x - canvas.left()) as f64,
+        (logical.y - canvas.top()) as f64,
+    )
+}
+
 pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<egui::Pos2> {
     if (start.x - end.x).abs() <= 0.5 || (start.y - end.y).abs() <= 0.5 {
         return vec![start, end];
@@ -1217,8 +1356,19 @@ pub(super) fn orthogonal_wire_points(start: egui::Pos2, end: egui::Pos2) -> Vec<
     ]
 }
 
+pub(super) fn sketch_wire_points(edge: &SketchEdge) -> Vec<egui::Pos2> {
+    if edge.route.is_empty() {
+        return orthogonal_wire_points(edge.start, edge.end);
+    }
+    let mut points = Vec::with_capacity(edge.route.len() + 2);
+    points.push(edge.start);
+    points.extend(edge.route.iter().copied());
+    points.push(edge.end);
+    points
+}
+
 pub(super) fn edge_label_position(edge: &SketchEdge) -> egui::Pos2 {
-    let points = orthogonal_wire_points(edge.start, edge.end);
+    let points = sketch_wire_points(edge);
     let total = polyline_length(&points);
     if total <= f32::EPSILON {
         return edge.start;
@@ -1246,8 +1396,7 @@ pub(super) fn hit_test_wire(graph: &SketchGraph, position: egui::Pos2) -> Option
         .edges
         .iter()
         .filter_map(|edge| {
-            let distance =
-                distance_to_polyline(position, &orthogonal_wire_points(edge.start, edge.end));
+            let distance = distance_to_polyline(position, &sketch_wire_points(edge));
             (distance <= 6.0).then_some((distance, edge))
         })
         .min_by(|(left, _), (right, _)| left.total_cmp(right))
@@ -1331,6 +1480,9 @@ fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport:
     for edge in &mut graph.edges {
         edge.start = transform_viewport_pos(edge.start, canvas, viewport);
         edge.end = transform_viewport_pos(edge.end, canvas, viewport);
+        for point in &mut edge.route {
+            *point = transform_viewport_pos(*point, canvas, viewport);
+        }
     }
     for badge in &mut graph.probe_badges {
         badge.rect = transform_viewport_rect(badge.rect, canvas, viewport);

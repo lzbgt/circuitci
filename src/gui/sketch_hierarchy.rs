@@ -724,6 +724,7 @@ mod tests {
                 },
             ],
             probes: Vec::new(),
+            wire_routes: Default::default(),
         }
     }
 
@@ -768,12 +769,14 @@ mod tests {
             source: "analog_frontend__R1.A".to_string(),
             start: egui::pos2(0.0, 0.0),
             end: egui::pos2(1.0, 1.0),
+            route: Vec::new(),
         };
         let unrelated_edge = SketchEdge {
             net_id: "root_out".to_string(),
             source: "U1.OUT".to_string(),
             start: egui::pos2(0.0, 0.0),
             end: egui::pos2(1.0, 1.0),
+            route: Vec::new(),
         };
         assert!(isolate.edge_visible(&focused_edge));
         assert!(!isolate.edge_visible(&unrelated_edge));

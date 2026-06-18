@@ -45,10 +45,24 @@ pub struct BoardSchematic {
     pub node_positions: BTreeMap<String, SchematicNodePosition>,
     #[serde(default)]
     pub node_styles: BTreeMap<String, SchematicNodeStyle>,
+    #[serde(default)]
+    pub wire_routes: BTreeMap<String, SchematicWireRoute>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SchematicNodePosition {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct SchematicWireRoute {
+    #[serde(default)]
+    pub points: Vec<SchematicWirePoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicWirePoint {
     pub x: f64,
     pub y: f64,
 }

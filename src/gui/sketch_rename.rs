@@ -24,6 +24,7 @@ pub(super) fn rename_component(text: &str, old_id: &str, new_id: &str) -> Result
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
     rename_board_mapping_key(&mut yaml, "components", old_id, new_id, "component")?;
     rename_schematic_node_metadata(&mut yaml, "component", old_id, new_id);
+    rename_schematic_wire_route_component(&mut yaml, old_id, new_id);
     rename_analog_component_references(&mut yaml, old_id, new_id);
 
     encode_edited_project_yaml(yaml)
@@ -50,6 +51,7 @@ pub(super) fn rename_net(text: &str, old_id: &str, new_id: &str) -> Result<Strin
     rename_board_mapping_key(&mut yaml, "nets", old_id, new_id, "net")?;
     rename_component_pin_nets(&mut yaml, old_id, new_id)?;
     rename_schematic_node_metadata(&mut yaml, "net", old_id, new_id);
+    rename_schematic_wire_route_net(&mut yaml, old_id, new_id);
     rename_analog_net_references(&mut yaml, old_id, new_id);
 
     encode_edited_project_yaml(yaml)
@@ -135,6 +137,53 @@ fn rename_schematic_node_metadata(
         };
         if let Some(value) = mapping.remove(serde_yaml_ng::Value::String(old_key.clone())) {
             mapping.insert(serde_yaml_ng::Value::String(new_key.clone()), value);
+        }
+    }
+}
+
+fn rename_schematic_wire_route_component(
+    yaml: &mut serde_yaml_ng::Value,
+    old_component: &str,
+    new_component: &str,
+) {
+    rename_schematic_wire_routes(yaml, |source, net| {
+        let (component, pin) = source.split_once('.')?;
+        (component == old_component).then(|| format!("{new_component}.{pin}->{net}"))
+    });
+}
+
+fn rename_schematic_wire_route_net(yaml: &mut serde_yaml_ng::Value, old_net: &str, new_net: &str) {
+    rename_schematic_wire_routes(yaml, |source, net| {
+        (net == old_net).then(|| format!("{source}->{new_net}"))
+    });
+}
+
+fn rename_schematic_wire_routes(
+    yaml: &mut serde_yaml_ng::Value,
+    rename: impl Fn(&str, &str) -> Option<String>,
+) {
+    let Some(routes) = yaml
+        .as_mapping_mut()
+        .and_then(|project| project.get_mut(key("board")))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+        .and_then(|board| board.get_mut(key("schematic")))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+        .and_then(|schematic| schematic.get_mut(key("wire_routes")))
+        .and_then(serde_yaml_ng::Value::as_mapping_mut)
+    else {
+        return;
+    };
+    let replacements: Vec<_> = routes
+        .keys()
+        .filter_map(|key| {
+            let old_key = key.as_str()?;
+            let (source, net) = old_key.split_once("->")?;
+            rename(source, net).map(|new_key| (old_key.to_string(), new_key))
+        })
+        .collect();
+    for (old_key, new_key) in replacements {
+        if let Some(value) = routes.remove(serde_yaml_ng::Value::String(old_key)) {
+            routes.insert(serde_yaml_ng::Value::String(new_key), value);
         }
     }
 }

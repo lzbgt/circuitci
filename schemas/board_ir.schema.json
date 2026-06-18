@@ -184,6 +184,27 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "wire_routes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["x", "y"],
+                      "properties": {
+                        "x": { "type": "number" },
+                        "y": { "type": "number" }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false
