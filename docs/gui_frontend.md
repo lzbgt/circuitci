@@ -224,7 +224,10 @@ editor navigation actions shown before edit panels.
 simulation-time scrub/playback controls, cursor measurement tools, GUI-only
 derived waveform channels, promotion of representable derived channels to Board
 IR probes/assertions, pending schematic probe-to-scope focus, and
-graph-hover/runtime activity extraction from loaded waveform artifacts.
+graph-hover/runtime activity extraction from loaded waveform artifacts. Focused
+waveform and scope regressions live in
+`src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
+turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
