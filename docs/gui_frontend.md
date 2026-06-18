@@ -62,8 +62,9 @@ introducing a second connection model.
 `src/gui/sketch_inspector.rs` owns the selected component/net inspector,
 structured scalar YAML edit actions, conservative component/unreferenced-net
 add/remove operations, schematic symbol style edits, validated component pin
-assignment, visual wire assignment mutations, and selected-net voltage-probe
-insertion controls.
+assignment, visual wire assignment mutations, selected-net voltage-probe
+insertion controls, and selected-component current-probe insertion for
+generated source branches or generated semiconductor current-sense branches.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
@@ -104,8 +105,10 @@ form:
   wire assignment by clicking component pin anchors or net nodes, graph-node
   runtime tinting and hover readouts for
   matching waveform probes, selected-net voltage-probe insertion into existing
-  analog scenarios, shared undo/redo for Board IR graph/property/wire/YAML
-  edits, and a raw Board IR YAML editor with parse-validated save.
+  analog scenarios, selected-component current-probe insertion for supported
+  generated SPICE branches, shared undo/redo for Board IR
+  graph/property/wire/YAML edits, and a raw Board IR YAML editor with
+  parse-validated save.
 - Library: shows library bindings, searches the active component model set,
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
@@ -165,17 +168,20 @@ The supported desktop simulation path is:
 19. select a net or wire on the sketch canvas and append another voltage probe
    to an existing analog scenario when that scenario has a node binding for the
    net,
-20. add sample or windowed min/max waveform assertions against declared probes,
-21. load, edit, save, and rerun file-backed SPICE decks from declared analog
+20. select a component on the sketch canvas and append a current probe when the
+   target generated-from-Board scenario includes a source primitive branch or a
+   diode/BJT/MOSFET model branch with a generated current-sense source,
+21. add sample or windowed min/max waveform assertions against declared probes,
+22. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-22. bind sourced component models,
-23. run declared validation and `analog_transient` scenarios,
-24. scrub or play the simulation time cursor to drive graph runtime tinting,
-25. hover graph nodes to inspect matching voltage/current/power probe values at
+23. bind sourced component models,
+24. run declared validation and `analog_transient` scenarios,
+25. scrub or play the simulation time cursor to drive graph runtime tinting,
+26. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-26. observe generated decks, plotted CSV waveforms, cursor values, min/max
+27. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-27. edit the project/model evidence and rerun.
+28. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, hierarchical
 schematic sheets, advanced waveform math channels, advanced SPICE source
@@ -199,6 +205,9 @@ or physical PCB placement evidence.
 Canvas probe insertion is also a Board IR scenario edit, not a hidden runtime
 probe layer. The selected-net inspector appends a voltage probe to an existing
 analog scenario only when that scenario already declares a node binding for the
-selected Board IR net. Current and power probes still require explicit
-component/branch semantics and remain authored through scenario YAML or future
-symbol-aware probe tools.
+selected Board IR net. The selected-component inspector appends a current probe
+only for generated-from-Board analog scenarios and only when the component
+branch is source-backed by a Board IR voltage/current source primitive or by a
+bound diode/BJT/MOSFET model branch with CircuitCI's generated zero-volt
+current-sense source. Passive branch current, subcircuit internals, and
+file-backed deck branch probes still require explicit deck/model evidence.

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub(super) struct AnalogScenarioDraft {
@@ -27,6 +28,13 @@ pub(super) struct AnalogAssertionDraft {
 pub(super) struct AnalogProbeDraft {
     pub(super) scenario_name: String,
     pub(super) net_id: String,
+    pub(super) probe_name: String,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogCurrentProbeDraft {
+    pub(super) scenario_name: String,
+    pub(super) component_id: String,
     pub(super) probe_name: String,
 }
 
@@ -213,6 +221,79 @@ pub(super) fn append_analog_voltage_probe(text: &str, draft: &AnalogProbeDraft) 
     Ok(updated)
 }
 
+pub(super) fn append_analog_current_probe(
+    text: &str,
+    project_path: &Path,
+    draft: &AnalogCurrentProbeDraft,
+) -> Result<String> {
+    validate_current_probe_draft(draft)?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.components.contains_key(&draft.component_id) {
+        anyhow::bail!("Probe component {} was not found.", draft.component_id);
+    }
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == draft.scenario_name)
+        .with_context(|| format!("Scenario {} was not found.", draft.scenario_name))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {} is not an analog scenario.", scenario.name))?;
+    if analog.netlist_source != crate::board_ir::AnalogNetlistSource::GeneratedFromBoard {
+        anyhow::bail!(
+            "Canvas current probes require a generated_from_board analog scenario; scenario {} uses a file-backed deck.",
+            scenario.name
+        );
+    }
+    let generated = analog.generated.as_ref().with_context(|| {
+        format!(
+            "Scenario {} must declare analog.generated before component current probes can be added.",
+            scenario.name
+        )
+    })?;
+    if !generated
+        .components
+        .iter()
+        .any(|component_id| component_id == &draft.component_id)
+    {
+        anyhow::bail!(
+            "Scenario {} does not include generated component {}.",
+            scenario.name,
+            draft.component_id
+        );
+    }
+    if analog
+        .probes
+        .iter()
+        .any(|probe| probe.name == draft.probe_name)
+    {
+        anyhow::bail!(
+            "Analog probe {} already exists in scenario {}.",
+            draft.probe_name,
+            scenario.name
+        );
+    }
+    let expression = current_probe_expression(&project, project_path, &draft.component_id)?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let scenario_mapping = scenario_mapping_mut(&mut yaml, &draft.scenario_name)?;
+    let analog_mapping = child_mapping_mut(scenario_mapping, "analog", "analog scenario")?;
+    let probes = ensure_child_sequence_mut(analog_mapping, "probes", "analog probes")?;
+    let mut probe = serde_yaml_ng::Mapping::new();
+    insert_string(&mut probe, "name", draft.probe_name.trim());
+    insert_string(&mut probe, "expression", &expression);
+    insert_string(&mut probe, "quantity", "current");
+    probes.push(serde_yaml_ng::Value::Mapping(probe));
+    let updated =
+        serde_yaml_ng::to_string(&yaml).context("Failed to serialize edited Board IR YAML.")?;
+    let _: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&updated)
+        .context("Edited analog current probe YAML is not valid Board IR.")?;
+    Ok(updated)
+}
+
 fn validate_draft(draft: &AnalogScenarioDraft) -> Result<()> {
     validated_id(&draft.name, "scenario name")?;
     validated_id(&draft.probe_name, "probe name")?;
@@ -264,6 +345,104 @@ fn validate_probe_draft(draft: &AnalogProbeDraft) -> Result<()> {
         anyhow::bail!("Probe net must not be blank.");
     }
     Ok(())
+}
+
+fn validate_current_probe_draft(draft: &AnalogCurrentProbeDraft) -> Result<()> {
+    validated_id(&draft.scenario_name, "scenario name")?;
+    validated_id(&draft.component_id, "component id")?;
+    validated_id(&draft.probe_name, "probe name")?;
+    Ok(())
+}
+
+fn current_probe_expression(
+    project: &crate::board_ir::BoardProject,
+    project_path: &Path,
+    component_id: &str,
+) -> Result<String> {
+    let component = project
+        .board
+        .components
+        .get(component_id)
+        .with_context(|| format!("Probe component {component_id} was not found."))?;
+    if let Some(spice) = &component.spice {
+        return primitive_current_probe_expression(component_id, &spice.primitive);
+    }
+
+    let (library, _findings) = crate::library::load_library(project_path, project);
+    let model = library.get(&component.model).with_context(|| {
+        format!(
+            "Component {component_id} references model {}, but that model was not found in the active libraries.",
+            component.model
+        )
+    })?;
+    let spice = model.simulation.spice.as_ref().with_context(|| {
+        format!(
+            "Component {component_id} model {} does not declare simulation.spice metadata for current probing.",
+            component.model
+        )
+    })?;
+    let device_prefix = match spice.model_type {
+        crate::library::SpiceModelType::Diode => "D",
+        crate::library::SpiceModelType::BjtNpn | crate::library::SpiceModelType::BjtPnp => "Q",
+        crate::library::SpiceModelType::MosfetN | crate::library::SpiceModelType::MosfetP => "M",
+        crate::library::SpiceModelType::Subckt => {
+            anyhow::bail!(
+                "Component {component_id} uses a subcircuit model; add an explicit current-sense element or file-backed probe for branch current."
+            );
+        }
+    };
+    Ok(format!(
+        "I({})",
+        generated_current_sense_name(device_prefix, component_id)
+    ))
+}
+
+fn primitive_current_probe_expression(
+    component_id: &str,
+    primitive: &crate::board_ir::SpicePrimitive,
+) -> Result<String> {
+    let prefix = match primitive {
+        crate::board_ir::SpicePrimitive::DcVoltageSource
+        | crate::board_ir::SpicePrimitive::PulseVoltageSource => "V",
+        crate::board_ir::SpicePrimitive::DcCurrentSource
+        | crate::board_ir::SpicePrimitive::PulseCurrentSource => "I",
+        crate::board_ir::SpicePrimitive::Resistor
+        | crate::board_ir::SpicePrimitive::Capacitor
+        | crate::board_ir::SpicePrimitive::Inductor => {
+            anyhow::bail!(
+                "Component {component_id} is a passive primitive; GUI current probes currently require a generated source branch or semiconductor current-sense branch."
+            );
+        }
+    };
+    Ok(format!("I({})", spice_element_name(prefix, component_id)))
+}
+
+fn generated_current_sense_name(device_prefix: &str, component_id: &str) -> String {
+    format!("VCCI_{}", spice_element_name(device_prefix, component_id))
+}
+
+fn spice_element_name(prefix: &str, component_id: &str) -> String {
+    let suffix = spice_element_suffix(component_id);
+    if suffix.starts_with(prefix) {
+        suffix
+    } else {
+        format!("{prefix}{suffix}")
+    }
+}
+
+fn spice_element_suffix(component_id: &str) -> String {
+    let mut suffix = String::new();
+    for character in component_id.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            suffix.push(character);
+        } else {
+            suffix.push('_');
+        }
+    }
+    if suffix.is_empty() {
+        suffix.push('X');
+    }
+    suffix
 }
 
 fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) -> Result<()> {
@@ -601,9 +780,11 @@ fn key(name: &str) -> serde_yaml_ng::Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AnalogAssertionDraft, AnalogProbeDraft, AnalogScenarioDraft, append_analog_assertion,
-        append_analog_transient_scenario, append_analog_voltage_probe,
+        AnalogAssertionDraft, AnalogCurrentProbeDraft, AnalogProbeDraft, AnalogScenarioDraft,
+        append_analog_assertion, append_analog_current_probe, append_analog_transient_scenario,
+        append_analog_voltage_probe,
     };
+    use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -613,11 +794,17 @@ board:
   components:
     V1:
       model: generic.analog.dc_voltage_source
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
       pins:
         P: rail_5v
         N: gnd
     R1:
       model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
       pins:
         A: rail_5v
         B: out
@@ -663,6 +850,14 @@ board:
             scenario_name: "gui_transient".to_string(),
             net_id: "rail_5v".to_string(),
             probe_name: "rail_5v_voltage".to_string(),
+        }
+    }
+
+    fn current_probe_draft() -> AnalogCurrentProbeDraft {
+        AnalogCurrentProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            component_id: "V1".to_string(),
+            probe_name: "v1_current".to_string(),
         }
     }
 
@@ -743,5 +938,74 @@ board:
         edited = edited.replace("    - node: rail_5v\n      net: rail_5v\n", "");
         let error = append_analog_voltage_probe(&edited, &probe_draft()).unwrap_err();
         assert!(error.to_string().contains("node binding"));
+    }
+
+    #[test]
+    fn append_analog_current_probe_emits_source_branch_current() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited =
+            append_analog_current_probe(&edited, Path::new("project.yaml"), &current_probe_draft())
+                .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "v1_current"
+                && probe.expression == "I(V1)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Current
+        }));
+    }
+
+    #[test]
+    fn append_analog_current_probe_emits_generated_semiconductor_sense_current() {
+        let project_yaml = "project:
+  name: gui_analog_current_editor_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+board:
+  components:
+    D-2:
+      model: generic.analog.switching_diode
+      pins:
+        A: rail_5v
+        K: out
+  nets:
+    rail_5v:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+";
+        let edited = append_analog_transient_scenario(project_yaml, &draft()).unwrap();
+        let draft = AnalogCurrentProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            component_id: "D-2".to_string(),
+            probe_name: "d2_current".to_string(),
+        };
+        let edited =
+            append_analog_current_probe(&edited, Path::new("project.yaml"), &draft).unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "d2_current"
+                && probe.expression == "I(VCCI_D_2)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Current
+        }));
+    }
+
+    #[test]
+    fn append_analog_current_probe_rejects_passive_branch_without_sense_source() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let draft = AnalogCurrentProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            component_id: "R1".to_string(),
+            probe_name: "r1_current".to_string(),
+        };
+        let error =
+            append_analog_current_probe(&edited, Path::new("project.yaml"), &draft).unwrap_err();
+        assert!(error.to_string().contains("passive primitive"));
     }
 }

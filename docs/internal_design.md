@@ -43,7 +43,9 @@ mutations. `src/gui/sketch_inspector.rs` owns the selected component/net
 inspector, structured scalar YAML edit actions, conservative component and
 unreferenced-net add/remove operations, schematic symbol style edits, validated
 component pin assignment, visual wire assignment mutations, and selected-net
-voltage-probe insertion controls. Rendered pin anchors are UI
+voltage-probe insertion controls plus selected-component current-probe
+insertion for generated source branches and generated diode/BJT/MOSFET
+current-sense branches. Rendered pin anchors are UI
 affordances derived from component pin bindings; clicking an anchor may start
 or complete a wire assignment. Pin-to-pin wiring should reuse a source or
 target pin net when one already exists, or create a generated Board IR net when
@@ -88,12 +90,17 @@ interpolation helpers rather than an unsynchronized live simulation model.
 component model assignment, and model-backed component insertion through the
 same validated Board IR YAML mutation helpers used by the sketch inspector.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
-selected-net voltage-probe insertion into existing analog scenarios, and
-structured sample/min/max assertion authoring. It may derive node and pin
-bindings from Board IR for observation scenarios, and selected-net probe
-insertion must fail closed when the target scenario has no node binding for the
-selected Board IR net. It must append normal Board IR analog probes rather than
-creating a GUI-only probe list. `src/gui/spice.rs` owns
+selected-net voltage-probe insertion, selected-component source/semiconductor
+current-probe insertion into existing analog scenarios, and structured
+sample/min/max assertion authoring. It may derive node and pin bindings from
+Board IR for observation scenarios. Selected-net probe insertion must fail
+closed when the target scenario has no node binding for the selected Board IR
+net. Selected-component current-probe insertion must fail closed unless the
+target scenario is `generated_from_board`, includes the component, and the
+component branch is a Board IR voltage/current source primitive or a bound
+diode/BJT/MOSFET model branch with CircuitCI's generated current-sense source.
+It must append normal Board IR analog probes rather than creating a GUI-only
+probe list. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather

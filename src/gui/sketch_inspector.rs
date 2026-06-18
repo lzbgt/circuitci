@@ -1,4 +1,7 @@
-use super::analog::{AnalogProbeDraft, analog_scenario_choices, append_analog_voltage_probe};
+use super::analog::{
+    AnalogCurrentProbeDraft, AnalogProbeDraft, analog_scenario_choices,
+    append_analog_current_probe, append_analog_voltage_probe,
+};
 use super::sketch::{
     ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
     assign_component_pin, connect_component_pins, edit_component_model, edit_component_part_number,
@@ -136,6 +139,8 @@ impl CircuitCiApp {
                                 self.wire_pin_id.trim()
                             ));
                         }
+                        ui.separator();
+                        self.component_probe_editor(ui, &component.id);
                         if ui.button("Remove Component").clicked() {
                             self.apply_remove_component(&component.id);
                         }
@@ -498,6 +503,58 @@ impl CircuitCiApp {
         }
     }
 
+    fn component_probe_editor(&mut self, ui: &mut egui::Ui, component_id: &str) {
+        ui.label("Simulation probe");
+        let choices = match analog_scenario_choices(&self.project_yaml) {
+            Ok(choices) => choices,
+            Err(error) => {
+                ui.label(format!("Analog scenarios unavailable: {error}"));
+                return;
+            }
+        };
+        if choices.is_empty() {
+            ui.label("Add an analog transient scenario before inserting probes.");
+            if ui.button("Open Scenario Editor").clicked() {
+                self.stage = Stage::Simulation;
+                self.status =
+                    format!("Simulation editor opened before probing component {component_id}.");
+            }
+            return;
+        }
+        if self.analog_probe_scenario.is_empty()
+            || !choices
+                .iter()
+                .any(|choice| choice.name == self.analog_probe_scenario)
+        {
+            self.analog_probe_scenario = choices[0].name.clone();
+        }
+        if self.analog_canvas_component_probe_name.is_empty() {
+            self.analog_canvas_component_probe_name =
+                default_current_probe_name_for_component(component_id);
+        }
+        egui::ComboBox::from_id_salt("canvas_component_probe_scenario")
+            .selected_text(&self.analog_probe_scenario)
+            .show_ui(ui, |ui| {
+                for choice in &choices {
+                    ui.selectable_value(
+                        &mut self.analog_probe_scenario,
+                        choice.name.clone(),
+                        &choice.name,
+                    );
+                }
+            });
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut self.analog_canvas_component_probe_name);
+            if ui.button("Use Component").clicked() {
+                self.analog_canvas_component_probe_name =
+                    default_current_probe_name_for_component(component_id);
+            }
+        });
+        if ui.button("Add Current Probe").clicked() {
+            self.apply_add_current_probe_for_component(component_id);
+        }
+    }
+
     fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) {
         let draft = AnalogProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
@@ -519,18 +576,37 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    fn apply_add_current_probe_for_component(&mut self, component_id: &str) {
+        let draft = AnalogCurrentProbeDraft {
+            scenario_name: self.analog_probe_scenario.clone(),
+            component_id: component_id.to_string(),
+            probe_name: self.analog_canvas_component_probe_name.clone(),
+        };
+        match append_analog_current_probe(
+            &self.project_yaml,
+            std::path::Path::new(&self.project_path),
+            &draft,
+        ) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = self.analog_probe_scenario.clone();
+                self.analog_assertion_probe =
+                    self.analog_canvas_component_probe_name.trim().to_string();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Current probe {} added for component {component_id}.",
+                        self.analog_canvas_component_probe_name.trim()
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
 }
 
 fn default_probe_name_for_net(net_id: &str) -> String {
-    let mut name = String::new();
-    for character in net_id.trim().chars() {
-        if character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.') {
-            name.push(character);
-        } else if !name.ends_with('_') {
-            name.push('_');
-        }
-    }
-    let name = name.trim_matches('_');
+    let name = sanitized_probe_stem(net_id);
     if name.is_empty() {
         "net_voltage".to_string()
     } else {
@@ -538,9 +614,30 @@ fn default_probe_name_for_net(net_id: &str) -> String {
     }
 }
 
+fn default_current_probe_name_for_component(component_id: &str) -> String {
+    let name = sanitized_probe_stem(component_id);
+    if name.is_empty() {
+        "component_current".to_string()
+    } else {
+        format!("{name}_current")
+    }
+}
+
+fn sanitized_probe_stem(value: &str) -> String {
+    let mut name = String::new();
+    for character in value.trim().chars() {
+        if character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.') {
+            name.push(character);
+        } else if !name.ends_with('_') {
+            name.push('_');
+        }
+    }
+    name.trim_matches('_').to_string()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::default_probe_name_for_net;
+    use super::{default_current_probe_name_for_component, default_probe_name_for_net};
 
     #[test]
     fn default_probe_name_sanitizes_canvas_net_ids() {
@@ -550,5 +647,21 @@ mod tests {
         );
         assert_eq!(default_probe_name_for_net(" net/a "), "net_a_voltage");
         assert_eq!(default_probe_name_for_net("///"), "net_voltage");
+    }
+
+    #[test]
+    fn default_current_probe_name_sanitizes_canvas_component_ids() {
+        assert_eq!(
+            default_current_probe_name_for_component("Q-2"),
+            "Q-2_current"
+        );
+        assert_eq!(
+            default_current_probe_name_for_component(" U/load "),
+            "U_load_current"
+        );
+        assert_eq!(
+            default_current_probe_name_for_component("///"),
+            "component_current"
+        );
     }
 }
