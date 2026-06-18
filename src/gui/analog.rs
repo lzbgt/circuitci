@@ -70,6 +70,34 @@ pub(super) struct AnalogProbeChoice {
     pub(super) quantity: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AnalogAssertionUiStatus {
+    Unknown,
+    Pass,
+    Fail,
+}
+
+impl AnalogAssertionUiStatus {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Unknown => "unknown",
+            Self::Pass => "pass",
+            Self::Fail => "fail",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct AnalogProbeAssertionSummary {
+    pub(super) name: String,
+    pub(super) aggregation: String,
+    pub(super) relation: String,
+    pub(super) threshold: String,
+    pub(super) timing: String,
+    pub(super) status: AnalogAssertionUiStatus,
+    pub(super) failure_message: Option<String>,
+}
+
 pub(super) fn append_analog_transient_scenario(
     text: &str,
     draft: &AnalogScenarioDraft,
@@ -131,6 +159,68 @@ pub(super) fn analog_scenario_choices(text: &str) -> Result<Vec<AnalogScenarioCh
                     })
                     .collect(),
             })
+        })
+        .collect())
+}
+
+pub(super) fn analog_probe_assertion_summaries(
+    text: &str,
+    report: Option<&crate::reports::ValidationReport>,
+    scenario_name: &str,
+    probe_name: &str,
+) -> Result<Vec<AnalogProbeAssertionSummary>> {
+    let scenario_name = validated_id(scenario_name, "scenario name")?;
+    let probe_name = validated_id(probe_name, "probe name")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Scenario {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {scenario_name} is not an analog scenario."))?;
+    let probe = analog
+        .probes
+        .iter()
+        .find(|probe| probe.name == probe_name)
+        .with_context(|| {
+            format!("Probe {probe_name} was not found in scenario {scenario_name}.")
+        })?;
+    Ok(analog
+        .assertions
+        .iter()
+        .filter(|assertion| assertion.probe == probe.name)
+        .map(|assertion| {
+            let failure = report.and_then(|report| {
+                report.failures.iter().find(|finding| {
+                    finding.scenario == scenario_name
+                        && finding_mentions_assertion(finding, &assertion.name)
+                })
+            });
+            let non_assertion_failure = report.is_some_and(|report| {
+                report.failures.iter().any(|finding| {
+                    finding.scenario == scenario_name && !finding.message.contains("assertion ")
+                })
+            });
+            let status = if failure.is_some() {
+                AnalogAssertionUiStatus::Fail
+            } else if report.is_none() || non_assertion_failure {
+                AnalogAssertionUiStatus::Unknown
+            } else {
+                AnalogAssertionUiStatus::Pass
+            };
+            AnalogProbeAssertionSummary {
+                name: assertion.name.clone(),
+                aggregation: aggregation_label(&assertion.aggregation).to_string(),
+                relation: relation_label(&assertion.relation).to_string(),
+                threshold: assertion_threshold_label(assertion, &probe.quantity),
+                timing: assertion_timing_label(assertion),
+                status,
+                failure_message: failure.map(|finding| finding.message.clone()),
+            }
         })
         .collect())
 }
@@ -844,6 +934,68 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
     Ok(())
 }
 
+fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'static str {
+    match aggregation {
+        crate::board_ir::AnalogAggregation::Sample => "sample",
+        crate::board_ir::AnalogAggregation::Min => "min",
+        crate::board_ir::AnalogAggregation::Max => "max",
+    }
+}
+
+fn relation_label(relation: &crate::board_ir::AnalogRelation) -> &'static str {
+    match relation {
+        crate::board_ir::AnalogRelation::Above => "above",
+        crate::board_ir::AnalogRelation::Below => "below",
+    }
+}
+
+fn assertion_threshold_label(
+    assertion: &crate::board_ir::AnalogAssertion,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> String {
+    match quantity {
+        crate::board_ir::AnalogQuantity::Voltage => assertion
+            .threshold_v
+            .map(|value| format!("{value:.6} V"))
+            .unwrap_or_else(|| "missing voltage threshold".to_string()),
+        crate::board_ir::AnalogQuantity::Current => assertion
+            .threshold_a
+            .map(|value| format!("{value:.6} A"))
+            .unwrap_or_else(|| "missing current threshold".to_string()),
+        crate::board_ir::AnalogQuantity::Power => assertion
+            .threshold_w
+            .map(|value| format!("{value:.6} W"))
+            .unwrap_or_else(|| "missing power threshold".to_string()),
+    }
+}
+
+fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> String {
+    match assertion.aggregation {
+        crate::board_ir::AnalogAggregation::Sample => {
+            format!("at {:.6} us", assertion.at_us.unwrap_or_default())
+        }
+        crate::board_ir::AnalogAggregation::Min | crate::board_ir::AnalogAggregation::Max => {
+            format!(
+                "{:.6}..{:.6} us",
+                assertion.start_us.unwrap_or_default(),
+                assertion.end_us.unwrap_or_default()
+            )
+        }
+    }
+}
+
+fn finding_mentions_assertion(finding: &crate::reports::Finding, assertion_name: &str) -> bool {
+    finding
+        .message
+        .contains(&format!("assertion {assertion_name} "))
+        || finding
+            .message
+            .contains(&format!("assertion {assertion_name}."))
+        || finding
+            .message
+            .contains(&format!("assertion {assertion_name}:"))
+}
+
 fn validated_id<'a>(value: &'a str, label: &str) -> Result<&'a str> {
     let value = value.trim();
     if value.is_empty() {
@@ -1155,10 +1307,12 @@ mod tests {
     use super::{
         AnalogAssertionDraft, AnalogCurrentProbeDraft, AnalogPowerProbeDraft,
         AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogProbeRemoveDraft,
-        AnalogScenarioDraft, append_analog_assertion, append_analog_current_probe,
-        append_analog_power_probe, append_analog_transient_scenario, append_analog_voltage_probe,
-        remove_analog_assertions_for_probe, remove_analog_probe, unique_analog_assertion_name,
+        AnalogScenarioDraft, analog_probe_assertion_summaries, append_analog_assertion,
+        append_analog_current_probe, append_analog_power_probe, append_analog_transient_scenario,
+        append_analog_voltage_probe, remove_analog_assertions_for_probe, remove_analog_probe,
+        unique_analog_assertion_name,
     };
+    use crate::reports::{Finding, ValidationReport};
     use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
@@ -1299,6 +1453,70 @@ board:
         draft.at_us = 101.0;
         let error = append_analog_assertion(&edited, &draft).unwrap_err();
         assert!(error.to_string().contains("stop time"));
+    }
+
+    #[test]
+    fn analog_probe_assertion_summaries_show_pass_status_after_clean_report() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        );
+        let rows = analog_probe_assertion_summaries(
+            &edited,
+            Some(&report),
+            "gui_transient",
+            "out_voltage",
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].status, super::AnalogAssertionUiStatus::Pass);
+        assert_eq!(rows[0].threshold, "1.000000 V");
+        assert_eq!(rows[0].timing, "at 50.000000 us");
+    }
+
+    #[test]
+    fn analog_probe_assertion_summaries_show_matching_failure() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let failure = Finding::critical(
+            "SPICE_TRANSIENT_ANALYSIS",
+            "gui_transient",
+            "Analog assertion out_above_min failed: sampled probe out_voltage measured 0.5 V.",
+        );
+        let report = ValidationReport::from_parts(
+            "project".to_string(),
+            "profile".to_string(),
+            vec![failure],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "validate".to_string(),
+        );
+        let rows = analog_probe_assertion_summaries(
+            &edited,
+            Some(&report),
+            "gui_transient",
+            "out_voltage",
+        )
+        .unwrap();
+        assert_eq!(rows[0].status, super::AnalogAssertionUiStatus::Fail);
+        assert!(rows[0].failure_message.as_ref().unwrap().contains("failed"));
+    }
+
+    #[test]
+    fn analog_probe_assertion_summaries_are_unknown_before_report() {
+        let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+        let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();
+        let rows = analog_probe_assertion_summaries(&edited, None, "gui_transient", "out_voltage")
+            .unwrap();
+        assert_eq!(rows[0].status, super::AnalogAssertionUiStatus::Unknown);
     }
 
     #[test]

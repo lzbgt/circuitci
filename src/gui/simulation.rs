@@ -1,9 +1,9 @@
 use super::CircuitCiApp;
 use super::analog::{
-    AnalogAssertionDraft, AnalogProbeAssertionsRemoveDraft, AnalogScenarioChoice,
-    AnalogScenarioDraft, analog_scenario_choices, append_analog_assertion,
-    append_analog_transient_scenario, remove_analog_assertions_for_probe,
-    unique_analog_assertion_name,
+    AnalogAssertionDraft, AnalogAssertionUiStatus, AnalogProbeAssertionsRemoveDraft,
+    AnalogScenarioChoice, AnalogScenarioDraft, analog_probe_assertion_summaries,
+    analog_scenario_choices, append_analog_assertion, append_analog_transient_scenario,
+    remove_analog_assertions_for_probe, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use crate::reports::ValidationReport;
@@ -17,6 +17,8 @@ impl CircuitCiApp {
         ui.separator();
         if let Some(snapshot) = self.project_snapshot.clone() {
             self.analog_scenario_editor(ui, &snapshot);
+            ui.separator();
+            self.selected_probe_assertions_panel(ui);
             ui.separator();
             self.analog_assertion_editor(ui);
             ui.separator();
@@ -230,6 +232,75 @@ impl CircuitCiApp {
             if ui.button("Add Analog Assertion").clicked() {
                 self.apply_add_analog_assertion();
             }
+        });
+    }
+
+    fn selected_probe_assertions_panel(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Selected Probe Assertions", |ui| {
+            if self.analog_assertion_scenario.trim().is_empty()
+                || self.analog_assertion_probe.trim().is_empty()
+            {
+                ui.label("Select a schematic probe badge to inspect its assertions.");
+                return;
+            }
+            ui.horizontal(|ui| {
+                ui.strong(format!(
+                    "{} / {}",
+                    self.analog_assertion_scenario, self.analog_assertion_probe
+                ));
+                if ui.button("Add from current settings").clicked() {
+                    let scenario_name = self.analog_assertion_scenario.clone();
+                    let probe_name = self.analog_assertion_probe.clone();
+                    self.apply_add_canvas_probe_assertion(&scenario_name, &probe_name);
+                }
+                if ui.button("Clear assertions").clicked() {
+                    let scenario_name = self.analog_assertion_scenario.clone();
+                    let probe_name = self.analog_assertion_probe.clone();
+                    self.apply_remove_canvas_probe_assertions(&scenario_name, &probe_name);
+                }
+            });
+            let rows = match analog_probe_assertion_summaries(
+                &self.project_yaml,
+                self.report.as_ref(),
+                &self.analog_assertion_scenario,
+                &self.analog_assertion_probe,
+            ) {
+                Ok(rows) => rows,
+                Err(error) => {
+                    ui.label(format!("Selected probe unavailable: {error}"));
+                    return;
+                }
+            };
+            if rows.is_empty() {
+                ui.label("No assertions reference this probe.");
+                return;
+            }
+            egui::Grid::new("selected_probe_assertions")
+                .num_columns(5)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.strong("Status");
+                    ui.strong("Assertion");
+                    ui.strong("Check");
+                    ui.strong("Timing");
+                    ui.strong("Failure");
+                    ui.end_row();
+                    for row in rows {
+                        ui.colored_label(assertion_status_color(row.status), row.status.label());
+                        ui.monospace(&row.name);
+                        ui.label(format!(
+                            "{} {} {}",
+                            row.aggregation, row.relation, row.threshold
+                        ));
+                        ui.label(row.timing);
+                        if let Some(message) = row.failure_message {
+                            ui.label(message);
+                        } else {
+                            ui.label("");
+                        }
+                        ui.end_row();
+                    }
+                });
         });
     }
 
@@ -748,6 +819,14 @@ fn analog_probe_combo(
                 }
             }
         });
+}
+
+fn assertion_status_color(status: AnalogAssertionUiStatus) -> egui::Color32 {
+    match status {
+        AnalogAssertionUiStatus::Unknown => egui::Color32::from_rgb(230, 190, 90),
+        AnalogAssertionUiStatus::Pass => egui::Color32::from_rgb(86, 190, 112),
+        AnalogAssertionUiStatus::Fail => egui::Color32::from_rgb(232, 83, 83),
+    }
 }
 
 fn string_combo(ui: &mut egui::Ui, id: &str, selected: &mut String, values: &[&str]) {

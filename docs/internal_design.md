@@ -99,7 +99,9 @@ unasserted when no Board IR assertion references its probe, unknown when no
 report is loaded or the scenario had a non-assertion failure, failed when a
 report finding names one of the probe's assertions, and passed only when the
 latest report has no matching assertion failure. Badge clicks select the
-existing scenario/probe in the Simulation stage. Pressing `A` on a hovered badge
+existing scenario/probe in the Simulation stage, whose selected-probe assertion
+table must be derived from Board IR assertions plus the latest `ValidationReport`
+and must not cache a parallel assertion model. Pressing `A` on a hovered badge
 may append a normal Board IR assertion using the current assertion-editor
 settings, pressing `X` may remove assertions for that probe while keeping the
 probe, and Delete/Backspace may remove the underlying Board IR probe through
@@ -125,9 +127,11 @@ generated current-sense source. Selected-component power-probe insertion must
 use the same component set and compose explicit branch voltage and current
 expressions rather than relying on hidden waveform math.
 It must append or remove normal Board IR analog probes and assertions rather
-than creating a GUI-only probe list; assertion clearing for a probe must leave
-the probe itself intact, and probe removal must drop dependent assertions so
-analog scenarios do not retain dangling assertion references. `src/gui/spice.rs` owns
+than creating a GUI-only probe list; selected-probe assertion summaries must be
+recomputed from Board IR plus the latest report, assertion clearing for a probe
+must leave the probe itself intact, and probe removal must drop dependent
+assertions so analog scenarios do not retain dangling assertion references.
+`src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
 analog scenarios. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather
