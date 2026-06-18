@@ -1,5 +1,8 @@
 use super::CircuitCiApp;
-use super::sketch::{SketchSelection, add_component_with_ports, edit_component_model};
+use super::sketch::{
+    SketchSelection, add_component_with_ports, edit_component_model, edit_schematic_node_positions,
+    persisted_node_position_from_screen_with_snap,
+};
 use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
@@ -213,12 +216,7 @@ impl CircuitCiApp {
     }
 
     fn apply_insert_selected_library_model(&mut self, entry: ModelBrowserEntry) {
-        match add_component_with_ports(
-            &self.project_yaml,
-            &self.new_component_id,
-            &entry.id,
-            &entry.port_pairs(),
-        ) {
+        match insert_library_model_component(&self.project_yaml, &self.new_component_id, &entry) {
             Ok(updated) => {
                 let component_id = self.new_component_id.trim().to_string();
                 self.selected_library_model = entry.id.clone();
@@ -236,6 +234,170 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+
+    pub(super) fn sketch_library_placement_panel(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new("Library Placement")
+            .default_open(false)
+            .show(ui, |ui| {
+                if self.selected_library_model.trim().is_empty() {
+                    ui.label("Select a model in the Library stage to place it here.");
+                    if ui.button("Open Library").clicked() {
+                        self.stage = super::Stage::Library;
+                    }
+                    return;
+                }
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Model");
+                    ui.monospace(&self.selected_library_model);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("ID");
+                    ui.text_edit_singleline(&mut self.new_component_id);
+                    if ui.button("Next").clicked() {
+                        self.refresh_next_library_component_id();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml.trim().is_empty()
+                                && !self.new_component_id.trim().is_empty(),
+                            egui::Button::new("Insert At View"),
+                        )
+                        .clicked()
+                    {
+                        self.apply_insert_selected_library_model_at_view();
+                    }
+                    let place_label = if self.sketch_library_place_armed {
+                        "Click Canvas To Place"
+                    } else {
+                        "Place On Canvas"
+                    };
+                    if ui
+                        .add_enabled(
+                            !self.project_yaml.trim().is_empty()
+                                && !self.new_component_id.trim().is_empty(),
+                            egui::Button::new(place_label),
+                        )
+                        .clicked()
+                    {
+                        self.sketch_library_place_armed = !self.sketch_library_place_armed;
+                        if self.sketch_library_place_armed {
+                            self.sketch_palette_place_armed = false;
+                            self.status = format!(
+                                "Click blank schematic space to place {}.",
+                                self.selected_library_model
+                            );
+                        }
+                    }
+                    if self.sketch_library_place_armed && ui.button("Cancel").clicked() {
+                        self.sketch_library_place_armed = false;
+                        self.status = "Library placement canceled.".to_string();
+                    }
+                });
+            });
+    }
+
+    pub(super) fn apply_insert_selected_library_model_at_view(&mut self) {
+        let canvas = self.sketch_last_canvas_rect.unwrap_or_else(|| {
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(960.0, 640.0))
+        });
+        self.apply_insert_selected_library_model_at(canvas, canvas.center());
+    }
+
+    pub(super) fn apply_insert_selected_library_model_at(
+        &mut self,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+    ) {
+        let entry = match self.selected_library_entry() {
+            Ok(entry) => entry,
+            Err(error) => {
+                self.record_error(error);
+                return;
+            }
+        };
+        if self.new_component_id.trim().is_empty() {
+            self.new_component_id =
+                next_component_id(&self.project_yaml, &entry).unwrap_or_else(|| "U1".to_string());
+        }
+        let component_id = self.new_component_id.trim().to_string();
+        let node_rect = egui::Rect::from_center_size(target, egui::vec2(180.0, 92.0));
+        let (x, y) = persisted_node_position_from_screen_with_snap(
+            canvas,
+            target,
+            node_rect,
+            self.sketch_viewport(),
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        match insert_library_model_component_at(&self.project_yaml, &component_id, &entry, x, y) {
+            Ok(updated) => {
+                self.selected_library_model = entry.id.clone();
+                self.new_component_model = entry.id.clone();
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.clone(),
+                )));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Component {component_id} inserted from {}.", entry.id),
+                );
+                self.new_component_id =
+                    next_component_id(&self.project_yaml, &entry).unwrap_or(component_id);
+                self.sketch_library_place_armed = false;
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn selected_library_entry(&self) -> Result<ModelBrowserEntry> {
+        let selected = self.selected_library_model.trim();
+        if selected.is_empty() {
+            anyhow::bail!("Select a library model before placing a component.");
+        }
+        model_browser_entries(&self.project_yaml, Path::new(&self.project_path))?
+            .into_iter()
+            .find(|entry| entry.id == selected)
+            .with_context(|| format!("Selected library model {selected} was not found."))
+    }
+
+    fn refresh_next_library_component_id(&mut self) {
+        match self.selected_library_entry() {
+            Ok(entry) => {
+                if let Some(next) = next_component_id(&self.project_yaml, &entry) {
+                    self.new_component_id = next;
+                }
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+}
+
+fn insert_library_model_component(
+    text: &str,
+    component_id: &str,
+    entry: &ModelBrowserEntry,
+) -> Result<String> {
+    add_component_with_ports(text, component_id, &entry.id, &entry.port_pairs())
+}
+
+fn insert_library_model_component_at(
+    text: &str,
+    component_id: &str,
+    entry: &ModelBrowserEntry,
+    x: f64,
+    y: f64,
+) -> Result<String> {
+    let inserted = insert_library_model_component(text, component_id, entry)?;
+    edit_schematic_node_positions(
+        &inserted,
+        &[(
+            SketchSelection::Component(component_id.trim().to_string()),
+            x,
+            y,
+        )],
+    )
 }
 
 fn model_browser_entries(
@@ -411,7 +573,13 @@ fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{filtered_entries, model_browser_entries, next_component_id};
+    use super::{
+        filtered_entries, insert_library_model_component_at, model_browser_entries,
+        next_component_id,
+    };
+    use crate::gui::CircuitCiApp;
+    use crate::gui::sketch::{SketchSelection, load_project_snapshot_from_yaml};
+    use eframe::egui;
     use std::path::Path;
 
     fn project_yaml() -> &'static str {
@@ -483,5 +651,59 @@ board:
             .unwrap();
 
         assert_eq!(next_component_id(project_yaml(), entry).unwrap(), "U1");
+    }
+
+    #[test]
+    fn library_model_insert_at_adds_position_and_default_pin_nets() {
+        let entries = model_browser_entries(project_yaml(), Path::new(".")).unwrap();
+        let entry = entries
+            .iter()
+            .find(|entry| entry.id == "vendor.ti.tps54331_5v")
+            .unwrap();
+
+        let edited =
+            insert_library_model_component_at(project_yaml(), "U1", entry, 144.0, 96.0).unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "U1")
+            .unwrap();
+
+        assert_eq!(component.model, "vendor.ti.tps54331_5v");
+        assert!(component.pins.iter().any(|pin| pin.pin == "VIN"));
+        assert_eq!(component.position.unwrap().x, 144.0);
+        assert_eq!(component.position.unwrap().y, 96.0);
+    }
+
+    #[test]
+    fn app_canvas_library_placement_inserts_at_clicked_position_and_disarms() {
+        let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 320.0));
+        let mut app = CircuitCiApp {
+            project_path: ".".to_string(),
+            project_yaml: project_yaml().to_string(),
+            selected_library_model: "vendor.ti.tps54331_5v".to_string(),
+            new_component_id: "U1".to_string(),
+            sketch_library_place_armed: true,
+            sketch_snap_enabled: false,
+            ..Default::default()
+        };
+
+        app.apply_insert_selected_library_model_at(canvas, egui::pos2(300.0, 200.0));
+
+        let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "U1")
+            .unwrap();
+        let position = component.position.unwrap();
+        assert_eq!(position.x, 210.0);
+        assert_eq!(position.y, 154.0);
+        assert!(!app.sketch_library_place_armed);
+        assert_eq!(
+            app.selected_sketch_item,
+            Some(SketchSelection::Component("U1".to_string()))
+        );
     }
 }

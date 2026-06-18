@@ -139,9 +139,11 @@ probe insertion for those same supported branches.
 badge targeting, badge layout, badge hit-testing, and badge drawing.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
-assignment, and model-backed component insertion through the same Board IR YAML
-mutation path. Inserted components use the selected model's declared ports to
-seed editable Board IR pin bindings and generated per-pin nets.
+assignment, and model-backed component insertion/placement through the same
+Board IR YAML mutation path. Inserted components use the selected model's
+declared ports to seed editable Board IR pin bindings and generated per-pin
+nets, and Sketch-stage placement can target the current view center, an armed
+blank-canvas click, or the blank-canvas context-menu pointer.
 `src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
 oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the

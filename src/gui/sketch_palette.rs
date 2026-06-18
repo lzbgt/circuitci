@@ -363,6 +363,9 @@ impl CircuitCiApp {
                     {
                         self.sketch_palette_place_armed = !self.sketch_palette_place_armed;
                         if self.sketch_palette_place_armed {
+                            self.sketch_library_place_armed = false;
+                        }
+                        if self.sketch_palette_place_armed {
                             self.status = format!(
                                 "Click blank schematic space to place {}.",
                                 self.sketch_palette_kind.label()

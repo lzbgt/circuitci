@@ -219,6 +219,7 @@ pub struct CircuitCiApp {
     sketch_palette_component_id: String,
     sketch_palette_value: f64,
     sketch_palette_place_armed: bool,
+    sketch_library_place_armed: bool,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     waveforms: Vec<WaveformView>,
@@ -354,6 +355,7 @@ impl Default for CircuitCiApp {
                 SketchSpiceKind::Resistor,
             ),
             sketch_palette_place_armed: false,
+            sketch_library_place_armed: false,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             waveforms: Vec::new(),
@@ -509,6 +511,8 @@ impl CircuitCiApp {
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             self.sketch_primitive_palette(ui);
+            ui.separator();
+            self.sketch_library_placement_panel(ui);
             ui.separator();
             self.sketch_inspector(ui, snapshot);
             ui.separator();

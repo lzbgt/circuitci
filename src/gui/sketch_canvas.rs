@@ -137,7 +137,9 @@ impl CircuitCiApp {
             ui,
             rect,
             &response,
-            blank_canvas_hovered && !self.sketch_palette_place_armed,
+            blank_canvas_hovered
+                && !self.sketch_palette_place_armed
+                && !self.sketch_library_place_armed,
         );
         let viewport = self.sketch_viewport();
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
@@ -350,7 +352,7 @@ impl CircuitCiApp {
             } else {
                 None
             };
-            if self.sketch_palette_place_armed
+            if (self.sketch_palette_place_armed || self.sketch_library_place_armed)
                 && clicked_probe_badge.is_none()
                 && clicked_hierarchy_connector_badge.is_none()
                 && clicked_bundle_badge.is_none()
@@ -358,7 +360,11 @@ impl CircuitCiApp {
                 && clicked.is_none()
                 && clicked_wire.is_none()
             {
-                self.apply_insert_sketch_primitive_at(rect, position);
+                if self.sketch_palette_place_armed {
+                    self.apply_insert_sketch_primitive_at(rect, position);
+                } else {
+                    self.apply_insert_selected_library_model_at(rect, position);
+                }
             } else if let Some(badge) = clicked_probe_badge {
                 self.open_probe_badge_in_simulation(badge);
             } else if let Some(badge) = clicked_hierarchy_connector_badge {
@@ -530,9 +536,12 @@ impl CircuitCiApp {
         let cancel_place_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
-        if cancel_place_pressed && self.sketch_palette_place_armed {
+        if cancel_place_pressed
+            && (self.sketch_palette_place_armed || self.sketch_library_place_armed)
+        {
             self.sketch_palette_place_armed = false;
-            self.status = "Primitive placement canceled.".to_string();
+            self.sketch_library_place_armed = false;
+            self.status = "Canvas placement canceled.".to_string();
         } else if let Some(badge) = hovered_probe_badge {
             if quick_above_pressed {
                 self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
@@ -614,10 +623,14 @@ impl CircuitCiApp {
             response.context_menu(|ui| {
                 self.sketch_canvas_context_menu(ui, rect, pointer_hover);
             });
-            if self.sketch_palette_place_armed {
-                response.on_hover_text(format!(
-                    "Click blank canvas to place {}. Press Esc to cancel.",
+            if self.sketch_palette_place_armed || self.sketch_library_place_armed {
+                let label = if self.sketch_palette_place_armed {
                     self.sketch_palette_kind.label()
+                } else {
+                    self.selected_library_model.as_str()
+                };
+                response.on_hover_text(format!(
+                    "Click blank canvas to place {label}. Press Esc to cancel."
                 ));
             }
         }
@@ -780,6 +793,19 @@ impl CircuitCiApp {
         {
             let target = pointer_hover.unwrap_or_else(|| canvas.center());
             self.apply_insert_sketch_primitive_at(canvas, target);
+            ui.close();
+        }
+        if !self.selected_library_model.trim().is_empty()
+            && ui
+                .add_enabled(
+                    !self.project_yaml.trim().is_empty()
+                        && !self.new_component_id.trim().is_empty(),
+                    egui::Button::new(format!("Place {}", self.selected_library_model)),
+                )
+                .clicked()
+        {
+            let target = pointer_hover.unwrap_or_else(|| canvas.center());
+            self.apply_insert_selected_library_model_at(canvas, target);
             ui.close();
         }
         if ui

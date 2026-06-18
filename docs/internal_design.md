@@ -232,8 +232,12 @@ validated Board IR mutation helpers. Rendered wire menus operate on the
 underlying Board IR net; the drawn wire must not become a separately persisted
 edge object.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
-component model assignment, and model-backed component insertion through the
-same validated Board IR YAML mutation helpers used by the sketch inspector.
+component model assignment, and model-backed component insertion/placement
+through the same validated Board IR YAML mutation helpers used by the sketch
+inspector. Canvas placement must write generated default pin nets and
+`board.schematic.node_positions` in one accepted YAML edit, whether the target
+is the current view center, an armed blank-canvas click, or the blank-canvas
+context menu pointer.
 `src/gui/analog_models.rs` owns analog `model_files` listing and mutation. GUI
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the
