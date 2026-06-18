@@ -82,7 +82,11 @@ graph, property, wire, and text edits should enter that history through the
 same application-level mutation boundary rather than keeping per-widget state.
 Loading or importing a different project clears history, while saving the
 current project preserves it so the user can still step backward from a saved
-edit. `src/gui/simulation.rs`
+edit. Load, import, and quit actions must pass through the `src/gui/project.rs`
+pending-action dirty-state guard when Board IR YAML or a loaded file-backed
+SPICE deck has unsaved edits. Confirmed discard may clear editor state and
+history before executing the action; canceled actions must leave the current
+workspace untouched. `src/gui/simulation.rs`
 owns the Simulation stage UI, waveform CSV parsing, plotting, simulation-time
 scrub/playback controls, cursor readouts, min/max/delta measurements, and
 normalized runtime activity values for graph tinting. It may display graph

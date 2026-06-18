@@ -20,6 +20,7 @@ mod sketch_symbols;
 mod sketch_tests;
 mod spice;
 
+use project::PendingProjectAction;
 use simulation::{
     WaveformView, load_report_waveforms, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, waveform_probe_value_for_badge,
@@ -125,6 +126,7 @@ pub struct CircuitCiApp {
     project_yaml_dirty: bool,
     project_yaml_undo: Vec<String>,
     project_yaml_redo: Vec<String>,
+    pending_project_action: Option<PendingProjectAction>,
     model_search: String,
     selected_library_model: String,
     new_component_id: String,
@@ -214,6 +216,7 @@ impl Default for CircuitCiApp {
             project_yaml_dirty: false,
             project_yaml_undo: Vec::new(),
             project_yaml_redo: Vec::new(),
+            pending_project_action: None,
             model_search: String::new(),
             selected_library_model: String::new(),
             new_component_id: "U_NEW".to_string(),
@@ -268,12 +271,14 @@ impl Default for CircuitCiApp {
 
 impl eframe::App for CircuitCiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.handle_close_request(ctx);
         self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
         self.left_panel(ctx);
         self.bottom_panel(ctx);
         self.central_panel(ctx);
+        self.unsaved_project_action_dialog(ctx);
     }
 }
 
@@ -283,23 +288,42 @@ impl CircuitCiApp {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Import KiCad Schematic").clicked() {
-                        self.import_kicad_schematic();
+                        self.request_project_action(
+                            PendingProjectAction::ImportKiCadSchematic,
+                            Some(ui.ctx()),
+                        );
                         ui.close();
                     }
                     if ui.button("Import KiCad PCB").clicked() {
-                        self.import_kicad_pcb();
+                        self.request_project_action(
+                            PendingProjectAction::ImportKiCadPcb,
+                            Some(ui.ctx()),
+                        );
                         ui.close();
                     }
                     if ui.button("Import SPICE Deck").clicked() {
-                        self.import_spice_deck();
+                        self.request_project_action(
+                            PendingProjectAction::ImportSpiceDeck,
+                            Some(ui.ctx()),
+                        );
                         ui.close();
                     }
                     if ui.button("Load Project").clicked() {
-                        self.load_project_summary();
+                        self.request_project_action(
+                            PendingProjectAction::LoadProjectSummary {
+                                path: self.project_path.clone(),
+                            },
+                            Some(ui.ctx()),
+                        );
                         ui.close();
                     }
                     if ui.button("Load Project YAML").clicked() {
-                        self.load_project_yaml();
+                        self.request_project_action(
+                            PendingProjectAction::LoadProjectYaml {
+                                path: self.project_path.clone(),
+                            },
+                            Some(ui.ctx()),
+                        );
                         ui.close();
                     }
                     if ui.button("Save Project YAML").clicked() {
@@ -312,6 +336,11 @@ impl CircuitCiApp {
                     }
                     if ui.button("Suggest Scenarios").clicked() {
                         self.suggest_scenarios();
+                        ui.close();
+                    }
+                    ui.separator();
+                    if ui.button("Quit").clicked() {
+                        self.request_project_action(PendingProjectAction::Quit, Some(ui.ctx()));
                         ui.close();
                     }
                 });
@@ -388,7 +417,12 @@ impl CircuitCiApp {
                 ui.text_edit_singleline(&mut self.profile);
                 ui.horizontal(|ui| {
                     if ui.button("Load").clicked() {
-                        self.load_project_summary();
+                        self.request_project_action(
+                            PendingProjectAction::LoadProjectSummary {
+                                path: self.project_path.clone(),
+                            },
+                            Some(ui.ctx()),
+                        );
                     }
                     if ui.button("Save").clicked() {
                         self.save_project_yaml();
@@ -524,7 +558,12 @@ impl CircuitCiApp {
         }
         ui.horizontal(|ui| {
             if ui.button("Load YAML").clicked() {
-                self.load_project_yaml();
+                self.request_project_action(
+                    PendingProjectAction::LoadProjectYaml {
+                        path: self.project_path.clone(),
+                    },
+                    Some(ui.ctx()),
+                );
             }
             if ui.button("Save YAML").clicked() {
                 self.save_project_yaml();
@@ -623,7 +662,7 @@ impl CircuitCiApp {
                 self.push_diagnostic(&format!(
                     "Validation report written; loaded {waveform_count} waveform view(s)."
                 ));
-                self.load_project_summary();
+                self.load_project_summary_unchecked();
             }
             Err(error) => self.record_error(error),
         }
@@ -636,7 +675,7 @@ impl CircuitCiApp {
                 self.suggestions_yaml = yaml;
                 self.stage = Stage::Library;
                 self.push_diagnostic("Scenario suggestion YAML updated.");
-                self.load_project_summary();
+                self.load_project_summary_unchecked();
             }
             Err(error) => self.record_error(error),
         }

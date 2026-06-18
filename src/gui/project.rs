@@ -3,12 +3,153 @@ use super::sketch::{
 };
 use super::{CircuitCiApp, Stage};
 use anyhow::Context;
+use eframe::egui;
 use std::path::{Path, PathBuf};
 
 const PROJECT_YAML_HISTORY_LIMIT: usize = 64;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum PendingProjectAction {
+    LoadProjectSummary { path: String },
+    LoadProjectYaml { path: String },
+    ImportKiCadSchematic,
+    ImportKiCadPcb,
+    ImportSpiceDeck,
+    Quit,
+}
+
+impl PendingProjectAction {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::LoadProjectSummary { .. } => "load another project",
+            Self::LoadProjectYaml { .. } => "reload project YAML",
+            Self::ImportKiCadSchematic => "import a KiCad schematic",
+            Self::ImportKiCadPcb => "import KiCad PCB evidence",
+            Self::ImportSpiceDeck => "import a SPICE deck",
+            Self::Quit => "quit CircuitCI",
+        }
+    }
+}
+
 impl CircuitCiApp {
-    pub(super) fn load_project_summary(&mut self) {
+    pub(super) fn handle_close_request(&mut self, ctx: &egui::Context) {
+        if ctx.input(|input| input.viewport().close_requested()) && self.has_unsaved_project_work()
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            if self.pending_project_action.is_none() {
+                self.request_project_action(PendingProjectAction::Quit, Some(ctx));
+            }
+        }
+    }
+
+    pub(super) fn request_project_action(
+        &mut self,
+        action: PendingProjectAction,
+        ctx: Option<&egui::Context>,
+    ) {
+        if self.has_unsaved_project_work() {
+            let label = action.label();
+            self.pending_project_action = Some(action);
+            self.status = format!("Confirm unsaved changes before {label}.");
+            self.push_diagnostic(
+                "Unsaved edits require confirmation before replacing the project workspace.",
+            );
+        } else {
+            self.execute_project_action(action, ctx);
+        }
+    }
+
+    pub(super) fn unsaved_project_action_dialog(&mut self, ctx: &egui::Context) {
+        let Some(action) = self.pending_project_action.clone() else {
+            return;
+        };
+        let action_label = action.label();
+        egui::Window::new("Unsaved Changes")
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(format!(
+                    "You have unsaved edits. Save or discard them before you {action_label}."
+                ));
+                if self.project_yaml_dirty {
+                    ui.label("Board IR YAML has unsaved edits.");
+                }
+                if self.spice_deck_dirty {
+                    ui.label("The loaded SPICE deck has unsaved edits.");
+                }
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            self.project_yaml_dirty,
+                            egui::Button::new("Save Project YAML"),
+                        )
+                        .clicked()
+                    {
+                        self.save_project_yaml();
+                        if !self.has_unsaved_project_work()
+                            && let Some(action) = self.pending_project_action.take()
+                        {
+                            self.execute_project_action(action, Some(ctx));
+                        }
+                    }
+                    if ui.button("Continue Without Saving").clicked() {
+                        self.discard_unsaved_project_work();
+                        if let Some(action) = self.pending_project_action.take() {
+                            self.execute_project_action(action, Some(ctx));
+                        }
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.pending_project_action = None;
+                        self.status = "Canceled project replacement.".to_string();
+                    }
+                });
+                if self.spice_deck_dirty {
+                    ui.label(
+                        "Save SPICE deck edits from Simulation > File-backed SPICE Deck before continuing.",
+                    );
+                }
+            });
+    }
+
+    fn execute_project_action(
+        &mut self,
+        action: PendingProjectAction,
+        ctx: Option<&egui::Context>,
+    ) {
+        match action {
+            PendingProjectAction::LoadProjectSummary { path } => {
+                self.project_path = path;
+                self.load_project_summary_unchecked();
+            }
+            PendingProjectAction::LoadProjectYaml { path } => {
+                self.project_path = path;
+                self.load_project_yaml_unchecked();
+            }
+            PendingProjectAction::ImportKiCadSchematic => self.import_kicad_schematic(),
+            PendingProjectAction::ImportKiCadPcb => self.import_kicad_pcb(),
+            PendingProjectAction::ImportSpiceDeck => self.import_spice_deck(),
+            PendingProjectAction::Quit => {
+                if let Some(ctx) = ctx {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
+        }
+    }
+
+    fn has_unsaved_project_work(&self) -> bool {
+        self.project_yaml_dirty || self.spice_deck_dirty
+    }
+
+    fn discard_unsaved_project_work(&mut self) {
+        self.project_yaml_dirty = false;
+        self.spice_deck_dirty = false;
+        self.spice_deck_text.clear();
+        self.clear_project_yaml_history();
+        self.status = "Discarded unsaved edits.".to_string();
+    }
+
+    pub(super) fn load_project_summary_unchecked(&mut self) {
         match load_project_snapshot(Path::new(&self.project_path)) {
             Ok(snapshot) => {
                 let loaded_name = snapshot.name.clone();
@@ -16,7 +157,7 @@ impl CircuitCiApp {
                 self.project_snapshot = Some(snapshot);
                 self.set_single_sketch_selection(None);
                 if !self.project_yaml_dirty {
-                    self.load_project_yaml();
+                    self.load_project_yaml_unchecked();
                 }
                 self.push_diagnostic(&format!("Project summary loaded for {loaded_name}."));
             }
@@ -24,7 +165,7 @@ impl CircuitCiApp {
         }
     }
 
-    pub(super) fn load_project_yaml(&mut self) {
+    pub(super) fn load_project_yaml_unchecked(&mut self) {
         match std::fs::read_to_string(Path::new(&self.project_path))
             .with_context(|| format!("Failed to read {}.", self.project_path))
             .and_then(|text| {
@@ -34,6 +175,8 @@ impl CircuitCiApp {
             Ok(text) => {
                 self.project_yaml = text;
                 self.project_yaml_dirty = false;
+                self.spice_deck_dirty = false;
+                self.spice_deck_text.clear();
                 self.clear_project_yaml_history();
                 self.stage = Stage::Sketch;
                 self.status = "Project YAML loaded.".to_string();
@@ -192,13 +335,15 @@ fn push_limited_history(stack: &mut Vec<String>, value: String, limit: usize) {
 #[cfg(test)]
 mod tests {
     use super::{
-        PROJECT_YAML_HISTORY_LIMIT, optional_path, push_limited_history, sanitized_project_name,
+        PROJECT_YAML_HISTORY_LIMIT, PendingProjectAction, optional_path, push_limited_history,
+        sanitized_project_name,
     };
     use crate::gui::CircuitCiApp;
     use crate::gui::sketch::{
         edit_component_model, edit_component_part_number, load_project_snapshot_from_yaml,
     };
     use std::path::Path;
+    use tempfile::tempdir;
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -275,6 +420,91 @@ board:
         }
         assert_eq!(history.len(), PROJECT_YAML_HISTORY_LIMIT);
         assert_eq!(history.first().unwrap(), "snapshot-3");
+    }
+
+    #[test]
+    fn dirty_project_action_is_queued_without_replacing_workspace() {
+        let mut app = CircuitCiApp {
+            project_path: "original.yaml".to_string(),
+            project_yaml: editable_project_yaml().to_string(),
+            project_yaml_dirty: true,
+            ..CircuitCiApp::default()
+        };
+
+        app.request_project_action(
+            PendingProjectAction::LoadProjectYaml {
+                path: "replacement.yaml".to_string(),
+            },
+            None,
+        );
+
+        assert_eq!(app.project_path, "original.yaml");
+        assert_eq!(
+            app.pending_project_action,
+            Some(PendingProjectAction::LoadProjectYaml {
+                path: "replacement.yaml".to_string(),
+            })
+        );
+        assert!(app.status.contains("Confirm unsaved changes"));
+    }
+
+    #[test]
+    fn clean_project_action_executes_immediately() {
+        let temp = tempdir().unwrap();
+        let project_path = temp.path().join("project.yaml");
+        std::fs::write(&project_path, editable_project_yaml()).unwrap();
+        let mut app = CircuitCiApp::default();
+
+        app.request_project_action(
+            PendingProjectAction::LoadProjectYaml {
+                path: project_path.to_string_lossy().into_owned(),
+            },
+            None,
+        );
+
+        assert!(app.pending_project_action.is_none());
+        assert_eq!(
+            app.project_path,
+            project_path.to_string_lossy().into_owned()
+        );
+        assert!(app.project_yaml.contains("gui_project_history_test"));
+        assert!(!app.project_yaml_dirty);
+    }
+
+    #[test]
+    fn discard_then_continue_loads_replacement_project() {
+        let temp = tempdir().unwrap();
+        let project_path = temp.path().join("project.yaml");
+        std::fs::write(&project_path, editable_project_yaml()).unwrap();
+        let mut app = CircuitCiApp {
+            project_path: "original.yaml".to_string(),
+            project_yaml: "dirty yaml".to_string(),
+            project_yaml_dirty: true,
+            project_yaml_undo: vec!["old yaml".to_string()],
+            spice_deck_text: "dirty deck".to_string(),
+            spice_deck_dirty: true,
+            ..CircuitCiApp::default()
+        };
+
+        app.request_project_action(
+            PendingProjectAction::LoadProjectYaml {
+                path: project_path.to_string_lossy().into_owned(),
+            },
+            None,
+        );
+        app.discard_unsaved_project_work();
+        let action = app.pending_project_action.take().unwrap();
+        app.execute_project_action(action, None);
+
+        assert_eq!(
+            app.project_path,
+            project_path.to_string_lossy().into_owned()
+        );
+        assert!(app.project_yaml.contains("gui_project_history_test"));
+        assert!(!app.project_yaml_dirty);
+        assert!(!app.spice_deck_dirty);
+        assert!(app.spice_deck_text.is_empty());
+        assert!(app.project_yaml_undo.is_empty());
     }
 
     #[test]

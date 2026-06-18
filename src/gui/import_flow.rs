@@ -1,3 +1,4 @@
+use super::project::PendingProjectAction;
 use super::project::{optional_path, sanitized_project_name};
 use super::{CircuitCiApp, Stage};
 use eframe::egui;
@@ -34,11 +35,18 @@ impl CircuitCiApp {
                 });
             ui.horizontal(|ui| {
                 if ui.button("Import Schematic").clicked() {
-                    self.import_kicad_schematic();
+                    self.request_project_action(
+                        PendingProjectAction::ImportKiCadSchematic,
+                        Some(ui.ctx()),
+                    );
                 }
                 if ui.button("Use As Project").clicked() {
-                    self.project_path = self.import_output_path.clone();
-                    self.load_project_summary();
+                    self.request_project_action(
+                        PendingProjectAction::LoadProjectSummary {
+                            path: self.import_output_path.clone(),
+                        },
+                        Some(ui.ctx()),
+                    );
                 }
             });
         });
@@ -91,11 +99,18 @@ impl CircuitCiApp {
                 });
             ui.horizontal(|ui| {
                 if ui.button("Import SPICE Deck").clicked() {
-                    self.import_spice_deck();
+                    self.request_project_action(
+                        PendingProjectAction::ImportSpiceDeck,
+                        Some(ui.ctx()),
+                    );
                 }
                 if ui.button("Use As Project").clicked() {
-                    self.project_path = self.import_spice_output_path.clone();
-                    self.load_project_summary();
+                    self.request_project_action(
+                        PendingProjectAction::LoadProjectSummary {
+                            path: self.import_spice_output_path.clone(),
+                        },
+                        Some(ui.ctx()),
+                    );
                 }
             });
         });
@@ -119,11 +134,18 @@ impl CircuitCiApp {
                 });
             ui.horizontal(|ui| {
                 if ui.button("Import PCB Evidence").clicked() {
-                    self.import_kicad_pcb();
+                    self.request_project_action(
+                        PendingProjectAction::ImportKiCadPcb,
+                        Some(ui.ctx()),
+                    );
                 }
                 if ui.button("Use As Project").clicked() {
-                    self.project_path = self.import_pcb_output_path.clone();
-                    self.load_project_summary();
+                    self.request_project_action(
+                        PendingProjectAction::LoadProjectSummary {
+                            path: self.import_pcb_output_path.clone(),
+                        },
+                        Some(ui.ctx()),
+                    );
                 }
             });
         });
@@ -151,7 +173,7 @@ impl CircuitCiApp {
                 self.import_pcb_project_path = self.project_path.clone();
                 self.status = "KiCad schematic imported.".to_string();
                 self.push_diagnostic("KiCad schematic imported to Board IR.");
-                self.load_project_summary();
+                self.load_project_summary_unchecked();
             }
             Err(error) => self.record_error(error),
         }
@@ -171,7 +193,7 @@ impl CircuitCiApp {
                     "KiCad PCB imported: {} placements, {} pads, {} route segments, {} vias.",
                     summary.placements, summary.pads, summary.route_segments, summary.route_vias
                 ));
-                self.load_project_summary();
+                self.load_project_summary_unchecked();
             }
             Err(error) => self.record_error(error),
         }
@@ -201,7 +223,7 @@ impl CircuitCiApp {
                     "SPICE deck imported to Board IR from {}.",
                     deck.display()
                 ));
-                self.load_project_summary();
+                self.load_project_summary_unchecked();
                 self.stage = Stage::Simulation;
             }
             Err(error) => self.record_error(error),
