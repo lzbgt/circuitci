@@ -635,6 +635,10 @@ impl CircuitCiApp {
                 egui::Color32::from_rgb(255, 226, 145),
             );
         }
+        let hierarchy_connector_badges = hierarchy_view
+            .as_ref()
+            .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
+            .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
@@ -684,6 +688,12 @@ impl CircuitCiApp {
                     .as_ref()
                     .is_none_or(|view| view.bundle_badge_visible(badge))
             })
+        });
+        let hovered_hierarchy_connector_badge = pointer_hover.and_then(|position| {
+            sketch_hierarchy::hit_test_hierarchy_connector_badge(
+                &hierarchy_connector_badges,
+                position,
+            )
         });
         for edge in &graph.edges {
             let opacity = if let Some(view) = &hierarchy_view {
@@ -767,6 +777,11 @@ impl CircuitCiApp {
                 && self.wire_pin_id.trim() == anchor.pin;
             draw_sketch_pin_anchor(&painter, anchor, active, opacity);
         }
+        for badge in &hierarchy_connector_badges {
+            let hovered = hovered_hierarchy_connector_badge
+                .is_some_and(|hovered| hovered.net_id == badge.net_id);
+            sketch_hierarchy::draw_hierarchy_connector_badge(&painter, badge, hovered);
+        }
         for badge in &graph.probe_badges {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.probe_badge_visible(badge) {
@@ -788,9 +803,25 @@ impl CircuitCiApp {
             && let Some(position) = response.interact_pointer_pos()
         {
             let multi_select = ui.input(|input| input.modifiers.shift || input.modifiers.command);
-            let clicked_probe_badge = hit_test_probe_badge(&graph.probe_badges, position);
+            let clicked_probe_badge =
+                hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.probe_badge_visible(badge))
+                });
+            let clicked_hierarchy_connector_badge =
+                sketch_hierarchy::hit_test_hierarchy_connector_badge(
+                    &hierarchy_connector_badges,
+                    position,
+                );
             let clicked_bundle_badge =
-                sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position);
+                sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(
+                    |badge| {
+                        hierarchy_view
+                            .as_ref()
+                            .is_none_or(|view| view.bundle_badge_visible(badge))
+                    },
+                );
             let clicked_anchor = graph.pin_anchors.iter().find(|anchor| {
                 hierarchy_view
                     .as_ref()
@@ -818,6 +849,13 @@ impl CircuitCiApp {
             };
             if let Some(badge) = clicked_probe_badge {
                 self.open_probe_badge_in_simulation(badge);
+            } else if let Some(badge) = clicked_hierarchy_connector_badge {
+                self.set_single_sketch_selection(Some(SketchSelection::Net(badge.net_id.clone())));
+                self.status = format!(
+                    "Selected net {} with {} off-sheet endpoint(s).",
+                    badge.net_id,
+                    badge.external_targets.len()
+                );
             } else if let Some(badge) = clicked_bundle_badge {
                 self.select_net_bundle(&badge.bundle);
             } else if let Some(anchor) = clicked_anchor {
@@ -998,6 +1036,10 @@ impl CircuitCiApp {
         } else if let Some(badge) = hovered_bundle_badge {
             response.on_hover_ui(|ui| {
                 sketch_bundles::net_bundle_tooltip(ui, badge);
+            });
+        } else if let Some(badge) = hovered_hierarchy_connector_badge {
+            response.on_hover_ui(|ui| {
+                sketch_hierarchy::hierarchy_connector_tooltip(ui, badge);
             });
         } else if let Some(node) = hovered_node {
             response.context_menu(|ui| {

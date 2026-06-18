@@ -2,12 +2,13 @@ use eframe::egui;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::CircuitCiApp;
-use super::sketch::{self, ProjectSnapshot, SketchSelection};
+use super::sketch::{self, ProjectSnapshot, SketchSelection, with_opacity};
 use super::sketch_bundles::SketchNetBundleBadge;
 use super::sketch_probes::{SketchProbeBadge, SketchProbeTarget};
 
 const MAX_HIERARCHY_ROWS: usize = 48;
 const DIMMED_HIERARCHY_OPACITY: f32 = 0.24;
+const MAX_CONNECTOR_TARGETS: usize = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SketchHierarchyTarget {
@@ -48,6 +49,14 @@ pub(super) struct SketchHierarchyView {
     label: String,
     mode: SketchHierarchyFocusMode,
     selections: BTreeSet<SketchSelection>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct SketchHierarchyConnectorBadge {
+    pub(super) net_id: String,
+    pub(super) external_targets: Vec<String>,
+    pub(super) rect: egui::Rect,
+    anchor: egui::Pos2,
 }
 
 impl CircuitCiApp {
@@ -269,6 +278,15 @@ impl SketchHierarchyView {
         self.opacity(self.matches_bundle_badge(badge))
     }
 
+    fn focused_nets(&self) -> impl Iterator<Item = &str> {
+        self.selections
+            .iter()
+            .filter_map(|selection| match selection {
+                SketchSelection::Net(net) => Some(net.as_str()),
+                SketchSelection::Component(_) | SketchSelection::Overflow(_) => None,
+            })
+    }
+
     fn matches_selection(&self, selection: &SketchSelection) -> bool {
         self.selections.contains(selection)
     }
@@ -316,6 +334,124 @@ impl SketchHierarchyView {
             DIMMED_HIERARCHY_OPACITY
         }
     }
+}
+
+pub(super) fn layout_hierarchy_connector_badges(
+    snapshot: &ProjectSnapshot,
+    graph: &sketch::SketchGraph,
+    view: &SketchHierarchyView,
+) -> Vec<SketchHierarchyConnectorBadge> {
+    let focused_nets = view.focused_nets().collect::<BTreeSet<_>>();
+    if focused_nets.is_empty() {
+        return Vec::new();
+    }
+    let mut external_targets_by_net = BTreeMap::<String, BTreeSet<String>>::new();
+    for component in &snapshot.components_detail {
+        let component_selection = SketchSelection::Component(component.id.clone());
+        if view.matches_selection(&component_selection) {
+            continue;
+        }
+        for pin in &component.pins {
+            if focused_nets.contains(pin.net.as_str()) {
+                external_targets_by_net
+                    .entry(pin.net.clone())
+                    .or_default()
+                    .insert(format!("{}.{}", component.id, pin.pin));
+            }
+        }
+    }
+    external_targets_by_net
+        .into_iter()
+        .filter_map(|(net_id, external_targets)| {
+            let node = graph
+                .nodes
+                .iter()
+                .find(|node| node.selection == SketchSelection::Net(net_id.clone()))?;
+            let targets = external_targets.into_iter().collect::<Vec<_>>();
+            if targets.is_empty() {
+                return None;
+            }
+            let label_width =
+                ((targets.len().to_string().len() as f32) * 7.0 + 70.0).clamp(78.0, 132.0);
+            let rect = egui::Rect::from_min_size(
+                node.rect.right_top() + egui::vec2(8.0, 6.0),
+                egui::vec2(label_width, 20.0),
+            );
+            Some(SketchHierarchyConnectorBadge {
+                net_id,
+                external_targets: targets,
+                rect,
+                anchor: node.rect.right_center(),
+            })
+        })
+        .collect()
+}
+
+pub(super) fn hit_test_hierarchy_connector_badge(
+    badges: &[SketchHierarchyConnectorBadge],
+    position: egui::Pos2,
+) -> Option<&SketchHierarchyConnectorBadge> {
+    badges
+        .iter()
+        .find(|badge| badge.rect.expand(4.0).contains(position))
+}
+
+pub(super) fn draw_hierarchy_connector_badge(
+    painter: &egui::Painter,
+    badge: &SketchHierarchyConnectorBadge,
+    hovered: bool,
+) {
+    let color = if hovered {
+        egui::Color32::from_rgb(255, 196, 87)
+    } else {
+        egui::Color32::from_rgb(155, 189, 255)
+    };
+    painter.line_segment(
+        [badge.anchor, badge.rect.left_center()],
+        egui::Stroke::new(1.0, with_opacity(color, 0.9)),
+    );
+    painter.rect_filled(
+        badge.rect,
+        3.0,
+        egui::Color32::from_rgba_unmultiplied(30, 44, 70, if hovered { 242 } else { 220 }),
+    );
+    painter.rect_stroke(
+        badge.rect,
+        3.0,
+        egui::Stroke::new(if hovered { 2.0 } else { 1.0 }, color),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        badge.rect.center(),
+        egui::Align2::CENTER_CENTER,
+        format!("offsheet {}", badge.external_targets.len()),
+        egui::FontId::monospace(10.0),
+        egui::Color32::WHITE,
+    );
+}
+
+pub(super) fn hierarchy_connector_tooltip(
+    ui: &mut egui::Ui,
+    badge: &SketchHierarchyConnectorBadge,
+) {
+    ui.strong(format!("Net {} leaves focused sheet", badge.net_id));
+    ui.label(format!(
+        "{} external endpoint(s)",
+        badge.external_targets.len()
+    ));
+    ui.separator();
+    for target in badge.external_targets.iter().take(MAX_CONNECTOR_TARGETS) {
+        ui.monospace(target);
+    }
+    if badge.external_targets.len() > MAX_CONNECTOR_TARGETS {
+        ui.label(format!(
+            "{} more",
+            badge.external_targets.len() - MAX_CONNECTOR_TARGETS
+        ));
+    }
+    ui.separator();
+    ui.label("Derived from flattened Board IR pin/net bindings.");
+    ui.label("Click to select the underlying net.");
 }
 
 pub(super) fn derive_hierarchy_groups(snapshot: &ProjectSnapshot) -> Vec<SketchHierarchyGroup> {
@@ -499,7 +635,10 @@ fn humanize_sheet_prefix(prefix: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{SketchHierarchyFocusMode, SketchHierarchyView, derive_hierarchy_groups};
+    use super::{
+        SketchHierarchyFocusMode, SketchHierarchyView, derive_hierarchy_groups,
+        layout_hierarchy_connector_badges,
+    };
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchEdge, SketchNet, SketchNodeStyle, SketchPin,
         SketchPinAnchor, SketchSelection,
@@ -704,5 +843,43 @@ mod tests {
         };
         assert!(isolate.bundle_badge_visible(&focused_bundle));
         assert!(!isolate.bundle_badge_visible(&unrelated_bundle));
+    }
+
+    #[test]
+    fn connector_badges_expose_external_focused_net_endpoints() {
+        let groups = derive_hierarchy_groups(&snapshot());
+        let group = groups
+            .iter()
+            .find(|group| group.label == "Analog Frontend")
+            .unwrap();
+        let view = SketchHierarchyView::from_group(group, SketchHierarchyFocusMode::Isolate);
+        let graph = crate::gui::sketch::layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(800.0, 600.0)),
+            &snapshot(),
+        );
+        assert!(layout_hierarchy_connector_badges(&snapshot(), &graph, &view).is_empty());
+
+        let mut snapshot = snapshot();
+        snapshot.components_detail.push(SketchComponent {
+            id: "U2".to_string(),
+            model: "generic.ic".to_string(),
+            part_number: None,
+            pins: vec![SketchPin {
+                pin: "IN".to_string(),
+                net: "analog_frontend_filter_out".to_string(),
+            }],
+            position: None,
+            style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
+        });
+        snapshot.components += 1;
+        let graph = crate::gui::sketch::layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(800.0, 600.0)),
+            &snapshot,
+        );
+        let badges = layout_hierarchy_connector_badges(&snapshot, &graph, &view);
+        assert_eq!(badges.len(), 1);
+        assert_eq!(badges[0].net_id, "analog_frontend_filter_out");
+        assert_eq!(badges[0].external_targets, vec!["U2.IN".to_string()]);
     }
 }
