@@ -64,7 +64,8 @@ structured scalar YAML edit actions, conservative component/unreferenced-net
 add/remove operations, schematic symbol style edits, validated component pin
 assignment, visual wire assignment mutations, selected-net voltage-probe
 insertion controls, and selected-component current-probe insertion for
-generated source branches or generated semiconductor current-sense branches.
+generated source branches, generated passive current-sense branches, or
+generated semiconductor current-sense branches.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
 assignment, and model-backed component insertion through the same Board IR YAML
@@ -170,7 +171,8 @@ The supported desktop simulation path is:
    net,
 20. select a component on the sketch canvas and append a current probe when the
    target generated-from-Board scenario includes a source primitive branch or a
-   diode/BJT/MOSFET model branch with a generated current-sense source,
+   passive/diode/BJT/MOSFET branch where CircuitCI can generate a current-sense
+   source,
 21. add sample or windowed min/max waveform assertions against declared probes,
 22. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
@@ -207,7 +209,8 @@ probe layer. The selected-net inspector appends a voltage probe to an existing
 analog scenario only when that scenario already declares a node binding for the
 selected Board IR net. The selected-component inspector appends a current probe
 only for generated-from-Board analog scenarios and only when the component
-branch is source-backed by a Board IR voltage/current source primitive or by a
-bound diode/BJT/MOSFET model branch with CircuitCI's generated zero-volt
-current-sense source. Passive branch current, subcircuit internals, and
+branch is source-backed by a Board IR voltage/current source primitive, by a
+Board IR resistor/capacitor/inductor primitive with a generated zero-volt
+current-sense source, or by a bound diode/BJT/MOSFET model branch with
+CircuitCI's generated zero-volt current-sense source. Subcircuit internals and
 file-backed deck branch probes still require explicit deck/model evidence.

@@ -406,15 +406,24 @@ fn primitive_current_probe_expression(
         | crate::board_ir::SpicePrimitive::PulseVoltageSource => "V",
         crate::board_ir::SpicePrimitive::DcCurrentSource
         | crate::board_ir::SpicePrimitive::PulseCurrentSource => "I",
+        crate::board_ir::SpicePrimitive::Resistor => "R",
+        crate::board_ir::SpicePrimitive::Capacitor => "C",
+        crate::board_ir::SpicePrimitive::Inductor => "L",
+    };
+    let expression = match primitive {
         crate::board_ir::SpicePrimitive::Resistor
         | crate::board_ir::SpicePrimitive::Capacitor
         | crate::board_ir::SpicePrimitive::Inductor => {
-            anyhow::bail!(
-                "Component {component_id} is a passive primitive; GUI current probes currently require a generated source branch or semiconductor current-sense branch."
-            );
+            format!("I({})", generated_current_sense_name(prefix, component_id))
+        }
+        crate::board_ir::SpicePrimitive::DcVoltageSource
+        | crate::board_ir::SpicePrimitive::PulseVoltageSource
+        | crate::board_ir::SpicePrimitive::DcCurrentSource
+        | crate::board_ir::SpicePrimitive::PulseCurrentSource => {
+            format!("I({})", spice_element_name(prefix, component_id))
         }
     };
-    Ok(format!("I({})", spice_element_name(prefix, component_id)))
+    Ok(expression)
 }
 
 fn generated_current_sense_name(device_prefix: &str, component_id: &str) -> String {
@@ -997,15 +1006,21 @@ board:
     }
 
     #[test]
-    fn append_analog_current_probe_rejects_passive_branch_without_sense_source() {
+    fn append_analog_current_probe_emits_passive_branch_current_sense() {
         let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
         let draft = AnalogCurrentProbeDraft {
             scenario_name: "gui_transient".to_string(),
             component_id: "R1".to_string(),
             probe_name: "r1_current".to_string(),
         };
-        let error =
-            append_analog_current_probe(&edited, Path::new("project.yaml"), &draft).unwrap_err();
-        assert!(error.to_string().contains("passive primitive"));
+        let edited =
+            append_analog_current_probe(&edited, Path::new("project.yaml"), &draft).unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "r1_current"
+                && probe.expression == "I(VCCI_R1)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Current
+        }));
     }
 }

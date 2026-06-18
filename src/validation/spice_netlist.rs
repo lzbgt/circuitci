@@ -102,38 +102,45 @@ fn generate_component_line(
 ) -> Result<String, String> {
     if let Some(spice) = &component.spice {
         return match spice.primitive {
-            SpicePrimitive::Resistor => Ok(format!(
-                "{} {} {} {}",
-                element_name("R", component_id),
-                pin_node(component_id, component, node_by_net, "A")?,
-                pin_node(component_id, component, node_by_net, "B")?,
-                positive(spice.value_ohm, component_id, "spice.value_ohm")?
-            )),
+            SpicePrimitive::Resistor => passive_two_pin_line(
+                analog,
+                component_id,
+                component,
+                node_by_net,
+                "R",
+                positive(spice.value_ohm, component_id, "spice.value_ohm")?,
+                None,
+            ),
             SpicePrimitive::Capacitor => {
-                let mut line = format!(
-                    "{} {} {} {}",
-                    element_name("C", component_id),
-                    pin_node(component_id, component, node_by_net, "A")?,
-                    pin_node(component_id, component, node_by_net, "B")?,
-                    positive(spice.value_f, component_id, "spice.value_f")?
-                );
-                if let Some(initial_v) = spice.initial_v {
+                let initial_condition = if let Some(initial_v) = spice.initial_v {
                     if !initial_v.is_finite() {
                         return Err(format!(
                             "Component {component_id} spice.initial_v must be finite."
                         ));
                     }
-                    line.push_str(&format!(" IC={initial_v}"));
-                }
-                Ok(line)
+                    Some(format!("IC={initial_v}"))
+                } else {
+                    None
+                };
+                passive_two_pin_line(
+                    analog,
+                    component_id,
+                    component,
+                    node_by_net,
+                    "C",
+                    positive(spice.value_f, component_id, "spice.value_f")?,
+                    initial_condition.as_deref(),
+                )
             }
-            SpicePrimitive::Inductor => Ok(format!(
-                "{} {} {} {}",
-                element_name("L", component_id),
-                pin_node(component_id, component, node_by_net, "A")?,
-                pin_node(component_id, component, node_by_net, "B")?,
-                positive(spice.value_h, component_id, "spice.value_h")?
-            )),
+            SpicePrimitive::Inductor => passive_two_pin_line(
+                analog,
+                component_id,
+                component,
+                node_by_net,
+                "L",
+                positive(spice.value_h, component_id, "spice.value_h")?,
+                None,
+            ),
             SpicePrimitive::DcVoltageSource => Ok(format!(
                 "{} {} {} DC {}",
                 element_name("V", component_id),
@@ -224,6 +231,74 @@ fn generate_component_line(
         }
         SpiceModelType::Subckt => subckt_line(component_id, component, node_by_net, spice_model),
     }
+}
+
+fn passive_two_pin_line(
+    analog: &AnalogScenario,
+    component_id: &str,
+    component: &ComponentSpec,
+    node_by_net: &BTreeMap<String, String>,
+    prefix: &str,
+    value: f64,
+    suffix: Option<&str>,
+) -> Result<String, String> {
+    let node_a = pin_node(component_id, component, node_by_net, "A")?;
+    let node_b = pin_node(component_id, component, node_by_net, "B")?;
+    if passive_current_sense_requested(analog, prefix, component_id) {
+        let node_a_for_component = sense_node(component_id, "a");
+        let mut line = format!(
+            "{} {} {} 0\n{} {} {} {}",
+            current_sense_name(prefix, component_id),
+            node_a,
+            node_a_for_component,
+            element_name(prefix, component_id),
+            node_a_for_component,
+            node_b,
+            value
+        );
+        if let Some(suffix) = suffix {
+            line.push(' ');
+            line.push_str(suffix);
+        }
+        Ok(line)
+    } else {
+        let mut line = format!(
+            "{} {} {} {}",
+            element_name(prefix, component_id),
+            node_a,
+            node_b,
+            value
+        );
+        if let Some(suffix) = suffix {
+            line.push(' ');
+            line.push_str(suffix);
+        }
+        Ok(line)
+    }
+}
+
+fn passive_current_sense_requested(
+    analog: &AnalogScenario,
+    prefix: &str,
+    component_id: &str,
+) -> bool {
+    let branch = current_sense_name(prefix, component_id).to_ascii_lowercase();
+    analog
+        .probes
+        .iter()
+        .any(|probe| expression_references_branch_current(&probe.expression, &branch))
+}
+
+fn expression_references_branch_current(expression: &str, branch_lowercase: &str) -> bool {
+    let normalized: String = expression
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .flat_map(char::to_lowercase)
+        .collect();
+    let current = format!("i({branch_lowercase})");
+    normalized == current
+        || normalized == format!("-{current}")
+        || normalized == format!("abs({current})")
 }
 
 fn mosfet_body_node(
@@ -541,5 +616,134 @@ mod tests {
         let sense = text.find("VCCI_D1 in cci_d1_a 0").unwrap();
         let diode = text.find("D1 cci_d1_a out ONSEMI_1N4148WS").unwrap();
         assert!(sense < diode);
+    }
+
+    #[test]
+    fn generated_passive_inserts_current_sense_only_when_probe_requests_it() {
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(
+            "project:
+  name: passive_current_sense_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: in
+        B: out
+  nets:
+    in:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: with_current_probe
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [R1]
+      model_files: []
+      node_bindings:
+        - { net: in, node: in }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: in }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: r1_current, expression: I(VCCI_R1), quantity: current }
+      assertions: []
+",
+        )
+        .unwrap();
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        let sense = text.find("VCCI_R1 in cci_r1_a 0").unwrap();
+        let resistor = text.find("R1 cci_r1_a out 1000").unwrap();
+        assert!(sense < resistor);
+    }
+
+    #[test]
+    fn generated_passive_omits_current_sense_when_probe_does_not_request_it() {
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(
+            "project:
+  name: passive_without_current_sense_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: in
+        B: out
+  nets:
+    in:
+      kind: power
+      nominal_voltage: 5
+      powered: true
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: without_current_probe
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [R1]
+      model_files: []
+      node_bindings:
+        - { net: in, node: in }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: in }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: out_voltage, expression: V(out), quantity: voltage }
+      assertions: []
+",
+        )
+        .unwrap();
+        let (library, findings) = load_library(Path::new("project.yaml"), &project);
+        let bound = bind_project(&project, library, findings);
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let deck = dir.path().join("generated.cir");
+
+        generate_board_netlist(&bound, analog, &deck).unwrap();
+
+        let text = std::fs::read_to_string(deck).unwrap();
+        assert!(!text.contains("VCCI_R1"));
+        assert!(text.contains("R1 in out 1000"));
     }
 }
