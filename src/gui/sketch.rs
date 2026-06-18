@@ -5,6 +5,7 @@ use std::path::Path;
 use super::sketch_probes::{
     SketchProbe, SketchProbeBadge, derive_project_probes, layout_probe_badges,
 };
+use super::sketch_spice::SketchComponentSpice;
 use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, draw_symbol_glyph};
 
 pub(super) const DEFAULT_SKETCH_GRID_STEP: f32 = 16.0;
@@ -30,6 +31,7 @@ pub(super) struct SketchComponent {
     pub(super) id: String,
     pub(super) model: String,
     pub(super) part_number: Option<String>,
+    pub(super) spice: Option<SketchComponentSpice>,
     pub(super) pins: Vec<SketchPin>,
     pub(super) position: Option<SketchPosition>,
     pub(super) style: SketchNodeStyle,
@@ -164,6 +166,10 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             id: id.clone(),
             model: component.model.clone(),
             part_number: component.part_number.clone(),
+            spice: component
+                .spice
+                .as_ref()
+                .map(SketchComponentSpice::from_board),
             position: sketch_position_for(positions, &SketchSelection::Component(id.clone())),
             style: sketch_style_for(styles, &SketchSelection::Component(id.clone())),
             source_paths: component

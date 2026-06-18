@@ -143,6 +143,12 @@ routing should keep using these Board IR mutation helpers rather than
 introducing a parallel connection model. The rendered wire path may be
 orthogonal and may include net labels and junction dots for readability, but
 the persisted connection is still only the target component pin's net binding.
+`src/gui/sketch_spice.rs` owns selected-component SPICE primitive/value edits
+from the Sketch inspector. It must validate that passive primitives have `A`/`B`
+pins and independent-source primitives have `P`/`N` pins before writing
+component-level `spice` evidence, reject non-finite or nonsensical numeric
+values, update exact generated/source branch probe expressions when the
+primitive prefix changes, and reparse Board IR before accepting the edit.
 The GUI shared undo/redo history in
 `src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
 graph, property, wire, and text edits should enter that history through the

@@ -31,6 +31,7 @@ circuitci-gui
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_navigator.rs
   -> src/gui/sketch_probes.rs
+  -> src/gui/sketch_spice.rs
   -> src/gui/sketch_symbols.rs
   -> src/gui/library.rs
   -> src/gui/simulation.rs
@@ -83,6 +84,11 @@ YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_rename.rs` owns structured component/net rename mutations that
 rewrite Board IR graph keys, schematic metadata keys, and generated analog
 scenario references before reparsing the edited YAML.
+`src/gui/sketch_spice.rs` owns selected-component SPICE primitive/value edits
+for Board IR component-level evidence. It validates the required pin convention
+for passive and independent-source primitives, updates exact generated/source
+branch probe expressions when a primitive prefix changes, and reparses the
+edited YAML before the GUI accepts the mutation.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, viewport input, hit-test routing, marquee and drag event routing, wire
 preview drawing, node/wire/probe/bundle/hierarchy connector tooltips, and
@@ -171,7 +177,8 @@ form:
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
-  scalar edits and rename controls for existing component and net properties, schematic-only
+  scalar edits, rename controls, and component-level SPICE primitive/value
+  editing for existing component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
   schematic grid/snap controls, orthogonal wire visuals with net labels and

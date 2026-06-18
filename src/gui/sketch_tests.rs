@@ -477,6 +477,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "R1".to_string(),
                 model: "generic.analog.resistor".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -486,6 +487,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "C1".to_string(),
                 model: "generic.analog.capacitor".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -495,6 +497,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "L1".to_string(),
                 model: "generic.analog.inductor".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -504,6 +507,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "D1".to_string(),
                 model: "generic.analog.diode".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -513,6 +517,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "V1".to_string(),
                 model: "generic.analog.voltage_source".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -522,6 +527,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "J1".to_string(),
                 model: "vendor.example.connector".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -531,6 +537,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 id: "U1".to_string(),
                 model: "vendor.example.controller".to_string(),
                 part_number: None,
+                spice: None,
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
@@ -746,6 +753,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
             id: "R1".to_string(),
             model: "generic.analog.resistor".to_string(),
             part_number: None,
+            spice: None,
             position: Some(SketchPosition { x: 50.0, y: 70.0 }),
             pins: vec![SketchPin {
                 pin: "A".to_string(),
@@ -793,6 +801,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
             id: "U1".to_string(),
             model: "vendor.example.dual_pin".to_string(),
             part_number: None,
+            spice: None,
             position: None,
             pins: vec![
                 SketchPin {
@@ -862,6 +871,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
             id: "R1".to_string(),
             model: "generic.analog.resistor".to_string(),
             part_number: None,
+            spice: None,
             position: Some(SketchPosition { x: 20.0, y: 30.0 }),
             pins: vec![SketchPin {
                 pin: "A".to_string(),
@@ -913,6 +923,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
             id: "U1".to_string(),
             model: "generic.ic".to_string(),
             part_number: None,
+            spice: None,
             position: Some(SketchPosition { x: 20.0, y: 30.0 }),
             pins: vec![SketchPin {
                 pin: "OUT".to_string(),
@@ -1278,6 +1289,7 @@ fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
             id: format!("U{index}"),
             model: "generic.ic".to_string(),
             part_number: None,
+            spice: None,
             pins: vec![SketchPin {
                 pin: "OUT".to_string(),
                 net: "net_a".to_string(),
@@ -1329,6 +1341,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                 id: "U1".to_string(),
                 model: "generic.ic".to_string(),
                 part_number: None,
+                spice: None,
                 position: Some(SketchPosition { x: 20.0, y: 40.0 }),
                 pins: vec![SketchPin {
                     pin: "OUT".to_string(),
@@ -1341,6 +1354,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                 id: "U2".to_string(),
                 model: "generic.ic".to_string(),
                 part_number: None,
+                spice: None,
                 position: Some(SketchPosition { x: 820.0, y: 420.0 }),
                 pins: vec![SketchPin {
                     pin: "IN".to_string(),

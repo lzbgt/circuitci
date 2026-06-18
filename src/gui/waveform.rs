@@ -1654,6 +1654,7 @@ mod tests {
                 id: "R1".to_string(),
                 model: "generic.analog.resistor".to_string(),
                 part_number: None,
+                spice: None,
                 position: None,
                 pins: vec![
                     SketchPin {

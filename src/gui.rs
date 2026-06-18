@@ -31,6 +31,7 @@ mod sketch_inspector;
 mod sketch_navigator;
 mod sketch_probes;
 mod sketch_rename;
+mod sketch_spice;
 mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
@@ -880,6 +881,7 @@ board:
                 id: "U1".to_string(),
                 model: "generic.ic".to_string(),
                 part_number: None,
+                spice: None,
                 position: None,
                 pins: vec![
                     SketchPin {
@@ -924,6 +926,7 @@ board:
                 id: "R1".to_string(),
                 model: "generic.analog.resistor".to_string(),
                 part_number: None,
+                spice: None,
                 position: None,
                 pins: vec![SketchPin {
                     pin: "A".to_string(),

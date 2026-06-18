@@ -10,6 +10,10 @@ use super::sketch::{
     edit_schematic_node_position, remove_component, remove_component_pin, remove_net,
 };
 use super::sketch_rename::{rename_component, rename_net};
+use super::sketch_spice::{
+    SketchComponentSpice, SketchSpiceDraft, SketchSpiceKind, draft_from_existing,
+    replace_component_spice,
+};
 use super::{CircuitCiApp, Stage};
 use eframe::egui;
 
@@ -45,6 +49,17 @@ impl CircuitCiApp {
                         if ui.text_edit_singleline(&mut part_number).changed() {
                             self.apply_component_part_number_edit(&component.id, &part_number);
                         }
+
+                        ui.separator();
+                        self.component_spice_editor(
+                            ui,
+                            &component.id,
+                            component.spice.as_ref(),
+                            component.pins.iter().any(|pin| pin.pin == "A")
+                                && component.pins.iter().any(|pin| pin.pin == "B"),
+                            component.pins.iter().any(|pin| pin.pin == "P")
+                                && component.pins.iter().any(|pin| pin.pin == "N"),
+                        );
 
                         ui.separator();
                         ui.label("Symbol placement");
@@ -321,6 +336,184 @@ impl CircuitCiApp {
         match edit_component_part_number(&self.project_yaml, component_id, part_number) {
             Ok(updated) => {
                 self.apply_edited_project_yaml(updated, "Component part number updated.")
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn component_spice_editor(
+        &mut self,
+        ui: &mut egui::Ui,
+        component_id: &str,
+        spice: Option<&SketchComponentSpice>,
+        has_passive_pins: bool,
+        has_source_pins: bool,
+    ) {
+        ui.label("SPICE primitive");
+        if spice.is_none() {
+            ui.label("No component-level SPICE evidence.");
+            ui.horizontal_wrapped(|ui| {
+                for kind in SketchSpiceKind::ALL {
+                    let enabled = if matches!(
+                        kind,
+                        SketchSpiceKind::Resistor
+                            | SketchSpiceKind::Capacitor
+                            | SketchSpiceKind::Inductor
+                    ) {
+                        has_passive_pins
+                    } else {
+                        has_source_pins
+                    };
+                    if ui
+                        .add_enabled(enabled, egui::Button::new(format!("Add {}", kind.label())))
+                        .clicked()
+                    {
+                        let draft = draft_from_existing(component_id, None, kind);
+                        self.apply_component_spice_edit(&draft);
+                    }
+                }
+            });
+            return;
+        }
+
+        let spice = spice.expect("spice none returned");
+        let mut kind = spice.kind;
+        egui::ComboBox::from_label("Primitive")
+            .selected_text(kind.label())
+            .show_ui(ui, |ui| {
+                for candidate in SketchSpiceKind::ALL {
+                    ui.selectable_value(&mut kind, candidate, candidate.label());
+                }
+            });
+        if kind != spice.kind {
+            let draft = draft_from_existing(component_id, Some(spice), kind);
+            self.apply_component_spice_edit(&draft);
+            return;
+        }
+
+        match spice.kind {
+            SketchSpiceKind::Resistor => {
+                let mut value = spice.value;
+                if ui
+                    .add(egui::DragValue::new(&mut value).speed(1.0).suffix(" ohm"))
+                    .changed()
+                {
+                    let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                    draft.value = value;
+                    self.apply_component_spice_edit(&draft);
+                }
+            }
+            SketchSpiceKind::Capacitor => {
+                let mut value = spice.value;
+                if ui
+                    .add(egui::DragValue::new(&mut value).speed(1e-7).suffix(" F"))
+                    .changed()
+                {
+                    let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                    draft.value = value;
+                    self.apply_component_spice_edit(&draft);
+                }
+                ui.horizontal(|ui| {
+                    ui.label("Initial voltage");
+                    if let Some(initial_v) = spice.initial_v {
+                        let mut edited = initial_v;
+                        if ui
+                            .add(egui::DragValue::new(&mut edited).speed(0.1).suffix(" V"))
+                            .changed()
+                        {
+                            let mut draft =
+                                draft_from_existing(component_id, Some(spice), spice.kind);
+                            draft.initial_v = Some(edited);
+                            self.apply_component_spice_edit(&draft);
+                        }
+                        if ui.button("Clear").clicked() {
+                            let mut draft =
+                                draft_from_existing(component_id, Some(spice), spice.kind);
+                            draft.initial_v = None;
+                            self.apply_component_spice_edit(&draft);
+                        }
+                    } else if ui.button("Set").clicked() {
+                        let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                        draft.initial_v = Some(0.0);
+                        self.apply_component_spice_edit(&draft);
+                    }
+                });
+            }
+            SketchSpiceKind::Inductor => {
+                let mut value = spice.value;
+                if ui
+                    .add(egui::DragValue::new(&mut value).speed(1e-7).suffix(" H"))
+                    .changed()
+                {
+                    let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                    draft.value = value;
+                    self.apply_component_spice_edit(&draft);
+                }
+            }
+            SketchSpiceKind::DcVoltageSource => {
+                let mut value = spice.value;
+                if ui
+                    .add(egui::DragValue::new(&mut value).speed(0.1).suffix(" V"))
+                    .changed()
+                {
+                    let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                    draft.value = value;
+                    self.apply_component_spice_edit(&draft);
+                }
+            }
+            SketchSpiceKind::DcCurrentSource => {
+                let mut value = spice.value;
+                if ui
+                    .add(egui::DragValue::new(&mut value).speed(0.01).suffix(" A"))
+                    .changed()
+                {
+                    let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+                    draft.value = value;
+                    self.apply_component_spice_edit(&draft);
+                }
+            }
+            SketchSpiceKind::PulseVoltageSource | SketchSpiceKind::PulseCurrentSource => {
+                let unit = if spice.kind == SketchSpiceKind::PulseVoltageSource {
+                    " V"
+                } else {
+                    " A"
+                };
+                self.component_spice_pulse_editor(ui, component_id, spice, unit);
+            }
+        }
+    }
+
+    fn component_spice_pulse_editor(
+        &mut self,
+        ui: &mut egui::Ui,
+        component_id: &str,
+        spice: &SketchComponentSpice,
+        unit: &str,
+    ) {
+        let mut pulse = spice.pulse.clone();
+        let mut changed = false;
+        egui::Grid::new("component_spice_pulse_editor")
+            .num_columns(2)
+            .show(ui, |ui| {
+                changed |= pulse_field(ui, "Initial", &mut pulse.initial, 0.1, unit);
+                changed |= pulse_field(ui, "Pulsed", &mut pulse.pulsed, 0.1, unit);
+                changed |= pulse_field(ui, "Delay", &mut pulse.delay_us, 0.1, " us");
+                changed |= pulse_field(ui, "Rise", &mut pulse.rise_us, 0.1, " us");
+                changed |= pulse_field(ui, "Fall", &mut pulse.fall_us, 0.1, " us");
+                changed |= pulse_field(ui, "Width", &mut pulse.width_us, 0.1, " us");
+                changed |= pulse_field(ui, "Period", &mut pulse.period_us, 0.1, " us");
+            });
+        if changed {
+            let mut draft = draft_from_existing(component_id, Some(spice), spice.kind);
+            draft.pulse = pulse;
+            self.apply_component_spice_edit(&draft);
+        }
+    }
+
+    fn apply_component_spice_edit(&mut self, draft: &SketchSpiceDraft) {
+        match replace_component_spice(&self.project_yaml, draft) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(updated, "Component SPICE evidence updated.")
             }
             Err(error) => self.record_error(error),
         }
@@ -718,6 +911,15 @@ impl CircuitCiApp {
             Err(error) => self.record_error(error),
         }
     }
+}
+
+fn pulse_field(ui: &mut egui::Ui, label: &str, value: &mut f64, speed: f64, suffix: &str) -> bool {
+    ui.label(label);
+    let changed = ui
+        .add(egui::DragValue::new(value).speed(speed).suffix(suffix))
+        .changed();
+    ui.end_row();
+    changed
 }
 
 pub(super) fn default_probe_name_for_net(net_id: &str) -> String {

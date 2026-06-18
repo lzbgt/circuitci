@@ -661,6 +661,7 @@ mod tests {
                     id: "analog_frontend__R1".to_string(),
                     model: "generic.analog.resistor".to_string(),
                     part_number: None,
+                    spice: None,
                     pins: vec![SketchPin {
                         pin: "A".to_string(),
                         net: "analog_frontend_filter_out".to_string(),
@@ -673,6 +674,7 @@ mod tests {
                     id: "analog_frontend__C1".to_string(),
                     model: "generic.analog.capacitor".to_string(),
                     part_number: None,
+                    spice: None,
                     pins: vec![SketchPin {
                         pin: "A".to_string(),
                         net: "analog_frontend_filter_out".to_string(),
@@ -685,6 +687,7 @@ mod tests {
                     id: "U1".to_string(),
                     model: "generic.ic".to_string(),
                     part_number: None,
+                    spice: None,
                     pins: vec![SketchPin {
                         pin: "OUT".to_string(),
                         net: "root_out".to_string(),
@@ -864,6 +867,7 @@ mod tests {
             id: "U2".to_string(),
             model: "generic.ic".to_string(),
             part_number: None,
+            spice: None,
             pins: vec![SketchPin {
                 pin: "IN".to_string(),
                 net: "analog_frontend_filter_out".to_string(),
