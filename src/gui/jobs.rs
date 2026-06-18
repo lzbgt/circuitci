@@ -919,10 +919,12 @@ mod tests {
 
     #[test]
     fn stale_validation_result_is_ignored() {
-        let mut app = CircuitCiApp::default();
-        app.project_path = "new.project.yaml".to_string();
-        app.profile = "default".to_string();
-        app.output_dir = "out/new".to_string();
+        let mut app = CircuitCiApp {
+            project_path: "new.project.yaml".to_string(),
+            profile: "default".to_string(),
+            output_dir: "out/new".to_string(),
+            ..Default::default()
+        };
 
         app.apply_validation_result(
             ValidationJobResult {
@@ -942,9 +944,11 @@ mod tests {
 
     #[test]
     fn stale_import_result_is_ignored() {
-        let mut app = CircuitCiApp::default();
-        app.project_path = "active.project.yaml".to_string();
-        app.import_output_path = "out/new.project.yaml".to_string();
+        let mut app = CircuitCiApp {
+            project_path: "active.project.yaml".to_string(),
+            import_output_path: "out/new.project.yaml".to_string(),
+            ..Default::default()
+        };
 
         app.apply_import_project_result(
             ImportProjectJobResult {
@@ -972,9 +976,11 @@ mod tests {
 
     #[test]
     fn canceled_suggestion_result_is_recorded_as_canceled() {
-        let mut app = CircuitCiApp::default();
-        app.project_path = "active.project.yaml".to_string();
-        app.profile = "default".to_string();
+        let mut app = CircuitCiApp {
+            project_path: "active.project.yaml".to_string(),
+            profile: "default".to_string(),
+            ..Default::default()
+        };
 
         app.apply_suggestion_result(
             SuggestionJobResult {
@@ -1001,12 +1007,14 @@ mod tests {
 
     #[test]
     fn canceled_import_result_is_recorded_as_canceled() {
-        let mut app = CircuitCiApp::default();
-        app.project_path = "active.project.yaml".to_string();
-        app.import_spice_deck_path = "input.cir".to_string();
-        app.import_spice_output_path = "out/imported.project.yaml".to_string();
-        app.import_spice_project_name = "imported".to_string();
-        app.import_spice_backend = "auto".to_string();
+        let mut app = CircuitCiApp {
+            project_path: "active.project.yaml".to_string(),
+            import_spice_deck_path: "input.cir".to_string(),
+            import_spice_output_path: "out/imported.project.yaml".to_string(),
+            import_spice_project_name: "imported".to_string(),
+            import_spice_backend: "auto".to_string(),
+            ..Default::default()
+        };
         let state_key = app.spice_import_key();
 
         app.apply_import_project_result(

@@ -9,6 +9,7 @@ use super::sketch::{
     edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_component_style,
     edit_schematic_node_position, remove_component, remove_component_pin, remove_net,
 };
+use super::sketch_rename::{rename_component, rename_net};
 use super::{CircuitCiApp, Stage};
 use eframe::egui;
 
@@ -25,6 +26,14 @@ impl CircuitCiApp {
                         .find(|item| &item.id == id)
                     {
                         ui.strong(&component.id);
+                        ui.label("Component ID");
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut self.component_rename_id);
+                            if ui.button("Rename").clicked() {
+                                self.apply_component_rename(&component.id);
+                            }
+                        });
+
                         let mut model = component.model.clone();
                         ui.label("Model");
                         if ui.text_edit_singleline(&mut model).changed() {
@@ -150,6 +159,14 @@ impl CircuitCiApp {
                 Some(SketchSelection::Net(id)) => {
                     if let Some(net) = snapshot.nets_detail.iter().find(|item| &item.id == id) {
                         ui.strong(&net.id);
+                        ui.label("Net ID");
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut self.net_rename_id);
+                            if ui.button("Rename").clicked() {
+                                self.apply_net_rename(&net.id);
+                            }
+                        });
+
                         let mut kind = net.kind.clone();
                         egui::ComboBox::from_label("Kind")
                             .selected_text(&kind)
@@ -249,6 +266,20 @@ impl CircuitCiApp {
     pub(super) fn apply_component_model_edit(&mut self, component_id: &str, model: &str) {
         match edit_component_model(&self.project_yaml, component_id, model) {
             Ok(updated) => self.apply_edited_project_yaml(updated, "Component model updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_component_rename(&mut self, component_id: &str) {
+        let new_id = self.component_rename_id.trim().to_string();
+        match rename_component(&self.project_yaml, component_id, &new_id) {
+            Ok(updated) => {
+                self.set_single_sketch_selection(Some(SketchSelection::Component(new_id.clone())));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Component {component_id} renamed to {new_id}."),
+                );
+            }
             Err(error) => self.record_error(error),
         }
     }
@@ -459,6 +490,20 @@ impl CircuitCiApp {
     fn apply_net_kind_edit(&mut self, net_id: &str, kind: &str) {
         match edit_net_kind(&self.project_yaml, net_id, kind) {
             Ok(updated) => self.apply_edited_project_yaml(updated, "Net kind updated."),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_net_rename(&mut self, net_id: &str) {
+        let new_id = self.net_rename_id.trim().to_string();
+        match rename_net(&self.project_yaml, net_id, &new_id) {
+            Ok(updated) => {
+                self.set_single_sketch_selection(Some(SketchSelection::Net(new_id.clone())));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Net {net_id} renamed to {new_id}."),
+                );
+            }
             Err(error) => self.record_error(error),
         }
     }

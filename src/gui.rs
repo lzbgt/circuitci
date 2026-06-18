@@ -30,6 +30,7 @@ mod sketch_hierarchy;
 mod sketch_inspector;
 mod sketch_navigator;
 mod sketch_probes;
+mod sketch_rename;
 mod sketch_symbols;
 #[cfg(test)]
 mod sketch_tests;
@@ -140,6 +141,8 @@ pub struct CircuitCiApp {
     new_component_model: String,
     new_net_id: String,
     new_net_kind: String,
+    component_rename_id: String,
+    net_rename_id: String,
     pin_edit_id: String,
     pin_edit_net: String,
     wire_pin_id: String,
@@ -265,6 +268,8 @@ impl Default for CircuitCiApp {
             new_component_model: "generic.schematic.imported_component".to_string(),
             new_net_id: "net_new".to_string(),
             new_net_kind: "digital_or_analog".to_string(),
+            component_rename_id: String::new(),
+            net_rename_id: String::new(),
             pin_edit_id: "P1".to_string(),
             pin_edit_net: String::new(),
             wire_pin_id: "P1".to_string(),

@@ -18,6 +18,11 @@ impl CircuitCiApp {
     }
 
     pub(super) fn set_single_sketch_selection(&mut self, selection: Option<SketchSelection>) {
+        match &selection {
+            Some(SketchSelection::Component(id)) => self.component_rename_id = id.clone(),
+            Some(SketchSelection::Net(id)) => self.net_rename_id = id.clone(),
+            _ => {}
+        }
         self.selected_sketch_item = selection;
         self.selected_sketch_items.clear();
     }

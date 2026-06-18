@@ -101,9 +101,9 @@ not persist sheet ports, hierarchical labels, or alternate net ties. It must
 not persist a hierarchy tree, sheet primitive, or alternate connectivity model.
 `src/gui/sketch_inspector.rs` owns the selected component/net
 inspector, structured scalar YAML edit actions, conservative component and
-unreferenced-net add/remove operations, schematic symbol style edits, validated
-component pin assignment, visual wire assignment mutations, and selected-net
-voltage-probe insertion controls plus selected-component current-probe
+unreferenced-net add/remove operations, structured component/net rename controls,
+schematic symbol style edits, validated component pin assignment, visual wire
+assignment mutations, and selected-net voltage-probe insertion controls plus selected-component current-probe
 insertion for generated source branches plus generated passive and
 diode/BJT/MOSFET current-sense branches, and selected-component power-probe
 insertion for those same supported generated branches. `src/gui/sketch_probes.rs`
@@ -125,8 +125,15 @@ list. Wire hit-testing may select the underlying Board IR net or connect an
 active source pin to that net, but it must not persist a separate wire object.
 Rotate/flip/pin-side editor actions must write `board.schematic.node_styles`
 and remain schematic-only UI state.
-It may assign or remove component pin bindings only when the component exists
-and any assigned target net exists. It may persist schematic graph node
+Rename actions must rewrite explicit Board IR IDs rather than introducing a
+display alias. Component rename must move `board.components` keys, schematic
+component metadata keys, generated analog component lists, analog pin-binding
+endpoints, and supported generated/source branch probe expressions such as
+`I(VCCI_R1)` before reparsing the edited YAML. Net rename must move
+`board.nets` keys, component pin net values, schematic net metadata keys,
+generated analog ground/net bindings, and then revalidate. It may assign or
+remove component pin bindings only when the component exists and any assigned
+target net exists. It may persist schematic graph node
 positions under
 `board.schematic.node_positions` and symbol orientation under
 `board.schematic.node_styles`; it must not use
