@@ -21,7 +21,9 @@ GUI actions.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, menus, stage
-routing, import command wiring, and validation/report calls. `src/gui/project.rs`
+routing, and validation/report calls. `src/gui/import_flow.rs` owns the Import
+stage UI plus KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+`src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, graph layout/drawing helpers, structured scalar

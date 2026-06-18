@@ -18,6 +18,7 @@ the default CLI dependency graph:
 ```text
 circuitci-gui
   -> src/gui.rs
+  -> src/gui/import_flow.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
@@ -36,8 +37,10 @@ circuitci-gui
 Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
-`src/gui.rs` owns the application shell, stage routing, import command wiring,
-and validation/report calls. `src/gui/project.rs` owns project summary/YAML
+`src/gui.rs` owns the application shell, stage routing, menus, and
+validation/report calls. `src/gui/import_flow.rs` owns the Import stage UI and
+KiCad schematic, KiCad PCB, and SPICE deck import command wiring.
+`src/gui/project.rs` owns project summary/YAML
 load, save, parse validation, import path/name helpers, and shared Board IR
 undo/redo history. `src/gui/sketch.rs` owns the Board IR graph snapshot, sketch
 graph layout/drawing helpers, and structured scalar YAML edit helpers for
