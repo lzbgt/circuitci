@@ -352,6 +352,52 @@ pub(super) fn assign_component_pin(
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn connect_component_pins(
+    text: &str,
+    source_component_id: &str,
+    source_pin_id: &str,
+    target_component_id: &str,
+    target_pin_id: &str,
+) -> Result<String> {
+    let source_pin_id = validated_graph_id(source_pin_id, "source pin")?;
+    let target_pin_id = validated_graph_id(target_pin_id, "target pin")?;
+    if source_component_id == target_component_id && source_pin_id == target_pin_id {
+        anyhow::bail!("Cannot wire a pin to itself.");
+    }
+
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let source_net = component_pin_net(&project, source_component_id, source_pin_id)?;
+    let target_net = component_pin_net(&project, target_component_id, target_pin_id)?;
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    let net_id = if let Some(net_id) = source_net.or(target_net) {
+        net_id
+    } else {
+        insert_generated_wire_net(&mut yaml, source_component_id, source_pin_id)?
+    };
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let source = named_child_mapping_mut(components, source_component_id, "component")?;
+        let pins = ensure_child_mapping_mut(source, "pins", "component pins")?;
+        pins.insert(
+            serde_yaml_ng::Value::String(source_pin_id.to_string()),
+            serde_yaml_ng::Value::String(net_id.clone()),
+        );
+    }
+    {
+        let components = board_child_mapping_mut(&mut yaml, "components")?;
+        let target = named_child_mapping_mut(components, target_component_id, "component")?;
+        let pins = ensure_child_mapping_mut(target, "pins", "component pins")?;
+        pins.insert(
+            serde_yaml_ng::Value::String(target_pin_id.to_string()),
+            serde_yaml_ng::Value::String(net_id),
+        );
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn remove_component_pin(text: &str, component_id: &str, pin_id: &str) -> Result<String> {
     let pin_id = validated_graph_id(pin_id, "pin")?;
     let mut yaml: serde_yaml_ng::Value =
@@ -634,6 +680,48 @@ fn default_net_kind_for_port(port_kind: &str) -> &'static str {
         "electrical_ground" => "ground",
         _ => "digital_or_analog",
     }
+}
+
+fn component_pin_net(
+    project: &crate::board_ir::BoardProject,
+    component_id: &str,
+    pin_id: &str,
+) -> Result<Option<String>> {
+    let component = project
+        .board
+        .components
+        .get(component_id)
+        .with_context(|| format!("Board IR component {component_id} was not found."))?;
+    Ok(component.pins.get(pin_id).cloned())
+}
+
+fn insert_generated_wire_net(
+    yaml: &mut serde_yaml_ng::Value,
+    component_id: &str,
+    pin_id: &str,
+) -> Result<String> {
+    let base = generated_wire_net_base(component_id, pin_id);
+    let nets = ensure_board_child_mapping_mut(yaml, "nets")?;
+    let mut net_id = base.clone();
+    let mut suffix = 2;
+    while nets.contains_key(serde_yaml_ng::Value::String(net_id.clone())) {
+        net_id = format!("{base}_{suffix}");
+        suffix += 1;
+    }
+    let mut net = serde_yaml_ng::Mapping::new();
+    net.insert(
+        serde_yaml_ng::Value::String("kind".to_string()),
+        serde_yaml_ng::Value::String("digital_or_analog".to_string()),
+    );
+    nets.insert(
+        serde_yaml_ng::Value::String(net_id.clone()),
+        serde_yaml_ng::Value::Mapping(net),
+    );
+    Ok(net_id)
+}
+
+fn generated_wire_net_base(component_id: &str, pin_id: &str) -> String {
+    format!("net_{}_{}", component_id, pin_id).to_ascii_lowercase()
 }
 
 fn child_mapping_mut<'a>(
@@ -1003,8 +1091,9 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 mod tests {
     use super::{
         SketchPosition, SketchSelection, add_component, add_component_with_ports, add_net,
-        assign_component_pin, edit_schematic_node_position, layout_sketch_graph, remove_component,
-        remove_component_pin, remove_net, validate_board_ir_yaml_text,
+        assign_component_pin, connect_component_pins, edit_schematic_node_position,
+        layout_sketch_graph, remove_component, remove_component_pin, remove_net,
+        validate_board_ir_yaml_text,
     };
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 
@@ -1114,6 +1203,38 @@ board:
         let error = assign_component_pin(editable_project_yaml(), "R1", "SENSE", "missing_net")
             .unwrap_err();
         assert!(error.to_string().contains("missing_net"));
+    }
+
+    #[test]
+    fn connect_component_pins_reuses_source_net() {
+        let project = add_component(
+            editable_project_yaml(),
+            "U2",
+            "generic.schematic.imported_component",
+        )
+        .unwrap();
+        let project = assign_component_pin(&project, "U2", "P1", "gnd").unwrap();
+        let edited = connect_component_pins(&project, "R1", "A", "U2", "P1").unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("A: net_a"));
+        assert!(edited.contains("P1: net_a"));
+    }
+
+    #[test]
+    fn connect_component_pins_creates_net_when_both_pins_are_unbound() {
+        let project = add_component(
+            editable_project_yaml(),
+            "U2",
+            "generic.schematic.imported_component",
+        )
+        .unwrap();
+        let edited = connect_component_pins(&project, "R1", "SENSE", "U2", "P1").unwrap();
+
+        validate_board_ir_yaml_text(&edited).unwrap();
+        assert!(edited.contains("SENSE: net_r1_sense"));
+        assert!(edited.contains("P1: net_r1_sense"));
+        assert!(edited.contains("net_r1_sense:\n      kind: digital_or_analog"));
     }
 
     #[test]

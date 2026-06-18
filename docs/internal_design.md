@@ -31,11 +31,13 @@ component entries and may remove only nets that are not referenced by component
 pins. Inserted library components may create generated per-pin nets from
 source-backed model port declarations, but those nets are still ordinary Board
 IR sketch connections that the user can rewire. Rendered pin anchors are UI
-affordances derived from component pin bindings; clicking an anchor may start a
-wire assignment, but the persisted result must remain the component `pins` map,
-not a second edge list. It may assign or remove component pin bindings only
-when the component exists and any assigned target net exists. It may persist
-schematic graph node positions under
+affordances derived from component pin bindings; clicking an anchor may start
+or complete a wire assignment. Pin-to-pin wiring should reuse a source or
+target pin net when one already exists, or create a generated Board IR net when
+both pins are unbound. The persisted result must remain `board.nets` plus
+component `pins`, not a second edge list. It may assign or remove component pin
+bindings only when the component exists and any assigned target net exists. It
+may persist schematic graph node positions under
 `board.schematic.node_positions`; it must not use
 `board.layout.placements` for schematic drag state because those coordinates
 are physical PCB evidence consumed by placement/layout validators. Visual wire

@@ -42,8 +42,10 @@ graph layout/drawing helpers, and structured scalar YAML edit helpers for
 selected components and nets, including conservative add/remove operations for
 components and unreferenced nets, persisted schematic node positions, drag
 updates, model-aware pin-anchor rendering, and validated component pin
-assignment. Visual wire creation can start from a rendered pin anchor and
-reuses the same pin-to-net mutation path instead of introducing a second
+assignment. Visual wire creation can start from a rendered pin anchor and can
+terminate on another pin anchor or an existing net node. Pin-to-pin wiring
+reuses an existing pin net when possible and otherwise creates a generated
+Board IR net through the same mutation path instead of introducing a second
 connection model.
 `src/gui/library.rs` owns component model browsing over the active project
 library set, text filtering, selected-model staging, selected-component model
@@ -73,8 +75,9 @@ form:
   connections, structured scalar edits for existing component and net
   properties, add/remove controls for components and unreferenced nets,
   draggable component/net node positions, pin-to-net assignment/removal for
-  selected components, visual wire assignment by clicking a component pin anchor
-  and then a net node, graph-node runtime tinting and hover readouts for
+  selected components, visual pin-to-pin and pin-to-net wire assignment by
+  clicking component pin anchors or net nodes, graph-node runtime tinting and
+  hover readouts for
   matching waveform probes, shared undo/redo for Board IR graph/property/wire/
   YAML edits, and a raw Board IR YAML editor with parse-validated save.
 - Library: shows library bindings, searches the active component model set,
@@ -110,8 +113,8 @@ The supported desktop simulation path is:
    nets through validated graph controls,
 5. drag component/net graph nodes to persist `board.schematic.node_positions`,
 6. assign or remove selected component pin bindings to existing nets,
-7. create a visual wire by clicking a rendered source pin anchor and then a net
-   node,
+7. create a visual wire by clicking a rendered source pin anchor and then a
+   destination pin anchor or net node,
 8. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
 9. search the active model libraries, insert selected models as sketched

@@ -17,9 +17,10 @@ use simulation::{
 };
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
-    draw_sketch_node, draw_sketch_pin_anchor, edit_component_model, edit_component_part_number,
-    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_node_position,
-    layout_sketch_graph, remove_component, remove_component_pin, remove_net,
+    connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor, edit_component_model,
+    edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
+    edit_schematic_node_position, layout_sketch_graph, remove_component, remove_component_pin,
+    remove_net,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -946,16 +947,27 @@ impl CircuitCiApp {
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
             if let Some(anchor) = clicked_anchor {
-                self.selected_sketch_item =
-                    Some(SketchSelection::Component(anchor.component_id.clone()));
-                self.pin_edit_id = anchor.pin.clone();
-                self.pin_edit_net = anchor.net.clone();
-                self.wire_pin_id = anchor.pin.clone();
-                self.wire_from_component = Some(anchor.component_id.clone());
-                self.status = format!(
-                    "Wire mode: click a net node to connect {}.{}.",
-                    anchor.component_id, anchor.pin
-                );
+                if let Some(source_component_id) = self.wire_from_component.clone()
+                    && !(source_component_id == anchor.component_id
+                        && self.wire_pin_id.trim() == anchor.pin)
+                {
+                    self.apply_visual_pin_wire(
+                        source_component_id,
+                        anchor.component_id.clone(),
+                        anchor.pin.clone(),
+                    );
+                } else {
+                    self.selected_sketch_item =
+                        Some(SketchSelection::Component(anchor.component_id.clone()));
+                    self.pin_edit_id = anchor.pin.clone();
+                    self.pin_edit_net = anchor.net.clone();
+                    self.wire_pin_id = anchor.pin.clone();
+                    self.wire_from_component = Some(anchor.component_id.clone());
+                    self.status = format!(
+                        "Wire mode: click another pin or net node to connect {}.{}.",
+                        anchor.component_id, anchor.pin
+                    );
+                }
             } else if let Some(SketchSelection::Net(net_id)) = &clicked
                 && let Some(component_id) = self.wire_from_component.clone()
             {
@@ -1109,7 +1121,7 @@ impl CircuitCiApp {
                                     self.wire_pin_id = self.pin_edit_id.clone();
                                 }
                                 self.status = format!(
-                                    "Wire mode: click a net node to connect {}.{}.",
+                                    "Wire mode: click another pin or net node to connect {}.{}.",
                                     component.id,
                                     self.wire_pin_id.trim()
                                 );
@@ -1120,7 +1132,7 @@ impl CircuitCiApp {
                         });
                         if let Some(source) = &self.wire_from_component {
                             ui.label(format!(
-                                "Active: {source}.{} -> click a net",
+                                "Active: {source}.{} -> click a pin or net",
                                 self.wire_pin_id.trim()
                             ));
                         }
@@ -1329,6 +1341,36 @@ impl CircuitCiApp {
         }
     }
 
+    fn apply_visual_pin_wire(
+        &mut self,
+        source_component_id: String,
+        target_component_id: String,
+        target_pin_id: String,
+    ) {
+        let source_pin_id = self.wire_pin_id.trim().to_string();
+        match connect_component_pins(
+            &self.project_yaml,
+            &source_component_id,
+            &source_pin_id,
+            &target_component_id,
+            &target_pin_id,
+        ) {
+            Ok(updated) => {
+                self.pin_edit_id = target_pin_id.clone();
+                self.wire_from_component = None;
+                self.selected_sketch_item =
+                    Some(SketchSelection::Component(target_component_id.clone()));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Visual wire connected {source_component_id}.{source_pin_id} to {target_component_id}.{target_pin_id}."
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_schematic_node_position(&mut self, selection: SketchSelection, x: f64, y: f64) {
         match edit_schematic_node_position(&self.project_yaml, &selection, x, y) {
             Ok(updated) => {
@@ -1470,7 +1512,7 @@ fn sketch_pin_hover_tooltip(ui: &mut egui::Ui, anchor: &sketch::SketchPinAnchor)
     ui.strong(format!("{}.{}", anchor.component_id, anchor.pin));
     ui.label(format!("net: {}", anchor.net));
     ui.separator();
-    ui.label("Click this pin, then click a net node to rewire it.");
+    ui.label("Click this pin, then click another pin or net node to wire it.");
 }
 
 fn wire_preview_start(
