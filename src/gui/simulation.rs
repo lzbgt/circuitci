@@ -7,6 +7,7 @@ use super::analog::{
     remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
+use super::sketch_probes::SketchProbe;
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -493,6 +494,80 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn apply_quick_canvas_probe_assertion(
+        &mut self,
+        probe: &SketchProbe,
+        relation: &str,
+    ) {
+        let Some(measured) = waveform_probe_value_for_badge(
+            &self.waveforms,
+            self.selected_waveform,
+            self.waveform_cursor_a_us,
+            probe,
+        ) else {
+            self.record_error(anyhow::anyhow!(
+                "No loaded waveform sample matches probe {} at the current cursor.",
+                probe.probe_name
+            ));
+            return;
+        };
+        let margin = quick_assertion_margin(measured);
+        let threshold = match relation {
+            "above" => measured - margin,
+            "below" => measured + margin,
+            _ => {
+                self.record_error(anyhow::anyhow!(
+                    "Quick assertion relation {relation} is not supported."
+                ));
+                return;
+            }
+        };
+        let requested_name = format!("{}_{}_cursor", probe.probe_name, relation);
+        let assertion_name = match unique_analog_assertion_name(
+            &self.project_yaml,
+            &probe.scenario_name,
+            &requested_name,
+        ) {
+            Ok(name) => name,
+            Err(error) => {
+                self.record_error(error);
+                return;
+            }
+        };
+        let draft = AnalogAssertionDraft {
+            scenario_name: probe.scenario_name.clone(),
+            assertion_name: assertion_name.clone(),
+            probe_name: probe.probe_name.clone(),
+            aggregation: "sample".to_string(),
+            relation: relation.to_string(),
+            threshold,
+            at_us: self.waveform_cursor_a_us,
+            start_us: self.analog_assertion_start_us,
+            end_us: self.analog_assertion_end_us,
+        };
+        match append_analog_assertion(&self.project_yaml, &draft) {
+            Ok(updated) => {
+                self.analog_assertion_scenario = draft.scenario_name.clone();
+                self.analog_assertion_name = assertion_name.clone();
+                self.analog_assertion_edit_original.clear();
+                self.analog_assertion_probe = draft.probe_name.clone();
+                self.analog_assertion_aggregation = draft.aggregation.clone();
+                self.analog_assertion_relation = draft.relation.clone();
+                self.analog_assertion_threshold = draft.threshold;
+                self.analog_assertion_at_us = draft.at_us;
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Quick assertion {assertion_name} added from {} = {}.",
+                        probe.probe_name,
+                        format_value(measured)
+                    ),
+                );
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
     pub(super) fn apply_remove_canvas_probe_assertions(
         &mut self,
         scenario_name: &str,
@@ -731,6 +806,27 @@ pub(super) fn waveform_time_range_for_view(
         .and_then(waveform_time_range_us)
 }
 
+pub(super) fn waveform_probe_value_for_badge(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+    probe: &SketchProbe,
+) -> Option<f64> {
+    let waveform = waveforms.get(waveform_index)?;
+    let cursor_s = cursor_us / 1e6;
+    let waveform_probe = waveform.probes.iter().find(|waveform_probe| {
+        waveform_probe
+            .label
+            .trim()
+            .eq_ignore_ascii_case(probe.probe_name.trim())
+            || waveform_probe
+                .label
+                .trim()
+                .eq_ignore_ascii_case(probe.expression.trim())
+    })?;
+    interpolated_value(&waveform.time_s, &waveform_probe.values, cursor_s)
+}
+
 struct RuntimeProbeTarget {
     component_id: Option<String>,
     net_ids: Vec<String>,
@@ -924,6 +1020,10 @@ fn assertion_status_color(status: AnalogAssertionUiStatus) -> egui::Color32 {
         AnalogAssertionUiStatus::Pass => egui::Color32::from_rgb(86, 190, 112),
         AnalogAssertionUiStatus::Fail => egui::Color32::from_rgb(232, 83, 83),
     }
+}
+
+fn quick_assertion_margin(value: f64) -> f64 {
+    (value.abs() * 0.01).max(1.0e-9)
 }
 
 fn string_combo(ui: &mut egui::Ui, id: &str, selected: &mut String, values: &[&str]) {
@@ -1410,11 +1510,13 @@ fn format_value(value: f64) -> String {
 mod tests {
     use super::{
         interpolated_value, parse_waveform_csv_text, runtime_probe_activity_for_selection,
-        runtime_probe_lines_for_selection, waveform_measurement, waveform_time_range_for_view,
+        runtime_probe_lines_for_selection, waveform_measurement, waveform_probe_value_for_badge,
+        waveform_time_range_for_view,
     };
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
     };
+    use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 
     #[test]
     fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -1447,6 +1549,34 @@ mod tests {
     fn interpolation_returns_linear_value_between_samples() {
         let value = interpolated_value(&[0.0, 1.0e-6, 2.0e-6], &[0.0, 2.0, 4.0], 1.5e-6).unwrap();
         assert!((value - 3.0).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn waveform_probe_value_for_badge_matches_probe_expression() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out)
+0.0 0.0
+1e-6 3.3
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let probe = SketchProbe {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "out_voltage".to_string(),
+            expression: "V(out)".to_string(),
+            quantity: SketchProbeQuantity::Voltage,
+            target: SketchProbeTarget::Net("out".to_string()),
+            assertion_names: Vec::new(),
+        };
+        let value = waveform_probe_value_for_badge(&[waveform], 0, 0.5, &probe).unwrap();
+        assert!((value - 1.65).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn quick_assertion_margin_is_relative_with_zero_floor() {
+        assert!((super::quick_assertion_margin(5.0) - 0.05).abs() < 1.0e-12);
+        assert_eq!(super::quick_assertion_margin(0.0), 1.0e-9);
     }
 
     #[test]

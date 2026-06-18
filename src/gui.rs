@@ -22,7 +22,8 @@ mod spice;
 
 use simulation::{
     WaveformView, load_report_waveforms, runtime_probe_activity_for_selection,
-    runtime_probe_lines_for_selection, waveform_time_range_for_view,
+    runtime_probe_lines_for_selection, waveform_probe_value_for_badge,
+    waveform_time_range_for_view,
 };
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
@@ -1036,12 +1037,20 @@ impl CircuitCiApp {
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Delete) || input.key_pressed(egui::Key::Backspace)
             });
-        let add_assertion_pressed =
-            response.hovered() && ui.input(|input| input.key_pressed(egui::Key::A));
+        let quick_above_pressed = response.hovered()
+            && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::A));
+        let quick_below_pressed = response.hovered()
+            && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::B));
+        let add_assertion_pressed = response.hovered()
+            && ui.input(|input| !input.modifiers.shift && input.key_pressed(egui::Key::A));
         let clear_assertions_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::X));
         if let Some(badge) = hovered_probe_badge {
-            if add_assertion_pressed {
+            if quick_above_pressed {
+                self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
+            } else if quick_below_pressed {
+                self.apply_quick_canvas_probe_assertion(&badge.probe, "below");
+            } else if add_assertion_pressed {
                 self.apply_add_canvas_probe_assertion(
                     &badge.probe.scenario_name,
                     &badge.probe.probe_name,
@@ -1059,9 +1068,15 @@ impl CircuitCiApp {
         }
 
         if let Some(badge) = hovered_probe_badge {
+            let sampled_value = waveform_probe_value_for_badge(
+                &self.waveforms,
+                self.selected_waveform,
+                self.waveform_cursor_a_us,
+                &badge.probe,
+            );
             response.on_hover_ui(|ui| {
                 let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
-                sketch_probe_badge_tooltip(ui, badge, status);
+                sketch_probe_badge_tooltip(ui, badge, status, sampled_value);
             });
         } else if let Some(anchor) = hovered_anchor {
             response.on_hover_ui(|ui| {
@@ -1245,6 +1260,7 @@ fn sketch_probe_badge_tooltip(
     ui: &mut egui::Ui,
     badge: &SketchProbeBadge,
     status: SketchProbeStatus,
+    sampled_value: Option<f64>,
 ) {
     ui.strong(format!(
         "{} probe {}",
@@ -1254,6 +1270,11 @@ fn sketch_probe_badge_tooltip(
     ui.label(format!("scenario: {}", badge.probe.scenario_name));
     ui.label(format!("expression: {}", badge.probe.expression));
     ui.label(format!("assertion status: {}", status.label()));
+    if let Some(value) = sampled_value {
+        ui.label(format!("cursor sample: {:.6}", value));
+    } else {
+        ui.label("cursor sample: no matching loaded waveform");
+    }
     if !badge.probe.assertion_names.is_empty() {
         ui.label(format!(
             "assertions: {}",
@@ -1263,6 +1284,8 @@ fn sketch_probe_badge_tooltip(
     ui.separator();
     ui.label("Click to open this probe in the Simulation stage.");
     ui.label("Press A while hovering to add an assertion from current settings.");
+    ui.label("Press Shift+A while hovering to require above the cursor sample.");
+    ui.label("Press Shift+B while hovering to require below the cursor sample.");
     ui.label("Press X while hovering to clear assertions for this probe.");
     ui.label("Press Delete or Backspace while hovering to remove it.");
 }

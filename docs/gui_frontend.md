@@ -130,8 +130,9 @@ form:
   analog scenarios, inspect a selected probe badge's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for
-  that selected probe, add sample/min/max probe assertions, edit file-backed SPICE
-  decks declared by analog scenarios, then runs validation through the engine,
+  that selected probe, quick-add cursor-sampled above/below assertions from a
+  hovered schematic probe badge, add sample/min/max probe assertions, edit
+  file-backed SPICE decks declared by analog scenarios, then runs validation through the engine,
   plots emitted CSV waveforms, provides simulation-time scrub/playback, A/B
   cursor measurements with min/max and delta values, and lists generated SPICE
   decks, artifacts, findings, and limitations.
@@ -201,8 +202,9 @@ The supported desktop simulation path is:
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
-   row from the selected-probe panel, clear assertions for the probe with `X`,
-   or remove a hovered probe badge with Delete/Backspace,
+   row from the selected-probe panel, quick-add an above-current-sample check
+   with Shift+A or a below-current-sample check with Shift+B, clear assertions
+   for the probe with `X`, or remove a hovered probe badge with Delete/Backspace,
 29. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
 30. edit the project/model evidence and rerun.
@@ -252,6 +254,12 @@ has no matching assertion failure. Pressing `A` on a hovered badge appends a
 normal Board IR analog assertion for that probe using the current
 assertion-editor aggregation, relation, threshold, and timing settings.
 Pressing `X` removes assertions for that probe while keeping the probe.
+Pressing Shift+A or Shift+B on a hovered badge reads the matching loaded
+waveform value at the current simulation cursor and appends a sample assertion
+with a small 1% threshold margin so the current sample initially satisfies the
+new strict `above` or `below` check. If no waveform column matches the probe
+expression at the cursor, the quick action fails closed and leaves Board IR
+unchanged.
 Removing a hovered badge deletes the underlying Board IR analog probe and any
 analog assertions that reference it, then re-parses the edited Board IR before
 updating the canvas. The Simulation stage mirrors the selected badge context in

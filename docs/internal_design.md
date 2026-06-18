@@ -103,9 +103,14 @@ existing scenario/probe in the Simulation stage, whose selected-probe assertion
 table must be derived from Board IR assertions plus the latest `ValidationReport`
 and must not cache a parallel assertion model. Pressing `A` on a hovered badge
 may append a normal Board IR assertion using the current assertion-editor
-settings, pressing `X` may remove assertions for that probe while keeping the
-probe, and Delete/Backspace may remove the underlying Board IR probe through
-`src/gui/analog.rs` and must also remove assertions that reference that probe
+settings. Pressing Shift+A or Shift+B on a hovered badge may append a normal
+sample assertion whose threshold is derived from an exact loaded waveform probe
+match at the current cursor with a small pass-at-current-sample margin; if no
+matching waveform column is loaded, the quick action must fail closed without
+editing Board IR. Pressing `X` may remove assertions for that probe while
+keeping the probe, and Delete/Backspace may remove the underlying Board IR
+probe through `src/gui/analog.rs` and must also remove assertions that reference
+that probe.
 before re-parsing Board IR. Badges must not become a second persisted probe
 store.
 `src/gui/library.rs` owns active-library model browsing, model filtering,
