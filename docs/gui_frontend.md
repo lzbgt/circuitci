@@ -44,12 +44,12 @@ same pin-to-net mutation path instead of introducing a second connection model.
 library set, text filtering, selected-model staging, and selected-component
 model assignment through the same Board IR YAML mutation path.
 `src/gui/simulation.rs` owns the Simulation stage UI, waveform CSV parsing,
-plotting, cursor measurement tools, and graph-hover runtime probe extraction
-from loaded waveform artifacts. `src/gui/analog.rs` owns structured analog
-transient scenario and assertion YAML generation for generated-from-Board
-simulations. `src/gui/spice.rs` owns file-backed SPICE deck discovery, loading,
-editing, saving, and save-and-run actions for imported or hand-authored analog
-scenarios.
+plotting, simulation-time scrub/playback controls, cursor measurement tools,
+and graph-hover/runtime activity extraction from loaded waveform artifacts.
+`src/gui/analog.rs` owns structured analog transient scenario and assertion YAML
+generation for generated-from-Board simulations. `src/gui/spice.rs` owns
+file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
+actions for imported or hand-authored analog scenarios.
 
 ## Workflow Shell
 
@@ -66,18 +66,18 @@ form:
   edits for existing component and net properties, add/remove controls for
   components and unreferenced nets, draggable component/net node positions,
   pin-to-net assignment/removal for selected components, visual wire assignment
-  by starting from a component pin and clicking a net node, graph-node hover
-  readouts for matching runtime waveform probes, and a raw Board IR YAML editor
-  with parse-validated save.
+  by starting from a component pin and clicking a net node, graph-node runtime
+  tinting and hover readouts for matching waveform probes, and a raw Board IR
+  YAML editor with parse-validated save.
 - Library: shows library bindings, searches the active component model set,
   stages a model for new components, assigns a selected model to the selected
   component, and shows scenario suggestion YAML.
 - Simulation: can append a generated-from-Board `analog_transient` scenario
   with ground/probe net selection, add sample/min/max probe assertions, edit
   file-backed SPICE decks declared by analog scenarios, then runs validation
-  through the engine, plots emitted CSV waveforms, provides A/B cursor
-  measurements with min/max and delta values, and lists generated SPICE decks,
-  artifacts, findings, and limitations.
+  through the engine, plots emitted CSV waveforms, provides simulation-time
+  scrub/playback, A/B cursor measurements with min/max and delta values, and
+  lists generated SPICE decks, artifacts, findings, and limitations.
 - Reports: displays the generated Markdown validation report.
 
 The menu bar exposes File, Workflow, Simulation, and Help actions. These are the
@@ -112,11 +112,12 @@ The supported desktop simulation path is:
    scenarios,
 13. bind sourced component models,
 14. run declared validation and `analog_transient` scenarios,
-15. hover graph nodes to inspect matching voltage/current/power probe values at
+15. scrub or play the simulation time cursor to drive graph runtime tinting,
+16. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-16. observe generated decks, plotted CSV waveforms, cursor values, min/max
+17. observe generated decks, plotted CSV waveforms, cursor values, min/max
    measurements, findings, and report artifacts,
-17. edit the project/model evidence and rerun.
+18. edit the project/model evidence and rerun.
 
 Full symbol graphics, buses, hierarchical schematic sheets, advanced waveform
 math channels, advanced SPICE source tooling, automatic arbitrary

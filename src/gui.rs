@@ -9,7 +9,10 @@ mod simulation;
 mod sketch;
 mod spice;
 
-use simulation::{WaveformView, load_report_waveforms, runtime_probe_lines_for_selection};
+use simulation::{
+    WaveformView, load_report_waveforms, runtime_probe_activity_for_selection,
+    runtime_probe_lines_for_selection, waveform_time_range_for_view,
+};
 use sketch::{
     ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
     draw_sketch_node, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -126,6 +129,8 @@ pub struct CircuitCiApp {
     selected_probe: usize,
     waveform_cursor_a_us: f64,
     waveform_cursor_b_us: f64,
+    waveform_playing: bool,
+    waveform_playback_speed: f64,
 }
 
 impl Default for CircuitCiApp {
@@ -197,12 +202,15 @@ impl Default for CircuitCiApp {
             selected_probe: 0,
             waveform_cursor_a_us: 0.0,
             waveform_cursor_b_us: 0.0,
+            waveform_playing: false,
+            waveform_playback_speed: 1.0,
         }
     }
 }
 
 impl eframe::App for CircuitCiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
         self.left_panel(ctx);
@@ -743,6 +751,7 @@ impl CircuitCiApp {
                 self.selected_probe = 0;
                 self.waveform_cursor_a_us = 0.0;
                 self.waveform_cursor_b_us = 0.0;
+                self.waveform_playing = false;
                 self.stage = if waveform_count == 0 {
                     Stage::Reports
                 } else {
@@ -859,7 +868,14 @@ impl CircuitCiApp {
                 .selected_sketch_item
                 .as_ref()
                 .is_some_and(|selection| selection.matches(node));
-            draw_sketch_node(&painter, node, selected);
+            let runtime_activity = runtime_probe_activity_for_selection(
+                &self.waveforms,
+                self.selected_waveform,
+                self.waveform_cursor_a_us,
+                &node.selection,
+                snapshot,
+            );
+            draw_sketch_node(&painter, node, selected, runtime_activity);
         }
 
         let hovered_node = if response.hovered() {
@@ -923,6 +939,30 @@ impl CircuitCiApp {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
             });
         }
+    }
+
+    fn advance_waveform_playback(&mut self, ctx: &egui::Context) {
+        if !self.waveform_playing {
+            return;
+        }
+        let Some((start_us, end_us)) =
+            waveform_time_range_for_view(&self.waveforms, self.selected_waveform)
+        else {
+            self.waveform_playing = false;
+            return;
+        };
+        if end_us <= start_us {
+            self.waveform_playing = false;
+            return;
+        }
+        let dt_us = ctx.input(|input| input.unstable_dt as f64 * 1_000_000.0);
+        let step_us = (dt_us * self.waveform_playback_speed.max(0.0)).max(0.0);
+        self.waveform_cursor_a_us += step_us;
+        if self.waveform_cursor_a_us > end_us {
+            self.waveform_cursor_a_us = start_us;
+        }
+        self.waveform_cursor_b_us = self.waveform_cursor_a_us;
+        ctx.request_repaint();
     }
 
     fn sketch_inspector(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {

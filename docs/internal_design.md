@@ -32,9 +32,10 @@ positions under `board.schematic.node_positions`; it must not use
 are physical PCB evidence consumed by placement/layout validators. Visual wire
 routing should keep using these Board IR mutation helpers rather than
 introducing a parallel connection model. `src/gui/simulation.rs` owns the
-Simulation stage UI, waveform CSV
-parsing, plotting, cursor readouts, and min/max/delta measurements.
-It may display graph hover readouts for runtime waveform probes, but those
+Simulation stage UI, waveform CSV parsing, plotting, simulation-time
+scrub/playback controls, cursor readouts, min/max/delta measurements, and
+normalized runtime activity values for graph tinting. It may display graph
+hover readouts and activity coloring for runtime waveform probes, but those
 values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
 `src/gui/library.rs` owns active-library model browsing, model filtering, and

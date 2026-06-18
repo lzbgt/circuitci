@@ -723,12 +723,20 @@ fn push_overflow_hint(
     });
 }
 
-pub(super) fn draw_sketch_node(painter: &egui::Painter, node: &SketchNode, selected: bool) {
-    let fill = match node.selection {
+pub(super) fn draw_sketch_node(
+    painter: &egui::Painter,
+    node: &SketchNode,
+    selected: bool,
+    runtime_activity: Option<f64>,
+) {
+    let base_fill = match node.selection {
         SketchSelection::Component(_) => egui::Color32::from_rgb(36, 52, 70),
         SketchSelection::Net(_) => egui::Color32::from_rgb(42, 62, 46),
         SketchSelection::Overflow(_) => egui::Color32::from_gray(36),
     };
+    let fill = runtime_activity
+        .map(|activity| runtime_activity_fill(base_fill, activity))
+        .unwrap_or(base_fill);
     let stroke = if selected {
         egui::Stroke::new(2.0, egui::Color32::from_rgb(93, 185, 255))
     } else {
@@ -750,6 +758,19 @@ pub(super) fn draw_sketch_node(painter: &egui::Painter, node: &SketchNode, selec
         egui::FontId::monospace(11.0),
         egui::Color32::LIGHT_GRAY,
     );
+}
+
+fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
+    let activity = activity.clamp(0.0, 1.0) as f32;
+    let highlight = egui::Color32::from_rgb(255, 196, 87);
+    let mix = |base: u8, highlight: u8| -> u8 {
+        (base as f32 + (highlight as f32 - base as f32) * activity * 0.7).round() as u8
+    };
+    egui::Color32::from_rgb(
+        mix(base.r(), highlight.r()),
+        mix(base.g(), highlight.g()),
+        mix(base.b(), highlight.b()),
+    )
 }
 
 fn compact_label(value: &str, max_chars: usize) -> String {

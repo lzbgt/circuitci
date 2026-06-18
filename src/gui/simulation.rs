@@ -298,30 +298,36 @@ impl CircuitCiApp {
                     self.selected_probe = 0;
                     self.waveform_cursor_a_us = 0.0;
                     self.waveform_cursor_b_us = 0.0;
+                    self.waveform_playing = false;
                 }
             }
         });
 
-        let waveform = &self.waveforms[self.selected_waveform];
-        if waveform.probes.is_empty() {
-            ui.label("Waveform has no probe columns.");
-            return;
+        {
+            let waveform = &self.waveforms[self.selected_waveform];
+            if waveform.probes.is_empty() {
+                ui.label("Waveform has no probe columns.");
+                return;
+            }
+
+            self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
+            ui.horizontal_wrapped(|ui| {
+                for (index, probe) in waveform.probes.iter().enumerate() {
+                    if ui
+                        .selectable_label(self.selected_probe == index, &probe.label)
+                        .clicked()
+                    {
+                        self.selected_probe = index;
+                        self.waveform_cursor_a_us = 0.0;
+                        self.waveform_cursor_b_us = 0.0;
+                        self.waveform_playing = false;
+                    }
+                }
+            });
         }
 
-        self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
-        ui.horizontal_wrapped(|ui| {
-            for (index, probe) in waveform.probes.iter().enumerate() {
-                if ui
-                    .selectable_label(self.selected_probe == index, &probe.label)
-                    .clicked()
-                {
-                    self.selected_probe = index;
-                    self.waveform_cursor_a_us = 0.0;
-                    self.waveform_cursor_b_us = 0.0;
-                }
-            }
-        });
-
+        self.waveform_playback_panel(ui);
+        let waveform = &self.waveforms[self.selected_waveform];
         waveform_measurement_panel(
             ui,
             waveform,
@@ -336,6 +342,54 @@ impl CircuitCiApp {
             self.waveform_cursor_a_us,
             self.waveform_cursor_b_us,
         );
+    }
+
+    fn waveform_playback_panel(&mut self, ui: &mut egui::Ui) {
+        let Some((start_us, end_us)) =
+            waveform_time_range_for_view(&self.waveforms, self.selected_waveform)
+        else {
+            return;
+        };
+        if self.waveform_cursor_a_us < start_us || self.waveform_cursor_a_us > end_us {
+            self.waveform_cursor_a_us = start_us;
+        }
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Simulation Time");
+                if ui
+                    .button(if self.waveform_playing {
+                        "Pause"
+                    } else {
+                        "Play"
+                    })
+                    .clicked()
+                {
+                    self.waveform_playing = !self.waveform_playing;
+                }
+                if ui.button("Start").clicked() {
+                    self.waveform_cursor_a_us = start_us;
+                    self.waveform_cursor_b_us = start_us;
+                    self.waveform_playing = false;
+                }
+                ui.add(
+                    egui::Slider::new(&mut self.waveform_cursor_a_us, start_us..=end_us)
+                        .text("time")
+                        .suffix(" us")
+                        .show_value(true),
+                );
+                self.waveform_cursor_b_us = self.waveform_cursor_a_us;
+                ui.label("speed");
+                ui.add(
+                    egui::DragValue::new(&mut self.waveform_playback_speed)
+                        .speed(0.1)
+                        .range(0.1..=1000.0)
+                        .suffix("x"),
+                );
+            });
+            ui.small(
+                "Cursor A drives graph hover probes and runtime node tinting. Cursor B follows during playback/scrub.",
+            );
+        });
     }
 }
 
@@ -395,6 +449,40 @@ pub(super) fn runtime_probe_lines_for_selection(
         }
     }
     lines
+}
+
+pub(super) fn runtime_probe_activity_for_selection(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+    selection: &SketchSelection,
+    snapshot: &ProjectSnapshot,
+) -> Option<f64> {
+    let waveform = waveforms.get(waveform_index)?;
+    let target = runtime_probe_target(selection, snapshot)?;
+    let cursor_s = cursor_us / 1e6;
+    let mut activity: f64 = 0.0;
+    let mut matched = false;
+    for probe in &waveform.probes {
+        if !probe_matches_target(&probe.label, &target) {
+            continue;
+        }
+        let value = interpolated_value(&waveform.time_s, &probe.values, cursor_s)?;
+        let range = min_max(&probe.values)?;
+        let scale = range.0.abs().max(range.1.abs()).max(1.0e-12);
+        activity = activity.max((value.abs() / scale).clamp(0.0, 1.0));
+        matched = true;
+    }
+    matched.then_some(activity)
+}
+
+pub(super) fn waveform_time_range_for_view(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+) -> Option<(f64, f64)> {
+    waveforms
+        .get(waveform_index)
+        .and_then(waveform_time_range_us)
 }
 
 struct RuntimeProbeTarget {
@@ -1067,8 +1155,8 @@ fn format_value(value: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        interpolated_value, parse_waveform_csv_text, runtime_probe_lines_for_selection,
-        waveform_measurement,
+        interpolated_value, parse_waveform_csv_text, runtime_probe_activity_for_selection,
+        runtime_probe_lines_for_selection, waveform_measurement, waveform_time_range_for_view,
     };
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchPin, SketchSelection,
@@ -1172,6 +1260,65 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert!(lines.iter().any(|line| line.contains("v(out)")));
         assert!(lines.iter().any(|line| line.contains("i(R1)")));
+    }
+
+    #[test]
+    fn runtime_probe_activity_normalizes_matching_probe_value() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out) i(R1)
+0.0 0.0 0.000
+1e-6 3.0 0.003
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let snapshot = probe_snapshot();
+        let activity = runtime_probe_activity_for_selection(
+            &[waveform],
+            0,
+            0.5,
+            &SketchSelection::Net("out".to_string()),
+            &snapshot,
+        )
+        .unwrap();
+        assert!((activity - 0.5).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn runtime_probe_activity_ignores_unmatched_selection() {
+        let waveform = parse_waveform_csv_text(
+            "time v(other)
+0.0 0.0
+1e-6 3.0
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        let snapshot = probe_snapshot();
+        let activity = runtime_probe_activity_for_selection(
+            &[waveform],
+            0,
+            0.5,
+            &SketchSelection::Net("out".to_string()),
+            &snapshot,
+        );
+        assert_eq!(activity, None);
+    }
+
+    #[test]
+    fn waveform_time_range_for_view_returns_microseconds() {
+        let waveform = parse_waveform_csv_text(
+            "time v(out)
+0.0 0.0
+2e-6 1.0
+",
+            "waveform.csv",
+        )
+        .unwrap();
+        assert_eq!(
+            waveform_time_range_for_view(&[waveform], 0),
+            Some((0.0, 2.0))
+        );
     }
 
     fn probe_snapshot() -> ProjectSnapshot {
