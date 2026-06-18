@@ -4,6 +4,51 @@ use super::sketch::{self, SketchPinSide, SketchSelection, hit_test_wire, sketch_
 use super::sketch_net_labels;
 use super::sketch_routes;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchSelectionBoxMode {
+    Replace,
+    Add,
+    Subtract,
+}
+
+impl SketchSelectionBoxMode {
+    pub(super) fn from_modifiers(modifiers: egui::Modifiers) -> Option<Self> {
+        if modifiers.alt {
+            Some(Self::Subtract)
+        } else if modifiers.command || modifiers.ctrl {
+            Some(Self::Add)
+        } else if modifiers.shift {
+            Some(Self::Replace)
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Replace => "Select",
+            Self::Add => "Add",
+            Self::Subtract => "Subtract",
+        }
+    }
+
+    pub(super) fn fill(self) -> egui::Color32 {
+        match self {
+            Self::Replace => egui::Color32::from_rgba_unmultiplied(93, 185, 255, 24),
+            Self::Add => egui::Color32::from_rgba_unmultiplied(88, 214, 141, 24),
+            Self::Subtract => egui::Color32::from_rgba_unmultiplied(255, 120, 90, 24),
+        }
+    }
+
+    pub(super) fn stroke(self) -> egui::Color32 {
+        match self {
+            Self::Replace => egui::Color32::from_rgb(93, 185, 255),
+            Self::Add => egui::Color32::from_rgb(88, 214, 141),
+            Self::Subtract => egui::Color32::from_rgb(255, 120, 90),
+        }
+    }
+}
+
 pub(super) fn normalize_canvas_rotation(rotation_deg: i32) -> i32 {
     rotation_deg.rem_euclid(360) / 90 * 90
 }

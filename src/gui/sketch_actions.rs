@@ -4,6 +4,7 @@ use super::sketch::{
     persisted_node_position_from_screen_with_snap, remove_component, remove_net,
     sketch_graph_bounds,
 };
+use super::sketch_canvas_interaction::SketchSelectionBoxMode;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
 use eframe::egui;
@@ -41,19 +42,51 @@ impl CircuitCiApp {
         &mut self,
         marquee: egui::Rect,
         graph: &sketch::SketchGraph,
+        mode: SketchSelectionBoxMode,
     ) {
-        self.selected_sketch_items = graph
+        let hits = graph
             .nodes
             .iter()
             .filter(|node| !matches!(node.selection, SketchSelection::Overflow(_)))
             .filter(|node| marquee.intersects(node.rect))
             .map(|node| node.selection.clone())
-            .collect();
+            .collect::<std::collections::BTreeSet<_>>();
+        let hit_count = hits.len();
+        match mode {
+            SketchSelectionBoxMode::Replace => {
+                self.selected_sketch_items = hits;
+            }
+            SketchSelectionBoxMode::Add => {
+                self.ensure_multi_selection_set();
+                self.selected_sketch_items.extend(hits.iter().cloned());
+            }
+            SketchSelectionBoxMode::Subtract => {
+                self.ensure_multi_selection_set();
+                for selection in &hits {
+                    self.selected_sketch_items.remove(selection);
+                }
+            }
+        }
         self.selected_sketch_item = self.selected_sketch_items.iter().next().cloned();
         self.status = format!(
-            "{} sketch item(s) selected.",
+            "{} sketch item(s) {}; {} selected.",
+            hit_count,
+            match mode {
+                SketchSelectionBoxMode::Replace => "boxed",
+                SketchSelectionBoxMode::Add => "added",
+                SketchSelectionBoxMode::Subtract => "removed",
+            },
             self.selected_sketch_items.len()
         );
+    }
+
+    fn ensure_multi_selection_set(&mut self) {
+        if self.selected_sketch_items.is_empty()
+            && let Some(selection) = self.selected_sketch_item.clone()
+            && !matches!(selection, SketchSelection::Overflow(_))
+        {
+            self.selected_sketch_items.insert(selection);
+        }
     }
 
     pub(super) fn apply_sketch_group_action(

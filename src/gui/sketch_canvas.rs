@@ -9,8 +9,8 @@ use super::sketch::{
     snap_screen_point_to_grid,
 };
 use super::sketch_canvas_interaction::{
-    WireDragTarget, hit_test_wire_route_handle, schematic_canvas_size, wire_drag_target_at,
-    wire_route_insert_index, zoom_viewport_around,
+    SketchSelectionBoxMode, WireDragTarget, hit_test_wire_route_handle, schematic_canvas_size,
+    wire_drag_target_at, wire_route_insert_index, zoom_viewport_around,
 };
 use super::sketch_canvas_interaction::{next_pin_side, normalize_canvas_rotation};
 use super::sketch_canvas_render::{
@@ -927,8 +927,14 @@ impl CircuitCiApp {
                     point_index,
                 });
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
-            } else if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
-                self.marquee_start = Some(position);
+            } else if clicked_node.is_none()
+                && let Some(mode) =
+                    ui.input(|input| SketchSelectionBoxMode::from_modifiers(input.modifiers))
+            {
+                self.sketch_selection_box_drag = Some(super::SketchSelectionBoxDrag {
+                    start: position,
+                    mode,
+                });
             } else if clicked_node.is_none() {
                 self.sketch_pan_drag_active = true;
             } else if clicked_node.is_some() {
@@ -940,22 +946,25 @@ impl CircuitCiApp {
                 }
             }
         }
-        if let Some(start) = self.marquee_start
+        if let Some(selection_box) = &self.sketch_selection_box_drag
             && let Some(current) = response
                 .interact_pointer_pos()
                 .or_else(|| ui.ctx().pointer_hover_pos())
         {
-            let marquee = egui::Rect::from_two_pos(start, current);
-            painter.rect_filled(
-                marquee,
-                0.0,
-                egui::Color32::from_rgba_unmultiplied(93, 185, 255, 24),
-            );
+            let marquee = egui::Rect::from_two_pos(selection_box.start, current);
+            painter.rect_filled(marquee, 0.0, selection_box.mode.fill());
             painter.rect_stroke(
                 marquee,
                 0.0,
-                egui::Stroke::new(1.0, egui::Color32::from_rgb(93, 185, 255)),
+                egui::Stroke::new(1.0, selection_box.mode.stroke()),
                 egui::StrokeKind::Inside,
+            );
+            painter.text(
+                marquee.left_top() + egui::vec2(6.0, 6.0),
+                egui::Align2::LEFT_TOP,
+                selection_box.mode.label(),
+                egui::FontId::monospace(11.0),
+                selection_box.mode.stroke(),
             );
         } else if response.dragged_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
@@ -1030,12 +1039,16 @@ impl CircuitCiApp {
         }
 
         if response.drag_stopped_by(egui::PointerButton::Primary)
-            && let Some(start) = self.marquee_start.take()
+            && let Some(selection_box) = self.sketch_selection_box_drag.take()
             && let Some(end) = response
                 .interact_pointer_pos()
                 .or_else(|| ui.ctx().pointer_hover_pos())
         {
-            self.apply_marquee_selection(egui::Rect::from_two_pos(start, end), &graph);
+            self.apply_marquee_selection(
+                egui::Rect::from_two_pos(selection_box.start, end),
+                &graph,
+                selection_box.mode,
+            );
         }
         if response.drag_stopped_by(egui::PointerButton::Primary)
             && let Some(drag) = self.sketch_wire_route_drag.take()
@@ -1151,6 +1164,9 @@ impl CircuitCiApp {
             self.wire_from_component = None;
             self.sketch_wire_draft.clear();
             self.status = "Wire mode canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_selection_box_drag.is_some() {
+            self.sketch_selection_box_drag = None;
+            self.status = "Selection box canceled.".to_string();
         } else if cancel_canvas_mode_pressed && self.sketch_wire_route_drag.is_some() {
             self.sketch_wire_route_drag = None;
             self.status = "Wire route edit canceled.".to_string();
@@ -1720,7 +1736,7 @@ impl CircuitCiApp {
     ) {
         if response.drag_started_by(egui::PointerButton::Primary)
             && blank_canvas_hovered
-            && !ui.input(|input| input.modifiers.shift)
+            && ui.input(|input| SketchSelectionBoxMode::from_modifiers(input.modifiers).is_none())
         {
             self.sketch_pan_drag_active = true;
         }

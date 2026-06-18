@@ -10,7 +10,7 @@ use super::sketch::{
     remove_net, remove_schematic_wire_route, sketch_graph_bounds, sketch_wire_points,
     snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
 };
-use super::sketch_canvas_interaction::schematic_canvas_size;
+use super::sketch_canvas_interaction::{SketchSelectionBoxMode, schematic_canvas_size};
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
@@ -1303,6 +1303,83 @@ board:
     assert!(app.project_yaml.contains("y: 32.0"));
     assert_eq!(app.selected_sketch_items.len(), 2);
     assert_eq!(app.project_yaml_undo.len(), 1);
+}
+
+#[test]
+fn selection_box_modes_replace_add_and_subtract() {
+    let yaml = "project:
+  name: gui_selection_box_test
+  version: 0.1.0
+board:
+  components:
+    U1:
+      model: generic.ic
+    U2:
+      model: generic.ic
+  nets:
+    sig:
+      kind: digital_or_analog
+  schematic:
+    node_positions:
+      component:U1:
+        x: 20.0
+        y: 30.0
+      component:U2:
+        x: 260.0
+        y: 30.0
+      net:sig:
+        x: 180.0
+        y: 170.0
+";
+    let snapshot = load_project_snapshot_from_yaml(yaml).unwrap();
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let graph = layout_sketch_graph_viewport(
+        canvas,
+        &snapshot,
+        SketchViewport {
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        },
+    );
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(snapshot),
+        ..CircuitCiApp::default()
+    };
+
+    app.apply_marquee_selection(
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(210.0, 140.0)),
+        &graph,
+        SketchSelectionBoxMode::Replace,
+    );
+    assert_eq!(app.selected_sketch_items.len(), 1);
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Component("U1".to_string()))
+    );
+
+    app.apply_marquee_selection(
+        egui::Rect::from_min_max(egui::pos2(230.0, 0.0), egui::pos2(560.0, 140.0)),
+        &graph,
+        SketchSelectionBoxMode::Add,
+    );
+    assert_eq!(app.selected_sketch_items.len(), 2);
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Component("U2".to_string()))
+    );
+
+    app.apply_marquee_selection(
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(210.0, 140.0)),
+        &graph,
+        SketchSelectionBoxMode::Subtract,
+    );
+    assert_eq!(
+        app.selected_sketch_items,
+        [SketchSelection::Component("U2".to_string())]
+            .into_iter()
+            .collect()
+    );
 }
 
 #[test]

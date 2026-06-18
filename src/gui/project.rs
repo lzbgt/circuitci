@@ -183,6 +183,7 @@ impl CircuitCiApp {
                 self.sketch_net_label_edit = None;
                 self.sketch_component_inline_edit = None;
                 self.sketch_component_label_drag = None;
+                self.sketch_selection_box_drag = None;
                 self.clear_project_yaml_history();
                 self.stage = Stage::Sketch;
                 self.status = "Project YAML loaded.".to_string();

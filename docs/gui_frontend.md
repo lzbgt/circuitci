@@ -274,7 +274,8 @@ form:
   controls,
   schematic hierarchy search/select/fit/focus/isolate controls and object
   navigator search/select/fit controls,
-  Shift-drag marquee selection, group drag/nudge/edge-align/center-align/
+  Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
+  Alt/Option-drag subtractive selection boxes, group drag/nudge/edge-align/center-align/
   distribute controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
@@ -367,7 +368,8 @@ The supported desktop simulation path is:
 12. rotate selected components from the canvas with `R` / `Shift+R`, or rotate,
    flip, or choose pin side through the inspector; all write
    `board.schematic.node_styles`,
-13. Shift-drag a marquee to select multiple visible components/nets,
+13. Shift-drag a selection box to replace selection, Cmd/Ctrl-drag to add
+    visible components/nets, or Alt/Option-drag to subtract them,
 14. drag, nudge, align edges/centers, or distribute multi-selected sketch nodes
    as one validated Board IR edit,
 15. duplicate selected components with their internally referenced local nets

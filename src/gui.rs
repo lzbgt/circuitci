@@ -56,6 +56,7 @@ use project::PendingProjectAction;
 use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchNetLabelKind, SketchPinSide, SketchSelection,
 };
+use sketch_canvas_interaction::SketchSelectionBoxMode;
 use sketch_component_labels::SketchComponentLabelKind;
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_inline_edit::SketchComponentInlineEdit;
@@ -129,6 +130,12 @@ struct SketchComponentLabelDrag {
     component_id: String,
     kind: SketchComponentLabelKind,
     current_center: egui::Pos2,
+}
+
+#[derive(Debug, Clone)]
+struct SketchSelectionBoxDrag {
+    start: egui::Pos2,
+    mode: SketchSelectionBoxMode,
 }
 
 #[derive(Debug, Clone)]
@@ -250,7 +257,7 @@ pub struct CircuitCiApp {
     selected_sketch_items: BTreeSet<SketchSelection>,
     sketch_clipboard_components: Vec<String>,
     sketch_paste_requested: bool,
-    marquee_start: Option<egui::Pos2>,
+    sketch_selection_box_drag: Option<SketchSelectionBoxDrag>,
     sketch_viewport_command: Option<SketchViewportCommand>,
     sketch_group_action: Option<SketchGroupAction>,
     sketch_zoom: f32,
@@ -399,7 +406,7 @@ impl Default for CircuitCiApp {
             selected_sketch_items: BTreeSet::new(),
             sketch_clipboard_components: Vec::new(),
             sketch_paste_requested: false,
-            marquee_start: None,
+            sketch_selection_box_drag: None,
             sketch_viewport_command: None,
             sketch_group_action: None,
             sketch_zoom: 1.0,
@@ -741,7 +748,7 @@ impl CircuitCiApp {
                     self.sketch_paste_requested = true;
                 }
                 ui.label(
-                    "Drag blank canvas or use touchpad scroll to pan; pinch/Cmd-scroll zooms around the pointer; Shift+drag marquee selects; Cmd/Ctrl+C copies, Cmd/Ctrl+V pastes, Cmd/Ctrl+D duplicates selected components.",
+                    "Drag blank canvas or use touchpad scroll to pan; pinch/Cmd-scroll zooms around the pointer; Shift+drag selects, Cmd/Ctrl+drag adds, Alt/Option+drag subtracts; Cmd/Ctrl+C copies, Cmd/Ctrl+V pastes, Cmd/Ctrl+D duplicates selected components.",
                 );
             });
             if self.selected_sketch_items.len() > 1 {
