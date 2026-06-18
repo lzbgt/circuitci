@@ -125,6 +125,37 @@ pub(super) fn draw_alignment_guides(
     }
 }
 
+pub(super) fn snap_rect_to_guides(
+    rect: egui::Rect,
+    guides: SketchAlignmentGuides,
+    enabled: bool,
+) -> egui::Rect {
+    if !enabled || guides.is_empty() {
+        return rect;
+    }
+    rect.translate(guide_offset(rect, guides))
+}
+
+pub(super) fn snap_delta_to_guides(
+    graph: &SketchGraph,
+    starts: &[(SketchSelection, egui::Rect)],
+    delta: egui::Vec2,
+    enabled: bool,
+) -> egui::Vec2 {
+    if !enabled {
+        return delta;
+    }
+    let Some(bounds) = moved_selection_bounds(starts, delta) else {
+        return delta;
+    };
+    let excluded = starts
+        .iter()
+        .map(|(selection, _)| selection.clone())
+        .collect();
+    let guides = guides_for_rect(graph, bounds, &excluded);
+    delta + guide_offset(bounds, guides)
+}
+
 fn compare_axis(
     best: &mut Option<(SketchAlignmentGuide, f32)>,
     moving_leading: f32,
@@ -158,6 +189,28 @@ fn compare_axis(
             ));
         }
     }
+}
+
+fn guide_offset(rect: egui::Rect, guides: SketchAlignmentGuides) -> egui::Vec2 {
+    egui::vec2(
+        guides
+            .vertical
+            .map(|guide| axis_offset(rect.left(), rect.center().x, rect.right(), guide))
+            .unwrap_or(0.0),
+        guides
+            .horizontal
+            .map(|guide| axis_offset(rect.top(), rect.center().y, rect.bottom(), guide))
+            .unwrap_or(0.0),
+    )
+}
+
+fn axis_offset(leading: f32, center: f32, trailing: f32, guide: SketchAlignmentGuide) -> f32 {
+    guide.coordinate
+        - match guide.kind {
+            SketchAlignmentKind::Leading => leading,
+            SketchAlignmentKind::Center => center,
+            SketchAlignmentKind::Trailing => trailing,
+        }
 }
 
 fn draw_dashed_line(
@@ -265,6 +318,24 @@ mod tests {
     }
 
     #[test]
+    fn snap_rect_to_guides_moves_enabled_axes_only() {
+        let rect = egui::Rect::from_min_size(egui::pos2(110.0, 90.0), egui::vec2(60.0, 20.0));
+        let guides = SketchAlignmentGuides {
+            vertical: Some(SketchAlignmentGuide {
+                coordinate: 140.0,
+                kind: SketchAlignmentKind::Center,
+            }),
+            horizontal: None,
+        };
+
+        let snapped = snap_rect_to_guides(rect, guides, true);
+
+        assert_eq!(snapped.center().x, 140.0);
+        assert_eq!(snapped.center().y, rect.center().y);
+        assert_eq!(snap_rect_to_guides(rect, guides, false), rect);
+    }
+
+    #[test]
     fn moved_bounds_translate_all_start_rects() {
         let starts = vec![
             (
@@ -281,5 +352,36 @@ mod tests {
 
         assert_eq!(bounds.min, egui::pos2(15.0, 10.0));
         assert_eq!(bounds.max, egui::pos2(105.0, 70.0));
+    }
+
+    #[test]
+    fn snap_delta_to_guides_uses_unselected_neighbors() {
+        let graph = SketchGraph {
+            nodes: vec![
+                node(
+                    "R1",
+                    egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(30.0, 20.0)),
+                ),
+                node(
+                    "R2",
+                    egui::Rect::from_min_size(egui::pos2(100.0, 80.0), egui::vec2(80.0, 40.0)),
+                ),
+            ],
+            pin_anchors: Vec::new(),
+            edges: Vec::new(),
+            probe_badges: Vec::new(),
+        };
+        let starts = vec![(
+            SketchSelection::Component("R1".to_string()),
+            egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(30.0, 20.0)),
+        )];
+
+        let snapped = snap_delta_to_guides(&graph, &starts, egui::vec2(114.0, 70.0), true);
+
+        assert_eq!(snapped, egui::vec2(115.0, 70.0));
+        assert_eq!(
+            snap_delta_to_guides(&graph, &starts, egui::vec2(114.0, 70.0), false),
+            egui::vec2(114.0, 70.0)
+        );
     }
 }

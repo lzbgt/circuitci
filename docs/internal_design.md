@@ -80,9 +80,11 @@ completion, overview-minimap event routing, and runtime tint routing.
 drawing, direct wire-route edits, component placement orientation controls,
 selected-component orientation transforms, canvas probe defaults, and viewport
 pan/zoom input.
-`src/gui/sketch_alignment.rs` owns transient alignment-guide derivation and
-drawing for component placement plus selected-node and selected-group drag
-affordances; it does not persist or mutate Board IR.
+`src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
+drawing, and Snap-mode target adjustment for component placement plus
+selected-node and selected-group drag affordances. It does not create a second
+Board IR model; persistence still routes through validated schematic position
+edits.
 `src/gui/sketch_canvas_interaction.rs` owns reusable interaction primitives:
 viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor

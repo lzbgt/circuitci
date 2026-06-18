@@ -2,7 +2,7 @@ use super::CircuitCiApp;
 use super::sketch::{
     SketchNodeStyle, SketchSelection, add_component_with_ports, edit_component_model,
     edit_schematic_component_style, edit_schematic_node_positions,
-    persisted_node_position_from_screen_with_snap,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
 };
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -325,6 +325,19 @@ impl CircuitCiApp {
         canvas: egui::Rect,
         target: egui::Pos2,
     ) {
+        self.apply_insert_selected_library_model_at_with_snap(
+            canvas,
+            target,
+            self.sketch_snap_enabled,
+        );
+    }
+
+    pub(super) fn apply_insert_selected_library_model_at_with_snap(
+        &mut self,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+        snap_enabled: bool,
+    ) {
         let entry = match self.selected_library_entry() {
             Ok(entry) => entry,
             Err(error) => {
@@ -338,14 +351,18 @@ impl CircuitCiApp {
         }
         let component_id = self.new_component_id.trim().to_string();
         let node_rect = egui::Rect::from_center_size(target, egui::vec2(180.0, 92.0));
-        let (x, y) = persisted_node_position_from_screen_with_snap(
-            canvas,
-            target,
-            node_rect,
-            self.sketch_viewport(),
-            self.sketch_snap_enabled,
-            self.sketch_grid_step,
-        );
+        let (x, y) = if snap_enabled {
+            persisted_node_position_from_screen_with_snap(
+                canvas,
+                target,
+                node_rect,
+                self.sketch_viewport(),
+                snap_enabled,
+                self.sketch_grid_step,
+            )
+        } else {
+            persisted_node_position_from_screen(canvas, target, node_rect, self.sketch_viewport())
+        };
         match insert_library_model_component_at(
             &self.project_yaml,
             &component_id,

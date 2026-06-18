@@ -1,8 +1,8 @@
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
     layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
-    persisted_node_position_from_screen_with_snap, remove_component, remove_net,
-    sketch_graph_bounds,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    remove_component, remove_net, sketch_graph_bounds,
 };
 use super::sketch_canvas_interaction::SketchSelectionBoxMode;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -255,25 +255,46 @@ impl CircuitCiApp {
         screen_delta: egui::Vec2,
         message: &str,
     ) {
+        self.apply_selected_schematic_screen_delta_with_snap(
+            canvas,
+            graph,
+            viewport,
+            screen_delta,
+            message,
+            self.sketch_snap_enabled,
+        );
+    }
+
+    pub(super) fn apply_selected_schematic_screen_delta_with_snap(
+        &mut self,
+        canvas: egui::Rect,
+        graph: &sketch::SketchGraph,
+        viewport: SketchViewport,
+        screen_delta: egui::Vec2,
+        message: &str,
+        snap_enabled: bool,
+    ) {
         if screen_delta.length_sq() <= f32::EPSILON {
             return;
         }
-        self.apply_selected_schematic_targets(
+        self.apply_selected_schematic_targets_with_snap(
             canvas,
             graph,
             viewport,
             |node| node.rect.center() + screen_delta,
             message,
+            snap_enabled,
         );
     }
 
-    pub(super) fn apply_schematic_node_rect_delta(
+    pub(super) fn apply_schematic_node_rect_delta_with_snap(
         &mut self,
         canvas: egui::Rect,
         viewport: SketchViewport,
         node_starts: &[(SketchSelection, egui::Rect)],
         screen_delta: egui::Vec2,
         message: &str,
+        snap_enabled: bool,
     ) {
         if screen_delta.length_sq() <= f32::EPSILON || node_starts.is_empty() {
             return;
@@ -281,14 +302,19 @@ impl CircuitCiApp {
         let updates = node_starts
             .iter()
             .map(|(selection, rect)| {
-                let (x, y) = persisted_node_position_from_screen_with_snap(
-                    canvas,
-                    rect.center() + screen_delta,
-                    *rect,
-                    viewport,
-                    self.sketch_snap_enabled,
-                    self.sketch_grid_step,
-                );
+                let target = rect.center() + screen_delta;
+                let (x, y) = if snap_enabled {
+                    persisted_node_position_from_screen_with_snap(
+                        canvas,
+                        target,
+                        *rect,
+                        viewport,
+                        snap_enabled,
+                        self.sketch_grid_step,
+                    )
+                } else {
+                    persisted_node_position_from_screen(canvas, target, *rect, viewport)
+                };
                 (selection.clone(), x, y)
             })
             .collect::<Vec<_>>();
@@ -306,17 +332,41 @@ impl CircuitCiApp {
         target_center: impl Fn(&sketch::SketchNode) -> egui::Pos2,
         message: &str,
     ) {
+        self.apply_selected_schematic_targets_with_snap(
+            canvas,
+            graph,
+            viewport,
+            target_center,
+            message,
+            self.sketch_snap_enabled,
+        );
+    }
+
+    fn apply_selected_schematic_targets_with_snap(
+        &mut self,
+        canvas: egui::Rect,
+        graph: &sketch::SketchGraph,
+        viewport: SketchViewport,
+        target_center: impl Fn(&sketch::SketchNode) -> egui::Pos2,
+        message: &str,
+        snap_enabled: bool,
+    ) {
         let updates = self
             .selected_nodes(graph)
             .map(|node| {
-                let (x, y) = persisted_node_position_from_screen_with_snap(
-                    canvas,
-                    target_center(node),
-                    node.rect,
-                    viewport,
-                    self.sketch_snap_enabled,
-                    self.sketch_grid_step,
-                );
+                let target = target_center(node);
+                let (x, y) = if snap_enabled {
+                    persisted_node_position_from_screen_with_snap(
+                        canvas,
+                        target,
+                        node.rect,
+                        viewport,
+                        snap_enabled,
+                        self.sketch_grid_step,
+                    )
+                } else {
+                    persisted_node_position_from_screen(canvas, target, node.rect, viewport)
+                };
                 (node.selection.clone(), x, y)
             })
             .collect::<Vec<_>>();

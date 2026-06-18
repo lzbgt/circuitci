@@ -1,8 +1,8 @@
 use super::CircuitCiApp;
 use super::sketch::{
     SketchNodeStyle, SketchSelection, encode_edited_project_yaml, ensure_board_child_mapping_mut,
-    persisted_node_position_from_screen_with_snap, schematic_node_style_mapping,
-    validated_graph_id,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    schematic_node_style_mapping, validated_graph_id,
 };
 use super::sketch_spice::{SketchSpiceKind, SketchSpicePulse, default_value, draft_from_existing};
 use anyhow::{Context, Result};
@@ -436,12 +436,21 @@ impl CircuitCiApp {
         canvas: egui::Rect,
         target: egui::Pos2,
     ) {
+        self.apply_insert_sketch_primitive_at_with_snap(canvas, target, self.sketch_snap_enabled);
+    }
+
+    pub(super) fn apply_insert_sketch_primitive_at_with_snap(
+        &mut self,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+        snap_enabled: bool,
+    ) {
         if self.sketch_palette_component_id.trim().is_empty() {
             self.sketch_palette_component_id =
                 next_primitive_component_id(&self.project_yaml, self.sketch_palette_kind);
         }
         let component_id = self.sketch_palette_component_id.trim().to_string();
-        let (x, y) = self.palette_insert_position(canvas, target);
+        let (x, y) = self.palette_insert_position(canvas, target, snap_enabled);
         let draft = SketchPrimitiveInsertDraft {
             component_id: component_id.clone(),
             kind: self.sketch_palette_kind,
@@ -467,14 +476,27 @@ impl CircuitCiApp {
         }
     }
 
-    fn palette_insert_position(&self, canvas: egui::Rect, target: egui::Pos2) -> (f64, f64) {
+    fn palette_insert_position(
+        &self,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+        snap_enabled: bool,
+    ) -> (f64, f64) {
         let node_rect = egui::Rect::from_center_size(target, egui::vec2(180.0, 92.0));
+        if !snap_enabled {
+            return persisted_node_position_from_screen(
+                canvas,
+                target,
+                node_rect,
+                self.sketch_viewport(),
+            );
+        }
         persisted_node_position_from_screen_with_snap(
             canvas,
             target,
             node_rect,
             self.sketch_viewport(),
-            self.sketch_snap_enabled,
+            snap_enabled,
             self.sketch_grid_step,
         )
     }

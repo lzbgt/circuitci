@@ -9,11 +9,12 @@ use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, next_pin_side, normalize_canvas_rotation,
     wire_route_insert_index, zoom_viewport_around,
 };
+use super::sketch_canvas_render::{placement_ghost_rect, placement_ghost_size};
 use super::sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
     default_probe_name_for_net,
 };
-use super::{CircuitCiApp, analog};
+use super::{CircuitCiApp, analog, sketch_alignment};
 
 impl CircuitCiApp {
     pub(super) fn start_visual_wire_from_anchor(&mut self, anchor: &sketch::SketchPinAnchor) {
@@ -241,6 +242,29 @@ impl CircuitCiApp {
 
     pub(super) fn component_placement_armed(&self) -> bool {
         self.sketch_palette_place_armed || self.sketch_library_place_armed
+    }
+
+    pub(super) fn aligned_component_placement_rect(
+        &self,
+        graph: &sketch::SketchGraph,
+        canvas: egui::Rect,
+        pointer: egui::Pos2,
+        viewport: sketch::SketchViewport,
+    ) -> (egui::Rect, sketch_alignment::SketchAlignmentGuides, bool) {
+        let label = self.canvas_placement_label();
+        let style = self.canvas_placement_style();
+        let base = placement_ghost_rect(
+            canvas,
+            pointer,
+            viewport,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+            placement_ghost_size(&label, style),
+        );
+        let excluded = std::collections::BTreeSet::new();
+        let guides = sketch_alignment::guides_for_rect(graph, base, &excluded);
+        let snapped = sketch_alignment::snap_rect_to_guides(base, guides, self.sketch_snap_enabled);
+        (snapped, guides, snapped != base)
     }
 
     pub(super) fn rotate_canvas_placement(&mut self, delta_deg: i32) {

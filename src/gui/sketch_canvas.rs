@@ -3,7 +3,8 @@ use eframe::egui;
 use super::sketch::{
     ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node, draw_sketch_pin_anchor,
     hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
-    persisted_node_position_from_screen_with_snap, snap_screen_point_to_grid,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    snap_screen_point_to_grid,
 };
 use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, hit_test_wire_route_handle, schematic_canvas_size,
@@ -598,14 +599,25 @@ impl CircuitCiApp {
         {
             let label = self.canvas_placement_label();
             let style = self.canvas_placement_style();
-            let ghost = placement_ghost_rect(
-                rect,
-                pointer,
-                viewport,
-                self.sketch_snap_enabled,
-                self.sketch_grid_step,
-                placement_ghost_size(&label, style),
-            );
+            let (ghost, alignment_guides, alignment_snapped) = if self.component_placement_armed() {
+                self.aligned_component_placement_rect(&graph, rect, pointer, viewport)
+            } else {
+                (
+                    placement_ghost_rect(
+                        rect,
+                        pointer,
+                        viewport,
+                        self.sketch_snap_enabled,
+                        self.sketch_grid_step,
+                        placement_ghost_size(&label, style),
+                    ),
+                    sketch_alignment::SketchAlignmentGuides {
+                        vertical: None,
+                        horizontal: None,
+                    },
+                    false,
+                )
+            };
             draw_placement_ghost(&painter, ghost, &label, placement_target_clear, style);
             draw_snap_feedback(
                 &painter,
@@ -613,12 +625,16 @@ impl CircuitCiApp {
                 placement_target_clear,
                 self.sketch_snap_enabled,
             );
-            let excluded = std::collections::BTreeSet::new();
-            sketch_alignment::draw_alignment_guides(
-                &painter,
-                rect,
-                sketch_alignment::guides_for_rect(&graph, ghost, &excluded),
-            );
+            sketch_alignment::draw_alignment_guides(&painter, rect, alignment_guides);
+            if alignment_snapped {
+                painter.text(
+                    ghost.left_bottom() + egui::vec2(0.0, 15.0),
+                    egui::Align2::LEFT_CENTER,
+                    "Guide snap",
+                    egui::FontId::monospace(10.0),
+                    egui::Color32::from_rgb(99, 224, 172),
+                );
+            }
         }
         if let Some(group_drag) = &self.sketch_group_frame_drag {
             if let Some(pointer) = ui.ctx().pointer_interact_pos()
@@ -632,10 +648,15 @@ impl CircuitCiApp {
                     self.sketch_grid_step,
                 );
                 draw_snap_feedback(&painter, snapped, true, self.sketch_snap_enabled);
-                if let Some(bounds) = sketch_alignment::moved_selection_bounds(
+                let delta = sketch_alignment::snap_delta_to_guides(
+                    &graph,
                     &group_drag.node_starts,
                     pointer - group_drag.pointer_start,
-                ) {
+                    self.sketch_snap_enabled,
+                );
+                if let Some(bounds) =
+                    sketch_alignment::moved_selection_bounds(&group_drag.node_starts, delta)
+                {
                     let excluded = group_drag
                         .node_starts
                         .iter()
@@ -775,12 +796,26 @@ impl CircuitCiApp {
                 || self.sketch_net_label_place_armed)
                 && placement_target_clear
             {
-                if self.sketch_palette_place_armed {
-                    self.apply_insert_sketch_primitive_at(rect, position);
-                } else if self.sketch_library_place_armed {
-                    self.apply_insert_selected_library_model_at(rect, position);
+                let (target, snap_enabled) = if self.component_placement_armed() {
+                    let (aligned, _, alignment_snapped) =
+                        self.aligned_component_placement_rect(&graph, rect, position, viewport);
+                    (
+                        aligned.center(),
+                        self.sketch_snap_enabled && !alignment_snapped,
+                    )
                 } else {
-                    self.apply_add_or_create_schematic_net_label_at(rect, viewport, position);
+                    (position, self.sketch_snap_enabled)
+                };
+                if self.sketch_palette_place_armed {
+                    self.apply_insert_sketch_primitive_at_with_snap(rect, target, snap_enabled);
+                } else if self.sketch_library_place_armed {
+                    self.apply_insert_selected_library_model_at_with_snap(
+                        rect,
+                        target,
+                        snap_enabled,
+                    );
+                } else {
+                    self.apply_add_or_create_schematic_net_label_at(rect, viewport, target);
                 }
                 placement_applied = true;
             } else if let Some(badge) = clicked_probe_badge {
@@ -883,12 +918,22 @@ impl CircuitCiApp {
             && let Some(position) = pointer_hover
             && rect.contains(position)
         {
-            if self.sketch_palette_place_armed {
-                self.apply_insert_sketch_primitive_at(rect, position);
-            } else if self.sketch_library_place_armed {
-                self.apply_insert_selected_library_model_at(rect, position);
+            let (target, snap_enabled) = if self.component_placement_armed() {
+                let (aligned, _, alignment_snapped) =
+                    self.aligned_component_placement_rect(&graph, rect, position, viewport);
+                (
+                    aligned.center(),
+                    self.sketch_snap_enabled && !alignment_snapped,
+                )
             } else {
-                self.apply_add_or_create_schematic_net_label_at(rect, viewport, position);
+                (position, self.sketch_snap_enabled)
+            };
+            if self.sketch_palette_place_armed {
+                self.apply_insert_sketch_primitive_at_with_snap(rect, target, snap_enabled);
+            } else if self.sketch_library_place_armed {
+                self.apply_insert_selected_library_model_at_with_snap(rect, target, snap_enabled);
+            } else {
+                self.apply_add_or_create_schematic_net_label_at(rect, viewport, target);
             }
         }
 
@@ -1044,19 +1089,30 @@ impl CircuitCiApp {
                     return None;
                 }
                 let position = ui.ctx().pointer_interact_pos()?;
-                let delta = position - group_drag.pointer_start;
+                let raw_delta = position - group_drag.pointer_start;
+                let delta = sketch_alignment::snap_delta_to_guides(
+                    &graph,
+                    &group_drag.node_starts,
+                    raw_delta,
+                    self.sketch_snap_enabled,
+                );
                 if (delta - group_drag.last_applied_delta).length_sq() <= f32::EPSILON {
                     return None;
                 }
-                Some((group_drag.node_starts.clone(), delta))
+                Some((
+                    group_drag.node_starts.clone(),
+                    delta,
+                    (delta - raw_delta).length_sq() <= f32::EPSILON,
+                ))
             });
-        if let Some((node_starts, delta)) = group_drag_update {
-            self.apply_schematic_node_rect_delta(
+        if let Some((node_starts, delta, use_grid_snap)) = group_drag_update {
+            self.apply_schematic_node_rect_delta_with_snap(
                 rect,
                 viewport,
                 &node_starts,
                 delta,
                 "Selected sketch group moved.",
+                self.sketch_snap_enabled && use_grid_snap,
             );
             if let Some(group_drag) = &mut self.sketch_group_frame_drag {
                 group_drag.last_applied_delta = delta;
@@ -1160,22 +1216,60 @@ impl CircuitCiApp {
                 && self.selected_sketch_items.contains(&selection)
             {
                 let delta = ui.input(|input| input.pointer.delta());
-                self.apply_selected_schematic_screen_delta(
+                let node_starts = graph
+                    .nodes
+                    .iter()
+                    .filter(|node| self.selected_sketch_items.contains(&node.selection))
+                    .map(|node| (node.selection.clone(), node.rect))
+                    .collect::<Vec<_>>();
+                let raw_delta = delta;
+                let delta = sketch_alignment::snap_delta_to_guides(
+                    &graph,
+                    &node_starts,
+                    raw_delta,
+                    self.sketch_snap_enabled,
+                );
+                self.apply_selected_schematic_screen_delta_with_snap(
                     rect,
                     &graph,
                     viewport,
                     delta,
                     "Selected sketch items moved.",
+                    self.sketch_snap_enabled && (delta - raw_delta).length_sq() <= f32::EPSILON,
                 );
             } else {
-                let (x, y) = persisted_node_position_from_screen_with_snap(
+                let proposed_center = snap_screen_point_to_grid(
                     rect,
                     position,
-                    node.rect,
                     viewport,
                     self.sketch_snap_enabled,
                     self.sketch_grid_step,
                 );
+                let proposed_rect = egui::Rect::from_center_size(proposed_center, node.rect.size());
+                let excluded = std::collections::BTreeSet::from([selection.clone()]);
+                let guides = sketch_alignment::guides_for_rect(&graph, proposed_rect, &excluded);
+                let snapped_rect = sketch_alignment::snap_rect_to_guides(
+                    proposed_rect,
+                    guides,
+                    self.sketch_snap_enabled,
+                );
+                let (x, y) = if snapped_rect != proposed_rect {
+                    persisted_node_position_from_screen(
+                        rect,
+                        snapped_rect.center(),
+                        node.rect,
+                        viewport,
+                    )
+                } else {
+                    persisted_node_position_from_screen_with_snap(
+                        rect,
+                        position,
+                        node.rect,
+                        viewport,
+                        self.sketch_snap_enabled,
+                        self.sketch_grid_step,
+                    )
+                };
                 self.apply_schematic_node_position(selection, x, y);
             }
         }
