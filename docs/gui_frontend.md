@@ -32,6 +32,7 @@ circuitci-gui
   -> src/gui/sketch_canvas_render.rs
   -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
+  -> src/gui/sketch_selection_inspector.rs
   -> src/gui/sketch_net_labels.rs
   -> src/gui/sketch_navigator.rs
   -> src/gui/sketch_probes.rs
@@ -186,6 +187,10 @@ current-probe insertion for
 generated source branches, generated passive current-sense branches, or
 generated semiconductor current-sense branches, plus selected-component power
 probe insertion for those same supported branches.
+`src/gui/sketch_selection_inspector.rs` owns the multi-selection inspector
+summary and quick actions for fitting, clearing, nudge, align, distribute,
+copy, duplicate, and delete; these actions reuse existing canvas selection and
+validated Board IR edit paths.
 `src/gui/sketch_probes.rs` owns derived schematic voltage/current/power probe
 badge targeting, badge layout, badge hit-testing, and badge drawing.
 `src/gui/library.rs` owns component model browsing over the active project
@@ -276,8 +281,9 @@ form:
   navigator search/select/fit controls,
   Shift-drag replace selection boxes, Cmd/Ctrl-drag additive selection boxes,
   Alt/Option-drag subtractive selection boxes, `L` plus those same drag chords
-  for freehand lasso selection, group drag/nudge/edge-align/center-align/
-  distribute controls for multi-selected sketch items, keyboard or button
+  for freehand lasso selection, multi-selection inspector summary/actions,
+  group drag/nudge/edge-align/center-align/distribute controls for
+  multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
   sketch items, pin-to-net assignment/removal for selected components, visual
   pin-to-pin and pin-to-net

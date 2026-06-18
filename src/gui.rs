@@ -44,6 +44,7 @@ mod sketch_probes;
 mod sketch_rename;
 mod sketch_render;
 mod sketch_routes;
+mod sketch_selection_inspector;
 #[cfg(test)]
 mod sketch_selection_tests;
 mod sketch_spice;

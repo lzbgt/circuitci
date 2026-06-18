@@ -24,127 +24,134 @@ impl CircuitCiApp {
         ui.vertical(|ui| {
             ui.set_min_width(260.0);
             ui.heading("Inspector");
-            match &self.selected_sketch_item {
-                Some(SketchSelection::Component(id)) => {
-                    if let Some(component) = snapshot
-                        .components_detail
-                        .iter()
-                        .find(|item| &item.id == id)
-                    {
-                        ui.strong(&component.id);
-                        ui.label("Component ID");
-                        ui.horizontal(|ui| {
-                            ui.text_edit_singleline(&mut self.component_rename_id);
-                            if ui.button("Rename").clicked() {
-                                self.apply_component_rename(&component.id);
-                            }
-                        });
-
-                        let mut model = component.model.clone();
-                        ui.label("Model");
-                        if ui.text_edit_singleline(&mut model).changed() {
-                            self.apply_component_model_edit(&component.id, &model);
-                        }
-
-                        let mut part_number = component.part_number.clone().unwrap_or_default();
-                        ui.label("Part number");
-                        if ui.text_edit_singleline(&mut part_number).changed() {
-                            self.apply_component_part_number_edit(&component.id, &part_number);
-                        }
-
-                        ui.separator();
-                        self.component_spice_editor(
-                            ui,
-                            &component.id,
-                            component.spice.as_ref(),
-                            component.pins.iter().any(|pin| pin.pin == "A")
-                                && component.pins.iter().any(|pin| pin.pin == "B"),
-                            component.pins.iter().any(|pin| pin.pin == "P")
-                                && component.pins.iter().any(|pin| pin.pin == "N"),
-                        );
-
-                        ui.separator();
-                        ui.label("Symbol placement");
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{} deg", component.style.rotation_deg));
-                            if ui.button("Rotate").clicked() {
-                                let mut style = component.style;
-                                style.rotation_deg = (style.rotation_deg + 90).rem_euclid(360);
-                                self.apply_component_style_edit(&component.id, style);
-                            }
-                            let mirror_label = if component.style.mirrored {
-                                "Unflip"
-                            } else {
-                                "Flip"
-                            };
-                            if ui.button(mirror_label).clicked() {
-                                let mut style = component.style;
-                                style.mirrored = !style.mirrored;
-                                self.apply_component_style_edit(&component.id, style);
-                            }
-                        });
-                        let mut pin_side = component.style.pin_side;
-                        egui::ComboBox::from_label("Pin side")
-                            .selected_text(pin_side.as_str())
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut pin_side, SketchPinSide::Auto, "auto");
-                                ui.selectable_value(&mut pin_side, SketchPinSide::Left, "left");
-                                ui.selectable_value(&mut pin_side, SketchPinSide::Right, "right");
-                            });
-                        if pin_side != component.style.pin_side {
-                            let mut style = component.style;
-                            style.pin_side = pin_side;
-                            self.apply_component_style_edit(&component.id, style);
-                        }
-
-                        ui.label(format!("pins: {}", component.pins.len()));
-                        egui::ScrollArea::vertical()
-                            .max_height(230.0)
-                            .show(ui, |ui| {
-                                for pin in &component.pins {
-                                    ui.monospace(format!("{} -> {}", pin.pin, pin.net));
+            if self.selected_sketch_items.len() > 1 {
+                self.sketch_multi_selection_inspector(ui, snapshot);
+            } else {
+                match &self.selected_sketch_item {
+                    Some(SketchSelection::Component(id)) => {
+                        if let Some(component) = snapshot
+                            .components_detail
+                            .iter()
+                            .find(|item| &item.id == id)
+                        {
+                            ui.strong(&component.id);
+                            ui.label("Component ID");
+                            ui.horizontal(|ui| {
+                                ui.text_edit_singleline(&mut self.component_rename_id);
+                                if ui.button("Rename").clicked() {
+                                    self.apply_component_rename(&component.id);
                                 }
                             });
-                        ui.separator();
-                        ui.label("Pin assignment");
-                        if self.pin_edit_net.is_empty()
-                            && let Some(net) = snapshot.nets_detail.first()
-                        {
-                            self.pin_edit_net = net.id.clone();
-                        }
-                        ui.horizontal(|ui| {
-                            ui.text_edit_singleline(&mut self.pin_edit_id);
-                            egui::ComboBox::from_id_salt("pin_edit_net")
-                                .selected_text(if self.pin_edit_net.is_empty() {
-                                    "select net"
+
+                            let mut model = component.model.clone();
+                            ui.label("Model");
+                            if ui.text_edit_singleline(&mut model).changed() {
+                                self.apply_component_model_edit(&component.id, &model);
+                            }
+
+                            let mut part_number = component.part_number.clone().unwrap_or_default();
+                            ui.label("Part number");
+                            if ui.text_edit_singleline(&mut part_number).changed() {
+                                self.apply_component_part_number_edit(&component.id, &part_number);
+                            }
+
+                            ui.separator();
+                            self.component_spice_editor(
+                                ui,
+                                &component.id,
+                                component.spice.as_ref(),
+                                component.pins.iter().any(|pin| pin.pin == "A")
+                                    && component.pins.iter().any(|pin| pin.pin == "B"),
+                                component.pins.iter().any(|pin| pin.pin == "P")
+                                    && component.pins.iter().any(|pin| pin.pin == "N"),
+                            );
+
+                            ui.separator();
+                            ui.label("Symbol placement");
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{} deg", component.style.rotation_deg));
+                                if ui.button("Rotate").clicked() {
+                                    let mut style = component.style;
+                                    style.rotation_deg = (style.rotation_deg + 90).rem_euclid(360);
+                                    self.apply_component_style_edit(&component.id, style);
+                                }
+                                let mirror_label = if component.style.mirrored {
+                                    "Unflip"
                                 } else {
-                                    &self.pin_edit_net
-                                })
+                                    "Flip"
+                                };
+                                if ui.button(mirror_label).clicked() {
+                                    let mut style = component.style;
+                                    style.mirrored = !style.mirrored;
+                                    self.apply_component_style_edit(&component.id, style);
+                                }
+                            });
+                            let mut pin_side = component.style.pin_side;
+                            egui::ComboBox::from_label("Pin side")
+                                .selected_text(pin_side.as_str())
                                 .show_ui(ui, |ui| {
-                                    for net in &snapshot.nets_detail {
-                                        ui.selectable_value(
-                                            &mut self.pin_edit_net,
-                                            net.id.clone(),
-                                            &net.id,
-                                        );
+                                    ui.selectable_value(&mut pin_side, SketchPinSide::Auto, "auto");
+                                    ui.selectable_value(&mut pin_side, SketchPinSide::Left, "left");
+                                    ui.selectable_value(
+                                        &mut pin_side,
+                                        SketchPinSide::Right,
+                                        "right",
+                                    );
+                                });
+                            if pin_side != component.style.pin_side {
+                                let mut style = component.style;
+                                style.pin_side = pin_side;
+                                self.apply_component_style_edit(&component.id, style);
+                            }
+
+                            ui.label(format!("pins: {}", component.pins.len()));
+                            egui::ScrollArea::vertical()
+                                .max_height(230.0)
+                                .show(ui, |ui| {
+                                    for pin in &component.pins {
+                                        ui.monospace(format!("{} -> {}", pin.pin, pin.net));
                                     }
                                 });
-                        });
-                        ui.horizontal(|ui| {
-                            if ui.button("Assign Pin").clicked() {
-                                self.apply_assign_component_pin(&component.id);
+                            ui.separator();
+                            ui.label("Pin assignment");
+                            if self.pin_edit_net.is_empty()
+                                && let Some(net) = snapshot.nets_detail.first()
+                            {
+                                self.pin_edit_net = net.id.clone();
                             }
-                            if ui.button("Remove Pin").clicked() {
-                                self.apply_remove_component_pin(&component.id);
-                            }
-                        });
-                        ui.separator();
-                        ui.label("Visual wire");
-                        ui.horizontal(|ui| {
-                            ui.label("pin");
-                            ui.text_edit_singleline(&mut self.wire_pin_id);
-                        });
-                        ui.horizontal(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.text_edit_singleline(&mut self.pin_edit_id);
+                                egui::ComboBox::from_id_salt("pin_edit_net")
+                                    .selected_text(if self.pin_edit_net.is_empty() {
+                                        "select net"
+                                    } else {
+                                        &self.pin_edit_net
+                                    })
+                                    .show_ui(ui, |ui| {
+                                        for net in &snapshot.nets_detail {
+                                            ui.selectable_value(
+                                                &mut self.pin_edit_net,
+                                                net.id.clone(),
+                                                &net.id,
+                                            );
+                                        }
+                                    });
+                            });
+                            ui.horizontal(|ui| {
+                                if ui.button("Assign Pin").clicked() {
+                                    self.apply_assign_component_pin(&component.id);
+                                }
+                                if ui.button("Remove Pin").clicked() {
+                                    self.apply_remove_component_pin(&component.id);
+                                }
+                            });
+                            ui.separator();
+                            ui.label("Visual wire");
+                            ui.horizontal(|ui| {
+                                ui.label("pin");
+                                ui.text_edit_singleline(&mut self.wire_pin_id);
+                            });
+                            ui.horizontal(|ui| {
                             if ui.button("Start Wire").clicked() {
                                 self.wire_from_component = Some(component.id.clone());
                                 if self.wire_pin_id.trim().is_empty() {
@@ -160,147 +167,154 @@ impl CircuitCiApp {
                                 self.wire_from_component = None;
                             }
                         });
-                        if let Some(source) = &self.wire_from_component {
-                            ui.label(format!(
-                                "Active: {source}.{} -> click a pin or net",
-                                self.wire_pin_id.trim()
-                            ));
-                        }
-                        ui.separator();
-                        self.component_probe_editor(ui, &component.id);
-                        if ui.button("Remove Component").clicked() {
-                            self.apply_remove_component(&component.id);
+                            if let Some(source) = &self.wire_from_component {
+                                ui.label(format!(
+                                    "Active: {source}.{} -> click a pin or net",
+                                    self.wire_pin_id.trim()
+                                ));
+                            }
+                            ui.separator();
+                            self.component_probe_editor(ui, &component.id);
+                            if ui.button("Remove Component").clicked() {
+                                self.apply_remove_component(&component.id);
+                            }
                         }
                     }
-                }
-                Some(SketchSelection::Net(id)) => {
-                    if let Some(net) = snapshot.nets_detail.iter().find(|item| &item.id == id) {
-                        ui.strong(&net.id);
-                        ui.label("Net ID");
-                        ui.horizontal(|ui| {
-                            ui.text_edit_singleline(&mut self.net_rename_id);
-                            if ui.button("Rename").clicked() {
-                                self.apply_net_rename(&net.id);
-                            }
-                        });
-
-                        let mut kind = net.kind.clone();
-                        egui::ComboBox::from_label("Kind")
-                            .selected_text(&kind)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut kind, "power".to_string(), "power");
-                                ui.selectable_value(&mut kind, "ground".to_string(), "ground");
-                                ui.selectable_value(
-                                    &mut kind,
-                                    "digital_or_analog".to_string(),
-                                    "digital_or_analog",
-                                );
-                            });
-                        if kind != net.kind {
-                            self.apply_net_kind_edit(&net.id, &kind);
-                        }
-
-                        ui.horizontal(|ui| {
-                            ui.label("Nominal voltage");
-                            if let Some(voltage) = net.nominal_voltage {
-                                let mut edited = voltage;
-                                if ui
-                                    .add(egui::DragValue::new(&mut edited).speed(0.1).suffix(" V"))
-                                    .changed()
-                                {
-                                    self.apply_net_nominal_voltage_edit(&net.id, Some(edited));
+                    Some(SketchSelection::Net(id)) => {
+                        if let Some(net) = snapshot.nets_detail.iter().find(|item| &item.id == id) {
+                            ui.strong(&net.id);
+                            ui.label("Net ID");
+                            ui.horizontal(|ui| {
+                                ui.text_edit_singleline(&mut self.net_rename_id);
+                                if ui.button("Rename").clicked() {
+                                    self.apply_net_rename(&net.id);
                                 }
-                                if ui.button("Clear").clicked() {
-                                    self.apply_net_nominal_voltage_edit(&net.id, None);
-                                }
-                            } else if ui.button("Set").clicked() {
-                                self.apply_net_nominal_voltage_edit(&net.id, Some(0.0));
-                            }
-                        });
-
-                        let mut powered = match net.powered {
-                            Some(true) => "true",
-                            Some(false) => "false",
-                            None => "unset",
-                        }
-                        .to_string();
-                        egui::ComboBox::from_label("Powered")
-                            .selected_text(&powered)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut powered, "unset".to_string(), "unset");
-                                ui.selectable_value(&mut powered, "true".to_string(), "true");
-                                ui.selectable_value(&mut powered, "false".to_string(), "false");
                             });
-                        if powered
-                            != match net.powered {
+
+                            let mut kind = net.kind.clone();
+                            egui::ComboBox::from_label("Kind")
+                                .selected_text(&kind)
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut kind, "power".to_string(), "power");
+                                    ui.selectable_value(&mut kind, "ground".to_string(), "ground");
+                                    ui.selectable_value(
+                                        &mut kind,
+                                        "digital_or_analog".to_string(),
+                                        "digital_or_analog",
+                                    );
+                                });
+                            if kind != net.kind {
+                                self.apply_net_kind_edit(&net.id, &kind);
+                            }
+
+                            ui.horizontal(|ui| {
+                                ui.label("Nominal voltage");
+                                if let Some(voltage) = net.nominal_voltage {
+                                    let mut edited = voltage;
+                                    if ui
+                                        .add(
+                                            egui::DragValue::new(&mut edited)
+                                                .speed(0.1)
+                                                .suffix(" V"),
+                                        )
+                                        .changed()
+                                    {
+                                        self.apply_net_nominal_voltage_edit(&net.id, Some(edited));
+                                    }
+                                    if ui.button("Clear").clicked() {
+                                        self.apply_net_nominal_voltage_edit(&net.id, None);
+                                    }
+                                } else if ui.button("Set").clicked() {
+                                    self.apply_net_nominal_voltage_edit(&net.id, Some(0.0));
+                                }
+                            });
+
+                            let mut powered = match net.powered {
                                 Some(true) => "true",
                                 Some(false) => "false",
                                 None => "unset",
                             }
-                        {
-                            self.apply_net_powered_edit(
-                                &net.id,
-                                match powered.as_str() {
-                                    "true" => Some(true),
-                                    "false" => Some(false),
-                                    _ => None,
-                                },
-                            );
-                        }
+                            .to_string();
+                            egui::ComboBox::from_label("Powered")
+                                .selected_text(&powered)
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut powered, "unset".to_string(), "unset");
+                                    ui.selectable_value(&mut powered, "true".to_string(), "true");
+                                    ui.selectable_value(&mut powered, "false".to_string(), "false");
+                                });
+                            if powered
+                                != match net.powered {
+                                    Some(true) => "true",
+                                    Some(false) => "false",
+                                    None => "unset",
+                                }
+                            {
+                                self.apply_net_powered_edit(
+                                    &net.id,
+                                    match powered.as_str() {
+                                        "true" => Some(true),
+                                        "false" => Some(false),
+                                        _ => None,
+                                    },
+                                );
+                            }
 
-                        ui.label(format!("connections: {}", net.connections.len()));
-                        egui::ScrollArea::vertical()
-                            .max_height(230.0)
-                            .show(ui, |ui| {
-                                for connection in &net.connections {
-                                    ui.monospace(connection);
+                            ui.label(format!("connections: {}", net.connections.len()));
+                            egui::ScrollArea::vertical()
+                                .max_height(230.0)
+                                .show(ui, |ui| {
+                                    for connection in &net.connections {
+                                        ui.monospace(connection);
+                                    }
+                                });
+                            ui.separator();
+                            ui.label("Schematic labels");
+                            ui.horizontal(|ui| {
+                                if ui.button("Place Label").clicked()
+                                    && let Some(canvas) = self.sketch_last_canvas_rect
+                                {
+                                    self.apply_add_schematic_net_label_at(
+                                        canvas,
+                                        self.sketch_viewport(),
+                                        &net.id,
+                                        super::sketch::SketchNetLabelKind::Local,
+                                        canvas.center(),
+                                    );
+                                }
+                                if ui.button("Place Off-Page").clicked()
+                                    && let Some(canvas) = self.sketch_last_canvas_rect
+                                {
+                                    self.apply_add_schematic_net_label_at(
+                                        canvas,
+                                        self.sketch_viewport(),
+                                        &net.id,
+                                        super::sketch::SketchNetLabelKind::OffPage,
+                                        canvas.center(),
+                                    );
                                 }
                             });
-                        ui.separator();
-                        ui.label("Schematic labels");
-                        ui.horizontal(|ui| {
-                            if ui.button("Place Label").clicked()
-                                && let Some(canvas) = self.sketch_last_canvas_rect
-                            {
-                                self.apply_add_schematic_net_label_at(
-                                    canvas,
-                                    self.sketch_viewport(),
-                                    &net.id,
-                                    super::sketch::SketchNetLabelKind::Local,
-                                    canvas.center(),
-                                );
+                            ui.separator();
+                            self.net_probe_editor(ui, &net.id);
+                            if ui.button("Remove Net").clicked() {
+                                self.apply_remove_net(&net.id);
                             }
-                            if ui.button("Place Off-Page").clicked()
-                                && let Some(canvas) = self.sketch_last_canvas_rect
-                            {
-                                self.apply_add_schematic_net_label_at(
-                                    canvas,
-                                    self.sketch_viewport(),
-                                    &net.id,
-                                    super::sketch::SketchNetLabelKind::OffPage,
-                                    canvas.center(),
-                                );
-                            }
-                        });
-                        ui.separator();
-                        self.net_probe_editor(ui, &net.id);
-                        if ui.button("Remove Net").clicked() {
-                            self.apply_remove_net(&net.id);
                         }
                     }
-                }
-                Some(SketchSelection::Overflow(label)) => {
-                    ui.strong(label);
-                    ui.label("Only the first visible rows are drawn to keep the graph readable.");
-                    ui.label("Use the YAML editor for the complete project.");
-                }
-                None => {
-                    ui.label("Select a component or net in the graph.");
-                    ui.label(format!(
-                        "{} components, {} nets",
-                        snapshot.components_detail.len(),
-                        snapshot.nets_detail.len()
-                    ));
+                    Some(SketchSelection::Overflow(label)) => {
+                        ui.strong(label);
+                        ui.label(
+                            "Only the first visible rows are drawn to keep the graph readable.",
+                        );
+                        ui.label("Use the YAML editor for the complete project.");
+                    }
+                    None => {
+                        ui.label("Select a component or net in the graph.");
+                        ui.label(format!(
+                            "{} components, {} nets",
+                            snapshot.components_detail.len(),
+                            snapshot.nets_detail.len()
+                        ));
+                    }
                 }
             }
         });
