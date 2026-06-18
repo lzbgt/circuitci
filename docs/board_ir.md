@@ -76,7 +76,7 @@ scenarios:
 | component power domains | power-port-to-net map | `power_domains` maps model power pins to rails. |
 | component parameters | component-specific map | Board-specific settings such as charger programmed current derived from a PROG resistor. |
 | component spice | optional primitive evidence | `spice.primitive` supports `resistor`/`value_ohm`, `capacitor`/`value_f`, `inductor`/`value_h`, voltage-source primitives, and current-source primitives for analog or static support-network checks. |
-| component source | optional metadata map | Importers preserve source traceability such as KiCad pin electrical types or JLC/EasyEDA BOM/CPL assembly fields. |
+| component source | optional metadata map | Importers preserve source traceability such as KiCad pin electrical types, KiCad `format`/`instances` provenance, or JLC/EasyEDA BOM/CPL assembly fields. |
 | nets | ID map | Nets describe power, ground, and mixed signal domains. |
 | manufacturing | optional board map | Board-level fabrication or assembly metadata that is true for the whole board, such as stencil thickness from an order record. |
 | layout placements | optional component map | Component center coordinates used by first-order placement checks. |

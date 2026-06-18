@@ -22,6 +22,11 @@ Native `.kicad_sch` import preserves the following component source metadata:
 - `source.instances`: project/path/reference/unit records from KiCad
   `(instances ...)` when present.
 
+The desktop GUI reads these records as provenance for derived schematic
+hierarchy navigation. That navigation remains a view over flattened Board IR
+components and nets; `source.instances` does not become electrical connectivity
+authority.
+
 The importer validates instance records instead of treating them as authority
 over connectivity:
 

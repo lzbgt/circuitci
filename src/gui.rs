@@ -24,6 +24,7 @@ mod simulation;
 mod sketch;
 mod sketch_actions;
 mod sketch_bundles;
+mod sketch_hierarchy;
 mod sketch_inspector;
 mod sketch_navigator;
 mod sketch_probes;
@@ -40,6 +41,7 @@ use sketch::{
     orthogonal_wire_points, persisted_node_position_from_screen_with_snap,
     snap_screen_point_to_grid,
 };
+use sketch_hierarchy::SketchHierarchyTarget;
 use sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
     default_probe_name_for_net,
@@ -201,6 +203,8 @@ pub struct CircuitCiApp {
     sketch_grid_enabled: bool,
     sketch_snap_enabled: bool,
     sketch_grid_step: f32,
+    sketch_hierarchy_query: String,
+    sketch_hierarchy_fit_target: Option<SketchHierarchyTarget>,
     sketch_navigator_query: String,
     sketch_navigator_fit_target: Option<SketchNavigatorTarget>,
     waveforms: Vec<WaveformView>,
@@ -321,6 +325,8 @@ impl Default for CircuitCiApp {
             sketch_grid_enabled: true,
             sketch_snap_enabled: true,
             sketch_grid_step: DEFAULT_SKETCH_GRID_STEP,
+            sketch_hierarchy_query: String::new(),
+            sketch_hierarchy_fit_target: None,
             sketch_navigator_query: String::new(),
             sketch_navigator_fit_target: None,
             waveforms: Vec::new(),
@@ -378,6 +384,7 @@ impl CircuitCiApp {
         if let Some(snapshot) = self.project_snapshot.clone() {
             ui.separator();
             self.sketch_edit_toolbar(ui);
+            self.sketch_hierarchy_panel(ui, &snapshot);
             self.sketch_navigator_panel(ui, &snapshot);
             ui.separator();
             ui.horizontal(|ui| {
@@ -602,6 +609,9 @@ impl CircuitCiApp {
         }
         if let Some(target) = self.sketch_navigator_fit_target.take() {
             self.fit_sketch_navigator_target(rect, snapshot, &target);
+        }
+        if let Some(target) = self.sketch_hierarchy_fit_target.take() {
+            self.fit_sketch_hierarchy_target(rect, snapshot, &target);
         }
         self.handle_sketch_viewport_input(ui, rect, &response);
         let viewport = self.sketch_viewport();
@@ -1611,6 +1621,7 @@ board:
                     },
                 ],
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             }],
             nets_detail: Vec::new(),
             probes: Vec::new(),
@@ -1648,6 +1659,7 @@ board:
                     net: "net_a".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             }],
             nets_detail: vec![SketchNet {
                 id: "net_a".to_string(),

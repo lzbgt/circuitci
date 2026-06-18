@@ -198,6 +198,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "C1".to_string(),
@@ -206,6 +207,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "L1".to_string(),
@@ -214,6 +216,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "D1".to_string(),
@@ -222,6 +225,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "V1".to_string(),
@@ -230,6 +234,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "J1".to_string(),
@@ -238,6 +243,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "U1".to_string(),
@@ -246,6 +252,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
         ],
         nets_detail: vec![SketchNet {
@@ -463,6 +470,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
             id: "net_a".to_string(),
@@ -515,6 +523,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
                 },
             ],
             style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
         }],
         nets_detail: vec![
             SketchNet {
@@ -577,6 +586,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
             id: "net_a".to_string(),
@@ -627,6 +637,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
             id: "net_a".to_string(),
@@ -843,6 +854,7 @@ fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
             }],
             position: None,
             style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
         })
         .collect();
     let snapshot = ProjectSnapshot {
@@ -893,6 +905,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
             SketchComponent {
                 id: "U2".to_string(),
@@ -904,6 +917,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             },
         ],
         nets_detail: vec![SketchNet {

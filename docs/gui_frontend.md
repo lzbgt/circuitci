@@ -26,6 +26,7 @@ circuitci-gui
   -> src/gui/sketch.rs
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
+  -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_navigator.rs
   -> src/gui/sketch_probes.rs
@@ -90,6 +91,10 @@ introducing a second connection model.
 overlay drawing, badge hit-testing, and bundle multi-selection for bracketed,
 dot-qualified, and common paired interface nets. Bundle overlays are a visual
 navigation aid over scalar Board IR nets and do not persist bus evidence.
+`src/gui/sketch_hierarchy.rs` owns the Sketch-stage schematic hierarchy panel:
+it derives sheet-like groups from imported KiCad `source.instances[*].path`
+metadata and importer namespace prefixes such as `sheet__R1`, then selects or
+fits those components and nets without writing a persisted hierarchy model.
 `src/gui/sketch_navigator.rs` owns the Sketch-stage object navigator: it
 derives searchable component, net-bundle, net, wire, and probe rows from the active
 `ProjectSnapshot`, selects the corresponding canvas target, and fits the
@@ -154,8 +159,10 @@ form:
   for components and unreferenced nets, draggable component/net node positions,
   schematic grid/snap controls, orthogonal wire visuals with net labels and
   junction dots, derived net-bundle trunks/badges for bracketed, dot-qualified,
-  and common paired interface nets, clickable wire-to-net selection, pan/zoom
-  plus reset-view and fit-content controls, object navigator search/select/fit controls,
+  and common paired interface nets, derived schematic hierarchy sheet groups
+  from imported source paths and namespaced component IDs, clickable
+  wire-to-net selection, pan/zoom plus reset-view and fit-content controls,
+  schematic hierarchy and object navigator search/select/fit controls,
   Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -226,63 +233,65 @@ The supported desktop simulation path is:
 9. search components, net bundles, nets, wires, and probe badges in the object navigator,
    select matching canvas targets, and fit the viewport to visible targets
    without changing Board IR evidence,
-10. rotate, flip, or choose pin side for selected components through
+10. use the schematic hierarchy panel to select and fit derived KiCad sheet or
+   importer-namespace groups without changing Board IR evidence,
+11. rotate, flip, or choose pin side for selected components through
    `board.schematic.node_styles`,
-11. Shift-drag a marquee to select multiple visible components/nets,
-12. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
+12. Shift-drag a marquee to select multiple visible components/nets,
+13. drag, nudge, or align multi-selected sketch nodes as one validated Board IR
    edit,
-13. assign or remove selected component pin bindings to existing nets,
-14. create a visual wire by clicking a rendered source pin anchor and then a
+14. assign or remove selected component pin bindings to existing nets,
+15. create a visual wire by clicking a rendered source pin anchor and then a
    destination pin anchor or net node,
-15. inspect Board IR connections through orthogonal wire routes, net labels,
+16. inspect Board IR connections through orthogonal wire routes, net labels,
    junction dots, and clickable wire-to-net selection rendered over the
    persisted pin/net graph,
-16. delete selected components or unreferenced nets from the canvas or toolbar,
-17. undo or redo Board IR graph/property/wire/YAML edits through the shared
+17. delete selected components or unreferenced nets from the canvas or toolbar,
+18. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-18. receive an unsaved-change confirmation before load/import/quit replaces
+19. receive an unsaved-change confirmation before load/import/quit replaces
    dirty Board IR YAML or loaded file-backed SPICE deck edits,
-19. search the active model libraries, insert selected models as sketched
+20. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-20. edit Board IR YAML evidence when the project needs a correction outside the
+21. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-21. append a generated-from-Board analog transient scenario with a voltage probe,
-22. select a net or wire on the sketch canvas and append another voltage probe
+22. append a generated-from-Board analog transient scenario with a voltage probe,
+23. select a net or wire on the sketch canvas and append another voltage probe
    to an existing analog scenario when that scenario has a node binding for the
    net,
-23. select a component on the sketch canvas and append a current probe when the
+24. select a component on the sketch canvas and append a current probe when the
    target generated-from-Board scenario includes a source primitive branch or a
    passive/diode/BJT/MOSFET branch where CircuitCI can generate a current-sense
    source,
-24. select a supported component branch and append a power probe that composes
+25. select a supported component branch and append a power probe that composes
    the branch voltage and branch current as an explicit Board IR power probe,
-25. add sample or windowed min/max waveform assertions against declared probes,
-26. load, edit, save, and rerun file-backed SPICE decks from declared analog
+26. add sample or windowed min/max waveform assertions against declared probes,
+27. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-27. browse, hash, add, and remove SHA-backed SPICE model/include files for
+28. browse, hash, add, and remove SHA-backed SPICE model/include files for
    declared analog scenarios,
-28. run KiCad/SPICE imports, scenario suggestions, declared validation, and
+29. run KiCad/SPICE imports, scenario suggestions, declared validation, and
    `analog_transient` scenarios in background workers while the desktop shell
    remains responsive,
-29. cancel a running background job from the Simulation menu, left project
+30. cancel a running background job from the Simulation menu, left project
    panel, or status panel; external ngspice validation subprocesses are
    terminated where possible, scenario suggestions and importers stop at safe
    phase checkpoints, and embedded backend calls still finish before their
    result is ignored; supported checkpoint stops are recorded as canceled job
    outcomes instead of failed job outcomes,
-30. review recent background job outcomes in the status panel, including
+31. review recent background job outcomes in the status panel, including
    elapsed time, output path, and a compact diagnostic detail,
-31. watch active background job stages in the status panel as imports,
+32. watch active background job stages in the status panel as imports,
    suggestions, validation, and analog simulation advance; KiCad/SPICE imports
    report parser, mapping/load, Board IR build/merge, and write phases, while
    validation reports project loading, model loading/binding, scenario
    execution, analog transient scenario/deck/backend/waveform phases, profile
    coverage, report assembly, report writing, and markdown report loading,
-32. scrub or play the simulation time cursor to drive graph runtime tinting,
-33. hover graph nodes to inspect matching voltage/current/power probe values at
+33. scrub or play the simulation time cursor to drive graph runtime tinting,
+34. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-34. use visible schematic probe badges to find voltage/current/power probes,
+35. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
@@ -290,17 +299,17 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-35. use right-click component, net, and wire menus for common sketch actions
+36. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, and delete through the same validated Board IR
    mutation paths as the inspector and keyboard actions,
-36. observe generated decks, plotted CSV waveforms, derived waveform math
+37. observe generated decks, plotted CSV waveforms, derived waveform math
    channels, promote representable derived channels to persistent probes/assertions,
    cursor values, min/max measurements, findings, and report artifacts,
-37. edit the project/model evidence and rerun.
+38. edit the project/model evidence and rerun.
 
-Standards-complete symbol libraries and symbol editors, buses, hierarchical
-schematic sheets, advanced multi-channel waveform-analysis sign-off, advanced SPICE source
+Standards-complete symbol libraries and symbol editors, buses, persisted
+hierarchical schematic sheets, advanced multi-channel waveform-analysis sign-off, advanced SPICE source
 tooling, automatic arbitrary
 schematic-to-SPICE conversion, and vendor macromodel acquisition are future GUI
 stages. Basic file-backed deck edits are supported, but must still reuse the

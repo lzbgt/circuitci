@@ -599,7 +599,19 @@ pub struct ComponentSpec {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct ComponentSourceSpec {
     #[serde(default)]
+    pub format: Option<String>,
+    #[serde(default)]
     pub board_pin_electrical_types: BTreeMap<String, String>,
+    #[serde(default)]
+    pub instances: Vec<ComponentSourceInstanceSpec>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ComponentSourceInstanceSpec {
+    pub project: String,
+    pub path: String,
+    pub reference: String,
+    pub unit: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]

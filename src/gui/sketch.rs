@@ -33,6 +33,7 @@ pub(super) struct SketchComponent {
     pub(super) pins: Vec<SketchPin>,
     pub(super) position: Option<SketchPosition>,
     pub(super) style: SketchNodeStyle,
+    pub(super) source_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +166,17 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
             part_number: component.part_number.clone(),
             position: sketch_position_for(positions, &SketchSelection::Component(id.clone())),
             style: sketch_style_for(styles, &SketchSelection::Component(id.clone())),
+            source_paths: component
+                .source
+                .as_ref()
+                .map(|source| {
+                    source
+                        .instances
+                        .iter()
+                        .map(|instance| instance.path.clone())
+                        .collect()
+                })
+                .unwrap_or_default(),
             pins: component
                 .pins
                 .iter()

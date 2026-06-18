@@ -316,6 +316,7 @@ mod tests {
                 ],
                 position: Some(SketchPosition { x: 10.0, y: 20.0 }),
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             }],
             nets_detail: vec![
                 SketchNet {

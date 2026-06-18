@@ -71,7 +71,13 @@ themselves. `src/gui/sketch_bundles.rs` owns conservative derived grouping for
 bracketed, dot-qualified, and common paired interface nets, plus visual
 bundle trunks/badges and bundle multi-selection. Bundle overlays must remain
 GUI-only navigation aids over scalar Board IR nets, not persisted bus
-topology/evidence. `src/gui/sketch_inspector.rs` owns the selected component/net
+topology/evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
+hierarchy grouping for the Sketch stage. It may use imported KiCad
+`component.source.instances[*].path` records and importer-generated namespaced
+component IDs such as `sheet__R1` to select, multi-select, or fit related
+components and nets, but it must remain a GUI-only navigation aid over the
+flattened Board IR graph. It must not persist a hierarchy tree, sheet primitive,
+or alternate connectivity model. `src/gui/sketch_inspector.rs` owns the selected component/net
 inspector, structured scalar YAML edit actions, conservative component and
 unreferenced-net add/remove operations, schematic symbol style edits, validated
 component pin assignment, visual wire assignment mutations, and selected-net

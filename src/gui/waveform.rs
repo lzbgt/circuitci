@@ -1666,6 +1666,7 @@ mod tests {
                     },
                 ],
                 style: SketchNodeStyle::default(),
+                source_paths: Vec::new(),
             }],
             nets_detail: vec![
                 SketchNet {
