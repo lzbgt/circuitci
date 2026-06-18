@@ -39,9 +39,9 @@ use sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node,
     draw_sketch_pin_anchor, edge_label_position, hit_test_wire, layout_sketch_graph_viewport,
     orthogonal_wire_points, persisted_node_position_from_screen_with_snap,
-    snap_screen_point_to_grid,
+    snap_screen_point_to_grid, with_opacity,
 };
-use sketch_hierarchy::SketchHierarchyTarget;
+use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
     default_probe_name_for_net,
@@ -204,6 +204,7 @@ pub struct CircuitCiApp {
     sketch_snap_enabled: bool,
     sketch_grid_step: f32,
     sketch_hierarchy_query: String,
+    sketch_hierarchy_focus: Option<SketchHierarchyFocus>,
     sketch_hierarchy_fit_target: Option<SketchHierarchyTarget>,
     sketch_navigator_query: String,
     sketch_navigator_fit_target: Option<SketchNavigatorTarget>,
@@ -326,6 +327,7 @@ impl Default for CircuitCiApp {
             sketch_snap_enabled: true,
             sketch_grid_step: DEFAULT_SKETCH_GRID_STEP,
             sketch_hierarchy_query: String::new(),
+            sketch_hierarchy_focus: None,
             sketch_hierarchy_fit_target: None,
             sketch_navigator_query: String::new(),
             sketch_navigator_fit_target: None,
@@ -623,6 +625,16 @@ impl CircuitCiApp {
             self.sketch_grid_step,
         );
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
+        let hierarchy_view = self.sketch_hierarchy_view(snapshot);
+        if let Some(view) = &hierarchy_view {
+            painter.text(
+                rect.left_top() + egui::vec2(12.0, 12.0),
+                egui::Align2::LEFT_TOP,
+                format!("Hierarchy focus: {}", view.label()),
+                egui::FontId::monospace(12.0),
+                egui::Color32::from_rgb(255, 226, 145),
+            );
+        }
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
@@ -632,34 +644,68 @@ impl CircuitCiApp {
         } else {
             None
         };
-        let hovered_node = pointer_hover
-            .and_then(|position| graph.nodes.iter().find(|node| node.rect.contains(position)));
+        let hovered_node = pointer_hover.and_then(|position| {
+            graph.nodes.iter().find(|node| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.interaction_visible(&node.selection))
+                    && node.rect.contains(position)
+            })
+        });
         let hovered_anchor = pointer_hover.and_then(|position| {
-            graph
-                .pin_anchors
-                .iter()
-                .find(|anchor| anchor.pos.distance(position) <= 8.0)
+            graph.pin_anchors.iter().find(|anchor| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.anchor_visible(anchor))
+                    && anchor.pos.distance(position) <= 8.0
+            })
         });
         let hovered_wire = if hovered_node.is_none() && hovered_anchor.is_none() {
-            pointer_hover.and_then(|position| hit_test_wire(&graph, position))
+            pointer_hover.and_then(|position| {
+                hit_test_wire(&graph, position).filter(|edge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.edge_visible(edge))
+                })
+            })
         } else {
             None
         };
-        let hovered_probe_badge =
-            pointer_hover.and_then(|position| hit_test_probe_badge(&graph.probe_badges, position));
+        let hovered_probe_badge = pointer_hover.and_then(|position| {
+            hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.probe_badge_visible(badge))
+            })
+        });
         let hovered_bundle_badge = pointer_hover.and_then(|position| {
-            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position)
+            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(|badge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.bundle_badge_visible(badge))
+            })
         });
         for edge in &graph.edges {
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.edge_visible(edge) {
+                    continue;
+                }
+                view.edge_opacity(edge)
+            } else {
+                1.0
+            };
             let wire_selection = SketchSelection::Net(edge.net_id.clone());
             let selected = self.selection_is_selected(&wire_selection);
             let hovered = hovered_wire
                 .is_some_and(|wire| wire.net_id == edge.net_id && wire.source == edge.source);
-            draw_wire_edge(&painter, edge, selected, hovered, self.sketch_zoom);
+            draw_wire_edge(&painter, edge, selected, hovered, self.sketch_zoom, opacity);
         }
         if let Some(component_id) = &self.wire_from_component
             && let Some(pointer) = ui.ctx().pointer_hover_pos()
             && rect.contains(pointer)
+            && hierarchy_view.as_ref().is_none_or(|view| {
+                view.interaction_visible(&SketchSelection::Component(component_id.clone()))
+            })
             && let Some(source) = wire_preview_start(&graph, component_id, &self.wire_pin_id)
         {
             let pointer = snap_screen_point_to_grid(
@@ -677,11 +723,27 @@ impl CircuitCiApp {
             );
         }
         for badge in &bundle_badges {
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.bundle_badge_visible(badge) {
+                    continue;
+                }
+                view.bundle_badge_opacity(badge)
+            } else {
+                1.0
+            };
             let hovered = hovered_bundle_badge
                 .is_some_and(|hovered| hovered.bundle.label == badge.bundle.label);
-            sketch_bundles::draw_net_bundle_overlay(&painter, badge, hovered);
+            sketch_bundles::draw_net_bundle_overlay(&painter, badge, hovered, opacity);
         }
         for node in &graph.nodes {
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.interaction_visible(&node.selection) {
+                    continue;
+                }
+                view.selection_opacity(&node.selection)
+            } else {
+                1.0
+            };
             let selected = self.selection_is_selected(&node.selection);
             let runtime_activity = runtime_probe_activity_for_selection(
                 &self.waveforms,
@@ -690,20 +752,36 @@ impl CircuitCiApp {
                 &node.selection,
                 snapshot,
             );
-            draw_sketch_node(&painter, node, selected, runtime_activity);
+            draw_sketch_node(&painter, node, selected, runtime_activity, opacity);
         }
         for anchor in &graph.pin_anchors {
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.anchor_visible(anchor) {
+                    continue;
+                }
+                view.anchor_opacity(anchor)
+            } else {
+                1.0
+            };
             let active = self.wire_from_component.as_ref() == Some(&anchor.component_id)
                 && self.wire_pin_id.trim() == anchor.pin;
-            draw_sketch_pin_anchor(&painter, anchor, active);
+            draw_sketch_pin_anchor(&painter, anchor, active, opacity);
         }
         for badge in &graph.probe_badges {
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.probe_badge_visible(badge) {
+                    continue;
+                }
+                view.probe_badge_opacity(badge)
+            } else {
+                1.0
+            };
             let hovered = hovered_probe_badge.is_some_and(|hovered| {
                 hovered.probe.scenario_name == badge.probe.scenario_name
                     && hovered.probe.probe_name == badge.probe.probe_name
             });
             let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
-            draw_probe_badge(&painter, badge, hovered, status);
+            draw_probe_badge(&painter, badge, hovered, status, opacity);
         }
 
         if response.clicked_by(egui::PointerButton::Primary)
@@ -713,17 +791,28 @@ impl CircuitCiApp {
             let clicked_probe_badge = hit_test_probe_badge(&graph.probe_badges, position);
             let clicked_bundle_badge =
                 sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position);
-            let clicked_anchor = graph
-                .pin_anchors
-                .iter()
-                .find(|anchor| anchor.pos.distance(position) <= 8.0);
+            let clicked_anchor = graph.pin_anchors.iter().find(|anchor| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.anchor_visible(anchor))
+                    && anchor.pos.distance(position) <= 8.0
+            });
             let clicked = graph
                 .nodes
                 .iter()
-                .find(|node| node.rect.contains(position))
+                .find(|node| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.interaction_visible(&node.selection))
+                        && node.rect.contains(position)
+                })
                 .map(|node| node.selection.clone());
             let clicked_wire = if clicked_anchor.is_none() && clicked.is_none() {
-                hit_test_wire(&graph, position)
+                hit_test_wire(&graph, position).filter(|edge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.edge_visible(edge))
+                })
             } else {
                 None
             };
@@ -782,7 +871,12 @@ impl CircuitCiApp {
             let clicked_node = graph
                 .nodes
                 .iter()
-                .find(|node| node.rect.contains(position))
+                .find(|node| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.interaction_visible(&node.selection))
+                        && node.rect.contains(position)
+                })
                 .map(|node| node.selection.clone());
             if clicked_node.is_none() && ui.input(|input| input.modifiers.shift) {
                 self.marquee_start = Some(position);
@@ -1369,7 +1463,9 @@ fn draw_wire_edge(
     selected: bool,
     hovered: bool,
     zoom: f32,
+    opacity: f32,
 ) {
+    let opacity = opacity.clamp(0.0, 1.0);
     let color = if selected {
         egui::Color32::from_rgb(93, 185, 255)
     } else if hovered {
@@ -1378,12 +1474,13 @@ fn draw_wire_edge(
         egui::Color32::from_gray(86)
     };
     let stroke_width = if selected || hovered { 2.0 } else { 1.0 };
+    let color = with_opacity(color, opacity);
     let stroke = egui::Stroke::new(stroke_width, color);
     let points = orthogonal_wire_points(edge.start, edge.end);
     draw_wire_points(painter, &points, stroke);
     draw_wire_junctions(painter, &points, color, selected || hovered);
     if zoom > 0.45 || selected || hovered {
-        draw_wire_label(painter, edge, selected || hovered);
+        draw_wire_label(painter, edge, selected || hovered, opacity);
     }
 }
 
@@ -1415,7 +1512,13 @@ fn draw_wire_junctions(
     }
 }
 
-fn draw_wire_label(painter: &egui::Painter, edge: &sketch::SketchEdge, emphasized: bool) {
+fn draw_wire_label(
+    painter: &egui::Painter,
+    edge: &sketch::SketchEdge,
+    emphasized: bool,
+    opacity: f32,
+) {
+    let opacity = opacity.clamp(0.0, 1.0);
     let label = compact_wire_label(&edge.net_id);
     let pos = edge_label_position(edge);
     let width = (label.len() as f32 * 7.0 + 8.0).clamp(24.0, 128.0);
@@ -1425,11 +1528,11 @@ fn draw_wire_label(painter: &egui::Painter, edge: &sketch::SketchEdge, emphasize
     } else {
         egui::Color32::from_rgba_unmultiplied(24, 24, 24, 210)
     };
-    painter.rect_filled(rect, 2.0, fill);
+    painter.rect_filled(rect, 2.0, with_opacity(fill, opacity));
     painter.rect_stroke(
         rect,
         2.0,
-        egui::Stroke::new(1.0, egui::Color32::from_gray(76)),
+        egui::Stroke::new(1.0, with_opacity(egui::Color32::from_gray(76), opacity)),
         egui::StrokeKind::Inside,
     );
     painter.text(
@@ -1437,7 +1540,7 @@ fn draw_wire_label(painter: &egui::Painter, edge: &sketch::SketchEdge, emphasize
         egui::Align2::CENTER_CENTER,
         label,
         egui::FontId::monospace(10.0),
-        egui::Color32::from_gray(225),
+        with_opacity(egui::Color32::from_gray(225), opacity),
     );
 }
 

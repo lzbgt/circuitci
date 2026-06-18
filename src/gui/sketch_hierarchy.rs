@@ -3,12 +3,36 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::CircuitCiApp;
 use super::sketch::{self, ProjectSnapshot, SketchSelection};
+use super::sketch_bundles::SketchNetBundleBadge;
+use super::sketch_probes::{SketchProbeBadge, SketchProbeTarget};
 
 const MAX_HIERARCHY_ROWS: usize = 48;
+const DIMMED_HIERARCHY_OPACITY: f32 = 0.24;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SketchHierarchyTarget {
     label: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchHierarchyFocusMode {
+    Dim,
+    Isolate,
+}
+
+impl SketchHierarchyFocusMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Dim => "dim unrelated",
+            Self::Isolate => "hide unrelated",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SketchHierarchyFocus {
+    label: String,
+    mode: SketchHierarchyFocusMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,9 +43,26 @@ pub(super) struct SketchHierarchyGroup {
     nets: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(super) struct SketchHierarchyView {
+    label: String,
+    mode: SketchHierarchyFocusMode,
+    selections: BTreeSet<SketchSelection>,
+}
+
 impl CircuitCiApp {
     pub(super) fn sketch_hierarchy_panel(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         ui.collapsing("Schematic Hierarchy", |ui| {
+            if let Some(focus) = &self.sketch_hierarchy_focus {
+                let focus_label = focus.label.clone();
+                let focus_mode = focus.mode.label();
+                ui.horizontal(|ui| {
+                    ui.label(format!("Focused: {focus_label} ({focus_mode})"));
+                    if ui.button("Clear Focus").clicked() {
+                        self.clear_sketch_hierarchy_focus();
+                    }
+                });
+            }
             ui.horizontal(|ui| {
                 ui.label("Search");
                 ui.text_edit_singleline(&mut self.sketch_hierarchy_query);
@@ -46,7 +87,7 @@ impl CircuitCiApp {
                 .max_height(130.0)
                 .show(ui, |ui| {
                     egui::Grid::new("sketch_hierarchy_rows")
-                        .num_columns(5)
+                        .num_columns(7)
                         .striped(true)
                         .show(ui, |ui| {
                             for group in groups.iter().take(MAX_HIERARCHY_ROWS) {
@@ -60,6 +101,18 @@ impl CircuitCiApp {
                                     self.select_hierarchy_group(group);
                                     self.sketch_hierarchy_fit_target =
                                         Some(SketchHierarchyTarget::from_group(group));
+                                }
+                                if ui.button("Focus").clicked() {
+                                    self.apply_sketch_hierarchy_focus(
+                                        group,
+                                        SketchHierarchyFocusMode::Dim,
+                                    );
+                                }
+                                if ui.button("Isolate").clicked() {
+                                    self.apply_sketch_hierarchy_focus(
+                                        group,
+                                        SketchHierarchyFocusMode::Isolate,
+                                    );
                                 }
                                 ui.end_row();
                             }
@@ -104,12 +157,163 @@ impl CircuitCiApp {
             group.nets.len()
         );
     }
+
+    fn apply_sketch_hierarchy_focus(
+        &mut self,
+        group: &SketchHierarchyGroup,
+        mode: SketchHierarchyFocusMode,
+    ) {
+        self.select_hierarchy_group(group);
+        self.sketch_hierarchy_focus = Some(SketchHierarchyFocus::from_group(group, mode));
+        self.status = format!(
+            "Focused hierarchy group {} with {}.",
+            group.label,
+            mode.label()
+        );
+    }
+
+    fn clear_sketch_hierarchy_focus(&mut self) {
+        self.sketch_hierarchy_focus = None;
+        self.status = "Cleared schematic hierarchy focus.".to_string();
+    }
+
+    pub(super) fn sketch_hierarchy_view(
+        &mut self,
+        snapshot: &ProjectSnapshot,
+    ) -> Option<SketchHierarchyView> {
+        let focus = self.sketch_hierarchy_focus.clone()?;
+        let groups = derive_hierarchy_groups(snapshot);
+        let Some(group) = groups.iter().find(|group| group.label == focus.label) else {
+            self.sketch_hierarchy_focus = None;
+            self.status = "Cleared stale schematic hierarchy focus.".to_string();
+            return None;
+        };
+        Some(SketchHierarchyView::from_group(group, focus.mode))
+    }
 }
 
 impl SketchHierarchyTarget {
     fn from_group(group: &SketchHierarchyGroup) -> Self {
         Self {
             label: group.label.clone(),
+        }
+    }
+}
+
+impl SketchHierarchyFocus {
+    fn from_group(group: &SketchHierarchyGroup, mode: SketchHierarchyFocusMode) -> Self {
+        Self {
+            label: group.label.clone(),
+            mode,
+        }
+    }
+}
+
+impl SketchHierarchyView {
+    fn from_group(group: &SketchHierarchyGroup, mode: SketchHierarchyFocusMode) -> Self {
+        let selections = group
+            .components
+            .iter()
+            .cloned()
+            .map(SketchSelection::Component)
+            .chain(group.nets.iter().cloned().map(SketchSelection::Net))
+            .collect();
+        Self {
+            label: group.label.clone(),
+            mode,
+            selections,
+        }
+    }
+
+    pub(super) fn label(&self) -> &str {
+        &self.label
+    }
+
+    pub(super) fn interaction_visible(&self, selection: &SketchSelection) -> bool {
+        self.mode != SketchHierarchyFocusMode::Isolate || self.matches_selection(selection)
+    }
+
+    pub(super) fn selection_opacity(&self, selection: &SketchSelection) -> f32 {
+        self.opacity(self.matches_selection(selection))
+    }
+
+    pub(super) fn edge_visible(&self, edge: &sketch::SketchEdge) -> bool {
+        self.mode != SketchHierarchyFocusMode::Isolate || self.matches_edge(edge)
+    }
+
+    pub(super) fn edge_opacity(&self, edge: &sketch::SketchEdge) -> f32 {
+        self.opacity(self.matches_edge(edge))
+    }
+
+    pub(super) fn anchor_visible(&self, anchor: &sketch::SketchPinAnchor) -> bool {
+        self.mode != SketchHierarchyFocusMode::Isolate || self.matches_anchor(anchor)
+    }
+
+    pub(super) fn anchor_opacity(&self, anchor: &sketch::SketchPinAnchor) -> f32 {
+        self.opacity(self.matches_anchor(anchor))
+    }
+
+    pub(super) fn probe_badge_visible(&self, badge: &SketchProbeBadge) -> bool {
+        self.mode != SketchHierarchyFocusMode::Isolate || self.matches_probe_badge(badge)
+    }
+
+    pub(super) fn probe_badge_opacity(&self, badge: &SketchProbeBadge) -> f32 {
+        self.opacity(self.matches_probe_badge(badge))
+    }
+
+    pub(super) fn bundle_badge_visible(&self, badge: &SketchNetBundleBadge) -> bool {
+        self.mode != SketchHierarchyFocusMode::Isolate || self.matches_bundle_badge(badge)
+    }
+
+    pub(super) fn bundle_badge_opacity(&self, badge: &SketchNetBundleBadge) -> f32 {
+        self.opacity(self.matches_bundle_badge(badge))
+    }
+
+    fn matches_selection(&self, selection: &SketchSelection) -> bool {
+        self.selections.contains(selection)
+    }
+
+    fn matches_edge(&self, edge: &sketch::SketchEdge) -> bool {
+        self.selections
+            .contains(&SketchSelection::Net(edge.net_id.clone()))
+            || edge_source_component(&edge.source).is_some_and(|component_id| {
+                self.selections
+                    .contains(&SketchSelection::Component(component_id.to_string()))
+            })
+    }
+
+    fn matches_anchor(&self, anchor: &sketch::SketchPinAnchor) -> bool {
+        self.selections
+            .contains(&SketchSelection::Component(anchor.component_id.clone()))
+            || self
+                .selections
+                .contains(&SketchSelection::Net(anchor.net.clone()))
+    }
+
+    fn matches_probe_badge(&self, badge: &SketchProbeBadge) -> bool {
+        match &badge.probe.target {
+            SketchProbeTarget::Component(component_id) => self
+                .selections
+                .contains(&SketchSelection::Component(component_id.clone())),
+            SketchProbeTarget::Net(net_id) => self
+                .selections
+                .contains(&SketchSelection::Net(net_id.clone())),
+        }
+    }
+
+    fn matches_bundle_badge(&self, badge: &SketchNetBundleBadge) -> bool {
+        badge
+            .bundle
+            .members
+            .iter()
+            .any(|net| self.selections.contains(&SketchSelection::Net(net.clone())))
+    }
+
+    fn opacity(&self, matched: bool) -> f32 {
+        if matched {
+            1.0
+        } else {
+            DIMMED_HIERARCHY_OPACITY
         }
     }
 }
@@ -166,6 +370,10 @@ pub(super) fn derive_hierarchy_groups(snapshot: &ProjectSnapshot) -> Vec<SketchH
         .map(HierarchyGroupBuilder::finish)
         .filter(|group| !group.components.is_empty() || !group.nets.is_empty())
         .collect()
+}
+
+fn edge_source_component(source: &str) -> Option<&str> {
+    source.split_once('.').map(|(component, _)| component)
 }
 
 fn filter_hierarchy_groups(
@@ -291,10 +499,16 @@ fn humanize_sheet_prefix(prefix: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::derive_hierarchy_groups;
+    use super::{SketchHierarchyFocusMode, SketchHierarchyView, derive_hierarchy_groups};
     use crate::gui::sketch::{
-        ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin,
+        ProjectSnapshot, SketchComponent, SketchEdge, SketchNet, SketchNodeStyle, SketchPin,
+        SketchPinAnchor, SketchSelection,
     };
+    use crate::gui::sketch_bundles::{SketchNetBundle, SketchNetBundleBadge};
+    use crate::gui::sketch_probes::{
+        SketchProbe, SketchProbeBadge, SketchProbeQuantity, SketchProbeTarget,
+    };
+    use eframe::egui;
 
     fn snapshot() -> ProjectSnapshot {
         ProjectSnapshot {
@@ -388,5 +602,107 @@ mod tests {
         assert!(groups.iter().any(|group| {
             group.label == "KiCad path /frontend" && group.components == vec!["U1".to_string()]
         }));
+    }
+
+    #[test]
+    fn focus_view_dims_or_hides_unrelated_graph_objects() {
+        let groups = derive_hierarchy_groups(&snapshot());
+        let group = groups
+            .iter()
+            .find(|group| group.label == "Analog Frontend")
+            .unwrap();
+        let dim = SketchHierarchyView::from_group(group, SketchHierarchyFocusMode::Dim);
+        let isolate = SketchHierarchyView::from_group(group, SketchHierarchyFocusMode::Isolate);
+        let focused_component = SketchSelection::Component("analog_frontend__R1".to_string());
+        let unrelated_component = SketchSelection::Component("U1".to_string());
+        assert!(dim.interaction_visible(&unrelated_component));
+        assert_eq!(dim.selection_opacity(&focused_component), 1.0);
+        assert!(dim.selection_opacity(&unrelated_component) < 0.5);
+        assert!(isolate.interaction_visible(&focused_component));
+        assert!(!isolate.interaction_visible(&unrelated_component));
+
+        let focused_edge = SketchEdge {
+            net_id: "analog_frontend_filter_out".to_string(),
+            source: "analog_frontend__R1.A".to_string(),
+            start: egui::pos2(0.0, 0.0),
+            end: egui::pos2(1.0, 1.0),
+        };
+        let unrelated_edge = SketchEdge {
+            net_id: "root_out".to_string(),
+            source: "U1.OUT".to_string(),
+            start: egui::pos2(0.0, 0.0),
+            end: egui::pos2(1.0, 1.0),
+        };
+        assert!(isolate.edge_visible(&focused_edge));
+        assert!(!isolate.edge_visible(&unrelated_edge));
+
+        let focused_anchor = SketchPinAnchor {
+            component_id: "analog_frontend__R1".to_string(),
+            pin: "A".to_string(),
+            net: "analog_frontend_filter_out".to_string(),
+            pos: egui::pos2(0.0, 0.0),
+            label_pos: egui::pos2(0.0, 0.0),
+            label_align: egui::Align2::CENTER_CENTER,
+        };
+        let unrelated_anchor = SketchPinAnchor {
+            component_id: "U1".to_string(),
+            pin: "OUT".to_string(),
+            net: "root_out".to_string(),
+            pos: egui::pos2(0.0, 0.0),
+            label_pos: egui::pos2(0.0, 0.0),
+            label_align: egui::Align2::CENTER_CENTER,
+        };
+        assert!(isolate.anchor_visible(&focused_anchor));
+        assert!(!isolate.anchor_visible(&unrelated_anchor));
+
+        let focused_probe = SketchProbeBadge {
+            probe: SketchProbe {
+                scenario_name: "analog".to_string(),
+                probe_name: "v_filter".to_string(),
+                expression: "V(filter)".to_string(),
+                quantity: SketchProbeQuantity::Voltage,
+                target: SketchProbeTarget::Net("analog_frontend_filter_out".to_string()),
+                assertion_names: Vec::new(),
+            },
+            rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+        };
+        let unrelated_probe = SketchProbeBadge {
+            probe: SketchProbe {
+                scenario_name: "analog".to_string(),
+                probe_name: "v_root".to_string(),
+                expression: "V(root)".to_string(),
+                quantity: SketchProbeQuantity::Voltage,
+                target: SketchProbeTarget::Net("root_out".to_string()),
+                assertion_names: Vec::new(),
+            },
+            rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+        };
+        assert!(isolate.probe_badge_visible(&focused_probe));
+        assert!(!isolate.probe_badge_visible(&unrelated_probe));
+
+        let focused_bundle = SketchNetBundleBadge {
+            bundle: SketchNetBundle {
+                label: "analog_frontend".to_string(),
+                members: vec!["analog_frontend_filter_out".to_string()],
+            },
+            rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+            spine_x: 0.0,
+            y_min: 0.0,
+            y_max: 10.0,
+            member_points: Vec::new(),
+        };
+        let unrelated_bundle = SketchNetBundleBadge {
+            bundle: SketchNetBundle {
+                label: "root".to_string(),
+                members: vec!["root_out".to_string()],
+            },
+            rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+            spine_x: 0.0,
+            y_min: 0.0,
+            y_max: 10.0,
+            member_points: Vec::new(),
+        };
+        assert!(isolate.bundle_badge_visible(&focused_bundle));
+        assert!(!isolate.bundle_badge_visible(&unrelated_bundle));
     }
 }

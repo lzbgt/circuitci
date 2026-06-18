@@ -1456,7 +1456,9 @@ pub(super) fn draw_sketch_node(
     node: &SketchNode,
     selected: bool,
     runtime_activity: Option<f64>,
+    opacity: f32,
 ) {
+    let opacity = normalized_opacity(opacity);
     let base_fill = match node.selection {
         SketchSelection::Component(_) => egui::Color32::from_rgb(36, 52, 70),
         SketchSelection::Net(_) => egui::Color32::from_rgb(42, 62, 46),
@@ -1466,26 +1468,37 @@ pub(super) fn draw_sketch_node(
         .map(|activity| runtime_activity_fill(base_fill, activity))
         .unwrap_or(base_fill);
     let stroke = if selected {
-        egui::Stroke::new(2.0, egui::Color32::from_rgb(93, 185, 255))
+        egui::Stroke::new(
+            2.0,
+            with_opacity(egui::Color32::from_rgb(93, 185, 255), opacity),
+        )
     } else {
-        egui::Stroke::new(1.0, egui::Color32::from_gray(108))
+        egui::Stroke::new(1.0, with_opacity(egui::Color32::from_gray(108), opacity))
     };
-    painter.rect_filled(node.rect, 4.0, fill);
+    painter.rect_filled(node.rect, 4.0, with_opacity(fill, opacity));
     painter.rect_stroke(node.rect, 4.0, stroke, egui::StrokeKind::Inside);
     draw_symbol_glyph(painter, node);
+    if opacity < 0.999 {
+        let alpha = ((1.0 - opacity) * 170.0).round() as u8;
+        painter.rect_filled(
+            node.rect.shrink(1.0),
+            4.0,
+            egui::Color32::from_rgba_unmultiplied(18, 18, 18, alpha),
+        );
+    }
     painter.text(
         node.rect.left_top() + egui::vec2(8.0, 9.0),
         egui::Align2::LEFT_CENTER,
         compact_label(&node.label, 24),
         egui::FontId::monospace(13.0),
-        egui::Color32::WHITE,
+        with_opacity(egui::Color32::WHITE, opacity),
     );
     painter.text(
         node.rect.left_bottom() + egui::vec2(8.0, -12.0),
         egui::Align2::LEFT_CENTER,
         compact_label(&node.detail, 34),
         egui::FontId::monospace(11.0),
-        egui::Color32::LIGHT_GRAY,
+        with_opacity(egui::Color32::LIGHT_GRAY, opacity),
     );
 }
 
@@ -1493,24 +1506,26 @@ pub(super) fn draw_sketch_pin_anchor(
     painter: &egui::Painter,
     anchor: &SketchPinAnchor,
     active: bool,
+    opacity: f32,
 ) {
+    let opacity = normalized_opacity(opacity);
     let fill = if active {
         egui::Color32::from_rgb(255, 196, 87)
     } else {
         egui::Color32::from_rgb(115, 166, 224)
     };
-    painter.circle_filled(anchor.pos, 4.0, fill);
+    painter.circle_filled(anchor.pos, 4.0, with_opacity(fill, opacity));
     painter.circle_stroke(
         anchor.pos,
         4.0,
-        egui::Stroke::new(1.0, egui::Color32::from_gray(18)),
+        egui::Stroke::new(1.0, with_opacity(egui::Color32::from_gray(18), opacity)),
     );
     painter.text(
         anchor.label_pos,
         anchor.label_align,
         compact_label(&anchor.pin, 10),
         egui::FontId::monospace(10.5),
-        egui::Color32::LIGHT_GRAY,
+        with_opacity(egui::Color32::LIGHT_GRAY, opacity),
     );
 }
 
@@ -1525,6 +1540,20 @@ fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
         mix(base.g(), highlight.g()),
         mix(base.b(), highlight.b()),
     )
+}
+
+pub(super) fn with_opacity(color: egui::Color32, opacity: f32) -> egui::Color32 {
+    let opacity = normalized_opacity(opacity);
+    egui::Color32::from_rgba_unmultiplied(
+        color.r(),
+        color.g(),
+        color.b(),
+        ((color.a() as f32) * opacity).round() as u8,
+    )
+}
+
+fn normalized_opacity(opacity: f32) -> f32 {
+    opacity.clamp(0.0, 1.0)
 }
 
 fn compact_label(value: &str, max_chars: usize) -> String {

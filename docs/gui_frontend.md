@@ -95,6 +95,8 @@ navigation aid over scalar Board IR nets and do not persist bus evidence.
 it derives sheet-like groups from imported KiCad `source.instances[*].path`
 metadata and importer namespace prefixes such as `sheet__R1`, then selects or
 fits those components and nets without writing a persisted hierarchy model.
+It also owns transient focus/isolate view filters that dim or hide unrelated
+canvas objects while preserving the same flattened Board IR connectivity.
 `src/gui/sketch_navigator.rs` owns the Sketch-stage object navigator: it
 derives searchable component, net-bundle, net, wire, and probe rows from the active
 `ProjectSnapshot`, selects the corresponding canvas target, and fits the
@@ -162,7 +164,8 @@ form:
   and common paired interface nets, derived schematic hierarchy sheet groups
   from imported source paths and namespaced component IDs, clickable
   wire-to-net selection, pan/zoom plus reset-view and fit-content controls,
-  schematic hierarchy and object navigator search/select/fit controls,
+  schematic hierarchy search/select/fit/focus/isolate controls and object
+  navigator search/select/fit controls,
   Shift-drag marquee selection, group drag/nudge/left-
   align/top-align controls for multi-selected sketch items, keyboard or button
   deletion for selected components/nets, batched deletion of multi-selected
@@ -233,8 +236,8 @@ The supported desktop simulation path is:
 9. search components, net bundles, nets, wires, and probe badges in the object navigator,
    select matching canvas targets, and fit the viewport to visible targets
    without changing Board IR evidence,
-10. use the schematic hierarchy panel to select and fit derived KiCad sheet or
-   importer-namespace groups without changing Board IR evidence,
+10. use the schematic hierarchy panel to select, fit, focus, or isolate derived
+   KiCad sheet or importer-namespace groups without changing Board IR evidence,
 11. rotate, flip, or choose pin side for selected components through
    `board.schematic.node_styles`,
 12. Shift-drag a marquee to select multiple visible components/nets,

@@ -2,7 +2,7 @@ use eframe::egui;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::CircuitCiApp;
-use super::sketch::{ProjectSnapshot, SketchGraph, SketchSelection};
+use super::sketch::{ProjectSnapshot, SketchGraph, SketchSelection, with_opacity};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SketchNetBundle {
@@ -14,10 +14,10 @@ pub(super) struct SketchNetBundle {
 pub(super) struct SketchNetBundleBadge {
     pub(super) bundle: SketchNetBundle,
     pub(super) rect: egui::Rect,
-    spine_x: f32,
-    y_min: f32,
-    y_max: f32,
-    member_points: Vec<egui::Pos2>,
+    pub(super) spine_x: f32,
+    pub(super) y_min: f32,
+    pub(super) y_max: f32,
+    pub(super) member_points: Vec<egui::Pos2>,
 }
 
 impl CircuitCiApp {
@@ -101,12 +101,15 @@ pub(super) fn draw_net_bundle_overlay(
     painter: &egui::Painter,
     badge: &SketchNetBundleBadge,
     hovered: bool,
+    opacity: f32,
 ) {
+    let opacity = opacity.clamp(0.0, 1.0);
     let color = if hovered {
         egui::Color32::from_rgb(255, 196, 87)
     } else {
         egui::Color32::from_rgb(91, 202, 197)
     };
+    let color = with_opacity(color, opacity);
     let spine_stroke = egui::Stroke::new(if hovered { 4.0 } else { 3.0 }, color);
     painter.line_segment(
         [
@@ -117,7 +120,12 @@ pub(super) fn draw_net_bundle_overlay(
     );
     let tap_stroke = egui::Stroke::new(
         if hovered { 1.5 } else { 1.0 },
-        egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 150),
+        egui::Color32::from_rgba_unmultiplied(
+            color.r(),
+            color.g(),
+            color.b(),
+            ((150.0 * opacity).round()) as u8,
+        ),
     );
     for point in &badge.member_points {
         painter.line_segment([*point, egui::pos2(badge.spine_x, point.y)], tap_stroke);
@@ -125,7 +133,12 @@ pub(super) fn draw_net_bundle_overlay(
     painter.rect_filled(
         badge.rect,
         4.0,
-        egui::Color32::from_rgba_unmultiplied(24, 58, 60, if hovered { 238 } else { 210 }),
+        egui::Color32::from_rgba_unmultiplied(
+            24,
+            58,
+            60,
+            (((if hovered { 238.0 } else { 210.0 }) * opacity).round()) as u8,
+        ),
     );
     painter.rect_stroke(
         badge.rect,
@@ -138,7 +151,7 @@ pub(super) fn draw_net_bundle_overlay(
         egui::Align2::CENTER_CENTER,
         format!("{} [{}]", badge.bundle.label, badge.bundle.members.len()),
         egui::FontId::monospace(11.0),
-        egui::Color32::from_rgb(215, 252, 249),
+        with_opacity(egui::Color32::from_rgb(215, 252, 249), opacity),
     );
 }
 

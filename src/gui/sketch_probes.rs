@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use super::sketch::{ProjectSnapshot, SketchNode, SketchSelection};
+use super::sketch::{ProjectSnapshot, SketchNode, SketchSelection, with_opacity};
 
 #[derive(Debug, Clone)]
 pub(super) struct SketchProbe {
@@ -181,7 +181,9 @@ pub(super) fn draw_probe_badge(
     badge: &SketchProbeBadge,
     hovered: bool,
     status: SketchProbeStatus,
+    opacity: f32,
 ) {
+    let opacity = opacity.clamp(0.0, 1.0);
     let fill = match badge.probe.quantity {
         SketchProbeQuantity::Voltage => egui::Color32::from_rgb(52, 100, 166),
         SketchProbeQuantity::Current => egui::Color32::from_rgb(136, 86, 154),
@@ -198,11 +200,14 @@ pub(super) fn draw_probe_badge(
         SketchProbeStatus::Pass => egui::Color32::from_rgb(86, 190, 112),
         SketchProbeStatus::Fail => egui::Color32::from_rgb(232, 83, 83),
     };
-    painter.rect_filled(badge.rect, 3.0, fill);
+    painter.rect_filled(badge.rect, 3.0, with_opacity(fill, opacity));
     painter.rect_stroke(
         badge.rect,
         3.0,
-        egui::Stroke::new(if hovered { 2.0 } else { 1.0 }, stroke_color),
+        egui::Stroke::new(
+            if hovered { 2.0 } else { 1.0 },
+            with_opacity(stroke_color, opacity),
+        ),
         egui::StrokeKind::Inside,
     );
     painter.text(
@@ -210,12 +215,12 @@ pub(super) fn draw_probe_badge(
         egui::Align2::CENTER_CENTER,
         badge.probe.quantity.label(),
         egui::FontId::monospace(11.0),
-        egui::Color32::WHITE,
+        with_opacity(egui::Color32::WHITE, opacity),
     );
     painter.circle_filled(
         egui::pos2(badge.rect.right() - 3.5, badge.rect.top() + 3.5),
         3.0,
-        status_color,
+        with_opacity(status_color, opacity),
     );
     if status == SketchProbeStatus::Fail {
         painter.text(
@@ -223,7 +228,7 @@ pub(super) fn draw_probe_badge(
             egui::Align2::CENTER_CENTER,
             "!",
             egui::FontId::monospace(7.0),
-            egui::Color32::WHITE,
+            with_opacity(egui::Color32::WHITE, opacity),
         );
     }
 }

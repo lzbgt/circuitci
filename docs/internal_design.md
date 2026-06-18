@@ -76,8 +76,11 @@ hierarchy grouping for the Sketch stage. It may use imported KiCad
 `component.source.instances[*].path` records and importer-generated namespaced
 component IDs such as `sheet__R1` to select, multi-select, or fit related
 components and nets, but it must remain a GUI-only navigation aid over the
-flattened Board IR graph. It must not persist a hierarchy tree, sheet primitive,
-or alternate connectivity model. `src/gui/sketch_inspector.rs` owns the selected component/net
+flattened Board IR graph. Focus and isolate modes may dim or hide unrelated
+canvas objects, but they are transient view filters and must not remove,
+rewrite, or re-scope Board IR components, nets, probes, buses, wires, or
+connectivity. It must not persist a hierarchy tree, sheet primitive, or
+alternate connectivity model. `src/gui/sketch_inspector.rs` owns the selected component/net
 inspector, structured scalar YAML edit actions, conservative component and
 unreferenced-net add/remove operations, schematic symbol style edits, validated
 component pin assignment, visual wire assignment mutations, and selected-net
