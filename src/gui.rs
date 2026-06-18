@@ -16,11 +16,11 @@ use simulation::{
     runtime_probe_lines_for_selection, waveform_time_range_for_view,
 };
 use sketch::{
-    ProjectSnapshot, SketchSelection, add_component, add_net, assign_component_pin,
+    ProjectSnapshot, SketchSelection, SketchViewport, add_component, add_net, assign_component_pin,
     connect_component_pins, draw_sketch_node, draw_sketch_pin_anchor, edit_component_model,
     edit_component_part_number, edit_net_kind, edit_net_nominal_voltage, edit_net_powered,
-    edit_schematic_node_position, layout_sketch_graph, remove_component, remove_component_pin,
-    remove_net,
+    edit_schematic_node_position, layout_sketch_graph_viewport,
+    persisted_node_position_from_screen, remove_component, remove_component_pin, remove_net,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -128,6 +128,8 @@ pub struct CircuitCiApp {
     analog_assertion_end_us: f64,
     project_snapshot: Option<ProjectSnapshot>,
     selected_sketch_item: Option<SketchSelection>,
+    sketch_zoom: f32,
+    sketch_pan: egui::Vec2,
     waveforms: Vec<WaveformView>,
     selected_waveform: usize,
     selected_probe: usize,
@@ -203,6 +205,8 @@ impl Default for CircuitCiApp {
             analog_assertion_end_us: 100.0,
             project_snapshot: None,
             selected_sketch_item: None,
+            sketch_zoom: 1.0,
+            sketch_pan: egui::Vec2::ZERO,
             waveforms: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
@@ -826,6 +830,36 @@ impl CircuitCiApp {
                 }
                 ui.label("Graph, property, wire, and YAML edits share one Board IR history.");
             });
+            ui.horizontal(|ui| {
+                if ui.button("-").clicked() {
+                    self.sketch_zoom = (self.sketch_zoom / 1.2).clamp(0.25, 4.0);
+                }
+                ui.add(
+                    egui::Slider::new(&mut self.sketch_zoom, 0.25..=4.0)
+                        .logarithmic(true)
+                        .text("zoom"),
+                );
+                if ui.button("+").clicked() {
+                    self.sketch_zoom = (self.sketch_zoom * 1.2).clamp(0.25, 4.0);
+                }
+                if ui.button("Reset View").clicked() {
+                    self.sketch_zoom = 1.0;
+                    self.sketch_pan = egui::Vec2::ZERO;
+                }
+                if ui.button("Reset Pan").clicked() {
+                    self.sketch_pan = egui::Vec2::ZERO;
+                }
+                if ui
+                    .add_enabled(
+                        self.selected_sketch_item.is_some(),
+                        egui::Button::new("Delete Selected"),
+                    )
+                    .clicked()
+                {
+                    self.apply_delete_selected_sketch_item();
+                }
+                ui.label("Middle/right drag pans; pinch or trackpad zoom changes canvas scale.");
+            });
             egui::Grid::new("sketch_graph_edit_grid")
                 .num_columns(4)
                 .striped(true)
@@ -879,7 +913,9 @@ impl CircuitCiApp {
             egui::StrokeKind::Inside,
         );
 
-        let graph = layout_sketch_graph(rect, snapshot);
+        self.handle_sketch_viewport_input(ui, rect, &response);
+        let viewport = self.sketch_viewport();
+        let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
         for edge in &graph.edges {
             painter.line_segment(
                 [edge.start, edge.end],
@@ -934,7 +970,7 @@ impl CircuitCiApp {
             None
         };
 
-        if response.clicked()
+        if response.clicked_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
             let clicked_anchor = graph
@@ -977,7 +1013,7 @@ impl CircuitCiApp {
             }
         }
 
-        if response.drag_started()
+        if response.drag_started_by(egui::PointerButton::Primary)
             && let Some(position) = response.interact_pointer_pos()
         {
             self.selected_sketch_item = graph
@@ -986,7 +1022,7 @@ impl CircuitCiApp {
                 .find(|node| node.rect.contains(position))
                 .map(|node| node.selection.clone());
         }
-        if response.dragged()
+        if response.dragged_by(egui::PointerButton::Primary)
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -994,11 +1030,16 @@ impl CircuitCiApp {
             && !matches!(selection, SketchSelection::Overflow(_))
             && let Some(node) = graph.nodes.iter().find(|node| node.selection == selection)
         {
-            let x = (position.x - rect.left() - node.rect.width() / 2.0)
-                .clamp(0.0, (rect.width() - node.rect.width()).max(0.0));
-            let y = (position.y - rect.top() - node.rect.height() / 2.0)
-                .clamp(0.0, (rect.height() - node.rect.height()).max(0.0));
-            self.apply_schematic_node_position(selection, x as f64, y as f64);
+            let (x, y) = persisted_node_position_from_screen(rect, position, node.rect, viewport);
+            self.apply_schematic_node_position(selection, x, y);
+        }
+
+        if response.hovered()
+            && ui.input(|input| {
+                input.key_pressed(egui::Key::Delete) || input.key_pressed(egui::Key::Backspace)
+            })
+        {
+            self.apply_delete_selected_sketch_item();
         }
 
         if let Some(anchor) = hovered_anchor {
@@ -1016,6 +1057,60 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
             });
+        }
+    }
+
+    fn sketch_viewport(&self) -> SketchViewport {
+        SketchViewport {
+            pan: self.sketch_pan,
+            zoom: self.sketch_zoom.clamp(0.25, 4.0),
+        }
+    }
+
+    fn handle_sketch_viewport_input(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        response: &egui::Response,
+    ) {
+        if response.dragged_by(egui::PointerButton::Middle)
+            || response.dragged_by(egui::PointerButton::Secondary)
+        {
+            let delta = ui.input(|input| input.pointer.delta());
+            self.sketch_pan += delta;
+        }
+
+        if response.hovered() {
+            let zoom_delta = ui.input(|input| input.zoom_delta());
+            if (zoom_delta - 1.0).abs() > f32::EPSILON {
+                self.zoom_sketch_canvas(zoom_delta, rect, rect.center());
+            }
+        }
+    }
+
+    fn zoom_sketch_canvas(&mut self, zoom_delta: f32, canvas: egui::Rect, focus: egui::Pos2) {
+        let old_zoom = self.sketch_zoom.clamp(0.25, 4.0);
+        let new_zoom = (old_zoom * zoom_delta).clamp(0.25, 4.0);
+        if (new_zoom - old_zoom).abs() <= f32::EPSILON {
+            return;
+        }
+        let focus_offset = focus - canvas.min;
+        let logical_focus = (focus_offset - self.sketch_pan) / old_zoom;
+        self.sketch_pan = focus_offset - logical_focus * new_zoom;
+        self.sketch_zoom = new_zoom;
+    }
+
+    fn apply_delete_selected_sketch_item(&mut self) {
+        match self.selected_sketch_item.clone() {
+            Some(SketchSelection::Component(component_id)) => {
+                self.apply_remove_component(&component_id);
+            }
+            Some(SketchSelection::Net(net_id)) => {
+                self.apply_remove_net(&net_id);
+            }
+            Some(SketchSelection::Overflow(_)) | None => {
+                self.status = "No deletable sketch item selected.".to_string();
+            }
         }
     }
 

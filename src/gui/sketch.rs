@@ -44,6 +44,12 @@ pub(super) struct SketchPosition {
     pub(super) y: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SketchViewport {
+    pub(super) pan: egui::Vec2,
+    pub(super) zoom: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum SketchSelection {
     Component(String),
@@ -927,6 +933,76 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     }
 }
 
+pub(super) fn layout_sketch_graph_viewport(
+    rect: egui::Rect,
+    snapshot: &ProjectSnapshot,
+    viewport: SketchViewport,
+) -> SketchGraph {
+    let mut graph = layout_sketch_graph(rect, snapshot);
+    transform_sketch_graph(&mut graph, rect, viewport);
+    graph
+}
+
+pub(super) fn persisted_node_position_from_screen(
+    canvas: egui::Rect,
+    screen_position: egui::Pos2,
+    screen_node_rect: egui::Rect,
+    viewport: SketchViewport,
+) -> (f64, f64) {
+    let zoom = viewport.zoom.clamp(0.25, 4.0);
+    let logical_position = inverse_viewport_pos(screen_position, canvas, viewport);
+    let logical_width = screen_node_rect.width() / zoom;
+    let logical_height = screen_node_rect.height() / zoom;
+    let x = (logical_position.x - canvas.left() - logical_width / 2.0)
+        .clamp(0.0, (canvas.width() - logical_width).max(0.0));
+    let y = (logical_position.y - canvas.top() - logical_height / 2.0)
+        .clamp(0.0, (canvas.height() - logical_height).max(0.0));
+    (x as f64, y as f64)
+}
+
+fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport: SketchViewport) {
+    for node in &mut graph.nodes {
+        node.rect = transform_viewport_rect(node.rect, canvas, viewport);
+    }
+    for anchor in &mut graph.pin_anchors {
+        anchor.pos = transform_viewport_pos(anchor.pos, canvas, viewport);
+        anchor.label_pos = transform_viewport_pos(anchor.label_pos, canvas, viewport);
+    }
+    for edge in &mut graph.edges {
+        edge.start = transform_viewport_pos(edge.start, canvas, viewport);
+        edge.end = transform_viewport_pos(edge.end, canvas, viewport);
+    }
+}
+
+fn transform_viewport_rect(
+    rect: egui::Rect,
+    canvas: egui::Rect,
+    viewport: SketchViewport,
+) -> egui::Rect {
+    egui::Rect::from_min_max(
+        transform_viewport_pos(rect.min, canvas, viewport),
+        transform_viewport_pos(rect.max, canvas, viewport),
+    )
+}
+
+fn transform_viewport_pos(
+    pos: egui::Pos2,
+    canvas: egui::Rect,
+    viewport: SketchViewport,
+) -> egui::Pos2 {
+    let zoom = viewport.zoom.clamp(0.25, 4.0);
+    canvas.min + viewport.pan + (pos - canvas.min) * zoom
+}
+
+fn inverse_viewport_pos(
+    pos: egui::Pos2,
+    canvas: egui::Rect,
+    viewport: SketchViewport,
+) -> egui::Pos2 {
+    let zoom = viewport.zoom.clamp(0.25, 4.0);
+    canvas.min + (pos - canvas.min - viewport.pan) / zoom
+}
+
 fn component_pin_anchors(component: &SketchComponent, rect: egui::Rect) -> Vec<SketchPinAnchor> {
     let visible_count = component.pins.len().min(8);
     if visible_count == 0 {
@@ -1090,12 +1166,13 @@ fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        SketchPosition, SketchSelection, add_component, add_component_with_ports, add_net,
-        assign_component_pin, connect_component_pins, edit_schematic_node_position,
-        layout_sketch_graph, remove_component, remove_component_pin, remove_net,
-        validate_board_ir_yaml_text,
+        SketchPosition, SketchSelection, SketchViewport, add_component, add_component_with_ports,
+        add_net, assign_component_pin, connect_component_pins, edit_schematic_node_position,
+        layout_sketch_graph, layout_sketch_graph_viewport, persisted_node_position_from_screen,
+        remove_component, remove_component_pin, remove_net, validate_board_ir_yaml_text,
     };
     use crate::gui::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
+    use eframe::egui;
 
     fn editable_project_yaml() -> &'static str {
         "project:
@@ -1371,5 +1448,73 @@ board:
                 .iter()
                 .any(|edge| edge.start.distance(vin_anchor.pos) < 0.01)
         );
+    }
+
+    #[test]
+    fn sketch_graph_viewport_transforms_nodes_and_edges() {
+        let snapshot = ProjectSnapshot {
+            name: "viewport_graph".to_string(),
+            components: 1,
+            nets: 1,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![SketchComponent {
+                id: "R1".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                position: Some(SketchPosition { x: 20.0, y: 30.0 }),
+                pins: vec![SketchPin {
+                    pin: "A".to_string(),
+                    net: "net_a".to_string(),
+                }],
+            }],
+            nets_detail: vec![SketchNet {
+                id: "net_a".to_string(),
+                kind: "digital_or_analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["R1.A".to_string()],
+                position: Some(SketchPosition { x: 300.0, y: 30.0 }),
+            }],
+        };
+        let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
+        let graph = layout_sketch_graph_viewport(
+            canvas,
+            &snapshot,
+            SketchViewport {
+                pan: egui::vec2(12.0, -8.0),
+                zoom: 2.0,
+            },
+        );
+        let component = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+            .unwrap();
+
+        assert_eq!(component.rect.left(), 62.0);
+        assert_eq!(component.rect.top(), 62.0);
+        assert!(component.rect.width() > 250.0);
+        assert_eq!(graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn persisted_node_position_inverts_viewport_transform() {
+        let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 10.0), egui::vec2(640.0, 320.0));
+        let viewport = SketchViewport {
+            pan: egui::vec2(12.0, -8.0),
+            zoom: 2.0,
+        };
+        let screen_node =
+            egui::Rect::from_min_size(egui::pos2(62.0, 62.0), egui::vec2(300.0, 184.0));
+        let (x, y) = persisted_node_position_from_screen(
+            canvas,
+            egui::pos2(62.0 + 150.0, 62.0 + 92.0),
+            screen_node,
+            viewport,
+        );
+
+        assert_eq!(x, 20.0);
+        assert_eq!(y, 30.0);
     }
 }
