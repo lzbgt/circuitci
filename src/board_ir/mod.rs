@@ -47,6 +47,8 @@ pub struct BoardSchematic {
     pub node_styles: BTreeMap<String, SchematicNodeStyle>,
     #[serde(default)]
     pub wire_routes: BTreeMap<String, SchematicWireRoute>,
+    #[serde(default)]
+    pub net_labels: BTreeMap<String, SchematicNetLabel>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -65,6 +67,23 @@ pub struct SchematicWireRoute {
 pub struct SchematicWirePoint {
     pub x: f64,
     pub y: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicNetLabel {
+    pub net: String,
+    pub x: f64,
+    pub y: f64,
+    #[serde(default)]
+    pub kind: SchematicNetLabelKind,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SchematicNetLabelKind {
+    #[default]
+    Local,
+    OffPage,
 }
 
 #[derive(Debug, Clone, Deserialize)]

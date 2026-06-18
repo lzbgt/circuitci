@@ -27,8 +27,10 @@ circuitci-gui
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_canvas.rs
+  -> src/gui/sketch_canvas_menus.rs
   -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
+  -> src/gui/sketch_net_labels.rs
   -> src/gui/sketch_navigator.rs
   -> src/gui/sketch_probes.rs
   -> src/gui/sketch_spice.rs
@@ -100,10 +102,11 @@ edited YAML before the GUI accepts the mutation.
 order, viewport input, hit-test routing, marquee and drag event routing,
 pin-anchor drag-to-wire completion, snap-aware wire preview and target
 highlight drawing, visible schematic wire-route handles, direct schematic
-wire-route drag editing, route-handle insertion/deletion, active multi-bend
-wire drawing, custom-route clearing,
-node/wire/probe/bundle/hierarchy connector tooltips, and right-click context
-menus over component, net, wire, and probe badge targets.
+wire-route drag editing, active multi-bend wire drawing, canvas target
+tooltips, and graph hover/runtime tint display. `src/gui/sketch_canvas_menus.rs`
+owns right-click menus for component, net, wire, probe-badge, and blank-canvas
+targets, including route-handle actions and named-net/off-page label placement
+actions.
 `src/gui/sketch_symbols.rs` owns model/id-inferred common-class
 symbol selection and the egui glyph drawing used by sketch nodes.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
@@ -123,6 +126,11 @@ introducing a second connection model.
 overlay drawing, badge hit-testing, and bundle multi-selection for bracketed,
 dot-qualified, and common paired interface nets. Bundle overlays are a visual
 navigation aid over scalar Board IR nets and do not persist bus evidence.
+`src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
+connector label metadata under `board.schematic.net_labels`, plus label badge
+layout, drawing, hit-testing, conversion, deletion, and net-rename cleanup.
+Labels select and annotate ordinary Board IR nets; they do not create hidden
+net ties or hierarchical connectivity.
 `src/gui/sketch_hierarchy.rs` owns the Sketch-stage schematic hierarchy panel:
 it derives sheet-like groups from imported KiCad `source.instances[*].path`
 metadata and importer namespace prefixes such as `sheet__R1`, then selects or
@@ -212,8 +220,9 @@ form:
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
-  schematic grid/snap controls, orthogonal wire visuals with net labels and
-  junction dots, derived net-bundle trunks/badges for bracketed, dot-qualified,
+  schematic grid/snap controls, orthogonal wire visuals with net labels,
+  placed local/off-page named-net labels, and junction dots, derived
+  net-bundle trunks/badges for bracketed, dot-qualified,
   and common paired interface nets, derived schematic hierarchy sheet groups
   from imported source paths and namespaced component IDs, off-sheet connector
   badges for focused nets with external endpoints, clickable wire-to-net
@@ -232,7 +241,8 @@ form:
   points while an active wire is being drawn, graph-node
   direct schematic wire-route shaping by dragging a rendered wire segment or
   existing route handle, route-handle insertion/deletion from wire context
-  menus,
+  menus, placed net-label/off-page connector badges that select the underlying
+  Board IR net and can be converted or deleted from their context menu,
   runtime tinting and hover readouts for
   matching waveform probes, visible voltage/current/power probe badges derived
   from analog scenario probes, badge pass/fail/unknown/unasserted markers
@@ -327,55 +337,58 @@ The supported desktop simulation path is:
    `board.schematic.wire_routes`, then drag the visible route handle to refine
    it, insert or delete individual route handles from the wire menu, or clear
    the custom route without changing the underlying pin/net connectivity,
-21. inspect Board IR connections through orthogonal wire routes, net labels,
-   junction dots, and clickable wire-to-net selection rendered over the
-   persisted pin/net graph,
-22. delete selected components or unreferenced nets from the canvas or toolbar,
-23. undo or redo Board IR graph/property/wire/YAML edits through the shared
+21. place local named-net labels or off-page connector labels for a selected
+   net, net node, or wire under `board.schematic.net_labels`; convert or delete
+   those label badges without changing the underlying Board IR net,
+22. inspect Board IR connections through orthogonal wire routes, net labels,
+   junction dots, and clickable wire-to-net or label-to-net selection rendered
+   over the persisted pin/net graph,
+23. delete selected components or unreferenced nets from the canvas or toolbar,
+24. undo or redo Board IR graph/property/wire/YAML edits through the shared
    editor history,
-24. receive an unsaved-change confirmation before load/import/quit replaces
+25. receive an unsaved-change confirmation before load/import/quit replaces
    dirty Board IR YAML or loaded file-backed SPICE deck edits,
-25. search the active model libraries, insert selected models as sketched
+26. search the active model libraries, insert selected models as sketched
    components with generated pin nets, and assign selected models to existing
    components,
-26. edit Board IR YAML evidence when the project needs a correction outside the
+27. edit Board IR YAML evidence when the project needs a correction outside the
    structured controls,
-27. append a generated-from-Board analog transient scenario with a voltage probe,
-28. select a net or wire on the sketch canvas and append another voltage probe
+28. append a generated-from-Board analog transient scenario with a voltage probe,
+29. select a net or wire on the sketch canvas and append another voltage probe
    to an existing analog scenario when that scenario has a node binding for the
    net,
-29. select a component on the sketch canvas and append a current probe when the
+30. select a component on the sketch canvas and append a current probe when the
    target generated-from-Board scenario includes a source primitive branch or a
    passive/diode/BJT/MOSFET branch where CircuitCI can generate a current-sense
    source,
-30. select a supported component branch and append a power probe that composes
+31. select a supported component branch and append a power probe that composes
    the branch voltage and branch current as an explicit Board IR power probe,
-31. add sample or windowed min/max waveform assertions against declared probes,
-32. load, edit, save, and rerun file-backed SPICE decks from declared analog
+32. add sample or windowed min/max waveform assertions against declared probes,
+33. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
-33. browse, hash, add, and remove SHA-backed SPICE model/include files for
+34. browse, hash, add, and remove SHA-backed SPICE model/include files for
    declared analog scenarios,
-34. run KiCad/SPICE imports, scenario suggestions, declared validation, and
+35. run KiCad/SPICE imports, scenario suggestions, declared validation, and
    `analog_transient` scenarios in background workers while the desktop shell
    remains responsive,
-35. cancel a running background job from the Simulation menu, left project
+36. cancel a running background job from the Simulation menu, left project
    panel, or status panel; external ngspice validation subprocesses are
    terminated where possible, scenario suggestions and importers stop at safe
    phase checkpoints, and embedded backend calls still finish before their
    result is ignored; supported checkpoint stops are recorded as canceled job
    outcomes instead of failed job outcomes,
-36. review recent background job outcomes in the status panel, including
+37. review recent background job outcomes in the status panel, including
    elapsed time, output path, and a compact diagnostic detail,
-37. watch active background job stages in the status panel as imports,
+38. watch active background job stages in the status panel as imports,
    suggestions, validation, and analog simulation advance; KiCad/SPICE imports
    report parser, mapping/load, Board IR build/merge, and write phases, while
    validation reports project loading, model loading/binding, scenario
    execution, analog transient scenario/deck/backend/waveform phases, profile
    coverage, report assembly, report writing, and markdown report loading,
-38. scrub or play the simulation time cursor to drive graph runtime tinting,
-39. hover graph nodes to inspect matching voltage/current/power probe values at
+39. scrub or play the simulation time cursor to drive graph runtime tinting,
+40. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
-40. use visible schematic probe badges to find voltage/current/power probes,
+41. use visible schematic probe badges to find voltage/current/power probes,
    see latest assertion pass/fail/unknown/unasserted status, jump to their
    Simulation-stage selected-probe assertion panel, add an assertion from the
    current assertion-editor settings with `A`, edit or delete one assertion
@@ -383,14 +396,15 @@ The supported desktop simulation path is:
    with Shift+A or a below-current-sample check with Shift+B, clear assertions
    for the probe with `X`, use the right-click badge menu for the same probe
    actions, or remove a hovered probe badge with Delete/Backspace,
-41. use right-click component, net, and wire menus for common sketch actions
+42. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
-   current, or power probes, and delete through the same validated Board IR
-   mutation paths as the inspector and keyboard actions,
-42. observe generated decks, plotted CSV waveforms, derived waveform math
+   current, or power probes, place local/off-page net labels, and delete
+   through the same validated Board IR mutation paths as the inspector and
+   keyboard actions,
+43. observe generated decks, plotted CSV waveforms, derived waveform math
    channels, promote representable derived channels to persistent probes/assertions,
    cursor values, min/max measurements, findings, and report artifacts,
-43. edit the project/model evidence and rerun.
+44. edit the project/model evidence and rerun.
 
 Standards-complete symbol libraries and symbol editors, buses, persisted
 hierarchical schematic sheets, advanced multi-channel waveform-analysis sign-off, advanced SPICE source
@@ -409,11 +423,14 @@ routes are also editor affordances. Snapping may update persisted schematic
 node positions, dragging a wire or one of its visible route handles may update
 `board.schematic.wire_routes` with display-only waypoints, active wire-mode
 blank-canvas bend clicks and wire context-menu route-handle insertion/deletion
-may update the same display metadata, and
+may update the same display metadata, and placing a local/off-page net label may
+update `board.schematic.net_labels` with a net reference, label kind, and
+schematic position. Clicking a net label selects the underlying Board IR net;
 clicking a wire may select its underlying Board IR net, but grid visibility,
-net-label placement, junction dot rendering, hit-test regions, custom schematic
-wire waypoints, and orthogonal routing style do not create independent electrical
-connectivity or physical PCB placement evidence.
+junction dot rendering, hit-test regions, named-net label rendering, custom
+schematic wire waypoints, and orthogonal routing style do not create independent
+electrical connectivity, hidden net ties, hierarchy ports, or physical PCB
+placement evidence.
 Custom wire routes render as orthogonal schematic polylines between persisted
 waypoints, so route handles can be placed freely while the visible schematic
 path remains EDA-style horizontal/vertical geometry.

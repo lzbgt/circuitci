@@ -205,6 +205,20 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "net_labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["net", "x", "y"],
+                "properties": {
+                  "net": { "type": "string" },
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "kind": { "enum": ["local", "off_page"] }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

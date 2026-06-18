@@ -354,6 +354,7 @@ mod tests {
                 assertion_names: Vec::new(),
             }],
             wire_routes: Default::default(),
+            net_labels: Default::default(),
         }
     }
 

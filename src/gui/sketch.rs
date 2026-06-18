@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
 
+use super::sketch_net_labels;
 use super::sketch_probes::{
     SketchProbe, SketchProbeBadge, derive_project_probes, layout_probe_badges,
 };
@@ -26,6 +27,7 @@ pub(super) struct ProjectSnapshot {
     pub(super) nets_detail: Vec<SketchNet>,
     pub(super) probes: Vec<SketchProbe>,
     pub(super) wire_routes: std::collections::BTreeMap<String, Vec<SketchPosition>>,
+    pub(super) net_labels: Vec<SketchNetLabelPlacement>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +56,36 @@ pub(super) struct SketchNet {
     pub(super) powered: Option<bool>,
     pub(super) connections: Vec<String>,
     pub(super) position: Option<SketchPosition>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct SketchNetLabelPlacement {
+    pub(super) id: String,
+    pub(super) net_id: String,
+    pub(super) kind: SketchNetLabelKind,
+    pub(super) position: SketchPosition,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchNetLabelKind {
+    Local,
+    OffPage,
+}
+
+impl SketchNetLabelKind {
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::OffPage => "off_page",
+        }
+    }
+
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Local => "Net Label",
+            Self::OffPage => "Off-Page Connector",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -161,6 +193,7 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
     let positions = &project.board.schematic.node_positions;
     let styles = &project.board.schematic.node_styles;
     let wire_routes = &project.board.schematic.wire_routes;
+    let net_labels = &project.board.schematic.net_labels;
     let probes = derive_project_probes(&project);
     let components_detail: Vec<_> = project
         .board
@@ -246,6 +279,22 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
                         })
                         .collect(),
                 )
+            })
+            .collect(),
+        net_labels: net_labels
+            .iter()
+            .filter(|(_, label)| project.board.nets.contains_key(&label.net))
+            .map(|(id, label)| SketchNetLabelPlacement {
+                id: id.clone(),
+                net_id: label.net.clone(),
+                kind: match label.kind {
+                    crate::board_ir::SchematicNetLabelKind::OffPage => SketchNetLabelKind::OffPage,
+                    crate::board_ir::SchematicNetLabelKind::Local => SketchNetLabelKind::Local,
+                },
+                position: SketchPosition {
+                    x: label.x,
+                    y: label.y,
+                },
             })
             .collect(),
     }
@@ -775,6 +824,7 @@ pub(super) fn remove_net(text: &str, net_id: &str) -> Result<String> {
             anyhow::bail!("Board IR net {net_id} was not found.");
         }
     }
+    sketch_net_labels::remove_net_labels_for_net(&mut yaml, net_id);
     encode_edited_project_yaml(yaml)
 }
 

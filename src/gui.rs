@@ -25,12 +25,14 @@ mod sketch;
 mod sketch_actions;
 mod sketch_bundles;
 mod sketch_canvas;
+mod sketch_canvas_menus;
 #[cfg(test)]
 mod sketch_canvas_tests;
 mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inspector;
 mod sketch_navigator;
+mod sketch_net_labels;
 mod sketch_palette;
 mod sketch_probes;
 mod sketch_rename;
@@ -1024,6 +1026,7 @@ board:
             nets_detail: Vec::new(),
             probes: Vec::new(),
             wire_routes: Default::default(),
+            net_labels: Default::default(),
         };
 
         assert_eq!(
@@ -1071,6 +1074,7 @@ board:
             }],
             probes: Vec::new(),
             wire_routes: Default::default(),
+            net_labels: Default::default(),
         };
         let graph = layout_sketch_graph(
             egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0)),

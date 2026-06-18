@@ -725,6 +725,7 @@ mod tests {
             ],
             probes: Vec::new(),
             wire_routes: Default::default(),
+            net_labels: Default::default(),
         }
     }
 

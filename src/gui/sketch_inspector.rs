@@ -257,6 +257,32 @@ impl CircuitCiApp {
                                 }
                             });
                         ui.separator();
+                        ui.label("Schematic labels");
+                        ui.horizontal(|ui| {
+                            if ui.button("Place Label").clicked()
+                                && let Some(canvas) = self.sketch_last_canvas_rect
+                            {
+                                self.apply_add_schematic_net_label_at(
+                                    canvas,
+                                    self.sketch_viewport(),
+                                    &net.id,
+                                    super::sketch::SketchNetLabelKind::Local,
+                                    canvas.center(),
+                                );
+                            }
+                            if ui.button("Place Off-Page").clicked()
+                                && let Some(canvas) = self.sketch_last_canvas_rect
+                            {
+                                self.apply_add_schematic_net_label_at(
+                                    canvas,
+                                    self.sketch_viewport(),
+                                    &net.id,
+                                    super::sketch::SketchNetLabelKind::OffPage,
+                                    canvas.center(),
+                                );
+                            }
+                        });
+                        ui.separator();
                         self.net_probe_editor(ui, &net.id);
                         if ui.button("Remove Net").clicked() {
                             self.apply_remove_net(&net.id);

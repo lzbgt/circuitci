@@ -77,9 +77,10 @@ mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, viewport input, hit-test and drag
 routing, pin-anchor drag-to-wire completion, snap-aware wire preview and target
 highlight drawing, visible wire-route handles, direct wire-route drag editing
-plus route-handle insertion/deletion, active multi-bend wire drawing, and
-clearing, hover
-tooltips, context menus, and runtime tint display. Blank-canvas primary drag
+plus active multi-bend wire drawing, hover tooltips, and runtime tint display.
+`src/gui/sketch_canvas_menus.rs` owns right-click menus for component, net,
+wire, probe badge, route-handle, and blank-canvas targets, including route
+handle insertion/deletion and custom-route clearing. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag remains marquee
 selection, pin-anchor drag should start visual wire mode instead of moving the
@@ -117,7 +118,13 @@ themselves. `src/gui/sketch_bundles.rs` owns conservative derived grouping for
 bracketed, dot-qualified, and common paired interface nets, plus visual
 bundle trunks/badges and bundle multi-selection. Bundle overlays must remain
 GUI-only navigation aids over scalar Board IR nets, not persisted bus
-topology/evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
+topology/evidence. `src/gui/sketch_net_labels.rs` owns persisted schematic
+named-net and off-page connector labels under `board.schematic.net_labels`.
+Those labels may be placed from selected-net controls or net/wire context
+menus, clicked to select the underlying net, converted between local and
+off-page presentation, removed when their net is removed, and rewritten when a
+net is renamed. They annotate ordinary Board IR nets and must not create hidden
+connectivity, bus topology, sheet ports, or PCB evidence. `src/gui/sketch_hierarchy.rs` owns derived schematic
 hierarchy grouping for the Sketch stage. It may use imported KiCad
 `component.source.instances[*].path` records and importer-generated namespaced
 component IDs such as `sheet__R1` to select, multi-select, or fit related
@@ -134,7 +141,7 @@ not persist a hierarchy tree, sheet primitive, or alternate connectivity model.
 inspector, structured scalar YAML edit actions, conservative component and
 unreferenced-net add/remove operations, structured component/net rename controls,
 schematic symbol style edits, validated component pin assignment, visual wire
-assignment mutations, and selected-net voltage-probe insertion controls plus selected-component current-probe
+assignment mutations, selected-net local/off-page label placement controls, and selected-net voltage-probe insertion controls plus selected-component current-probe
 insertion for generated source branches plus generated passive and
 diode/BJT/MOSFET current-sense branches, and selected-component power-probe
 insertion for those same supported generated branches. `src/gui/sketch_probes.rs`
@@ -175,9 +182,10 @@ component metadata keys, generated analog component lists, analog pin-binding
 endpoints, and supported generated/source branch probe expressions such as
 `I(VCCI_R1)` before reparsing the edited YAML. Net rename must move
 `board.nets` keys, component pin net values, schematic net metadata keys,
-generated analog ground/net bindings, and then revalidate. It may assign or
-remove component pin bindings only when the component exists and any assigned
-target net exists. It may persist schematic graph node
+generated analog ground/net bindings, and then revalidate. It must also rewrite
+`board.schematic.net_labels` entries that point at the old net ID. It may
+assign or remove component pin bindings only when the component exists and any
+assigned target net exists. It may persist schematic graph node
 positions under
 `board.schematic.node_positions` and symbol orientation under
 `board.schematic.node_styles`; it must not use
@@ -336,8 +344,10 @@ enrich these evidence families:
   component/net graph positions for editor usability, and
   `board.schematic.node_styles`, which stores schematic-only symbol rotation,
   mirror, and pin-side preferences, and `board.schematic.wire_routes`, which
-  stores display-only pin-to-net route waypoints. These are intentionally
-  separate from physical `board.layout.placements` and
+  stores display-only pin-to-net route waypoints, and
+  `board.schematic.net_labels`, which stores display-only local/off-page labels
+  for existing Board IR nets. These are intentionally separate from physical
+  `board.layout.placements` and
   `board.layout.routes`;
 - board-level manufacturing facts: `board.manufacturing`, currently including
   `stencil_thickness_mm`, `min_drill_edge_clearance_mm`, and

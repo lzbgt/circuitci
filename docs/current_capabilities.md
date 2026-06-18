@@ -24,6 +24,12 @@ into the existing route instead of replacing it. Custom routes render as
 orthogonal schematic polylines between persisted waypoints. These operations are
 schematic display edits only and do not change Board IR connectivity.
 
+Sketch net and wire context menus, plus the selected-net inspector, can place
+local named-net labels or off-page connector labels on the schematic. These
+labels persist as `board.schematic.net_labels` display metadata for existing
+Board IR nets; converting or deleting them does not create hidden net ties,
+hierarchical ports, or PCB evidence.
+
 ## Evidence Import
 
 | Area | Current support | Boundary |

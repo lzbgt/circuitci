@@ -15,11 +15,12 @@ use super::sketch_probes::{
     SketchProbeBadge, SketchProbeStatus, draw_probe_badge, hit_test_probe_badge,
     probe_assertion_status,
 };
+use super::sketch_routes;
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
     waveform_probe_value_for_badge,
 };
-use super::{CircuitCiApp, Stage, analog, sketch_bundles, sketch_hierarchy, sketch_routes};
+use super::{CircuitCiApp, analog, sketch_bundles, sketch_hierarchy, sketch_net_labels};
 
 impl CircuitCiApp {
     pub(super) fn draw_board_graph_sized(
@@ -73,6 +74,7 @@ impl CircuitCiApp {
             .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
+        let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         if let Some(action) = self.sketch_group_action.take() {
             self.apply_sketch_group_action(rect, &graph, viewport, action);
         }
@@ -141,13 +143,23 @@ impl CircuitCiApp {
                 position,
             )
         });
+        let hovered_net_label_badge = pointer_hover.and_then(|position| {
+            sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
+                |badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                    })
+                },
+            )
+        });
         let blank_canvas_hovered = hovered_node.is_none()
             && hovered_anchor.is_none()
             && hovered_route_handle.is_none()
             && hovered_wire.is_none()
             && hovered_probe_badge.is_none()
             && hovered_bundle_badge.is_none()
-            && hovered_hierarchy_connector_badge.is_none();
+            && hovered_hierarchy_connector_badge.is_none()
+            && hovered_net_label_badge.is_none();
         self.handle_sketch_viewport_input(
             ui,
             rect,
@@ -163,6 +175,7 @@ impl CircuitCiApp {
             .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
             .unwrap_or_default();
         let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
+        let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         let pointer_hover = if response.hovered() {
             ui.ctx().pointer_hover_pos()
         } else {
@@ -228,12 +241,22 @@ impl CircuitCiApp {
                 position,
             )
         });
+        let hovered_net_label_badge = pointer_hover.and_then(|position| {
+            sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
+                |badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                    })
+                },
+            )
+        });
         let placement_target_clear = hovered_node.is_none()
             && hovered_anchor.is_none()
             && hovered_wire.is_none()
             && hovered_probe_badge.is_none()
             && hovered_bundle_badge.is_none()
-            && hovered_hierarchy_connector_badge.is_none();
+            && hovered_hierarchy_connector_badge.is_none()
+            && hovered_net_label_badge.is_none();
         let wire_drag_target = if let Some(component_id) = &self.wire_from_component
             && let Some(position) = pointer_hover
             && rect.contains(position)
@@ -365,6 +388,23 @@ impl CircuitCiApp {
             );
             draw_sketch_node(&painter, node, selected, runtime_activity, opacity);
         }
+        for badge in &net_label_badges {
+            let selection = SketchSelection::Net(badge.net_id.clone());
+            let opacity = if let Some(view) = &hierarchy_view {
+                if !view.interaction_visible(&selection) {
+                    continue;
+                }
+                view.selection_opacity(&selection)
+            } else {
+                1.0
+            };
+            if opacity <= 0.0 {
+                continue;
+            }
+            let hovered = hovered_net_label_badge.is_some_and(|hovered| hovered.id == badge.id);
+            let selected = self.selection_is_selected(&selection);
+            sketch_net_labels::draw_net_label_badge(&painter, badge, hovered, selected, opacity);
+        }
         for anchor in &graph.pin_anchors {
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.anchor_visible(anchor) {
@@ -444,6 +484,14 @@ impl CircuitCiApp {
                     &hierarchy_connector_badges,
                     position,
                 );
+            let clicked_net_label_badge =
+                sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
+                    |badge| {
+                        hierarchy_view.as_ref().is_none_or(|view| {
+                            view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                        })
+                    },
+                );
             let clicked_bundle_badge =
                 sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(
                     |badge| {
@@ -495,6 +543,9 @@ impl CircuitCiApp {
                     badge.net_id,
                     badge.external_targets.len()
                 );
+            } else if let Some(badge) = clicked_net_label_badge {
+                self.set_single_sketch_selection(Some(SketchSelection::Net(badge.net_id.clone())));
+                self.status = format!("Selected net {} from schematic label.", badge.net_id);
             } else if let Some(badge) = clicked_bundle_badge {
                 self.select_net_bundle(&badge.bundle);
             } else if let Some(anchor) = clicked_anchor {
@@ -834,9 +885,16 @@ impl CircuitCiApp {
             response.on_hover_ui(|ui| {
                 sketch_hierarchy::hierarchy_connector_tooltip(ui, badge);
             });
+        } else if let Some(badge) = hovered_net_label_badge {
+            response.context_menu(|ui| {
+                self.net_label_context_menu(ui, badge);
+            });
+            response.on_hover_ui(|ui| {
+                sketch_net_labels::net_label_tooltip(ui, badge);
+            });
         } else if let Some(node) = hovered_node {
             response.context_menu(|ui| {
-                self.sketch_node_context_menu(ui, node, snapshot);
+                self.sketch_node_context_menu(ui, node, snapshot, rect, viewport, pointer_hover);
             });
             let runtime_lines = runtime_probe_lines_for_selection(
                 &self.waveforms,
@@ -880,82 +938,6 @@ impl CircuitCiApp {
                     "Click blank canvas to place {label}. Press Esc to cancel."
                 ));
             }
-        }
-    }
-
-    fn open_probe_badge_in_simulation(&mut self, badge: &SketchProbeBadge) {
-        self.analog_probe_scenario = badge.probe.scenario_name.clone();
-        self.analog_assertion_scenario = badge.probe.scenario_name.clone();
-        self.analog_assertion_probe = badge.probe.probe_name.clone();
-        self.stage = Stage::Simulation;
-        self.status = format!(
-            "Selected {} probe {} from scenario {}.",
-            badge.probe.quantity.label(),
-            badge.probe.probe_name,
-            badge.probe.scenario_name
-        );
-    }
-
-    fn probe_badge_context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        badge: &SketchProbeBadge,
-        sampled_value: Option<f64>,
-    ) {
-        ui.strong(format!(
-            "{} probe {}",
-            badge.probe.quantity.label(),
-            badge.probe.probe_name
-        ));
-        if ui.button("Open in Simulation").clicked() {
-            self.open_probe_badge_in_simulation(badge);
-            ui.close();
-        }
-        ui.separator();
-        if ui.button("Add Assertion From Settings").clicked() {
-            self.apply_add_canvas_probe_assertion(
-                &badge.probe.scenario_name,
-                &badge.probe.probe_name,
-            );
-            ui.close();
-        }
-        if ui
-            .add_enabled(
-                sampled_value.is_some(),
-                egui::Button::new("Quick Require Above Cursor Sample"),
-            )
-            .clicked()
-        {
-            self.apply_quick_canvas_probe_assertion(&badge.probe, "above");
-            ui.close();
-        }
-        if ui
-            .add_enabled(
-                sampled_value.is_some(),
-                egui::Button::new("Quick Require Below Cursor Sample"),
-            )
-            .clicked()
-        {
-            self.apply_quick_canvas_probe_assertion(&badge.probe, "below");
-            ui.close();
-        }
-        ui.separator();
-        if ui
-            .add_enabled(
-                !badge.probe.assertion_names.is_empty(),
-                egui::Button::new("Clear Probe Assertions"),
-            )
-            .clicked()
-        {
-            self.apply_remove_canvas_probe_assertions(
-                &badge.probe.scenario_name,
-                &badge.probe.probe_name,
-            );
-            ui.close();
-        }
-        if ui.button("Remove Probe").clicked() {
-            self.apply_remove_canvas_probe(&badge.probe.scenario_name, &badge.probe.probe_name);
-            ui.close();
         }
     }
 
@@ -1069,7 +1051,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_remove_schematic_wire_route(&mut self, edge: &sketch::SketchEdge) {
+    pub(super) fn apply_remove_schematic_wire_route(&mut self, edge: &sketch::SketchEdge) {
         match remove_schematic_wire_route(&self.project_yaml, &edge.source, &edge.net_id) {
             Ok(updated) => {
                 self.apply_edited_project_yaml(
@@ -1082,7 +1064,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn apply_insert_schematic_wire_route_point(
+    pub(super) fn apply_insert_schematic_wire_route_point(
         &mut self,
         canvas: egui::Rect,
         viewport: sketch::SketchViewport,
@@ -1101,7 +1083,7 @@ impl CircuitCiApp {
         self.apply_schematic_wire_route_points(canvas, viewport, edge, points);
     }
 
-    fn apply_delete_schematic_wire_route_point(
+    pub(super) fn apply_delete_schematic_wire_route_point(
         &mut self,
         canvas: egui::Rect,
         viewport: sketch::SketchViewport,
@@ -1149,195 +1131,14 @@ impl CircuitCiApp {
         }
     }
 
-    fn sketch_node_context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        node: &sketch::SketchNode,
-        snapshot: &ProjectSnapshot,
-    ) {
-        match &node.selection {
-            SketchSelection::Component(component_id) => {
-                ui.strong(format!("Component {component_id}"));
-                if ui.button("Inspect Component").clicked() {
-                    self.set_single_sketch_selection(Some(node.selection.clone()));
-                    ui.close();
-                }
-                if ui.button("Duplicate Component").clicked() {
-                    self.set_single_sketch_selection(Some(node.selection.clone()));
-                    self.apply_duplicate_selected_sketch_items();
-                    ui.close();
-                }
-                if ui.button("Copy Component").clicked() {
-                    self.set_single_sketch_selection(Some(node.selection.clone()));
-                    self.apply_copy_selected_sketch_items();
-                    ui.close();
-                }
-                if ui.button("Start Wire From Pin").clicked() {
-                    let (pin, net) =
-                        component_context_pin(snapshot, component_id, &self.wire_pin_id);
-                    self.set_single_sketch_selection(Some(node.selection.clone()));
-                    self.pin_edit_id = pin.clone();
-                    self.pin_edit_net = net;
-                    self.wire_pin_id = pin.clone();
-                    self.wire_from_component = Some(component_id.clone());
-                    self.status = format!(
-                        "Wire mode: click another pin, net, or wire to connect {component_id}.{pin}."
-                    );
-                    ui.close();
-                }
-                ui.separator();
-                if ui.button("Add Current Probe").clicked() {
-                    self.ensure_component_probe_defaults(component_id);
-                    self.apply_add_current_probe_for_component(component_id);
-                    ui.close();
-                }
-                if ui.button("Add Power Probe").clicked() {
-                    self.ensure_component_probe_defaults(component_id);
-                    self.apply_add_power_probe_for_component(component_id);
-                    ui.close();
-                }
-                ui.separator();
-                if ui.button("Delete Component").clicked() {
-                    self.set_single_sketch_selection(Some(node.selection.clone()));
-                    self.apply_delete_selected_sketch_item();
-                    ui.close();
-                }
-            }
-            SketchSelection::Net(net_id) => {
-                ui.strong(format!("Net {net_id}"));
-                self.net_context_menu(ui, net_id, "Inspect Net", "Delete Net");
-            }
-            SketchSelection::Overflow(label) => {
-                ui.strong(label);
-                ui.label("Open the YAML editor or use Fit All for hidden graph items.");
-            }
-        }
-    }
-
-    fn sketch_canvas_context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        canvas: egui::Rect,
-        pointer_hover: Option<egui::Pos2>,
-    ) {
-        ui.strong("Canvas");
-        if ui
-            .add_enabled(
-                !self.project_yaml.trim().is_empty(),
-                egui::Button::new(format!("Place {}", self.sketch_palette_kind.label())),
-            )
-            .clicked()
-        {
-            let target = pointer_hover.unwrap_or_else(|| canvas.center());
-            self.apply_insert_sketch_primitive_at(canvas, target);
-            ui.close();
-        }
-        if !self.selected_library_model.trim().is_empty()
-            && ui
-                .add_enabled(
-                    !self.project_yaml.trim().is_empty()
-                        && !self.new_component_id.trim().is_empty(),
-                    egui::Button::new(format!("Place {}", self.selected_library_model)),
-                )
-                .clicked()
-        {
-            let target = pointer_hover.unwrap_or_else(|| canvas.center());
-            self.apply_insert_selected_library_model_at(canvas, target);
-            ui.close();
-        }
-        if ui
-            .add_enabled(
-                self.has_pasteable_sketch_clipboard(),
-                egui::Button::new("Paste Here"),
-            )
-            .clicked()
-        {
-            self.apply_paste_sketch_clipboard(canvas, pointer_hover);
-            ui.close();
-        }
-    }
-
-    fn sketch_wire_context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        canvas: egui::Rect,
-        viewport: sketch::SketchViewport,
-        edge: &sketch::SketchEdge,
-        pointer_hover: Option<egui::Pos2>,
-        route_handle_index: Option<usize>,
-    ) {
-        ui.strong(format!("Wire {}", edge.net_id));
-        ui.label(format!("source: {}", edge.source));
-        if ui
-            .add_enabled(
-                pointer_hover.is_some(),
-                egui::Button::new("Insert Route Handle Here"),
-            )
-            .clicked()
-        {
-            let target = pointer_hover.unwrap_or_else(|| edge_label_position(edge));
-            self.apply_insert_schematic_wire_route_point(canvas, viewport, edge, target);
-            ui.close();
-        }
-        if let Some(index) = route_handle_index
-            && ui.button("Delete Route Handle").clicked()
-        {
-            self.apply_delete_schematic_wire_route_point(canvas, viewport, edge, index);
-            ui.close();
-        }
-        if ui
-            .add_enabled(
-                !edge.route.is_empty(),
-                egui::Button::new("Clear Custom Route"),
-            )
-            .clicked()
-        {
-            self.apply_remove_schematic_wire_route(edge);
-            ui.close();
-        }
-        ui.separator();
-        self.net_context_menu(ui, &edge.net_id, "Inspect Wire Net", "Delete Wire Net");
-    }
-
-    fn net_context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        net_id: &str,
-        inspect_label: &str,
-        delete_label: &str,
-    ) {
-        if ui.button(inspect_label).clicked() {
-            self.set_single_sketch_selection(Some(SketchSelection::Net(net_id.to_string())));
-            ui.close();
-        }
-        if let Some(component_id) = self.wire_from_component.clone()
-            && ui.button("Connect Active Wire Here").clicked()
-        {
-            self.apply_visual_wire(component_id, net_id.to_string());
-            ui.close();
-        }
-        ui.separator();
-        if ui.button("Add Voltage Probe").clicked() {
-            self.ensure_net_probe_defaults(net_id);
-            self.apply_add_voltage_probe_for_net(net_id);
-            ui.close();
-        }
-        ui.separator();
-        if ui.button(delete_label).clicked() {
-            self.set_single_sketch_selection(Some(SketchSelection::Net(net_id.to_string())));
-            self.apply_delete_selected_sketch_item();
-            ui.close();
-        }
-    }
-
-    fn ensure_net_probe_defaults(&mut self, net_id: &str) {
+    pub(super) fn ensure_net_probe_defaults(&mut self, net_id: &str) {
         self.ensure_canvas_probe_scenario();
         if self.analog_canvas_probe_name.trim().is_empty() {
             self.analog_canvas_probe_name = default_probe_name_for_net(net_id);
         }
     }
 
-    fn ensure_component_probe_defaults(&mut self, component_id: &str) {
+    pub(super) fn ensure_component_probe_defaults(&mut self, component_id: &str) {
         self.ensure_canvas_probe_scenario();
         if self.analog_canvas_component_probe_name.trim().is_empty() {
             self.analog_canvas_component_probe_name =

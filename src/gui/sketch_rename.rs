@@ -2,6 +2,7 @@ use super::sketch::{
     SketchSelection, board_child_mapping_mut, encode_edited_project_yaml, schematic_node_key,
     validated_graph_id,
 };
+use super::sketch_net_labels;
 use anyhow::{Context, Result};
 
 pub(super) fn rename_component(text: &str, old_id: &str, new_id: &str) -> Result<String> {
@@ -52,6 +53,7 @@ pub(super) fn rename_net(text: &str, old_id: &str, new_id: &str) -> Result<Strin
     rename_component_pin_nets(&mut yaml, old_id, new_id)?;
     rename_schematic_node_metadata(&mut yaml, "net", old_id, new_id);
     rename_schematic_wire_route_net(&mut yaml, old_id, new_id);
+    sketch_net_labels::rename_net_labels(&mut yaml, old_id, new_id);
     rename_analog_net_references(&mut yaml, old_id, new_id);
 
     encode_edited_project_yaml(yaml)
