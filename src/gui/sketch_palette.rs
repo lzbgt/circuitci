@@ -345,23 +345,57 @@ impl CircuitCiApp {
                 }
 
                 let can_insert = !self.project_yaml.trim().is_empty();
-                if ui
-                    .add_enabled(can_insert, egui::Button::new("Insert At View"))
-                    .clicked()
-                {
-                    self.apply_insert_sketch_primitive();
-                }
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(can_insert, egui::Button::new("Insert At View"))
+                        .clicked()
+                    {
+                        self.apply_insert_sketch_primitive_at_view();
+                    }
+                    let place_label = if self.sketch_palette_place_armed {
+                        "Click Canvas To Place"
+                    } else {
+                        "Place On Canvas"
+                    };
+                    if ui
+                        .add_enabled(can_insert, egui::Button::new(place_label))
+                        .clicked()
+                    {
+                        self.sketch_palette_place_armed = !self.sketch_palette_place_armed;
+                        if self.sketch_palette_place_armed {
+                            self.status = format!(
+                                "Click blank schematic space to place {}.",
+                                self.sketch_palette_kind.label()
+                            );
+                        }
+                    }
+                    if self.sketch_palette_place_armed && ui.button("Cancel").clicked() {
+                        self.sketch_palette_place_armed = false;
+                        self.status = "Primitive placement canceled.".to_string();
+                    }
+                });
                 ui.small("Creates a Board IR component, two editable pin nets, SPICE evidence, and a schematic position.");
             });
     }
 
-    fn apply_insert_sketch_primitive(&mut self) {
+    fn apply_insert_sketch_primitive_at_view(&mut self) {
+        let canvas = self.sketch_last_canvas_rect.unwrap_or_else(|| {
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(960.0, 640.0))
+        });
+        self.apply_insert_sketch_primitive_at(canvas, canvas.center());
+    }
+
+    pub(super) fn apply_insert_sketch_primitive_at(
+        &mut self,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+    ) {
         if self.sketch_palette_component_id.trim().is_empty() {
             self.sketch_palette_component_id =
                 next_primitive_component_id(&self.project_yaml, self.sketch_palette_kind);
         }
         let component_id = self.sketch_palette_component_id.trim().to_string();
-        let (x, y) = self.palette_insert_position();
+        let (x, y) = self.palette_insert_position(canvas, target);
         let draft = SketchPrimitiveInsertDraft {
             component_id: component_id.clone(),
             kind: self.sketch_palette_kind,
@@ -380,16 +414,13 @@ impl CircuitCiApp {
                 )));
                 self.sketch_palette_component_id =
                     next_primitive_component_id(&self.project_yaml, self.sketch_palette_kind);
+                self.sketch_palette_place_armed = false;
             }
             Err(error) => self.record_error(error),
         }
     }
 
-    fn palette_insert_position(&self) -> (f64, f64) {
-        let canvas = self.sketch_last_canvas_rect.unwrap_or_else(|| {
-            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(960.0, 640.0))
-        });
-        let target = canvas.center();
+    fn palette_insert_position(&self, canvas: egui::Rect, target: egui::Pos2) -> (f64, f64) {
         let node_rect = egui::Rect::from_center_size(target, egui::vec2(180.0, 92.0));
         persisted_node_position_from_screen_with_snap(
             canvas,
@@ -466,8 +497,11 @@ mod tests {
     use super::{
         SketchPrimitiveInsertDraft, insert_primitive_component, next_primitive_component_id,
     };
+    use crate::gui::CircuitCiApp;
+    use crate::gui::sketch::SketchSelection;
     use crate::gui::sketch::load_project_snapshot_from_yaml;
     use crate::gui::sketch_spice::SketchSpiceKind;
+    use eframe::egui;
 
     fn project_yaml() -> &'static str {
         "project:
@@ -561,5 +595,36 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("already exists"));
+    }
+
+    #[test]
+    fn app_canvas_placement_inserts_at_clicked_position_and_disarms() {
+        let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 320.0));
+        let mut app = CircuitCiApp {
+            project_yaml: project_yaml().to_string(),
+            sketch_palette_kind: SketchSpiceKind::Resistor,
+            sketch_palette_component_id: "R2".to_string(),
+            sketch_palette_value: 2200.0,
+            sketch_palette_place_armed: true,
+            sketch_snap_enabled: false,
+            ..Default::default()
+        };
+
+        app.apply_insert_sketch_primitive_at(canvas, egui::pos2(300.0, 200.0));
+
+        let snapshot = load_project_snapshot_from_yaml(&app.project_yaml).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "R2")
+            .unwrap();
+        let position = component.position.unwrap();
+        assert_eq!(position.x, 210.0);
+        assert_eq!(position.y, 154.0);
+        assert!(!app.sketch_palette_place_armed);
+        assert_eq!(
+            app.selected_sketch_item,
+            Some(SketchSelection::Component("R2".to_string()))
+        );
     }
 }

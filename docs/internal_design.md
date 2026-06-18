@@ -172,7 +172,9 @@ primitive prefix changes, and reparse Board IR before accepting the edit.
 R/C/L and independent voltage/current source components. Each insertion must
 create the component, editable pin nets, component-level SPICE evidence, and
 schematic placement together through the same validated Board IR YAML mutation
-path; the palette must not create a separate temporary schematic model.
+path whether it is inserted at the current view center, by an armed canvas
+click, or from the blank-canvas context menu; the palette must not create a
+separate temporary schematic model.
 The GUI shared undo/redo history in
 `src/gui/project.rs` is a capped in-memory stack of Board IR YAML snapshots;
 graph, property, wire, and text edits should enter that history through the

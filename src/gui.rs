@@ -218,6 +218,7 @@ pub struct CircuitCiApp {
     sketch_palette_kind: SketchSpiceKind,
     sketch_palette_component_id: String,
     sketch_palette_value: f64,
+    sketch_palette_place_armed: bool,
     sketch_last_canvas_rect: Option<egui::Rect>,
     sketch_pan_drag_active: bool,
     waveforms: Vec<WaveformView>,
@@ -352,6 +353,7 @@ impl Default for CircuitCiApp {
             sketch_palette_value: sketch_palette::default_primitive_value(
                 SketchSpiceKind::Resistor,
             ),
+            sketch_palette_place_armed: false,
             sketch_last_canvas_rect: None,
             sketch_pan_drag_active: false,
             waveforms: Vec::new(),

@@ -168,8 +168,10 @@ included in generated analog scenarios. `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, editing, saving, and save-and-run
 actions for imported or hand-authored analog scenarios.
 `src/gui/sketch_palette.rs` owns schematic primitive insertion for generic
-passives and independent sources, including generated pin nets, component-level
-SPICE evidence, and schematic placement in one validated Board IR edit.
+passives and independent sources. Insertion can target the current view center,
+an armed blank-canvas click, or the blank-canvas context-menu pointer, and each
+path writes generated pin nets, component-level SPICE evidence, and schematic
+placement in one validated Board IR edit.
 
 ## Workflow Shell
 
@@ -188,10 +190,11 @@ form:
   common-class symbol-style rendering for resistors, capacitors, inductors,
   diodes, sources, connectors, ICs, and generic blocks, rendered component pin
   anchors, an inspector for component bindings and net connections, structured
-  scalar edits, rename controls, a primitive palette that inserts generic
+  scalar edits, rename controls, a primitive palette that places generic
   resistors, capacitors, inductors, DC voltage/current sources, and pulse
-  voltage/current sources with pins, nets, SPICE evidence, and schematic
-  placement, and component-level SPICE primitive/value editing for existing
+  voltage/current sources at the current view, a canvas click, or a context-menu
+  pointer with pins, nets, SPICE evidence, and schematic placement, and
+  component-level SPICE primitive/value editing for existing
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
   for components and unreferenced nets, draggable component/net node positions,
