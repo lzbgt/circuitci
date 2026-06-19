@@ -138,6 +138,15 @@ impl CircuitCiApp {
         )
     }
 
+    pub(super) fn pick_scope_footprint_export_path(&mut self) -> Option<PathBuf> {
+        save_file_dialog(
+            "Export Loaded Waveform Footprint",
+            &self.output_dir,
+            "scope_loaded_waveform_footprint.csv",
+            &[("CSV", &["csv"])],
+        )
+    }
+
     pub(super) fn pick_scope_snapshot_markdown_export_path(&mut self) -> Option<PathBuf> {
         save_file_dialog(
             "Export Scope Measurement Snapshots as Markdown",

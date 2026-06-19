@@ -1,6 +1,7 @@
 use super::waveform_load::format_waveform_load_bytes;
 use super::{CircuitCiApp, WaveformView};
 use eframe::egui;
+use std::fs;
 
 const WAVEFORM_FOOTPRINT_WARNING_BYTES: usize = 256 * 1024 * 1024;
 
@@ -26,6 +27,7 @@ impl CircuitCiApp {
         );
         let mut next_waveform = None;
         let mut unload_waveform = None;
+        let mut export_csv = false;
         ui.collapsing(
             format!(
                 "Loaded Footprint ({}; {})",
@@ -57,6 +59,22 @@ impl CircuitCiApp {
                         });
                     ui.checkbox(&mut self.waveform_footprint_descending, "Descending");
                     ui.label(format!("{} / {} visible", rows.len(), self.waveforms.len()));
+                    if ui
+                        .add_enabled(!rows.is_empty(), egui::Button::new("Copy CSV"))
+                        .clicked()
+                    {
+                        ui.ctx().copy_text(waveform_footprint_csv(&rows));
+                        self.status = format!(
+                            "Copied {} loaded waveform footprint row(s) as CSV.",
+                            rows.len()
+                        );
+                    }
+                    if ui
+                        .add_enabled(!rows.is_empty(), egui::Button::new("Export CSV"))
+                        .clicked()
+                    {
+                        export_csv = true;
+                    }
                     if ui
                         .add_enabled(
                             !self.waveform_footprint_filter.trim().is_empty(),
@@ -152,7 +170,7 @@ impl CircuitCiApp {
                         ui.label("Action");
                         ui.end_row();
 
-                        for row in rows {
+                        for row in &rows {
                             ui.monospace(&row.label);
                             ui.monospace(row.samples.to_string());
                             ui.monospace(row.probes.to_string());
@@ -180,6 +198,9 @@ impl CircuitCiApp {
                     });
             },
         );
+        if export_csv {
+            self.export_loaded_waveform_footprint_csv(&rows);
+        }
         if let Some(index) = unload_waveform {
             self.waveform_footprint_unload_preview.clear();
             self.unload_waveform_view(index);
@@ -195,6 +216,32 @@ impl CircuitCiApp {
             self.clear_waveform_view_history();
             self.waveform_trigger_threshold = 0.0;
             self.waveform_playing = false;
+        }
+    }
+
+    fn export_loaded_waveform_footprint_csv(&mut self, rows: &[WaveformFootprintRow]) {
+        if rows.is_empty() {
+            self.status =
+                "No loaded waveform footprint rows match the current export filters.".to_string();
+            return;
+        }
+        let Some(path) = self.pick_scope_footprint_export_path() else {
+            return;
+        };
+        match fs::write(&path, waveform_footprint_csv(rows)) {
+            Ok(()) => {
+                self.status = format!(
+                    "Exported {} loaded waveform footprint row(s) to {}.",
+                    rows.len(),
+                    path.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to export loaded waveform footprint to {}: {error}",
+                    path.display()
+                ));
+            }
         }
     }
 }
@@ -315,6 +362,31 @@ pub(super) fn waveform_footprint_unload_targets(
         .collect()
 }
 
+pub(super) fn waveform_footprint_csv(rows: &[WaveformFootprintRow]) -> String {
+    let mut csv =
+        String::from("waveform,path,samples,probes,values,estimated_bytes,estimated_size\n");
+    for row in rows {
+        let fields = [
+            row.label.clone(),
+            row.path.clone(),
+            row.samples.to_string(),
+            row.probes.to_string(),
+            row.values.to_string(),
+            row.estimated_bytes.to_string(),
+            format_waveform_load_bytes(Some(row.estimated_bytes as u64)),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(waveform_footprint_csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
 pub(super) fn waveform_footprint_largest_unload_targets(
     rows: &[WaveformFootprintRow],
     budget_bytes: usize,
@@ -378,6 +450,17 @@ fn waveform_footprint_total_bytes(waveforms: &[WaveformView]) -> usize {
         .iter()
         .map(waveform_footprint_estimated_bytes)
         .sum::<usize>()
+}
+
+fn waveform_footprint_csv_escape(value: String) -> String {
+    if value
+        .chars()
+        .any(|character| matches!(character, ',' | '"' | '\n' | '\r'))
+    {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value
+    }
 }
 
 fn waveform_footprint_value_count(waveform: &WaveformView) -> usize {

@@ -12,7 +12,7 @@ use super::{
     deferred_waveform_matching_probe_requests, deferred_waveform_remaining_probe_requests,
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
-    parse_waveform_csv_text, select_deferred_waveform_column_picks,
+    parse_waveform_csv_text, select_deferred_waveform_column_picks, waveform_footprint_csv,
     waveform_footprint_largest_unload_targets, waveform_footprint_rows,
     waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
@@ -1119,6 +1119,31 @@ fn waveform_footprint_rows_filter_and_sort_loaded_views() {
 
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].label, "large.csv");
+}
+
+#[test]
+fn waveform_footprint_csv_exports_visible_rows() {
+    let plain =
+        parse_waveform_csv_text("time,v(out)\n0,1\n0.000001,2\n", "/tmp/run/plain.csv").unwrap();
+    let quoted = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,1,0.1\n0.000001,2,0.2\n",
+        "/tmp/run/quoted,\"scope\".csv",
+    )
+    .unwrap();
+    let rows = waveform_footprint_rows(
+        &[plain, quoted],
+        "scope",
+        WaveformFootprintSortKey::EstimatedBytes,
+        true,
+    );
+    let csv = waveform_footprint_csv(&rows);
+
+    assert!(
+        csv.starts_with("waveform,path,samples,probes,values,estimated_bytes,estimated_size\n")
+    );
+    assert!(csv.contains("\"/tmp/run/quoted,\"\"scope\"\".csv\""));
+    assert!(csv.contains(",2,2,6,48,48 B\n"));
+    assert!(!csv.contains("plain.csv"));
 }
 
 #[test]

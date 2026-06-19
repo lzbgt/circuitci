@@ -36,7 +36,7 @@ use waveform_footprint::waveform_footprint_target_index;
 pub(super) use waveform_footprint::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
 #[cfg(test)]
 use waveform_footprint::{
-    waveform_footprint_largest_unload_targets, waveform_footprint_rows,
+    waveform_footprint_csv, waveform_footprint_largest_unload_targets, waveform_footprint_rows,
     waveform_footprint_unload_targets,
 };
 #[cfg(test)]
