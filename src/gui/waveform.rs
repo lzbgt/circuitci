@@ -25,7 +25,8 @@ mod waveform_view;
 #[cfg(test)]
 use waveform_bundle_integrity::{
     scope_report_bundle_artifact_detail_rows, scope_report_bundle_changed_artifacts,
-    scope_report_bundle_missing_artifacts,
+    scope_report_bundle_integrity_details, scope_report_bundle_integrity_details_csv,
+    scope_report_bundle_integrity_details_markdown, scope_report_bundle_missing_artifacts,
 };
 #[cfg(test)]
 use waveform_bundles::{

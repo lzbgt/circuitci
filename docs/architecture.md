@@ -55,7 +55,8 @@ integrity without persisting that diagnostic state into Board IR. Each bundle
 also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
 required bundle files. The recent-bundle UI checks required artifact presence
 and manifest mismatches before opening, can show an integrity details table with
-expected/current size and SHA-256 values, can open the latest index directly,
+expected/current size and SHA-256 values, can copy those details as CSV or
+Markdown for troubleshooting reports, can open the latest index directly,
 can open bundle folders through the host file manager, and can preview/confirm
 a refresh that regenerates missing or changed bundle artifacts from current
 filtered Scopes state into an existing `scope_report_bundle_*` folder.

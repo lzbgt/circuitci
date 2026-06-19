@@ -3,6 +3,7 @@ use super::waveform_bundle_integrity::{
     scope_report_bundle_artifact_manifest_csv, scope_report_bundle_artifact_metadata_html,
     scope_report_bundle_artifact_metadata_markdown, scope_report_bundle_artifact_status,
     scope_report_bundle_content_metadata, scope_report_bundle_integrity_details,
+    scope_report_bundle_integrity_details_csv, scope_report_bundle_integrity_details_markdown,
     scope_report_bundle_missing_artifacts, short_optional_sha,
 };
 use super::waveform_footprint::{
@@ -396,6 +397,22 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
                 ui.monospace(display_path_tail(bundle));
                 if let Some(error) = &details.manifest_error {
                     ui.label(format!("Manifest: {error}"));
+                }
+                if ui.button("Copy Details CSV").clicked() {
+                    ui.ctx()
+                        .copy_text(scope_report_bundle_integrity_details_csv(&details));
+                    self.status = format!(
+                        "Copied integrity details for {} as CSV.",
+                        display_path_tail(bundle)
+                    );
+                }
+                if ui.button("Copy Details Markdown").clicked() {
+                    ui.ctx()
+                        .copy_text(scope_report_bundle_integrity_details_markdown(&details));
+                    self.status = format!(
+                        "Copied integrity details for {} as Markdown.",
+                        display_path_tail(bundle)
+                    );
                 }
                 if ui.button("Close").clicked() {
                     self.waveform_bundle_integrity_details = None;

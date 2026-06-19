@@ -324,7 +324,8 @@ loaded-waveform footprint source totals, recent-bundle folder/index opening,
 guarded refresh, and previewed/confirmed bounded old-bundle cleanup.
 `src/gui/waveform/waveform_bundle_integrity.rs` owns report-bundle artifact
 size/SHA-256 metadata, `artifact_manifest.csv`, missing/changed artifact status
-checks, and expected/current artifact integrity detail rows.
+checks, expected/current artifact integrity detail rows, and report-friendly
+CSV/Markdown detail serialization.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime

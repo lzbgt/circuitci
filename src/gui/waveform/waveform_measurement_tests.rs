@@ -5,10 +5,11 @@ use super::{
     old_scope_report_bundle_dirs, parse_waveform_csv_text, scope_cursor_legend_rows,
     scope_region_stats_rows, scope_report_bundle_artifact_detail_rows,
     scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
-    scope_report_bundle_missing_artifacts, scope_snapshot_visible_indexes,
-    scope_snapshot_visible_indexes_sorted, scope_snapshots_csv, scope_snapshots_markdown,
-    scope_trigger_events, scope_visible_trace_refs, unique_scope_report_bundle_dir,
-    waveform_measurement, waveform_probe_value_for_badge,
+    scope_report_bundle_integrity_details, scope_report_bundle_integrity_details_csv,
+    scope_report_bundle_integrity_details_markdown, scope_report_bundle_missing_artifacts,
+    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
+    scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
+    unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
@@ -880,6 +881,21 @@ fn scope_report_bundle_refresh_recreates_missing_artifacts() {
     assert_eq!(changed_plot_row.1, "Changed");
     assert_ne!(changed_plot_row.2, changed_plot_row.3);
     assert_ne!(changed_plot_row.4, changed_plot_row.5);
+    let changed_details = scope_report_bundle_integrity_details(bundle_path);
+    let changed_csv = scope_report_bundle_integrity_details_csv(&changed_details);
+    assert!(changed_csv.starts_with(
+        "artifact,state,expected_size_bytes,current_size_bytes,expected_sha256,current_sha256,path\n"
+    ));
+    assert!(changed_csv.contains("scope_plot.svg,Changed,"));
+    assert!(changed_csv.contains(changed_plot_row.4.as_deref().unwrap()));
+    assert!(changed_csv.contains(changed_plot_row.5.as_deref().unwrap()));
+    let changed_markdown = scope_report_bundle_integrity_details_markdown(&changed_details);
+    assert!(changed_markdown.contains(
+        "| Artifact | State | Expected size bytes | Current size bytes | Expected SHA-256 | Current SHA-256 | Path |"
+    ));
+    assert!(changed_markdown.contains("| scope_plot.svg | Changed |"));
+    assert!(changed_markdown.contains(changed_plot_row.4.as_deref().unwrap()));
+    assert!(changed_markdown.contains(changed_plot_row.5.as_deref().unwrap()));
     app.preview_scope_report_bundle_refresh(&bundle);
     assert_eq!(app.waveform_bundle_refresh_preview, Some(bundle.clone()));
     app.confirm_scope_report_bundle_refresh(&filtered);

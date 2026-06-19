@@ -174,6 +174,73 @@ pub(super) fn scope_report_bundle_artifact_metadata_html(
     html
 }
 
+pub(super) fn scope_report_bundle_integrity_details_csv(
+    details: &ScopeReportBundleIntegrityDetails,
+) -> String {
+    let mut csv = String::from(
+        "artifact,state,expected_size_bytes,current_size_bytes,expected_sha256,current_sha256,path\n",
+    );
+    for row in &details.rows {
+        let fields = [
+            row.label.clone(),
+            row.state.label().to_string(),
+            optional_size_label(row.expected_size),
+            optional_size_label(row.current_size),
+            row.expected_sha256
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            row.current_sha256
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            row.path.clone(),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(integrity_detail_csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    if let Some(error) = &details.manifest_error {
+        csv.push_str(&format!(
+            "{},{},,,,,{}\n",
+            integrity_detail_csv_escape("Manifest".to_string()),
+            integrity_detail_csv_escape("Error".to_string()),
+            integrity_detail_csv_escape(error.clone())
+        ));
+    }
+    csv
+}
+
+pub(super) fn scope_report_bundle_integrity_details_markdown(
+    details: &ScopeReportBundleIntegrityDetails,
+) -> String {
+    let mut markdown = String::from(
+        "| Artifact | State | Expected size bytes | Current size bytes | Expected SHA-256 | Current SHA-256 | Path |\n| --- | --- | ---: | ---: | --- | --- | --- |\n",
+    );
+    for row in &details.rows {
+        markdown.push_str(&format!(
+            "| {} | {} | {} | {} | `{}` | `{}` | {} |\n",
+            markdown_escape(&row.label),
+            markdown_escape(row.state.label()),
+            markdown_escape(&optional_size_label(row.expected_size)),
+            markdown_escape(&optional_size_label(row.current_size)),
+            markdown_escape(row.expected_sha256.as_deref().unwrap_or("-")),
+            markdown_escape(row.current_sha256.as_deref().unwrap_or("-")),
+            markdown_escape(&row.path)
+        ));
+    }
+    if let Some(error) = &details.manifest_error {
+        markdown.push_str(&format!(
+            "\nManifest integrity metadata was unavailable: {}\n",
+            markdown_escape(error)
+        ));
+    }
+    markdown
+}
+
 pub(super) fn scope_report_bundle_artifact_manifest_csv(
     bundle_dir: &Path,
 ) -> std::io::Result<String> {
@@ -200,6 +267,14 @@ fn manifest_csv_escape(value: &str) -> String {
         format!("\"{}\"", value.replace('"', "\"\""))
     } else {
         value.to_string()
+    }
+}
+
+fn integrity_detail_csv_escape(value: String) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value
     }
 }
 

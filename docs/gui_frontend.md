@@ -675,7 +675,8 @@ bundles, shows whether each recent bundle still has required and unchanged artif
 can open the latest bundle index, latest folder, or older bundle folder through
 the host file manager. `Details` opens a transient integrity table with each
 artifact's OK/Missing/Changed state plus expected/current size and SHA-256
-values. If a recent bundle is missing required files or has files
+values, and can copy that detail set as CSV or Markdown for troubleshooting
+reports. If a recent bundle is missing required files or has files
 that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`
 regenerates the plot SVG, snapshot CSV/Markdown, index, README, and manifest
 from the current filtered Scopes state into that same
