@@ -425,6 +425,14 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             elapsed_ms: 2,
             detail: "Deferred large waveform artifact".to_string(),
         },
+        WaveformLoadDiagnostic::loaded_selected(
+            "huge.csv".to_string(),
+            Some(60 * 1024 * 1024),
+            32,
+            1,
+            15,
+            vec!["i(load)".to_string()],
+        ),
         WaveformLoadDiagnostic {
             path: "missing.csv".to_string(),
             loaded: false,
@@ -446,7 +454,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             0.0,
             false,
         ),
-        vec![3]
+        vec![4]
     );
     assert_eq!(
         waveform_load_diagnostic_visible_indexes(
@@ -466,7 +474,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             0.0,
             false,
         ),
-        vec![2]
+        vec![2, 3]
     );
     assert_eq!(
         waveform_load_diagnostic_visible_indexes(
@@ -476,7 +484,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             10.0,
             true,
         ),
-        vec![1]
+        vec![1, 3]
     );
 
     let visible_indexes = waveform_load_diagnostic_visible_indexes(
@@ -486,17 +494,30 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
         10.0,
         true,
     );
-    let rows: Vec<_> = visible_indexes
-        .iter()
-        .map(|&index| &diagnostics[index])
-        .collect();
-    let csv = waveform_load_diagnostics_csv(&rows);
+    let csv = waveform_load_diagnostics_csv(&diagnostics, &visible_indexes);
 
-    assert!(csv.starts_with("status,path,size_bytes,samples,probes,elapsed_ms,detail\n"));
-    assert!(csv.contains("loaded,slow.csv,2048,4000,3,180"));
-    assert!(csv.contains("skipped,missing.csv,,0,0,12,\"Failed, \"\"missing\"\" file\""));
-    assert!(!csv.contains("huge.csv"));
+    assert!(csv.starts_with(
+        "status,path,size_bytes,samples,probes,elapsed_ms,preview_columns,loaded_preview_columns,unloaded_preview_columns,detail\n"
+    ));
+    assert!(csv.contains("loaded,slow.csv,2048,4000,3,180,,,"));
+    assert!(
+        csv.contains("loaded,huge.csv,62914560,32,1,15,i(load),i(load),,Loaded 32 sample row(s)")
+    );
+    assert!(csv.contains("skipped,missing.csv,,0,0,12,,,,\"Failed, \"\"missing\"\" file\""));
+    assert!(!csv.contains("Deferred large waveform artifact"));
     assert!(!csv.contains("fast.csv"));
+
+    let deferred_only = waveform_load_diagnostic_visible_indexes(
+        &diagnostics,
+        "",
+        WaveformLoadStatusFilter::Deferred,
+        0.0,
+        false,
+    );
+    let deferred_csv = waveform_load_diagnostics_csv(&diagnostics, &deferred_only);
+    assert!(deferred_csv.contains(
+        "deferred,huge.csv,62914560,1200000,2,2,v(out); i(load),i(load),v(out),Deferred large waveform artifact"
+    ));
 }
 
 #[test]

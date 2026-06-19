@@ -261,11 +261,10 @@ impl CircuitCiApp {
                     self.load_deferred_waveforms();
                 }
                 if ui.button("Copy CSV").clicked() {
-                    let rows: Vec<_> = visible_indexes
-                        .iter()
-                        .filter_map(|&index| self.waveform_load_diagnostics.get(index))
-                        .collect();
-                    ui.ctx().copy_text(waveform_load_diagnostics_csv(&rows));
+                    ui.ctx().copy_text(waveform_load_diagnostics_csv(
+                        &self.waveform_load_diagnostics,
+                        &visible_indexes,
+                    ));
                 }
             });
             ui.horizontal_wrapped(|ui| {
@@ -310,7 +309,7 @@ impl CircuitCiApp {
                 return;
             }
             egui::Grid::new("waveform_load_diagnostics")
-                .num_columns(8)
+                .num_columns(9)
                 .striped(true)
                 .show(ui, |ui| {
                     ui.label("Status");
@@ -318,6 +317,7 @@ impl CircuitCiApp {
                     ui.label("Size");
                     ui.label("Rows");
                     ui.label("Probes");
+                    ui.label("Preview");
                     ui.label("Load");
                     ui.label("Detail");
                     ui.label("Action");
@@ -330,6 +330,19 @@ impl CircuitCiApp {
                         ui.monospace(format_waveform_load_bytes(diagnostic.bytes));
                         ui.monospace(diagnostic.samples.to_string());
                         ui.monospace(diagnostic.probes.to_string());
+                        ui.vertical(|ui| {
+                            ui.monospace(waveform_load_probe_summary_counts(
+                                &self.waveform_load_diagnostics,
+                                diagnostic,
+                            ));
+                            let preview = waveform_load_probe_summary_preview(
+                                &self.waveform_load_diagnostics,
+                                diagnostic,
+                            );
+                            if !preview.is_empty() {
+                                ui.small(preview);
+                            }
+                        });
                         ui.monospace(format!("{} ms", diagnostic.elapsed_ms));
                         ui.label(&diagnostic.detail);
                         if diagnostic.deferred {
@@ -484,9 +497,20 @@ fn waveform_load_diagnostic_search_text(diagnostic: &WaveformLoadDiagnostic) -> 
     .to_ascii_lowercase()
 }
 
-pub(super) fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) -> String {
-    let mut csv = String::from("status,path,size_bytes,samples,probes,elapsed_ms,detail\n");
-    for diagnostic in rows {
+pub(super) fn waveform_load_diagnostics_csv(
+    diagnostics: &[WaveformLoadDiagnostic],
+    visible_indexes: &[usize],
+) -> String {
+    let mut csv = String::from(
+        "status,path,size_bytes,samples,probes,elapsed_ms,preview_columns,loaded_preview_columns,unloaded_preview_columns,detail\n",
+    );
+    for diagnostic in visible_indexes
+        .iter()
+        .filter_map(|&index| diagnostics.get(index))
+    {
+        let loaded_preview = waveform_load_loaded_preview_for_diagnostic(diagnostics, diagnostic);
+        let unloaded_preview =
+            waveform_load_unloaded_preview_for_diagnostic(diagnostic, &loaded_preview);
         let fields = [
             diagnostic.csv_status().to_string(),
             diagnostic.path.clone(),
@@ -497,6 +521,9 @@ pub(super) fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) ->
             diagnostic.samples.to_string(),
             diagnostic.probes.to_string(),
             diagnostic.elapsed_ms.to_string(),
+            diagnostic.probe_preview.join("; "),
+            loaded_preview.join("; "),
+            unloaded_preview.join("; "),
             diagnostic.detail.clone(),
         ];
         csv.push_str(
@@ -509,6 +536,116 @@ pub(super) fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) ->
         csv.push('\n');
     }
     csv
+}
+
+fn waveform_load_probe_summary_counts(
+    diagnostics: &[WaveformLoadDiagnostic],
+    diagnostic: &WaveformLoadDiagnostic,
+) -> String {
+    if diagnostic.probe_preview.is_empty() {
+        return if diagnostic.loaded {
+            "all columns".to_string()
+        } else {
+            "no preview".to_string()
+        };
+    }
+    let loaded_preview = waveform_load_loaded_preview_for_diagnostic(diagnostics, diagnostic);
+    let unloaded_preview =
+        waveform_load_unloaded_preview_for_diagnostic(diagnostic, &loaded_preview);
+    if diagnostic.deferred {
+        format!(
+            "{} preview; {} loaded; {} unloaded",
+            diagnostic.probe_preview.len(),
+            loaded_preview.len(),
+            unloaded_preview.len()
+        )
+    } else if diagnostic.loaded {
+        format!("{} selected loaded", diagnostic.probe_preview.len())
+    } else {
+        format!("{} selected requested", diagnostic.probe_preview.len())
+    }
+}
+
+fn waveform_load_probe_summary_preview(
+    diagnostics: &[WaveformLoadDiagnostic],
+    diagnostic: &WaveformLoadDiagnostic,
+) -> String {
+    if diagnostic.probe_preview.is_empty() {
+        return String::new();
+    }
+    if diagnostic.deferred {
+        let loaded_preview = waveform_load_loaded_preview_for_diagnostic(diagnostics, diagnostic);
+        let unloaded_preview =
+            waveform_load_unloaded_preview_for_diagnostic(diagnostic, &loaded_preview);
+        let mut parts = Vec::new();
+        parts.push(format!(
+            "preview: {}",
+            waveform_load_probe_preview_compact(&diagnostic.probe_preview, 4)
+        ));
+        if !loaded_preview.is_empty() {
+            parts.push(format!(
+                "loaded: {}",
+                waveform_load_probe_preview_compact(&loaded_preview, 3)
+            ));
+        }
+        if !unloaded_preview.is_empty() {
+            parts.push(format!(
+                "unloaded: {}",
+                waveform_load_probe_preview_compact(&unloaded_preview, 3)
+            ));
+        }
+        return parts.join(" | ");
+    }
+    format!(
+        "columns: {}",
+        waveform_load_probe_preview_compact(&diagnostic.probe_preview, 4)
+    )
+}
+
+fn waveform_load_loaded_preview_for_diagnostic(
+    diagnostics: &[WaveformLoadDiagnostic],
+    diagnostic: &WaveformLoadDiagnostic,
+) -> Vec<String> {
+    if diagnostic.deferred {
+        waveform_load_selected_probes_for_path(diagnostics, &diagnostic.path)
+    } else if diagnostic.loaded && diagnostic.is_selected_column_update() {
+        diagnostic.probe_preview.clone()
+    } else {
+        Vec::new()
+    }
+}
+
+fn waveform_load_unloaded_preview_for_diagnostic(
+    diagnostic: &WaveformLoadDiagnostic,
+    loaded_preview: &[String],
+) -> Vec<String> {
+    diagnostic
+        .probe_preview
+        .iter()
+        .filter(|probe| {
+            !loaded_preview
+                .iter()
+                .any(|loaded| loaded.trim().eq_ignore_ascii_case(probe.trim()))
+        })
+        .cloned()
+        .collect()
+}
+
+fn waveform_load_probe_preview_compact(probes: &[String], max_visible: usize) -> String {
+    if probes.is_empty() {
+        return "none".to_string();
+    }
+    let visible = probes
+        .iter()
+        .take(max_visible)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    if probes.len() > max_visible {
+        format!("{visible}, +{} more", probes.len() - max_visible)
+    } else {
+        visible
+    }
 }
 
 pub(crate) fn waveform_load_deferred_paths(diagnostics: &[WaveformLoadDiagnostic]) -> Vec<String> {
