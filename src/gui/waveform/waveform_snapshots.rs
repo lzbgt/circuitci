@@ -19,10 +19,17 @@ pub(in crate::gui) enum ScopeSnapshotSourceFilter {
     Cursor,
     Trigger,
     Region,
+    ScopeActivity,
 }
 
 impl ScopeSnapshotSourceFilter {
-    const ALL: [Self; 4] = [Self::All, Self::Cursor, Self::Trigger, Self::Region];
+    const ALL: [Self; 5] = [
+        Self::All,
+        Self::Cursor,
+        Self::Trigger,
+        Self::Region,
+        Self::ScopeActivity,
+    ];
 
     pub(super) fn label(self) -> &'static str {
         match self {
@@ -30,6 +37,7 @@ impl ScopeSnapshotSourceFilter {
             Self::Cursor => "Cursor",
             Self::Trigger => "Trigger",
             Self::Region => "Region",
+            Self::ScopeActivity => "Scope Activity",
         }
     }
 
@@ -39,6 +47,7 @@ impl ScopeSnapshotSourceFilter {
             Self::Cursor => snapshot.source.starts_with("cursor "),
             Self::Trigger => snapshot.source == "trigger",
             Self::Region => is_region_snapshot(snapshot),
+            Self::ScopeActivity => snapshot.source == "scope activity",
         }
     }
 }

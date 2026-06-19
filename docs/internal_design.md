@@ -318,7 +318,7 @@ scenario/model/source/assertion editors and their Board IR YAML mutation
 helpers. `src/gui/simulation_forms.rs` owns shared Simulation/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
-controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
+controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
 min/max/delta measurements, bounded selected-trace frequency-domain peak readouts, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
@@ -357,7 +357,7 @@ view-window history, scope plot SVG copy/export actions, and measurement
 snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
 region-stat, trigger-event, and Scope Activity sample measurement snapshot
-capture, editable labels and notes, search/source filtering, sort/group projection, plot-marker
+capture, editable labels and notes, search/source filtering that includes Scope Activity samples, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export

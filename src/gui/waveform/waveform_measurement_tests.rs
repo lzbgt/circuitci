@@ -659,6 +659,10 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
     let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
     app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
     app.waveform_measurement_snapshots[4].note = "load channel observed".to_string();
+    app.capture_scope_activity_sample_snapshot(ScopeProbeTarget {
+        scenario_name: "scope.csv".to_string(),
+        probe_name: "i(load)".to_string(),
+    });
 
     assert_eq!(
         scope_snapshot_visible_indexes(
@@ -666,7 +670,7 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
             "",
             ScopeSnapshotSourceFilter::All,
         ),
-        vec![0, 1, 2, 3, 4]
+        vec![0, 1, 2, 3, 4, 5]
     );
     assert_eq!(
         scope_snapshot_visible_indexes(
@@ -682,7 +686,7 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
             "load",
             ScopeSnapshotSourceFilter::All,
         ),
-        vec![1, 4]
+        vec![1, 4, 5]
     );
     assert_eq!(
         scope_snapshot_visible_indexes(
@@ -691,6 +695,14 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
             ScopeSnapshotSourceFilter::Region,
         ),
         vec![4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "load",
+            ScopeSnapshotSourceFilter::ScopeActivity,
+        ),
+        vec![5]
     );
     assert_eq!(
         scope_snapshot_visible_indexes(
