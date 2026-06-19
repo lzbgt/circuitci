@@ -217,7 +217,10 @@ previewed pin side. The accepted placement persists that schematic-only
 orientation under `board.schematic.node_styles`.
 `src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
 oscilloscope workspace with model-run controls and secondary docked
-scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
+scenario/model/assertion panels.
+`src/gui/simulation_forms.rs` owns shared Simulation/Scopes form defaults,
+scenario/net/probe combo widgets, stimulus field loading, and status-color
+helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns Scopes state orchestration,

@@ -279,7 +279,9 @@ populate existing project/import/output path fields or request the same guarded
 project load action; they must not bypass validation, import, save, or the
 dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
-panels stay docked as secondary controls. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
+panels stay docked as secondary controls. `src/gui/simulation_forms.rs` owns
+shared Simulation/Scopes form defaults, combo widgets, stimulus field loading,
+and status-color helpers for those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
 min/max/delta measurements, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived

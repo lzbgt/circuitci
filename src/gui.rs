@@ -21,6 +21,7 @@ mod library;
 mod project;
 mod shell;
 mod simulation;
+mod simulation_forms;
 mod sketch;
 mod sketch_actions;
 mod sketch_alignment;
