@@ -60,7 +60,8 @@ use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, deferred_waveform_artifact_visible_indexes,
+    WaveformProbeGroup, deferred_waveform_artifact_picked_probe_labels,
+    deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
     deferred_waveform_matching_probe_requests, waveform_probe_choices,
     waveform_probe_group_choices,
 };

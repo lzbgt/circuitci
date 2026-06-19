@@ -10,14 +10,17 @@ use super::{
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
-    deferred_waveform_artifact_visible_indexes, deferred_waveform_matching_probe_requests,
-    load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
-    load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
-    parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_scope_trigger_event, waveform_load_deferred_artifacts, waveform_load_deferred_paths,
+    deferred_waveform_artifact_picked_probe_labels,
+    deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
+    deferred_waveform_matching_probe_requests, load_report_waveforms_with_progress_and_cancel,
+    load_waveform_csv_with_progress_and_cancel, load_waveform_paths_with_progress_and_cancel,
+    load_waveform_requests_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
+    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
+    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
     waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
 };
+use std::collections::BTreeSet;
 
 #[test]
 fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -633,6 +636,52 @@ fn deferred_waveform_matching_probe_requests_skip_loaded_preview_columns() {
     assert!(
         deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "p(load)")
             .is_empty()
+    );
+}
+
+#[test]
+fn deferred_waveform_column_picker_uses_unloaded_preview_columns() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_power.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(80 * 1024 * 1024),
+            samples: 2_400_000,
+            probes: 3,
+            probe_preview: vec![
+                "i(load)".to_string(),
+                "p(load)".to_string(),
+                "p(aux)".to_string(),
+            ],
+            elapsed_ms: 3,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "/tmp/run/scope_power.csv".to_string(),
+            Some(80 * 1024 * 1024),
+            16,
+            1,
+            20,
+            vec!["p(load)".to_string()],
+        ),
+    ];
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+    let artifact = &artifacts[0];
+
+    assert_eq!(
+        deferred_waveform_artifact_unloaded_probe_labels(artifact),
+        vec!["i(load)", "p(aux)"]
+    );
+
+    let picks = BTreeSet::from([
+        (artifact.path.clone(), "p(load)".to_string()),
+        (artifact.path.clone(), "p(aux)".to_string()),
+        (artifact.path.clone(), "i(load)".to_string()),
+    ]);
+    assert_eq!(
+        deferred_waveform_artifact_picked_probe_labels(artifact, &picks),
+        vec!["i(load)", "p(aux)"]
     );
 }
 

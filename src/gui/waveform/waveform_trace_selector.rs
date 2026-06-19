@@ -8,6 +8,7 @@ use super::{
     WaveformTraceStyle, WaveformView, waveform_load_deferred_artifacts,
 };
 use eframe::egui;
+use std::collections::BTreeSet;
 
 impl CircuitCiApp {
     pub(super) fn waveform_selector(&mut self, ui: &mut egui::Ui) {
@@ -242,6 +243,7 @@ impl CircuitCiApp {
         if artifacts.is_empty() {
             return;
         }
+        self.prune_deferred_waveform_column_picks(artifacts);
         let visible_indexes =
             deferred_waveform_artifact_visible_indexes(artifacts, &self.waveform_deferred_filter);
         let visible_paths = visible_indexes
@@ -300,6 +302,10 @@ impl CircuitCiApp {
                                 artifact,
                                 &self.waveform_deferred_filter,
                             );
+                            let picked_probes = deferred_waveform_artifact_picked_probe_labels(
+                                artifact,
+                                &self.waveform_deferred_column_picks,
+                            );
                             ui.horizontal(|ui| {
                                 if ui.button("Load").clicked() {
                                     *load_deferred_path = Some(artifact.path.clone());
@@ -319,6 +325,95 @@ impl CircuitCiApp {
                                         )]);
                                     ui.close();
                                 }
+                                ui.menu_button("Columns", |ui| {
+                                    let unloaded_probes =
+                                        deferred_waveform_artifact_unloaded_probe_labels(artifact);
+                                    ui.label(format!(
+                                        "{} unloaded preview column(s)",
+                                        unloaded_probes.len()
+                                    ));
+                                    if unloaded_probes.is_empty() {
+                                        ui.label("All preview columns are already loaded.");
+                                        return;
+                                    }
+                                    egui::ScrollArea::vertical()
+                                        .max_height(160.0)
+                                        .show(ui, |ui| {
+                                            for probe in &artifact.probe_preview {
+                                                let loaded = deferred_waveform_probe_is_loaded(
+                                                    probe,
+                                                    &artifact.loaded_probe_preview,
+                                                );
+                                                let key = deferred_waveform_column_pick_key(
+                                                    artifact, probe,
+                                                );
+                                                if loaded {
+                                                    let mut checked = true;
+                                                    ui.add_enabled(
+                                                        false,
+                                                        egui::Checkbox::new(
+                                                            &mut checked,
+                                                            format!("{probe} loaded"),
+                                                        ),
+                                                    );
+                                                    continue;
+                                                }
+                                                let mut checked = self
+                                                    .waveform_deferred_column_picks
+                                                    .contains(&key);
+                                                if ui.checkbox(&mut checked, probe).changed() {
+                                                    if checked {
+                                                        self.waveform_deferred_column_picks
+                                                            .insert(key);
+                                                    } else {
+                                                        self.waveform_deferred_column_picks
+                                                            .remove(&key);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    let picked = deferred_waveform_artifact_picked_probe_labels(
+                                        artifact,
+                                        &self.waveform_deferred_column_picks,
+                                    );
+                                    ui.horizontal(|ui| {
+                                        if ui
+                                            .add_enabled(
+                                                !picked.is_empty(),
+                                                egui::Button::new(format!(
+                                                    "Load Selected ({})",
+                                                    picked.len()
+                                                )),
+                                            )
+                                            .clicked()
+                                        {
+                                            clear_deferred_waveform_column_picks(
+                                                &mut self.waveform_deferred_column_picks,
+                                                artifact,
+                                                &picked,
+                                            );
+                                            load_probe_requests =
+                                                Some(vec![WaveformLoadRequest::selected_columns(
+                                                    artifact.path.clone(),
+                                                    picked.clone(),
+                                                )]);
+                                            ui.close();
+                                        }
+                                        if ui
+                                            .add_enabled(
+                                                !picked.is_empty(),
+                                                egui::Button::new("Clear"),
+                                            )
+                                            .clicked()
+                                        {
+                                            clear_deferred_waveform_column_picks(
+                                                &mut self.waveform_deferred_column_picks,
+                                                artifact,
+                                                &picked,
+                                            );
+                                        }
+                                    });
+                                });
                                 ui.monospace(&artifact.label);
                                 let loaded_count = artifact.loaded_probe_preview.len();
                                 let loaded = if loaded_count == 0 {
@@ -330,6 +425,9 @@ impl CircuitCiApp {
                                     "{}; ~{} row(s); {} trace(s){}",
                                     artifact.size_label, artifact.samples, artifact.probes, loaded
                                 ));
+                                if !picked_probes.is_empty() {
+                                    ui.small(format!("{} picked", picked_probes.len()));
+                                }
                             });
                             let preview = deferred_probe_preview_text(
                                 &artifact.probe_preview,
@@ -369,6 +467,19 @@ impl CircuitCiApp {
         if let Some(requests) = load_probe_requests {
             self.load_deferred_waveform_requests(requests);
         }
+    }
+
+    fn prune_deferred_waveform_column_picks(&mut self, artifacts: &[DeferredWaveformArtifact]) {
+        let valid = artifacts
+            .iter()
+            .flat_map(|artifact| {
+                deferred_waveform_artifact_unloaded_probe_labels(artifact)
+                    .into_iter()
+                    .map(|probe| deferred_waveform_column_pick_key(artifact, &probe))
+            })
+            .collect::<BTreeSet<_>>();
+        self.waveform_deferred_column_picks
+            .retain(|pick| valid.contains(pick));
     }
 
     fn waveform_compare_presets_ui(&mut self, ui: &mut egui::Ui) {
@@ -779,10 +890,53 @@ fn deferred_waveform_artifact_matching_probe_labels(
         .collect()
 }
 
+pub(super) fn deferred_waveform_artifact_unloaded_probe_labels(
+    artifact: &DeferredWaveformArtifact,
+) -> Vec<String> {
+    artifact
+        .probe_preview
+        .iter()
+        .filter(|probe| !deferred_waveform_probe_is_loaded(probe, &artifact.loaded_probe_preview))
+        .cloned()
+        .collect()
+}
+
+pub(super) fn deferred_waveform_artifact_picked_probe_labels(
+    artifact: &DeferredWaveformArtifact,
+    picks: &BTreeSet<(String, String)>,
+) -> Vec<String> {
+    artifact
+        .probe_preview
+        .iter()
+        .filter(|probe| {
+            !deferred_waveform_probe_is_loaded(probe, &artifact.loaded_probe_preview)
+                && picks.contains(&deferred_waveform_column_pick_key(artifact, probe))
+        })
+        .cloned()
+        .collect()
+}
+
 fn deferred_waveform_probe_is_loaded(probe: &str, loaded_probes: &[String]) -> bool {
     loaded_probes
         .iter()
         .any(|loaded| loaded.trim().eq_ignore_ascii_case(probe.trim()))
+}
+
+fn deferred_waveform_column_pick_key(
+    artifact: &DeferredWaveformArtifact,
+    probe: &str,
+) -> (String, String) {
+    (artifact.path.clone(), probe.trim().to_string())
+}
+
+fn clear_deferred_waveform_column_picks(
+    picks: &mut BTreeSet<(String, String)>,
+    artifact: &DeferredWaveformArtifact,
+    probes: &[String],
+) {
+    for probe in probes {
+        picks.remove(&deferred_waveform_column_pick_key(artifact, probe));
+    }
 }
 
 pub(super) fn deferred_waveform_artifact_visible_indexes(
