@@ -193,6 +193,27 @@ impl WaveformLoadDiagnostic {
         }
     }
 
+    pub(super) fn deferred_from_loaded(
+        path: String,
+        bytes: Option<u64>,
+        samples: usize,
+        probe_preview: Vec<String>,
+    ) -> Self {
+        let probes = probe_preview.len();
+        Self {
+            path,
+            loaded: false,
+            deferred: true,
+            bytes,
+            samples,
+            probes,
+            probe_preview,
+            elapsed_ms: 0,
+            detail: "Unloaded from memory; artifact remains available for deferred reload."
+                .to_string(),
+        }
+    }
+
     pub(super) fn status_label(&self) -> &'static str {
         if self.loaded {
             "Loaded"
@@ -374,6 +395,47 @@ pub(super) fn waveform_load_selected_probes_for_path(
         }
     }
     probes
+}
+
+pub(super) fn waveform_load_forget_loaded_view(
+    diagnostics: &mut Vec<WaveformLoadDiagnostic>,
+    path: &str,
+    probe_labels: &[String],
+) {
+    let mut removed_full = None;
+    diagnostics.retain(|diagnostic| {
+        if diagnostic.path != path || !diagnostic.loaded || diagnostic.deferred {
+            return true;
+        }
+        if diagnostic.is_selected_column_update() {
+            return !probe_previews_equal(&diagnostic.probe_preview, probe_labels);
+        }
+        if diagnostic.probes != probe_labels.len() {
+            return true;
+        }
+        removed_full = Some(WaveformLoadDiagnostic::deferred_from_loaded(
+            diagnostic.path.clone(),
+            diagnostic.bytes,
+            diagnostic.samples,
+            probe_labels.to_vec(),
+        ));
+        false
+    });
+    if let Some(deferred) = removed_full
+        && !diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.path == path && diagnostic.deferred)
+    {
+        diagnostics.push(deferred);
+    }
+}
+
+fn probe_previews_equal(left: &[String], right: &[String]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.eq_ignore_ascii_case(right))
 }
 
 pub(crate) fn merge_waveform_load_diagnostics(

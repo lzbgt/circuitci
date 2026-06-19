@@ -33,6 +33,7 @@ impl CircuitCiApp {
 
         self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
         let mut next_waveform = None;
+        let mut unload_waveform = None;
         ui.horizontal_wrapped(|ui| {
             ui.strong("Waveforms");
             for (index, waveform) in self.waveforms.iter().enumerate() {
@@ -42,11 +43,27 @@ impl CircuitCiApp {
                 {
                     next_waveform = Some(index);
                 }
+                ui.push_id(("unload_waveform", index), |ui| {
+                    if ui
+                        .small_button("Unload")
+                        .on_hover_text("Unload this parsed waveform artifact from memory.")
+                        .clicked()
+                    {
+                        unload_waveform = Some(index);
+                    }
+                });
             }
             if !deferred_artifacts.is_empty() {
                 ui.label(format!("{} deferred", deferred_artifacts.len()));
             }
         });
+        if let Some(index) = unload_waveform {
+            self.unload_waveform_view(index);
+            if let Some(path) = load_deferred_path {
+                self.load_deferred_waveform_path(path);
+            }
+            return;
+        }
         self.deferred_waveform_artifacts_ui(ui, &deferred_artifacts, &mut load_deferred_path);
         if let Some(index) = next_waveform.filter(|index| *index != self.selected_waveform) {
             self.selected_waveform = index;
@@ -580,6 +597,41 @@ impl CircuitCiApp {
             true
         });
     }
+
+    pub(super) fn shift_scope_trace_presets_after_waveform_removal(
+        &mut self,
+        removed_waveform_index: usize,
+    ) {
+        for preset in &mut self.waveform_trace_presets {
+            preset.traces.retain_mut(|trace| {
+                shift_trace_after_waveform_removal(trace, removed_waveform_index)
+            });
+        }
+        self.waveform_trace_presets
+            .retain(|preset| !preset.traces.is_empty());
+    }
+
+    pub(super) fn shift_scope_trace_styles_after_waveform_removal(
+        &mut self,
+        removed_waveform_index: usize,
+    ) {
+        self.waveform_trace_styles.retain_mut(|style| {
+            shift_trace_after_waveform_removal(&mut style.trace, removed_waveform_index)
+        });
+    }
+}
+
+pub(super) fn shift_trace_after_waveform_removal(
+    trace: &mut WaveformTraceRef,
+    removed_waveform_index: usize,
+) -> bool {
+    if trace.waveform_index == removed_waveform_index {
+        return false;
+    }
+    if trace.waveform_index > removed_waveform_index {
+        trace.waveform_index -= 1;
+    }
+    true
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

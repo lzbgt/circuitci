@@ -40,6 +40,7 @@ pub(super) use waveform_io::{
 };
 #[cfg(test)]
 use waveform_io::{load_waveform_csv_with_progress_and_cancel, parse_waveform_csv_text};
+use waveform_load::waveform_load_forget_loaded_view;
 #[cfg(test)]
 use waveform_load::waveform_load_preflight;
 pub(super) use waveform_load::{
@@ -348,6 +349,76 @@ impl CircuitCiApp {
                 trace.probe_index -= 1;
             }
             true
+        });
+    }
+
+    pub(super) fn unload_waveform_view(&mut self, waveform_index: usize) {
+        let Some(waveform) = self.waveforms.get(waveform_index).cloned() else {
+            self.status = "No loaded waveform artifact is selected for unload.".to_string();
+            return;
+        };
+        let probe_labels = waveform
+            .probes
+            .iter()
+            .filter(|probe| !probe.derived)
+            .map(|probe| probe.label.clone())
+            .collect::<Vec<_>>();
+        self.waveforms.remove(waveform_index);
+        waveform_load_forget_loaded_view(
+            &mut self.waveform_load_diagnostics,
+            &waveform.path,
+            &probe_labels,
+        );
+        self.shift_scope_trace_pins_after_waveform_removal(waveform_index);
+        self.shift_scope_trace_presets_after_waveform_removal(waveform_index);
+        self.shift_scope_trace_styles_after_waveform_removal(waveform_index);
+        self.shift_scope_measurement_snapshots_after_waveform_removal(waveform_index);
+        self.waveform_plot_cache.clear();
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
+        self.waveform_window_start_us = None;
+        self.waveform_window_end_us = None;
+        self.clear_waveform_view_history();
+        self.waveform_playing = false;
+        if self.waveforms.is_empty() {
+            self.selected_waveform = 0;
+            self.selected_probe = 0;
+            self.waveform_cursor_a_us = 0.0;
+            self.waveform_cursor_b_us = 0.0;
+        } else {
+            if self.selected_waveform == waveform_index {
+                self.selected_waveform = waveform_index.min(self.waveforms.len() - 1);
+                self.selected_probe = 0;
+                self.waveform_cursor_a_us = 0.0;
+                self.waveform_cursor_b_us = 0.0;
+            } else if self.selected_waveform > waveform_index {
+                self.selected_waveform -= 1;
+            }
+            let probe_count = self.waveforms[self.selected_waveform].probes.len();
+            self.selected_probe = self.selected_probe.min(probe_count.saturating_sub(1));
+        }
+        self.status = format!("Unloaded waveform artifact {} from memory.", waveform.label);
+    }
+
+    pub(super) fn unload_waveform_for_diagnostic(&mut self, diagnostic: &WaveformLoadDiagnostic) {
+        let Some(index) = self
+            .waveforms
+            .iter()
+            .position(|waveform| waveform_matches_load_diagnostic(waveform, diagnostic))
+        else {
+            self.status =
+                "Loaded waveform view for diagnostic row is no longer available.".to_string();
+            return;
+        };
+        self.unload_waveform_view(index);
+    }
+
+    fn shift_scope_trace_pins_after_waveform_removal(&mut self, removed_waveform_index: usize) {
+        self.waveform_pinned_traces.retain_mut(|trace| {
+            waveform_trace_selector::shift_trace_after_waveform_removal(
+                trace,
+                removed_waveform_index,
+            )
         });
     }
 
@@ -1268,6 +1339,36 @@ fn waveform_time_range_us(waveform: &WaveformView) -> Option<(f64, f64)> {
     let first = *waveform.time_s.first()? * 1e6;
     let last = *waveform.time_s.last()? * 1e6;
     Some((first, last))
+}
+
+fn waveform_matches_load_diagnostic(
+    waveform: &WaveformView,
+    diagnostic: &WaveformLoadDiagnostic,
+) -> bool {
+    if waveform.path != diagnostic.path || !diagnostic.loaded || diagnostic.deferred {
+        return false;
+    }
+    if !diagnostic.is_selected_column_update() {
+        return waveform_probe_labels(waveform).len() == diagnostic.probes;
+    }
+    waveform_probe_labels_equal(&waveform_probe_labels(waveform), &diagnostic.probe_preview)
+}
+
+fn waveform_probe_labels(waveform: &WaveformView) -> Vec<String> {
+    waveform
+        .probes
+        .iter()
+        .filter(|probe| !probe.derived)
+        .map(|probe| probe.label.clone())
+        .collect()
+}
+
+fn waveform_probe_labels_equal(left: &[String], right: &[String]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.eq_ignore_ascii_case(right))
 }
 
 fn interpolated_value(times: &[f64], values: &[f64], time_s: f64) -> Option<f64> {

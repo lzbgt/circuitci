@@ -41,6 +41,7 @@ impl CircuitCiApp {
 
         let mut load_deferred_path = None;
         let mut load_deferred_request = None;
+        let mut unload_diagnostic = None;
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Waveform Load Diagnostics");
@@ -192,6 +193,14 @@ impl CircuitCiApp {
                                     }
                                 }
                             });
+                        } else if diagnostic.loaded {
+                            if ui
+                                .small_button("Unload")
+                                .on_hover_text("Unload this parsed waveform artifact from memory.")
+                                .clicked()
+                            {
+                                unload_diagnostic = Some(diagnostic.clone());
+                            }
                         } else {
                             ui.label("");
                         }
@@ -204,6 +213,9 @@ impl CircuitCiApp {
         }
         if let Some(request) = load_deferred_request {
             self.load_deferred_waveform_requests(vec![request]);
+        }
+        if let Some(diagnostic) = unload_diagnostic {
+            self.unload_waveform_for_diagnostic(&diagnostic);
         }
     }
 }

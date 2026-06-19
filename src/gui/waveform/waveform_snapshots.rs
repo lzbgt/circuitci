@@ -1,4 +1,5 @@
 use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
+use super::waveform_trace_selector::shift_trace_after_waveform_removal;
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
     ScopeCursorLegendRow, ScopeRegionStatsRow, WaveformTraceRef, format_time_s, format_value,
@@ -520,6 +521,18 @@ impl CircuitCiApp {
                 trace.probe_index -= 1;
             }
             true
+        });
+    }
+
+    pub(super) fn shift_scope_measurement_snapshots_after_waveform_removal(
+        &mut self,
+        removed_waveform_index: usize,
+    ) {
+        self.waveform_measurement_snapshots.retain_mut(|snapshot| {
+            let Some(trace) = &mut snapshot.trace else {
+                return true;
+            };
+            shift_trace_after_waveform_removal(trace, removed_waveform_index)
         });
     }
 

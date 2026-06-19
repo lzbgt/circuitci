@@ -5,9 +5,9 @@ use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadRequest,
     WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
-    WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceRef, nearest_scope_cursor_target,
-    plot_x_to_time_us, plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit,
-    scope_zoom_box_interaction,
+    WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceColor, WaveformTracePreset,
+    WaveformTraceRef, WaveformTraceStyle, nearest_scope_cursor_target, plot_x_to_time_us,
+    plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
@@ -25,6 +25,7 @@ use super::{
     waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
     waveform_probe_group_choices,
 };
+use crate::gui::CircuitCiApp;
 use std::collections::BTreeSet;
 
 #[test]
@@ -205,6 +206,179 @@ fn selected_deferred_waveform_load_preserves_deferred_placeholder() {
     assert!(!diagnostics[0].deferred);
     assert!(diagnostics[0].probe_preview.is_empty());
     assert!(waveform_load_deferred_paths(&diagnostics).is_empty());
+}
+
+#[test]
+fn unloading_full_waveform_restores_deferred_placeholder() {
+    let path = "/tmp/run/full_scope.csv";
+    let waveform =
+        parse_waveform_csv_text("time,v(out),i(load)\n0,0,0.1\n0.000001,1,0.2\n", path).unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_load_diagnostics: vec![WaveformLoadDiagnostic::loaded(
+            path.to_string(),
+            Some(256),
+            2,
+            2,
+            4,
+        )],
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        waveform_trace_presets: vec![WaveformTracePreset {
+            name: "load current".to_string(),
+            traces: vec![WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            }],
+        }],
+        waveform_trace_styles: vec![WaveformTraceStyle {
+            trace: WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            color: Some(WaveformTraceColor::Amber),
+            visible: true,
+        }],
+        selected_probe: 1,
+        ..Default::default()
+    };
+
+    app.unload_waveform_view(0);
+
+    assert!(app.waveforms.is_empty());
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.waveform_trace_presets.is_empty());
+    assert!(app.waveform_trace_styles.is_empty());
+    assert_eq!(app.selected_waveform, 0);
+    assert_eq!(app.selected_probe, 0);
+    let artifacts = waveform_load_deferred_artifacts(&app.waveform_load_diagnostics);
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].path, path);
+    assert_eq!(artifacts[0].probe_preview, vec!["v(out)", "i(load)"]);
+    assert!(artifacts[0].loaded_probe_preview.is_empty());
+}
+
+#[test]
+fn unloading_selected_column_waveform_marks_columns_unloaded_again() {
+    let selected_path = "/tmp/run/lazy_scope.csv";
+    let other_path = "/tmp/run/other_scope.csv";
+    let selected_waveform =
+        parse_waveform_csv_text("time,i(load)\n0,0.1\n0.000001,0.2\n", selected_path).unwrap();
+    let other_waveform =
+        parse_waveform_csv_text("time,v(ref)\n0,3.3\n0.000001,3.2\n", other_path).unwrap();
+    let selected_diagnostic = WaveformLoadDiagnostic::loaded_selected(
+        selected_path.to_string(),
+        Some(512),
+        2,
+        1,
+        8,
+        vec!["i(load)".to_string()],
+    );
+    let mut app = CircuitCiApp {
+        waveforms: vec![selected_waveform, other_waveform],
+        waveform_load_diagnostics: vec![
+            WaveformLoadDiagnostic {
+                path: selected_path.to_string(),
+                loaded: false,
+                deferred: true,
+                bytes: Some(512),
+                samples: 2,
+                probes: 2,
+                probe_preview: vec!["v(out)".to_string(), "i(load)".to_string()],
+                elapsed_ms: 1,
+                detail: "Deferred large waveform artifact".to_string(),
+            },
+            selected_diagnostic.clone(),
+            WaveformLoadDiagnostic::loaded(other_path.to_string(), Some(128), 2, 1, 3),
+        ],
+        selected_waveform: 1,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0,
+        }],
+        waveform_trace_styles: vec![WaveformTraceStyle {
+            trace: WaveformTraceRef {
+                waveform_index: 1,
+                probe_index: 0,
+            },
+            color: Some(WaveformTraceColor::Cyan),
+            visible: true,
+        }],
+        ..Default::default()
+    };
+
+    app.unload_waveform_for_diagnostic(&selected_diagnostic);
+
+    assert_eq!(app.waveforms.len(), 1);
+    assert_eq!(app.waveforms[0].path, other_path);
+    assert_eq!(app.selected_waveform, 0);
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        }]
+    );
+    assert_eq!(
+        app.waveform_trace_styles[0].trace,
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        }
+    );
+    assert!(
+        !app.waveform_load_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.loaded
+                && !diagnostic.deferred
+                && diagnostic.path == selected_path)
+    );
+    let artifacts = waveform_load_deferred_artifacts(&app.waveform_load_diagnostics);
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].loaded_probe_preview, Vec::<String>::new());
+    assert_eq!(
+        deferred_waveform_artifact_unloaded_probe_labels(&artifacts[0]),
+        vec!["v(out)", "i(load)"]
+    );
+}
+
+#[test]
+fn unloading_partial_view_does_not_forget_full_loaded_diagnostic() {
+    let path = "/tmp/run/mixed_scope.csv";
+    let partial_waveform =
+        parse_waveform_csv_text("time,i(load)\n0,0.1\n0.000001,0.2\n", path).unwrap();
+    let full_waveform =
+        parse_waveform_csv_text("time,v(out),i(load)\n0,0,0.1\n0.000001,1,0.2\n", path).unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![partial_waveform, full_waveform],
+        waveform_load_diagnostics: vec![WaveformLoadDiagnostic::loaded(
+            path.to_string(),
+            Some(512),
+            2,
+            2,
+            12,
+        )],
+        ..Default::default()
+    };
+
+    app.unload_waveform_view(0);
+
+    assert_eq!(app.waveforms.len(), 1);
+    assert_eq!(app.waveforms[0].probes.len(), 2);
+    assert_eq!(app.waveform_load_diagnostics.len(), 1);
+    assert!(app.waveform_load_diagnostics[0].loaded);
+    assert!(!app.waveform_load_diagnostics[0].deferred);
+    assert!(waveform_load_deferred_artifacts(&app.waveform_load_diagnostics).is_empty());
+
+    let diagnostic = app.waveform_load_diagnostics[0].clone();
+    app.unload_waveform_for_diagnostic(&diagnostic);
+
+    assert!(app.waveforms.is_empty());
+    let artifacts = waveform_load_deferred_artifacts(&app.waveform_load_diagnostics);
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].probe_preview, vec!["v(out)", "i(load)"]);
 }
 
 #[test]
