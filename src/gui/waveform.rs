@@ -11,6 +11,7 @@ use eframe::egui;
 mod waveform_context;
 mod waveform_deferred;
 mod waveform_export;
+mod waveform_footprint;
 mod waveform_io;
 mod waveform_load;
 mod waveform_load_diagnostics;
@@ -31,6 +32,10 @@ use waveform_deferred::{
 pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
+use waveform_footprint::waveform_footprint_target_index;
+pub(super) use waveform_footprint::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
+#[cfg(test)]
+use waveform_footprint::{waveform_footprint_rows, waveform_footprint_unload_targets};
 #[cfg(test)]
 use waveform_io::load_waveform_paths_with_progress_and_cancel;
 use waveform_io::waveform_probe_quantity_from_label;
@@ -72,12 +77,9 @@ use waveform_snapshots::{
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
     scope_snapshots_markdown, unique_scope_report_bundle_dir,
 };
-use waveform_trace_selector::waveform_footprint_target_index;
-pub(super) use waveform_trace_selector::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, waveform_footprint_rows, waveform_footprint_unload_targets,
-    waveform_probe_choices, waveform_probe_group_choices,
+    WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
 };
 #[cfg(test)]
 use waveform_trigger::{
