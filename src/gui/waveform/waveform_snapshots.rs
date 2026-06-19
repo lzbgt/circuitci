@@ -20,6 +20,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_SCOPE_SNAPSHOTS: usize = 64;
 const MAX_RECENT_SCOPE_BUNDLES: usize = 5;
+const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 5] = [
+    ("index.html", "index.html"),
+    ("scope_plot.svg", "scope_plot.svg"),
+    ("measurement_snapshots.csv", "measurement_snapshots.csv"),
+    ("measurement_snapshots.md", "measurement_snapshots.md"),
+    ("README.md", "README.md"),
+];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(in crate::gui) enum ScopeSnapshotSourceFilter {
@@ -883,9 +890,11 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
             return;
         };
+        let latest_status = scope_report_bundle_artifact_status_label(Path::new(&latest));
         ui.horizontal_wrapped(|ui| {
             ui.label("Recent bundle");
             ui.monospace(display_path_tail(&latest));
+            ui.label(latest_status);
             if ui.button("Open Bundle Folder").clicked() {
                 self.open_scope_report_bundle(&latest);
             }
@@ -906,7 +915,12 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                     .selected_text("Older")
                     .show_ui(ui, |ui| {
                         for bundle in older_bundles {
-                            if ui.button(display_path_tail(&bundle)).clicked() {
+                            let label = format!(
+                                "{} - {}",
+                                display_path_tail(&bundle),
+                                scope_report_bundle_artifact_status_label(Path::new(&bundle))
+                            );
+                            if ui.button(label).clicked() {
                                 self.open_scope_report_bundle(&bundle);
                                 ui.close();
                             }
@@ -1461,6 +1475,28 @@ pub(super) fn unique_scope_report_bundle_dir(base_dir: &Path, unix_millis: u128)
 
 pub(super) fn scope_report_bundle_index_path(bundle_dir: &Path) -> PathBuf {
     bundle_dir.join("index.html")
+}
+
+pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'static str> {
+    if !bundle_dir.is_dir() {
+        return vec!["bundle folder"];
+    }
+    SCOPE_REPORT_BUNDLE_ARTIFACTS
+        .iter()
+        .filter_map(|(path, label)| {
+            let artifact = bundle_dir.join(path);
+            (!artifact.is_file()).then_some(*label)
+        })
+        .collect()
+}
+
+fn scope_report_bundle_artifact_status_label(bundle_dir: &Path) -> String {
+    let missing = scope_report_bundle_missing_artifacts(bundle_dir);
+    if missing.is_empty() {
+        "Artifacts OK".to_string()
+    } else {
+        format!("Missing: {}", missing.join(", "))
+    }
 }
 
 #[cfg(test)]

@@ -272,7 +272,7 @@ and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, timestamped report
 bundle export with the configured plot SVG, local index page, and README manifest
 including loaded-waveform footprint source totals, transient
-recent-bundle folder/index opening and previewed/confirmed bounded old-bundle cleanup, Jump
+recent-bundle artifact status checks, folder/index opening, and previewed/confirmed bounded old-bundle cleanup, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
@@ -663,8 +663,9 @@ the same snapshot, plot, selected-trace, and loaded-waveform footprint summary
 context for quick browser review. The manifest records active snapshot filters,
 plot SVG options, selected trace context, loaded-waveform footprint source totals,
 and generated files so the folder remains understandable outside the GUI. The Scopes panel keeps a bounded transient list of recently exported
-bundles and can open the latest bundle index, latest folder, or older bundle
-folder through the host file manager. `Clean Old Bundles` previews older direct child directories named
+bundles, shows whether each recent bundle still has its required artifacts, and
+can open the latest bundle index, latest folder, or older bundle folder through
+the host file manager. `Clean Old Bundles` previews older direct child directories named
 `scope_report_bundle_*` under the configured output directory; `Confirm Cleanup`
 then removes only those previewed bundle folders, preserving the newest bounded
 set and unrelated output folders.
