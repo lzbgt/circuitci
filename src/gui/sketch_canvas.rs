@@ -24,6 +24,7 @@ use super::sketch_routes;
 use super::sketch_scope_feedback::{
     ScopeProbeToolHoverInput, draw_scope_probe_tool_feedback, scope_probe_tool_hover_feedback,
 };
+use super::sketch_scope_tools::SketchScopeProbeTool;
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
     waveform_probe_value_for_badge,
@@ -892,13 +893,10 @@ impl CircuitCiApp {
                 }
             } else if let Some(anchor) = clicked_anchor {
                 Some(match self.sketch_scope_probe_tool {
-                    Some(super::sketch_scope_tools::SketchScopeProbeTool::Voltage) => {
-                        SketchSelection::Net(anchor.net.clone())
+                    Some(SketchScopeProbeTool::Voltage) => SketchSelection::Net(anchor.net.clone()),
+                    Some(SketchScopeProbeTool::Current | SketchScopeProbeTool::Power) => {
+                        SketchSelection::Component(anchor.component_id.clone())
                     }
-                    Some(
-                        super::sketch_scope_tools::SketchScopeProbeTool::Current
-                        | super::sketch_scope_tools::SketchScopeProbeTool::Power,
-                    ) => SketchSelection::Component(anchor.component_id.clone()),
                     None => SketchSelection::Component(anchor.component_id.clone()),
                 })
             } else if let Some(badge) = clicked_net_label_badge.as_ref() {
@@ -1528,8 +1526,15 @@ impl CircuitCiApp {
             && ui.input(|input| input.modifiers.shift && input.key_pressed(egui::Key::F));
         let cancel_canvas_mode_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
+        let scope_tool_shortcut = if response.hovered() {
+            ui.input(SketchScopeProbeTool::from_unmodified_shortcut)
+        } else {
+            None
+        };
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
-        if cancel_canvas_mode_pressed && self.scope_probe_tool_armed() {
+        if let Some(tool) = scope_tool_shortcut {
+            self.toggle_scope_probe_tool(tool);
+        } else if cancel_canvas_mode_pressed && self.scope_probe_tool_armed() {
             self.cancel_scope_probe_tool();
         } else if cancel_canvas_mode_pressed
             && (self.sketch_palette_place_armed

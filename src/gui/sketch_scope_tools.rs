@@ -12,12 +12,35 @@ pub(in crate::gui) enum SketchScopeProbeTool {
 }
 
 impl SketchScopeProbeTool {
+    pub(super) const ALL: [Self; 3] = [Self::Voltage, Self::Current, Self::Power];
+
     pub(super) fn button_label(self) -> &'static str {
         match self {
             Self::Voltage => "V",
             Self::Current => "I",
             Self::Power => "P",
         }
+    }
+
+    pub(super) fn shortcut_key(self) -> egui::Key {
+        match self {
+            Self::Voltage => egui::Key::V,
+            Self::Current => egui::Key::I,
+            Self::Power => egui::Key::P,
+        }
+    }
+
+    pub(super) fn shortcut_label(self) -> &'static str {
+        self.button_label()
+    }
+
+    pub(super) fn from_unmodified_shortcut(input: &egui::InputState) -> Option<Self> {
+        if !input.modifiers.is_none() {
+            return None;
+        }
+        Self::ALL
+            .into_iter()
+            .find(|tool| input.key_pressed(tool.shortcut_key()))
     }
 
     fn status_label(self) -> &'static str {
@@ -33,6 +56,15 @@ impl SketchScopeProbeTool {
             Self::Voltage => "click a net, wire, pin, or net label",
             Self::Current | Self::Power => "click a component, pin, or component label",
         }
+    }
+
+    fn armed_status(self) -> String {
+        format!(
+            "{} armed: {}. Press {} again or Esc to cancel.",
+            self.status_label(),
+            self.target_hint(),
+            self.shortcut_label()
+        )
     }
 
     pub(super) fn accepts_selection(self, selection: &SketchSelection) -> bool {
@@ -74,22 +106,19 @@ impl CircuitCiApp {
     pub(super) fn schematic_scope_probe_tool_controls(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         ui.label("Scope Tool");
-        for tool in [
-            SketchScopeProbeTool::Voltage,
-            SketchScopeProbeTool::Current,
-            SketchScopeProbeTool::Power,
-        ] {
+        for tool in SketchScopeProbeTool::ALL {
             let active = self.sketch_scope_probe_tool == Some(tool);
             if ui
                 .selectable_label(active, tool.button_label())
-                .on_hover_text(format!("{}: {}", tool.status_label(), tool.target_hint()))
+                .on_hover_text(format!(
+                    "{}: {}. Shortcut: {}",
+                    tool.status_label(),
+                    tool.target_hint(),
+                    tool.shortcut_label()
+                ))
                 .clicked()
             {
-                if active {
-                    self.cancel_scope_probe_tool();
-                } else {
-                    self.arm_scope_probe_tool(tool);
-                }
+                self.toggle_scope_probe_tool(tool);
             }
         }
         if self.sketch_scope_probe_tool.is_some() && ui.button("Off").clicked() {
@@ -104,7 +133,15 @@ impl CircuitCiApp {
         self.sketch_net_label_place_armed = false;
         self.wire_from_component = None;
         self.sketch_wire_draft.clear();
-        self.status = format!("{} armed: {}.", tool.status_label(), tool.target_hint());
+        self.status = tool.armed_status();
+    }
+
+    pub(super) fn toggle_scope_probe_tool(&mut self, tool: SketchScopeProbeTool) {
+        if self.sketch_scope_probe_tool == Some(tool) {
+            self.cancel_scope_probe_tool();
+        } else {
+            self.arm_scope_probe_tool(tool);
+        }
     }
 
     pub(super) fn cancel_scope_probe_tool(&mut self) {
@@ -128,7 +165,7 @@ impl CircuitCiApp {
             return false;
         };
         let Some(selection) = selection else {
-            self.status = format!("{} armed: {}.", tool.status_label(), tool.target_hint());
+            self.status = tool.armed_status();
             return true;
         };
         match (tool, selection) {
@@ -175,7 +212,19 @@ impl CircuitCiApp {
 #[cfg(test)]
 mod tests {
     use super::SketchScopeProbeTool;
+    use crate::gui::CircuitCiApp;
     use crate::gui::sketch::SketchSelection;
+    use eframe::egui;
+
+    #[test]
+    fn scope_probe_tool_shortcuts_are_plain_v_i_p() {
+        assert_eq!(SketchScopeProbeTool::Voltage.shortcut_key(), egui::Key::V);
+        assert_eq!(SketchScopeProbeTool::Current.shortcut_key(), egui::Key::I);
+        assert_eq!(SketchScopeProbeTool::Power.shortcut_key(), egui::Key::P);
+        assert_eq!(SketchScopeProbeTool::Voltage.shortcut_label(), "V");
+        assert_eq!(SketchScopeProbeTool::Current.shortcut_label(), "I");
+        assert_eq!(SketchScopeProbeTool::Power.shortcut_label(), "P");
+    }
 
     #[test]
     fn scope_probe_tool_accepts_matching_targets() {
@@ -220,5 +269,29 @@ mod tests {
                 .target_label(None)
                 .contains("click a net")
         );
+    }
+
+    #[test]
+    fn scope_probe_tool_toggle_status_mentions_shortcut_cancel() {
+        let mut app = CircuitCiApp::default();
+        app.toggle_scope_probe_tool(SketchScopeProbeTool::Voltage);
+        assert_eq!(
+            app.sketch_scope_probe_tool,
+            Some(SketchScopeProbeTool::Voltage)
+        );
+        assert!(app.status.contains("Scope voltage armed"));
+        assert!(app.status.contains("Press V again or Esc"));
+
+        app.toggle_scope_probe_tool(SketchScopeProbeTool::Voltage);
+        assert_eq!(app.sketch_scope_probe_tool, None);
+        assert_eq!(app.status, "Scope probe tool canceled.");
+
+        app.toggle_scope_probe_tool(SketchScopeProbeTool::Power);
+        assert_eq!(
+            app.sketch_scope_probe_tool,
+            Some(SketchScopeProbeTool::Power)
+        );
+        assert!(app.status.contains("click a component"));
+        assert!(app.status.contains("Press P again or Esc"));
     }
 }
