@@ -8,6 +8,7 @@ use super::sketch_probes::SketchProbe;
 use anyhow::{Context, Result};
 use eframe::egui;
 
+mod waveform_bundles;
 mod waveform_context;
 mod waveform_deferred;
 mod waveform_export;
@@ -20,6 +21,12 @@ mod waveform_snapshots;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
+#[cfg(test)]
+use waveform_bundles::{
+    cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
+    scope_report_bundle_index_path, scope_report_bundle_missing_artifacts,
+    unique_scope_report_bundle_dir,
+};
 #[cfg(test)]
 use waveform_deferred::{
     clear_deferred_waveform_column_picks,
@@ -80,10 +87,8 @@ pub(super) use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_snapshots::{
-    cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    scope_report_bundle_index_path, scope_report_bundle_missing_artifacts,
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
-    scope_snapshots_markdown, unique_scope_report_bundle_dir,
+    scope_snapshots_markdown,
 };
 #[cfg(test)]
 use waveform_trace_selector::{
