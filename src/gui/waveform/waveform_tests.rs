@@ -3,9 +3,9 @@ use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
-    load_waveform_csv_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
-    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
-    waveform_probe_choices, waveform_probe_group_choices,
+    load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
+    parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
+    select_scope_trigger_event, waveform_probe_choices, waveform_probe_group_choices,
 };
 use super::{
     WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip,
@@ -67,6 +67,44 @@ fn waveform_csv_file_loader_honors_cancellation() {
             .unwrap_err();
 
     assert!(crate::cancellation::is_canceled(&error));
+}
+
+#[test]
+fn report_waveform_loader_records_loaded_and_skipped_diagnostics() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let waveform_path = temp_dir.path().join("scope.csv");
+    std::fs::write(&waveform_path, "time v(out)\n0 0\n1e-6 3.3\n").unwrap();
+    let missing_path = temp_dir.path().join("missing.csv");
+    let report = crate::reports::ValidationReport::from_parts(
+        "project".to_string(),
+        "default".to_string(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        vec![
+            waveform_path.to_string_lossy().into_owned(),
+            missing_path.to_string_lossy().into_owned(),
+        ],
+        "validate".to_string(),
+    );
+
+    let (waveforms, diagnostics) =
+        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false).unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(diagnostics.len(), 2);
+    assert!(diagnostics[0].loaded);
+    assert_eq!(diagnostics[0].samples, 2);
+    assert_eq!(diagnostics[0].probes, 1);
+    assert!(diagnostics[0].bytes.unwrap() > 0);
+    assert!(diagnostics[0].detail.contains("Loaded 2 sample row"));
+    assert!(!diagnostics[1].loaded);
+    assert_eq!(diagnostics[1].path, missing_path.to_string_lossy());
+    assert!(
+        diagnostics[1]
+            .detail
+            .contains("Failed to read waveform CSV")
+    );
 }
 
 #[test]

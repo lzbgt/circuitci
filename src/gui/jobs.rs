@@ -1,5 +1,7 @@
 use super::project::{optional_path, sanitized_project_name};
-use super::waveform::{WaveformView, load_report_waveforms_with_progress_and_cancel};
+use super::waveform::{
+    WaveformLoadDiagnostic, WaveformView, load_report_waveforms_with_progress_and_cancel,
+};
 use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::cancellation;
 use crate::reports::ValidationReport;
@@ -66,6 +68,7 @@ struct ValidationJobOutput {
     report: ValidationReport,
     markdown: String,
     waveforms: Vec<WaveformView>,
+    waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
 }
 
 struct SuggestionJobResult {
@@ -121,15 +124,17 @@ impl CircuitCiApp {
                     || cancel_token.load(Ordering::Relaxed),
                 )
                 .and_then(|(report, markdown)| {
-                    let waveforms = load_report_waveforms_with_progress_and_cancel(
-                        &report,
-                        |stage, detail| send_background_progress(&sender, stage, detail),
-                        || cancel_token.load(Ordering::Relaxed),
-                    )?;
+                    let (waveforms, waveform_load_diagnostics) =
+                        load_report_waveforms_with_progress_and_cancel(
+                            &report,
+                            |stage, detail| send_background_progress(&sender, stage, detail),
+                            || cancel_token.load(Ordering::Relaxed),
+                        )?;
                     Ok(ValidationJobOutput {
                         report,
                         markdown,
                         waveforms,
+                        waveform_load_diagnostics,
                     })
                 });
                 send_background_progress(
@@ -526,6 +531,7 @@ impl CircuitCiApp {
                 self.report_markdown = output.markdown;
                 self.report = Some(output.report);
                 self.waveforms = waveforms;
+                self.waveform_load_diagnostics = output.waveform_load_diagnostics;
                 self.waveform_plot_cache.clear();
                 self.waveform_pinned_traces.clear();
                 self.waveform_trace_presets.clear();

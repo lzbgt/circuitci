@@ -9,6 +9,7 @@ use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
+use std::time::Instant;
 
 mod waveform_context;
 mod waveform_export;
@@ -52,6 +53,7 @@ use waveform_trigger::{
 impl CircuitCiApp {
     pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
         self.waveform_scope_header(ui);
+        self.waveform_load_diagnostics_panel(ui);
         if self.waveforms.is_empty() {
             return;
         }
@@ -94,6 +96,53 @@ impl CircuitCiApp {
             if self.waveforms.is_empty() {
                 ui.label("No parsed CSV waveform is available. Run the schematic model first.");
             }
+        });
+    }
+
+    fn waveform_load_diagnostics_panel(&self, ui: &mut egui::Ui) {
+        if self.waveform_load_diagnostics.is_empty() {
+            return;
+        }
+        let loaded = self
+            .waveform_load_diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.loaded)
+            .count();
+        let skipped = self.waveform_load_diagnostics.len().saturating_sub(loaded);
+
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Waveform Load Diagnostics");
+                ui.label(format!("{} loaded, {} skipped", loaded, skipped));
+            });
+            egui::Grid::new("waveform_load_diagnostics")
+                .num_columns(7)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Status");
+                    ui.label("File");
+                    ui.label("Size");
+                    ui.label("Rows");
+                    ui.label("Probes");
+                    ui.label("Load");
+                    ui.label("Detail");
+                    ui.end_row();
+
+                    for diagnostic in &self.waveform_load_diagnostics {
+                        ui.label(if diagnostic.loaded {
+                            "Loaded"
+                        } else {
+                            "Skipped"
+                        });
+                        ui.monospace(&diagnostic.path);
+                        ui.monospace(format_waveform_load_bytes(diagnostic.bytes));
+                        ui.monospace(diagnostic.samples.to_string());
+                        ui.monospace(diagnostic.probes.to_string());
+                        ui.monospace(format!("{} ms", diagnostic.elapsed_ms));
+                        ui.label(&diagnostic.detail);
+                        ui.end_row();
+                    }
+                });
         });
     }
 
@@ -398,6 +447,17 @@ pub(super) struct WaveformView {
     probes: Vec<WaveformProbe>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformLoadDiagnostic {
+    path: String,
+    loaded: bool,
+    bytes: Option<u64>,
+    samples: usize,
+    probes: usize,
+    elapsed_ms: u128,
+    detail: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct WaveformTraceRef {
     waveform_index: usize,
@@ -605,19 +665,23 @@ pub(super) fn load_report_waveforms_with_progress_and_cancel<F, C>(
     report: &ValidationReport,
     mut on_progress: F,
     should_cancel: C,
-) -> Result<Vec<WaveformView>>
+) -> Result<(Vec<WaveformView>, Vec<WaveformLoadDiagnostic>)>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
     let waveform_count = report.waveforms.len();
     let mut waveforms = Vec::new();
+    let mut diagnostics = Vec::new();
     for (index, waveform) in report.waveforms.iter().enumerate() {
         if should_cancel() {
             return Err(crate::cancellation::canceled(
                 "Waveform loading canceled before completion.",
             ));
         }
+        let started_at = Instant::now();
+        let path = Path::new(waveform);
+        let bytes = path.metadata().ok().map(|metadata| metadata.len());
         on_progress(
             "Loading waveforms",
             format!(
@@ -628,20 +692,45 @@ where
             ),
         );
         match load_waveform_csv_with_progress_and_cancel(
-            Path::new(waveform),
+            path,
             waveform,
             &mut on_progress,
             &should_cancel,
         ) {
-            Ok(view) => waveforms.push(view),
+            Ok(view) => {
+                let samples = view.time_s.len();
+                let probes = view.probes.len();
+                diagnostics.push(WaveformLoadDiagnostic {
+                    path: waveform.clone(),
+                    loaded: true,
+                    bytes,
+                    samples,
+                    probes,
+                    elapsed_ms: started_at.elapsed().as_millis(),
+                    detail: format!("Loaded {samples} sample row(s) across {probes} probe(s)."),
+                });
+                waveforms.push(view);
+            }
             Err(error) if crate::cancellation::is_canceled(&error) => return Err(error),
-            Err(error) => on_progress(
-                "Skipping waveform",
-                format!("Skipped waveform {}: {error:#}.", waveform),
-            ),
+            Err(error) => {
+                let detail = format!("{error:#}");
+                diagnostics.push(WaveformLoadDiagnostic {
+                    path: waveform.clone(),
+                    loaded: false,
+                    bytes,
+                    samples: 0,
+                    probes: 0,
+                    elapsed_ms: started_at.elapsed().as_millis(),
+                    detail: detail.clone(),
+                });
+                on_progress(
+                    "Skipping waveform",
+                    format!("Skipped waveform {}: {detail}.", waveform),
+                );
+            }
         }
     }
-    Ok(waveforms)
+    Ok((waveforms, diagnostics))
 }
 
 pub(super) fn runtime_probe_lines_for_selection(
@@ -1543,6 +1632,25 @@ fn format_time_s(value: f64) -> String {
 
 pub(super) fn format_value(value: f64) -> String {
     format!("{value:.6e}")
+}
+
+fn format_waveform_load_bytes(bytes: Option<u64>) -> String {
+    let Some(bytes) = bytes else {
+        return "unknown".to_string();
+    };
+    const KIB: f64 = 1024.0;
+    const MIB: f64 = KIB * 1024.0;
+    const GIB: f64 = MIB * 1024.0;
+    let bytes = bytes as f64;
+    if bytes >= GIB {
+        format!("{:.1} GiB", bytes / GIB)
+    } else if bytes >= MIB {
+        format!("{:.1} MiB", bytes / MIB)
+    } else if bytes >= KIB {
+        format!("{:.1} KiB", bytes / KIB)
+    } else {
+        format!("{bytes:.0} B")
+    }
 }
 
 #[cfg(test)]

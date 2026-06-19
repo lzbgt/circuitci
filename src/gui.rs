@@ -69,8 +69,9 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
-    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformPlotCache, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformLoadDiagnostic, WaveformPlotCache,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -367,6 +368,7 @@ pub struct CircuitCiApp {
     sketch_net_label_drag: Option<SketchNetLabelDrag>,
     sketch_component_label_drag: Option<SketchComponentLabelDrag>,
     waveforms: Vec<WaveformView>,
+    waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
     selected_waveform: usize,
     selected_probe: usize,
     waveform_probe_filter: String,
@@ -552,6 +554,7 @@ impl Default for CircuitCiApp {
             sketch_net_label_drag: None,
             sketch_component_label_drag: None,
             waveforms: Vec::new(),
+            waveform_load_diagnostics: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
             waveform_probe_filter: String::new(),
