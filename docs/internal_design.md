@@ -284,6 +284,7 @@ CSV parsing, Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows,
 min/max/delta measurements, pending schematic
 probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection,
+selected-trace schematic-context strip actions,
 transient selected-trace trigger threshold state, transient selected-probe trace pinning/comparison
 overlays, GUI-only derived waveform channels, promotion of representable
 derived channels to explicit Board IR analog probes/assertions, exact

@@ -17,7 +17,7 @@ use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
 };
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
-use crate::gui::{CircuitCiApp, ScopeProbeTarget};
+use crate::gui::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
 
 #[test]
 fn waveform_parser_accepts_ngspice_header_and_samples() {
@@ -686,6 +686,79 @@ fn selected_scope_trace_focuses_originating_schematic_component() {
     assert!(
         app.selected_sketch_items
             .contains(&SketchSelection::Component("R1".to_string()))
+    );
+}
+
+#[test]
+fn scope_schematic_context_opens_sketch_with_selected_target() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 1.0
+1e-6 2.0
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "out_voltage".to_string(),
+        expression: "V(out)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("out".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        stage: Stage::Simulation,
+        ..Default::default()
+    };
+
+    assert!(app.open_selected_scope_schematic_context(false));
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(app.sketch_viewport_command, None);
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Net("out".to_string()))
+    );
+}
+
+#[test]
+fn scope_schematic_context_fit_queues_sketch_fit_selection() {
+    let waveform = parse_waveform_csv_text(
+        "time R1_power
+0.0 0.1
+1e-6 0.2
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "R1_power".to_string(),
+        expression: "V(out)*I(VSENSE_R1)".to_string(),
+        quantity: SketchProbeQuantity::Power,
+        target: SketchProbeTarget::Component("R1".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        stage: Stage::Simulation,
+        ..Default::default()
+    };
+
+    assert!(app.open_selected_scope_schematic_context(true));
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitSelection)
+    );
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("R1".to_string()))
     );
 }
 

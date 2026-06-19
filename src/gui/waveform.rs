@@ -4,7 +4,7 @@ use super::analog::{
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::{SketchProbe, SketchProbeTarget};
-use super::{CircuitCiApp, ScopeProbeTarget, Stage};
+use super::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -115,6 +115,25 @@ impl CircuitCiApp {
         true
     }
 
+    fn open_selected_scope_schematic_context(&mut self, fit_context: bool) -> bool {
+        let Some(sketch_probe) = self.selected_scope_sketch_probe() else {
+            self.status = "Selected scope trace is not linked to a schematic probe.".to_string();
+            return false;
+        };
+        let target_label = sketch_probe_target_label(&sketch_probe.target);
+        if !self.focus_selected_scope_schematic_context_with_status(false) {
+            return false;
+        }
+        self.stage = Stage::Sketch;
+        if fit_context {
+            self.sketch_viewport_command = Some(SketchViewportCommand::FitSelection);
+            self.status = format!("Opened Sketch and queued fit for {target_label}.");
+        } else {
+            self.status = format!("Opened Sketch with {target_label} selected.");
+        }
+        true
+    }
+
     fn selected_scope_sketch_probe(&self) -> Option<SketchProbe> {
         let waveform = self.waveforms.get(self.selected_waveform)?;
         let probe = waveform.probes.get(self.selected_probe)?;
@@ -145,6 +164,7 @@ impl CircuitCiApp {
 
         self.waveform_selector(ui);
         self.waveform_probe_selector(ui);
+        self.waveform_schematic_context_strip(ui);
         self.waveform_playback_panel(ui);
         self.waveform_scope_plot(ui, desired_size);
         self.waveform_scope_cursor_legend(ui);
@@ -277,6 +297,44 @@ impl CircuitCiApp {
         });
         if focus_schematic {
             self.focus_selected_scope_schematic_context();
+        }
+    }
+
+    fn waveform_schematic_context_strip(&mut self, ui: &mut egui::Ui) {
+        let Some(sketch_probe) = self.selected_scope_sketch_probe() else {
+            return;
+        };
+        let target_label = sketch_probe_target_label(&sketch_probe.target);
+        let mut open_sketch = false;
+        let mut fit_context = false;
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Schematic Context");
+                ui.monospace(&target_label);
+                ui.label(format!(
+                    "{} probe {}",
+                    sketch_probe.quantity.label(),
+                    sketch_probe.probe_name
+                ));
+                if ui.button("Open Sketch").clicked() {
+                    open_sketch = true;
+                }
+                if ui.button("Fit Context").clicked() {
+                    fit_context = true;
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.label("scenario");
+                ui.monospace(&sketch_probe.scenario_name);
+                ui.label("expression");
+                ui.monospace(&sketch_probe.expression);
+            });
+        });
+        if open_sketch {
+            self.open_selected_scope_schematic_context(false);
+        }
+        if fit_context {
+            self.open_selected_scope_schematic_context(true);
         }
     }
 
