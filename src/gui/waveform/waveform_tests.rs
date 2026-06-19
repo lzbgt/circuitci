@@ -13,9 +13,10 @@ use super::{
     zoom_time_window,
 };
 use super::{
-    WaveformPlotLaneMode, WaveformTraceColor, WaveformTraceStyle, clamp_value_window,
-    expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
-    scope_trace_color_for_style, scope_trace_lanes, scope_zoom_box_interaction,
+    WaveformPlotLaneMode, WaveformSnapshotChip, WaveformTraceColor, WaveformTraceStyle,
+    clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
+    plot_y_to_value, scope_snapshot_chip_hit, scope_trace_color_for_style, scope_trace_lanes,
+    scope_zoom_box_interaction,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -229,6 +230,45 @@ fn scope_cursor_hit_test_prefers_nearest_cursor_handle() {
     );
     assert_eq!(
         nearest_scope_cursor_target(far, plot_rect, 25.0, 75.0, 0.0, 100.0),
+        None
+    );
+}
+
+#[test]
+fn scope_snapshot_chip_hit_prefers_topmost_chip() {
+    let chip_rect = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(10.0, 10.0),
+        eframe::egui::vec2(80.0, 20.0),
+    );
+    let chips = vec![
+        WaveformSnapshotChip {
+            snapshot_index: 1,
+            label: "Cursor 1 A".to_string(),
+            detail: String::new(),
+            color: eframe::egui::Color32::WHITE,
+            line_x: 10.0,
+            dot: eframe::egui::pos2(10.0, 20.0),
+            chip_rect,
+            lane_rect: chip_rect,
+        },
+        WaveformSnapshotChip {
+            snapshot_index: 2,
+            label: "Trigger 2".to_string(),
+            detail: String::new(),
+            color: eframe::egui::Color32::WHITE,
+            line_x: 12.0,
+            dot: eframe::egui::pos2(12.0, 20.0),
+            chip_rect,
+            lane_rect: chip_rect,
+        },
+    ];
+
+    assert_eq!(
+        scope_snapshot_chip_hit(&chips, eframe::egui::pos2(24.0, 18.0)),
+        Some(2)
+    );
+    assert_eq!(
+        scope_snapshot_chip_hit(&chips, eframe::egui::pos2(200.0, 18.0)),
         None
     );
 }

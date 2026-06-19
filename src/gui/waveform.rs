@@ -19,11 +19,11 @@ mod waveform_view;
 pub(super) use waveform_plot::WaveformCursorTarget;
 #[cfg(test)]
 use waveform_plot::{
-    WaveformPlotLaneMode, clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target,
-    plot_x_to_time_us, plot_y_to_value, scope_plot_size, scope_trace_color_for_style,
-    scope_trace_lanes, scope_visible_styled_trace_refs, scope_visible_trace_refs,
-    scope_zoom_box_interaction, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
+    WaveformPlotLaneMode, WaveformSnapshotChip, clamp_value_window, expanded_value_bounds,
+    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_plot_size,
+    scope_snapshot_chip_hit, scope_trace_color_for_style, scope_trace_lanes,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, scope_zoom_box_interaction,
+    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
 use waveform_trace_selector::{

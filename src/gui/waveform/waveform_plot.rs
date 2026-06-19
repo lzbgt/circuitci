@@ -1,7 +1,7 @@
 use super::{
     WaveformProbe, WaveformTraceColor, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    interpolated_value, min_max, ordered_pair, positive_span, probe_unit,
-    waveform_time_range_for_view, waveform_time_range_us, window_min_max,
+    format_time_s, format_value, interpolated_value, min_max, ordered_pair, positive_span,
+    probe_unit, waveform_time_range_for_view, waveform_time_range_us, window_min_max,
 };
 use eframe::egui;
 
@@ -17,6 +17,8 @@ pub(super) struct WaveformPlotInteraction {
     pub(super) value_window: Option<(f64, f64)>,
     pub(super) cursor_a_us: Option<f64>,
     pub(super) cursor_b_us: Option<f64>,
+    pub(super) snapshot_jump_index: Option<usize>,
+    pub(super) snapshot_focus_index: Option<usize>,
     pub(super) view_dragging: bool,
 }
 
@@ -35,9 +37,11 @@ pub(super) struct WaveformPlotTrigger<'a> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct WaveformSnapshotMarker {
+    pub(super) snapshot_index: usize,
     pub(super) trace: WaveformTraceRef,
     pub(super) label: String,
     pub(super) source: String,
+    pub(super) trace_label: String,
     pub(super) time_a_us: Option<f64>,
     pub(super) time_b_us: Option<f64>,
     pub(super) value_a: Option<f64>,
@@ -73,6 +77,18 @@ struct WaveformRenderedLane {
     rect: egui::Rect,
     y_min: f64,
     y_max: f64,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct WaveformSnapshotChip {
+    pub(super) snapshot_index: usize,
+    pub(super) label: String,
+    pub(super) detail: String,
+    pub(super) color: egui::Color32,
+    pub(super) line_x: f32,
+    pub(super) dot: egui::Pos2,
+    pub(super) chip_rect: egui::Rect,
+    pub(super) lane_rect: egui::Rect,
 }
 
 impl WaveformPlotInteraction {
@@ -256,10 +272,21 @@ pub(super) fn draw_waveform_plot_sized(
         ui.label("Waveform has no finite value samples.");
         return WaveformPlotInteraction::default();
     };
+    let snapshot_chips = snapshot_marker_chips(
+        &rendered_lanes,
+        view.snapshot_markers,
+        (window_start_us, window_end_us),
+    );
     let mut interaction = WaveformPlotInteraction::default();
     let x_span_us = positive_span(window_start_us, window_end_us);
     let pointer_pos = response.interact_pointer_pos();
     let pointer_in_plot = pointer_pos.is_some_and(|pos| plot_rect.contains(pos));
+    let hovered_snapshot_chip = pointer_pos.and_then(|pos| {
+        snapshot_chips
+            .iter()
+            .rev()
+            .find(|chip| chip.chip_rect.expand(3.0).contains(pos))
+    });
     let cursor_target_at_pointer = pointer_pos
         .filter(|pos| plot_rect.expand(16.0).contains(*pos))
         .and_then(|pos| {
@@ -274,7 +301,10 @@ pub(super) fn draw_waveform_plot_sized(
         });
     if response.drag_started_by(egui::PointerButton::Primary) {
         let alt_drag = ui.input(|input| input.modifiers.alt);
-        if alt_drag
+        if hovered_snapshot_chip.is_some() {
+            *cursors.active_drag = None;
+            *cursors.box_zoom_start = None;
+        } else if alt_drag
             && cursor_target_at_pointer.is_none()
             && let Some(position) = pointer_pos.filter(|pos| plot_rect.contains(*pos))
         {
@@ -317,16 +347,25 @@ pub(super) fn draw_waveform_plot_sized(
         && pointer_in_plot
         && let Some(position) = pointer_pos
     {
-        let target = cursor_target_at_pointer
-            .or_else(|| {
-                ui.input(|input| input.modifiers.shift)
-                    .then_some(WaveformCursorTarget::B)
-            })
-            .unwrap_or(WaveformCursorTarget::A);
-        interaction.set_cursor(
-            target,
-            plot_x_to_time_us(position.x, plot_rect, window_start_us, window_end_us),
-        );
+        if let Some(chip) = hovered_snapshot_chip {
+            let focus = ui.input(|input| input.modifiers.shift);
+            if focus {
+                interaction.snapshot_focus_index = Some(chip.snapshot_index);
+            } else {
+                interaction.snapshot_jump_index = Some(chip.snapshot_index);
+            }
+        } else {
+            let target = cursor_target_at_pointer
+                .or_else(|| {
+                    ui.input(|input| input.modifiers.shift)
+                        .then_some(WaveformCursorTarget::B)
+                })
+                .unwrap_or(WaveformCursorTarget::A);
+            interaction.set_cursor(
+                target,
+                plot_x_to_time_us(position.x, plot_rect, window_start_us, window_end_us),
+            );
+        }
     }
     if response.dragged() {
         if let (Some(target), Some(position)) = (*cursors.active_drag, pointer_pos)
@@ -485,12 +524,7 @@ pub(super) fn draw_waveform_plot_sized(
                 );
             }
         }
-        draw_snapshot_markers(
-            &painter,
-            lane,
-            view.snapshot_markers,
-            (window_start_us, window_end_us),
-        );
+        draw_snapshot_markers(&painter, lane, &snapshot_chips);
         if rendered_lanes.len() > 1 {
             painter.text(
                 egui::pos2(lane.rect.right() - 8.0, lane.rect.top() + 12.0),
@@ -529,7 +563,9 @@ pub(super) fn draw_waveform_plot_sized(
         egui::Color32::LIGHT_GRAY,
     );
     if response.hovered() {
-        let cursor = if cursors.box_zoom_start.is_some() {
+        let cursor = if hovered_snapshot_chip.is_some() {
+            egui::CursorIcon::PointingHand
+        } else if cursors.box_zoom_start.is_some() {
             egui::CursorIcon::Crosshair
         } else if cursor_target_at_pointer.is_some() || cursors.active_drag.is_some() {
             egui::CursorIcon::ResizeHorizontal
@@ -537,6 +573,13 @@ pub(super) fn draw_waveform_plot_sized(
             egui::CursorIcon::Grab
         };
         ui.ctx().set_cursor_icon(cursor);
+    }
+    if let Some(chip) = hovered_snapshot_chip {
+        response.on_hover_ui(|ui| {
+            ui.strong(&chip.label);
+            ui.label(&chip.detail);
+            ui.label("Click to jump. Shift-click to focus schematic context.");
+        });
     }
     interaction
 }
@@ -1001,28 +1044,72 @@ fn draw_trigger_markers(
 fn draw_snapshot_markers(
     painter: &egui::Painter,
     lane: &WaveformRenderedLane,
+    chips: &[WaveformSnapshotChip],
+) {
+    for chip in chips.iter().filter(|chip| chip.lane_rect == lane.rect) {
+        painter.line_segment(
+            [
+                egui::pos2(chip.line_x, lane.rect.top()),
+                egui::pos2(chip.line_x, lane.rect.bottom()),
+            ],
+            egui::Stroke::new(1.0, chip.color.linear_multiply(0.55)),
+        );
+        painter.circle_filled(chip.dot, 3.6, chip.color);
+        painter.rect_filled(
+            chip.chip_rect,
+            4.0,
+            egui::Color32::from_rgba_unmultiplied(18, 22, 28, 232),
+        );
+        painter.rect_stroke(
+            chip.chip_rect,
+            4.0,
+            egui::Stroke::new(1.0, chip.color),
+            egui::StrokeKind::Inside,
+        );
+        painter.text(
+            chip.chip_rect.center(),
+            egui::Align2::CENTER_CENTER,
+            &chip.label,
+            egui::FontId::monospace(10.5),
+            chip.color,
+        );
+    }
+}
+
+fn snapshot_marker_chips(
+    lanes: &[WaveformRenderedLane],
     markers: &[WaveformSnapshotMarker],
     time_window_us: (f64, f64),
-) {
+) -> Vec<WaveformSnapshotChip> {
+    let mut chips = Vec::new();
     let mut drawn = 0usize;
-    for marker in markers {
-        if !lane.traces.contains(&marker.trace) {
-            continue;
-        }
-        for point in snapshot_marker_points(marker) {
-            if drawn >= 64 {
-                return;
-            }
-            if !point.time_us.is_finite()
-                || point.time_us < time_window_us.0
-                || point.time_us > time_window_us.1
-            {
+    for lane in lanes {
+        for marker in markers {
+            if !lane.traces.contains(&marker.trace) {
                 continue;
             }
-            draw_snapshot_marker(painter, lane, marker, &point, time_window_us, drawn);
-            drawn += 1;
+            for point in snapshot_marker_points(marker) {
+                if drawn >= 64 {
+                    return chips;
+                }
+                if !point.time_us.is_finite()
+                    || point.time_us < time_window_us.0
+                    || point.time_us > time_window_us.1
+                {
+                    continue;
+                }
+                chips.push(snapshot_marker_chip(
+                    lane,
+                    marker,
+                    &point,
+                    time_window_us,
+                    drawn,
+                ));
+                drawn += 1;
+            }
         }
     }
+    chips
 }
 
 #[derive(Clone, Debug)]
@@ -1051,30 +1138,21 @@ fn snapshot_marker_points(marker: &WaveformSnapshotMarker) -> Vec<SnapshotMarker
     points
 }
 
-fn draw_snapshot_marker(
-    painter: &egui::Painter,
+fn snapshot_marker_chip(
     lane: &WaveformRenderedLane,
     marker: &WaveformSnapshotMarker,
     point: &SnapshotMarkerPoint,
     time_window_us: (f64, f64),
     index: usize,
-) {
+) -> WaveformSnapshotChip {
     let color = snapshot_marker_color(marker);
     let x = cursor_x(point.time_us, lane.rect, time_window_us.0, time_window_us.1);
-    painter.line_segment(
-        [
-            egui::pos2(x, lane.rect.top()),
-            egui::pos2(x, lane.rect.bottom()),
-        ],
-        egui::Stroke::new(1.0, color.linear_multiply(0.55)),
-    );
     let value_y = point.value.map(|value| {
         let y_span = positive_span(lane.y_min, lane.y_max);
         let y_ratio = ((value - lane.y_min) / y_span).clamp(0.0, 1.0) as f32;
         lane.rect.bottom() - y_ratio * lane.rect.height()
     });
     let dot_y = value_y.unwrap_or(lane.rect.top() + 10.0);
-    painter.circle_filled(egui::pos2(x, dot_y), 3.6, color);
 
     let text = snapshot_marker_text(marker, point);
     let text_width = (text.chars().count() as f32 * 6.8 + 12.0).clamp(36.0, 150.0);
@@ -1087,24 +1165,16 @@ fn draw_snapshot_marker(
             .clamp(lane.rect.top() + 10.0, lane.rect.bottom() - 10.0),
     );
     let chip_rect = egui::Rect::from_center_size(chip_center, egui::vec2(text_width, 16.0));
-    painter.rect_filled(
-        chip_rect,
-        4.0,
-        egui::Color32::from_rgba_unmultiplied(18, 22, 28, 232),
-    );
-    painter.rect_stroke(
-        chip_rect,
-        4.0,
-        egui::Stroke::new(1.0, color),
-        egui::StrokeKind::Inside,
-    );
-    painter.text(
-        chip_rect.center(),
-        egui::Align2::CENTER_CENTER,
-        text,
-        egui::FontId::monospace(10.5),
+    WaveformSnapshotChip {
+        snapshot_index: marker.snapshot_index,
+        label: text,
+        detail: snapshot_marker_detail(marker, point),
         color,
-    );
+        line_x: x,
+        dot: egui::pos2(x, dot_y),
+        chip_rect,
+        lane_rect: lane.rect,
+    }
 }
 
 fn snapshot_marker_text(marker: &WaveformSnapshotMarker, point: &SnapshotMarkerPoint) -> String {
@@ -1127,6 +1197,34 @@ fn snapshot_marker_color(marker: &WaveformSnapshotMarker) -> egui::Color32 {
     } else {
         egui::Color32::from_rgb(255, 196, 87)
     }
+}
+
+fn snapshot_marker_detail(marker: &WaveformSnapshotMarker, point: &SnapshotMarkerPoint) -> String {
+    let time = format_time_s(point.time_us / 1e6);
+    let value = point
+        .value
+        .map(format_value)
+        .unwrap_or_else(|| "-".to_string());
+    let source = match marker.event_edge.as_deref() {
+        Some(edge) => format!("{} {edge}", marker.source),
+        None => marker.source.clone(),
+    };
+    format!(
+        "{} on {} at {} = {}",
+        source, marker.trace_label, time, value
+    )
+}
+
+#[cfg(test)]
+pub(super) fn scope_snapshot_chip_hit(
+    chips: &[WaveformSnapshotChip],
+    pointer: egui::Pos2,
+) -> Option<usize> {
+    chips
+        .iter()
+        .rev()
+        .find(|chip| chip.chip_rect.expand(3.0).contains(pointer))
+        .map(|chip| chip.snapshot_index)
 }
 
 fn draw_plot_frame(painter: &egui::Painter, rect: egui::Rect) {

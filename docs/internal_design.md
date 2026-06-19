@@ -297,7 +297,7 @@ schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
-transient measurement snapshot marker chips, and shared-axis or per-unit lane
+transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane
 axis scaling. `src/gui/waveform/waveform_view.rs`
 owns Scopes plot orchestration, cursor readout rows, playback controls,
 visible time-window and value-window fit/zoom/pan helpers, Back/Forward

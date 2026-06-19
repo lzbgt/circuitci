@@ -85,6 +85,12 @@ impl CircuitCiApp {
         if let Some(cursor_b_us) = interaction.cursor_b_us {
             self.set_waveform_cursor_b(cursor_b_us);
         }
+        if let Some(index) = interaction.snapshot_jump_index {
+            self.activate_scope_measurement_snapshot(index, false);
+        }
+        if let Some(index) = interaction.snapshot_focus_index {
+            self.activate_scope_measurement_snapshot(index, true);
+        }
     }
 
     pub(super) fn waveform_scope_cursor_legend(&mut self, ui: &mut egui::Ui) {

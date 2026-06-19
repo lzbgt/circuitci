@@ -164,13 +164,16 @@ impl CircuitCiApp {
     ) -> Vec<WaveformSnapshotMarker> {
         self.waveform_measurement_snapshots
             .iter()
-            .filter_map(|snapshot| {
+            .enumerate()
+            .filter_map(|(snapshot_index, snapshot)| {
                 let trace = snapshot.trace?;
                 (visible_traces.contains(&trace) && valid_waveform_trace(&self.waveforms, trace))
                     .then(|| WaveformSnapshotMarker {
+                        snapshot_index,
                         trace,
                         label: snapshot.label.clone(),
                         source: snapshot.source.clone(),
+                        trace_label: snapshot.trace_label.clone(),
                         time_a_us: snapshot.time_a_us,
                         time_b_us: snapshot.time_b_us,
                         value_a: snapshot.value_a,
