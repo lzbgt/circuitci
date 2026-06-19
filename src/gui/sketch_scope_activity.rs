@@ -61,7 +61,7 @@ impl CircuitCiApp {
                             targets.len()
                         ));
                     });
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.checkbox(
                             &mut self.sketch_runtime_scope_overlay_visible,
                             "Show on schematic",
@@ -88,6 +88,21 @@ impl CircuitCiApp {
                             .clicked()
                         {
                             self.open_scope_activity_snapshots_from_sketch();
+                        }
+                        if ui
+                            .add_enabled(
+                                !visible_indexes.is_empty(),
+                                egui::Button::new("Snap Visible"),
+                            )
+                            .on_hover_text(
+                                "Capture current Cursor A samples for every visible Scope Activity trace.",
+                            )
+                            .clicked()
+                        {
+                            self.capture_visible_scope_activity_snapshots_from_sketch(
+                                targets,
+                                &visible_indexes,
+                            );
                         }
                     });
                     let mut load_compare_preset = None;
@@ -385,6 +400,37 @@ impl CircuitCiApp {
             "Showing {} in Scopes.",
             scope_activity_snapshot_status_for_count(activity_snapshot_count)
         );
+    }
+
+    pub(super) fn capture_visible_scope_activity_snapshots_from_sketch(
+        &mut self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        let visible_targets = visible_indexes
+            .iter()
+            .filter_map(|&index| targets.get(index).map(|row| row.target.clone()))
+            .collect::<Vec<_>>();
+        if visible_targets.is_empty() {
+            self.status = "No visible Scope Activity traces to snapshot.".to_string();
+            return 0;
+        }
+        let requested = visible_targets.len();
+        let mut captured = 0;
+        for target in visible_targets {
+            if self.capture_scope_activity_sample_snapshot(target) {
+                captured += 1;
+            }
+        }
+        let skipped = requested.saturating_sub(captured);
+        self.status = match (captured, skipped) {
+            (0, _) => "No visible Scope Activity samples could be captured.".to_string(),
+            (_, 0) => format!("Captured {captured} visible Scope Activity sample snapshot(s)."),
+            _ => format!(
+                "Captured {captured} visible Scope Activity sample snapshot(s); {skipped} unavailable."
+            ),
+        };
+        captured
     }
 }
 

@@ -14,6 +14,7 @@ use super::{
     waveform_spectrum_peaks_from_samples,
 };
 use crate::gui::sketch::SketchSelection;
+use crate::gui::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget};
 use std::f64::consts::PI;
@@ -150,6 +151,58 @@ fn scope_activity_sample_snapshot_reports_missing_target() {
 
     assert!(app.waveform_measurement_snapshots.is_empty());
     assert!(app.status.contains("is not loaded yet"));
+}
+
+#[test]
+fn scope_activity_snap_visible_captures_current_visible_targets() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",
+        "startup",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 0.5,
+        ..Default::default()
+    };
+    let targets = vec![
+        RuntimeScopeActivityTarget {
+            label: "out".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(out)".to_string(),
+            },
+        },
+        RuntimeScopeActivityTarget {
+            label: "timing".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(timing)".to_string(),
+            },
+        },
+        RuntimeScopeActivityTarget {
+            label: "load".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "i(load)".to_string(),
+            },
+        },
+    ];
+
+    assert_eq!(
+        app.capture_visible_scope_activity_snapshots_from_sketch(&targets, &[0, 2]),
+        2
+    );
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 2);
+    assert_eq!(app.waveform_measurement_snapshots[0].trace_label, "v(out)");
+    assert_eq!(app.waveform_measurement_snapshots[1].trace_label, "i(load)");
+    assert_eq!(app.waveform_measurement_snapshots[0].value_a, Some(1.0));
+    assert!((app.waveform_measurement_snapshots[1].value_a.unwrap() - 0.2).abs() < 1.0e-12);
+    assert_eq!(
+        app.status,
+        "Captured 2 visible Scope Activity sample snapshot(s)."
+    );
 }
 
 #[test]

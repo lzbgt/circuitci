@@ -137,7 +137,8 @@ badges, and runtime `scope` chip hit-testing.
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, bounded per-trace sparklines, activity-snapshot status plus
-source-filtered Open Snapshots routing, and direct Scopes trace-open,
+visible-list snapshot capture, source-filtered Open Snapshots routing, and
+direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
@@ -423,8 +424,8 @@ form:
   runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
   cursor-sampled value/time rows, bounded per-trace sparklines, row-level
-  measurement snapshot capture with a live activity-snapshot count and direct
-  Open Snapshots routing,
+  row-level and visible-list measurement snapshot capture with a live
+  activity-snapshot count and direct Open Snapshots routing,
   trace compare pin/unpin/clear/named-save/load/delete actions, Open Compare jumps, hoverable/clickable `scope` activity chips, hover
   readouts, and context-menu Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or
