@@ -32,6 +32,7 @@ circuitci-gui
   -> src/gui/sketch_canvas_menus.rs
   -> src/gui/sketch_canvas_render.rs
   -> src/gui/sketch_scope_feedback.rs
+  -> src/gui/scope_auto_probes.rs
   -> src/gui/sketch_hierarchy.rs
   -> src/gui/sketch_inspector.rs
   -> src/gui/sketch_selection_inspector.rs
@@ -132,6 +133,9 @@ defaults, and viewport pan/zoom input.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools.
+`src/gui/scope_auto_probes.rs` owns the Sketch/Scopes toolbar Auto Probes
+action that adds bounded missing voltage probes for analog scenario nodes and
+source-branch current probes while skipping already covered expressions.
 `src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
 drawing, and optional guide-snap target adjustment for component placement plus
 selected-node and selected-group drag affordances. The primary schematic toolbar
@@ -391,6 +395,7 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, primary-toolbar probe controls that add voltage
   probes for selected nets or current/power probes for selected components,
+  Auto Probes action for bounded voltage/source-current probe population,
   plus direct `Scope V`, `Scope I`, and `Scope P` actions that create the
   missing probe when needed and open the Simulation-stage Scopes workspace,
   armed `Scope Tool` V/I/P placement buttons that consume a canvas click on a
@@ -668,7 +673,10 @@ component does not already have one. The armed voltage tool accepts nets,
 wires, pins, and net labels; armed current/power tools accept components,
 component labels, and pins. Pressing the same tool key again or Esc cancels the
 armed tool. While armed, the canvas outlines the target that will receive the
-probe and labels invalid hover targets before the click. If
+probe and labels invalid hover targets before the click. `Auto Probes` adds
+missing voltage probes for non-ground analog node bindings plus current probes
+for supported source branches, bounded per action, and skips probe expressions
+that already exist. If
 waveform artifacts are already loaded, the
 Scopes view selects the matching trace immediately; otherwise the target is
 applied after the next successful Run loads waveform CSV data. Selecting or focusing a

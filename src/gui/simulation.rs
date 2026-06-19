@@ -74,6 +74,7 @@ impl CircuitCiApp {
             {
                 self.run_scope_model();
             }
+            self.scope_auto_probe_button(ui);
             if ui.button("Fit Time").clicked() {
                 self.fit_waveform_time_window();
             }

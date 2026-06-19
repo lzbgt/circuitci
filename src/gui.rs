@@ -19,6 +19,7 @@ mod import_flow;
 mod jobs;
 mod library;
 mod project;
+mod scope_auto_probes;
 mod shell;
 mod simulation;
 mod simulation_forms;
@@ -732,6 +733,7 @@ impl CircuitCiApp {
                 self.apply_pending_scope_probe_focus();
                 self.stage = Stage::Simulation;
             }
+            self.scope_auto_probe_button(ui);
             self.schematic_probe_toolbar_controls(ui);
             if ui.button("Fit All").clicked() {
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
