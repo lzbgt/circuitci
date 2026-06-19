@@ -335,8 +335,11 @@ Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage,
 `src/gui/waveform/waveform_loading_tests.rs` for waveform loading, deferred-artifact, diagnostics, and footprint coverage,
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
-snapshot measurement coverage, and `src/gui/waveform/waveform_scope_tests.rs`
-for app-level Scopes context, lane, probe, and runtime coverage, with
+snapshot measurement coverage, `src/gui/waveform/waveform_scope_activity_tests.rs`
+for Sketch-side Scope Activity observation/report coverage,
+`src/gui/waveform/waveform_bundle_tests.rs` for scope report bundle filesystem
+and integrity coverage, and `src/gui/waveform/waveform_scope_tests.rs` for
+app-level Scopes context, lane, probe, and runtime coverage, with
 `src/gui/waveform/waveform_scope_compare_tests.rs` covering compare pins,
 trace styles, and saved compare-set coverage so interaction work can grow
 without turning the runtime module into a test fixture container.
