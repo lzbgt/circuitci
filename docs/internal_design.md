@@ -79,6 +79,9 @@ the user is drawing a pin connection.
 mutation. `src/gui/sketch_canvas.rs` owns the
 Sketch-stage canvas shell: drawing order, event routing, pin-anchor drag-to-wire
 completion, overview-minimap event routing, and runtime tint routing.
+`src/gui/sketch_canvas_hits.rs` owns canvas hover and press-origin hit target
+projection for graph items, minimap exclusion, probe/bundle/label badges, and
+runtime `scope` chip hit-testing.
 `src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
 drawing, direct wire-route edits, component placement orientation controls,
 selected-component orientation transforms, canvas probe defaults, and viewport

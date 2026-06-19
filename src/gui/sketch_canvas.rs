@@ -6,9 +6,12 @@ use super::sketch::{
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     runtime_scope_chip_rect, snap_screen_point_to_grid,
 };
+use super::sketch_canvas_hits::{
+    SketchCanvasHitContext, hover_targets as collect_hover_targets, position_hits_interactive_item,
+};
 use super::sketch_canvas_interaction::{
-    SketchSelectionBoxMode, WireDragTarget, hit_test_wire_route_handle, schematic_canvas_size,
-    wire_drag_target_at, wire_route_insert_index,
+    SketchSelectionBoxMode, WireDragTarget, schematic_canvas_size, wire_drag_target_at,
+    wire_route_insert_index,
 };
 use super::sketch_canvas_render::{
     draw_pending_wire_route_handles, draw_placement_ghost, draw_snap_feedback,
@@ -138,181 +141,25 @@ impl CircuitCiApp {
         } else {
             None
         };
-        let pointer_over_minimap = pointer_hover
-            .is_some_and(|position| minimap.is_some_and(|map| map.rect.contains(position)));
-        let hovered_node = pointer_hover.and_then(|position| {
-            graph.nodes.iter().find(|node| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.interaction_visible(&node.selection))
-                    && node.rect.contains(position)
-            })
-        });
-        let hovered_runtime_scope_node = pointer_hover.and_then(|position| {
-            graph.nodes.iter().find(|node| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.interaction_visible(&node.selection))
-                    && runtime_scope_chip_rect(node).contains(position)
-                    && runtime_probe_activity_for_selection(
-                        &self.waveforms,
-                        self.selected_waveform,
-                        self.waveform_cursor_a_us,
-                        &node.selection,
-                        snapshot,
-                    )
-                    .is_some()
-                    && runtime_scope_probe_target_for_selection(
-                        &self.waveforms,
-                        self.selected_waveform,
-                        &node.selection,
-                        snapshot,
-                    )
-                    .is_some()
-            })
-        });
-        let hovered_anchor = pointer_hover.and_then(|position| {
-            graph.pin_anchors.iter().find(|anchor| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.anchor_visible(anchor))
-                    && anchor.pos.distance(position) <= 8.0
-            })
-        });
-        let hovered_route_handle = if hovered_node.is_none() && hovered_anchor.is_none() {
-            pointer_hover.and_then(|position| {
-                hit_test_wire_route_handle(&graph, position).filter(|(edge, _)| {
-                    hierarchy_view
-                        .as_ref()
-                        .is_none_or(|view| view.edge_visible(edge))
-                })
-            })
-        } else {
-            None
+        let hit_context = SketchCanvasHitContext {
+            graph: &graph,
+            hierarchy_view: hierarchy_view.as_ref(),
+            bundle_badges: &bundle_badges,
+            hierarchy_connector_badges: &hierarchy_connector_badges,
+            net_label_badges: &net_label_badges,
+            component_label_badges: &component_label_badges,
+            minimap: minimap.as_ref(),
+            waveforms: &self.waveforms,
+            selected_waveform: self.selected_waveform,
+            waveform_cursor_a_us: self.waveform_cursor_a_us,
+            snapshot,
         };
-        let hovered_wire =
-            if hovered_node.is_none() && hovered_anchor.is_none() && hovered_route_handle.is_none()
-            {
-                pointer_hover.and_then(|position| {
-                    hit_test_wire(&graph, position).filter(|edge| {
-                        hierarchy_view
-                            .as_ref()
-                            .is_none_or(|view| view.edge_visible(edge))
-                    })
-                })
-            } else {
-                None
-            };
-        let hovered_probe_badge = pointer_hover.and_then(|position| {
-            hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.probe_badge_visible(badge))
-            })
-        });
-        let hovered_bundle_badge = pointer_hover.and_then(|position| {
-            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(|badge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.bundle_badge_visible(badge))
-            })
-        });
-        let hovered_hierarchy_connector_badge = pointer_hover.and_then(|position| {
-            sketch_hierarchy::hit_test_hierarchy_connector_badge(
-                &hierarchy_connector_badges,
-                position,
-            )
-        });
-        let hovered_net_label_badge = pointer_hover.and_then(|position| {
-            sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
-                |badge| {
-                    hierarchy_view.as_ref().is_none_or(|view| {
-                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
-                    })
-                },
-            )
-        });
-        let hovered_component_label_badge = pointer_hover.and_then(|position| {
-            sketch_component_labels::hit_test_component_label_badge(
-                &component_label_badges,
-                position,
-            )
-            .filter(|badge| {
-                hierarchy_view.as_ref().is_none_or(|view| {
-                    view.interaction_visible(&SketchSelection::Component(
-                        badge.component_id.clone(),
-                    ))
-                })
-            })
-        });
-        let blank_canvas_hovered = hovered_node.is_none()
-            && hovered_anchor.is_none()
-            && hovered_route_handle.is_none()
-            && hovered_wire.is_none()
-            && hovered_probe_badge.is_none()
-            && hovered_bundle_badge.is_none()
-            && hovered_hierarchy_connector_badge.is_none()
-            && hovered_net_label_badge.is_none()
-            && hovered_component_label_badge.is_none()
-            && !pointer_over_minimap;
-        if hovered_runtime_scope_node.is_some() {
+        let hover_targets = collect_hover_targets(&hit_context, pointer_hover);
+        let pointer_over_minimap = hover_targets.pointer_over_minimap;
+        let blank_canvas_hovered = hover_targets.blank_canvas_hovered();
+        if hover_targets.runtime_scope_node.is_some() {
             ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::PointingHand);
         }
-        let position_hits_interactive_item = |position: egui::Pos2| -> bool {
-            graph.nodes.iter().any(|node| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.interaction_visible(&node.selection))
-                    && node.rect.contains(position)
-            }) || graph.pin_anchors.iter().any(|anchor| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.anchor_visible(anchor))
-                    && anchor.pos.distance(position) <= 8.0
-            }) || hit_test_wire_route_handle(&graph, position).is_some_and(|(edge, _)| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.edge_visible(edge))
-            }) || hit_test_wire(&graph, position).is_some_and(|edge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.edge_visible(edge))
-            }) || hit_test_probe_badge(&graph.probe_badges, position).is_some_and(|badge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.probe_badge_visible(badge))
-            }) || sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).is_some_and(
-                |badge| {
-                    hierarchy_view
-                        .as_ref()
-                        .is_none_or(|view| view.bundle_badge_visible(badge))
-                },
-            ) || sketch_hierarchy::hit_test_hierarchy_connector_badge(
-                &hierarchy_connector_badges,
-                position,
-            )
-            .is_some()
-                || sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position)
-                    .is_some_and(|badge| {
-                        hierarchy_view.as_ref().is_none_or(|view| {
-                            view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
-                        })
-                    })
-                || sketch_component_labels::hit_test_component_label_badge(
-                    &component_label_badges,
-                    position,
-                )
-                .is_some_and(|badge| {
-                    hierarchy_view.as_ref().is_none_or(|view| {
-                        view.interaction_visible(&SketchSelection::Component(
-                            badge.component_id.clone(),
-                        ))
-                    })
-                })
-                || minimap
-                    .as_ref()
-                    .is_some_and(|minimap| minimap.rect.contains(position))
-        };
         let placement_armed = self.sketch_palette_place_armed
             || self.sketch_library_place_armed
             || self.sketch_net_label_place_armed;
@@ -321,7 +168,7 @@ impl CircuitCiApp {
             && !scope_probe_tool_armed
             && ui.input(|input| {
                 input.pointer.press_origin().is_some_and(|origin| {
-                    rect.contains(origin) && !position_hits_interactive_item(origin)
+                    rect.contains(origin) && !position_hits_interactive_item(&hit_context, origin)
                 })
             });
         self.handle_sketch_viewport_input(
@@ -356,96 +203,30 @@ impl CircuitCiApp {
         } else {
             None
         };
-        let hovered_node = pointer_hover.and_then(|position| {
-            graph.nodes.iter().find(|node| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.interaction_visible(&node.selection))
-                    && node.rect.contains(position)
-            })
-        });
-        let hovered_anchor = pointer_hover.and_then(|position| {
-            graph.pin_anchors.iter().find(|anchor| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.anchor_visible(anchor))
-                    && anchor.pos.distance(position) <= 8.0
-            })
-        });
-        let hovered_route_handle = if hovered_node.is_none() && hovered_anchor.is_none() {
-            pointer_hover.and_then(|position| {
-                hit_test_wire_route_handle(&graph, position).filter(|(edge, _)| {
-                    hierarchy_view
-                        .as_ref()
-                        .is_none_or(|view| view.edge_visible(edge))
-                })
-            })
-        } else {
-            None
+        let hit_context = SketchCanvasHitContext {
+            graph: &graph,
+            hierarchy_view: hierarchy_view.as_ref(),
+            bundle_badges: &bundle_badges,
+            hierarchy_connector_badges: &hierarchy_connector_badges,
+            net_label_badges: &net_label_badges,
+            component_label_badges: &component_label_badges,
+            minimap: minimap.as_ref(),
+            waveforms: &self.waveforms,
+            selected_waveform: self.selected_waveform,
+            waveform_cursor_a_us: self.waveform_cursor_a_us,
+            snapshot,
         };
-        let hovered_wire =
-            if hovered_node.is_none() && hovered_anchor.is_none() && hovered_route_handle.is_none()
-            {
-                pointer_hover.and_then(|position| {
-                    hit_test_wire(&graph, position).filter(|edge| {
-                        hierarchy_view
-                            .as_ref()
-                            .is_none_or(|view| view.edge_visible(edge))
-                    })
-                })
-            } else {
-                None
-            };
-        let hovered_probe_badge = pointer_hover.and_then(|position| {
-            hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.probe_badge_visible(badge))
-            })
-        });
-        let hovered_bundle_badge = pointer_hover.and_then(|position| {
-            sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).filter(|badge| {
-                hierarchy_view
-                    .as_ref()
-                    .is_none_or(|view| view.bundle_badge_visible(badge))
-            })
-        });
-        let hovered_hierarchy_connector_badge = pointer_hover.and_then(|position| {
-            sketch_hierarchy::hit_test_hierarchy_connector_badge(
-                &hierarchy_connector_badges,
-                position,
-            )
-        });
-        let hovered_net_label_badge = pointer_hover.and_then(|position| {
-            sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position).filter(
-                |badge| {
-                    hierarchy_view.as_ref().is_none_or(|view| {
-                        view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
-                    })
-                },
-            )
-        });
-        let hovered_component_label_badge = pointer_hover.and_then(|position| {
-            sketch_component_labels::hit_test_component_label_badge(
-                &component_label_badges,
-                position,
-            )
-            .filter(|badge| {
-                hierarchy_view.as_ref().is_none_or(|view| {
-                    view.interaction_visible(&SketchSelection::Component(
-                        badge.component_id.clone(),
-                    ))
-                })
-            })
-        });
-        let placement_target_clear = hovered_node.is_none()
-            && hovered_anchor.is_none()
-            && hovered_wire.is_none()
-            && hovered_probe_badge.is_none()
-            && hovered_bundle_badge.is_none()
-            && hovered_hierarchy_connector_badge.is_none()
-            && hovered_net_label_badge.is_none()
-            && hovered_component_label_badge.is_none();
+        let hover_targets = collect_hover_targets(&hit_context, pointer_hover);
+        let hovered_node = hover_targets.node;
+        let hovered_anchor = hover_targets.anchor;
+        let hovered_route_handle = hover_targets.route_handle;
+        let hovered_wire = hover_targets.wire;
+        let hovered_probe_badge = hover_targets.probe_badge;
+        let hovered_bundle_badge = hover_targets.bundle_badge;
+        let hovered_hierarchy_connector_badge = hover_targets.hierarchy_connector_badge;
+        let hovered_net_label_badge = hover_targets.net_label_badge;
+        let hovered_component_label_badge = hover_targets.component_label_badge;
+        let placement_target_clear = hover_targets.placement_target_clear();
         let scope_probe_feedback = self.active_scope_probe_tool().map(|tool| {
             scope_probe_tool_hover_feedback(ScopeProbeToolHoverInput {
                 tool,
@@ -593,8 +374,8 @@ impl CircuitCiApp {
                 &node.selection,
                 snapshot,
             );
-            let runtime_scope_chip_hovered = hovered_runtime_scope_node
-                .is_some_and(|hovered| hovered.selection == node.selection);
+            let runtime_scope_chip_hovered =
+                hover_targets.runtime_scope_chip_hovered(&node.selection);
             draw_sketch_node(
                 &painter,
                 node,
@@ -1727,8 +1508,8 @@ impl CircuitCiApp {
                 &node.selection,
                 snapshot,
             );
-            let runtime_scope_chip_hovered = hovered_runtime_scope_node
-                .is_some_and(|hovered| hovered.selection == node.selection);
+            let runtime_scope_chip_hovered =
+                hover_targets.runtime_scope_chip_hovered(&node.selection);
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
                 if runtime_scope_chip_hovered {

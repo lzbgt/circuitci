@@ -29,6 +29,7 @@ circuitci-gui
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_canvas.rs
+  -> src/gui/sketch_canvas_hits.rs
   -> src/gui/sketch_canvas_interaction.rs
   -> src/gui/sketch_canvas_menus.rs
   -> src/gui/sketch_canvas_render.rs
@@ -128,6 +129,9 @@ auto-arrange/reset actions for persisted label positions.
 `src/gui/sketch_canvas.rs` owns the Sketch-stage canvas shell: canvas drawing
 order, event routing, marquee and drag dispatch, pin-anchor drag-to-wire
 completion, overview-minimap event routing, and graph hover/runtime routing.
+`src/gui/sketch_canvas_hits.rs` owns canvas hover and press-origin target
+projection for rendered graph items, minimap exclusion, probe/bundle/label
+badges, and runtime `scope` chip hit-testing.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe
