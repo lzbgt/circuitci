@@ -22,6 +22,7 @@ impl CircuitCiApp {
             &self.waveform_pinned_traces,
         );
         let traces = scope_visible_styled_trace_refs(&traces, &self.waveform_trace_styles);
+        let snapshot_markers = self.scope_snapshot_markers(&traces);
         let visible_window = self.visible_waveform_time_window();
         let visible_value_window = self.visible_waveform_value_window();
         let trigger_events = self.selected_scope_trigger_events();
@@ -48,6 +49,7 @@ impl CircuitCiApp {
                     threshold: self.waveform_trigger_threshold,
                     events_us: &trigger_times_us,
                 }),
+                snapshot_markers: &snapshot_markers,
             },
             &self.waveform_trace_styles,
             scope_plot_size(desired_size),

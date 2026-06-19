@@ -33,12 +33,25 @@ pub(super) struct WaveformPlotTrigger<'a> {
     pub(super) events_us: &'a [f64],
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct WaveformSnapshotMarker {
+    pub(super) trace: WaveformTraceRef,
+    pub(super) label: String,
+    pub(super) source: String,
+    pub(super) time_a_us: Option<f64>,
+    pub(super) time_b_us: Option<f64>,
+    pub(super) value_a: Option<f64>,
+    pub(super) value_b: Option<f64>,
+    pub(super) event_edge: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct WaveformPlotView<'a> {
     pub(super) visible_window_us: Option<(f64, f64)>,
     pub(super) visible_value_window: Option<(f64, f64)>,
     pub(super) lane_mode: WaveformPlotLaneMode,
     pub(super) trigger: Option<WaveformPlotTrigger<'a>>,
+    pub(super) snapshot_markers: &'a [WaveformSnapshotMarker],
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -472,6 +485,12 @@ pub(super) fn draw_waveform_plot_sized(
                 );
             }
         }
+        draw_snapshot_markers(
+            &painter,
+            lane,
+            view.snapshot_markers,
+            (window_start_us, window_end_us),
+        );
         if rendered_lanes.len() > 1 {
             painter.text(
                 egui::pos2(lane.rect.right() - 8.0, lane.rect.top() + 12.0),
@@ -976,6 +995,137 @@ fn draw_trigger_markers(
             egui::Stroke::new(1.0, marker_color.linear_multiply(0.65)),
         );
         painter.circle_filled(egui::pos2(x, plot_rect.top() + 5.0), 3.0, marker_color);
+    }
+}
+
+fn draw_snapshot_markers(
+    painter: &egui::Painter,
+    lane: &WaveformRenderedLane,
+    markers: &[WaveformSnapshotMarker],
+    time_window_us: (f64, f64),
+) {
+    let mut drawn = 0usize;
+    for marker in markers {
+        if !lane.traces.contains(&marker.trace) {
+            continue;
+        }
+        for point in snapshot_marker_points(marker) {
+            if drawn >= 64 {
+                return;
+            }
+            if !point.time_us.is_finite()
+                || point.time_us < time_window_us.0
+                || point.time_us > time_window_us.1
+            {
+                continue;
+            }
+            draw_snapshot_marker(painter, lane, marker, &point, time_window_us, drawn);
+            drawn += 1;
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SnapshotMarkerPoint {
+    suffix: &'static str,
+    time_us: f64,
+    value: Option<f64>,
+}
+
+fn snapshot_marker_points(marker: &WaveformSnapshotMarker) -> Vec<SnapshotMarkerPoint> {
+    let mut points = Vec::new();
+    if let Some(time_us) = marker.time_a_us {
+        points.push(SnapshotMarkerPoint {
+            suffix: if marker.event_edge.is_some() { "" } else { "A" },
+            time_us,
+            value: marker.value_a,
+        });
+    }
+    if let Some(time_us) = marker.time_b_us {
+        points.push(SnapshotMarkerPoint {
+            suffix: "B",
+            time_us,
+            value: marker.value_b,
+        });
+    }
+    points
+}
+
+fn draw_snapshot_marker(
+    painter: &egui::Painter,
+    lane: &WaveformRenderedLane,
+    marker: &WaveformSnapshotMarker,
+    point: &SnapshotMarkerPoint,
+    time_window_us: (f64, f64),
+    index: usize,
+) {
+    let color = snapshot_marker_color(marker);
+    let x = cursor_x(point.time_us, lane.rect, time_window_us.0, time_window_us.1);
+    painter.line_segment(
+        [
+            egui::pos2(x, lane.rect.top()),
+            egui::pos2(x, lane.rect.bottom()),
+        ],
+        egui::Stroke::new(1.0, color.linear_multiply(0.55)),
+    );
+    let value_y = point.value.map(|value| {
+        let y_span = positive_span(lane.y_min, lane.y_max);
+        let y_ratio = ((value - lane.y_min) / y_span).clamp(0.0, 1.0) as f32;
+        lane.rect.bottom() - y_ratio * lane.rect.height()
+    });
+    let dot_y = value_y.unwrap_or(lane.rect.top() + 10.0);
+    painter.circle_filled(egui::pos2(x, dot_y), 3.6, color);
+
+    let text = snapshot_marker_text(marker, point);
+    let text_width = (text.chars().count() as f32 * 6.8 + 12.0).clamp(36.0, 150.0);
+    let lane_top_offset = 32.0 + (index % 4) as f32 * 18.0;
+    let chip_center = egui::pos2(
+        (x + text_width * 0.5 + 8.0)
+            .min(lane.rect.right() - text_width * 0.5 - 4.0)
+            .max(lane.rect.left() + text_width * 0.5 + 4.0),
+        (value_y.unwrap_or(lane.rect.top() + lane_top_offset) - 12.0)
+            .clamp(lane.rect.top() + 10.0, lane.rect.bottom() - 10.0),
+    );
+    let chip_rect = egui::Rect::from_center_size(chip_center, egui::vec2(text_width, 16.0));
+    painter.rect_filled(
+        chip_rect,
+        4.0,
+        egui::Color32::from_rgba_unmultiplied(18, 22, 28, 232),
+    );
+    painter.rect_stroke(
+        chip_rect,
+        4.0,
+        egui::Stroke::new(1.0, color),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        chip_rect.center(),
+        egui::Align2::CENTER_CENTER,
+        text,
+        egui::FontId::monospace(10.5),
+        color,
+    );
+}
+
+fn snapshot_marker_text(marker: &WaveformSnapshotMarker, point: &SnapshotMarkerPoint) -> String {
+    let suffix = if point.suffix.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", point.suffix)
+    };
+    match marker.event_edge.as_deref() {
+        Some(edge) => format!("{} {edge}", marker.label),
+        None => format!("{}{}", marker.label, suffix),
+    }
+}
+
+fn snapshot_marker_color(marker: &WaveformSnapshotMarker) -> egui::Color32 {
+    if marker.event_edge.is_some() || marker.source.contains("trigger") {
+        egui::Color32::from_rgb(104, 214, 255)
+    } else if marker.source.contains("pinned") {
+        egui::Color32::from_rgb(190, 145, 255)
+    } else {
+        egui::Color32::from_rgb(255, 196, 87)
     }
 }
 

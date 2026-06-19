@@ -481,6 +481,47 @@ fn scope_snapshot_focus_selects_originating_schematic_context() {
 }
 
 #[test]
+fn scope_snapshot_markers_follow_visible_traces_only() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    let selected_trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    };
+    let pinned_trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 1,
+    };
+
+    let selected_only = app.scope_snapshot_markers(&[selected_trace]);
+    assert_eq!(selected_only.len(), 1);
+    assert_eq!(selected_only[0].trace, selected_trace);
+    assert_eq!(selected_only[0].label, "Cursor 1");
+    assert_eq!(selected_only[0].time_a_us, Some(0.0));
+    assert_eq!(selected_only[0].time_b_us, Some(1.0));
+
+    let both = app.scope_snapshot_markers(&[selected_trace, pinned_trace]);
+    assert_eq!(both.len(), 2);
+    assert_eq!(both[1].trace, pinned_trace);
+    assert_eq!(both[1].source, "cursor pinned");
+}
+
+#[test]
 fn waveform_parser_rejects_non_increasing_time() {
     let error = parse_waveform_csv_text(
         "time v(out)

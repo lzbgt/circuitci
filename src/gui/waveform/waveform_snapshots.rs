@@ -1,4 +1,4 @@
-use super::waveform_plot::valid_waveform_trace;
+use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
     ScopeCursorLegendRow, WaveformTraceRef, format_time_s, format_value, scope_cursor_legend_rows,
@@ -156,6 +156,29 @@ impl CircuitCiApp {
             self.waveform_cursor_a_us,
             self.waveform_cursor_b_us,
         )
+    }
+
+    pub(super) fn scope_snapshot_markers(
+        &self,
+        visible_traces: &[WaveformTraceRef],
+    ) -> Vec<WaveformSnapshotMarker> {
+        self.waveform_measurement_snapshots
+            .iter()
+            .filter_map(|snapshot| {
+                let trace = snapshot.trace?;
+                (visible_traces.contains(&trace) && valid_waveform_trace(&self.waveforms, trace))
+                    .then(|| WaveformSnapshotMarker {
+                        trace,
+                        label: snapshot.label.clone(),
+                        source: snapshot.source.clone(),
+                        time_a_us: snapshot.time_a_us,
+                        time_b_us: snapshot.time_b_us,
+                        value_a: snapshot.value_a,
+                        value_b: snapshot.value_b,
+                        event_edge: snapshot.event_edge.clone(),
+                    })
+            })
+            .collect()
     }
 
     fn selected_scope_trace_label(&self) -> Option<String> {
