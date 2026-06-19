@@ -11,6 +11,7 @@ impl CircuitCiApp {
             &self.waveforms,
             &self.waveform_load_diagnostics,
             &self.waveform_footprint_filter,
+            self.waveform_footprint_source_filter,
             self.waveform_footprint_sort_key,
             self.waveform_footprint_descending,
         );
@@ -19,6 +20,7 @@ impl CircuitCiApp {
             &self.waveforms,
             &self.waveform_load_diagnostics,
             "",
+            WaveformFootprintSourceFilter::All,
             WaveformFootprintSortKey::EstimatedBytes,
             true,
         );
@@ -59,6 +61,17 @@ impl CircuitCiApp {
                                 );
                             }
                     });
+                    egui::ComboBox::from_label("Source")
+                        .selected_text(self.waveform_footprint_source_filter.label())
+                        .show_ui(ui, |ui| {
+                            for filter in WaveformFootprintSourceFilter::ALL {
+                                ui.selectable_value(
+                                    &mut self.waveform_footprint_source_filter,
+                                    filter,
+                                    filter.label(),
+                                );
+                            }
+                        });
                     ui.checkbox(&mut self.waveform_footprint_descending, "Descending");
                     ui.checkbox(&mut self.waveform_footprint_group_by_source, "Group Source");
                     ui.label(format!("{} / {} visible", rows.len(), self.waveforms.len()));
@@ -311,6 +324,42 @@ impl WaveformFootprintSortKey {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(in crate::gui) enum WaveformFootprintSourceFilter {
+    #[default]
+    All,
+    FullCsv,
+    SelectedColumns,
+    RuntimeOnly,
+}
+
+impl WaveformFootprintSourceFilter {
+    pub(super) const ALL: [Self; 4] = [
+        Self::All,
+        Self::FullCsv,
+        Self::SelectedColumns,
+        Self::RuntimeOnly,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::FullCsv => "Full CSV",
+            Self::SelectedColumns => "Selected Columns",
+            Self::RuntimeOnly => "Runtime Only",
+        }
+    }
+
+    fn accepts(self, source: WaveformFootprintSource) -> bool {
+        match self {
+            Self::All => true,
+            Self::FullCsv => source == WaveformFootprintSource::FullCsv,
+            Self::SelectedColumns => source == WaveformFootprintSource::SelectedColumns,
+            Self::RuntimeOnly => source == WaveformFootprintSource::RuntimeOnly,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum WaveformFootprintSource {
     FullCsv,
@@ -379,13 +428,21 @@ pub(super) fn waveform_footprint_rows(
     sort_key: WaveformFootprintSortKey,
     descending: bool,
 ) -> Vec<WaveformFootprintRow> {
-    waveform_footprint_rows_with_diagnostics(waveforms, &[], query, sort_key, descending)
+    waveform_footprint_rows_with_diagnostics(
+        waveforms,
+        &[],
+        query,
+        WaveformFootprintSourceFilter::All,
+        sort_key,
+        descending,
+    )
 }
 
 pub(super) fn waveform_footprint_rows_with_diagnostics(
     waveforms: &[WaveformView],
     diagnostics: &[WaveformLoadDiagnostic],
     query: &str,
+    source_filter: WaveformFootprintSourceFilter,
     sort_key: WaveformFootprintSortKey,
     descending: bool,
 ) -> Vec<WaveformFootprintRow> {
@@ -395,6 +452,9 @@ pub(super) fn waveform_footprint_rows_with_diagnostics(
         .enumerate()
         .filter_map(|(index, waveform)| {
             let source = waveform_footprint_source(waveform, diagnostics);
+            if !source_filter.accepts(source) {
+                return None;
+            }
             if !query.is_empty()
                 && !waveform_footprint_search_text(waveform, source).contains(&query)
             {

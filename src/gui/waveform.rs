@@ -33,7 +33,9 @@ pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
 use waveform_footprint::waveform_footprint_target_index;
-pub(super) use waveform_footprint::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
+pub(super) use waveform_footprint::{
+    WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformFootprintUnloadTarget,
+};
 #[cfg(test)]
 use waveform_footprint::{
     waveform_footprint_csv, waveform_footprint_largest_unload_targets, waveform_footprint_rows,

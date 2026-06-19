@@ -1,8 +1,8 @@
 use super::merge_waveform_load_diagnostics;
 use super::{
-    WaveformFootprintSortKey, WaveformLoadDiagnostic, WaveformLoadPreviewFilter,
-    WaveformLoadRequest, WaveformLoadStatusFilter, WaveformTraceColor, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle,
+    WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformLoadDiagnostic,
+    WaveformLoadPreviewFilter, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformTraceColor,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle,
 };
 use super::{
     clear_deferred_waveform_column_picks,
@@ -1173,6 +1173,7 @@ fn waveform_footprint_rows_classify_loaded_source_type() {
         &waveforms,
         &diagnostics,
         "",
+        WaveformFootprintSourceFilter::All,
         WaveformFootprintSortKey::Label,
         false,
     );
@@ -1192,6 +1193,21 @@ fn waveform_footprint_rows_classify_loaded_source_type() {
             &waveforms,
             &diagnostics,
             "selected_columns",
+            WaveformFootprintSourceFilter::All,
+            WaveformFootprintSortKey::Label,
+            false,
+        )
+        .iter()
+        .map(|row| row.path.as_str())
+        .collect::<Vec<_>>(),
+        vec![selected_path]
+    );
+    assert_eq!(
+        waveform_footprint_rows_with_diagnostics(
+            &waveforms,
+            &diagnostics,
+            "",
+            WaveformFootprintSourceFilter::SelectedColumns,
             WaveformFootprintSortKey::Label,
             false,
         )
