@@ -560,6 +560,71 @@ fn scope_probe_target_pin_for_compare_reports_missing_loaded_trace() {
 }
 
 #[test]
+fn open_pinned_scope_compare_selects_first_valid_pin_and_opens_scopes() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),v(ref)
+0,0,0.1,3.3
+0.000001,1,0.2,3.2
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_pinned_traces: vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 2,
+            },
+        ],
+        stage: Stage::Sketch,
+        waveform_playing: true,
+        ..Default::default()
+    };
+
+    assert!(app.open_pinned_scope_compare());
+
+    assert_eq!(app.stage, Stage::Simulation);
+    assert_eq!(app.selected_waveform, 0);
+    assert_eq!(app.selected_probe, 1);
+    assert!(!app.waveform_playing);
+    assert_eq!(app.current_scope_compare_traces().len(), 2);
+    assert!(app.status.contains("2 pinned trace"));
+}
+
+#[test]
+fn open_pinned_scope_compare_prunes_stale_pins_before_opening() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)
+0,0
+0.000001,1
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 99,
+            probe_index: 0,
+        }],
+        stage: Stage::Sketch,
+        ..Default::default()
+    };
+
+    assert!(!app.open_pinned_scope_compare());
+
+    assert_eq!(app.stage, Stage::Sketch);
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.status.contains("Pin at least one"));
+}
+
+#[test]
 fn waveform_time_range_for_view_returns_microseconds() {
     let waveform = parse_waveform_csv_text(
         "time v(out)

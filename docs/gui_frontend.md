@@ -136,8 +136,8 @@ badges, and runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
-value/time readouts, bounded per-trace sparklines, and direct Scopes trace-open
-and compare-pin actions for loaded schematic targets.
+value/time readouts, bounded per-trace sparklines, and direct Scopes trace-open, compare-pin,
+and Open Compare actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe
@@ -418,7 +418,7 @@ form:
   runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
   cursor-sampled value/time rows, and bounded per-trace sparklines,
-  trace compare pinning, hoverable/clickable `scope` activity chips, hover
+  trace compare pinning, Open Compare jumps, hoverable/clickable `scope` activity chips, hover
   readouts, and context-menu Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or
   current/power probes for selected components,

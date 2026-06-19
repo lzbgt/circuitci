@@ -68,6 +68,24 @@ impl CircuitCiApp {
                     .on_hover_text(
                         "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                     );
+                    ui.horizontal(|ui| {
+                        ui.label(format!(
+                            "{} pinned compare trace(s)",
+                            self.waveform_pinned_traces.len()
+                        ));
+                        if ui
+                            .add_enabled(
+                                !self.waveform_pinned_traces.is_empty(),
+                                egui::Button::new("Open Compare"),
+                            )
+                            .on_hover_text(
+                                "Open Scopes with the currently pinned comparison traces visible.",
+                            )
+                            .clicked()
+                        {
+                            self.open_pinned_scope_compare();
+                        }
+                    });
                     if let Some(range) =
                         runtime_scope_activity_cursor_range_us(&self.waveforms, self.selected_waveform)
                     {

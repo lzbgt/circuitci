@@ -56,6 +56,26 @@ impl CircuitCiApp {
         true
     }
 
+    pub(in crate::gui) fn open_pinned_scope_compare(&mut self) -> bool {
+        self.prune_scope_trace_pins();
+        let Some(trace) = self.waveform_pinned_traces.first().copied() else {
+            self.status =
+                "Pin at least one loaded Scope Activity trace before opening compare.".to_string();
+            return false;
+        };
+        self.selected_waveform = trace.waveform_index;
+        self.selected_probe = trace.probe_index;
+        self.waveform_math_left = trace.probe_index;
+        self.waveform_math_right = trace.probe_index;
+        self.waveform_playing = false;
+        self.stage = Stage::Simulation;
+        self.status = format!(
+            "Opened Scopes compare with {} pinned trace(s).",
+            self.waveform_pinned_traces.len()
+        );
+        true
+    }
+
     pub(in crate::gui) fn remember_scope_probe_target(
         &mut self,
         scenario_name: &str,
