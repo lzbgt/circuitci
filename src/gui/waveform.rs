@@ -11,19 +11,23 @@ use eframe::egui;
 use std::path::Path;
 
 mod waveform_context;
+mod waveform_export;
 mod waveform_plot;
 mod waveform_snapshots;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
+#[cfg(test)]
+use waveform_export::scope_plot_svg;
 pub(super) use waveform_plot::WaveformCursorTarget;
 #[cfg(test)]
 use waveform_plot::{
-    WaveformPlotLaneMode, WaveformSnapshotChip, clamp_value_window, expanded_value_bounds,
-    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_plot_size,
-    scope_snapshot_chip_hit, scope_trace_color_for_style, scope_trace_lanes,
-    scope_visible_styled_trace_refs, scope_visible_trace_refs, scope_zoom_box_interaction,
-    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
+    WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip,
+    WaveformSnapshotMarker, clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target,
+    plot_x_to_time_us, plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit,
+    scope_trace_color_for_style, scope_trace_lanes, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, scope_zoom_box_interaction, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 pub(super) use waveform_snapshots::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter,

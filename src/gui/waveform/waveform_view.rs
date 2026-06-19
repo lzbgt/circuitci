@@ -1,3 +1,4 @@
+use super::waveform_export::scope_plot_svg;
 use super::waveform_plot::{
     WaveformPlotCursors, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
     clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
@@ -11,13 +12,27 @@ use super::{
 };
 use crate::gui::{CircuitCiApp, WaveformViewWindow};
 use eframe::egui;
+use std::fs;
 
 impl CircuitCiApp {
     pub(super) fn waveform_scope_plot(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
-        let waveform = &self.waveforms[self.selected_waveform];
-        if waveform.probes.is_empty() {
+        if self
+            .waveforms
+            .get(self.selected_waveform)
+            .is_none_or(|waveform| waveform.probes.is_empty())
+        {
             return;
         }
+        ui.horizontal_wrapped(|ui| {
+            ui.strong("Scope Plot");
+            ui.label("runtime SVG");
+            if ui.button("Copy SVG").clicked() {
+                self.copy_scope_plot_svg(ui.ctx());
+            }
+            if ui.button("Export SVG").clicked() {
+                self.export_scope_plot_svg();
+            }
+        });
         let traces = scope_visible_trace_refs(
             &self.waveforms,
             self.selected_waveform,
@@ -93,6 +108,73 @@ impl CircuitCiApp {
         }
         if let Some(index) = interaction.snapshot_focus_index {
             self.activate_scope_measurement_snapshot(index, true);
+        }
+    }
+
+    fn current_scope_plot_svg(&self) -> Option<String> {
+        if self.waveforms.is_empty() {
+            return None;
+        }
+        let traces = scope_visible_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+            &self.waveform_pinned_traces,
+        );
+        let traces = scope_visible_styled_trace_refs(&traces, &self.waveform_trace_styles);
+        if traces.is_empty() {
+            return None;
+        }
+        let snapshot_markers = self.scope_snapshot_markers(&traces);
+        let trigger_events = self.selected_scope_trigger_events();
+        let trigger_times_us: Vec<f64> = trigger_events.iter().map(|event| event.time_us).collect();
+        scope_plot_svg(
+            &self.waveforms,
+            &traces,
+            self.waveform_cursor_a_us,
+            self.waveform_cursor_b_us,
+            WaveformPlotView {
+                visible_window_us: self.visible_waveform_time_window(),
+                visible_value_window: self.visible_waveform_value_window(),
+                lane_mode: if self.waveform_split_trace_units {
+                    WaveformPlotLaneMode::ByUnit
+                } else {
+                    WaveformPlotLaneMode::Shared
+                },
+                trigger: Some(WaveformPlotTrigger {
+                    threshold: self.waveform_trigger_threshold,
+                    events_us: &trigger_times_us,
+                }),
+                snapshot_markers: &snapshot_markers,
+            },
+            &self.waveform_trace_styles,
+        )
+    }
+
+    fn copy_scope_plot_svg(&mut self, ctx: &egui::Context) {
+        let Some(svg) = self.current_scope_plot_svg() else {
+            self.status = "No scope plot is available to copy as SVG.".to_string();
+            return;
+        };
+        ctx.copy_text(svg);
+        self.status = "Copied current scope plot as SVG.".to_string();
+    }
+
+    fn export_scope_plot_svg(&mut self) {
+        let Some(svg) = self.current_scope_plot_svg() else {
+            self.status = "No scope plot is available to export as SVG.".to_string();
+            return;
+        };
+        let Some(path) = self.pick_scope_plot_svg_export_path() else {
+            return;
+        };
+        match fs::write(&path, svg) {
+            Ok(()) => {
+                self.status = format!("Exported current scope plot SVG to {}.", path.display());
+            }
+            Err(error) => {
+                self.status = format!("Failed to export scope plot SVG: {error}");
+            }
         }
     }
 

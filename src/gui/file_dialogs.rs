@@ -146,6 +146,15 @@ impl CircuitCiApp {
             &[("Markdown", &["md", "markdown"])],
         )
     }
+
+    pub(super) fn pick_scope_plot_svg_export_path(&mut self) -> Option<PathBuf> {
+        save_file_dialog(
+            "Export Scope Plot SVG",
+            &self.output_dir,
+            "scope_plot.svg",
+            &[("SVG", &["svg"])],
+        )
+    }
 }
 
 fn pick_file_dialog(

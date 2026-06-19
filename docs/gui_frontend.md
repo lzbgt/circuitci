@@ -238,9 +238,13 @@ lookup. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
 trace overlay selection, transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane axis scaling.
+`src/gui/waveform/waveform_export.rs` owns deterministic runtime SVG rendering
+for the current Scopes plot, including visible traces, split-unit lanes,
+cursors, trigger markers, and snapshot chips for copy/export workflows.
 `src/gui/waveform/waveform_view.rs` owns the Scopes plot orchestration, cursor
 readout table, playback controls, transient visible time-window and
-value-window fit/zoom/pan helpers, Back/Forward view-window history, and measurement snapshot display.
+value-window fit/zoom/pan helpers, Back/Forward view-window history, scope plot
+SVG copy/export actions, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
 region-stat, and trigger-event measurement snapshot capture, editable labels
 and notes, search/source filtering, sort/group projection, plot-marker derivation, filtered CSV/Markdown serialization/export, Jump
@@ -370,7 +374,7 @@ form:
   history, direct
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls,
-  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, and filtered CSV/Markdown copy/export actions.
+  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, current-plot SVG copy/export for reports, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, and filtered CSV/Markdown copy/export actions.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
@@ -617,6 +621,9 @@ trace/cursor/time context or cross-focus the linked schematic probe while
 remaining runtime-only. Visible snapshot marker chips are derived from the same
 transient rows, draw only for currently visible selected/pinned traces, show
 hover details, and support click-to-Jump plus Shift-click schematic Focus.
+The current Scopes plot can also be copied or exported as SVG; this is a
+runtime image artifact derived from loaded waveform CSVs, visible traces,
+cursors, trigger markers, and snapshot chips, not a persisted project report.
 Right-clicking a probe badge
 opens an explicit action menu for opening the probe in Simulation, adding an
 assertion from current settings, quick adding above/below cursor-sample

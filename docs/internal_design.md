@@ -298,10 +298,14 @@ schematic-context strip actions, and scope probe lookup.
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
 transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane
-axis scaling. `src/gui/waveform/waveform_view.rs`
+axis scaling. `src/gui/waveform/waveform_export.rs` owns deterministic runtime
+SVG rendering for the current Scopes plot, including visible traces,
+split-unit lanes, cursors, trigger markers, and snapshot chips.
+`src/gui/waveform/waveform_view.rs`
 owns Scopes plot orchestration, cursor readout rows, region statistics display and capture, playback controls,
 visible time-window and value-window fit/zoom/pan helpers, Back/Forward
-view-window history, and measurement snapshot display.
+view-window history, scope plot SVG copy/export actions, and measurement
+snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
 region-stat, and trigger-event measurement snapshot capture, editable labels
 and notes, search/source filtering, sort/group projection, plot-marker derivation, filtered CSV/Markdown serialization/export, Jump

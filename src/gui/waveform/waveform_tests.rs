@@ -1,12 +1,13 @@
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe, parse_waveform_csv_text,
-    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
+    scope_plot_svg, scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
     waveform_probe_choices, waveform_probe_group_choices,
 };
 use super::{
-    WaveformSnapshotChip, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
-    scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
+    WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip,
+    WaveformSnapshotMarker, WaveformTraceRef, nearest_scope_cursor_target, plot_x_to_time_us,
+    plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
 };
 
 #[test]
@@ -21,6 +22,71 @@ fn waveform_parser_accepts_ngspice_header_and_samples() {
     assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
     assert_eq!(waveform.probes[1].label, "i(load)");
     assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+}
+
+#[test]
+fn scope_plot_svg_exports_visible_runtime_annotations() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 3.3 0.002
+2e-6 1.0 0.004
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+    ];
+    let markers = vec![WaveformSnapshotMarker {
+        snapshot_index: 0,
+        trace: traces[0],
+        label: "Startup".to_string(),
+        note: "captured".to_string(),
+        source: "cursor selected".to_string(),
+        trace_label: "v(out)".to_string(),
+        time_a_us: Some(0.0),
+        time_b_us: Some(2.0),
+        value_a: Some(0.0),
+        value_b: Some(1.0),
+        event_edge: None,
+    }];
+
+    let svg = scope_plot_svg(
+        &[waveform],
+        &traces,
+        0.0,
+        2.0,
+        WaveformPlotView {
+            visible_window_us: Some((0.0, 2.0)),
+            visible_value_window: None,
+            lane_mode: WaveformPlotLaneMode::ByUnit,
+            trigger: Some(WaveformPlotTrigger {
+                threshold: 1.5,
+                events_us: &[1.0],
+            }),
+            snapshot_markers: &markers,
+        },
+        &[],
+    )
+    .unwrap();
+
+    assert!(svg.starts_with("<svg "));
+    assert!(svg.contains("CircuitCI Scope Plot"));
+    assert!(svg.contains("v(out)"));
+    assert!(svg.contains("i(load)"));
+    assert!(svg.contains(">A<"));
+    assert!(svg.contains(">B<"));
+    assert!(svg.contains(">T<"));
+    assert!(svg.contains("Startup A"));
+    assert!(svg.contains("Startup B"));
 }
 
 #[test]
