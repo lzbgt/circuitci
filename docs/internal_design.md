@@ -88,7 +88,7 @@ Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
 visible-list snapshot capture, row-level and visible-list CSV/Markdown copy,
-row-level and visible-list report bundle export/index-open, source-specific snapshot clearing for sample and frequency rows,
+row-level and visible-list report bundle export/index-open, recent-bundle reopen/path-copy shortcuts, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
@@ -123,7 +123,7 @@ readouts, compact frequency/period readouts, bounded per-trace sparklines,
 per-trace edge stepping, compare
 pin/unpin/clear actions, Open Compare jumps, live activity-snapshot status,
 visible-list snapshot capture, row-level and visible-list CSV/Markdown copy,
-row-level and visible-list report bundle export/index-open, source-specific snapshot clearing for sample and frequency rows,
+row-level and visible-list report bundle export/index-open, recent-bundle reopen/path-copy shortcuts, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 matching `Circuit View` toggle control only this transient runtime
 overlay; they must not persist into Board IR.

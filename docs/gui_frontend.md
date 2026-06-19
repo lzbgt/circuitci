@@ -139,7 +139,7 @@ Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
 visible-list snapshot capture, row-level and visible-list CSV/Markdown copy,
-row-level and visible-list report bundle export/index-open, source-specific snapshot clearing for sample and frequency rows,
+row-level and visible-list report bundle export/index-open, recent-bundle reopen/path-copy shortcuts, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
@@ -198,7 +198,7 @@ schematic network first, with the `Circuit View` toggle enabling the helper
 overlay only when users explicitly audit derived groups. The same panel owns
 the runtime-only Scope Activity overlay toggle and searchable loaded-trace jump
 browser with Cursor A scrubbing, per-trace edge stepping, cursor-sampled
-value/time readouts, and row-level/visible-list report bundle export/index-open; those chips and tints mark loaded waveform trace targets
+value/time readouts, row-level/visible-list report bundle export/index-open, and recent-bundle reopen/path-copy shortcuts; those chips and tints mark loaded waveform trace targets
 and are not schematic components, pins, or nets.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge

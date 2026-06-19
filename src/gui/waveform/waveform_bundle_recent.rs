@@ -24,7 +24,7 @@ impl CircuitCiApp {
     ) {
         let pruned = self.prune_missing_scope_report_bundles();
         if pruned > 0 {
-            self.status = format!("Pruned {pruned} stale scope report bundle entrie(s).");
+            self.status = format!("Pruned {pruned} stale scope report bundle entry(s).");
         }
         let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
             return;
@@ -205,7 +205,7 @@ impl CircuitCiApp {
             .truncate(MAX_RECENT_SCOPE_BUNDLES);
     }
 
-    pub(super) fn prune_missing_scope_report_bundles(&mut self) -> usize {
+    pub(in crate::gui) fn prune_missing_scope_report_bundles(&mut self) -> usize {
         let before = self.waveform_recent_report_bundles.len();
         self.waveform_recent_report_bundles
             .retain(|bundle| Path::new(bundle).exists());
@@ -370,7 +370,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn open_scope_report_bundle(&mut self, bundle: &str) {
+    pub(in crate::gui) fn open_scope_report_bundle(&mut self, bundle: &str) {
         let path = Path::new(bundle);
         if !path.exists() {
             self.status = format!("Scope report bundle no longer exists: {}.", path.display());
@@ -448,7 +448,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn copy_scope_report_bundle_path(
+    pub(in crate::gui) fn copy_scope_report_bundle_path(
         &mut self,
         ui: &egui::Ui,
         bundle: &str,

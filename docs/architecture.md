@@ -81,7 +81,7 @@ projection for graph items, minimap exclusion, probe/bundle/label badges, and
 runtime `scope` chip hit-testing. `gui::sketch_scope_activity` owns the
 runtime Scope Activity canvas legend, searchable loaded-trace browser,
 Cursor A scrub control, per-trace edge stepping, cursor-sampled value/time readouts,
-compact frequency/period readouts, bounded per-trace sparklines, live activity-snapshot status, visible-list snapshot capture, row-level and visible-list CSV/Markdown copy, row-level and visible-list report bundle export/index-open, source-specific snapshot clearing for sample and frequency rows, source-filtered Open Snapshots routing, compare pin/unpin/clear/named-save/load/delete actions, Open Compare jumps,
+compact frequency/period readouts, bounded per-trace sparklines, live activity-snapshot status, visible-list snapshot capture, row-level and visible-list CSV/Markdown copy, row-level and visible-list report bundle export/index-open, recent-bundle reopen/path-copy shortcuts, source-specific snapshot clearing for sample and frequency rows, source-filtered Open Snapshots routing, compare pin/unpin/clear/named-save/load/delete actions, Open Compare jumps,
 and overlay visibility checkbox.
 `gui::sketch_canvas_interaction` owns reusable viewport
 zoom math, schematic canvas sizing, wire-target hit testing, route-handle hit

@@ -186,6 +186,69 @@ impl CircuitCiApp {
                                 "Export visible Scope Activity sample and frequency rows as a focused report bundle.",
                             );
                         });
+                        let recent_bundle_rows = self.scope_activity_recent_bundle_rows();
+                        if let Some(latest) = recent_bundle_rows.first().cloned() {
+                            ui.menu_button("Recent Bundles", |ui| {
+                                ui.label(format!("Latest: {}", latest.label));
+                                if ui.button("Open Index").clicked() {
+                                    self.open_scope_report_bundle_index(&latest.path);
+                                    ui.close();
+                                }
+                                if ui.button("Open Folder").clicked() {
+                                    self.open_scope_report_bundle(&latest.path);
+                                    ui.close();
+                                }
+                                if ui.button("Copy Index Path").clicked() {
+                                    self.copy_scope_report_bundle_path(
+                                        ui,
+                                        &latest.path,
+                                        Some("index.html"),
+                                        "index",
+                                    );
+                                    ui.close();
+                                }
+                                if ui.button("Copy Folder Path").clicked() {
+                                    self.copy_scope_report_bundle_path(
+                                        ui,
+                                        &latest.path,
+                                        None,
+                                        "folder",
+                                    );
+                                    ui.close();
+                                }
+                                let older = recent_bundle_rows
+                                    .iter()
+                                    .skip(1)
+                                    .cloned()
+                                    .collect::<Vec<_>>();
+                                if !older.is_empty() {
+                                    ui.separator();
+                                    ui.label("Older");
+                                    for bundle in older {
+                                        ui.horizontal(|ui| {
+                                            ui.monospace(&bundle.label);
+                                            if ui.small_button("Index").clicked() {
+                                                self.open_scope_report_bundle_index(&bundle.path);
+                                                ui.close();
+                                            }
+                                            if ui.small_button("Path").clicked() {
+                                                self.copy_scope_report_bundle_path(
+                                                    ui,
+                                                    &bundle.path,
+                                                    None,
+                                                    "folder",
+                                                );
+                                                ui.close();
+                                            }
+                                        });
+                                    }
+                                }
+                            })
+                            .response
+                            .on_hover_text(
+                                "Open or copy recently exported Scope Activity report bundles without switching to Scopes.",
+                            );
+                        }
                     });
                     let mut load_compare_preset = None;
                     let mut delete_compare_preset = None;
@@ -842,9 +905,40 @@ impl CircuitCiApp {
         }
         count
     }
+
+    pub(super) fn scope_activity_recent_bundle_rows(
+        &mut self,
+    ) -> Vec<ScopeActivityRecentBundleRow> {
+        let pruned = self.prune_missing_scope_report_bundles();
+        if pruned > 0 {
+            self.status = format!("Pruned {pruned} stale scope report bundle entry(s).");
+        }
+        self.waveform_recent_report_bundles
+            .iter()
+            .map(|path| ScopeActivityRecentBundleRow {
+                label: scope_activity_bundle_label(path),
+                path: path.clone(),
+            })
+            .collect()
+    }
 }
 
 const SCOPE_ACTIVITY_SNAPSHOT_SOURCE: &str = "scope activity";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ScopeActivityRecentBundleRow {
+    pub label: String,
+    pub path: String,
+}
+
+fn scope_activity_bundle_label(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| path.to_string())
+}
 
 pub(super) fn runtime_scope_activity_visible_indexes(
     targets: &[RuntimeScopeActivityTarget],

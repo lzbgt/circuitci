@@ -370,6 +370,48 @@ fn visible_scope_activity_report_bundle_exports_filtered_observations() {
 }
 
 #[test]
+fn scope_activity_recent_bundle_rows_prune_and_label_existing_bundles() {
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_activity_recent_bundles_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    let latest = base_dir.join("scope_report_bundle_latest");
+    let older = base_dir.join("scope_report_bundle_older");
+    let missing = base_dir.join("scope_report_bundle_missing");
+    fs::create_dir_all(&latest).unwrap();
+    fs::create_dir_all(&older).unwrap();
+    let mut app = CircuitCiApp {
+        waveform_recent_report_bundles: vec![
+            latest.to_string_lossy().into_owned(),
+            missing.to_string_lossy().into_owned(),
+            older.to_string_lossy().into_owned(),
+        ],
+        ..Default::default()
+    };
+
+    let rows = app.scope_activity_recent_bundle_rows();
+
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].label, "scope_report_bundle_latest");
+    assert_eq!(rows[0].path, latest.to_string_lossy().into_owned());
+    assert_eq!(rows[1].label, "scope_report_bundle_older");
+    assert_eq!(
+        app.waveform_recent_report_bundles,
+        vec![
+            latest.to_string_lossy().into_owned(),
+            older.to_string_lossy().into_owned()
+        ]
+    );
+    assert!(
+        app.status
+            .contains("Pruned 1 stale scope report bundle entry(s)")
+    );
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
 fn scope_activity_target_observation_rows_copy_one_trace_only() {
     let rows = (0..128)
         .map(|index| {
