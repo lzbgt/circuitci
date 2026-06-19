@@ -341,6 +341,68 @@ fn scope_activity_target_observation_rows_copy_one_trace_only() {
 }
 
 #[test]
+fn scope_activity_target_report_bundle_exports_one_trace_observations() {
+    let samples = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let out = (2.0 * PI * 1_000.0 * time_s).sin();
+            let timing = (2.0 * PI * 500.0 * time_s).sin();
+            format!("{time_s:.9},{out:.9},{timing:.9}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out),v(timing)\n{samples}\n"), "startup").unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_activity_row_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 500.0,
+        ..Default::default()
+    };
+
+    assert_eq!(
+        app.export_scope_activity_target_report_bundle(ScopeProbeTarget {
+            scenario_name: "startup".to_string(),
+            probe_name: "v(out)".to_string(),
+        }),
+        2
+    );
+
+    let mut bundles = fs::read_dir(&base_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
+    bundles.sort();
+    assert_eq!(bundles.len(), 1);
+    let bundle = &bundles[0];
+    let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
+    let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+    assert!(csv.contains("scope activity,v(out)"));
+    assert!(csv.contains("scope activity frequency,v(out)"));
+    assert!(!csv.contains("v(timing)"));
+    assert!(markdown.contains("| Scope Activity 1 |"));
+    assert!(markdown.contains("| Scope Activity Freq 2 |"));
+    assert!(bundle.join("index.html").exists());
+    assert!(bundle.join("artifact_manifest.csv").exists());
+    assert!(app.waveform_measurement_snapshots.is_empty());
+    assert_eq!(app.waveform_recent_report_bundles.len(), 1);
+    assert!(
+        app.status
+            .contains("Exported Scope Activity report bundle with 2 observation row(s) for v(out)")
+    );
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
 fn scope_activity_snap_visible_captures_current_visible_targets() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",

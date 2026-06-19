@@ -448,6 +448,17 @@ impl CircuitCiApp {
                                     .on_hover_text(
                                         "Copy this trace's current sample plus frequency row.",
                                     );
+                                    if ui
+                                        .button("Bundle")
+                                        .on_hover_text(
+                                            "Export this trace's sample/frequency observations as a scope report bundle.",
+                                        )
+                                        .clicked()
+                                    {
+                                        self.export_scope_activity_target_report_bundle(
+                                            row.target.clone(),
+                                        );
+                                    }
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
@@ -661,6 +672,29 @@ impl CircuitCiApp {
             "Copied {count} Scope Activity observation row(s) for {} as Markdown.",
             target.probe_name
         );
+        count
+    }
+
+    pub(super) fn export_scope_activity_target_report_bundle(
+        &mut self,
+        target: super::ScopeProbeTarget,
+    ) -> usize {
+        let rows = self.scope_activity_target_observation_snapshots(&target);
+        if rows.is_empty() {
+            self.status = format!(
+                "No Scope Activity observations are available to bundle for {}.",
+                target.probe_name
+            );
+            return 0;
+        }
+        let count = rows.len();
+        self.export_scope_report_bundle(&rows);
+        if self.status.contains("Exported scope report bundle") {
+            self.status = format!(
+                "Exported Scope Activity report bundle with {count} observation row(s) for {}. {}",
+                target.probe_name, self.status
+            );
+        }
         count
     }
 

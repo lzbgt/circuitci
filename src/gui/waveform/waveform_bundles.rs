@@ -26,7 +26,10 @@ pub(super) struct ScopeReportBundleFiles {
 }
 
 impl CircuitCiApp {
-    pub(super) fn export_scope_report_bundle(&mut self, snapshots: &[ScopeMeasurementSnapshot]) {
+    pub(in crate::gui) fn export_scope_report_bundle(
+        &mut self,
+        snapshots: &[ScopeMeasurementSnapshot],
+    ) {
         let Some(files) = self.prepare_scope_report_bundle_files(snapshots) else {
             return;
         };
