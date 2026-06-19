@@ -55,7 +55,7 @@ Selected Columns, Runtime Only memory distribution, and report-artifact
 integrity without persisting that diagnostic state into Board IR. Each bundle
 also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
 required bundle files; the optional integrity detail files are derived from that
-manifest and are not part of the manifest they describe. The recent-bundle UI checks required artifact presence
+manifest and are not part of the manifest they describe. The recent-bundle UI prunes entries whose folders no longer exist, checks required artifact presence
 and manifest mismatches before opening, can show an integrity details table with
 expected/current size and SHA-256 values, can copy those details as CSV or
 Markdown for troubleshooting reports, can open the latest index or generated

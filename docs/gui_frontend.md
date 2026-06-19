@@ -275,8 +275,8 @@ restore, schematic Focus, and rendering over loaded waveform artifacts.
 with the configured plot SVG, local index page, README manifest, optional
 artifact integrity detail files, and loaded-waveform footprint source totals.
 `src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle folder/index
-and integrity-audit opening, path copy actions, guarded refresh, and
-previewed/confirmed bounded old-bundle cleanup.
+and integrity-audit opening, path copy actions, missing-folder pruning, guarded
+refresh, and previewed/confirmed bounded old-bundle cleanup.
 `src/gui/waveform/waveform_bundle_integrity.rs` owns report-bundle artifact
 size/SHA-256 metadata, `artifact_manifest.csv`, missing/changed artifact status
 checks, and expected/current artifact integrity detail rows.
@@ -677,8 +677,9 @@ metadata for required bundle files so the GUI can distinguish changed artifacts
 from merely present artifacts. The optional integrity detail files are derived
 from that manifest and intentionally not included in the manifest they
 describe. The Scopes panel keeps a bounded transient list of recently exported
-bundles, shows whether each recent bundle still has required and unchanged artifacts, and
-can open the latest bundle index, latest folder, or older bundle folder through
+bundles, prunes entries whose folders no longer exist, shows whether each
+remaining recent bundle still has required and unchanged artifacts, and can
+open the latest bundle index, latest folder, or older bundle folder through
 the host file manager. Recent bundles also expose direct open actions for the
 generated integrity CSV/Markdown audit files, with explicit missing-file status
 messages if an audit artifact was removed. A compact `Copy Path` control copies

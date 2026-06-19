@@ -21,6 +21,10 @@ impl CircuitCiApp {
         ui: &mut egui::Ui,
         snapshots: &[ScopeMeasurementSnapshot],
     ) {
+        let pruned = self.prune_missing_scope_report_bundles();
+        if pruned > 0 {
+            self.status = format!("Pruned {pruned} stale scope report bundle entrie(s).");
+        }
         let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
             return;
         };
@@ -198,6 +202,29 @@ impl CircuitCiApp {
         self.waveform_recent_report_bundles.insert(0, bundle);
         self.waveform_recent_report_bundles
             .truncate(MAX_RECENT_SCOPE_BUNDLES);
+    }
+
+    pub(super) fn prune_missing_scope_report_bundles(&mut self) -> usize {
+        let before = self.waveform_recent_report_bundles.len();
+        self.waveform_recent_report_bundles
+            .retain(|bundle| Path::new(bundle).exists());
+        self.waveform_bundle_cleanup_preview
+            .retain(|bundle| Path::new(bundle).exists());
+        if self
+            .waveform_bundle_refresh_preview
+            .as_deref()
+            .is_some_and(|bundle| !Path::new(bundle).exists())
+        {
+            self.waveform_bundle_refresh_preview = None;
+        }
+        if self
+            .waveform_bundle_integrity_details
+            .as_deref()
+            .is_some_and(|bundle| !Path::new(bundle).exists())
+        {
+            self.waveform_bundle_integrity_details = None;
+        }
+        before.saturating_sub(self.waveform_recent_report_bundles.len())
     }
 
     fn scope_report_bundle_integrity_details_ui(&mut self, ui: &mut egui::Ui, bundle: &str) {

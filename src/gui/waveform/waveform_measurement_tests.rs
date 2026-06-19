@@ -974,3 +974,44 @@ fn scope_report_bundle_cleanup_removes_only_old_bundle_dirs() {
     assert!(base_dir.join("unrelated").exists());
     fs::remove_dir_all(&base_dir).unwrap();
 }
+
+#[test]
+fn scope_report_bundle_recent_pruning_removes_missing_folders() {
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_bundle_recent_prune_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    let existing = base_dir.join("scope_report_bundle_200");
+    let missing = base_dir.join("scope_report_bundle_100");
+    fs::create_dir_all(&existing).unwrap();
+
+    let mut app = CircuitCiApp {
+        waveform_recent_report_bundles: vec![
+            missing.to_string_lossy().into_owned(),
+            existing.to_string_lossy().into_owned(),
+        ],
+        waveform_bundle_refresh_preview: Some(missing.to_string_lossy().into_owned()),
+        waveform_bundle_integrity_details: Some(missing.to_string_lossy().into_owned()),
+        waveform_bundle_cleanup_preview: vec![
+            missing.to_string_lossy().into_owned(),
+            existing.to_string_lossy().into_owned(),
+        ],
+        ..Default::default()
+    };
+
+    let pruned = app.prune_missing_scope_report_bundles();
+
+    assert_eq!(pruned, 1);
+    assert_eq!(
+        app.waveform_recent_report_bundles,
+        vec![existing.to_string_lossy().into_owned()]
+    );
+    assert_eq!(app.waveform_bundle_refresh_preview, None);
+    assert_eq!(app.waveform_bundle_integrity_details, None);
+    assert_eq!(
+        app.waveform_bundle_cleanup_preview,
+        vec![existing.to_string_lossy().into_owned()]
+    );
+    fs::remove_dir_all(&base_dir).unwrap();
+}
