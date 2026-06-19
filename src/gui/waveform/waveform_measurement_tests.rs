@@ -1,9 +1,10 @@
 use super::waveform_test_support::probe_snapshot;
 use super::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
-    WaveformTraceRef, interpolated_value, parse_waveform_csv_text, scope_cursor_legend_rows,
-    scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted,
-    scope_snapshots_csv, scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
+    WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, interpolated_value,
+    parse_waveform_csv_text, scope_cursor_legend_rows, scope_region_stats_rows,
+    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
+    scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
     unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
@@ -786,5 +787,31 @@ fn scope_report_bundle_dir_uses_collision_suffix() {
     let next = unique_scope_report_bundle_dir(&base_dir, 42);
 
     assert_eq!(next, base_dir.join("scope_report_bundle_42_02"));
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
+fn scope_report_bundle_cleanup_removes_only_old_bundle_dirs() {
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_bundle_cleanup_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+    for timestamp in [100_u128, 200, 300, 400] {
+        fs::create_dir_all(base_dir.join(format!("scope_report_bundle_{timestamp}"))).unwrap();
+    }
+    fs::create_dir_all(base_dir.join("scope_report_bundle_300_02")).unwrap();
+    fs::create_dir_all(base_dir.join("unrelated")).unwrap();
+
+    let removed = cleanup_old_scope_report_bundle_dirs(&base_dir, 3).unwrap();
+
+    assert_eq!(removed, 2);
+    assert!(base_dir.join("scope_report_bundle_400").exists());
+    assert!(base_dir.join("scope_report_bundle_300_02").exists());
+    assert!(base_dir.join("scope_report_bundle_300").exists());
+    assert!(!base_dir.join("scope_report_bundle_200").exists());
+    assert!(!base_dir.join("scope_report_bundle_100").exists());
+    assert!(base_dir.join("unrelated").exists());
     fs::remove_dir_all(&base_dir).unwrap();
 }
