@@ -765,6 +765,9 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("- Include trigger markers: no"));
     assert!(readme.contains("- Split units: yes"));
     assert!(readme.contains("- Selected trace: v(out)"));
+    assert!(readme.contains("## Loaded Waveform Footprint Summary"));
+    assert!(readme.contains("| Total | 1 | 48 | 48 B |"));
+    assert!(readme.contains("| Runtime Only | 1 | 48 | 48 B |"));
     assert!(readme.contains("- `scope_plot.svg`"));
     assert_eq!(
         app.waveform_recent_report_bundles,

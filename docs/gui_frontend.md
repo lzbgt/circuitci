@@ -270,7 +270,8 @@ SVG copy/export actions, and measurement snapshot display.
 region-stat, and trigger-event measurement snapshot capture, editable labels
 and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, timestamped report
-bundle export with the configured plot SVG and README manifest, transient
+bundle export with the configured plot SVG and README manifest including
+loaded-waveform footprint source totals, transient
 recent-bundle folder opening and previewed/confirmed bounded old-bundle cleanup, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
@@ -399,7 +400,7 @@ form:
   history, direct
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls,
-  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, current-plot SVG copy/export for reports, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, filtered CSV/Markdown copy/export actions, and timestamped report bundles containing the configured plot SVG, filtered snapshot CSV/Markdown, and README manifest.
+  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, current-plot SVG copy/export for reports, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, filtered CSV/Markdown copy/export actions, and timestamped report bundles containing the configured plot SVG, filtered snapshot CSV/Markdown, and README manifest with loaded-waveform footprint source totals.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
@@ -658,8 +659,8 @@ Export Bundle writes the same filtered snapshot CSV and Markdown plus the
 configured plot SVG and a README manifest into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
 The manifest records active snapshot filters, plot SVG options, selected trace
-context, and generated files so the folder remains understandable outside the
-GUI. The Scopes panel keeps a bounded transient list of recently exported
+context, loaded-waveform footprint source totals, and generated files so the
+folder remains understandable outside the GUI. The Scopes panel keeps a bounded transient list of recently exported
 bundles and can open the latest or older bundle folder through the host file
 manager. `Clean Old Bundles` previews older direct child directories named
 `scope_report_bundle_*` under the configured output directory; `Confirm Cleanup`

@@ -1,3 +1,8 @@
+use super::waveform_footprint::{
+    WaveformFootprintSortKey, WaveformFootprintSourceFilter,
+    waveform_footprint_rows_with_diagnostics, waveform_footprint_source_summaries,
+    waveform_footprint_summary_markdown,
+};
 use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trace_selector::shift_trace_after_waveform_removal;
 use super::waveform_trigger::ScopeTriggerEvent;
@@ -704,6 +709,7 @@ impl CircuitCiApp {
             .unwrap_or_else(|| "unavailable".to_string());
         let query = self.waveform_snapshot_filter.trim();
         let query = if query.is_empty() { "(empty)" } else { query };
+        let footprint_summary = self.scope_report_bundle_footprint_summary_markdown();
         format!(
             "\
 # CircuitCI Scope Report Bundle
@@ -738,6 +744,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - Selected waveform index: {}
 - Selected probe index: {}
 - Selected trace: {}
+
+{}
 ",
             snapshots.len(),
             markdown_escape(query),
@@ -752,7 +760,22 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             self.selected_waveform,
             self.selected_probe,
             markdown_escape(&selected_context),
+            footprint_summary,
         )
+    }
+
+    fn scope_report_bundle_footprint_summary_markdown(&self) -> String {
+        let rows = waveform_footprint_rows_with_diagnostics(
+            &self.waveforms,
+            &self.waveform_load_diagnostics,
+            "",
+            WaveformFootprintSourceFilter::All,
+            WaveformFootprintSortKey::EstimatedBytes,
+            true,
+        );
+        let total_bytes = rows.iter().map(|row| row.estimated_bytes).sum();
+        let summaries = waveform_footprint_source_summaries(&rows);
+        waveform_footprint_summary_markdown(&summaries, rows.len(), total_bytes)
     }
 
     fn scope_recent_report_bundles_ui(&mut self, ui: &mut egui::Ui) {
