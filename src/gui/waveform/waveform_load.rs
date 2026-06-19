@@ -37,6 +37,7 @@ pub(crate) struct DeferredWaveformArtifact {
     pub(crate) samples: usize,
     pub(crate) probes: usize,
     pub(crate) probe_preview: Vec<String>,
+    pub(crate) loaded_probe_preview: Vec<String>,
     pub(crate) detail: String,
 }
 
@@ -531,9 +532,38 @@ pub(crate) fn waveform_load_deferred_artifacts(
             samples: diagnostic.samples,
             probes: diagnostic.probes,
             probe_preview: diagnostic.probe_preview.clone(),
+            loaded_probe_preview: waveform_load_selected_probes_for_path(
+                diagnostics,
+                &diagnostic.path,
+            ),
             detail: diagnostic.detail.clone(),
         })
         .collect()
+}
+
+fn waveform_load_selected_probes_for_path(
+    diagnostics: &[WaveformLoadDiagnostic],
+    path: &str,
+) -> Vec<String> {
+    let mut probes = Vec::new();
+    for diagnostic in diagnostics {
+        if diagnostic.path != path
+            || !diagnostic.loaded
+            || diagnostic.deferred
+            || !diagnostic.is_selected_column_update()
+        {
+            continue;
+        }
+        for probe in &diagnostic.probe_preview {
+            if !probes
+                .iter()
+                .any(|loaded: &String| loaded.eq_ignore_ascii_case(probe))
+            {
+                probes.push(probe.clone());
+            }
+        }
+    }
+    probes
 }
 
 pub(crate) fn merge_waveform_load_diagnostics(

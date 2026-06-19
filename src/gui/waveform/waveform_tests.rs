@@ -174,6 +174,7 @@ fn selected_deferred_waveform_load_preserves_deferred_placeholder() {
         artifacts[0].probe_preview,
         vec!["v(out)", "i(load)", "p(load)"]
     );
+    assert_eq!(artifacts[0].loaded_probe_preview, vec!["i(load)"]);
     assert!(diagnostics.iter().any(|diagnostic| {
         diagnostic.loaded
             && !diagnostic.deferred
@@ -529,6 +530,7 @@ fn deferred_waveform_artifacts_project_selector_placeholders() {
     assert_eq!(artifacts[0].samples, 1_200_000);
     assert_eq!(artifacts[0].probes, 2);
     assert_eq!(artifacts[0].probe_preview, vec!["v(out)", "i(load)"]);
+    assert!(artifacts[0].loaded_probe_preview.is_empty());
 }
 
 #[test]
@@ -586,6 +588,50 @@ fn deferred_waveform_artifact_filter_matches_probe_preview_and_metadata() {
     );
     assert!(
         deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "missing")
+            .is_empty()
+    );
+}
+
+#[test]
+fn deferred_waveform_matching_probe_requests_skip_loaded_preview_columns() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_power.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(80 * 1024 * 1024),
+            samples: 2_400_000,
+            probes: 3,
+            probe_preview: vec![
+                "i(load)".to_string(),
+                "p(load)".to_string(),
+                "p(aux)".to_string(),
+            ],
+            elapsed_ms: 3,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "/tmp/run/scope_power.csv".to_string(),
+            Some(80 * 1024 * 1024),
+            16,
+            1,
+            20,
+            vec!["p(load)".to_string()],
+        ),
+    ];
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+    assert_eq!(artifacts[0].loaded_probe_preview, vec!["p(load)"]);
+
+    let visible_indexes = deferred_waveform_artifact_visible_indexes(&artifacts, "p(");
+    assert_eq!(
+        deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "p("),
+        vec![WaveformLoadRequest::selected_columns(
+            "/tmp/run/scope_power.csv".to_string(),
+            vec!["p(aux)".to_string()]
+        )]
+    );
+    assert!(
+        deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "p(load)")
             .is_empty()
     );
 }

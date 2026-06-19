@@ -235,13 +235,13 @@ filterable and exportable from Scopes. Deferred artifacts keep header-only
 trace previews, can be filtered by file/probe/detail from the selector, and can
 be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
-report. Matching-column loads append selected traces while preserving the full
+report. Matching-column loads append selected traces, mark loaded preview labels, skip already loaded matching columns, and preserve the full
 deferred artifact placeholder for later all-column loading.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that preserves full deferred placeholders until full load, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, and preserves full deferred placeholders until full load, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, deferred waveform artifact placeholders
 with header-only probe previews, selector-side filtering, and row/visible/all
-or matching-column background load actions that keep full deferred artifacts available after partial column loads, transient saved compare sets, transient
+or matching-column background load actions that mark loaded preview labels, skip duplicate selected-column reloads, and keep full deferred artifacts available after partial column loads, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset
 behavior.
 `src/gui/waveform/waveform_context.rs` owns pending schematic

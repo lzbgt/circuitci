@@ -320,12 +320,21 @@ impl CircuitCiApp {
                                     ui.close();
                                 }
                                 ui.monospace(&artifact.label);
+                                let loaded_count = artifact.loaded_probe_preview.len();
+                                let loaded = if loaded_count == 0 {
+                                    String::new()
+                                } else {
+                                    format!("; {loaded_count} loaded")
+                                };
                                 ui.label(format!(
-                                    "{}; ~{} row(s); {} trace(s)",
-                                    artifact.size_label, artifact.samples, artifact.probes
+                                    "{}; ~{} row(s); {} trace(s){}",
+                                    artifact.size_label, artifact.samples, artifact.probes, loaded
                                 ));
                             });
-                            let preview = deferred_probe_preview_text(&artifact.probe_preview);
+                            let preview = deferred_probe_preview_text(
+                                &artifact.probe_preview,
+                                &artifact.loaded_probe_preview,
+                            );
                             if !preview.is_empty() {
                                 ui.small(preview);
                             }
@@ -712,14 +721,20 @@ impl CircuitCiApp {
     }
 }
 
-fn deferred_probe_preview_text(probes: &[String]) -> String {
+fn deferred_probe_preview_text(probes: &[String], loaded_probes: &[String]) -> String {
     if probes.is_empty() {
         return String::new();
     }
     let visible = probes
         .iter()
         .take(6)
-        .map(String::as_str)
+        .map(|probe| {
+            if deferred_waveform_probe_is_loaded(probe, loaded_probes) {
+                format!("{probe} (loaded)")
+            } else {
+                probe.clone()
+            }
+        })
         .collect::<Vec<_>>()
         .join(", ");
     if probes.len() > 6 {
@@ -756,9 +771,18 @@ fn deferred_waveform_artifact_matching_probe_labels(
     artifact
         .probe_preview
         .iter()
-        .filter(|probe| probe.to_ascii_lowercase().contains(&query))
+        .filter(|probe| {
+            probe.to_ascii_lowercase().contains(&query)
+                && !deferred_waveform_probe_is_loaded(probe, &artifact.loaded_probe_preview)
+        })
         .cloned()
         .collect()
+}
+
+fn deferred_waveform_probe_is_loaded(probe: &str, loaded_probes: &[String]) -> bool {
+    loaded_probes
+        .iter()
+        .any(|loaded| loaded.trim().eq_ignore_ascii_case(probe.trim()))
 }
 
 pub(super) fn deferred_waveform_artifact_visible_indexes(
