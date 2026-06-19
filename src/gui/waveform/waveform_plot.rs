@@ -40,6 +40,7 @@ pub(super) struct WaveformSnapshotMarker {
     pub(super) snapshot_index: usize,
     pub(super) trace: WaveformTraceRef,
     pub(super) label: String,
+    pub(super) note: String,
     pub(super) source: String,
     pub(super) trace_label: String,
     pub(super) time_a_us: Option<f64>,
@@ -1209,10 +1210,15 @@ fn snapshot_marker_detail(marker: &WaveformSnapshotMarker, point: &SnapshotMarke
         Some(edge) => format!("{} {edge}", marker.source),
         None => marker.source.clone(),
     };
-    format!(
+    let detail = format!(
         "{} on {} at {} = {}",
         source, marker.trace_label, time, value
-    )
+    );
+    if marker.note.trim().is_empty() {
+        detail
+    } else {
+        format!("{detail}\nNote: {}", marker.note.trim())
+    }
 }
 
 #[cfg(test)]

@@ -223,6 +223,7 @@ struct WaveformViewWindow {
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct ScopeMeasurementSnapshot {
     label: String,
+    note: String,
     source: String,
     trace: Option<WaveformTraceRef>,
     trace_label: String,

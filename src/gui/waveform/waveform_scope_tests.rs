@@ -495,16 +495,21 @@ fn scope_snapshot_csv_exports_cursor_trigger_and_region_rows() {
     );
     let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
     app.waveform_measurement_snapshots[0].trace_label = "quoted, \"trace\"".to_string();
+    app.waveform_measurement_snapshots[0].note = "settling, \"fast\"".to_string();
     app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
 
     let csv = scope_snapshots_csv(&app.waveform_measurement_snapshots);
 
     assert!(csv.starts_with(
-        "label,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n"
+        "label,note,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n"
     ));
-    assert!(csv.contains("Cursor 1,cursor selected,\"quoted, \"\"trace\"\"\""));
-    assert!(csv.contains("Trigger 2,trigger rising,v(out),5.000000e-7"));
-    assert!(csv.contains("Region 3,region selected,v(out),0.000000e0,2.000000e-6,0.000000e0,2.000000e0,1.000000e0,1.154701e0,,V"));
+    assert!(
+        csv.contains(
+            "Cursor 1,\"settling, \"\"fast\"\"\",cursor selected,\"quoted, \"\"trace\"\"\""
+        )
+    );
+    assert!(csv.contains("Trigger 2,,trigger rising,v(out),5.000000e-7"));
+    assert!(csv.contains("Region 3,,region selected,v(out),0.000000e0,2.000000e-6,0.000000e0,2.000000e0,1.000000e0,1.154701e0,,V"));
 }
 
 #[test]
@@ -540,6 +545,7 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
     );
     let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
     app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+    app.waveform_measurement_snapshots[4].note = "load channel observed".to_string();
 
     assert_eq!(
         scope_snapshot_visible_indexes(
@@ -573,6 +579,14 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
         ),
         vec![4]
     );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "observed",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![4]
+    );
 
     app.waveform_snapshot_filter = "load".to_string();
     app.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::Region;
@@ -583,7 +597,7 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
         .collect();
     let csv = scope_snapshots_csv(&filtered);
 
-    assert!(csv.contains("Region 4,region pinned,i(load)"));
+    assert!(csv.contains("Region 4,load channel observed,region pinned,i(load)"));
     assert!(!csv.contains("v(out)"));
     assert_eq!(csv.lines().count(), 2);
 }

@@ -75,6 +75,7 @@ impl CircuitCiApp {
             .unwrap_or("");
         let snapshot = ScopeMeasurementSnapshot {
             label: format!("Trigger {}", self.waveform_measurement_snapshots.len() + 1),
+            note: String::new(),
             source: "trigger".to_string(),
             trace: Some(self.selected_scope_trace()),
             trace_label,
@@ -149,7 +150,7 @@ impl CircuitCiApp {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.waveform_snapshot_filter)
                         .desired_width(180.0)
-                        .hint_text("label, trace, unit, source"),
+                        .hint_text("label, note, trace, unit, source"),
                 );
                 egui::ComboBox::from_label("Source")
                     .selected_text(self.waveform_snapshot_source_filter.label())
@@ -180,10 +181,11 @@ impl CircuitCiApp {
                     .auto_shrink([false, true])
                     .show(ui, |ui| {
                         egui::Grid::new("scope_measurement_snapshots")
-                            .num_columns(11)
+                            .num_columns(12)
                             .striped(true)
                             .show(ui, |ui| {
                                 ui.label("Label");
+                                ui.label("Note");
                                 ui.label("Source");
                                 ui.label("Trace");
                                 ui.label("A/Event/Min");
@@ -197,8 +199,21 @@ impl CircuitCiApp {
                                 ui.end_row();
 
                                 for &index in &visible_indexes {
-                                    let snapshot = &self.waveform_measurement_snapshots[index];
-                                    ui.monospace(&snapshot.label);
+                                    let can_jump = self.waveform_measurement_snapshots[index]
+                                        .trace
+                                        .is_some_and(|trace| {
+                                            valid_waveform_trace(&self.waveforms, trace)
+                                        });
+                                    let snapshot = &mut self.waveform_measurement_snapshots[index];
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut snapshot.label)
+                                            .desired_width(88.0),
+                                    );
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut snapshot.note)
+                                            .desired_width(140.0)
+                                            .hint_text("note"),
+                                    );
                                     ui.monospace(snapshot_source(snapshot));
                                     ui.monospace(&snapshot.trace_label);
                                     ui.monospace(snapshot_value_a(snapshot));
@@ -206,9 +221,6 @@ impl CircuitCiApp {
                                     ui.monospace(snapshot_delta(snapshot));
                                     ui.monospace(snapshot_rms(snapshot));
                                     ui.monospace(&snapshot.unit);
-                                    let can_jump = snapshot.trace.is_some_and(|trace| {
-                                        valid_waveform_trace(&self.waveforms, trace)
-                                    });
                                     if ui
                                         .add_enabled(can_jump, egui::Button::new("Jump"))
                                         .clicked()
@@ -273,6 +285,7 @@ impl CircuitCiApp {
                         snapshot_index,
                         trace,
                         label: snapshot.label.clone(),
+                        note: snapshot.note.clone(),
                         source: snapshot.source.clone(),
                         trace_label: snapshot.trace_label.clone(),
                         time_a_us: snapshot.time_a_us,
@@ -475,6 +488,7 @@ fn cursor_snapshot(
 ) -> ScopeMeasurementSnapshot {
     ScopeMeasurementSnapshot {
         label: label.to_string(),
+        note: String::new(),
         source: if row.selected {
             "cursor selected".to_string()
         } else {
@@ -501,6 +515,7 @@ fn region_snapshot(
 ) -> ScopeMeasurementSnapshot {
     ScopeMeasurementSnapshot {
         label: label.to_string(),
+        note: String::new(),
         source: if row.selected {
             "region selected".to_string()
         } else {
@@ -583,11 +598,12 @@ fn snapshot_rms(snapshot: &ScopeMeasurementSnapshot) -> String {
 
 pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> String {
     let mut csv = String::from(
-        "label,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n",
+        "label,note,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n",
     );
     for snapshot in snapshots {
         let fields = [
             snapshot.label.clone(),
+            snapshot.note.clone(),
             snapshot_source(snapshot),
             snapshot.trace_label.clone(),
             snapshot
@@ -637,6 +653,7 @@ pub(super) fn scope_snapshot_visible_indexes(
 fn snapshot_search_text(snapshot: &ScopeMeasurementSnapshot) -> String {
     [
         snapshot.label.as_str(),
+        snapshot.note.as_str(),
         snapshot.source.as_str(),
         snapshot.event_edge.as_deref().unwrap_or(""),
         snapshot.trace_label.as_str(),

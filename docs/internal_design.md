@@ -281,7 +281,7 @@ dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, Scopes state orchestration, simulation-time scrub/playback
-controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with search/source filters, plot markers, and filtered CSV copy/export,
+controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, plot markers, and filtered CSV copy/export,
 min/max/delta measurements, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
@@ -303,8 +303,8 @@ owns Scopes plot orchestration, cursor readout rows, region statistics display a
 visible time-window and value-window fit/zoom/pan helpers, Back/Forward
 view-window history, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
-region-stat, and trigger-event measurement snapshot capture, search/source
-filtering, plot-marker derivation, filtered CSV serialization/export, Jump
+region-stat, and trigger-event measurement snapshot capture, editable labels
+and notes, search/source filtering, plot-marker derivation, filtered CSV serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
