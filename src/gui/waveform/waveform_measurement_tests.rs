@@ -2,9 +2,9 @@ use super::waveform_test_support::probe_snapshot;
 use super::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, interpolated_value,
-    parse_waveform_csv_text, scope_cursor_legend_rows, scope_region_stats_rows,
-    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
-    scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
+    old_scope_report_bundle_dirs, parse_waveform_csv_text, scope_cursor_legend_rows,
+    scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted,
+    scope_snapshots_csv, scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
     unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
@@ -804,6 +804,14 @@ fn scope_report_bundle_cleanup_removes_only_old_bundle_dirs() {
     fs::create_dir_all(base_dir.join("scope_report_bundle_300_02")).unwrap();
     fs::create_dir_all(base_dir.join("unrelated")).unwrap();
 
+    let old = old_scope_report_bundle_dirs(&base_dir, 3).unwrap();
+    assert_eq!(
+        old,
+        vec![
+            base_dir.join("scope_report_bundle_200"),
+            base_dir.join("scope_report_bundle_100"),
+        ]
+    );
     let removed = cleanup_old_scope_report_bundle_dirs(&base_dir, 3).unwrap();
 
     assert_eq!(removed, 2);

@@ -753,7 +753,7 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                 self.open_scope_report_bundle(&latest);
             }
             if ui.button("Clean Old Bundles").clicked() {
-                self.cleanup_old_scope_report_bundles();
+                self.preview_old_scope_report_bundles();
             }
             if self.waveform_recent_report_bundles.len() > 1 {
                 let older_bundles = self
@@ -774,6 +774,21 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                     });
             }
         });
+        if !self.waveform_bundle_cleanup_preview.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "Cleanup preview: remove {} old bundle folder(s).",
+                    self.waveform_bundle_cleanup_preview.len()
+                ));
+                if ui.button("Confirm Cleanup").clicked() {
+                    self.confirm_scope_report_bundle_cleanup();
+                }
+                if ui.button("Cancel").clicked() {
+                    self.waveform_bundle_cleanup_preview.clear();
+                    self.status = "Canceled scope report bundle cleanup.".to_string();
+                }
+            });
+        }
     }
 
     fn push_recent_scope_report_bundle(&mut self, bundle: String) {
@@ -803,12 +818,36 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         }
     }
 
-    fn cleanup_old_scope_report_bundles(&mut self) {
-        match cleanup_old_scope_report_bundle_dirs(
+    fn preview_old_scope_report_bundles(&mut self) {
+        match old_scope_report_bundle_dirs(
             &output_bundle_base_dir(&self.output_dir),
             MAX_RECENT_SCOPE_BUNDLES,
         ) {
+            Ok(paths) if paths.is_empty() => {
+                self.waveform_bundle_cleanup_preview.clear();
+                self.status = "No old scope report bundle folders to clean.".to_string();
+            }
+            Ok(paths) => {
+                let count = paths.len();
+                self.waveform_bundle_cleanup_preview = paths
+                    .into_iter()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect();
+                self.status =
+                    format!("Previewing {count} old scope report bundle folder(s) for cleanup.");
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to preview old scope report bundle folders: {error}"
+                ));
+            }
+        }
+    }
+
+    fn confirm_scope_report_bundle_cleanup(&mut self) {
+        match remove_scope_report_bundle_dirs(&self.waveform_bundle_cleanup_preview) {
             Ok(removed) => {
+                self.waveform_bundle_cleanup_preview.clear();
                 self.waveform_recent_report_bundles
                     .retain(|bundle| Path::new(bundle).exists());
                 self.status = format!("Removed {removed} old scope report bundle folder(s).");
@@ -1208,20 +1247,41 @@ pub(super) fn unique_scope_report_bundle_dir(base_dir: &Path, unix_millis: u128)
     base_dir.join(format!("{stem}_overflow"))
 }
 
+#[cfg(test)]
 pub(super) fn cleanup_old_scope_report_bundle_dirs(
     base_dir: &Path,
     keep_count: usize,
 ) -> std::io::Result<usize> {
+    let bundles = old_scope_report_bundle_dirs(base_dir, keep_count)?;
+    let mut removed = 0usize;
+    for bundle in bundles {
+        fs::remove_dir_all(&bundle)?;
+        removed += 1;
+    }
+    Ok(removed)
+}
+
+pub(super) fn old_scope_report_bundle_dirs(
+    base_dir: &Path,
+    keep_count: usize,
+) -> std::io::Result<Vec<PathBuf>> {
     let mut bundles = scope_report_bundle_dirs(base_dir)?;
     bundles.sort_by(|left, right| {
         report_bundle_sort_key(right)
             .cmp(&report_bundle_sort_key(left))
             .then_with(|| right.cmp(left))
     });
+    Ok(bundles.into_iter().skip(keep_count).collect())
+}
+
+fn remove_scope_report_bundle_dirs(bundles: &[String]) -> std::io::Result<usize> {
     let mut removed = 0usize;
-    for bundle in bundles.into_iter().skip(keep_count) {
-        fs::remove_dir_all(&bundle)?;
-        removed += 1;
+    for bundle in bundles {
+        let path = Path::new(bundle);
+        if is_scope_report_bundle_dir(path) {
+            fs::remove_dir_all(path)?;
+            removed += 1;
+        }
     }
     Ok(removed)
 }
@@ -1233,16 +1293,19 @@ fn scope_report_bundle_dirs(base_dir: &Path) -> std::io::Result<Vec<PathBuf>> {
     }
     for entry in fs::read_dir(base_dir)? {
         let path = entry?.path();
-        if path.is_dir()
-            && path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("scope_report_bundle_"))
-        {
+        if is_scope_report_bundle_dir(&path) {
             bundles.push(path);
         }
     }
     Ok(bundles)
+}
+
+fn is_scope_report_bundle_dir(path: &Path) -> bool {
+    path.is_dir()
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("scope_report_bundle_"))
 }
 
 fn report_bundle_sort_key(path: &Path) -> u128 {

@@ -35,9 +35,9 @@ pub(super) use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_snapshots::{
-    cleanup_old_scope_report_bundle_dirs, scope_snapshot_visible_indexes,
-    scope_snapshot_visible_indexes_sorted, scope_snapshots_csv, scope_snapshots_markdown,
-    unique_scope_report_bundle_dir,
+    cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
+    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
+    scope_snapshots_markdown, unique_scope_report_bundle_dir,
 };
 #[cfg(test)]
 use waveform_trace_selector::{
