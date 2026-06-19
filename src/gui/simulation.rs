@@ -109,40 +109,42 @@ impl CircuitCiApp {
         self.run_model_with_scope_preparation();
     }
 
-    pub(super) fn run_model_with_scope_preparation(&mut self) {
+    pub(super) fn run_model_with_scope_preparation(&mut self) -> bool {
         if self.project_yaml_dirty {
             self.save_project_yaml();
             if self.project_yaml_dirty {
-                return;
+                return false;
             }
         }
         match self.prepare_auto_scope_probes_for_run() {
             Ok(true) => {
                 self.save_project_yaml();
                 if self.project_yaml_dirty {
-                    return;
+                    return false;
                 }
             }
             Ok(false) => {}
             Err(error) => {
                 self.record_error(error);
-                return;
+                return false;
             }
         }
         match self.prepare_scope_run_inputs() {
             Ok(true) => {
                 self.save_project_yaml();
                 if self.project_yaml_dirty {
-                    return;
+                    return false;
                 }
             }
             Ok(false) => {}
             Err(error) => {
                 self.record_error(error);
-                return;
+                return false;
             }
         }
+        let had_background_job = self.background_job_elapsed_secs().is_some();
         self.validate_project();
+        !had_background_job && self.background_job_elapsed_secs().is_some()
     }
 
     fn prepare_scope_run_inputs(&mut self) -> Result<bool> {

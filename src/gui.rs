@@ -731,6 +731,16 @@ impl CircuitCiApp {
             {
                 self.run_schematic_model();
             }
+            if ui
+                .add_enabled(
+                    self.background_job_elapsed_secs().is_none() && self.project_snapshot.is_some(),
+                    egui::Button::new("Run + Scopes"),
+                )
+                .on_hover_text("Run validation and open Scopes immediately with the pending scope probe focused when traces arrive.")
+                .clicked()
+            {
+                self.run_schematic_model_open_scopes();
+            }
             if ui.button("Scopes").clicked() {
                 self.apply_pending_scope_probe_focus();
                 self.stage = Stage::Simulation;
@@ -995,6 +1005,19 @@ impl CircuitCiApp {
 
     fn run_schematic_model(&mut self) {
         self.run_model_with_scope_preparation();
+    }
+
+    fn run_schematic_model_open_scopes(&mut self) {
+        if self.run_model_with_scope_preparation() {
+            self.open_scopes_for_running_validation();
+        }
+    }
+
+    fn open_scopes_for_running_validation(&mut self) {
+        self.apply_pending_scope_probe_focus();
+        self.stage = Stage::Simulation;
+        self.status = "Running validation in Scopes.".to_string();
+        self.push_diagnostic("Run + Scopes opened the Scopes workspace while validation runs.");
     }
 
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
@@ -1788,5 +1811,34 @@ board:
         app.sketch_grid_step = 128.0;
         app.normalize_sketch_grid_step();
         assert_eq!(app.sketch_grid_step, 96.0);
+    }
+
+    #[test]
+    fn run_plus_scopes_transition_opens_simulation_stage() {
+        let mut app = CircuitCiApp {
+            stage: Stage::Sketch,
+            pending_scope_probe: Some(ScopeProbeTarget {
+                scenario_name: "astable".to_string(),
+                probe_name: "v_out".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        app.open_scopes_for_running_validation();
+
+        assert_eq!(app.stage, Stage::Simulation);
+        assert_eq!(app.status, "Running validation in Scopes.");
+        assert!(
+            app.diagnostics
+                .iter()
+                .any(|line| line.contains("Run + Scopes opened the Scopes workspace"))
+        );
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "astable".to_string(),
+                probe_name: "v_out".to_string(),
+            })
+        );
     }
 }

@@ -396,6 +396,7 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, primary-toolbar probe controls that add voltage
   probes for selected nets or current/power probes for selected components,
+  one-click `Run + Scopes` validation from the schematic toolbar,
   Auto Probes action and Auto-before-Run option for bounded
   voltage/source-current probe population before validation, Run Readiness
   preview rows for the probes Run will create,
@@ -680,9 +681,11 @@ probe and labels invalid hover targets before the click. `Auto Probes` adds
 missing voltage probes for non-ground analog node bindings plus current probes
 for supported source branches, bounded per action, and skips probe expressions
 that already exist. When `Auto before Run` is enabled, the Sketch and Scopes
-Run buttons perform the same missing-probe pass before validation. The Run
-Readiness panel in both workspaces lists the planned voltage/current probe
-names, expressions, and targets before validation. If
+Run buttons perform the same missing-probe pass before validation. `Run +
+Scopes` starts validation from the schematic and immediately opens Scopes so
+the pending probe can focus when waveform traces arrive. The Run Readiness
+panel in both workspaces lists the planned voltage/current probe names,
+expressions, and targets before validation. If
 waveform artifacts are already loaded, the
 Scopes view selects the matching trace immediately; otherwise the target is
 applied after the next successful Run loads waveform CSV data. Selecting or focusing a
