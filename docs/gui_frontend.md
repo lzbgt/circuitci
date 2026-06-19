@@ -293,7 +293,7 @@ selection, selected-trace schematic-context strip actions, and scope probe
 lookup. `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching
 between loaded waveform artifacts and Sketch selections, graph-hover readout
 lines, normalized activity values for graph tinting, exact Scope Activity
-sample rows, bounded Scope Activity sparkline samples, and per-trace edge stepping for schematic-side observation.
+sample rows, bounded Scope Activity sparkline samples, per-trace edge stepping, and row-level measurement snapshot capture for schematic-side observation.
 `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
@@ -310,7 +310,8 @@ readout table, playback controls, transient visible time-window and
 value-window fit/zoom/pan helpers, Back/Forward view-window history, scope plot
 SVG copy/export actions, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
-region-stat, and trigger-event measurement snapshot capture, editable labels
+region-stat, trigger-event, and Scope Activity sample measurement snapshot
+capture, editable labels
 and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
@@ -420,7 +421,8 @@ form:
   underlying net, and can be converted or deleted from their context menu,
   runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
-  cursor-sampled value/time rows, and bounded per-trace sparklines,
+  cursor-sampled value/time rows, bounded per-trace sparklines, row-level
+  measurement snapshot capture,
   trace compare pin/unpin/clear/named-save/load/delete actions, Open Compare jumps, hoverable/clickable `scope` activity chips, hover
   readouts, and context-menu Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or

@@ -93,6 +93,66 @@ fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
 }
 
 #[test]
+fn scope_activity_sample_snapshot_captures_target_trace_at_cursor() {
+    let waveform =
+        parse_waveform_csv_text("time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n", "startup")
+            .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 0.5,
+        ..Default::default()
+    };
+
+    assert!(
+        app.capture_scope_activity_sample_snapshot(ScopeProbeTarget {
+            scenario_name: "startup".to_string(),
+            probe_name: "i(load)".to_string(),
+        })
+    );
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+    let snapshot = &app.waveform_measurement_snapshots[0];
+    assert_eq!(snapshot.label, "Scope Activity 1");
+    assert_eq!(snapshot.source, "scope activity");
+    assert_eq!(
+        snapshot.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        })
+    );
+    assert_eq!(snapshot.trace_label, "i(load)");
+    assert_eq!(snapshot.time_a_us, Some(0.5));
+    assert_eq!(snapshot.time_b_us, None);
+    assert!((snapshot.value_a.unwrap() - 0.2).abs() < 1.0e-12);
+    assert_eq!(snapshot.unit, "A");
+    assert!(
+        app.status
+            .contains("Captured Scope Activity sample for i(load)")
+    );
+}
+
+#[test]
+fn scope_activity_sample_snapshot_reports_missing_target() {
+    let waveform = parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n", "startup").unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 0.5,
+        ..Default::default()
+    };
+
+    assert!(
+        !app.capture_scope_activity_sample_snapshot(ScopeProbeTarget {
+            scenario_name: "startup".to_string(),
+            probe_name: "i(load)".to_string(),
+        })
+    );
+
+    assert!(app.waveform_measurement_snapshots.is_empty());
+    assert!(app.status.contains("is not loaded yet"));
+}
+
+#[test]
 fn scope_trigger_snapshots_capture_selected_event() {
     let waveform =
         parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n0.000002,0\n", "waveform.csv")

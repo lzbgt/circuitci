@@ -356,8 +356,8 @@ visible time-window and value-window fit/zoom/pan helpers, Back/Forward
 view-window history, scope plot SVG copy/export actions, and measurement
 snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
-region-stat, and trigger-event measurement snapshot capture, editable labels
-and notes, search/source filtering, sort/group projection, plot-marker
+region-stat, trigger-event, and Scope Activity sample measurement snapshot
+capture, editable labels and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export

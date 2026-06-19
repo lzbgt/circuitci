@@ -1,11 +1,12 @@
+use super::waveform_context::find_scope_probe;
 use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trace_selector::shift_trace_after_waveform_removal;
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
     ScopeCursorLegendRow, ScopeRegionStatsRow, WaveformTraceRef, format_time_s, format_value,
-    scope_cursor_legend_rows, waveform_time_range_for_view,
+    interpolated_value, probe_unit, scope_cursor_legend_rows, waveform_time_range_for_view,
 };
-use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
+use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot, ScopeProbeTarget};
 use eframe::egui;
 use std::fs;
 
@@ -150,6 +151,73 @@ impl CircuitCiApp {
             event.edge.label(),
             format_time_s(event.time_us / 1e6)
         );
+    }
+
+    pub(in crate::gui) fn capture_scope_activity_sample_snapshot(
+        &mut self,
+        target: ScopeProbeTarget,
+    ) -> bool {
+        let Some((waveform_index, probe_index)) =
+            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
+        else {
+            self.status = format!(
+                "Scope Activity trace {} from scenario {} is not loaded yet.",
+                target.probe_name, target.scenario_name
+            );
+            return false;
+        };
+        let trace = WaveformTraceRef {
+            waveform_index,
+            probe_index,
+        };
+        let Some(waveform) = self.waveforms.get(waveform_index) else {
+            self.status = "Scope Activity waveform is no longer loaded.".to_string();
+            return false;
+        };
+        let Some(probe) = waveform.probes.get(probe_index) else {
+            self.status = "Scope Activity trace is no longer loaded.".to_string();
+            return false;
+        };
+        let cursor_s = self.waveform_cursor_a_us / 1e6;
+        let Some(value) = interpolated_value(&waveform.time_s, &probe.values, cursor_s) else {
+            self.status = format!(
+                "No Scope Activity sample is available for {} at {}.",
+                target.probe_name,
+                format_time_s(cursor_s)
+            );
+            return false;
+        };
+        let trace_label = trace_label(&self.waveforms, trace).unwrap_or_else(|| {
+            probe
+                .expression
+                .as_deref()
+                .unwrap_or(&probe.label)
+                .to_string()
+        });
+        let snapshot = ScopeMeasurementSnapshot {
+            label: format!(
+                "Scope Activity {}",
+                self.waveform_measurement_snapshots.len() + 1
+            ),
+            note: String::new(),
+            source: "scope activity".to_string(),
+            trace: Some(trace),
+            trace_label: trace_label.clone(),
+            time_a_us: Some(self.waveform_cursor_a_us),
+            time_b_us: None,
+            value_a: Some(value),
+            value_b: None,
+            delta_value: None,
+            rms_value: None,
+            event_edge: None,
+            unit: probe_unit(&probe.label).to_string(),
+        };
+        self.push_scope_measurement_snapshot(snapshot);
+        self.status = format!(
+            "Captured Scope Activity sample for {trace_label} at {}.",
+            format_time_s(cursor_s)
+        );
+        true
     }
 
     pub(super) fn capture_scope_region_stat_snapshots(

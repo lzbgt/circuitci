@@ -309,6 +309,17 @@ impl CircuitCiApp {
                                             row.target.probe_name, edge.label
                                         );
                                     }
+                                    if ui
+                                        .button("Snap")
+                                        .on_hover_text(
+                                            "Capture the current Scope Activity sample into Scopes measurement snapshots.",
+                                        )
+                                        .clicked()
+                                    {
+                                        self.capture_scope_activity_sample_snapshot(
+                                            row.target.clone(),
+                                        );
+                                    }
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
