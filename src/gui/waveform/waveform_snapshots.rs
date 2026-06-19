@@ -167,65 +167,22 @@ impl CircuitCiApp {
         &mut self,
         target: ScopeProbeTarget,
     ) -> bool {
-        let Some((waveform_index, probe_index)) =
-            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
-        else {
-            self.status = format!(
-                "Scope Activity trace {} from scenario {} is not loaded yet.",
-                target.probe_name, target.scenario_name
-            );
-            return false;
+        let label = format!(
+            "Scope Activity {}",
+            self.waveform_measurement_snapshots.len() + 1
+        );
+        let snapshot = match self.scope_activity_sample_snapshot_row(&target, label) {
+            Ok(snapshot) => snapshot,
+            Err(status) => {
+                self.status = status;
+                return false;
+            }
         };
-        let trace = WaveformTraceRef {
-            waveform_index,
-            probe_index,
-        };
-        let Some(waveform) = self.waveforms.get(waveform_index) else {
-            self.status = "Scope Activity waveform is no longer loaded.".to_string();
-            return false;
-        };
-        let Some(probe) = waveform.probes.get(probe_index) else {
-            self.status = "Scope Activity trace is no longer loaded.".to_string();
-            return false;
-        };
-        let cursor_s = self.waveform_cursor_a_us / 1e6;
-        let Some(value) = interpolated_value(&waveform.time_s, &probe.values, cursor_s) else {
-            self.status = format!(
-                "No Scope Activity sample is available for {} at {}.",
-                target.probe_name,
-                format_time_s(cursor_s)
-            );
-            return false;
-        };
-        let trace_label = trace_label(&self.waveforms, trace).unwrap_or_else(|| {
-            probe
-                .expression
-                .as_deref()
-                .unwrap_or(&probe.label)
-                .to_string()
-        });
-        let snapshot = ScopeMeasurementSnapshot {
-            label: format!(
-                "Scope Activity {}",
-                self.waveform_measurement_snapshots.len() + 1
-            ),
-            note: String::new(),
-            source: "scope activity".to_string(),
-            trace: Some(trace),
-            trace_label: trace_label.clone(),
-            time_a_us: Some(self.waveform_cursor_a_us),
-            time_b_us: None,
-            value_a: Some(value),
-            value_b: None,
-            delta_value: None,
-            rms_value: None,
-            event_edge: None,
-            unit: probe_unit(&probe.label).to_string(),
-        };
+        let trace_label = snapshot.trace_label.clone();
         self.push_scope_measurement_snapshot(snapshot);
         self.status = format!(
             "Captured Scope Activity sample for {trace_label} at {}.",
-            format_time_s(cursor_s)
+            format_time_s(self.waveform_cursor_a_us / 1e6)
         );
         true
     }
@@ -234,38 +191,122 @@ impl CircuitCiApp {
         &mut self,
         target: ScopeProbeTarget,
     ) -> bool {
+        let label = format!(
+            "Scope Activity Freq {}",
+            self.waveform_measurement_snapshots.len() + 1
+        );
+        let snapshot = match self.scope_activity_frequency_snapshot_row(&target, label) {
+            Ok(snapshot) => snapshot,
+            Err(status) => {
+                self.status = status;
+                return false;
+            }
+        };
+        let trace_label = snapshot.trace_label.clone();
+        let Some(frequency_hz) = snapshot.value_a else {
+            self.status = "Scope Activity frequency snapshot is missing frequency.".to_string();
+            return false;
+        };
+        let Some(period_s) = snapshot.value_b else {
+            self.status = "Scope Activity frequency snapshot is missing period.".to_string();
+            return false;
+        };
+        self.push_scope_measurement_snapshot(snapshot);
+        self.status = format!(
+            "Captured Scope Activity frequency for {trace_label}: {} period {}.",
+            format_frequency_hz(frequency_hz),
+            format_time_s(period_s)
+        );
+        true
+    }
+
+    pub(in crate::gui) fn scope_activity_sample_snapshot_row(
+        &self,
+        target: &ScopeProbeTarget,
+        label: String,
+    ) -> Result<ScopeMeasurementSnapshot, String> {
         let Some((waveform_index, probe_index)) =
             find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
         else {
-            self.status = format!(
+            return Err(format!(
                 "Scope Activity trace {} from scenario {} is not loaded yet.",
                 target.probe_name, target.scenario_name
-            );
-            return false;
+            ));
+        };
+        let trace = WaveformTraceRef {
+            waveform_index,
+            probe_index,
+        };
+        let Some(waveform) = self.waveforms.get(waveform_index) else {
+            return Err("Scope Activity waveform is no longer loaded.".to_string());
+        };
+        let Some(probe) = waveform.probes.get(probe_index) else {
+            return Err("Scope Activity trace is no longer loaded.".to_string());
+        };
+        let cursor_s = self.waveform_cursor_a_us / 1e6;
+        let Some(value) = interpolated_value(&waveform.time_s, &probe.values, cursor_s) else {
+            return Err(format!(
+                "No Scope Activity sample is available for {} at {}.",
+                target.probe_name,
+                format_time_s(cursor_s)
+            ));
+        };
+        let trace_label = trace_label(&self.waveforms, trace).unwrap_or_else(|| {
+            probe
+                .expression
+                .as_deref()
+                .unwrap_or(&probe.label)
+                .to_string()
+        });
+        Ok(ScopeMeasurementSnapshot {
+            label,
+            note: String::new(),
+            source: "scope activity".to_string(),
+            trace: Some(trace),
+            trace_label,
+            time_a_us: Some(self.waveform_cursor_a_us),
+            time_b_us: None,
+            value_a: Some(value),
+            value_b: None,
+            delta_value: None,
+            rms_value: None,
+            event_edge: None,
+            unit: probe_unit(&probe.label).to_string(),
+        })
+    }
+
+    pub(in crate::gui) fn scope_activity_frequency_snapshot_row(
+        &self,
+        target: &ScopeProbeTarget,
+        label: String,
+    ) -> Result<ScopeMeasurementSnapshot, String> {
+        let Some((waveform_index, probe_index)) =
+            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
+        else {
+            return Err(format!(
+                "Scope Activity trace {} from scenario {} is not loaded yet.",
+                target.probe_name, target.scenario_name
+            ));
         };
         let trace = WaveformTraceRef {
             waveform_index,
             probe_index,
         };
         let Some(frequency) =
-            runtime_scope_probe_frequency(&self.waveforms, waveform_index, &target)
+            runtime_scope_probe_frequency(&self.waveforms, waveform_index, target)
         else {
-            self.status = format!(
+            return Err(format!(
                 "No dominant frequency is available for Scope Activity trace {}.",
                 target.probe_name
-            );
-            return false;
+            ));
         };
-        let trace_label = trace_label(&self.waveforms, trace).unwrap_or(target.probe_name);
-        let snapshot = ScopeMeasurementSnapshot {
-            label: format!(
-                "Scope Activity Freq {}",
-                self.waveform_measurement_snapshots.len() + 1
-            ),
+        let trace_label = trace_label(&self.waveforms, trace).unwrap_or(target.probe_name.clone());
+        Ok(ScopeMeasurementSnapshot {
+            label,
             note: "Dominant frequency and period from schematic Scope Activity.".to_string(),
             source: "scope activity frequency".to_string(),
             trace: Some(trace),
-            trace_label: trace_label.clone(),
+            trace_label,
             time_a_us: None,
             time_b_us: None,
             value_a: Some(frequency.frequency_hz),
@@ -274,14 +315,7 @@ impl CircuitCiApp {
             rms_value: None,
             event_edge: None,
             unit: "Hz / s".to_string(),
-        };
-        self.push_scope_measurement_snapshot(snapshot);
-        self.status = format!(
-            "Captured Scope Activity frequency for {trace_label}: {} period {}.",
-            format_frequency_hz(frequency.frequency_hz),
-            format_time_s(frequency.period_s)
-        );
-        true
+        })
     }
 
     pub(super) fn capture_scope_region_stat_snapshots(
@@ -895,7 +929,7 @@ fn snapshot_rms(snapshot: &ScopeMeasurementSnapshot) -> String {
         .unwrap_or_else(|| "-".to_string())
 }
 
-pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> String {
+pub(in crate::gui) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> String {
     let mut csv = String::from(
         "label,note,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n",
     );
@@ -932,7 +966,7 @@ pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> Str
     csv
 }
 
-pub(super) fn scope_snapshots_markdown(snapshots: &[ScopeMeasurementSnapshot]) -> String {
+pub(in crate::gui) fn scope_snapshots_markdown(snapshots: &[ScopeMeasurementSnapshot]) -> String {
     let mut markdown = String::from("## Scope Measurement Snapshots\n\n");
     if snapshots.is_empty() {
         markdown.push_str("_No measurement snapshots matched the current filters._\n");

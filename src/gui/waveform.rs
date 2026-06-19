@@ -97,13 +97,11 @@ pub(in crate::gui) use waveform_runtime::{
     runtime_scope_probe_target_for_selection,
 };
 pub(super) use waveform_snapshots::{
-    ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter,
-};
-#[cfg(test)]
-use waveform_snapshots::{
-    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
+    ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, scope_snapshots_csv,
     scope_snapshots_markdown,
 };
+#[cfg(test)]
+use waveform_snapshots::{scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted};
 #[cfg(test)]
 use waveform_trace_selector::{
     WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,

@@ -5,8 +5,8 @@ use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
     RuntimeScopeProbeEdgeStep, ScopeSnapshotSourceFilter, WaveformView,
     runtime_scope_probe_edge_jump, runtime_scope_probe_frequency_label,
-    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
-    waveform_time_range_for_view,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points, scope_snapshots_csv,
+    scope_snapshots_markdown, waveform_time_range_for_view,
 };
 use super::{CircuitCiApp, ScopeMeasurementSnapshot, Stage};
 
@@ -128,6 +128,38 @@ impl CircuitCiApp {
                             .clicked()
                         {
                             self.capture_visible_scope_activity_frequency_snapshots_from_sketch(
+                                targets,
+                                &visible_indexes,
+                            );
+                        }
+                        if ui
+                            .add_enabled(
+                                !visible_indexes.is_empty(),
+                                egui::Button::new("Copy CSV"),
+                            )
+                            .on_hover_text(
+                                "Copy visible Scope Activity sample and frequency rows as CSV without adding snapshots.",
+                            )
+                            .clicked()
+                        {
+                            self.copy_visible_scope_activity_observations_csv(
+                                ui.ctx(),
+                                targets,
+                                &visible_indexes,
+                            );
+                        }
+                        if ui
+                            .add_enabled(
+                                !visible_indexes.is_empty(),
+                                egui::Button::new("Copy MD"),
+                            )
+                            .on_hover_text(
+                                "Copy visible Scope Activity sample and frequency rows as Markdown without adding snapshots.",
+                            )
+                            .clicked()
+                        {
+                            self.copy_visible_scope_activity_observations_markdown(
+                                ui.ctx(),
                                 targets,
                                 &visible_indexes,
                             );
@@ -523,6 +555,69 @@ impl CircuitCiApp {
             ),
         };
         captured
+    }
+
+    pub(super) fn visible_scope_activity_observation_snapshots(
+        &self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> Vec<ScopeMeasurementSnapshot> {
+        let mut rows = Vec::new();
+        for &index in visible_indexes {
+            let Some(target) = targets.get(index).map(|row| &row.target) else {
+                continue;
+            };
+            if let Ok(snapshot) = self.scope_activity_sample_snapshot_row(
+                target,
+                format!("Scope Activity {}", rows.len() + 1),
+            ) {
+                rows.push(snapshot);
+            }
+            if let Ok(snapshot) = self.scope_activity_frequency_snapshot_row(
+                target,
+                format!("Scope Activity Freq {}", rows.len() + 1),
+            ) {
+                rows.push(snapshot);
+            }
+        }
+        rows
+    }
+
+    fn copy_visible_scope_activity_observations_csv(
+        &mut self,
+        ctx: &egui::Context,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        let rows = self.visible_scope_activity_observation_snapshots(targets, visible_indexes);
+        if rows.is_empty() {
+            self.status =
+                "No visible Scope Activity observations are available to copy.".to_string();
+            return 0;
+        }
+        let count = rows.len();
+        ctx.copy_text(scope_snapshots_csv(&rows));
+        self.status = format!("Copied {count} visible Scope Activity observation row(s) as CSV.");
+        count
+    }
+
+    fn copy_visible_scope_activity_observations_markdown(
+        &mut self,
+        ctx: &egui::Context,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        let rows = self.visible_scope_activity_observation_snapshots(targets, visible_indexes);
+        if rows.is_empty() {
+            self.status =
+                "No visible Scope Activity observations are available to copy.".to_string();
+            return 0;
+        }
+        let count = rows.len();
+        ctx.copy_text(scope_snapshots_markdown(&rows));
+        self.status =
+            format!("Copied {count} visible Scope Activity observation row(s) as Markdown.");
+        count
     }
 }
 

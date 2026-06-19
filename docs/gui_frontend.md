@@ -138,7 +138,7 @@ legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
-visible-list snapshot capture, source-specific snapshot clearing for sample and frequency rows,
+visible-list snapshot capture, direct visible CSV/Markdown copy, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
@@ -298,7 +298,7 @@ lookup. `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching
 between loaded waveform artifacts and Sketch selections, graph-hover readout
 lines, normalized activity values for graph tinting, exact Scope Activity
 sample rows, compact frequency/period readouts, bounded Scope Activity
-sparkline samples, per-trace edge stepping, and row-level sample and frequency snapshot capture for schematic-side observation.
+sparkline samples, per-trace edge stepping, and row-level sample and frequency snapshot capture plus direct visible CSV/Markdown copy for schematic-side observation.
 `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
@@ -427,7 +427,7 @@ form:
   runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
   cursor-sampled value/time rows, compact frequency/period readouts,
-  bounded per-trace sparklines, row-level and visible-list sample and frequency snapshot capture with a live
+  bounded per-trace sparklines, row-level and visible-list sample and frequency snapshot capture plus direct visible CSV/Markdown copy with a live
   activity-snapshot count, source-specific clearing, and direct Open Snapshots routing,
   trace compare pin/unpin/clear/named-save/load/delete actions, Open Compare jumps, hoverable/clickable `scope` activity chips, hover
   readouts, and context-menu Scopes jumps for matching loaded waveform probes,

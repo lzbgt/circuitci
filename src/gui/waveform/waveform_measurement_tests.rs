@@ -249,6 +249,60 @@ fn scope_activity_snap_visible_frequency_captures_available_targets() {
 }
 
 #[test]
+fn scope_activity_visible_observation_rows_include_samples_and_frequencies() {
+    let rows = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let value = (2.0 * PI * 1_000.0 * time_s).sin();
+            format!("{time_s:.9},{value:.9},1.0")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out),v(flat)\n{rows}\n"), "startup").unwrap();
+    let app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 500.0,
+        ..Default::default()
+    };
+    let targets = vec![
+        RuntimeScopeActivityTarget {
+            label: "out".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(out)".to_string(),
+            },
+        },
+        RuntimeScopeActivityTarget {
+            label: "flat".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(flat)".to_string(),
+            },
+        },
+    ];
+
+    let rows = app.visible_scope_activity_observation_snapshots(&targets, &[0, 1]);
+
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0].source, "scope activity");
+    assert_eq!(rows[0].trace_label, "v(out)");
+    assert_eq!(rows[1].source, "scope activity frequency");
+    assert_eq!(rows[1].trace_label, "v(out)");
+    assert_eq!(rows[2].source, "scope activity");
+    assert_eq!(rows[2].trace_label, "v(flat)");
+    assert!(app.waveform_measurement_snapshots.is_empty());
+
+    let csv = scope_snapshots_csv(&rows);
+    assert!(csv.contains("scope activity,v(out)"));
+    assert!(csv.contains("scope activity frequency,v(out)"));
+    assert!(csv.contains("scope activity,v(flat)"));
+    let markdown = scope_snapshots_markdown(&rows);
+    assert!(markdown.contains("| Scope Activity 1 |"));
+    assert!(markdown.contains("| Scope Activity Freq 2 |"));
+}
+
+#[test]
 fn scope_activity_snap_visible_captures_current_visible_targets() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",
