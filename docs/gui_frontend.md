@@ -134,9 +134,9 @@ defaults, and viewport pan/zoom input.
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools.
 `src/gui/scope_auto_probes.rs` owns the Sketch/Scopes Auto Probes button plus
-the guarded Auto-before-Run preference. Both paths add bounded missing voltage
-probes for analog scenario nodes and source-branch current probes while
-skipping already covered expressions.
+the guarded Auto-before-Run preference and Run Readiness probe preview. These
+paths add or preview bounded missing voltage probes for analog scenario nodes
+and source-branch current probes while skipping already covered expressions.
 `src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
 drawing, and optional guide-snap target adjustment for component placement plus
 selected-node and selected-group drag affordances. The primary schematic toolbar
@@ -397,7 +397,8 @@ form:
   matching waveform probes, primary-toolbar probe controls that add voltage
   probes for selected nets or current/power probes for selected components,
   Auto Probes action and Auto-before-Run option for bounded
-  voltage/source-current probe population before validation,
+  voltage/source-current probe population before validation, Run Readiness
+  preview rows for the probes Run will create,
   plus direct `Scope V`, `Scope I`, and `Scope P` actions that create the
   missing probe when needed and open the Simulation-stage Scopes workspace,
   armed `Scope Tool` V/I/P placement buttons that consume a canvas click on a
@@ -679,7 +680,9 @@ probe and labels invalid hover targets before the click. `Auto Probes` adds
 missing voltage probes for non-ground analog node bindings plus current probes
 for supported source branches, bounded per action, and skips probe expressions
 that already exist. When `Auto before Run` is enabled, the Sketch and Scopes
-Run buttons perform the same missing-probe pass before validation. If
+Run buttons perform the same missing-probe pass before validation. The Run
+Readiness panel in both workspaces lists the planned voltage/current probe
+names, expressions, and targets before validation. If
 waveform artifacts are already loaded, the
 Scopes view selects the matching trace immediately; otherwise the target is
 applied after the next successful Run loads waveform CSV data. Selecting or focusing a

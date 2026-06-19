@@ -164,6 +164,8 @@ impl CircuitCiApp {
 
     fn scope_side_dock(&mut self, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical().show(ui, |ui| {
+            self.scope_run_readiness_panel(ui);
+            ui.separator();
             self.waveform_controls_panel(ui);
             ui.separator();
             if let Some(snapshot) = self.project_snapshot.clone() {

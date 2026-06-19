@@ -88,9 +88,10 @@ the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by
 the same scope-tool state path as the toolbar buttons and intentionally ignore
 modified key chords so copy/paste and selection chords keep their meaning.
 `src/gui/scope_auto_probes.rs` owns the Sketch/Scopes Auto Probes button and
-guarded Auto-before-Run preference. Both paths derive bounded missing voltage
-probes from analog node bindings and source-branch current probes from
-supported primitive sources while skipping already covered expressions.
+guarded Auto-before-Run preference plus the Run Readiness probe preview. These
+paths derive or preview bounded missing voltage probes from analog node
+bindings and source-branch current probes from supported primitive sources
+while skipping already covered expressions.
 `src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
 drawing, and optional guide-snap target adjustment for component placement plus
 selected-node and selected-group drag affordances. The primary schematic toolbar

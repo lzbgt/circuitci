@@ -33,6 +33,15 @@ enum AutoScopeProbeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct AutoScopeProbePreviewRow {
+    scenario_name: String,
+    probe_name: String,
+    expression: String,
+    quantity: &'static str,
+    target: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct AutoScopeProbeEdit {
     updated_yaml: String,
     added_voltage: usize,
@@ -95,6 +104,84 @@ impl CircuitCiApp {
             self.remember_scope_probe_target(&target.scenario_name, &target.probe_name);
         }
         Ok(true)
+    }
+
+    pub(super) fn scope_run_readiness_panel(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new("Run Readiness")
+            .default_open(true)
+            .show(ui, |ui| {
+                if self.project_yaml.trim().is_empty() {
+                    ui.label("Load a project to preview Run scope probes.");
+                    return;
+                }
+
+                ui.horizontal(|ui| {
+                    ui.label("Auto probes");
+                    self.scope_auto_probe_run_toggle(ui);
+                });
+
+                match auto_scope_probe_preview_rows(
+                    &self.project_yaml,
+                    Path::new(&self.project_path),
+                ) {
+                    Ok(rows) if rows.is_empty() => {
+                        if self.scope_auto_probes_before_run {
+                            ui.label(
+                                "No missing useful Auto Probes. Run will use existing probes or the fallback transient probe path.",
+                            );
+                        } else {
+                            ui.label("Auto-before-Run is off. Run will not add Auto Probes.");
+                        }
+                    }
+                    Ok(rows) => {
+                        let voltage = rows
+                            .iter()
+                            .filter(|row| row.quantity == "voltage")
+                            .count();
+                        let current = rows
+                            .iter()
+                            .filter(|row| row.quantity == "current")
+                            .count();
+                        if self.scope_auto_probes_before_run {
+                            ui.label(format!(
+                                "Run will add {} probe(s): {voltage} voltage, {current} current.",
+                                rows.len()
+                            ));
+                        } else {
+                            ui.label(format!(
+                                "Auto-before-Run is off. {} probe(s) are available to add manually.",
+                                rows.len()
+                            ));
+                        }
+                        egui::Grid::new("scope_run_readiness_probe_preview")
+                            .num_columns(4)
+                            .striped(true)
+                            .show(ui, |ui| {
+                                ui.strong("Kind");
+                                ui.strong("Probe");
+                                ui.strong("Expression");
+                                ui.strong("Target");
+                                ui.end_row();
+                                for row in &rows {
+                                    ui.label(row.quantity);
+                                    ui.monospace(format!(
+                                        "{} / {}",
+                                        row.scenario_name, row.probe_name
+                                    ));
+                                    ui.monospace(&row.expression);
+                                    ui.label(&row.target);
+                                    ui.end_row();
+                                }
+                            });
+                    }
+                    Err(error) => {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(180, 50, 50),
+                            format!("Cannot preview Run probes: {error:#}"),
+                        );
+                    }
+                }
+            });
     }
 
     fn apply_auto_scope_probes(&mut self) {
@@ -260,6 +347,32 @@ fn auto_scope_probe_candidates(
     Ok(candidates)
 }
 
+fn auto_scope_probe_preview_rows(
+    project_yaml: &str,
+    project_path: &Path,
+) -> Result<Vec<AutoScopeProbePreviewRow>> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(project_yaml).context("Project YAML is not valid Board IR.")?;
+    Ok(auto_scope_probe_candidates(&project, project_path)?
+        .into_iter()
+        .map(|candidate| {
+            let (quantity, target) = match &candidate.kind {
+                AutoScopeProbeKind::Voltage { net_id } => ("voltage", format!("net {net_id}")),
+                AutoScopeProbeKind::Current { component_id, .. } => {
+                    ("current", format!("source {component_id}"))
+                }
+            };
+            AutoScopeProbePreviewRow {
+                scenario_name: candidate.scenario_name,
+                probe_name: candidate.probe_name,
+                expression: candidate.expression,
+                quantity,
+                target,
+            }
+        })
+        .collect())
+}
+
 fn auto_current_probe_components(
     project: &crate::board_ir::BoardProject,
     analog: &crate::board_ir::AnalogScenario,
@@ -353,7 +466,9 @@ fn sanitize_probe_id(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{auto_scope_probe_candidates, auto_scope_probe_project_yaml};
+    use super::{
+        auto_scope_probe_candidates, auto_scope_probe_preview_rows, auto_scope_probe_project_yaml,
+    };
     use crate::gui::analog::analog_scenario_choices;
     use crate::gui::{CircuitCiApp, ScopeProbeTarget};
     use std::path::Path;
@@ -434,6 +549,32 @@ scenarios:
         let second =
             auto_scope_probe_project_yaml(&edit.updated_yaml, Path::new("project.yaml")).unwrap();
         assert_eq!(second.added_total(), 0);
+    }
+
+    #[test]
+    fn auto_scope_preview_rows_show_run_probe_setup() {
+        let rows =
+            auto_scope_probe_preview_rows(AUTO_SCOPE_PROJECT, Path::new("project.yaml")).unwrap();
+
+        let summary = rows
+            .iter()
+            .map(|row| {
+                format!(
+                    "{}:{}:{}:{}",
+                    row.quantity, row.probe_name, row.expression, row.target
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            summary,
+            [
+                "voltage:v_out:V(out):net out",
+                "voltage:v_rail_5v:V(rail_5v):net rail_5v",
+                "voltage:v_timing:V(timing):net timing",
+                "current:i_V1:I(V1):source V1",
+                "current:i_VOUT:I(VOUT):source VOUT",
+            ]
+        );
     }
 
     #[test]
