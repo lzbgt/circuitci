@@ -24,6 +24,7 @@ impl CircuitCiApp {
             WaveformFootprintSortKey::EstimatedBytes,
             true,
         );
+        let source_summaries = waveform_footprint_source_summaries(&all_rows);
         let largest_unload_targets = waveform_footprint_largest_unload_targets(
             &all_rows,
             WAVEFORM_FOOTPRINT_WARNING_BYTES,
@@ -115,6 +116,26 @@ impl CircuitCiApp {
                             waveform_footprint_unload_targets(&rows);
                     }
                 });
+                if !all_rows.is_empty() {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(format!(
+                            "Summary: {} waveform view(s), {} total.",
+                            all_rows.len(),
+                            format_waveform_load_bytes(Some(total_bytes as u64))
+                        ));
+                        for summary in &source_summaries {
+                            if summary.count == 0 {
+                                continue;
+                            }
+                            ui.label(format!(
+                                "{}: {} view(s), {}.",
+                                summary.source.label(),
+                                summary.count,
+                                format_waveform_load_bytes(Some(summary.estimated_bytes as u64))
+                            ));
+                        }
+                    });
+                }
                 if total_bytes > WAVEFORM_FOOTPRINT_WARNING_BYTES {
                     ui.horizontal_wrapped(|ui| {
                         ui.label(format!(
@@ -400,6 +421,13 @@ pub(super) struct WaveformFootprintRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformFootprintSourceSummary {
+    pub(super) source: WaveformFootprintSource,
+    pub(super) count: usize,
+    pub(super) estimated_bytes: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::gui) struct WaveformFootprintUnloadTarget {
     label: String,
     path: String,
@@ -492,6 +520,27 @@ pub(super) fn waveform_footprint_rows_with_diagnostics(
         if descending { order.reverse() } else { order }
     });
     rows
+}
+
+pub(super) fn waveform_footprint_source_summaries(
+    rows: &[WaveformFootprintRow],
+) -> Vec<WaveformFootprintSourceSummary> {
+    WaveformFootprintSource::ALL
+        .into_iter()
+        .map(|source| {
+            let mut count = 0;
+            let mut estimated_bytes = 0;
+            for row in rows.iter().filter(|row| row.source == source) {
+                count += 1;
+                estimated_bytes += row.estimated_bytes;
+            }
+            WaveformFootprintSourceSummary {
+                source,
+                count,
+                estimated_bytes,
+            }
+        })
+        .collect()
 }
 
 pub(super) fn waveform_footprint_unload_targets(

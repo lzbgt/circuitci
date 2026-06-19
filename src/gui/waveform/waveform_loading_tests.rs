@@ -14,10 +14,11 @@ use super::{
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, select_deferred_waveform_column_picks, waveform_footprint_csv,
     waveform_footprint_largest_unload_targets, waveform_footprint_rows,
-    waveform_footprint_rows_with_diagnostics, waveform_footprint_unload_targets,
-    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
-    waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
-    waveform_load_diagnostics_csv, waveform_load_preflight,
+    waveform_footprint_rows_with_diagnostics, waveform_footprint_source_summaries,
+    waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
+    waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
+    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
+    waveform_load_preflight,
 };
 use crate::gui::CircuitCiApp;
 use std::collections::BTreeSet;
@@ -1186,6 +1187,23 @@ fn waveform_footprint_rows_classify_loaded_source_type() {
             (full_path, "full_csv"),
             (runtime_path, "runtime_only"),
             (selected_path, "selected_columns"),
+        ]
+    );
+    assert_eq!(
+        waveform_footprint_source_summaries(&rows)
+            .iter()
+            .map(|summary| {
+                (
+                    summary.source.csv_label(),
+                    summary.count,
+                    summary.estimated_bytes,
+                )
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            ("full_csv", 1, 48),
+            ("selected_columns", 1, 32),
+            ("runtime_only", 1, 32),
         ]
     );
     assert_eq!(
