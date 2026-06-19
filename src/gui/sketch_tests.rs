@@ -7,8 +7,8 @@ use super::sketch::{
     hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
     load_project_snapshot_from_yaml, orthogonal_wire_points, persisted_node_position_from_screen,
     persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
-    remove_net, remove_schematic_wire_route, sketch_graph_bounds, sketch_wire_points,
-    snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
+    remove_net, remove_schematic_wire_route, runtime_scope_chip_rect, sketch_graph_bounds,
+    sketch_wire_points, snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -340,6 +340,31 @@ board:
         .reduce(|accumulator, rect| accumulator.union(rect))
         .unwrap();
     assert!(pasted_bounds.center().distance(target) <= app.sketch_grid_step);
+}
+
+#[test]
+fn runtime_scope_chip_rect_stays_inside_node_top_right() {
+    let snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    let graph = layout_sketch_graph_viewport(
+        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(500.0, 320.0)),
+        &snapshot,
+        SketchViewport {
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        },
+    );
+    let component = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+        .unwrap();
+
+    let chip = runtime_scope_chip_rect(component);
+
+    assert!(component.rect.contains(chip.center()));
+    assert!(chip.right() <= component.rect.right());
+    assert!(chip.top() > component.rect.top());
+    assert_eq!(chip.size(), egui::vec2(44.0, 18.0));
 }
 
 #[test]

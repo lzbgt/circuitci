@@ -4,7 +4,7 @@ use super::sketch::{
     ProjectSnapshot, SketchSelection, draw_sketch_grid, draw_sketch_node, draw_sketch_pin_anchor,
     hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
-    snap_screen_point_to_grid,
+    runtime_scope_chip_rect, snap_screen_point_to_grid,
 };
 use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, hit_test_wire_route_handle, schematic_canvas_size,
@@ -27,7 +27,7 @@ use super::sketch_scope_feedback::{
 use super::sketch_scope_tools::SketchScopeProbeTool;
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
-    waveform_probe_value_for_badge,
+    runtime_scope_probe_target_for_selection, waveform_probe_value_for_badge,
 };
 use super::{
     CircuitCiApp, sketch_alignment, sketch_bundles, sketch_component_labels, sketch_connectivity,
@@ -148,6 +148,29 @@ impl CircuitCiApp {
                     && node.rect.contains(position)
             })
         });
+        let hovered_runtime_scope_node = pointer_hover.and_then(|position| {
+            graph.nodes.iter().find(|node| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.interaction_visible(&node.selection))
+                    && runtime_scope_chip_rect(node).contains(position)
+                    && runtime_probe_activity_for_selection(
+                        &self.waveforms,
+                        self.selected_waveform,
+                        self.waveform_cursor_a_us,
+                        &node.selection,
+                        snapshot,
+                    )
+                    .is_some()
+                    && runtime_scope_probe_target_for_selection(
+                        &self.waveforms,
+                        self.selected_waveform,
+                        &node.selection,
+                        snapshot,
+                    )
+                    .is_some()
+            })
+        });
         let hovered_anchor = pointer_hover.and_then(|position| {
             graph.pin_anchors.iter().find(|anchor| {
                 hierarchy_view
@@ -232,6 +255,9 @@ impl CircuitCiApp {
             && hovered_net_label_badge.is_none()
             && hovered_component_label_badge.is_none()
             && !pointer_over_minimap;
+        if hovered_runtime_scope_node.is_some() {
+            ui.output_mut(|output| output.cursor_icon = egui::CursorIcon::PointingHand);
+        }
         let position_hits_interactive_item = |position: egui::Pos2| -> bool {
             graph.nodes.iter().any(|node| {
                 hierarchy_view
@@ -567,7 +593,16 @@ impl CircuitCiApp {
                 &node.selection,
                 snapshot,
             );
-            draw_sketch_node(&painter, node, selected, runtime_activity, opacity);
+            let runtime_scope_chip_hovered = hovered_runtime_scope_node
+                .is_some_and(|hovered| hovered.selection == node.selection);
+            draw_sketch_node(
+                &painter,
+                node,
+                selected,
+                runtime_activity,
+                runtime_scope_chip_hovered,
+                opacity,
+            );
         }
         for badge in &net_label_badges {
             let dragged = self
@@ -872,6 +907,31 @@ impl CircuitCiApp {
                         && node.rect.contains(position)
                 })
                 .map(|node| node.selection.clone());
+            let clicked_runtime_scope_target = graph
+                .nodes
+                .iter()
+                .find(|node| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.interaction_visible(&node.selection))
+                        && runtime_scope_chip_rect(node).contains(position)
+                        && runtime_probe_activity_for_selection(
+                            &self.waveforms,
+                            self.selected_waveform,
+                            self.waveform_cursor_a_us,
+                            &node.selection,
+                            snapshot,
+                        )
+                        .is_some()
+                })
+                .and_then(|node| {
+                    runtime_scope_probe_target_for_selection(
+                        &self.waveforms,
+                        self.selected_waveform,
+                        &node.selection,
+                        snapshot,
+                    )
+                });
             let clicked_wire = if clicked_anchor.is_none()
                 && clicked_component_label_badge.is_none()
                 && clicked.is_none()
@@ -937,6 +997,8 @@ impl CircuitCiApp {
                     self.apply_add_or_create_schematic_net_label_at(rect, viewport, target);
                 }
                 placement_applied = true;
+            } else if let Some(target) = clicked_runtime_scope_target {
+                self.open_scope_probe_target(target);
             } else if let Some(badge) = clicked_probe_badge {
                 self.open_probe_badge_in_simulation(badge);
             } else if let Some(badge) = clicked_hierarchy_connector_badge {
@@ -1665,8 +1727,14 @@ impl CircuitCiApp {
                 &node.selection,
                 snapshot,
             );
+            let runtime_scope_chip_hovered = hovered_runtime_scope_node
+                .is_some_and(|hovered| hovered.selection == node.selection);
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
+                if runtime_scope_chip_hovered {
+                    ui.separator();
+                    ui.label("Click the scope chip to open the matching loaded trace.");
+                }
             });
         } else if let Some(anchor) = hovered_anchor {
             response.on_hover_ui(|ui| {

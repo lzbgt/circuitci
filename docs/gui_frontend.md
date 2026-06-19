@@ -151,7 +151,8 @@ primitives: viewport zoom math, schematic canvas sizing, wire target
 hit-testing, route-handle hit-testing, and placement orientation cycling.
 `src/gui/sketch_render.rs` owns graph node and pin-anchor
 paint helpers, including runtime tinting, transient loaded-waveform `scope`
-chips, opacity handling, symbol glyph dispatch, and kind-aware pin chips.
+chips with shared paint/hit-test geometry, opacity handling, symbol glyph
+dispatch, and kind-aware pin chips.
 `src/gui/sketch_canvas_render.rs` owns canvas-local
 tooltip and paint helpers for wires, route handles, wire previews, wire target
 affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
@@ -396,10 +397,10 @@ form:
   menus, placed net-label/off-page connector badges that select the underlying
   Board IR net, can be moved by dragging, accept active-wire drops onto their
   underlying net, and can be converted or deleted from their context menu,
-  runtime tinting, `scope` activity chips, hover readouts, and context-menu
-  Scopes jumps for matching loaded waveform probes, primary-toolbar probe
-  controls that add voltage probes for selected nets or current/power probes
-  for selected components,
+  runtime tinting, hoverable/clickable `scope` activity chips, hover readouts,
+  and context-menu Scopes jumps for matching loaded waveform probes,
+  primary-toolbar probe controls that add voltage probes for selected nets or
+  current/power probes for selected components,
   one-click `Run + Scopes` validation from the schematic toolbar,
   Auto Probes action and Auto-before-Run option for bounded
   voltage/source-current probe population before validation, Run Readiness
@@ -693,9 +694,10 @@ expressions, and targets before validation. If waveform artifacts are already
 loaded, the Scopes view selects the matching trace immediately and the Sketch
 canvas marks matching nodes/components with a transient `scope` activity chip;
 otherwise the target is applied after the next successful Run loads waveform
-CSV data. Matching runtime nodes also expose `Open Runtime Trace in Scopes` in
-their context menu so users can jump from the schematic back to the loaded
-trace. Selecting or focusing a
+CSV data. The activity chip uses a pointing cursor and primary-click jump to
+the matching loaded trace. Matching runtime nodes also expose `Open Runtime
+Trace in Scopes` in their context menu so users can jump from the schematic
+back to the loaded trace. Selecting or focusing a
 Scopes trace or trigger-event row can select the originating schematic probe's
 net or component while staying in the runtime workspace. When that mapping
 exists, Scopes shows a schematic-context strip with target, probe, scenario,

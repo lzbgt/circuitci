@@ -4,7 +4,9 @@ use std::path::Path;
 
 use super::sketch_net_labels;
 use super::sketch_probes::{SketchProbe, SketchProbeBadge, derive_project_probes};
-pub(super) use super::sketch_render::{draw_sketch_node, draw_sketch_pin_anchor, with_opacity};
+pub(super) use super::sketch_render::{
+    draw_sketch_node, draw_sketch_pin_anchor, runtime_scope_chip_rect, with_opacity,
+};
 use super::sketch_spice::SketchComponentSpice;
 use super::sketch_symbols::SketchSymbolKind;
 

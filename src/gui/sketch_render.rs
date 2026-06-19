@@ -8,6 +8,7 @@ pub(super) fn draw_sketch_node(
     node: &SketchNode,
     selected: bool,
     runtime_activity: Option<f64>,
+    runtime_scope_chip_hovered: bool,
     opacity: f32,
 ) {
     let opacity = normalized_opacity(opacity);
@@ -53,7 +54,7 @@ pub(super) fn draw_sketch_node(
         with_opacity(egui::Color32::LIGHT_GRAY, opacity),
     );
     if runtime_activity.is_some() {
-        draw_runtime_scope_chip(painter, node, opacity);
+        draw_runtime_scope_chip(painter, node, runtime_scope_chip_hovered, opacity);
     }
 }
 
@@ -166,26 +167,39 @@ fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
     )
 }
 
-fn draw_runtime_scope_chip(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
-    let text = "scope";
-    let rect = egui::Rect::from_min_size(
+pub(super) fn runtime_scope_chip_rect(node: &SketchNode) -> egui::Rect {
+    egui::Rect::from_min_size(
         node.rect.right_top() + egui::vec2(-52.0, 6.0),
         egui::vec2(44.0, 18.0),
-    );
-    painter.rect_filled(
-        rect,
-        4.0,
-        with_opacity(egui::Color32::from_rgb(20, 70, 55), opacity),
-    );
-    painter.rect_stroke(
-        rect,
-        4.0,
+    )
+}
+
+fn draw_runtime_scope_chip(
+    painter: &egui::Painter,
+    node: &SketchNode,
+    hovered: bool,
+    opacity: f32,
+) {
+    let text = "scope";
+    let rect = runtime_scope_chip_rect(node);
+    let fill = if hovered {
+        egui::Color32::from_rgb(28, 96, 70)
+    } else {
+        egui::Color32::from_rgb(20, 70, 55)
+    };
+    let stroke = if hovered {
+        egui::Stroke::new(
+            2.0,
+            with_opacity(egui::Color32::from_rgb(140, 255, 205), opacity),
+        )
+    } else {
         egui::Stroke::new(
             1.0,
             with_opacity(egui::Color32::from_rgb(100, 235, 170), opacity),
-        ),
-        egui::StrokeKind::Inside,
-    );
+        )
+    };
+    painter.rect_filled(rect, 4.0, with_opacity(fill, opacity));
+    painter.rect_stroke(rect, 4.0, stroke, egui::StrokeKind::Inside);
     painter.text(
         rect.center(),
         egui::Align2::CENTER_CENTER,
