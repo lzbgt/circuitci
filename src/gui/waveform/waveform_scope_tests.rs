@@ -4,10 +4,11 @@ use super::{
     WaveformMathDraft, WaveformPlotLaneMode, WaveformProbeQuantity, WaveformTracePreset,
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
-    runtime_probe_lines_for_selection, sanitized_probe_name, scope_trace_lanes,
-    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_time_range_for_view,
-    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
+    runtime_probe_lines_for_selection, runtime_scope_probe_target_for_selection,
+    sanitized_probe_name, scope_trace_lanes, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use super::{
     WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
@@ -237,6 +238,44 @@ fn runtime_probe_lines_match_hovered_component() {
     assert_eq!(lines.len(), 2);
     assert!(lines.iter().any(|line| line.contains("v(out)")));
     assert!(lines.iter().any(|line| line.contains("i(R1)")));
+}
+
+#[test]
+fn runtime_scope_probe_target_matches_loaded_node_trace() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(R1)
+0.0 0.0 0.001
+1e-6 3.3 0.003
+",
+        "scope/run/gui_transient/waveform.csv",
+    )
+    .unwrap();
+    let snapshot = probe_snapshot();
+
+    assert_eq!(
+        runtime_scope_probe_target_for_selection(
+            std::slice::from_ref(&waveform),
+            0,
+            &SketchSelection::Net("out".to_string()),
+            &snapshot,
+        ),
+        Some(ScopeProbeTarget {
+            scenario_name: "scope/run/gui_transient/waveform.csv".to_string(),
+            probe_name: "v(out)".to_string(),
+        })
+    );
+    assert_eq!(
+        runtime_scope_probe_target_for_selection(
+            &[waveform],
+            0,
+            &SketchSelection::Component("R1".to_string()),
+            &snapshot,
+        ),
+        Some(ScopeProbeTarget {
+            scenario_name: "scope/run/gui_transient/waveform.csv".to_string(),
+            probe_name: "i(R1)".to_string(),
+        })
+    );
 }
 
 #[test]

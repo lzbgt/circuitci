@@ -52,6 +52,9 @@ pub(super) fn draw_sketch_node(
         egui::FontId::monospace(11.0),
         with_opacity(egui::Color32::LIGHT_GRAY, opacity),
     );
+    if runtime_activity.is_some() {
+        draw_runtime_scope_chip(painter, node, opacity);
+    }
 }
 
 pub(super) fn draw_sketch_pin_anchor(
@@ -161,6 +164,35 @@ fn runtime_activity_fill(base: egui::Color32, activity: f64) -> egui::Color32 {
         mix(base.g(), highlight.g()),
         mix(base.b(), highlight.b()),
     )
+}
+
+fn draw_runtime_scope_chip(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
+    let text = "scope";
+    let rect = egui::Rect::from_min_size(
+        node.rect.right_top() + egui::vec2(-52.0, 6.0),
+        egui::vec2(44.0, 18.0),
+    );
+    painter.rect_filled(
+        rect,
+        4.0,
+        with_opacity(egui::Color32::from_rgb(20, 70, 55), opacity),
+    );
+    painter.rect_stroke(
+        rect,
+        4.0,
+        egui::Stroke::new(
+            1.0,
+            with_opacity(egui::Color32::from_rgb(100, 235, 170), opacity),
+        ),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        text,
+        egui::FontId::monospace(10.5),
+        with_opacity(egui::Color32::WHITE, opacity),
+    );
 }
 
 fn normalized_opacity(opacity: f32) -> f32 {

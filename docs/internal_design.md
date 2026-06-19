@@ -102,13 +102,14 @@ still routes through validated schematic position edits.
 `src/gui/sketch_canvas_interaction.rs` owns reusable interaction primitives:
 viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
-painting, including runtime tinting, opacity handling, symbol glyph dispatch,
-and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
+painting, including runtime tinting, transient loaded-waveform `scope` chips,
+opacity handling, symbol glyph dispatch, and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
 wire target affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe badge, route-handle, and
-blank-canvas targets, including route handle insertion/deletion and
-custom-route clearing. Blank-canvas primary drag
+blank-canvas targets, including route handle insertion/deletion,
+custom-route clearing, and runtime Scopes jumps for nodes that match loaded
+waveform probes. Blank-canvas primary drag
 and touchpad scroll should pan the schematic viewport, pointer-focused
 pinch/Cmd-scroll should zoom around the cursor, Shift-drag should replace the
 selection with boxed visible items, Cmd/Ctrl-drag should add boxed items,

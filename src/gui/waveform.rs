@@ -1,10 +1,10 @@
-use super::CircuitCiApp;
 use super::analog::{
     AnalogAssertionDraft, AnalogExpressionProbeDraft, analog_scenario_choices,
     append_analog_assertion, append_analog_expression_probe, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::SketchProbe;
+use super::{CircuitCiApp, ScopeProbeTarget};
 use anyhow::{Context, Result};
 use eframe::egui;
 
@@ -815,6 +815,27 @@ pub(super) fn runtime_probe_activity_for_selection(
     matched.then_some(activity)
 }
 
+pub(in crate::gui) fn runtime_scope_probe_target_for_selection(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    selection: &SketchSelection,
+    snapshot: &ProjectSnapshot,
+) -> Option<ScopeProbeTarget> {
+    let waveform = waveforms.get(waveform_index)?;
+    let target = runtime_probe_target(selection, snapshot)?;
+    waveform
+        .probes
+        .iter()
+        .filter_map(|probe| {
+            probe_target_match_rank(&probe.label, &target).map(|rank| (rank, probe))
+        })
+        .min_by_key(|(rank, _)| *rank)
+        .map(|(_, probe)| ScopeProbeTarget {
+            scenario_name: waveform.label.clone(),
+            probe_name: probe.label.clone(),
+        })
+}
+
 pub(super) fn waveform_time_range_for_view(
     waveforms: &[WaveformView],
     waveform_index: usize,
@@ -880,17 +901,25 @@ fn runtime_probe_target(
 }
 
 fn probe_matches_target(label: &str, target: &RuntimeProbeTarget) -> bool {
+    probe_target_match_rank(label, target).is_some()
+}
+
+fn probe_target_match_rank(label: &str, target: &RuntimeProbeTarget) -> Option<u8> {
     let normalized_label = normalized_probe_token(label);
     if let Some(component_id) = &target.component_id {
         let component = normalized_probe_token(component_id);
         if !component.is_empty() && normalized_label.contains(&component) {
-            return true;
+            return Some(0);
         }
     }
-    target.net_ids.iter().any(|net_id| {
-        let net = normalized_probe_token(net_id);
-        !net.is_empty() && normalized_label.contains(&net)
-    })
+    target
+        .net_ids
+        .iter()
+        .any(|net_id| {
+            let net = normalized_probe_token(net_id);
+            !net.is_empty() && normalized_label.contains(&net)
+        })
+        .then_some(1)
 }
 
 fn normalized_probe_token(value: &str) -> String {

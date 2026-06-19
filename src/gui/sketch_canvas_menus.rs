@@ -5,6 +5,7 @@ use super::sketch_canvas_render::component_context_pin;
 use super::sketch_component_labels::{SketchComponentLabelBadge, SketchComponentLabelKind};
 use super::sketch_inline_edit::component_supports_inline_value;
 use super::sketch_probes::SketchProbeBadge;
+use super::waveform::runtime_scope_probe_target_for_selection;
 use super::{CircuitCiApp, ScopeProbeTarget};
 
 impl CircuitCiApp {
@@ -109,6 +110,18 @@ impl CircuitCiApp {
                     self.begin_component_id_inline_edit(component_id);
                     ui.close();
                 }
+                if let Some(target) = runtime_scope_probe_target_for_selection(
+                    &self.waveforms,
+                    self.selected_waveform,
+                    &node.selection,
+                    snapshot,
+                ) {
+                    let open_runtime_trace = ui.button("Open Runtime Trace in Scopes").clicked();
+                    if open_runtime_trace {
+                        self.open_scope_probe_target(target);
+                        ui.close();
+                    }
+                }
                 let component = snapshot
                     .components_detail
                     .iter()
@@ -204,6 +217,19 @@ impl CircuitCiApp {
                     ui.close();
                 }
                 ui.separator();
+                if let Some(target) = runtime_scope_probe_target_for_selection(
+                    &self.waveforms,
+                    self.selected_waveform,
+                    &node.selection,
+                    snapshot,
+                ) {
+                    let open_runtime_trace = ui.button("Open Runtime Trace in Scopes").clicked();
+                    if open_runtime_trace {
+                        self.open_scope_probe_target(target);
+                        ui.close();
+                    }
+                    ui.separator();
+                }
                 self.net_context_menu(ui, net_id, "Inspect Net", "Delete Net");
             }
             SketchSelection::Overflow(label) => {
