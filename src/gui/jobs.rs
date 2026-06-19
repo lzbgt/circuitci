@@ -1,5 +1,5 @@
 use super::project::{optional_path, sanitized_project_name};
-use super::waveform::load_report_waveforms;
+use super::waveform::{WaveformView, load_report_waveforms_with_progress_and_cancel};
 use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::cancellation;
 use crate::reports::ValidationReport;
@@ -65,6 +65,7 @@ struct ValidationJobResult {
 struct ValidationJobOutput {
     report: ValidationReport,
     markdown: String,
+    waveforms: Vec<WaveformView>,
 }
 
 struct SuggestionJobResult {
@@ -119,7 +120,18 @@ impl CircuitCiApp {
                     |stage, detail| send_background_progress(&sender, stage, detail),
                     || cancel_token.load(Ordering::Relaxed),
                 )
-                .map(|(report, markdown)| ValidationJobOutput { report, markdown });
+                .and_then(|(report, markdown)| {
+                    let waveforms = load_report_waveforms_with_progress_and_cancel(
+                        &report,
+                        |stage, detail| send_background_progress(&sender, stage, detail),
+                        || cancel_token.load(Ordering::Relaxed),
+                    )?;
+                    Ok(ValidationJobOutput {
+                        report,
+                        markdown,
+                        waveforms,
+                    })
+                });
                 send_background_progress(
                     &sender,
                     "Validation finished",
@@ -508,7 +520,7 @@ impl CircuitCiApp {
         }
         match result.result {
             Ok(output) => {
-                let waveforms = load_report_waveforms(&output.report);
+                let waveforms = output.waveforms;
                 let waveform_count = waveforms.len();
                 self.status = format!("Validation {}", output.report.result);
                 self.report_markdown = output.markdown;

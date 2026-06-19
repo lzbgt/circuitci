@@ -220,13 +220,15 @@ oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
-`src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
+`src/gui/waveform.rs` owns streaming, cancel-aware waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only
 transient trace pinning/comparison overlays, per-trace overlay visibility/color
 styles, derived waveform channels, promotion of representable derived channels
 to Board IR probes/assertions, and graph-hover/runtime activity extraction from
-loaded waveform artifacts.
+loaded waveform artifacts. Validation workers parse waveform artifacts with
+progress/cancel checks before the GUI applies the completed report, keeping
+large CSV files out of the UI thread.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset

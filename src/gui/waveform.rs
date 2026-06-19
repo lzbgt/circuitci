@@ -601,12 +601,47 @@ fn scope_region_stats_rows(
         .collect()
 }
 
-pub(super) fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
-    report
-        .waveforms
-        .iter()
-        .filter_map(|waveform| load_waveform_csv(Path::new(waveform), waveform).ok())
-        .collect()
+pub(super) fn load_report_waveforms_with_progress_and_cancel<F, C>(
+    report: &ValidationReport,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<Vec<WaveformView>>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let waveform_count = report.waveforms.len();
+    let mut waveforms = Vec::new();
+    for (index, waveform) in report.waveforms.iter().enumerate() {
+        if should_cancel() {
+            return Err(crate::cancellation::canceled(
+                "Waveform loading canceled before completion.",
+            ));
+        }
+        on_progress(
+            "Loading waveforms",
+            format!(
+                "Loading waveform {} of {}: {}.",
+                index + 1,
+                waveform_count,
+                waveform
+            ),
+        );
+        match load_waveform_csv_with_progress_and_cancel(
+            Path::new(waveform),
+            waveform,
+            &mut on_progress,
+            &should_cancel,
+        ) {
+            Ok(view) => waveforms.push(view),
+            Err(error) if crate::cancellation::is_canceled(&error) => return Err(error),
+            Err(error) => on_progress(
+                "Skipping waveform",
+                format!("Skipped waveform {}: {error:#}.", waveform),
+            ),
+        }
+    }
+    Ok(waveforms)
 }
 
 pub(super) fn runtime_probe_lines_for_selection(
@@ -775,30 +810,106 @@ fn probe_unit(label: &str) -> &'static str {
 pub(super) fn quick_assertion_margin(value: f64) -> f64 {
     (value.abs() * 0.01).max(1.0e-9)
 }
-fn load_waveform_csv(path: &Path, label: &str) -> Result<WaveformView> {
-    let text = std::fs::read_to_string(path)
+fn load_waveform_csv_with_progress_and_cancel<F, C>(
+    path: &Path,
+    label: &str,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<WaveformView>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    use std::io::BufRead;
+
+    let file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
-    parse_waveform_csv_text(&text, label)
+    let total_bytes = file.metadata().ok().map(|metadata| metadata.len());
+    let mut reader = std::io::BufReader::new(file);
+    let mut line = String::new();
+    let mut line_index = 0usize;
+    let mut bytes_read = 0u64;
+    let mut last_progress_bytes = 0u64;
+    let mut builder = WaveformCsvBuilder::default();
+
+    loop {
+        if line_index.is_multiple_of(4096) && should_cancel() {
+            return Err(crate::cancellation::canceled(format!(
+                "Waveform loading canceled while reading {}.",
+                path.display()
+            )));
+        }
+        line.clear();
+        let byte_count = reader
+            .read_line(&mut line)
+            .with_context(|| format!("Failed to read waveform CSV {}.", path.display()))?;
+        if byte_count == 0 {
+            break;
+        }
+        bytes_read += byte_count as u64;
+        builder.ingest_line(line_index, &line)?;
+        line_index += 1;
+
+        if bytes_read.saturating_sub(last_progress_bytes) >= 1_048_576 {
+            last_progress_bytes = bytes_read;
+            let progress = total_bytes
+                .filter(|total| *total > 0)
+                .map(|total| format!("{:.0}%", (bytes_read as f64 / total as f64) * 100.0))
+                .unwrap_or_else(|| format!("{} KiB", bytes_read / 1024));
+            on_progress(
+                "Loading waveforms",
+                format!(
+                    "{}: {progress}, {} sample row(s).",
+                    label,
+                    builder.sample_count()
+                ),
+            );
+        }
+    }
+
+    if should_cancel() {
+        return Err(crate::cancellation::canceled(format!(
+            "Waveform loading canceled while reading {}.",
+            path.display()
+        )));
+    }
+    builder.finish(label)
 }
 
+#[cfg(test)]
 fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
-    let mut time_s = Vec::new();
-    let mut probe_labels = Vec::new();
-    let mut probe_values: Vec<Vec<f64>> = Vec::new();
-
+    let mut builder = WaveformCsvBuilder::default();
     for (line_index, line) in text.lines().enumerate() {
+        builder.ingest_line(line_index, line)?;
+    }
+    builder.finish(label)
+}
+
+#[derive(Default)]
+struct WaveformCsvBuilder {
+    time_s: Vec<f64>,
+    probe_labels: Vec<String>,
+    probe_values: Vec<Vec<f64>>,
+}
+
+impl WaveformCsvBuilder {
+    fn sample_count(&self) -> usize {
+        self.time_s.len()
+    }
+
+    fn ingest_line(&mut self, line_index: usize, line: &str) -> Result<()> {
         let fields = split_waveform_fields(line);
         if fields.is_empty() {
-            continue;
+            return Ok(());
         }
         let Some(time) = parse_waveform_float(fields[0]) else {
-            if time_s.is_empty() {
-                probe_labels = fields
+            if self.time_s.is_empty() {
+                self.probe_labels = fields
                     .iter()
                     .skip(1)
                     .map(|field| (*field).to_string())
                     .collect();
-                continue;
+                return Ok(());
             }
             anyhow::bail!(
                 "Waveform row {} has non-numeric time value {}.",
@@ -806,7 +917,7 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
                 fields[0]
             );
         };
-        if let Some(previous) = time_s.last()
+        if let Some(previous) = self.time_s.last()
             && time <= *previous
         {
             anyhow::bail!(
@@ -819,23 +930,23 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
         if probe_count == 0 {
             anyhow::bail!("Waveform row {} has no probe columns.", line_index + 1);
         }
-        if probe_values.is_empty() {
-            probe_values = vec![Vec::new(); probe_count];
-            if probe_labels.len() != probe_count {
-                probe_labels = (0..probe_count)
+        if self.probe_values.is_empty() {
+            self.probe_values = vec![Vec::new(); probe_count];
+            if self.probe_labels.len() != probe_count {
+                self.probe_labels = (0..probe_count)
                     .map(|index| format!("probe_{}", index + 1))
                     .collect();
             }
-        } else if probe_count < probe_values.len() {
+        } else if probe_count < self.probe_values.len() {
             anyhow::bail!(
                 "Waveform row {} has {} probe columns, expected at least {}.",
                 line_index + 1,
                 probe_count,
-                probe_values.len()
+                self.probe_values.len()
             );
         }
-        time_s.push(time);
-        for (index, values) in probe_values.iter_mut().enumerate() {
+        self.time_s.push(time);
+        for (index, values) in self.probe_values.iter_mut().enumerate() {
             let value = parse_waveform_float(fields[index + 1]).with_context(|| {
                 format!(
                     "Waveform row {} has non-numeric probe value {}.",
@@ -845,29 +956,37 @@ fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
             })?;
             values.push(value);
         }
+        Ok(())
     }
 
-    if time_s.is_empty() {
-        anyhow::bail!("Waveform CSV has no numeric samples.");
-    }
+    fn finish(self, label: &str) -> Result<WaveformView> {
+        let Self {
+            time_s,
+            probe_labels,
+            probe_values,
+        } = self;
+        if time_s.is_empty() {
+            anyhow::bail!("Waveform CSV has no numeric samples.");
+        }
 
-    let probes = probe_labels
-        .into_iter()
-        .zip(probe_values)
-        .map(|(label, values)| WaveformProbe {
-            promoted_quantity: waveform_probe_quantity_from_label(&label),
-            label,
-            values,
-            derived: false,
-            expression: None,
+        let probes = probe_labels
+            .into_iter()
+            .zip(probe_values)
+            .map(|(label, values)| WaveformProbe {
+                promoted_quantity: waveform_probe_quantity_from_label(&label),
+                label,
+                values,
+                derived: false,
+                expression: None,
+            })
+            .collect();
+        Ok(WaveformView {
+            label: label.to_string(),
+            path: label.to_string(),
+            time_s,
+            probes,
         })
-        .collect();
-    Ok(WaveformView {
-        label: label.to_string(),
-        path: label.to_string(),
-        time_s,
-        probes,
-    })
+    }
 }
 
 #[derive(Debug, Clone)]

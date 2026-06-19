@@ -2,8 +2,9 @@ use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe, parse_waveform_csv_text,
-    scope_plot_svg, scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
+    WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
+    load_waveform_csv_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
+    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
     waveform_probe_choices, waveform_probe_group_choices,
 };
 use super::{
@@ -24,6 +25,48 @@ fn waveform_parser_accepts_ngspice_header_and_samples() {
     assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
     assert_eq!(waveform.probes[1].label, "i(load)");
     assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+}
+
+#[test]
+fn waveform_csv_file_loader_reports_progress_for_large_files() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "time v(out)").unwrap();
+    for index in 0..120_000 {
+        writeln!(file, "{}e-9 {}", index, index % 11).unwrap();
+    }
+    let mut progress = Vec::new();
+
+    let waveform = load_waveform_csv_with_progress_and_cancel(
+        file.path(),
+        "large.csv",
+        |stage, detail| progress.push((stage, detail)),
+        || false,
+    )
+    .unwrap();
+
+    assert_eq!(waveform.time_s.len(), 120_000);
+    assert!(
+        progress
+            .iter()
+            .any(|(stage, detail)| *stage == "Loading waveforms" && detail.contains("large.csv"))
+    );
+}
+
+#[test]
+fn waveform_csv_file_loader_honors_cancellation() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "time v(out)").unwrap();
+    writeln!(file, "0 0").unwrap();
+
+    let error =
+        load_waveform_csv_with_progress_and_cancel(file.path(), "cancel.csv", |_, _| {}, || true)
+            .unwrap_err();
+
+    assert!(crate::cancellation::is_canceled(&error));
 }
 
 #[test]
