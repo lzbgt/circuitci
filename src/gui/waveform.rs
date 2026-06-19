@@ -487,6 +487,17 @@ struct ScopeCursorLegendRow {
     delta_value: f64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct ScopeRegionStatsRow {
+    selected: bool,
+    label: String,
+    unit: &'static str,
+    min: f64,
+    max: f64,
+    mean: f64,
+    rms: f64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WaveformProbeQuantity {
     Voltage,
@@ -533,6 +544,40 @@ fn scope_cursor_legend_rows(
                 cursor_a_value: cursor_a.value,
                 cursor_b_value: cursor_b.value,
                 delta_value: cursor_b.value - cursor_a.value,
+            })
+        })
+        .collect()
+}
+
+fn scope_region_stats_rows(
+    waveforms: &[WaveformView],
+    traces: &[WaveformTraceRef],
+    start_us: f64,
+    end_us: f64,
+) -> Vec<ScopeRegionStatsRow> {
+    let (start_s, end_s) = ordered_pair(start_us / 1e6, end_us / 1e6);
+    traces
+        .iter()
+        .copied()
+        .enumerate()
+        .filter_map(|(trace_order, trace)| {
+            let waveform = waveforms.get(trace.waveform_index)?;
+            let probe = waveform.probes.get(trace.probe_index)?;
+            let stats = waveform_region_stats(&waveform.time_s, &probe.values, start_s, end_s)?;
+            let trace_label = probe.expression.as_deref().unwrap_or(&probe.label);
+            let label = if waveforms.len() > 1 {
+                format!("{} / {trace_label}", waveform.label)
+            } else {
+                trace_label.to_string()
+            };
+            Some(ScopeRegionStatsRow {
+                selected: trace_order == 0,
+                label,
+                unit: probe_unit(&probe.label),
+                min: stats.min,
+                max: stats.max,
+                mean: stats.mean,
+                rms: stats.rms,
             })
         })
         .collect()
@@ -1178,6 +1223,13 @@ struct WaveformMeasurement {
     window_max: f64,
 }
 
+struct WaveformRegionStats {
+    min: f64,
+    max: f64,
+    mean: f64,
+    rms: f64,
+}
+
 fn waveform_measurement(
     waveform: &WaveformView,
     probe_index: usize,
@@ -1202,6 +1254,80 @@ fn waveform_measurement(
         full_max: full_range.1,
         window_min: window_range.0,
         window_max: window_range.1,
+    })
+}
+
+fn waveform_region_stats(
+    times: &[f64],
+    values: &[f64],
+    start_s: f64,
+    end_s: f64,
+) -> Option<WaveformRegionStats> {
+    if times.len() != values.len() || times.is_empty() || !start_s.is_finite() || !end_s.is_finite()
+    {
+        return None;
+    }
+    let (start_s, end_s) = ordered_pair(start_s, end_s);
+    if (end_s - start_s).abs() < f64::EPSILON {
+        let value = interpolated_value(times, values, start_s)?;
+        return Some(WaveformRegionStats {
+            min: value,
+            max: value,
+            mean: value,
+            rms: value.abs(),
+        });
+    }
+
+    let start_value = interpolated_value(times, values, start_s)?;
+    let end_value = interpolated_value(times, values, end_s)?;
+    let mut points = Vec::with_capacity(times.len().saturating_add(2));
+    points.push((start_s, start_value));
+    for (time, value) in times.iter().copied().zip(values.iter().copied()) {
+        if time > start_s && time < end_s {
+            points.push((time, value));
+        }
+    }
+    points.push((end_s, end_value));
+    points.sort_by(|left, right| {
+        left.0
+            .partial_cmp(&right.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    points.dedup_by(|left, right| (left.0 - right.0).abs() < f64::EPSILON);
+    if points.is_empty() {
+        return None;
+    }
+
+    let mut min = f64::INFINITY;
+    let mut max = f64::NEG_INFINITY;
+    for (_, value) in &points {
+        min = min.min(*value);
+        max = max.max(*value);
+    }
+
+    let mut integral = 0.0;
+    let mut square_integral = 0.0;
+    for pair in points.windows(2) {
+        let (left_t, left_v) = pair[0];
+        let (right_t, right_v) = pair[1];
+        let dt = right_t - left_t;
+        if dt <= 0.0 {
+            continue;
+        }
+        integral += dt * (left_v + right_v) * 0.5;
+        square_integral += dt * (left_v * left_v + left_v * right_v + right_v * right_v) / 3.0;
+    }
+    let duration = end_s - start_s;
+    if duration <= 0.0 {
+        return None;
+    }
+    let mean = integral / duration;
+    let rms = (square_integral / duration).max(0.0).sqrt();
+    Some(WaveformRegionStats {
+        min,
+        max,
+        mean,
+        rms,
     })
 }
 

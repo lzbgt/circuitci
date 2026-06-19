@@ -281,7 +281,7 @@ dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, Scopes state orchestration, simulation-time scrub/playback
-controls, cursor readouts, selected-plus-pinned cursor readout rows, actionable transient cursor-region and trigger-event measurement snapshots with plot markers,
+controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics, actionable transient cursor-region and trigger-event measurement snapshots with plot markers,
 min/max/delta measurements, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
@@ -299,7 +299,7 @@ draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
 transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane
 axis scaling. `src/gui/waveform/waveform_view.rs`
-owns Scopes plot orchestration, cursor readout rows, playback controls,
+owns Scopes plot orchestration, cursor readout rows, region statistics display, playback controls,
 visible time-window and value-window fit/zoom/pan helpers, Back/Forward
 view-window history, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region and

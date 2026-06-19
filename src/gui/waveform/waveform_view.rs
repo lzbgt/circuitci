@@ -5,7 +5,10 @@ use super::waveform_plot::{
     scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
     waveform_trace_bounds_in_window, zoom_time_window,
 };
-use super::{format_time_s, format_value, scope_cursor_legend_rows, waveform_time_range_for_view};
+use super::{
+    format_time_s, format_value, scope_cursor_legend_rows, scope_region_stats_rows,
+    waveform_time_range_for_view,
+};
 use crate::gui::{CircuitCiApp, WaveformViewWindow};
 use eframe::egui;
 
@@ -146,7 +149,68 @@ impl CircuitCiApp {
                     }
                 });
         });
+        self.waveform_scope_region_stats(ui, &traces);
         self.waveform_measurement_snapshots_panel(ui);
+    }
+
+    fn waveform_scope_region_stats(
+        &mut self,
+        ui: &mut egui::Ui,
+        traces: &[super::WaveformTraceRef],
+    ) {
+        let Some((source, start_us, end_us)) = self.scope_region_stats_window() else {
+            return;
+        };
+        let rows = scope_region_stats_rows(&self.waveforms, traces, start_us, end_us);
+        if rows.is_empty() {
+            return;
+        }
+
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Region Statistics");
+                ui.label(source);
+                ui.label(format!(
+                    "{} to {}",
+                    format_time_s(start_us / 1e6),
+                    format_time_s(end_us / 1e6)
+                ));
+            });
+            egui::Grid::new("scope_region_statistics")
+                .num_columns(7)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("");
+                    ui.label("Trace");
+                    ui.label("Min");
+                    ui.label("Max");
+                    ui.label("Mean");
+                    ui.label("RMS");
+                    ui.label("Unit");
+                    ui.end_row();
+
+                    for row in &rows {
+                        ui.label(if row.selected { "*" } else { " " });
+                        ui.monospace(&row.label);
+                        ui.monospace(format_value(row.min));
+                        ui.monospace(format_value(row.max));
+                        ui.monospace(format_value(row.mean));
+                        ui.monospace(format_value(row.rms));
+                        ui.monospace(row.unit);
+                        ui.end_row();
+                    }
+                });
+        });
+    }
+
+    fn scope_region_stats_window(&self) -> Option<(&'static str, f64, f64)> {
+        let (cursor_start_us, cursor_end_us) =
+            super::ordered_pair(self.waveform_cursor_a_us, self.waveform_cursor_b_us);
+        if (cursor_end_us - cursor_start_us).abs() > f64::EPSILON {
+            return Some(("Cursor A-B", cursor_start_us, cursor_end_us));
+        }
+        let (start_us, end_us) = self.visible_waveform_time_window()?;
+        Some(("Visible Window", start_us, end_us))
     }
 
     pub(super) fn waveform_playback_panel(&mut self, ui: &mut egui::Ui) {

@@ -5,10 +5,11 @@ use super::{
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
-    scope_trace_lanes, scope_trigger_events, scope_visible_styled_trace_refs,
-    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
-    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
-    waveform_trace_bounds_in_window, zoom_time_window,
+    scope_region_stats_rows, scope_trace_lanes, scope_trigger_events,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use super::{
     WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
@@ -329,6 +330,70 @@ fn scope_cursor_legend_rows_include_selected_and_pinned_traces() {
     assert_eq!(rows[1].unit, "A");
     assert!((rows[1].cursor_a_value - 0.002).abs() < 1.0e-12);
     assert!((rows[1].cursor_b_value - 0.004).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_region_stats_rows_compute_time_weighted_statistics() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+    ];
+
+    let rows = scope_region_stats_rows(&[waveform], &traces, 0.0, 2.0);
+
+    assert_eq!(rows.len(), 2);
+    assert!(rows[0].selected);
+    assert!(!rows[1].selected);
+    assert_eq!(rows[0].label, "v(out)");
+    assert_eq!(rows[0].unit, "V");
+    assert!((rows[0].min - 0.0).abs() < 1.0e-12);
+    assert!((rows[0].max - 2.0).abs() < 1.0e-12);
+    assert!((rows[0].mean - 1.0).abs() < 1.0e-12);
+    assert!((rows[0].rms - (4.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
+    assert_eq!(rows[1].label, "i(load)");
+    assert_eq!(rows[1].unit, "A");
+    assert!((rows[1].mean - 0.003).abs() < 1.0e-12);
+    assert!((rows[1].rms - (31.0e-6_f64 / 3.0).sqrt()).abs() < 1.0e-15);
+}
+
+#[test]
+fn scope_region_stats_rows_include_interpolated_region_edges() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 0.0
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    }];
+
+    let rows = scope_region_stats_rows(&[waveform], &traces, 0.5, 1.5);
+
+    assert_eq!(rows.len(), 1);
+    assert!((rows[0].min - 1.0).abs() < 1.0e-12);
+    assert!((rows[0].max - 2.0).abs() < 1.0e-12);
+    assert!((rows[0].mean - 1.5).abs() < 1.0e-12);
+    assert!((rows[0].rms - (7.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
 }
 
 #[test]
