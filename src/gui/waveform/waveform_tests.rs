@@ -9,6 +9,7 @@ use super::{
 };
 use super::{
     clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
+    plot_y_to_value,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -52,6 +53,18 @@ fn scope_plot_x_maps_to_visible_time_window() {
     assert!((plot_x_to_time_us(300.0, plot_rect, 10.0, 50.0) - 30.0).abs() < 1.0e-12);
     assert!((plot_x_to_time_us(500.0, plot_rect, 10.0, 50.0) - 50.0).abs() < 1.0e-12);
     assert!((plot_x_to_time_us(800.0, plot_rect, 10.0, 50.0) - 50.0).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_plot_y_maps_to_visible_value_window() {
+    let plot_rect = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::vec2(400.0, 240.0),
+    );
+    assert!((plot_y_to_value(260.0, plot_rect, -2.0, 6.0) - -2.0).abs() < 1.0e-12);
+    assert!((plot_y_to_value(140.0, plot_rect, -2.0, 6.0) - 2.0).abs() < 1.0e-12);
+    assert!((plot_y_to_value(20.0, plot_rect, -2.0, 6.0) - 6.0).abs() < 1.0e-12);
+    assert!((plot_y_to_value(-100.0, plot_rect, -2.0, 6.0) - 6.0).abs() < 1.0e-12);
 }
 
 #[test]

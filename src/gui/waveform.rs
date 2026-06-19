@@ -18,7 +18,7 @@ use waveform_plot::{
     waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
-use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us};
+use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value};
 
 impl CircuitCiApp {
     pub(super) fn open_scope_probe_target(&mut self, target: ScopeProbeTarget) {
@@ -227,6 +227,9 @@ impl CircuitCiApp {
         if let Some((start_us, end_us)) = interaction.time_window_us {
             self.set_waveform_time_window(start_us, end_us);
         }
+        if let Some((value_min, value_max)) = interaction.value_window {
+            self.set_waveform_value_window(value_min, value_max);
+        }
         if let Some(cursor_a_us) = interaction.cursor_a_us {
             self.set_waveform_cursor_a(cursor_a_us);
         }
@@ -426,7 +429,7 @@ impl CircuitCiApp {
                 });
             }
             ui.small(
-                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time; wheel or pinch zooms around the pointer.",
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value.",
             );
         });
     }

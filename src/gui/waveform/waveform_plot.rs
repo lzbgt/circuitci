@@ -13,6 +13,7 @@ pub(in crate::gui) enum WaveformCursorTarget {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(super) struct WaveformPlotInteraction {
     pub(super) time_window_us: Option<(f64, f64)>,
+    pub(super) value_window: Option<(f64, f64)>,
     pub(super) cursor_a_us: Option<f64>,
     pub(super) cursor_b_us: Option<f64>,
 }
@@ -256,14 +257,20 @@ pub(super) fn draw_waveform_plot_sized(
                 interaction.time_window_us =
                     Some((window_start_us + delta_us, window_end_us + delta_us));
             }
+            if delta.y.abs() > f32::EPSILON && plot_rect.height() > 1.0 {
+                let y_span = positive_span(y_min, y_max);
+                let delta_value = (delta.y as f64 / plot_rect.height() as f64) * y_span;
+                interaction.value_window = Some((y_min + delta_value, y_max + delta_value));
+            }
         }
     }
     if response.hovered() {
-        let (zoom_delta, scroll_delta, pointer) = ui.input(|input| {
+        let (zoom_delta, scroll_delta, pointer, shift) = ui.input(|input| {
             (
                 input.zoom_delta(),
                 input.smooth_scroll_delta,
                 input.pointer.hover_pos(),
+                input.modifiers.shift,
             )
         });
         let scale = if (zoom_delta - 1.0).abs() > f32::EPSILON {
@@ -274,16 +281,23 @@ pub(super) fn draw_waveform_plot_sized(
             None
         };
         if let Some(scale) = scale {
-            let focus_ratio = pointer
-                .map(|pos| ((pos.x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0))
-                .unwrap_or(0.5) as f64;
-            let focus_us = window_start_us + focus_ratio * x_span_us;
-            interaction.time_window_us = Some(zoom_time_window(
-                window_start_us,
-                window_end_us,
-                focus_us,
-                scale,
-            ));
+            if shift {
+                let focus_value = pointer
+                    .map(|pos| plot_y_to_value(pos.y, plot_rect, y_min, y_max))
+                    .unwrap_or((y_min + y_max) * 0.5);
+                interaction.value_window = Some(zoom_time_window(y_min, y_max, focus_value, scale));
+            } else {
+                let focus_ratio = pointer
+                    .map(|pos| ((pos.x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0))
+                    .unwrap_or(0.5) as f64;
+                let focus_us = window_start_us + focus_ratio * x_span_us;
+                interaction.time_window_us = Some(zoom_time_window(
+                    window_start_us,
+                    window_end_us,
+                    focus_us,
+                    scale,
+                ));
+            }
         }
     }
     draw_plot_frame(&painter, plot_rect);
@@ -520,6 +534,20 @@ pub(super) fn plot_x_to_time_us(
         ((x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0) as f64
     };
     window_start_us + ratio * positive_span(window_start_us, window_end_us)
+}
+
+pub(super) fn plot_y_to_value(
+    y: f32,
+    plot_rect: egui::Rect,
+    value_min: f64,
+    value_max: f64,
+) -> f64 {
+    let ratio = if plot_rect.height() <= 1.0 {
+        0.0
+    } else {
+        ((plot_rect.bottom() - y) / plot_rect.height()).clamp(0.0, 1.0) as f64
+    };
+    value_min + ratio * positive_span(value_min, value_max)
 }
 
 fn cursor_x(time_us: f64, plot_rect: egui::Rect, window_start_us: f64, window_end_us: f64) -> f32 {
