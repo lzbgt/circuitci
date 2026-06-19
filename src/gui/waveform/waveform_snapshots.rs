@@ -653,6 +653,12 @@ impl CircuitCiApp {
                     bundle_dir.join("measurement_snapshots.md"),
                     scope_snapshots_markdown(snapshots),
                 )
+            })
+            .and_then(|()| {
+                fs::write(
+                    bundle_dir.join("README.md"),
+                    self.scope_report_bundle_readme(snapshots),
+                )
             }) {
             Ok(()) => {
                 self.status = format!(
@@ -668,6 +674,63 @@ impl CircuitCiApp {
                 ));
             }
         }
+    }
+
+    fn scope_report_bundle_readme(&self, snapshots: &[ScopeMeasurementSnapshot]) -> String {
+        let selected_context = self
+            .selected_scope_trace_label()
+            .unwrap_or_else(|| "unavailable".to_string());
+        let query = self.waveform_snapshot_filter.trim();
+        let query = if query.is_empty() { "(empty)" } else { query };
+        format!(
+            "\
+# CircuitCI Scope Report Bundle
+
+This folder is a runtime export from the Scopes workspace. It is derived from loaded waveform artifacts and transient GUI state; it is not persisted Board IR project truth.
+
+## Files
+
+- `scope_plot.svg` - configured Scopes plot SVG.
+- `measurement_snapshots.csv` - filtered measurement snapshot rows.
+- `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
+- `README.md` - this manifest.
+
+## Snapshot Projection
+
+- Rows: {}
+- Search: {}
+- Source: {}
+- Sort: {}
+- Group: {}
+
+## Plot Export Options
+
+- Size: {}
+- Include cursors: {}
+- Include trigger markers: {}
+- Include snapshot annotations: {}
+- Split units: {}
+
+## Selected Trace Context
+
+- Selected waveform index: {}
+- Selected probe index: {}
+- Selected trace: {}
+",
+            snapshots.len(),
+            markdown_escape(query),
+            self.waveform_snapshot_source_filter.label(),
+            self.waveform_snapshot_sort_key.label(),
+            self.waveform_snapshot_group_mode.label(),
+            self.waveform_plot_export_size.label(),
+            yes_no(self.waveform_plot_export_cursors),
+            yes_no(self.waveform_plot_export_trigger),
+            yes_no(self.waveform_plot_export_snapshots),
+            yes_no(self.waveform_split_trace_units),
+            self.selected_waveform,
+            self.selected_probe,
+            markdown_escape(&selected_context),
+        )
     }
 }
 
@@ -984,6 +1047,10 @@ fn markdown_escape(value: &str) -> String {
         .replace('|', "\\|")
         .replace('\n', "<br>")
         .replace('\r', "")
+}
+
+fn yes_no(value: bool) -> &'static str {
+    if value { "yes" } else { "no" }
 }
 
 fn is_region_snapshot(snapshot: &ScopeMeasurementSnapshot) -> bool {

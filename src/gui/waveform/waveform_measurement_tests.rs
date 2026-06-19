@@ -728,6 +728,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
             probe_index: 1,
         }],
         waveform_snapshot_filter: "v(out)".to_string(),
+        waveform_split_trace_units: true,
+        waveform_plot_export_trigger: false,
         ..Default::default()
     };
     app.capture_scope_cursor_snapshots();
@@ -749,12 +751,20 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+    let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
 
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(csv.contains("Cursor 1"));
     assert!(csv.contains("v(out)"));
     assert!(!csv.contains("i(load)"));
     assert!(markdown.contains("| Cursor 1 |"));
+    assert!(readme.contains("# CircuitCI Scope Report Bundle"));
+    assert!(readme.contains("- Rows: 1"));
+    assert!(readme.contains("- Search: v(out)"));
+    assert!(readme.contains("- Include trigger markers: no"));
+    assert!(readme.contains("- Split units: yes"));
+    assert!(readme.contains("- Selected trace: v(out)"));
+    assert!(readme.contains("- `scope_plot.svg`"));
     assert!(app.status.contains("Exported scope report bundle"));
 
     fs::remove_dir_all(&base_dir).unwrap();
