@@ -126,6 +126,7 @@ fn waveform_load_preflight_estimates_rows_and_warns_for_large_artifacts() {
     let preflight = waveform_load_preflight(file.path());
 
     assert_eq!(preflight.estimated_rows, Some(10));
+    assert_eq!(preflight.probe_preview, vec!["v(out)"]);
     assert!(!preflight.warning);
     assert!(preflight.summary.contains("10 data row"));
 
@@ -170,7 +171,10 @@ fn report_waveform_loader_emits_preflight_progress_before_parsing() {
 
 #[test]
 fn report_waveform_loader_defers_large_artifacts_until_requested() {
-    let large_file = tempfile::NamedTempFile::new().unwrap();
+    let mut large_file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(large_file, "time v(out) i(load)").unwrap();
     large_file.as_file().set_len(51 * 1024 * 1024).unwrap();
     let path = large_file.path().to_string_lossy().into_owned();
     let mut progress = Vec::new();
@@ -187,6 +191,11 @@ fn report_waveform_loader_defers_large_artifacts_until_requested() {
     assert_eq!(diagnostics.len(), 1);
     assert!(!diagnostics[0].loaded);
     assert!(diagnostics[0].deferred);
+    assert_eq!(diagnostics[0].probes, 2);
+    assert_eq!(
+        diagnostics[0].probe_preview,
+        vec!["v(out)".to_string(), "i(load)".to_string()]
+    );
     assert_eq!(
         waveform_load_deferred_paths(&diagnostics),
         vec![path.clone()]
@@ -223,6 +232,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             bytes: Some(128),
             samples: 2,
             probes: 1,
+            probe_preview: Vec::new(),
             elapsed_ms: 4,
             detail: "Loaded 2 sample row(s).".to_string(),
         },
@@ -233,6 +243,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             bytes: Some(2048),
             samples: 4000,
             probes: 3,
+            probe_preview: Vec::new(),
             elapsed_ms: 180,
             detail: "Loaded 4000 sample row(s).".to_string(),
         },
@@ -242,7 +253,8 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             deferred: true,
             bytes: Some(60 * 1024 * 1024),
             samples: 1_200_000,
-            probes: 0,
+            probes: 2,
+            probe_preview: vec!["v(out)".to_string(), "i(load)".to_string()],
             elapsed_ms: 2,
             detail: "Deferred large waveform artifact".to_string(),
         },
@@ -253,6 +265,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             bytes: None,
             samples: 0,
             probes: 0,
+            probe_preview: Vec::new(),
             elapsed_ms: 12,
             detail: "Failed, \"missing\" file".to_string(),
         },
@@ -273,6 +286,16 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "",
             WaveformLoadStatusFilter::Deferred,
+            0.0,
+            false,
+        ),
+        vec![2]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "i(load)",
+            WaveformLoadStatusFilter::All,
             0.0,
             false,
         ),
@@ -318,7 +341,8 @@ fn deferred_waveform_artifacts_project_selector_placeholders() {
             deferred: true,
             bytes: Some(60 * 1024 * 1024),
             samples: 1_200_000,
-            probes: 0,
+            probes: 2,
+            probe_preview: vec!["v(out)".to_string(), "i(load)".to_string()],
             elapsed_ms: 2,
             detail: "Deferred large waveform artifact".to_string(),
         },
@@ -329,6 +353,7 @@ fn deferred_waveform_artifacts_project_selector_placeholders() {
             bytes: None,
             samples: 0,
             probes: 0,
+            probe_preview: Vec::new(),
             elapsed_ms: 3,
             detail: "Skipped".to_string(),
         },
@@ -341,6 +366,8 @@ fn deferred_waveform_artifacts_project_selector_placeholders() {
     assert_eq!(artifacts[0].label, "scope_a.csv");
     assert_eq!(artifacts[0].size_label, "60.0 MiB");
     assert_eq!(artifacts[0].samples, 1_200_000);
+    assert_eq!(artifacts[0].probes, 2);
+    assert_eq!(artifacts[0].probe_preview, vec!["v(out)", "i(load)"]);
 }
 
 #[test]

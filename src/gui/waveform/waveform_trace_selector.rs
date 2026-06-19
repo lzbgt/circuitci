@@ -255,10 +255,14 @@ impl CircuitCiApp {
                                 }
                                 ui.monospace(&artifact.label);
                                 ui.label(format!(
-                                    "{}; ~{} row(s)",
-                                    artifact.size_label, artifact.samples
+                                    "{}; ~{} row(s); {} trace(s)",
+                                    artifact.size_label, artifact.samples, artifact.probes
                                 ));
                             });
+                            let preview = deferred_probe_preview_text(&artifact.probe_preview);
+                            if !preview.is_empty() {
+                                ui.small(preview);
+                            }
                             if !artifact.detail.is_empty() {
                                 ui.small(&artifact.detail);
                             }
@@ -618,6 +622,23 @@ impl CircuitCiApp {
             }
             true
         });
+    }
+}
+
+fn deferred_probe_preview_text(probes: &[String]) -> String {
+    if probes.is_empty() {
+        return String::new();
+    }
+    let visible = probes
+        .iter()
+        .take(6)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+    if probes.len() > 6 {
+        format!("{visible}, +{} more", probes.len() - 6)
+    } else {
+        visible
     }
 }
 

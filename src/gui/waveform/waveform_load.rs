@@ -15,6 +15,7 @@ pub(crate) struct WaveformLoadDiagnostic {
     pub(super) bytes: Option<u64>,
     pub(super) samples: usize,
     pub(super) probes: usize,
+    pub(super) probe_preview: Vec<String>,
     pub(super) elapsed_ms: u128,
     pub(super) detail: String,
 }
@@ -23,6 +24,7 @@ pub(crate) struct WaveformLoadDiagnostic {
 pub(super) struct WaveformLoadPreflight {
     pub(super) bytes: Option<u64>,
     pub(super) estimated_rows: Option<usize>,
+    pub(super) probe_preview: Vec<String>,
     pub(super) warning: bool,
     pub(super) summary: String,
 }
@@ -33,6 +35,8 @@ pub(crate) struct DeferredWaveformArtifact {
     pub(crate) label: String,
     pub(crate) size_label: String,
     pub(crate) samples: usize,
+    pub(crate) probes: usize,
+    pub(crate) probe_preview: Vec<String>,
     pub(crate) detail: String,
 }
 
@@ -72,6 +76,7 @@ impl WaveformLoadDiagnostic {
             bytes,
             samples,
             probes,
+            probe_preview: Vec::new(),
             elapsed_ms,
             detail: format!("Loaded {samples} sample row(s) across {probes} probe(s)."),
         }
@@ -90,6 +95,7 @@ impl WaveformLoadDiagnostic {
             bytes,
             samples: 0,
             probes: 0,
+            probe_preview: Vec::new(),
             elapsed_ms,
             detail,
         }
@@ -106,7 +112,8 @@ impl WaveformLoadDiagnostic {
             deferred: true,
             bytes: preflight.bytes,
             samples: preflight.estimated_rows.unwrap_or(0),
-            probes: 0,
+            probes: preflight.probe_preview.len(),
+            probe_preview: preflight.probe_preview.clone(),
             elapsed_ms,
             detail: format!(
                 "Deferred large waveform artifact; use Load Deferred to parse it when needed ({})",
@@ -138,7 +145,9 @@ impl WaveformLoadDiagnostic {
 
 pub(super) fn waveform_load_preflight(path: &Path) -> WaveformLoadPreflight {
     let bytes = path.metadata().ok().map(|metadata| metadata.len());
-    let estimated_rows = estimate_waveform_data_rows(path, bytes).ok().flatten();
+    let sample = inspect_waveform_sample(path, bytes).unwrap_or_default();
+    let estimated_rows = sample.estimated_rows;
+    let probe_preview = sample.probe_preview;
     let warning = bytes.is_some_and(|bytes| bytes >= LARGE_WAVEFORM_BYTES)
         || estimated_rows.is_some_and(|rows| rows >= LARGE_WAVEFORM_ROWS);
     let mut parts = Vec::new();
@@ -157,6 +166,7 @@ pub(super) fn waveform_load_preflight(path: &Path) -> WaveformLoadPreflight {
     WaveformLoadPreflight {
         bytes,
         estimated_rows,
+        probe_preview,
         warning,
         summary,
     }
@@ -291,27 +301,46 @@ impl CircuitCiApp {
     }
 }
 
-fn estimate_waveform_data_rows(path: &Path, bytes: Option<u64>) -> std::io::Result<Option<usize>> {
+#[derive(Default)]
+struct WaveformLoadSample {
+    estimated_rows: Option<usize>,
+    probe_preview: Vec<String>,
+}
+
+fn inspect_waveform_sample(path: &Path, bytes: Option<u64>) -> std::io::Result<WaveformLoadSample> {
     let Some(total_bytes) = bytes else {
-        return Ok(None);
+        return Ok(WaveformLoadSample::default());
     };
     if total_bytes == 0 {
-        return Ok(Some(0));
+        return Ok(WaveformLoadSample {
+            estimated_rows: Some(0),
+            probe_preview: Vec::new(),
+        });
     }
     let mut file = std::fs::File::open(path)?;
     let mut buffer = vec![0_u8; PREFLIGHT_SAMPLE_BYTES.min(total_bytes as usize)];
     let bytes_read = file.read(&mut buffer)?;
     if bytes_read == 0 {
-        return Ok(Some(0));
+        return Ok(WaveformLoadSample {
+            estimated_rows: Some(0),
+            probe_preview: Vec::new(),
+        });
     }
     buffer.truncate(bytes_read);
     let line_breaks = buffer.iter().filter(|byte| **byte == b'\n').count();
     let sample_rows = line_breaks.saturating_sub(1);
+    let probe_preview = waveform_probe_preview_from_sample(&buffer);
     if bytes_read as u64 >= total_bytes {
-        return Ok(Some(sample_rows));
+        return Ok(WaveformLoadSample {
+            estimated_rows: Some(sample_rows),
+            probe_preview,
+        });
     }
     if line_breaks <= 1 {
-        return Ok(None);
+        return Ok(WaveformLoadSample {
+            estimated_rows: None,
+            probe_preview,
+        });
     }
     let estimated_total_lines = ((line_breaks as u128) * (total_bytes as u128)
         + (bytes_read as u128).saturating_sub(1))
@@ -319,7 +348,31 @@ fn estimate_waveform_data_rows(path: &Path, bytes: Option<u64>) -> std::io::Resu
     let estimated_rows = estimated_total_lines
         .saturating_sub(1)
         .min(usize::MAX as u128) as usize;
-    Ok(Some(estimated_rows))
+    Ok(WaveformLoadSample {
+        estimated_rows: Some(estimated_rows),
+        probe_preview,
+    })
+}
+
+fn waveform_probe_preview_from_sample(buffer: &[u8]) -> Vec<String> {
+    let sample = String::from_utf8_lossy(buffer);
+    for line in sample.lines() {
+        let fields = split_waveform_preview_fields(line);
+        if fields.len() <= 1 {
+            continue;
+        }
+        if fields[0].parse::<f64>().ok().is_some_and(f64::is_finite) {
+            continue;
+        }
+        return fields.into_iter().skip(1).map(str::to_string).collect();
+    }
+    Vec::new()
+}
+
+fn split_waveform_preview_fields(line: &str) -> Vec<&str> {
+    line.split(|character: char| character == ',' || character.is_whitespace())
+        .filter(|field| !field.is_empty())
+        .collect()
 }
 
 pub(super) fn waveform_load_diagnostic_visible_indexes(
@@ -374,10 +427,11 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
 
 fn waveform_load_diagnostic_search_text(diagnostic: &WaveformLoadDiagnostic) -> String {
     format!(
-        "{} {} {}",
+        "{} {} {} {}",
         diagnostic.csv_status(),
         diagnostic.path,
-        diagnostic.detail
+        diagnostic.detail,
+        diagnostic.probe_preview.join(" ")
     )
     .to_ascii_lowercase()
 }
@@ -428,6 +482,8 @@ pub(crate) fn waveform_load_deferred_artifacts(
             label: deferred_waveform_label(&diagnostic.path),
             size_label: format_waveform_load_bytes(diagnostic.bytes),
             samples: diagnostic.samples,
+            probes: diagnostic.probes,
+            probe_preview: diagnostic.probe_preview.clone(),
             detail: diagnostic.detail.clone(),
         })
         .collect()
