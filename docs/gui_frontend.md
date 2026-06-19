@@ -236,9 +236,12 @@ probe-to-scope focus, runtime trace/event-to-schematic cross-focus
 selection, selected-trace schematic-context strip actions, and scope probe
 lookup. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
-transient visible time-window and value-window fit/zoom/pan helpers, direct
-plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom, Back/Forward view-window history, trace overlay selection, and
-shared-axis or per-unit lane axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
+direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
+trace overlay selection, and shared-axis or per-unit lane axis scaling.
+`src/gui/waveform/waveform_view.rs` owns the Scopes plot orchestration, cursor
+readout table, playback controls, transient visible time-window and
+value-window fit/zoom/pan helpers, and Back/Forward view-window history.
+`src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
 turning the runtime module into a test fixture container.
