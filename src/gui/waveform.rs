@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use eframe::egui;
 
 mod waveform_context;
+mod waveform_deferred;
 mod waveform_export;
 mod waveform_io;
 mod waveform_load;
@@ -17,6 +18,12 @@ mod waveform_snapshots;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
+#[cfg(test)]
+use waveform_deferred::{
+    deferred_waveform_artifact_picked_probe_labels,
+    deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
+    deferred_waveform_matching_probe_requests,
+};
 pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
@@ -60,10 +67,7 @@ use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, deferred_waveform_artifact_picked_probe_labels,
-    deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
-    deferred_waveform_matching_probe_requests, waveform_probe_choices,
-    waveform_probe_group_choices,
+    WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
 };
 #[cfg(test)]
 use waveform_trigger::{
