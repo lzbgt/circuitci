@@ -1,7 +1,8 @@
+use super::waveform_context::find_scope_probe;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeQuantity, WaveformTraceRef, append_derived_waveform_probe,
-    derived_waveform_quantity, find_scope_probe, interpolated_value, parse_waveform_csv_text,
+    derived_waveform_quantity, interpolated_value, parse_waveform_csv_text,
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection, sanitized_probe_name,
     scope_cursor_legend_rows, scope_plot_size, scope_trigger_event_rows, scope_trigger_events,
     scope_visible_trace_refs, select_scope_trigger_event, waveform_measurement,

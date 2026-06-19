@@ -222,13 +222,14 @@ read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
-measurement tools, selected-plus-pinned cursor readout table, trigger event readout table, GUI-only
+measurement tools, selected-plus-pinned cursor readout table, GUI-only
 transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
-pending schematic probe-to-scope focus, runtime trace/event-to-schematic
-cross-focus selection, selected-trace schematic-context strip actions,
-selected-trace trigger threshold state, and graph-hover/runtime activity
-extraction from loaded waveform artifacts. `src/gui/waveform/waveform_plot.rs`
+and graph-hover/runtime activity extraction from loaded waveform artifacts.
+`src/gui/waveform/waveform_context.rs` owns pending schematic
+probe-to-scope focus, runtime trace/event-to-schematic cross-focus
+selection, selected-trace schematic-context strip actions, and scope probe
+lookup. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 transient visible time-window and value-window fit/zoom/pan helpers, direct
 plot drag/wheel/Shift-wheel interactions, trace overlay selection, and

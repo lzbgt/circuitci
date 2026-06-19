@@ -282,13 +282,14 @@ keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows,
-min/max/delta measurements, pending schematic
-probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection,
-selected-trace schematic-context strip actions,
-transient selected-trace trigger threshold state, transient selected-probe trace pinning/comparison
-overlays, GUI-only derived waveform channels, promotion of representable
-derived channels to explicit Board IR analog probes/assertions, exact
-probe-value lookup, and normalized runtime activity values for graph tinting.
+min/max/delta measurements, transient selected-probe trace
+pinning/comparison overlays, GUI-only derived waveform channels, promotion
+of representable derived channels to explicit Board IR analog
+probes/assertions, exact probe-value lookup, and normalized runtime
+activity values for graph tinting. `src/gui/waveform/waveform_context.rs`
+owns pending schematic probe-to-scope focus, runtime
+trace/event-to-schematic cross-focus selection, selected-trace
+schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, visible time-window and value-window
 fit/zoom/pan helpers, direct plot drag/wheel/Shift-wheel interactions, trace
