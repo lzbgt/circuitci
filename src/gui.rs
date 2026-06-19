@@ -24,6 +24,7 @@ mod project;
 mod scope_auto_probes;
 mod shell;
 mod simulation;
+mod simulation_editors;
 mod simulation_forms;
 mod sketch;
 mod sketch_actions;

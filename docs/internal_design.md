@@ -308,14 +308,16 @@ history before executing the action; canceled actions must leave the current
 workspace untouched. Native path pickers in `src/gui/file_dialogs.rs` only
 populate existing project/import/output path fields or request the same guarded
 project load action; they must not bypass validation, import, save, or the
-dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
-keeping the runtime oscilloscope primary while analog scenario/model/assertion
-panels stay docked as secondary controls. It also owns scope-run preparation:
+dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage
+shell, keeping the runtime oscilloscope primary while docked editors remain
+secondary controls. It also owns scope-run preparation:
 when no analog probes exist, Run may add a generated transient voltage probe
 or add a voltage probe to the first analog scenario with node bindings before
-saving and validating. `src/gui/simulation_forms.rs` owns
-shared Simulation/Scopes form defaults, combo widgets, stimulus field loading,
-and status-color helpers for those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
+saving and validating. `src/gui/simulation_editors.rs` owns the docked
+scenario/model/source/assertion editors and their Board IR YAML mutation
+helpers. `src/gui/simulation_forms.rs` owns shared Simulation/Scopes form
+defaults, combo widgets, stimulus field loading, and status-color helpers for
+those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
 min/max/delta measurements, bounded selected-trace frequency-domain peak readouts, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived

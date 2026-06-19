@@ -249,9 +249,11 @@ the blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
 placement ghosts before insertion, `F` flips them, and `Shift+F` cycles the
 previewed pin side. The accepted placement persists that schematic-only
 orientation under `board.schematic.node_styles`.
-`src/gui/simulation.rs` owns the Simulation/Scopes stage UI: a runtime-first
-oscilloscope workspace with model-run controls and secondary docked
-scenario/model/assertion panels.
+`src/gui/simulation.rs` owns the Simulation/Scopes stage shell: a runtime-first
+oscilloscope workspace, model-run controls, side-dock orchestration, and
+scope-run preparation.
+`src/gui/simulation_editors.rs` owns the docked scenario/model/source/assertion
+editors and their Board IR YAML mutation helpers.
 `src/gui/simulation_forms.rs` owns shared Simulation/Scopes form defaults,
 scenario/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
