@@ -134,7 +134,7 @@ completion, overview-minimap event routing, and graph hover/runtime routing.
 projection for rendered graph items, minimap exclusion, probe/bundle/label
 badges, and runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
-legend, overlay visibility checkbox, compact loaded-trace jump rows, and
+legend, overlay visibility checkbox, searchable loaded-trace browser, and
 direct Scopes trace-open actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
@@ -189,8 +189,8 @@ navigation aid over scalar Board IR nets and do not persist bus evidence; the
 Sketch canvas defaults them off so imported examples open as a connected
 schematic network first, with the `Circuit View` toggle enabling the helper
 overlay only when users explicitly audit derived groups. The same panel owns
-the runtime-only Scope Activity overlay toggle and compact loaded-trace jump
-rows; those chips and tints mark loaded waveform trace targets and are not
+the runtime-only Scope Activity overlay toggle and searchable loaded-trace jump
+browser; those chips and tints mark loaded waveform trace targets and are not
 schematic components, pins, or nets.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge
@@ -408,8 +408,8 @@ form:
   menus, placed net-label/off-page connector badges that select the underlying
   Board IR net, can be moved by dragging, accept active-wire drops onto their
   underlying net, and can be converted or deleted from their context menu,
-  runtime tinting, an on-canvas Scope Activity legend/toggle with direct
-  loaded-trace jump rows, hoverable/clickable `scope` activity chips, hover
+  runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
+  loaded-trace jump browser, hoverable/clickable `scope` activity chips, hover
   readouts, and context-menu Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or
   current/power probes for selected components,

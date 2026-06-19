@@ -362,6 +362,7 @@ pub struct CircuitCiApp {
     sketch_navigator_fit_target: Option<SketchNavigatorTarget>,
     sketch_net_bundles_visible: bool,
     sketch_runtime_scope_overlay_visible: bool,
+    sketch_runtime_scope_filter: String,
     sketch_palette_kind: SketchSpiceKind,
     sketch_palette_component_id: String,
     sketch_palette_value: f64,
@@ -568,6 +569,7 @@ impl Default for CircuitCiApp {
             sketch_navigator_fit_target: None,
             sketch_net_bundles_visible: false,
             sketch_runtime_scope_overlay_visible: true,
+            sketch_runtime_scope_filter: String::new(),
             sketch_palette_kind: SketchSpiceKind::Resistor,
             sketch_palette_component_id: "R1".to_string(),
             sketch_palette_value: sketch_palette::default_primitive_value(

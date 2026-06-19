@@ -83,7 +83,7 @@ completion, overview-minimap event routing, and runtime tint routing.
 projection for graph items, minimap exclusion, probe/bundle/label badges, and
 runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
-legend, overlay visibility checkbox, compact loaded-trace jump rows, and direct
+legend, overlay visibility checkbox, searchable loaded-trace browser, and direct
 Scopes trace-open actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
 drawing, direct wire-route edits, component placement orientation controls,
@@ -110,7 +110,7 @@ viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
 painting, including runtime tinting, transient loaded-waveform `scope` chips
 with shared paint/hit-test geometry, opacity handling, symbol glyph dispatch,
-and kind-aware pin chips. The on-canvas Scope Activity legend, direct
+and kind-aware pin chips. The on-canvas Scope Activity legend, searchable
 loaded-trace jump rows, and matching `Circuit View` toggle control only this
 transient runtime overlay; they must not persist into Board IR.
 `src/gui/sketch_canvas_render.rs` owns the
