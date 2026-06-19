@@ -9,11 +9,11 @@ use super::{
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, runtime_scope_probe_edge_jump,
-    runtime_scope_probe_sample_label, runtime_scope_probe_target_for_selection,
-    sanitized_probe_name, scope_trace_lanes, scope_visible_styled_trace_refs,
-    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
-    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
+    runtime_scope_probe_target_for_selection, sanitized_probe_name, scope_trace_lanes,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_quantity_from_label, waveform_time_range_for_view,
+    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 use crate::gui::sketch::{
     SketchSelection, SketchViewport, layout_sketch_graph_viewport, runtime_scope_chip_rect,
@@ -421,6 +421,41 @@ fn runtime_scope_probe_sample_label_reports_value_unit_and_time() {
     assert!(sample.contains("1.650000e0"));
     assert!(sample.contains("V"));
     assert!(sample.contains("5.000000e-7 s"));
+}
+
+#[test]
+fn runtime_scope_probe_sparkline_points_normalize_trace_shape() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) v(flat)
+0.0 0.0 2.5
+1e-6 1.0 2.5
+2e-6 0.0 2.5
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let waveforms = [waveform];
+    let target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "v(out)".to_string(),
+    };
+    let flat_target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "v(flat)".to_string(),
+    };
+
+    let points = runtime_scope_probe_sparkline_points(&waveforms, 0, &target, 5).unwrap();
+    let flat_points = runtime_scope_probe_sparkline_points(&waveforms, 0, &flat_target, 5).unwrap();
+
+    assert_eq!(points.len(), 5);
+    assert_eq!(points[0], (0.0, 0.0));
+    assert_eq!(points[2], (0.5, 1.0));
+    assert_eq!(points[4], (1.0, 0.0));
+    assert!(
+        flat_points
+            .iter()
+            .all(|(_, y)| (*y - 0.5).abs() < f32::EPSILON)
+    );
 }
 
 #[test]

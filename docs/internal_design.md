@@ -85,8 +85,8 @@ runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
-value/time readouts, and direct Scopes trace-open actions for loaded schematic
-targets.
+value/time readouts, bounded per-trace sparklines, and direct Scopes trace-open
+actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
 drawing, direct wire-route edits, component placement orientation controls,
 selected-component orientation transforms, canvas probe defaults, and viewport
@@ -114,8 +114,9 @@ painting, including runtime tinting, transient loaded-waveform `scope` chips
 with shared paint/hit-test geometry, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. The on-canvas Scope Activity legend, searchable
 loaded-trace jump rows, Cursor A scrub control, cursor-sampled value/time
-readouts, per-trace edge stepping, and matching `Circuit View` toggle control
-only this transient runtime overlay; they must not persist into Board IR.
+readouts, bounded per-trace sparklines, per-trace edge stepping, and matching
+`Circuit View` toggle control only this transient runtime overlay; they must
+not persist into Board IR.
 `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
 wire target affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
@@ -336,7 +337,8 @@ schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching between
 loaded waveform artifacts and Sketch selections, graph-hover readout lines,
 normalized activity values for graph tinting, exact Scope Activity sample
-rows, and per-trace edge stepping for schematic-side observation.
+rows, bounded Scope Activity sparkline samples, and per-trace edge stepping for
+schematic-side observation.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and

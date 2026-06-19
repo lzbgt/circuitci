@@ -5,7 +5,8 @@ use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
     RuntimeScopeProbeEdgeStep, WaveformView, runtime_scope_probe_edge_jump,
-    runtime_scope_probe_sample_label, waveform_time_range_for_view,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
+    waveform_time_range_for_view,
 };
 
 impl CircuitCiApp {
@@ -207,6 +208,20 @@ impl CircuitCiApp {
                                     )
                                     .unwrap_or_else(|| "sample unavailable".to_string());
                                     ui.monospace(compact_label(&sample, 20));
+                                    if let Some(points) = runtime_scope_probe_sparkline_points(
+                                        &self.waveforms,
+                                        self.selected_waveform,
+                                        &row.target,
+                                        36,
+                                    ) {
+                                        let cursor_fraction =
+                                            runtime_scope_activity_cursor_fraction(
+                                                &self.waveforms,
+                                                self.selected_waveform,
+                                                self.waveform_cursor_a_us,
+                                            );
+                                        draw_runtime_scope_sparkline(ui, &points, cursor_fraction);
+                                    }
                                 });
                             }
                         });
@@ -253,6 +268,68 @@ fn runtime_scope_activity_matches(target: &RuntimeScopeActivityTarget, query: &s
             .scenario_name
             .to_ascii_lowercase()
             .contains(query)
+}
+
+fn runtime_scope_activity_cursor_fraction(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+) -> Option<f32> {
+    let (start_us, end_us) = runtime_scope_activity_cursor_range_us(waveforms, waveform_index)?;
+    if end_us <= start_us {
+        return None;
+    }
+    Some(((cursor_us - start_us) / (end_us - start_us)).clamp(0.0, 1.0) as f32)
+}
+
+fn draw_runtime_scope_sparkline(
+    ui: &mut egui::Ui,
+    points: &[(f32, f32)],
+    cursor_fraction: Option<f32>,
+) {
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(64.0, 18.0), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 3.0, egui::Color32::from_rgb(16, 22, 27));
+    painter.rect_stroke(
+        rect,
+        3.0,
+        egui::Stroke::new(1.0, egui::Color32::from_rgb(62, 78, 86)),
+        egui::StrokeKind::Inside,
+    );
+    let plot_rect = rect.shrink2(egui::vec2(3.0, 3.0));
+    painter.line_segment(
+        [
+            egui::pos2(plot_rect.left(), plot_rect.center().y),
+            egui::pos2(plot_rect.right(), plot_rect.center().y),
+        ],
+        egui::Stroke::new(0.7, egui::Color32::from_rgb(41, 52, 58)),
+    );
+    let mapped = points
+        .iter()
+        .map(|(x, y)| {
+            egui::pos2(
+                plot_rect.left() + plot_rect.width() * x.clamp(0.0, 1.0),
+                plot_rect.bottom() - plot_rect.height() * y.clamp(0.0, 1.0),
+            )
+        })
+        .collect::<Vec<_>>();
+    if mapped.len() >= 2 {
+        painter.add(egui::Shape::line(
+            mapped,
+            egui::Stroke::new(1.25, egui::Color32::from_rgb(110, 235, 180)),
+        ));
+    }
+    if let Some(cursor_fraction) = cursor_fraction {
+        let x = plot_rect.left() + plot_rect.width() * cursor_fraction.clamp(0.0, 1.0);
+        painter.line_segment(
+            [
+                egui::pos2(x, plot_rect.top()),
+                egui::pos2(x, plot_rect.bottom()),
+            ],
+            egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 204, 92)),
+        );
+    }
+    response.on_hover_text("Loaded waveform sparkline for this schematic trace.");
 }
 
 #[cfg(test)]

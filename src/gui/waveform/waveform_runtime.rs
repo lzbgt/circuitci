@@ -93,6 +93,45 @@ pub(in crate::gui) fn runtime_scope_probe_sample_label(
     ))
 }
 
+pub(in crate::gui) fn runtime_scope_probe_sparkline_points(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    target: &ScopeProbeTarget,
+    point_count: usize,
+) -> Option<Vec<(f32, f32)>> {
+    let waveform = waveforms.get(waveform_index)?;
+    if waveform.label != target.scenario_name {
+        return None;
+    }
+    let probe = waveform.probes.iter().find(|probe| {
+        probe
+            .label
+            .trim()
+            .eq_ignore_ascii_case(target.probe_name.trim())
+    })?;
+    let start_s = *waveform.time_s.first()?;
+    let end_s = *waveform.time_s.last()?;
+    if !start_s.is_finite() || !end_s.is_finite() || end_s <= start_s {
+        return None;
+    }
+    let (min, max) = finite_min_max(&probe.values)?;
+    let count = point_count.clamp(2, 48);
+    let value_span = max - min;
+    let mut points = Vec::with_capacity(count);
+    for index in 0..count {
+        let x = index as f64 / (count - 1) as f64;
+        let time_s = start_s + (end_s - start_s) * x;
+        let value = interpolated_value(&waveform.time_s, &probe.values, time_s)?;
+        let y = if value_span.abs() <= f64::EPSILON {
+            0.5
+        } else {
+            ((value - min) / value_span).clamp(0.0, 1.0)
+        };
+        points.push((x as f32, y as f32));
+    }
+    Some(points)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::gui) enum RuntimeScopeProbeEdgeStep {
     Previous,
@@ -231,4 +270,12 @@ fn normalized_probe_token(value: &str) -> String {
         .filter(|character| character.is_ascii_alphanumeric())
         .flat_map(|character| character.to_lowercase())
         .collect()
+}
+
+fn finite_min_max(values: &[f64]) -> Option<(f64, f64)> {
+    let mut iter = values.iter().copied().filter(|value| value.is_finite());
+    let first = iter.next()?;
+    Some(iter.fold((first, first), |(min, max), value| {
+        (min.min(value), max.max(value))
+    }))
 }

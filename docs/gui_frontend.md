@@ -136,8 +136,8 @@ badges, and runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
-value/time readouts, and direct Scopes trace-open actions for loaded schematic
-targets.
+value/time readouts, bounded per-trace sparklines, and direct Scopes trace-open
+actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe
@@ -291,7 +291,7 @@ selection, selected-trace schematic-context strip actions, and scope probe
 lookup. `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching
 between loaded waveform artifacts and Sketch selections, graph-hover readout
 lines, normalized activity values for graph tinting, exact Scope Activity
-sample rows, and per-trace edge stepping for schematic-side observation.
+sample rows, bounded Scope Activity sparkline samples, and per-trace edge stepping for schematic-side observation.
 `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
@@ -417,7 +417,7 @@ form:
   underlying net, and can be converted or deleted from their context menu,
   runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
-  and cursor-sampled value/time rows,
+  cursor-sampled value/time rows, and bounded per-trace sparklines,
   hoverable/clickable `scope` activity chips, hover readouts, and context-menu
   Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or
