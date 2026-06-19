@@ -56,6 +56,41 @@ impl CircuitCiApp {
         true
     }
 
+    pub(in crate::gui) fn unpin_scope_probe_target_for_compare(
+        &mut self,
+        target: ScopeProbeTarget,
+    ) -> bool {
+        let Some(trace) = self.scope_probe_target_trace_ref(&target) else {
+            self.status = format!(
+                "Scope trace {} from scenario {} is not loaded yet.",
+                target.probe_name, target.scenario_name
+            );
+            return false;
+        };
+        let before = self.waveform_pinned_traces.len();
+        self.waveform_pinned_traces
+            .retain(|pinned| *pinned != trace);
+        if before == self.waveform_pinned_traces.len() {
+            self.status = format!(
+                "Scope trace {} is not pinned for comparison.",
+                target.probe_name
+            );
+            return false;
+        }
+        self.status = format!(
+            "Unpinned scope trace {} from Sketch compare.",
+            target.probe_name
+        );
+        true
+    }
+
+    pub(in crate::gui) fn clear_scope_compare_pins_from_sketch(&mut self) -> usize {
+        let count = self.waveform_pinned_traces.len();
+        self.waveform_pinned_traces.clear();
+        self.status = format!("Cleared {count} pinned scope trace(s) from Sketch.");
+        count
+    }
+
     pub(in crate::gui) fn open_pinned_scope_compare(&mut self) -> bool {
         self.prune_scope_trace_pins();
         let Some(trace) = self.waveform_pinned_traces.first().copied() else {

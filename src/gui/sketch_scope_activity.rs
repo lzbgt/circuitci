@@ -85,6 +85,18 @@ impl CircuitCiApp {
                         {
                             self.open_pinned_scope_compare();
                         }
+                        if ui
+                            .add_enabled(
+                                !self.waveform_pinned_traces.is_empty(),
+                                egui::Button::new("Clear Pins"),
+                            )
+                            .on_hover_text(
+                                "Remove every trace pinned from Scope Activity for comparison.",
+                            )
+                            .clicked()
+                        {
+                            self.clear_scope_compare_pins_from_sketch();
+                        }
                     });
                     if let Some(range) =
                         runtime_scope_activity_cursor_range_us(&self.waveforms, self.selected_waveform)
@@ -171,16 +183,25 @@ impl CircuitCiApp {
                                     let pinned =
                                         self.scope_probe_target_pinned_for_compare(&row.target);
                                     if ui
-                                        .add_enabled(
-                                            !pinned,
-                                            egui::Button::new(if pinned { "Pinned" } else { "Pin" }),
-                                        )
+                                        .button(if pinned { "Unpin" } else { "Pin" })
                                         .on_hover_text(
-                                            "Pin this loaded trace into the Scopes compare overlay.",
+                                            if pinned {
+                                                "Remove this trace from the Scopes compare overlay."
+                                            } else {
+                                                "Pin this loaded trace into the Scopes compare overlay."
+                                            },
                                         )
                                         .clicked()
                                     {
-                                        self.pin_scope_probe_target_for_compare(row.target.clone());
+                                        if pinned {
+                                            self.unpin_scope_probe_target_for_compare(
+                                                row.target.clone(),
+                                            );
+                                        } else {
+                                            self.pin_scope_probe_target_for_compare(
+                                                row.target.clone(),
+                                            );
+                                        }
                                     }
                                     let previous_edge = runtime_scope_probe_edge_jump(
                                         &self.waveforms,

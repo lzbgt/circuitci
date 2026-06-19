@@ -560,6 +560,58 @@ fn scope_probe_target_pin_for_compare_reports_missing_loaded_trace() {
 }
 
 #[test]
+fn scope_probe_target_unpin_for_compare_removes_loaded_trace() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)
+0,0,0.1
+0.000001,1,0.2
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "i(load)".to_string(),
+    };
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+
+    assert!(app.unpin_scope_probe_target_for_compare(target.clone()));
+
+    assert!(!app.scope_probe_target_pinned_for_compare(&target));
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.status.contains("Unpinned scope trace i(load)"));
+}
+
+#[test]
+fn clear_scope_compare_pins_from_sketch_removes_all_pins() {
+    let mut app = CircuitCiApp {
+        waveform_pinned_traces: vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 2,
+            },
+        ],
+        ..Default::default()
+    };
+
+    assert_eq!(app.clear_scope_compare_pins_from_sketch(), 2);
+
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.status.contains("Cleared 2 pinned scope trace"));
+}
+
+#[test]
 fn open_pinned_scope_compare_selects_first_valid_pin_and_opens_scopes() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),i(load),v(ref)
