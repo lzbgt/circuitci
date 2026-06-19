@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use eframe::egui;
 
 mod waveform_bundle_integrity;
+mod waveform_bundle_recent;
 mod waveform_bundles;
 mod waveform_context;
 mod waveform_deferred;
@@ -29,10 +30,9 @@ use waveform_bundle_integrity::{
     scope_report_bundle_integrity_details_markdown, scope_report_bundle_missing_artifacts,
 };
 #[cfg(test)]
-use waveform_bundles::{
-    cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    scope_report_bundle_index_path, unique_scope_report_bundle_dir,
-};
+use waveform_bundle_recent::{cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs};
+#[cfg(test)]
+use waveform_bundles::{scope_report_bundle_index_path, unique_scope_report_bundle_dir};
 #[cfg(test)]
 use waveform_deferred::{
     clear_deferred_waveform_column_picks,

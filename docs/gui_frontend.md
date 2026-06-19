@@ -272,9 +272,11 @@ and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export
-with the configured plot SVG, local index page, README manifest,
-loaded-waveform footprint source totals, recent-bundle folder/index opening,
-guarded refresh, and previewed/confirmed bounded old-bundle cleanup.
+with the configured plot SVG, local index page, README manifest, optional
+artifact integrity detail files, and loaded-waveform footprint source totals.
+`src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle folder/index
+and integrity-audit opening, path copy actions, guarded refresh, and
+previewed/confirmed bounded old-bundle cleanup.
 `src/gui/waveform/waveform_bundle_integrity.rs` owns report-bundle artifact
 size/SHA-256 metadata, `artifact_manifest.csv`, missing/changed artifact status
 checks, and expected/current artifact integrity detail rows.
