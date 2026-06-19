@@ -6,6 +6,7 @@ use super::{
 };
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
+use std::fs;
 
 const MAX_SCOPE_SNAPSHOTS: usize = 64;
 
@@ -89,10 +90,22 @@ impl CircuitCiApp {
         let mut remove_index = None;
         let mut jump_index = None;
         let mut focus_index = None;
+        let mut export_csv = false;
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Measurement Snapshots");
                 ui.label("runtime only");
+                if ui.button("Copy CSV").clicked() {
+                    let csv = scope_snapshots_csv(&self.waveform_measurement_snapshots);
+                    ui.ctx().copy_text(csv);
+                    self.status = format!(
+                        "Copied {} scope measurement snapshot row(s) as CSV.",
+                        self.waveform_measurement_snapshots.len()
+                    );
+                }
+                if ui.button("Export CSV").clicked() {
+                    export_csv = true;
+                }
                 if ui.button("Clear").clicked() {
                     self.waveform_measurement_snapshots.clear();
                     self.status = "Cleared scope measurement snapshots.".to_string();
@@ -162,6 +175,9 @@ impl CircuitCiApp {
         if let Some(index) = remove_index {
             self.waveform_measurement_snapshots.remove(index);
             self.status = "Deleted scope measurement snapshot.".to_string();
+        }
+        if export_csv {
+            self.export_scope_measurement_snapshots_csv();
         }
     }
 
@@ -339,6 +355,32 @@ impl CircuitCiApp {
         let center = (min_time + max_time) * 0.5;
         self.set_waveform_time_window(center - span * 0.5, center + span * 0.5);
     }
+
+    fn export_scope_measurement_snapshots_csv(&mut self) {
+        if self.waveform_measurement_snapshots.is_empty() {
+            self.status = "No scope measurement snapshots are available to export.".to_string();
+            return;
+        }
+        let Some(path) = self.pick_scope_snapshot_export_path() else {
+            return;
+        };
+        let csv = scope_snapshots_csv(&self.waveform_measurement_snapshots);
+        match fs::write(&path, csv) {
+            Ok(()) => {
+                self.status = format!(
+                    "Exported {} scope measurement snapshot row(s) to {}.",
+                    self.waveform_measurement_snapshots.len(),
+                    path.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to export scope measurement snapshots to {}: {error}",
+                    path.display()
+                ));
+            }
+        }
+    }
 }
 
 fn cursor_snapshot(
@@ -454,6 +496,53 @@ fn snapshot_rms(snapshot: &ScopeMeasurementSnapshot) -> String {
         .rms_value
         .map(format_value)
         .unwrap_or_else(|| "-".to_string())
+}
+
+pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> String {
+    let mut csv = String::from(
+        "label,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n",
+    );
+    for snapshot in snapshots {
+        let fields = [
+            snapshot.label.clone(),
+            snapshot_source(snapshot),
+            snapshot.trace_label.clone(),
+            snapshot
+                .time_a_us
+                .map(|value| format_value(value / 1e6))
+                .unwrap_or_default(),
+            snapshot
+                .time_b_us
+                .map(|value| format_value(value / 1e6))
+                .unwrap_or_default(),
+            snapshot.value_a.map(format_value).unwrap_or_default(),
+            snapshot.value_b.map(format_value).unwrap_or_default(),
+            snapshot.delta_value.map(format_value).unwrap_or_default(),
+            snapshot.rms_value.map(format_value).unwrap_or_default(),
+            snapshot.event_edge.clone().unwrap_or_default(),
+            snapshot.unit.clone(),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
+fn csv_escape(value: String) -> String {
+    if value
+        .chars()
+        .any(|character| matches!(character, ',' | '"' | '\n' | '\r'))
+    {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value
+    }
 }
 
 fn is_region_snapshot(snapshot: &ScopeMeasurementSnapshot) -> bool {

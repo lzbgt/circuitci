@@ -128,6 +128,15 @@ impl CircuitCiApp {
             self.import_pcb_output_path = path_to_string(path);
         }
     }
+
+    pub(super) fn pick_scope_snapshot_export_path(&mut self) -> Option<PathBuf> {
+        save_file_dialog(
+            "Export Scope Measurement Snapshots",
+            &self.output_dir,
+            "scope_measurement_snapshots.csv",
+            &[("CSV", &["csv"])],
+        )
+    }
 }
 
 fn pick_file_dialog(
