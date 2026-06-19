@@ -251,7 +251,8 @@ SVG copy/export actions, and measurement snapshot display.
 region-stat, and trigger-event measurement snapshot capture, editable labels
 and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, timestamped report
-bundle export with the configured plot SVG and README manifest, Jump
+bundle export with the configured plot SVG and README manifest, transient
+recent-bundle folder opening, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
@@ -636,7 +637,9 @@ configured plot SVG and a README manifest into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
 The manifest records active snapshot filters, plot SVG options, selected trace
 context, and generated files so the folder remains understandable outside the
-GUI.
+GUI. The Scopes panel keeps a bounded transient list of recently exported
+bundles and can open the latest or older bundle folder through the host file
+manager.
 Right-clicking a probe badge
 opens an explicit action menu for opening the probe in Simulation, adding an
 assertion from current settings, quick adding above/below cursor-sample

@@ -8,9 +8,11 @@ use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_SCOPE_SNAPSHOTS: usize = 64;
+const MAX_RECENT_SCOPE_BUNDLES: usize = 5;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(in crate::gui) enum ScopeSnapshotSourceFilter {
@@ -173,7 +175,9 @@ impl CircuitCiApp {
 
     pub(super) fn waveform_measurement_snapshots_panel(&mut self, ui: &mut egui::Ui) {
         self.prune_scope_measurement_snapshots();
-        if self.waveform_measurement_snapshots.is_empty() {
+        if self.waveform_measurement_snapshots.is_empty()
+            && self.waveform_recent_report_bundles.is_empty()
+        {
             return;
         }
         let mut remove_index = None;
@@ -218,6 +222,10 @@ impl CircuitCiApp {
                     self.status = "Cleared scope measurement snapshots.".to_string();
                 }
             });
+            self.scope_recent_report_bundles_ui(ui);
+            if self.waveform_measurement_snapshots.is_empty() {
+                return;
+            }
             ui.horizontal_wrapped(|ui| {
                 ui.label("Find");
                 ui.add(
@@ -661,6 +669,7 @@ impl CircuitCiApp {
                 )
             }) {
             Ok(()) => {
+                self.push_recent_scope_report_bundle(bundle_dir.to_string_lossy().into_owned());
                 self.status = format!(
                     "Exported scope report bundle with {} snapshot row(s) to {}.",
                     snapshots.len(),
@@ -731,6 +740,64 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             self.selected_probe,
             markdown_escape(&selected_context),
         )
+    }
+
+    fn scope_recent_report_bundles_ui(&mut self, ui: &mut egui::Ui) {
+        let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
+            return;
+        };
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Recent bundle");
+            ui.monospace(display_path_tail(&latest));
+            if ui.button("Open Bundle Folder").clicked() {
+                self.open_scope_report_bundle(&latest);
+            }
+            if self.waveform_recent_report_bundles.len() > 1 {
+                let older_bundles = self
+                    .waveform_recent_report_bundles
+                    .iter()
+                    .skip(1)
+                    .cloned()
+                    .collect::<Vec<_>>();
+                egui::ComboBox::from_id_salt("scope_recent_report_bundles")
+                    .selected_text("Older")
+                    .show_ui(ui, |ui| {
+                        for bundle in older_bundles {
+                            if ui.button(display_path_tail(&bundle)).clicked() {
+                                self.open_scope_report_bundle(&bundle);
+                                ui.close();
+                            }
+                        }
+                    });
+            }
+        });
+    }
+
+    fn push_recent_scope_report_bundle(&mut self, bundle: String) {
+        self.waveform_recent_report_bundles
+            .retain(|existing| existing != &bundle);
+        self.waveform_recent_report_bundles.insert(0, bundle);
+        self.waveform_recent_report_bundles
+            .truncate(MAX_RECENT_SCOPE_BUNDLES);
+    }
+
+    fn open_scope_report_bundle(&mut self, bundle: &str) {
+        let path = Path::new(bundle);
+        if !path.exists() {
+            self.status = format!("Scope report bundle no longer exists: {}.", path.display());
+            return;
+        }
+        match open_path_in_file_manager(path) {
+            Ok(()) => {
+                self.status = format!("Opened scope report bundle folder {}.", path.display());
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to open scope report bundle folder {}: {error}",
+                    path.display()
+                ));
+            }
+        }
     }
 }
 
@@ -1051,6 +1118,37 @@ fn markdown_escape(value: &str) -> String {
 
 fn yes_no(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
+}
+
+fn display_path_tail(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| path.to_string())
+}
+
+fn open_path_in_file_manager(path: &Path) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(path);
+        command
+    };
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("explorer");
+        command.arg(path);
+        command
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(path);
+        command
+    };
+    command.spawn().map(|_| ())
 }
 
 fn is_region_snapshot(snapshot: &ScopeMeasurementSnapshot) -> bool {

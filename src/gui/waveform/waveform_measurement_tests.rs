@@ -765,6 +765,10 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("- Split units: yes"));
     assert!(readme.contains("- Selected trace: v(out)"));
     assert!(readme.contains("- `scope_plot.svg`"));
+    assert_eq!(
+        app.waveform_recent_report_bundles,
+        vec![bundle.to_string_lossy().into_owned()]
+    );
     assert!(app.status.contains("Exported scope report bundle"));
 
     fs::remove_dir_all(&base_dir).unwrap();
