@@ -262,8 +262,8 @@ simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only
 transient trace pinning/comparison overlays, per-trace overlay visibility/color
 styles, derived waveform channels, promotion of representable derived channels
-to Board IR probes/assertions, and graph-hover/runtime activity extraction from
-loaded waveform artifacts. Validation workers parse waveform artifacts with
+to Board IR probes/assertions, and exact probe-value lookup for badge quick
+assertions. Validation workers parse waveform artifacts with
 bounded preflight size/row estimates, large-artifact progress warnings, optional
 large-artifact deferral, progress/cancel checks, and loaded/deferred/skipped file
 diagnostics before the GUI applies the completed report, keeping large CSV files
@@ -288,7 +288,11 @@ behavior, including loaded-artifact unload actions that drop or shift transient 
 `src/gui/waveform/waveform_context.rs` owns pending schematic
 probe-to-scope focus, runtime trace/event-to-schematic cross-focus
 selection, selected-trace schematic-context strip actions, and scope probe
-lookup. `src/gui/waveform/waveform_plot.rs`
+lookup. `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching
+between loaded waveform artifacts and Sketch selections, graph-hover readout
+lines, normalized activity values for graph tinting, exact Scope Activity
+sample rows, and per-trace edge stepping for schematic-side observation.
+`src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
 trace overlay selection, min/max decimated trace-point caching for large CSVs,

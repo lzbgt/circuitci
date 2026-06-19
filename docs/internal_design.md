@@ -319,8 +319,7 @@ controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visi
 min/max/delta measurements, bounded selected-trace frequency-domain peak readouts, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
-Board IR analog probes/assertions, exact probe-value lookup, and normalized
-runtime activity values for graph tinting.
+Board IR analog probes/assertions, and exact probe-value lookup.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact
@@ -334,6 +333,10 @@ behavior, including loaded-artifact unload actions that drop or shift transient 
 `src/gui/waveform/waveform_context.rs` owns
 pending schematic probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection, selected-trace
 schematic-context strip actions, and scope probe lookup.
+`src/gui/waveform/waveform_runtime.rs` owns runtime probe matching between
+loaded waveform artifacts and Sketch selections, graph-hover readout lines,
+normalized activity values for graph tinting, exact Scope Activity sample
+rows, and per-trace edge stepping for schematic-side observation.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
@@ -365,12 +368,12 @@ previewed/confirmed bounded old-bundle cleanup.
 size/SHA-256 metadata, `artifact_manifest.csv`, missing/changed artifact status
 checks, expected/current artifact integrity detail rows, problem-only detail
 projection, and report-friendly CSV/Markdown detail serialization.
-`src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
-readouts, activity coloring, pinned trace overlays over the currently loaded
-CSV set, and derived difference, sum, product, or ratio channels for runtime
-waveform probes, but those values must come from report waveform artifacts and
-the shared waveform interpolation helpers rather than an unsynchronized live
-simulation model. Validation workers load waveform artifacts through `src/gui/waveform/waveform_io.rs`, with bounded preflight size/row estimates, large-artifact progress warnings, optional
+`src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. Runtime graph hover
+readouts and activity coloring may display pinned trace overlays over the
+currently loaded CSV set, and derived difference, sum, product, or ratio
+channels for runtime waveform probes, but those values must come from report
+waveform artifacts and the shared waveform interpolation helpers rather than an
+unsynchronized live simulation model. Validation workers load waveform artifacts through `src/gui/waveform/waveform_io.rs`, with bounded preflight size/row estimates, large-artifact progress warnings, optional
 large-artifact deferral, progress and cancel checks, loaded/deferred/skipped file
 diagnostics, selected-column deferred requests, and report/waveform co-application, so large CSV parsing does not
 run on the UI thread, deferred/skipped traces and slow artifacts are visible to
