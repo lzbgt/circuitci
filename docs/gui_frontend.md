@@ -387,6 +387,8 @@ form:
   runtime tinting and hover readouts for
   matching waveform probes, primary-toolbar probe controls that add voltage
   probes for selected nets or current/power probes for selected components,
+  plus direct `Scope V`, `Scope I`, and `Scope P` actions that create the
+  missing probe when needed and open the Simulation-stage Scopes workspace,
   visible voltage/current/power probe badges derived from analog scenario
   probes, badge pass/fail/unknown/unasserted markers derived from the latest
   validation report, badge clicks that open and focus the corresponding
@@ -649,10 +651,13 @@ new strict `above` or `below` check. If no waveform column matches the probe
 expression at the cursor, the quick action fails closed and leaves Board IR
 unchanged.
 Clicking a probe badge, choosing a probe row in the object navigator, or using
-the primary toolbar scope action records the selected scenario/probe as the
-runtime scope target. If waveform artifacts are already loaded, the Scopes view
-selects the matching trace immediately; otherwise the target is applied after
-the next successful Run loads waveform CSV data. Selecting or focusing a
+the primary toolbar/context-menu scope actions records the selected
+scenario/probe as the runtime scope target. `Scope V`, `Scope I`, and
+`Scope P` first append the corresponding Board IR voltage/current/power probe
+when the selected net or component does not already have one. If waveform
+artifacts are already loaded, the Scopes view selects the matching trace
+immediately; otherwise the target is applied after the next successful Run
+loads waveform CSV data. Selecting or focusing a
 Scopes trace or trigger-event row can select the originating schematic probe's
 net or component while staying in the runtime workspace. When that mapping
 exists, Scopes shows a schematic-context strip with target, probe, scenario,
@@ -724,10 +729,10 @@ the same validated Board IR mutation paths as the keyboard shortcuts.
 Right-clicking a component, net node, or wire opens the common sketch action
 menu for that target. Component menus can inspect/select, start inline ID or
 supported scalar-value editing, start wire mode from an existing/default pin,
-add current or power probes, or delete the component.
+add or scope current/power probes, or delete the component.
 Net and wire menus can inspect/select the underlying net, connect the active
-wire to that net, add a voltage probe, or delete the net through the existing
-net-removal rules; a wire is still just a rendered view of Board IR pin-to-net
+wire to that net, add or scope a voltage probe, or delete the net through the
+existing net-removal rules; a wire is still just a rendered view of Board IR pin-to-net
 bindings, optionally with schematic-only route waypoints that can be cleared
 from the same wire menu, not a separate persisted electrical edge model.
 Removing a hovered badge deletes the underlying Board IR analog probe and any

@@ -783,16 +783,7 @@ impl CircuitCiApp {
                     self.apply_add_voltage_probe_for_net(&net_id);
                 }
                 if ui.button("Scope V").clicked() {
-                    let target = self
-                        .scope_probe_for_selected_net(&net_id)
-                        .unwrap_or_else(|| {
-                            self.ensure_net_probe_defaults(&net_id);
-                            ScopeProbeTarget {
-                                scenario_name: self.analog_probe_scenario.clone(),
-                                probe_name: self.analog_canvas_probe_name.clone(),
-                            }
-                        });
-                    self.open_scope_probe_target(target);
+                    self.open_or_create_scope_voltage_probe_for_net(&net_id);
                 }
             }
             SketchSelection::Component(component_id) => {
@@ -800,26 +791,81 @@ impl CircuitCiApp {
                     self.ensure_component_probe_defaults(&component_id);
                     self.apply_add_current_probe_for_component(&component_id);
                 }
+                if ui.button("Scope I").clicked() {
+                    self.open_or_create_scope_component_probe(
+                        &component_id,
+                        sketch_probes::SketchProbeQuantity::Current,
+                    );
+                }
                 if ui.button("Probe P").clicked() {
                     self.ensure_component_probe_defaults(&component_id);
                     self.apply_add_power_probe_for_component(&component_id);
                 }
-                if ui.button("Scope Probe").clicked() {
-                    let target = self
-                        .scope_probe_for_selected_component(&component_id)
-                        .unwrap_or_else(|| {
-                            self.ensure_component_probe_defaults(&component_id);
-                            ScopeProbeTarget {
-                                scenario_name: self.analog_probe_scenario.clone(),
-                                probe_name: self.analog_canvas_component_probe_name.clone(),
-                            }
-                        });
-                    self.open_scope_probe_target(target);
+                if ui.button("Scope P").clicked() {
+                    self.open_or_create_scope_component_probe(
+                        &component_id,
+                        sketch_probes::SketchProbeQuantity::Power,
+                    );
                 }
             }
             SketchSelection::Overflow(_) => {
                 ui.label("Select a visible net/component to probe");
             }
+        }
+    }
+
+    fn open_or_create_scope_voltage_probe_for_net(&mut self, net_id: &str) {
+        if let Some(target) = self.scope_probe_for_selected_net(net_id) {
+            self.open_scope_probe_target(target);
+            return;
+        }
+        self.ensure_net_probe_defaults(net_id);
+        let target = ScopeProbeTarget {
+            scenario_name: self.analog_probe_scenario.trim().to_string(),
+            probe_name: self.analog_canvas_probe_name.trim().to_string(),
+        };
+        if self.apply_add_voltage_probe_for_net(net_id) {
+            self.open_scope_probe_target(target);
+        }
+    }
+
+    fn open_or_create_scope_component_probe(
+        &mut self,
+        component_id: &str,
+        quantity: sketch_probes::SketchProbeQuantity,
+    ) {
+        if let Some(target) =
+            self.scope_probe_for_selected_component_quantity(component_id, quantity)
+        {
+            self.open_scope_probe_target(target);
+            return;
+        }
+        self.ensure_component_probe_defaults(component_id);
+        let probe_name = match quantity {
+            sketch_probes::SketchProbeQuantity::Voltage => return,
+            sketch_probes::SketchProbeQuantity::Current => {
+                self.analog_canvas_component_probe_name.trim().to_string()
+            }
+            sketch_probes::SketchProbeQuantity::Power => self
+                .analog_canvas_component_power_probe_name
+                .trim()
+                .to_string(),
+        };
+        let target = ScopeProbeTarget {
+            scenario_name: self.analog_probe_scenario.trim().to_string(),
+            probe_name,
+        };
+        let added = match quantity {
+            sketch_probes::SketchProbeQuantity::Voltage => false,
+            sketch_probes::SketchProbeQuantity::Current => {
+                self.apply_add_current_probe_for_component(component_id)
+            }
+            sketch_probes::SketchProbeQuantity::Power => {
+                self.apply_add_power_probe_for_component(component_id)
+            }
+        };
+        if added {
+            self.open_scope_probe_target(target);
         }
     }
 
@@ -840,12 +886,18 @@ impl CircuitCiApp {
             })
     }
 
-    fn scope_probe_for_selected_component(&self, component_id: &str) -> Option<ScopeProbeTarget> {
+    fn scope_probe_for_selected_component_quantity(
+        &self,
+        component_id: &str,
+        quantity: sketch_probes::SketchProbeQuantity,
+    ) -> Option<ScopeProbeTarget> {
         self.project_snapshot
             .as_ref()?
             .probes
             .iter()
             .find(|probe| {
+                probe.quantity == quantity
+                    &&
                 matches!(
                     &probe.target,
                     sketch_probes::SketchProbeTarget::Component(target) if target == component_id
@@ -1291,7 +1343,7 @@ mod tests {
         validate_board_ir_yaml_text,
     };
     use super::sketch_canvas_render::component_context_pin;
-    use super::{CircuitCiApp, SketchSnapMode, egui};
+    use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, Stage, egui};
     use std::path::Path;
 
     fn editable_project_yaml() -> &'static str {
@@ -1310,6 +1362,62 @@ board:
       kind: digital_or_analog
     gnd:
       kind: ground
+"
+    }
+
+    fn analog_scope_project_yaml() -> &'static str {
+        "project:
+  name: gui_scope_toolbar_test
+  version: 0.1.0
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+      pins:
+        P: rail
+        N: gnd
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+      pins:
+        A: rail
+        B: out
+  nets:
+    rail:
+      kind: power
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: gui_transient
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1]
+      model_files: []
+      node_bindings:
+        - { net: rail, node: rail }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: V1, pin: P }, node: rail }
+        - { endpoint: { component: V1, pin: N }, node: '0' }
+        - { endpoint: { component: R1, pin: A }, node: rail }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 100, max_step_us: 1 }
+      stimuli: []
+      probes: []
+      assertions: []
 "
     }
 
@@ -1336,6 +1444,83 @@ board:
         )
         .unwrap_err();
         assert!(error.to_string().contains("Board IR"));
+    }
+
+    #[test]
+    fn scope_voltage_action_creates_probe_and_opens_scopes() {
+        let yaml = analog_scope_project_yaml();
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+            ..Default::default()
+        };
+
+        app.open_or_create_scope_voltage_probe_for_net("out");
+
+        assert_eq!(app.stage, Stage::Simulation);
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "out_voltage".to_string(),
+            })
+        );
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "out_voltage"
+                && probe.expression == "V(out)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Voltage
+        }));
+    }
+
+    #[test]
+    fn scope_component_actions_create_current_and_power_probes() {
+        let yaml = analog_scope_project_yaml();
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+            ..Default::default()
+        };
+
+        app.open_or_create_scope_component_probe(
+            "V1",
+            super::sketch_probes::SketchProbeQuantity::Current,
+        );
+        assert_eq!(app.stage, Stage::Simulation);
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "V1_current".to_string(),
+            })
+        );
+        app.open_or_create_scope_component_probe(
+            "V1",
+            super::sketch_probes::SketchProbeQuantity::Power,
+        );
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "V1_power".to_string(),
+            })
+        );
+
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+        assert!(probes.iter().any(|probe| {
+            probe.name == "V1_current"
+                && probe.expression == "I(V1)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Current
+        }));
+        assert!(probes.iter().any(|probe| {
+            probe.name == "V1_power"
+                && probe.expression == "V(rail,0)*I(V1)"
+                && probe.quantity == crate::board_ir::AnalogQuantity::Power
+        }));
     }
 
     #[test]

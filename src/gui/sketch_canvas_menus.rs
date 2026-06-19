@@ -154,9 +154,23 @@ impl CircuitCiApp {
                     self.apply_add_current_probe_for_component(component_id);
                     ui.close();
                 }
+                if ui.button("Scope Current").clicked() {
+                    self.open_or_create_scope_component_probe(
+                        component_id,
+                        crate::gui::sketch_probes::SketchProbeQuantity::Current,
+                    );
+                    ui.close();
+                }
                 if ui.button("Add Power Probe").clicked() {
                     self.ensure_component_probe_defaults(component_id);
                     self.apply_add_power_probe_for_component(component_id);
+                    ui.close();
+                }
+                if ui.button("Scope Power").clicked() {
+                    self.open_or_create_scope_component_probe(
+                        component_id,
+                        crate::gui::sketch_probes::SketchProbeQuantity::Power,
+                    );
                     ui.close();
                 }
                 ui.separator();
@@ -382,6 +396,10 @@ impl CircuitCiApp {
         if ui.button("Add Voltage Probe").clicked() {
             self.ensure_net_probe_defaults(net_id);
             self.apply_add_voltage_probe_for_net(net_id);
+            ui.close();
+        }
+        if ui.button("Scope Voltage").clicked() {
+            self.open_or_create_scope_voltage_probe_for_net(net_id);
             ui.close();
         }
         ui.separator();

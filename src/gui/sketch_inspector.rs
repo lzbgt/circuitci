@@ -912,7 +912,7 @@ impl CircuitCiApp {
         }
     }
 
-    pub(super) fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) {
+    pub(super) fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) -> bool {
         let draft = AnalogProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             net_id: net_id.to_string(),
@@ -932,12 +932,16 @@ impl CircuitCiApp {
                         self.analog_canvas_probe_name.trim()
                     ),
                 );
+                true
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 
-    pub(super) fn apply_add_current_probe_for_component(&mut self, component_id: &str) {
+    pub(super) fn apply_add_current_probe_for_component(&mut self, component_id: &str) -> bool {
         let draft = AnalogCurrentProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -962,12 +966,16 @@ impl CircuitCiApp {
                         self.analog_canvas_component_probe_name.trim()
                     ),
                 );
+                true
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 
-    pub(super) fn apply_add_power_probe_for_component(&mut self, component_id: &str) {
+    pub(super) fn apply_add_power_probe_for_component(&mut self, component_id: &str) -> bool {
         let draft = AnalogPowerProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -994,8 +1002,12 @@ impl CircuitCiApp {
                         self.analog_canvas_component_power_probe_name.trim()
                     ),
                 );
+                true
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 }
