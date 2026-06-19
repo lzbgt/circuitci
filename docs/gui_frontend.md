@@ -275,7 +275,8 @@ recent-bundle folder opening and previewed/confirmed bounded old-bundle cleanup,
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
-`src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage
+`src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage,
+`src/gui/waveform/waveform_loading_tests.rs` for waveform loading, deferred-artifact, diagnostics, and footprint coverage,
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
 snapshot measurement coverage, and `src/gui/waveform/waveform_scope_tests.rs`
 for app-level Scopes context, style, lane, probe, and compare-set coverage so
