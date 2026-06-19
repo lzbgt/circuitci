@@ -236,7 +236,7 @@ trace previews, can be filtered by file/probe/detail from the selector, and can
 be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report. Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces, mark loaded preview labels, skip already loaded columns, and preserve the full
-deferred artifact placeholder for later all-column loading. Loaded full artifacts and selected-column loads can be inspected through footprint readouts, sorted/filtered by runtime cost, and unloaded from the runtime Scopes state to free memory; full loads become deferred reload placeholders again, and selected-column loads mark those preview columns unloaded without changing Board IR or reports.
+deferred artifact placeholder for later all-column loading. Loaded full artifacts and selected-column loads can be inspected through footprint readouts, sorted/filtered by runtime cost, and unloaded individually or through guarded visible-row preview/confirmation from the runtime Scopes state to free memory; full loads become deferred reload placeholders again, and selected-column loads mark those preview columns unloaded without changing Board IR or reports.
 `src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
@@ -245,7 +245,7 @@ searchable preview-column picker background load actions with select-visible hel
 reloads, and keep full deferred artifacts available after partial column
 loads.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
-searchable/grouped trace selection, loaded-waveform footprint readouts with sort/filter controls, transient saved compare sets, transient
+searchable/grouped trace selection, loaded-waveform footprint readouts with sort/filter controls and guarded bulk unload preview/confirmation, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset
 behavior, including loaded-artifact unload actions that drop or shift transient trace references.
 `src/gui/waveform/waveform_context.rs` owns pending schematic

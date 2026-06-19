@@ -72,11 +72,12 @@ use waveform_snapshots::{
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
     scope_snapshots_markdown, unique_scope_report_bundle_dir,
 };
-pub(super) use waveform_trace_selector::WaveformFootprintSortKey;
+use waveform_trace_selector::waveform_footprint_target_index;
+pub(super) use waveform_trace_selector::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, waveform_footprint_rows, waveform_probe_choices,
-    waveform_probe_group_choices,
+    WaveformProbeGroup, waveform_footprint_rows, waveform_footprint_unload_targets,
+    waveform_probe_choices, waveform_probe_group_choices,
 };
 #[cfg(test)]
 use waveform_trigger::{
@@ -359,6 +360,7 @@ impl CircuitCiApp {
             self.status = "No loaded waveform artifact is selected for unload.".to_string();
             return;
         };
+        self.waveform_footprint_unload_preview.clear();
         let probe_labels = waveform
             .probes
             .iter()
@@ -413,6 +415,26 @@ impl CircuitCiApp {
             return;
         };
         self.unload_waveform_view(index);
+    }
+
+    pub(super) fn unload_waveform_footprint_targets(
+        &mut self,
+        targets: &[WaveformFootprintUnloadTarget],
+    ) -> usize {
+        let mut indexes = Vec::new();
+        for target in targets {
+            if let Some(index) = waveform_footprint_target_index(&self.waveforms, target, &indexes)
+            {
+                indexes.push(index);
+            }
+        }
+        indexes.sort_unstable_by(|left, right| right.cmp(left));
+        indexes.dedup();
+        let removed = indexes.len();
+        for index in indexes {
+            self.unload_waveform_view(index);
+        }
+        removed
     }
 
     fn shift_scope_trace_pins_after_waveform_removal(&mut self, removed_waveform_index: usize) {

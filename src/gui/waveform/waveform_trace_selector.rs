@@ -141,8 +141,47 @@ impl CircuitCiApp {
                         .clicked()
                     {
                         self.waveform_footprint_filter.clear();
+                        self.waveform_footprint_unload_preview.clear();
+                    }
+                    if ui
+                        .add_enabled(
+                            !rows.is_empty(),
+                            egui::Button::new(format!("Preview Unload Visible ({})", rows.len())),
+                        )
+                        .on_hover_text(
+                            "Preview a bulk unload for the currently visible footprint rows.",
+                        )
+                        .clicked()
+                    {
+                        self.waveform_footprint_unload_preview =
+                            waveform_footprint_unload_targets(&rows);
                     }
                 });
+                if !self.waveform_footprint_unload_preview.is_empty() {
+                    let preview_count = self.waveform_footprint_unload_preview.len();
+                    let preview_bytes = self
+                        .waveform_footprint_unload_preview
+                        .iter()
+                        .map(|target| target.estimated_bytes)
+                        .sum::<usize>();
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(format!(
+                            "Unload preview: {preview_count} waveform view(s), {}.",
+                            format_waveform_load_bytes(Some(preview_bytes as u64))
+                        ));
+                        if ui.button("Confirm Unload").clicked() {
+                            let targets = self.waveform_footprint_unload_preview.clone();
+                            self.waveform_footprint_unload_preview.clear();
+                            let removed = self.unload_waveform_footprint_targets(&targets);
+                            self.status =
+                                format!("Unloaded {removed} waveform artifact(s) from memory.");
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.waveform_footprint_unload_preview.clear();
+                            self.status = "Canceled loaded waveform unload preview.".to_string();
+                        }
+                    });
+                }
                 if rows.is_empty() {
                     ui.small("No loaded waveform matches the current footprint filter.");
                     return;
@@ -189,6 +228,7 @@ impl CircuitCiApp {
             },
         );
         if let Some(index) = unload_waveform {
+            self.waveform_footprint_unload_preview.clear();
             self.unload_waveform_view(index);
         } else if let Some(index) = next_waveform {
             self.selected_waveform = index.min(self.waveforms.len().saturating_sub(1));
@@ -791,6 +831,29 @@ pub(super) struct WaveformFootprintRow {
     pub(super) estimated_bytes: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::gui) struct WaveformFootprintUnloadTarget {
+    label: String,
+    path: String,
+    samples: usize,
+    probes: usize,
+    values: usize,
+    estimated_bytes: usize,
+}
+
+impl WaveformFootprintUnloadTarget {
+    fn from_row(row: &WaveformFootprintRow) -> Self {
+        Self {
+            label: row.label.clone(),
+            path: row.path.clone(),
+            samples: row.samples,
+            probes: row.probes,
+            values: row.values,
+            estimated_bytes: row.estimated_bytes,
+        }
+    }
+}
+
 pub(super) fn waveform_footprint_rows(
     waveforms: &[WaveformView],
     query: &str,
@@ -836,6 +899,31 @@ pub(super) fn waveform_footprint_rows(
         if descending { order.reverse() } else { order }
     });
     rows
+}
+
+pub(super) fn waveform_footprint_unload_targets(
+    rows: &[WaveformFootprintRow],
+) -> Vec<WaveformFootprintUnloadTarget> {
+    rows.iter()
+        .map(WaveformFootprintUnloadTarget::from_row)
+        .collect()
+}
+
+pub(super) fn waveform_footprint_target_index(
+    waveforms: &[WaveformView],
+    target: &WaveformFootprintUnloadTarget,
+    skipped_indexes: &[usize],
+) -> Option<usize> {
+    waveforms.iter().enumerate().find_map(|(index, waveform)| {
+        (!skipped_indexes.contains(&index)
+            && waveform.label == target.label
+            && waveform.path == target.path
+            && waveform.time_s.len() == target.samples
+            && waveform.probes.len() == target.probes
+            && waveform_footprint_value_count(waveform) == target.values
+            && waveform_footprint_estimated_bytes(waveform) == target.estimated_bytes)
+            .then_some(index)
+    })
 }
 
 fn waveform_footprint_search_text(waveform: &WaveformView) -> String {

@@ -21,10 +21,10 @@ use super::{
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
     select_deferred_waveform_column_picks, select_scope_trigger_event, waveform_footprint_rows,
-    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
-    waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
-    waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
-    waveform_probe_group_choices,
+    waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
+    waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
+    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
+    waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
 };
 use crate::gui::CircuitCiApp;
 use std::collections::BTreeSet;
@@ -1410,6 +1410,61 @@ fn waveform_footprint_rows_filter_and_sort_loaded_views() {
 
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].label, "large.csv");
+}
+
+#[test]
+fn waveform_footprint_bulk_unload_uses_preview_targets() {
+    let small_path = "/tmp/run/small.csv";
+    let large_path = "/tmp/run/large.csv";
+    let extra_path = "/tmp/run/extra.csv";
+    let small = parse_waveform_csv_text("time,v(out)\n0,1\n0.000001,2\n", small_path).unwrap();
+    let large = parse_waveform_csv_text(
+        "time,v(bus),i(load),temp\n0,12,0.1,25\n0.000001,11,0.2,26\n0.000002,10,0.3,27\n",
+        large_path,
+    )
+    .unwrap();
+    let extra = parse_waveform_csv_text("time,v(ref)\n0,3.3\n0.000001,3.2\n", extra_path).unwrap();
+    let rows = waveform_footprint_rows(
+        &[small.clone(), large.clone(), extra.clone()],
+        "load",
+        WaveformFootprintSortKey::EstimatedBytes,
+        true,
+    );
+    let targets = waveform_footprint_unload_targets(&rows);
+    let mut app = CircuitCiApp {
+        waveforms: vec![small, large, extra],
+        waveform_load_diagnostics: vec![
+            WaveformLoadDiagnostic::loaded(small_path.to_string(), Some(128), 2, 1, 1),
+            WaveformLoadDiagnostic::loaded(large_path.to_string(), Some(512), 3, 3, 2),
+            WaveformLoadDiagnostic::loaded(extra_path.to_string(), Some(128), 2, 1, 1),
+        ],
+        selected_waveform: 2,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 2,
+            probe_index: 0,
+        }],
+        ..Default::default()
+    };
+
+    let removed = app.unload_waveform_footprint_targets(&targets);
+
+    assert_eq!(removed, 1);
+    assert_eq!(app.waveforms.len(), 2);
+    assert_eq!(app.waveforms[0].path, small_path);
+    assert_eq!(app.waveforms[1].path, extra_path);
+    assert_eq!(app.selected_waveform, 1);
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0,
+        }]
+    );
+    let artifacts = waveform_load_deferred_artifacts(&app.waveform_load_diagnostics);
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].path, large_path);
+
+    assert_eq!(app.unload_waveform_footprint_targets(&targets), 0);
 }
 
 #[test]

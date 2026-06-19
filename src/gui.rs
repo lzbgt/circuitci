@@ -70,9 +70,9 @@ use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
     ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformFootprintSortKey,
-    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache,
-    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    waveform_time_range_for_view,
+    WaveformFootprintUnloadTarget, WaveformLoadDiagnostic, WaveformLoadPreviewFilter,
+    WaveformLoadStatusFilter, WaveformPlotCache, WaveformTracePreset, WaveformTraceRef,
+    WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -382,6 +382,7 @@ pub struct CircuitCiApp {
     waveform_footprint_filter: String,
     waveform_footprint_sort_key: WaveformFootprintSortKey,
     waveform_footprint_descending: bool,
+    waveform_footprint_unload_preview: Vec<WaveformFootprintUnloadTarget>,
     selected_waveform: usize,
     selected_probe: usize,
     waveform_probe_filter: String,
@@ -580,6 +581,7 @@ impl Default for CircuitCiApp {
             waveform_footprint_filter: String::new(),
             waveform_footprint_sort_key: WaveformFootprintSortKey::EstimatedBytes,
             waveform_footprint_descending: true,
+            waveform_footprint_unload_preview: Vec::new(),
             selected_waveform: 0,
             selected_probe: 0,
             waveform_probe_filter: String::new(),

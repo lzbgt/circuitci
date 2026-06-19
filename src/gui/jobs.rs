@@ -625,6 +625,7 @@ impl CircuitCiApp {
                 self.waveform_trace_presets.clear();
                 self.waveform_trace_styles.clear();
                 self.waveform_measurement_snapshots.clear();
+                self.waveform_footprint_unload_preview.clear();
                 self.selected_waveform = 0;
                 self.selected_probe = 0;
                 self.apply_pending_scope_probe_focus();
@@ -715,6 +716,7 @@ impl CircuitCiApp {
                     output.diagnostics,
                 );
                 self.waveforms.extend(output.waveforms);
+                self.waveform_footprint_unload_preview.clear();
                 self.waveform_plot_cache.clear();
                 if !self.waveforms.is_empty() {
                     self.stage = Stage::Simulation;
