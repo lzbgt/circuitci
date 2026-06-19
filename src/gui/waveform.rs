@@ -13,6 +13,7 @@ mod waveform_deferred;
 mod waveform_export;
 mod waveform_io;
 mod waveform_load;
+mod waveform_load_diagnostics;
 mod waveform_plot;
 mod waveform_snapshots;
 mod waveform_trace_selector;
@@ -38,15 +39,16 @@ pub(super) use waveform_io::{
 };
 #[cfg(test)]
 use waveform_io::{load_waveform_csv_with_progress_and_cancel, parse_waveform_csv_text};
+#[cfg(test)]
+use waveform_load::waveform_load_preflight;
 pub(super) use waveform_load::{
     DeferredWaveformArtifact, WaveformLoadDiagnostic, WaveformLoadStatusFilter,
     merge_waveform_load_diagnostics, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths,
 };
 #[cfg(test)]
-use waveform_load::{
+use waveform_load_diagnostics::{
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
-    waveform_load_preflight,
 };
 pub(super) use waveform_plot::{WaveformCursorTarget, WaveformPlotCache};
 #[cfg(test)]
