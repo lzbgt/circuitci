@@ -1,4 +1,5 @@
 use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
+use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe, parse_waveform_csv_text,
@@ -23,6 +24,69 @@ fn waveform_parser_accepts_ngspice_header_and_samples() {
     assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
     assert_eq!(waveform.probes[1].label, "i(load)");
     assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+}
+
+#[test]
+fn scope_plot_decimator_keeps_exact_small_windows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 1.0
+2e-6 0.5
+3e-6 2.0
+",
+        "scope.csv",
+    )
+    .unwrap();
+
+    let samples = decimated_trace_samples_for_plot(&waveform, &waveform.probes[0], 0.0, 3e-6, 32);
+
+    assert_eq!(
+        samples,
+        vec![(0.0, 0.0), (1e-6, 1.0), (2e-6, 0.5), (3e-6, 2.0)]
+    );
+}
+
+#[test]
+fn scope_plot_decimator_preserves_bucket_extrema_for_dense_traces() {
+    let mut csv = String::from("time v(out)\n");
+    for index in 0..=1000 {
+        let value = match index {
+            123 => 10.0,
+            124 => -7.0,
+            500 => 8.0,
+            777 => 6.0,
+            _ => 0.0,
+        };
+        csv.push_str(&format!("{}e-6 {value}\n", index));
+    }
+    let waveform = parse_waveform_csv_text(&csv, "scope.csv").unwrap();
+
+    let samples =
+        decimated_trace_samples_for_plot(&waveform, &waveform.probes[0], 0.0, 1000e-6, 10);
+
+    assert!(samples.len() <= 22);
+    assert!(
+        samples
+            .iter()
+            .any(|sample| sample.0 == 123e-6 && sample.1 == 10.0)
+    );
+    assert!(
+        samples
+            .iter()
+            .any(|sample| sample.0 == 124e-6 && sample.1 == -7.0)
+    );
+    assert!(
+        samples
+            .iter()
+            .any(|sample| sample.0 == 500e-6 && sample.1 == 8.0)
+    );
+    assert!(
+        samples
+            .iter()
+            .any(|sample| sample.0 == 777e-6 && sample.1 == 6.0)
+    );
+    assert!(samples.windows(2).all(|window| window[0].0 <= window[1].0));
 }
 
 #[test]

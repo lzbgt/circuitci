@@ -1,7 +1,7 @@
 use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset, scope_plot_svg};
 use super::waveform_plot::{
-    WaveformPlotCursors, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
-    clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
+    WaveformPlotCursors, WaveformPlotData, WaveformPlotLaneMode, WaveformPlotTrigger,
+    WaveformPlotView, clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
     expanded_value_bounds, scope_plot_size, scope_visible_styled_trace_refs,
     scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
     waveform_trace_bounds_in_window, zoom_time_window,
@@ -61,8 +61,12 @@ impl CircuitCiApp {
         let trigger_times_us: Vec<f64> = trigger_events.iter().map(|event| event.time_us).collect();
         let interaction = draw_waveform_plot_sized(
             ui,
-            &self.waveforms,
-            &traces,
+            WaveformPlotData {
+                waveforms: &self.waveforms,
+                traces: &traces,
+                trace_styles: &self.waveform_trace_styles,
+                cache: &mut self.waveform_plot_cache,
+            },
             WaveformPlotCursors {
                 cursor_a_us: self.waveform_cursor_a_us,
                 cursor_b_us: self.waveform_cursor_b_us,
@@ -83,7 +87,6 @@ impl CircuitCiApp {
                 }),
                 snapshot_markers: &snapshot_markers,
             },
-            &self.waveform_trace_styles,
             scope_plot_size(desired_size),
         );
         if interaction.time_window_us.is_some() || interaction.value_window.is_some() {

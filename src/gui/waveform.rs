@@ -20,7 +20,7 @@ mod waveform_view;
 pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
-pub(super) use waveform_plot::WaveformCursorTarget;
+pub(super) use waveform_plot::{WaveformCursorTarget, WaveformPlotCache};
 #[cfg(test)]
 use waveform_plot::{
     WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip,
@@ -253,6 +253,7 @@ impl CircuitCiApp {
             Ok(index) => {
                 let label = waveform.probes[index].label.clone();
                 self.selected_probe = index;
+                self.waveform_plot_cache.clear();
                 self.waveform_value_min = None;
                 self.waveform_value_max = None;
                 self.clear_waveform_view_history();
@@ -280,6 +281,7 @@ impl CircuitCiApp {
             return;
         };
         self.selected_probe = self.selected_probe.min(probe_count.saturating_sub(1));
+        self.waveform_plot_cache.clear();
         self.shift_scope_trace_pins_after_probe_removal(waveform_index, removed_probe_index);
         self.shift_scope_trace_presets_after_probe_removal(waveform_index, removed_probe_index);
         self.shift_scope_trace_styles_after_probe_removal(waveform_index, removed_probe_index);

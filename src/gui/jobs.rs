@@ -514,6 +514,7 @@ impl CircuitCiApp {
                 self.report_markdown = output.markdown;
                 self.report = Some(output.report);
                 self.waveforms = waveforms;
+                self.waveform_plot_cache.clear();
                 self.waveform_pinned_traces.clear();
                 self.waveform_trace_presets.clear();
                 self.waveform_trace_styles.clear();

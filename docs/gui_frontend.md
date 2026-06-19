@@ -237,7 +237,9 @@ selection, selected-trace schematic-context strip actions, and scope probe
 lookup. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
-trace overlay selection, transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane axis scaling.
+trace overlay selection, min/max decimated trace-point caching for large CSVs,
+transient measurement snapshot marker chips with hover and click actions, and
+shared-axis or per-unit lane axis scaling.
 `src/gui/waveform/waveform_export.rs` owns deterministic runtime SVG rendering
 for the current Scopes plot, including visible traces, split-unit lanes,
 cursors, trigger markers, and snapshot chips for copy/export workflows. Export

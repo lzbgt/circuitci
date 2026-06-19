@@ -69,8 +69,8 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
-    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef,
-    WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformPlotCache, WaveformTracePreset,
+    WaveformTraceRef, WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -398,6 +398,7 @@ pub struct CircuitCiApp {
     waveform_cursor_b_us: f64,
     waveform_cursor_drag: Option<WaveformCursorTarget>,
     waveform_box_zoom_start: Option<egui::Pos2>,
+    waveform_plot_cache: WaveformPlotCache,
     waveform_playing: bool,
     waveform_playback_speed: f64,
     waveform_window_start_us: Option<f64>,
@@ -582,6 +583,7 @@ impl Default for CircuitCiApp {
             waveform_cursor_b_us: 0.0,
             waveform_cursor_drag: None,
             waveform_box_zoom_start: None,
+            waveform_plot_cache: WaveformPlotCache::default(),
             waveform_playing: false,
             waveform_playback_speed: 1.0,
             waveform_window_start_us: None,

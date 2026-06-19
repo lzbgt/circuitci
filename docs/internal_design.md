@@ -298,7 +298,8 @@ schematic-context strip actions, and scope probe lookup.
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
 transient measurement snapshot marker chips with hover and click actions, and shared-axis or per-unit lane
-axis scaling. `src/gui/waveform/waveform_export.rs` owns deterministic runtime
+axis scaling, including a transient min/max decimated trace-point cache for
+large CSV plot rendering. `src/gui/waveform/waveform_export.rs` owns deterministic runtime
 SVG rendering for the current Scopes plot, including visible traces,
 split-unit lanes, cursors, trigger markers, snapshot chips, report-size
 presets, and annotation inclusion toggles.

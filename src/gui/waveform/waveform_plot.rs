@@ -5,6 +5,9 @@ use super::{
 };
 use eframe::egui;
 
+const WAVEFORM_PLOT_CACHE_LIMIT: usize = 48;
+const WAVEFORM_PLOT_MAX_EXACT_POINTS_PER_PIXEL: usize = 4;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(in crate::gui) enum WaveformCursorTarget {
     A,
@@ -27,6 +30,37 @@ pub(super) struct WaveformPlotCursors<'a> {
     pub(super) cursor_b_us: f64,
     pub(super) active_drag: &'a mut Option<WaveformCursorTarget>,
     pub(super) box_zoom_start: &'a mut Option<egui::Pos2>,
+}
+
+pub(super) struct WaveformPlotData<'a> {
+    pub(super) waveforms: &'a [WaveformView],
+    pub(super) traces: &'a [WaveformTraceRef],
+    pub(super) trace_styles: &'a [WaveformTraceStyle],
+    pub(super) cache: &'a mut WaveformPlotCache,
+}
+
+#[derive(Debug, Default)]
+pub(in crate::gui) struct WaveformPlotCache {
+    entries: Vec<WaveformPlotCacheEntry>,
+}
+
+#[derive(Debug, Clone)]
+struct WaveformPlotCacheEntry {
+    key: WaveformPlotCacheKey,
+    samples: Vec<(f64, f64)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct WaveformPlotCacheKey {
+    trace: WaveformTraceRef,
+    sample_count: usize,
+    first_time_bits: u64,
+    last_time_bits: u64,
+    first_value_bits: u64,
+    last_value_bits: u64,
+    start_s_bits: u64,
+    end_s_bits: u64,
+    target_columns: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -98,6 +132,33 @@ impl WaveformPlotInteraction {
             WaveformCursorTarget::A => self.cursor_a_us = Some(time_us),
             WaveformCursorTarget::B => self.cursor_b_us = Some(time_us),
         }
+    }
+}
+
+impl WaveformPlotCache {
+    pub(in crate::gui) fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    fn trace_samples(
+        &mut self,
+        key: WaveformPlotCacheKey,
+        build: impl FnOnce() -> Vec<(f64, f64)>,
+    ) -> Vec<(f64, f64)> {
+        if let Some(entry) = self.entries.iter().find(|entry| entry.key == key) {
+            return entry.samples.clone();
+        }
+        let samples = build();
+        self.entries.retain(|entry| entry.key != key);
+        self.entries.push(WaveformPlotCacheEntry {
+            key,
+            samples: samples.clone(),
+        });
+        if self.entries.len() > WAVEFORM_PLOT_CACHE_LIMIT {
+            self.entries
+                .drain(0..self.entries.len() - WAVEFORM_PLOT_CACHE_LIMIT);
+        }
+        samples
     }
 }
 
@@ -218,13 +279,14 @@ pub(super) fn clamp_value_window(
 
 pub(super) fn draw_waveform_plot_sized(
     ui: &mut egui::Ui,
-    waveforms: &[WaveformView],
-    traces: &[WaveformTraceRef],
+    data: WaveformPlotData<'_>,
     cursors: WaveformPlotCursors<'_>,
     view: WaveformPlotView<'_>,
-    trace_styles: &[WaveformTraceStyle],
     desired_size: egui::Vec2,
 ) -> WaveformPlotInteraction {
+    let waveforms = data.waveforms;
+    let traces = data.traces;
+    let trace_styles = data.trace_styles;
     let Some(primary) = traces
         .first()
         .and_then(|trace| waveform_trace(waveforms, *trace))
@@ -495,10 +557,29 @@ pub(super) fn draw_waveform_plot_sized(
                 .position(|candidate| *candidate == trace)
                 .unwrap_or(lane_order);
             let color = scope_trace_color_for_style(trace_order, trace, trace_styles);
-            let points =
-                visible_trace_points(trace_waveform, trace_probe, x_min, x_max, &|x, y| {
-                    map_point(lane.rect, lane.y_min, lane.y_max, x, y)
-                });
+            let target_columns = trace_decimation_target_columns(lane.rect.width());
+            let key = waveform_plot_cache_key(
+                trace,
+                trace_waveform,
+                trace_probe,
+                x_min,
+                x_max,
+                target_columns,
+            );
+            let points = data
+                .cache
+                .trace_samples(key, || {
+                    decimated_trace_samples_for_plot(
+                        trace_waveform,
+                        trace_probe,
+                        x_min,
+                        x_max,
+                        target_columns,
+                    )
+                })
+                .into_iter()
+                .map(|(x, y)| map_point(lane.rect, lane.y_min, lane.y_max, x, y))
+                .collect::<Vec<_>>();
             if points.len() >= 2 {
                 painter.add(egui::Shape::line(
                     points,
@@ -837,31 +918,149 @@ pub(super) fn waveform_trace_bounds_in_window(
     y_range
 }
 
-fn visible_trace_points(
+fn waveform_plot_cache_key(
+    trace: WaveformTraceRef,
     waveform: &WaveformView,
     probe: &WaveformProbe,
     start_s: f64,
     end_s: f64,
-    map_point: &impl Fn(f64, f64) -> egui::Pos2,
-) -> Vec<egui::Pos2> {
-    let mut points = Vec::new();
-    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, start_s) {
-        points.push(map_point(start_s, value));
+    target_columns: usize,
+) -> WaveformPlotCacheKey {
+    WaveformPlotCacheKey {
+        trace,
+        sample_count: waveform.time_s.len().min(probe.values.len()),
+        first_time_bits: waveform
+            .time_s
+            .first()
+            .copied()
+            .unwrap_or_default()
+            .to_bits(),
+        last_time_bits: waveform
+            .time_s
+            .last()
+            .copied()
+            .unwrap_or_default()
+            .to_bits(),
+        first_value_bits: probe.values.first().copied().unwrap_or_default().to_bits(),
+        last_value_bits: probe.values.last().copied().unwrap_or_default().to_bits(),
+        start_s_bits: start_s.to_bits(),
+        end_s_bits: end_s.to_bits(),
+        target_columns,
     }
-    for (time, value) in waveform
-        .time_s
-        .iter()
-        .copied()
-        .zip(probe.values.iter().copied())
+}
+
+fn trace_decimation_target_columns(plot_width_px: f32) -> usize {
+    plot_width_px.ceil().max(2.0) as usize
+}
+
+pub(super) fn decimated_trace_samples_for_plot(
+    waveform: &WaveformView,
+    probe: &WaveformProbe,
+    start_s: f64,
+    end_s: f64,
+    target_columns: usize,
+) -> Vec<(f64, f64)> {
+    let (start_s, end_s) = ordered_pair(start_s, end_s);
+    if waveform.time_s.is_empty()
+        || probe.values.is_empty()
+        || !start_s.is_finite()
+        || !end_s.is_finite()
+        || end_s <= start_s
     {
-        if time > start_s && time < end_s {
-            points.push(map_point(time, value));
+        return Vec::new();
+    }
+    let sample_count = waveform.time_s.len().min(probe.values.len());
+    let first_inside = waveform.time_s[..sample_count].partition_point(|time| *time < start_s);
+    let first_after = waveform.time_s[..sample_count].partition_point(|time| *time < end_s);
+    let inside_count = first_after.saturating_sub(first_inside);
+    let exact_limit = target_columns
+        .saturating_mul(WAVEFORM_PLOT_MAX_EXACT_POINTS_PER_PIXEL)
+        .max(2);
+    if inside_count + 2 <= exact_limit {
+        return exact_trace_samples_for_plot(waveform, probe, start_s, end_s, sample_count);
+    }
+
+    let mut points = Vec::with_capacity(target_columns.saturating_mul(2).saturating_add(2));
+    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, start_s) {
+        points.push((start_s, value));
+    }
+    let span = positive_span(start_s, end_s);
+    let mut index = first_inside;
+    for bucket in 0..target_columns {
+        let bucket_start = start_s + span * bucket as f64 / target_columns as f64;
+        let bucket_end = start_s + span * (bucket + 1) as f64 / target_columns as f64;
+        while index < first_after && waveform.time_s[index] < bucket_start {
+            index += 1;
+        }
+        let mut min_sample: Option<(f64, f64)> = None;
+        let mut max_sample: Option<(f64, f64)> = None;
+        while index < first_after && waveform.time_s[index] < bucket_end {
+            let time = waveform.time_s[index];
+            let value = probe.values[index];
+            if value.is_finite() {
+                match min_sample {
+                    Some((_min_time, min_value)) if value >= min_value => {}
+                    _ => min_sample = Some((time, value)),
+                }
+                match max_sample {
+                    Some((_max_time, max_value)) if value <= max_value => {}
+                    _ => max_sample = Some((time, value)),
+                }
+            }
+            index += 1;
+        }
+        match (min_sample, max_sample) {
+            (Some(min_sample), Some(max_sample)) if min_sample.0 <= max_sample.0 => {
+                push_distinct_trace_sample(&mut points, min_sample);
+                push_distinct_trace_sample(&mut points, max_sample);
+            }
+            (Some(min_sample), Some(max_sample)) => {
+                push_distinct_trace_sample(&mut points, max_sample);
+                push_distinct_trace_sample(&mut points, min_sample);
+            }
+            (Some(sample), None) | (None, Some(sample)) => {
+                push_distinct_trace_sample(&mut points, sample);
+            }
+            (None, None) => {}
         }
     }
     if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, end_s) {
-        points.push(map_point(end_s, value));
+        push_distinct_trace_sample(&mut points, (end_s, value));
     }
     points
+}
+
+fn exact_trace_samples_for_plot(
+    waveform: &WaveformView,
+    probe: &WaveformProbe,
+    start_s: f64,
+    end_s: f64,
+    sample_count: usize,
+) -> Vec<(f64, f64)> {
+    let mut points = Vec::new();
+    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, start_s) {
+        points.push((start_s, value));
+    }
+    for index in 0..sample_count {
+        let time = waveform.time_s[index];
+        let value = probe.values[index];
+        if time > start_s && time < end_s && value.is_finite() {
+            points.push((time, value));
+        }
+    }
+    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, end_s) {
+        push_distinct_trace_sample(&mut points, (end_s, value));
+    }
+    points
+}
+
+fn push_distinct_trace_sample(points: &mut Vec<(f64, f64)>, sample: (f64, f64)) {
+    if points
+        .last()
+        .is_none_or(|last| last.0 != sample.0 || last.1 != sample.1)
+    {
+        points.push(sample);
+    }
 }
 
 fn scope_trace_color(index: usize) -> egui::Color32 {
