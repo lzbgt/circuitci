@@ -3,11 +3,11 @@ use eframe::egui;
 use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
-    RuntimeScopeProbeEdgeStep, WaveformView, runtime_scope_probe_edge_jump,
-    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
-    waveform_time_range_for_view,
+    RuntimeScopeProbeEdgeStep, ScopeSnapshotSourceFilter, WaveformView,
+    runtime_scope_probe_edge_jump, runtime_scope_probe_sample_label,
+    runtime_scope_probe_sparkline_points, waveform_time_range_for_view,
 };
-use super::{CircuitCiApp, ScopeMeasurementSnapshot};
+use super::{CircuitCiApp, ScopeMeasurementSnapshot, Stage};
 
 impl CircuitCiApp {
     pub(super) fn sketch_runtime_scope_activity_legend(
@@ -69,11 +69,26 @@ impl CircuitCiApp {
                         .on_hover_text(
                             "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                         );
-                        let snapshot_status =
-                            scope_activity_snapshot_status(&self.waveform_measurement_snapshots);
-                        ui.small(snapshot_status).on_hover_text(
+                        let activity_snapshot_count =
+                            scope_activity_snapshot_count(&self.waveform_measurement_snapshots);
+                        ui.small(scope_activity_snapshot_status(
+                            &self.waveform_measurement_snapshots,
+                        ))
+                        .on_hover_text(
                             "Scope Activity Snap rows are reportable measurement snapshots.",
                         );
+                        if ui
+                            .add_enabled(
+                                activity_snapshot_count > 0,
+                                egui::Button::new("Open Snapshots"),
+                            )
+                            .on_hover_text(
+                                "Open Scopes with measurement snapshots filtered to Scope Activity samples.",
+                            )
+                            .clicked()
+                        {
+                            self.open_scope_activity_snapshots_from_sketch();
+                        }
                     });
                     let mut load_compare_preset = None;
                     let mut delete_compare_preset = None;
@@ -355,6 +370,22 @@ impl CircuitCiApp {
                 });
             });
     }
+
+    pub(super) fn open_scope_activity_snapshots_from_sketch(&mut self) {
+        let activity_snapshot_count =
+            scope_activity_snapshot_count(&self.waveform_measurement_snapshots);
+        if activity_snapshot_count == 0 {
+            self.status = "No Scope Activity snapshots captured yet.".to_string();
+            return;
+        }
+        self.stage = Stage::Simulation;
+        self.waveform_snapshot_filter.clear();
+        self.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::ScopeActivity;
+        self.status = format!(
+            "Showing {} in Scopes.",
+            scope_activity_snapshot_status_for_count(activity_snapshot_count)
+        );
+    }
 }
 
 pub(super) fn runtime_scope_activity_visible_indexes(
@@ -391,7 +422,11 @@ pub(super) fn scope_activity_snapshot_count(snapshots: &[ScopeMeasurementSnapsho
 }
 
 pub(super) fn scope_activity_snapshot_status(snapshots: &[ScopeMeasurementSnapshot]) -> String {
-    match scope_activity_snapshot_count(snapshots) {
+    scope_activity_snapshot_status_for_count(scope_activity_snapshot_count(snapshots))
+}
+
+fn scope_activity_snapshot_status_for_count(count: usize) -> String {
+    match count {
         1 => "1 activity snapshot".to_string(),
         count => format!("{count} activity snapshots"),
     }
@@ -561,5 +596,45 @@ mod tests {
             "1 activity snapshot"
         );
         assert_eq!(scope_activity_snapshot_status(&[]), "0 activity snapshots");
+    }
+
+    #[test]
+    fn open_scope_activity_snapshots_sets_scopes_filter() {
+        let mut app = CircuitCiApp {
+            stage: Stage::Sketch,
+            waveform_snapshot_filter: "stale search".to_string(),
+            waveform_snapshot_source_filter: ScopeSnapshotSourceFilter::Region,
+            waveform_measurement_snapshots: vec![snapshot("cursor"), snapshot("scope activity")],
+            ..Default::default()
+        };
+
+        app.open_scope_activity_snapshots_from_sketch();
+
+        assert_eq!(app.stage, Stage::Simulation);
+        assert!(app.waveform_snapshot_filter.is_empty());
+        assert_eq!(
+            app.waveform_snapshot_source_filter,
+            ScopeSnapshotSourceFilter::ScopeActivity
+        );
+        assert_eq!(app.status, "Showing 1 activity snapshot in Scopes.");
+    }
+
+    #[test]
+    fn open_scope_activity_snapshots_without_rows_stays_put() {
+        let mut app = CircuitCiApp {
+            stage: Stage::Sketch,
+            waveform_snapshot_source_filter: ScopeSnapshotSourceFilter::Region,
+            waveform_measurement_snapshots: vec![snapshot("cursor")],
+            ..Default::default()
+        };
+
+        app.open_scope_activity_snapshots_from_sketch();
+
+        assert_eq!(app.stage, Stage::Sketch);
+        assert_eq!(
+            app.waveform_snapshot_source_filter,
+            ScopeSnapshotSourceFilter::Region
+        );
+        assert_eq!(app.status, "No Scope Activity snapshots captured yet.");
     }
 }
