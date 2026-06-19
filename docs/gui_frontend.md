@@ -33,6 +33,7 @@ circuitci-gui
   -> src/gui/sketch_canvas_interaction.rs
   -> src/gui/sketch_canvas_menus.rs
   -> src/gui/sketch_canvas_render.rs
+  -> src/gui/sketch_scope_activity.rs
   -> src/gui/sketch_scope_feedback.rs
   -> src/gui/scope_auto_probes.rs
   -> src/gui/sketch_hierarchy.rs
@@ -132,6 +133,9 @@ completion, overview-minimap event routing, and graph hover/runtime routing.
 `src/gui/sketch_canvas_hits.rs` owns canvas hover and press-origin target
 projection for rendered graph items, minimap exclusion, probe/bundle/label
 badges, and runtime `scope` chip hit-testing.
+`src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
+legend, overlay visibility checkbox, compact loaded-trace jump rows, and
+direct Scopes trace-open actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe

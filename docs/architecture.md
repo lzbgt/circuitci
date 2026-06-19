@@ -78,10 +78,12 @@ waveforms.
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_hits` owns canvas hover and press-origin target
 projection for graph items, minimap exclusion, probe/bundle/label badges, and
-runtime `scope` chip hit-testing. `gui::sketch_canvas_interaction` owns reusable
-viewport zoom math, schematic canvas sizing, wire-target hit testing,
-route-handle hit testing, and placement orientation cycling. Selection boxes
-are transient GUI state:
+runtime `scope` chip hit-testing. `gui::sketch_scope_activity` owns the
+runtime Scope Activity canvas legend, loaded-trace jump rows, and overlay
+visibility checkbox. `gui::sketch_canvas_interaction` owns reusable viewport
+zoom math, schematic canvas sizing, wire-target hit testing, route-handle hit
+testing, and placement orientation cycling. Selection boxes are transient GUI
+state:
 Shift-drag replaces the selected visible sketch items, Cmd/Ctrl-drag adds them,
 and Alt/Option-drag subtracts them without mutating Board IR; holding `L` while
 starting the same drag chords uses a freehand lasso instead of a rectangular
