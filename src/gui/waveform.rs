@@ -673,6 +673,7 @@ impl CircuitCiApp {
         };
         self.selected_probe = self.selected_probe.min(probe_count.saturating_sub(1));
         self.shift_scope_trace_pins_after_probe_removal(waveform_index, removed_probe_index);
+        self.shift_scope_trace_presets_after_probe_removal(waveform_index, removed_probe_index);
         self.prune_scope_trace_pins();
         self.waveform_math_left = self.waveform_math_left.min(probe_count.saturating_sub(1));
         self.waveform_math_right = self.waveform_math_right.min(probe_count.saturating_sub(1));
@@ -783,6 +784,12 @@ pub(super) struct WaveformView {
 pub(super) struct WaveformTraceRef {
     waveform_index: usize,
     probe_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformTracePreset {
+    name: String,
+    traces: Vec<WaveformTraceRef>,
 }
 
 #[derive(Debug, Clone)]

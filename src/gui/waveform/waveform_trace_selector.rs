@@ -1,4 +1,8 @@
-use super::{CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformView};
+use super::waveform_plot::{scope_visible_trace_refs, valid_waveform_trace};
+use super::{
+    CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformTracePreset, WaveformTraceRef,
+    WaveformView,
+};
 use eframe::egui;
 
 impl CircuitCiApp {
@@ -156,6 +160,7 @@ impl CircuitCiApp {
         if focus_schematic {
             self.focus_selected_scope_schematic_context();
         }
+        self.waveform_compare_presets_ui(ui);
     }
 
     fn select_waveform_probe_index(&mut self, index: usize, probe_count: usize) {
@@ -168,6 +173,171 @@ impl CircuitCiApp {
         self.waveform_value_max = None;
         self.waveform_trigger_threshold = 0.0;
         self.waveform_playing = false;
+    }
+
+    fn waveform_compare_presets_ui(&mut self, ui: &mut egui::Ui) {
+        let current_traces = self.current_scope_compare_traces();
+        let mut load_preset = None;
+        let mut delete_preset = None;
+
+        ui.horizontal_wrapped(|ui| {
+            ui.strong("Compare Sets");
+            ui.add(
+                egui::TextEdit::singleline(&mut self.waveform_trace_preset_name)
+                    .desired_width(140.0)
+                    .hint_text("set name"),
+            );
+            if ui
+                .add_enabled(!current_traces.is_empty(), egui::Button::new("Save Set"))
+                .clicked()
+            {
+                self.save_current_scope_compare_preset(current_traces.clone());
+            }
+            ui.menu_button(
+                format!("Saved ({})", self.waveform_trace_presets.len()),
+                |ui| {
+                    if self.waveform_trace_presets.is_empty() {
+                        ui.label("No saved compare sets.");
+                    }
+                    for (index, preset) in self.waveform_trace_presets.iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            if ui.button(&preset.name).clicked() {
+                                load_preset = Some(index);
+                                ui.close();
+                            }
+                            if ui.small_button("Delete").clicked() {
+                                delete_preset = Some(index);
+                                ui.close();
+                            }
+                        });
+                    }
+                },
+            );
+            if ui
+                .add_enabled(
+                    !self.waveform_trace_presets.is_empty(),
+                    egui::Button::new("Clear Sets"),
+                )
+                .clicked()
+            {
+                let count = self.waveform_trace_presets.len();
+                self.waveform_trace_presets.clear();
+                self.status = format!("Cleared {count} saved scope compare set(s).");
+            }
+        });
+
+        if let Some(index) = delete_preset
+            && index < self.waveform_trace_presets.len()
+        {
+            let preset = self.waveform_trace_presets.remove(index);
+            self.status = format!("Deleted scope compare set {}.", preset.name);
+        }
+        if let Some(index) = load_preset {
+            self.apply_scope_compare_preset(index);
+        }
+    }
+
+    pub(super) fn current_scope_compare_traces(&self) -> Vec<WaveformTraceRef> {
+        scope_visible_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+            &self.waveform_pinned_traces,
+        )
+    }
+
+    pub(super) fn save_current_scope_compare_preset(&mut self, traces: Vec<WaveformTraceRef>) {
+        let traces = traces
+            .into_iter()
+            .filter(|trace| valid_waveform_trace(&self.waveforms, *trace))
+            .fold(Vec::new(), |mut unique, trace| {
+                if !unique.contains(&trace) {
+                    unique.push(trace);
+                }
+                unique
+            });
+        if traces.is_empty() {
+            return;
+        }
+        let name = self.scope_compare_preset_name();
+        let preset = WaveformTracePreset {
+            name: name.clone(),
+            traces,
+        };
+        if let Some(existing) = self
+            .waveform_trace_presets
+            .iter_mut()
+            .find(|existing| existing.name == name)
+        {
+            *existing = preset;
+            self.status = format!("Updated scope compare set {name}.");
+        } else {
+            self.waveform_trace_presets.push(preset);
+            self.status = format!("Saved scope compare set {name}.");
+        }
+        self.waveform_trace_preset_name.clear();
+    }
+
+    fn scope_compare_preset_name(&self) -> String {
+        let requested = self.waveform_trace_preset_name.trim();
+        if requested.is_empty() {
+            format!("Compare {}", self.waveform_trace_presets.len() + 1)
+        } else {
+            requested.to_string()
+        }
+    }
+
+    pub(super) fn apply_scope_compare_preset(&mut self, index: usize) {
+        let Some(preset) = self.waveform_trace_presets.get(index).cloned() else {
+            return;
+        };
+        let mut traces: Vec<_> = preset
+            .traces
+            .into_iter()
+            .filter(|trace| valid_waveform_trace(&self.waveforms, *trace))
+            .fold(Vec::new(), |mut unique, trace| {
+                if !unique.contains(&trace) {
+                    unique.push(trace);
+                }
+                unique
+            });
+        let Some(selected) = traces.first().copied() else {
+            self.status = format!("Scope compare set {} has no loaded traces.", preset.name);
+            return;
+        };
+        self.selected_waveform = selected.waveform_index;
+        self.select_waveform_probe_index(
+            selected.probe_index,
+            self.waveforms[selected.waveform_index].probes.len(),
+        );
+        traces.remove(0);
+        self.waveform_pinned_traces = traces;
+        self.prune_scope_trace_pins();
+        self.focus_selected_scope_schematic_context_silent();
+        self.status = format!("Loaded scope compare set {}.", preset.name);
+    }
+
+    pub(super) fn shift_scope_trace_presets_after_probe_removal(
+        &mut self,
+        waveform_index: usize,
+        removed_probe_index: usize,
+    ) {
+        for preset in &mut self.waveform_trace_presets {
+            preset.traces.retain_mut(|trace| {
+                if trace.waveform_index != waveform_index {
+                    return true;
+                }
+                if trace.probe_index == removed_probe_index {
+                    return false;
+                }
+                if trace.probe_index > removed_probe_index {
+                    trace.probe_index -= 1;
+                }
+                true
+            });
+        }
+        self.waveform_trace_presets
+            .retain(|preset| !preset.traces.is_empty());
     }
 }
 

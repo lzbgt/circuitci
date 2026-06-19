@@ -1,8 +1,8 @@
 use super::waveform_context::find_scope_probe;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformMathDraft, WaveformProbeGroup, WaveformProbeQuantity, WaveformTraceRef,
-    append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
+    WaveformMathDraft, WaveformProbeGroup, WaveformProbeQuantity, WaveformTracePreset,
+    WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
     scope_plot_size, scope_trigger_event_rows, scope_trigger_events, scope_visible_trace_refs,
@@ -951,6 +951,168 @@ fn pinned_scope_refs_shift_after_probe_removal() {
             WaveformTraceRef {
                 waveform_index: 1,
                 probe_index: 3,
+            },
+        ]
+    );
+}
+
+#[test]
+fn scope_compare_preset_saves_replaces_and_restores_traces() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),v(ref)\n0,1,0.1,2\n0.000001,2,0.2,3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        waveform_trace_preset_name: "startup".to_string(),
+        ..Default::default()
+    };
+
+    app.save_current_scope_compare_preset(app.current_scope_compare_traces());
+
+    assert_eq!(
+        app.waveform_trace_presets,
+        vec![WaveformTracePreset {
+            name: "startup".to_string(),
+            traces: vec![
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 0,
+                },
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+            ],
+        }]
+    );
+
+    app.selected_probe = 2;
+    app.waveform_pinned_traces.clear();
+    app.apply_scope_compare_preset(0);
+
+    assert_eq!(app.selected_probe, 0);
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }]
+    );
+
+    app.selected_probe = 2;
+    app.waveform_pinned_traces.clear();
+    app.waveform_trace_preset_name = "startup".to_string();
+    app.save_current_scope_compare_preset(app.current_scope_compare_traces());
+
+    assert_eq!(app.waveform_trace_presets.len(), 1);
+    assert_eq!(
+        app.waveform_trace_presets[0].traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 2,
+        }]
+    );
+}
+
+#[test]
+fn scope_compare_preset_load_prunes_stale_traces() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,1,0.1\n0.000001,2,0.2\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 1,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        }],
+        waveform_trace_presets: vec![WaveformTracePreset {
+            name: "valid subset".to_string(),
+            traces: vec![
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 0,
+                },
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 9,
+                },
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+            ],
+        }],
+        ..Default::default()
+    };
+
+    app.apply_scope_compare_preset(0);
+
+    assert_eq!(app.selected_probe, 0);
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }]
+    );
+}
+
+#[test]
+fn scope_compare_presets_shift_after_probe_removal() {
+    let mut app = CircuitCiApp {
+        waveform_trace_presets: vec![
+            WaveformTracePreset {
+                name: "drop removed".to_string(),
+                traces: vec![
+                    WaveformTraceRef {
+                        waveform_index: 0,
+                        probe_index: 1,
+                    },
+                    WaveformTraceRef {
+                        waveform_index: 0,
+                        probe_index: 3,
+                    },
+                ],
+            },
+            WaveformTracePreset {
+                name: "other waveform".to_string(),
+                traces: vec![WaveformTraceRef {
+                    waveform_index: 1,
+                    probe_index: 3,
+                }],
+            },
+        ],
+        ..Default::default()
+    };
+
+    app.shift_scope_trace_presets_after_probe_removal(0, 1);
+
+    assert_eq!(
+        app.waveform_trace_presets,
+        vec![
+            WaveformTracePreset {
+                name: "drop removed".to_string(),
+                traces: vec![WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 2,
+                }],
+            },
+            WaveformTracePreset {
+                name: "other waveform".to_string(),
+                traces: vec![WaveformTraceRef {
+                    waveform_index: 1,
+                    probe_index: 3,
+                }],
             },
         ]
     );

@@ -287,9 +287,9 @@ overlays, GUI-only derived waveform channels, promotion of representable
 derived channels to explicit Board IR analog probes/assertions, exact
 probe-value lookup, and normalized runtime activity values for graph tinting.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
-searchable/grouped trace selection plus selected-trace reset behavior.
-`src/gui/waveform/waveform_context.rs` owns pending schematic probe-to-scope focus, runtime
-trace/event-to-schematic cross-focus selection, selected-trace
+searchable/grouped trace selection, transient saved compare sets, and
+selected-trace reset behavior. `src/gui/waveform/waveform_context.rs` owns
+pending schematic probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection, selected-trace
 schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, visible time-window and value-window
