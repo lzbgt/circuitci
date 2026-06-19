@@ -20,7 +20,8 @@ use super::{
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_deferred_waveform_column_picks, select_scope_trigger_event, waveform_footprint_rows,
+    select_deferred_waveform_column_picks, select_scope_trigger_event,
+    waveform_footprint_largest_unload_targets, waveform_footprint_rows,
     waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
@@ -1465,6 +1466,53 @@ fn waveform_footprint_bulk_unload_uses_preview_targets() {
     assert_eq!(artifacts[0].path, large_path);
 
     assert_eq!(app.unload_waveform_footprint_targets(&targets), 0);
+}
+
+#[test]
+fn waveform_footprint_largest_unload_targets_reduce_to_budget() {
+    let small_path = "/tmp/run/small.csv";
+    let medium_path = "/tmp/run/medium.csv";
+    let large_path = "/tmp/run/large.csv";
+    let small = parse_waveform_csv_text("time,v(out)\n0,1\n0.000001,2\n", small_path).unwrap();
+    let medium = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,1,0.1\n0.000001,2,0.2\n",
+        medium_path,
+    )
+    .unwrap();
+    let large = parse_waveform_csv_text(
+        "time,v(bus),i(load),temp\n0,12,0.1,25\n0.000001,11,0.2,26\n0.000002,10,0.3,27\n",
+        large_path,
+    )
+    .unwrap();
+    let rows = waveform_footprint_rows(
+        &[small.clone(), medium.clone(), large.clone()],
+        "",
+        WaveformFootprintSortKey::EstimatedBytes,
+        true,
+    );
+    let total_bytes = rows.iter().map(|row| row.estimated_bytes).sum::<usize>();
+    let budget_bytes = total_bytes - rows[0].estimated_bytes;
+    let targets = waveform_footprint_largest_unload_targets(&rows, budget_bytes, total_bytes);
+    let mut app = CircuitCiApp {
+        waveforms: vec![small, medium, large],
+        waveform_load_diagnostics: vec![
+            WaveformLoadDiagnostic::loaded(small_path.to_string(), Some(128), 2, 1, 1),
+            WaveformLoadDiagnostic::loaded(medium_path.to_string(), Some(256), 2, 2, 2),
+            WaveformLoadDiagnostic::loaded(large_path.to_string(), Some(512), 3, 3, 2),
+        ],
+        selected_waveform: 0,
+        ..Default::default()
+    };
+
+    assert_eq!(targets.len(), 1);
+    assert_eq!(app.unload_waveform_footprint_targets(&targets), 1);
+    assert_eq!(
+        app.waveforms
+            .iter()
+            .map(|waveform| waveform.path.as_str())
+            .collect::<Vec<_>>(),
+        vec![small_path, medium_path]
+    );
 }
 
 #[test]

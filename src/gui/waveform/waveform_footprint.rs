@@ -2,6 +2,8 @@ use super::waveform_load::format_waveform_load_bytes;
 use super::{CircuitCiApp, WaveformView};
 use eframe::egui;
 
+const WAVEFORM_FOOTPRINT_WARNING_BYTES: usize = 256 * 1024 * 1024;
+
 impl CircuitCiApp {
     pub(super) fn loaded_waveform_footprint_ui(&mut self, ui: &mut egui::Ui) {
         let rows = waveform_footprint_rows(
@@ -10,11 +12,18 @@ impl CircuitCiApp {
             self.waveform_footprint_sort_key,
             self.waveform_footprint_descending,
         );
-        let total_bytes = self
-            .waveforms
-            .iter()
-            .map(waveform_footprint_estimated_bytes)
-            .sum::<usize>();
+        let total_bytes = waveform_footprint_total_bytes(&self.waveforms);
+        let all_rows = waveform_footprint_rows(
+            &self.waveforms,
+            "",
+            WaveformFootprintSortKey::EstimatedBytes,
+            true,
+        );
+        let largest_unload_targets = waveform_footprint_largest_unload_targets(
+            &all_rows,
+            WAVEFORM_FOOTPRINT_WARNING_BYTES,
+            total_bytes,
+        );
         let mut next_waveform = None;
         let mut unload_waveform = None;
         ui.collapsing(
@@ -72,6 +81,35 @@ impl CircuitCiApp {
                             waveform_footprint_unload_targets(&rows);
                     }
                 });
+                if total_bytes > WAVEFORM_FOOTPRINT_WARNING_BYTES {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(format!(
+                            "Loaded waveform estimate exceeds the {} budget by {}.",
+                            format_waveform_load_bytes(Some(
+                                WAVEFORM_FOOTPRINT_WARNING_BYTES as u64,
+                            )),
+                            format_waveform_load_bytes(Some(
+                                (total_bytes - WAVEFORM_FOOTPRINT_WARNING_BYTES) as u64,
+                            )),
+                        ));
+                        if ui
+                            .add_enabled(
+                                !largest_unload_targets.is_empty(),
+                                egui::Button::new(format!(
+                                    "Preview Unload Largest ({})",
+                                    largest_unload_targets.len()
+                                )),
+                            )
+                            .on_hover_text(
+                                "Preview unloading the largest loaded waveform views until the estimate is back under budget.",
+                            )
+                            .clicked()
+                        {
+                            self.waveform_footprint_unload_preview =
+                                largest_unload_targets.clone();
+                        }
+                    });
+                }
                 if !self.waveform_footprint_unload_preview.is_empty() {
                     let preview_count = self.waveform_footprint_unload_preview.len();
                     let preview_bytes = self
@@ -277,6 +315,33 @@ pub(super) fn waveform_footprint_unload_targets(
         .collect()
 }
 
+pub(super) fn waveform_footprint_largest_unload_targets(
+    rows: &[WaveformFootprintRow],
+    budget_bytes: usize,
+    total_bytes: usize,
+) -> Vec<WaveformFootprintUnloadTarget> {
+    if total_bytes <= budget_bytes {
+        return Vec::new();
+    }
+    let mut rows = rows.iter().collect::<Vec<_>>();
+    rows.sort_by(|left, right| {
+        right
+            .estimated_bytes
+            .cmp(&left.estimated_bytes)
+            .then_with(|| left.label.cmp(&right.label))
+    });
+    let mut remaining_bytes = total_bytes;
+    let mut targets = Vec::new();
+    for row in rows {
+        targets.push(WaveformFootprintUnloadTarget::from_row(row));
+        remaining_bytes = remaining_bytes.saturating_sub(row.estimated_bytes);
+        if remaining_bytes <= budget_bytes {
+            break;
+        }
+    }
+    targets
+}
+
 pub(super) fn waveform_footprint_target_index(
     waveforms: &[WaveformView],
     target: &WaveformFootprintUnloadTarget,
@@ -306,6 +371,13 @@ fn waveform_footprint_search_text(waveform: &WaveformView) -> String {
 
 fn waveform_footprint_estimated_bytes(waveform: &WaveformView) -> usize {
     waveform_footprint_value_count(waveform) * std::mem::size_of::<f64>()
+}
+
+fn waveform_footprint_total_bytes(waveforms: &[WaveformView]) -> usize {
+    waveforms
+        .iter()
+        .map(waveform_footprint_estimated_bytes)
+        .sum::<usize>()
 }
 
 fn waveform_footprint_value_count(waveform: &WaveformView) -> usize {

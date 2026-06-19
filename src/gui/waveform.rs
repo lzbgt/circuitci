@@ -35,7 +35,10 @@ use waveform_export::scope_plot_svg;
 use waveform_footprint::waveform_footprint_target_index;
 pub(super) use waveform_footprint::{WaveformFootprintSortKey, WaveformFootprintUnloadTarget};
 #[cfg(test)]
-use waveform_footprint::{waveform_footprint_rows, waveform_footprint_unload_targets};
+use waveform_footprint::{
+    waveform_footprint_largest_unload_targets, waveform_footprint_rows,
+    waveform_footprint_unload_targets,
+};
 #[cfg(test)]
 use waveform_io::load_waveform_paths_with_progress_and_cancel;
 use waveform_io::waveform_probe_quantity_from_label;
