@@ -753,6 +753,7 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
+    let index = fs::read_to_string(bundle.join("index.html")).unwrap();
 
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(csv.contains("Cursor 1"));
@@ -768,7 +769,16 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("## Loaded Waveform Footprint Summary"));
     assert!(readme.contains("| Total | 1 | 48 | 48 B |"));
     assert!(readme.contains("| Runtime Only | 1 | 48 | 48 B |"));
+    assert!(readme.contains("- `index.html`"));
     assert!(readme.contains("- `scope_plot.svg`"));
+    assert!(index.contains("<title>CircuitCI Scope Report Bundle</title>"));
+    assert!(index.contains("href=\"scope_plot.svg\""));
+    assert!(index.contains("href=\"measurement_snapshots.csv\""));
+    assert!(index.contains("href=\"measurement_snapshots.md\""));
+    assert!(index.contains("href=\"README.md\""));
+    assert!(index.contains("<h2>Loaded Waveform Footprint Summary</h2>"));
+    assert!(index.contains("<td>Total</td><td class=\"number\">1</td>"));
+    assert!(index.contains("<td>Runtime Only</td><td class=\"number\">1</td>"));
     assert_eq!(
         app.waveform_recent_report_bundles,
         vec![bundle.to_string_lossy().into_owned()]

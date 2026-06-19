@@ -1,8 +1,9 @@
 use super::waveform_footprint::{
-    WaveformFootprintSortKey, WaveformFootprintSourceFilter,
+    WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformFootprintSourceSummary,
     waveform_footprint_rows_with_diagnostics, waveform_footprint_source_summaries,
     waveform_footprint_summary_markdown,
 };
+use super::waveform_load::format_waveform_load_bytes;
 use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trace_selector::shift_trace_after_waveform_removal;
 use super::waveform_trigger::ScopeTriggerEvent;
@@ -666,8 +667,11 @@ impl CircuitCiApp {
         };
         let base_dir = output_bundle_base_dir(&self.output_dir);
         let bundle_dir = unique_scope_report_bundle_dir(&base_dir, current_unix_millis());
+        let readme = self.scope_report_bundle_readme(snapshots);
+        let index_html = self.scope_report_bundle_index_html(snapshots);
         match fs::create_dir_all(&bundle_dir)
             .and_then(|()| fs::write(bundle_dir.join("scope_plot.svg"), svg))
+            .and_then(|()| fs::write(bundle_dir.join("index.html"), index_html))
             .and_then(|()| {
                 fs::write(
                     bundle_dir.join("measurement_snapshots.csv"),
@@ -680,12 +684,8 @@ impl CircuitCiApp {
                     scope_snapshots_markdown(snapshots),
                 )
             })
-            .and_then(|()| {
-                fs::write(
-                    bundle_dir.join("README.md"),
-                    self.scope_report_bundle_readme(snapshots),
-                )
-            }) {
+            .and_then(|()| fs::write(bundle_dir.join("README.md"), readme))
+        {
             Ok(()) => {
                 self.push_recent_scope_report_bundle(bundle_dir.to_string_lossy().into_owned());
                 self.status = format!(
@@ -719,6 +719,7 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 ## Files
 
 - `scope_plot.svg` - configured Scopes plot SVG.
+- `index.html` - local bundle index page with links and summary context.
 - `measurement_snapshots.csv` - filtered measurement snapshot rows.
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
 - `README.md` - this manifest.
@@ -764,7 +765,107 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         )
     }
 
+    fn scope_report_bundle_index_html(&self, snapshots: &[ScopeMeasurementSnapshot]) -> String {
+        let selected_context = self
+            .selected_scope_trace_label()
+            .unwrap_or_else(|| "unavailable".to_string());
+        let query = self.waveform_snapshot_filter.trim();
+        let query = if query.is_empty() { "(empty)" } else { query };
+        let (footprint_count, footprint_bytes, footprint_summaries) =
+            self.scope_report_bundle_footprint_summary();
+        format!(
+            "\
+<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+  <title>CircuitCI Scope Report Bundle</title>
+  <style>
+    body {{ font-family: system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; margin: 2rem; line-height: 1.45; color: #202124; }}
+    main {{ max-width: 980px; margin: 0 auto; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.5rem; }}
+    th, td {{ border: 1px solid #d0d7de; padding: 0.35rem 0.5rem; text-align: left; }}
+    th {{ background: #f6f8fa; }}
+    td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
+    img {{ max-width: 100%; border: 1px solid #d0d7de; }}
+  </style>
+</head>
+<body>
+<main>
+  <h1>CircuitCI Scope Report Bundle</h1>
+  <p>This is a runtime export from the Scopes workspace. It is derived from loaded waveform artifacts and transient GUI state; it is not persisted Board IR project truth.</p>
+  <h2>Artifacts</h2>
+  <ul>
+    <li><a href=\"scope_plot.svg\">scope_plot.svg</a> - configured Scopes plot SVG.</li>
+    <li><a href=\"measurement_snapshots.csv\">measurement_snapshots.csv</a> - filtered measurement snapshot rows.</li>
+    <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
+    <li><a href=\"README.md\">README.md</a> - text manifest.</li>
+  </ul>
+  <h2>Plot Preview</h2>
+  <p><a href=\"scope_plot.svg\"><img src=\"scope_plot.svg\" alt=\"CircuitCI scope plot\"></a></p>
+  <h2>Snapshot Projection</h2>
+  <table>
+    <tbody>
+      <tr><th>Rows</th><td class=\"number\">{}</td></tr>
+      <tr><th>Search</th><td>{}</td></tr>
+      <tr><th>Source</th><td>{}</td></tr>
+      <tr><th>Sort</th><td>{}</td></tr>
+      <tr><th>Group</th><td>{}</td></tr>
+    </tbody>
+  </table>
+  <h2>Plot Export Options</h2>
+  <table>
+    <tbody>
+      <tr><th>Size</th><td>{}</td></tr>
+      <tr><th>Include cursors</th><td>{}</td></tr>
+      <tr><th>Include trigger markers</th><td>{}</td></tr>
+      <tr><th>Include snapshot annotations</th><td>{}</td></tr>
+      <tr><th>Split units</th><td>{}</td></tr>
+    </tbody>
+  </table>
+  <h2>Selected Trace Context</h2>
+  <table>
+    <tbody>
+      <tr><th>Selected waveform index</th><td class=\"number\">{}</td></tr>
+      <tr><th>Selected probe index</th><td class=\"number\">{}</td></tr>
+      <tr><th>Selected trace</th><td>{}</td></tr>
+    </tbody>
+  </table>
+  {}
+</main>
+</body>
+</html>
+",
+            snapshots.len(),
+            html_escape(query),
+            html_escape(self.waveform_snapshot_source_filter.label()),
+            html_escape(self.waveform_snapshot_sort_key.label()),
+            html_escape(self.waveform_snapshot_group_mode.label()),
+            html_escape(self.waveform_plot_export_size.label()),
+            yes_no(self.waveform_plot_export_cursors),
+            yes_no(self.waveform_plot_export_trigger),
+            yes_no(self.waveform_plot_export_snapshots),
+            yes_no(self.waveform_split_trace_units),
+            self.selected_waveform,
+            self.selected_probe,
+            html_escape(&selected_context),
+            scope_report_bundle_footprint_summary_html(
+                &footprint_summaries,
+                footprint_count,
+                footprint_bytes
+            ),
+        )
+    }
+
     fn scope_report_bundle_footprint_summary_markdown(&self) -> String {
+        let (count, bytes, summaries) = self.scope_report_bundle_footprint_summary();
+        waveform_footprint_summary_markdown(&summaries, count, bytes)
+    }
+
+    fn scope_report_bundle_footprint_summary(
+        &self,
+    ) -> (usize, usize, Vec<WaveformFootprintSourceSummary>) {
         let rows = waveform_footprint_rows_with_diagnostics(
             &self.waveforms,
             &self.waveform_load_diagnostics,
@@ -775,7 +876,7 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         );
         let total_bytes = rows.iter().map(|row| row.estimated_bytes).sum();
         let summaries = waveform_footprint_source_summaries(&rows);
-        waveform_footprint_summary_markdown(&summaries, rows.len(), total_bytes)
+        (rows.len(), total_bytes, summaries)
     }
 
     fn scope_recent_report_bundles_ui(&mut self, ui: &mut egui::Ui) {
@@ -1210,6 +1311,51 @@ fn markdown_escape(value: &str) -> String {
         .replace('|', "\\|")
         .replace('\n', "<br>")
         .replace('\r', "")
+}
+
+fn html_escape(value: &str) -> String {
+    let value = value.trim();
+    if value.is_empty() {
+        return "-".to_string();
+    }
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+fn scope_report_bundle_footprint_summary_html(
+    summaries: &[WaveformFootprintSourceSummary],
+    total_count: usize,
+    total_bytes: usize,
+) -> String {
+    let mut html = String::from(
+        "\
+<h2>Loaded Waveform Footprint Summary</h2>
+<table>
+  <thead>
+    <tr><th>Source</th><th>Views</th><th>Estimated bytes</th><th>Estimated size</th></tr>
+  </thead>
+  <tbody>
+",
+    );
+    html.push_str(&format!(
+        "    <tr><td>Total</td><td class=\"number\">{total_count}</td><td class=\"number\">{total_bytes}</td><td class=\"number\">{}</td></tr>\n",
+        html_escape(&format_waveform_load_bytes(Some(total_bytes as u64)))
+    ));
+    for summary in summaries {
+        html.push_str(&format!(
+            "    <tr><td>{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td><td class=\"number\">{}</td></tr>\n",
+            html_escape(summary.source.label()),
+            summary.count,
+            summary.estimated_bytes,
+            html_escape(&format_waveform_load_bytes(Some(summary.estimated_bytes as u64)))
+        ));
+    }
+    html.push_str("  </tbody>\n</table>");
+    html
 }
 
 fn yes_no(value: bool) -> &'static str {

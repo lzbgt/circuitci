@@ -353,7 +353,7 @@ impl WaveformFootprintSortKey {
         Self::Label,
     ];
 
-    fn label(self) -> &'static str {
+    pub(super) fn label(self) -> &'static str {
         match self {
             Self::EstimatedBytes => "Memory",
             Self::Samples => "Rows",
@@ -380,7 +380,7 @@ impl WaveformFootprintSourceFilter {
         Self::RuntimeOnly,
     ];
 
-    fn label(self) -> &'static str {
+    pub(super) fn label(self) -> &'static str {
         match self {
             Self::All => "All",
             Self::FullCsv => "Full CSV",
@@ -409,7 +409,7 @@ pub(super) enum WaveformFootprintSource {
 impl WaveformFootprintSource {
     const ALL: [Self; 3] = [Self::FullCsv, Self::SelectedColumns, Self::RuntimeOnly];
 
-    fn label(self) -> &'static str {
+    pub(super) fn label(self) -> &'static str {
         match self {
             Self::FullCsv => "Full CSV",
             Self::SelectedColumns => "Selected Columns",
