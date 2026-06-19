@@ -8,7 +8,7 @@ use super::sketch::{
 };
 use super::sketch_canvas_hits::{
     SketchCanvasHitContext, hover_targets as collect_hover_targets, position_hits_interactive_item,
-    runtime_scope_activity_count,
+    runtime_scope_activity_targets,
 };
 use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, schematic_canvas_size, wire_drag_target_at,
@@ -220,7 +220,7 @@ impl CircuitCiApp {
             runtime_scope_overlay_visible: self.sketch_runtime_scope_overlay_visible,
         };
         let hover_targets = collect_hover_targets(&hit_context, pointer_hover);
-        let runtime_scope_activity_count = runtime_scope_activity_count(&hit_context);
+        let runtime_scope_activity_targets = runtime_scope_activity_targets(&hit_context);
         let hovered_node = hover_targets.node;
         let hovered_anchor = hover_targets.anchor;
         let hovered_route_handle = hover_targets.route_handle;
@@ -394,7 +394,7 @@ impl CircuitCiApp {
                 opacity,
             );
         }
-        self.sketch_runtime_scope_activity_legend(ui, rect, runtime_scope_activity_count);
+        self.sketch_runtime_scope_activity_legend(ui, rect, &runtime_scope_activity_targets);
         for badge in &net_label_badges {
             let dragged = self
                 .sketch_net_label_drag
@@ -1583,12 +1583,13 @@ impl CircuitCiApp {
         &mut self,
         ui: &egui::Ui,
         canvas_rect: egui::Rect,
-        target_count: usize,
+        targets: &[super::sketch_canvas_hits::RuntimeScopeActivityTarget],
     ) {
-        if target_count == 0 {
+        if targets.is_empty() {
             return;
         }
-        let legend_size = egui::vec2(248.0, 56.0);
+        let visible_rows = targets.len().min(4);
+        let legend_size = egui::vec2(292.0, 62.0 + visible_rows as f32 * 23.0);
         let pos = canvas_rect.right_top()
             + egui::vec2(
                 -(legend_size.x + 12.0),
@@ -1622,7 +1623,7 @@ impl CircuitCiApp {
                             egui::Color32::WHITE,
                         );
                         ui.strong("Scope Activity");
-                        ui.label(format!("{target_count} targets"));
+                        ui.label(format!("{} targets", targets.len()));
                     });
                     ui.checkbox(
                         &mut self.sketch_runtime_scope_overlay_visible,
@@ -1631,6 +1632,26 @@ impl CircuitCiApp {
                     .on_hover_text(
                         "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                     );
+                    ui.separator();
+                    for row in targets.iter().take(4) {
+                        let button_label = format!("{} · {}", row.target.probe_name, row.label);
+                        if ui
+                            .add_sized(
+                                egui::vec2(260.0, 20.0),
+                                egui::Button::new(super::sketch::compact_label(&button_label, 40)),
+                            )
+                            .on_hover_text(format!(
+                                "{} in {}",
+                                row.target.probe_name, row.target.scenario_name
+                            ))
+                            .clicked()
+                        {
+                            self.open_scope_probe_target(row.target.clone());
+                        }
+                    }
+                    if targets.len() > 4 {
+                        ui.label(format!("+{} more", targets.len() - 4));
+                    }
                 });
             });
     }

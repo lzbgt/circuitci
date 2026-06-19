@@ -18,7 +18,7 @@ use crate::gui::sketch::{
     SketchSelection, SketchViewport, layout_sketch_graph_viewport, runtime_scope_chip_rect,
 };
 use crate::gui::sketch_canvas_hits::{
-    SketchCanvasHitContext, hover_targets, runtime_scope_activity_count,
+    SketchCanvasHitContext, hover_targets, runtime_scope_activity_targets,
 };
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
@@ -324,7 +324,15 @@ fn runtime_scope_overlay_visibility_gates_chip_hover_but_keeps_activity_count() 
         runtime_scope_overlay_visible: true,
     };
 
-    assert_eq!(runtime_scope_activity_count(&visible_context), 2);
+    let targets = runtime_scope_activity_targets(&visible_context);
+    assert_eq!(targets.len(), 2);
+    assert_eq!(
+        targets
+            .iter()
+            .map(|row| (row.label.as_str(), row.target.probe_name.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("R1", "i(R1)"), ("out", "v(out)")]
+    );
     assert_eq!(
         hover_targets(&visible_context, Some(chip_center))
             .runtime_scope_node
@@ -337,7 +345,7 @@ fn runtime_scope_overlay_visibility_gates_chip_hover_but_keeps_activity_count() 
         ..visible_context
     };
 
-    assert_eq!(runtime_scope_activity_count(&hidden_context), 2);
+    assert_eq!(runtime_scope_activity_targets(&hidden_context).len(), 2);
     assert!(
         hover_targets(&hidden_context, Some(chip_center))
             .runtime_scope_node

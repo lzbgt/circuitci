@@ -1,5 +1,6 @@
 use eframe::egui;
 
+use super::ScopeProbeTarget;
 use super::sketch::{
     ProjectSnapshot, SketchEdge, SketchGraph, SketchNode, SketchPinAnchor, SketchSelection,
     hit_test_wire, runtime_scope_chip_rect,
@@ -43,6 +44,12 @@ pub(super) struct SketchCanvasHoverTargets<'a> {
     pub(super) net_label_badge: Option<&'a SketchNetLabelBadge>,
     pub(super) component_label_badge: Option<&'a SketchComponentLabelBadge>,
     pub(super) pointer_over_minimap: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct RuntimeScopeActivityTarget {
+    pub(super) label: String,
+    pub(super) target: ScopeProbeTarget,
 }
 
 impl SketchCanvasHoverTargets<'_> {
@@ -199,16 +206,23 @@ pub(super) fn position_hits_interactive_item(
             .is_some_and(|minimap| minimap.rect.contains(position))
 }
 
-pub(super) fn runtime_scope_activity_count(context: &SketchCanvasHitContext<'_, '_>) -> usize {
+pub(super) fn runtime_scope_activity_targets(
+    context: &SketchCanvasHitContext<'_, '_>,
+) -> Vec<RuntimeScopeActivityTarget> {
     context
         .graph
         .nodes
         .iter()
-        .filter(|node| {
+        .filter_map(|node| {
             selection_visible(context.hierarchy_view, &node.selection)
-                && node_has_runtime_scope_activity(context, node)
+                .then(|| runtime_scope_target_for_node(context, node))
+                .flatten()
+                .map(|target| RuntimeScopeActivityTarget {
+                    label: node.label.clone(),
+                    target,
+                })
         })
-        .count()
+        .collect()
 }
 
 fn selection_visible(view: Option<&SketchHierarchyView>, selection: &SketchSelection) -> bool {
@@ -250,4 +264,16 @@ fn node_has_runtime_scope_activity(
             context.snapshot,
         )
         .is_some()
+}
+
+fn runtime_scope_target_for_node(
+    context: &SketchCanvasHitContext<'_, '_>,
+    node: &SketchNode,
+) -> Option<ScopeProbeTarget> {
+    runtime_scope_probe_target_for_selection(
+        context.waveforms,
+        context.selected_waveform,
+        &node.selection,
+        context.snapshot,
+    )
 }
