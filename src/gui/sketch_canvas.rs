@@ -17,7 +17,9 @@ use super::sketch_canvas_render::{
     sketch_hover_tooltip, sketch_pin_hover_tooltip, sketch_probe_badge_tooltip,
     sketch_wire_hover_tooltip, sketch_wire_route_handle_tooltip, wire_preview_start,
 };
-use super::sketch_probes::{draw_probe_badge, hit_test_probe_badge, probe_assertion_status};
+use super::sketch_probes::{
+    SketchProbeTarget, draw_probe_badge, hit_test_probe_badge, probe_assertion_status,
+};
 use super::sketch_routes;
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
@@ -284,7 +286,9 @@ impl CircuitCiApp {
         let placement_armed = self.sketch_palette_place_armed
             || self.sketch_library_place_armed
             || self.sketch_net_label_place_armed;
+        let scope_probe_tool_armed = self.scope_probe_tool_armed();
         let pan_drag_start_allowed = !placement_armed
+            && !scope_probe_tool_armed
             && ui.input(|input| {
                 input.pointer.press_origin().is_some_and(|origin| {
                     rect.contains(origin) && !position_hits_interactive_item(origin)
@@ -295,7 +299,7 @@ impl CircuitCiApp {
             rect,
             &response,
             pan_drag_start_allowed,
-            blank_canvas_hovered && !placement_armed,
+            blank_canvas_hovered && !placement_armed && !scope_probe_tool_armed,
         );
         let viewport = self.sketch_viewport();
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
@@ -861,7 +865,36 @@ impl CircuitCiApp {
             } else {
                 None
             };
-            if (self.sketch_palette_place_armed
+            let scope_tool_target = if let Some(badge) = clicked_probe_badge.as_ref() {
+                match &badge.probe.target {
+                    SketchProbeTarget::Component(component_id) => {
+                        Some(SketchSelection::Component(component_id.clone()))
+                    }
+                    SketchProbeTarget::Net(net_id) => Some(SketchSelection::Net(net_id.clone())),
+                }
+            } else if let Some(anchor) = clicked_anchor {
+                Some(match self.sketch_scope_probe_tool {
+                    Some(super::sketch_scope_tools::SketchScopeProbeTool::Voltage) => {
+                        SketchSelection::Net(anchor.net.clone())
+                    }
+                    Some(
+                        super::sketch_scope_tools::SketchScopeProbeTool::Current
+                        | super::sketch_scope_tools::SketchScopeProbeTool::Power,
+                    ) => SketchSelection::Component(anchor.component_id.clone()),
+                    None => SketchSelection::Component(anchor.component_id.clone()),
+                })
+            } else if let Some(badge) = clicked_net_label_badge.as_ref() {
+                Some(SketchSelection::Net(badge.net_id.clone()))
+            } else if let Some(badge) = clicked_component_label_badge.as_ref() {
+                Some(SketchSelection::Component(badge.component_id.clone()))
+            } else if let Some(edge) = clicked_wire.as_ref() {
+                Some(SketchSelection::Net(edge.net_id.clone()))
+            } else {
+                clicked.clone()
+            };
+            if self.apply_scope_probe_tool_to_selection(scope_tool_target) {
+                placement_applied = true;
+            } else if (self.sketch_palette_place_armed
                 || self.sketch_library_place_armed
                 || self.sketch_net_label_place_armed)
                 && placement_target_clear
@@ -1009,6 +1042,7 @@ impl CircuitCiApp {
 
         if response.drag_started_by(egui::PointerButton::Primary)
             && !self.sketch_pan_drag_active
+            && !self.scope_probe_tool_armed()
             && !pointer_over_minimap
             && self.sketch_group_frame_drag.is_none()
             && let Some(position) = response.interact_pointer_pos()
@@ -1477,7 +1511,9 @@ impl CircuitCiApp {
         let cancel_canvas_mode_pressed =
             response.hovered() && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let requested_toolbar_paste = std::mem::take(&mut self.sketch_paste_requested);
-        if cancel_canvas_mode_pressed
+        if cancel_canvas_mode_pressed && self.scope_probe_tool_armed() {
+            self.cancel_scope_probe_tool();
+        } else if cancel_canvas_mode_pressed
             && (self.sketch_palette_place_armed
                 || self.sketch_library_place_armed
                 || self.sketch_net_label_place_armed)

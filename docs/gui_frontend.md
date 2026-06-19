@@ -389,6 +389,8 @@ form:
   probes for selected nets or current/power probes for selected components,
   plus direct `Scope V`, `Scope I`, and `Scope P` actions that create the
   missing probe when needed and open the Simulation-stage Scopes workspace,
+  armed `Scope Tool` V/I/P placement buttons that consume a canvas click on a
+  net, wire, pin, label, or component before normal selection/wire routing,
   visible voltage/current/power probe badges derived from analog scenario
   probes, badge pass/fail/unknown/unasserted markers derived from the latest
   validation report, badge clicks that open and focus the corresponding
@@ -650,14 +652,16 @@ with a small 1% threshold margin so the current sample initially satisfies the
 new strict `above` or `below` check. If no waveform column matches the probe
 expression at the cursor, the quick action fails closed and leaves Board IR
 unchanged.
-Clicking a probe badge, choosing a probe row in the object navigator, or using
-the primary toolbar/context-menu scope actions records the selected
-scenario/probe as the runtime scope target. `Scope V`, `Scope I`, and
-`Scope P` first append the corresponding Board IR voltage/current/power probe
-when the selected net or component does not already have one. If waveform
-artifacts are already loaded, the Scopes view selects the matching trace
-immediately; otherwise the target is applied after the next successful Run
-loads waveform CSV data. Selecting or focusing a
+Clicking a probe badge, choosing a probe row in the object navigator, using
+the primary toolbar/context-menu scope actions, or arming `Scope Tool` V/I/P
+and clicking the schematic records the selected scenario/probe as the runtime
+scope target. `Scope V`, `Scope I`, and `Scope P` first append the
+corresponding Board IR voltage/current/power probe when the selected net or
+component does not already have one. The armed voltage tool accepts nets,
+wires, pins, and net labels; armed current/power tools accept components,
+component labels, and pins. If waveform artifacts are already loaded, the
+Scopes view selects the matching trace immediately; otherwise the target is
+applied after the next successful Run loads waveform CSV data. Selecting or focusing a
 Scopes trace or trigger-event row can select the originating schematic probe's
 net or component while staying in the runtime workspace. When that mapping
 exists, Scopes shows a schematic-context strip with target, probe, scenario,

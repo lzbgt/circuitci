@@ -50,6 +50,7 @@ mod sketch_rename;
 mod sketch_rename_tests;
 mod sketch_render;
 mod sketch_routes;
+mod sketch_scope_tools;
 mod sketch_selection_inspector;
 #[cfg(test)]
 mod sketch_selection_tests;
@@ -70,6 +71,7 @@ use sketch_component_labels::SketchComponentLabelKind;
 use sketch_hierarchy::{SketchHierarchyFocus, SketchHierarchyTarget};
 use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
+use sketch_scope_tools::SketchScopeProbeTool;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
@@ -357,6 +359,7 @@ pub struct CircuitCiApp {
     sketch_palette_value: f64,
     sketch_palette_place_armed: bool,
     sketch_library_place_armed: bool,
+    sketch_scope_probe_tool: Option<SketchScopeProbeTool>,
     sketch_placement_rotation_deg: i32,
     sketch_placement_mirrored: bool,
     sketch_placement_pin_side: SketchPinSide,
@@ -562,6 +565,7 @@ impl Default for CircuitCiApp {
             ),
             sketch_palette_place_armed: false,
             sketch_library_place_armed: false,
+            sketch_scope_probe_tool: None,
             sketch_placement_rotation_deg: 0,
             sketch_placement_mirrored: false,
             sketch_placement_pin_side: SketchPinSide::Auto,
@@ -772,6 +776,7 @@ impl CircuitCiApp {
     }
 
     fn schematic_probe_toolbar_controls(&mut self, ui: &mut egui::Ui) {
+        self.schematic_scope_probe_tool_controls(ui);
         let Some(selection) = self.selected_sketch_item.clone() else {
             ui.label("Select a net/component to probe");
             return;
@@ -1338,8 +1343,8 @@ fn display_path(path: &Path) -> String {
 mod tests {
     use super::sketch::{
         DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
-        SketchPin, edit_component_model, edit_component_part_number, edit_net_kind,
-        edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph,
+        SketchPin, SketchSelection, edit_component_model, edit_component_part_number,
+        edit_net_kind, edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph,
         validate_board_ir_yaml_text,
     };
     use super::sketch_canvas_render::component_context_pin;
@@ -1521,6 +1526,62 @@ board:
                 && probe.expression == "V(rail,0)*I(V1)"
                 && probe.quantity == crate::board_ir::AnalogQuantity::Power
         }));
+    }
+
+    #[test]
+    fn armed_scope_voltage_tool_creates_probe_from_net_click() {
+        let yaml = analog_scope_project_yaml();
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+            ..Default::default()
+        };
+
+        app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Voltage);
+        assert!(
+            app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
+        );
+
+        assert_eq!(app.stage, Stage::Simulation);
+        assert!(!app.scope_probe_tool_armed());
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "out_voltage".to_string(),
+            })
+        );
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+        assert!(
+            project.scenarios[0]
+                .analog
+                .as_ref()
+                .unwrap()
+                .probes
+                .iter()
+                .any(|probe| probe.name == "out_voltage")
+        );
+    }
+
+    #[test]
+    fn armed_scope_current_tool_rejects_net_without_mutation() {
+        let yaml = analog_scope_project_yaml();
+        let mut app = CircuitCiApp {
+            project_yaml: yaml.to_string(),
+            project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+            ..Default::default()
+        };
+
+        app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Current);
+        assert!(
+            app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
+        );
+
+        assert_ne!(app.stage, Stage::Simulation);
+        assert!(app.scope_probe_tool_armed());
+        assert_eq!(app.project_yaml, yaml);
+        assert!(app.status.contains("needs a component"));
     }
 
     #[test]
