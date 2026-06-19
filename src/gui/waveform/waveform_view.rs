@@ -125,7 +125,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn current_scope_plot_svg(&self) -> Option<String> {
+    pub(super) fn current_scope_plot_svg(&self) -> Option<String> {
         if self.waveforms.is_empty() {
             return None;
         }

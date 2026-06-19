@@ -7,6 +7,8 @@ use super::{
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
 use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_SCOPE_SNAPSHOTS: usize = 64;
 
@@ -179,6 +181,7 @@ impl CircuitCiApp {
         let mut focus_index = None;
         let mut export_csv = false;
         let mut export_markdown = false;
+        let mut export_bundle = false;
         let visible_indexes = self.visible_scope_measurement_snapshot_indexes();
         let visible_snapshots = self.filtered_scope_measurement_snapshots(&visible_indexes);
         ui.group(|ui| {
@@ -206,6 +209,9 @@ impl CircuitCiApp {
                 }
                 if ui.button("Export Markdown").clicked() {
                     export_markdown = true;
+                }
+                if ui.button("Export Bundle").clicked() {
+                    export_bundle = true;
                 }
                 if ui.button("Clear").clicked() {
                     self.waveform_measurement_snapshots.clear();
@@ -363,6 +369,9 @@ impl CircuitCiApp {
         }
         if export_markdown {
             self.export_scope_measurement_snapshots_markdown(&visible_snapshots);
+        }
+        if export_bundle {
+            self.export_scope_report_bundle(&visible_snapshots);
         }
     }
 
@@ -614,6 +623,48 @@ impl CircuitCiApp {
                 self.record_error(anyhow::anyhow!(
                     "failed to export scope measurement snapshots as Markdown to {}: {error}",
                     path.display()
+                ));
+            }
+        }
+    }
+
+    pub(super) fn export_scope_report_bundle(&mut self, snapshots: &[ScopeMeasurementSnapshot]) {
+        if snapshots.is_empty() {
+            self.status =
+                "No scope measurement snapshots match the current bundle filters.".to_string();
+            return;
+        }
+        let Some(svg) = self.current_scope_plot_svg() else {
+            self.status = "No scope plot is available to include in the report bundle.".to_string();
+            return;
+        };
+        let base_dir = output_bundle_base_dir(&self.output_dir);
+        let bundle_dir = unique_scope_report_bundle_dir(&base_dir, current_unix_millis());
+        match fs::create_dir_all(&bundle_dir)
+            .and_then(|()| fs::write(bundle_dir.join("scope_plot.svg"), svg))
+            .and_then(|()| {
+                fs::write(
+                    bundle_dir.join("measurement_snapshots.csv"),
+                    scope_snapshots_csv(snapshots),
+                )
+            })
+            .and_then(|()| {
+                fs::write(
+                    bundle_dir.join("measurement_snapshots.md"),
+                    scope_snapshots_markdown(snapshots),
+                )
+            }) {
+            Ok(()) => {
+                self.status = format!(
+                    "Exported scope report bundle with {} snapshot row(s) to {}.",
+                    snapshots.len(),
+                    bundle_dir.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to export scope report bundle to {}: {error}",
+                    bundle_dir.display()
                 ));
             }
         }
@@ -945,4 +996,35 @@ fn snapshot_times(snapshot: &ScopeMeasurementSnapshot) -> Vec<f64> {
         .flatten()
         .filter(|time_us| time_us.is_finite())
         .collect()
+}
+
+pub(super) fn output_bundle_base_dir(output_dir: &str) -> PathBuf {
+    let trimmed = output_dir.trim();
+    if trimmed.is_empty() {
+        PathBuf::from(".")
+    } else {
+        PathBuf::from(trimmed)
+    }
+}
+
+pub(super) fn unique_scope_report_bundle_dir(base_dir: &Path, unix_millis: u128) -> PathBuf {
+    let stem = format!("scope_report_bundle_{unix_millis}");
+    let first = base_dir.join(&stem);
+    if !first.exists() {
+        return first;
+    }
+    for suffix in 2..1000 {
+        let candidate = base_dir.join(format!("{stem}_{suffix:02}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    base_dir.join(format!("{stem}_overflow"))
+}
+
+fn current_unix_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default()
 }

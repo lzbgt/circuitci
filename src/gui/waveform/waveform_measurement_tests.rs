@@ -4,11 +4,12 @@ use super::{
     WaveformTraceRef, interpolated_value, parse_waveform_csv_text, scope_cursor_legend_rows,
     scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted,
     scope_snapshots_csv, scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
-    waveform_measurement, waveform_probe_value_for_badge,
+    unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget};
+use std::fs;
 
 #[test]
 fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
@@ -700,4 +701,76 @@ fn scope_snapshot_sorting_and_grouping_shape_visible_exports() {
         ),
         vec![4, 3, 2, 1, 0]
     );
+}
+
+#[test]
+fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        waveform_snapshot_filter: "v(out)".to_string(),
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    let visible = app.visible_scope_measurement_snapshot_indexes();
+    let filtered: Vec<_> = visible
+        .iter()
+        .map(|&index| app.waveform_measurement_snapshots[index].clone())
+        .collect();
+    app.export_scope_report_bundle(&filtered);
+
+    let mut bundles = fs::read_dir(&base_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
+    bundles.sort();
+    assert_eq!(bundles.len(), 1);
+    let bundle = &bundles[0];
+    let svg = fs::read_to_string(bundle.join("scope_plot.svg")).unwrap();
+    let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
+    let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
+
+    assert!(svg.contains("CircuitCI Scope Plot"));
+    assert!(csv.contains("Cursor 1"));
+    assert!(csv.contains("v(out)"));
+    assert!(!csv.contains("i(load)"));
+    assert!(markdown.contains("| Cursor 1 |"));
+    assert!(app.status.contains("Exported scope report bundle"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
+fn scope_report_bundle_dir_uses_collision_suffix() {
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_bundle_collision_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(base_dir.join("scope_report_bundle_42")).unwrap();
+
+    let next = unique_scope_report_bundle_dir(&base_dir, 42);
+
+    assert_eq!(next, base_dir.join("scope_report_bundle_42_02"));
+    fs::remove_dir_all(&base_dir).unwrap();
 }
