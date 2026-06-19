@@ -68,7 +68,7 @@ impl CircuitCiApp {
                     .on_hover_text(
                         "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                     );
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(format!(
                             "{} pinned compare trace(s)",
                             self.waveform_pinned_traces.len()
@@ -84,6 +84,18 @@ impl CircuitCiApp {
                             .clicked()
                         {
                             self.open_pinned_scope_compare();
+                        }
+                        if ui
+                            .add_enabled(
+                                !self.waveform_pinned_traces.is_empty(),
+                                egui::Button::new("Save Compare"),
+                            )
+                            .on_hover_text(
+                                "Save the currently pinned Scope Activity traces as a reusable Scopes compare set.",
+                            )
+                            .clicked()
+                        {
+                            self.save_pinned_scope_compare_from_sketch();
                         }
                         if ui
                             .add_enabled(

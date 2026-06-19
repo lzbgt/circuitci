@@ -612,6 +612,84 @@ fn clear_scope_compare_pins_from_sketch_removes_all_pins() {
 }
 
 #[test]
+fn save_pinned_scope_compare_from_sketch_saves_pinned_traces_only() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),v(ref)
+0,0,0.1,3.3
+0.000001,1,0.2,3.2
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_pinned_traces: vec![
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 2,
+            },
+        ],
+        waveform_trace_preset_name: "sketch compare".to_string(),
+        ..Default::default()
+    };
+
+    assert!(app.save_pinned_scope_compare_from_sketch());
+
+    assert_eq!(
+        app.waveform_trace_presets,
+        vec![WaveformTracePreset {
+            name: "sketch compare".to_string(),
+            traces: vec![
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 2,
+                },
+            ],
+        }]
+    );
+    assert!(app.waveform_trace_preset_name.is_empty());
+    assert!(
+        app.status
+            .contains("Saved scope compare set sketch compare")
+    );
+}
+
+#[test]
+fn save_pinned_scope_compare_from_sketch_reports_empty_after_prune() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)
+0,0
+0.000001,1
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 9,
+        }],
+        ..Default::default()
+    };
+
+    assert!(!app.save_pinned_scope_compare_from_sketch());
+
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.waveform_trace_presets.is_empty());
+    assert!(app.status.contains("Pin at least one"));
+}
+
+#[test]
 fn open_pinned_scope_compare_selects_first_valid_pin_and_opens_scopes() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),i(load),v(ref)

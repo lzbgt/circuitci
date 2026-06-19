@@ -137,7 +137,7 @@ badges, and runtime `scope` chip hit-testing.
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, bounded per-trace sparklines, and direct Scopes trace-open,
-compare pin/unpin/clear, and Open Compare actions for loaded schematic targets.
+compare pin/unpin/clear/save, and Open Compare actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns canvas helper actions for active
 multi-bend wire drawing, direct schematic wire-route edits, component placement
 orientation controls, selected-component orientation transforms, canvas probe

@@ -91,6 +91,17 @@ impl CircuitCiApp {
         count
     }
 
+    pub(in crate::gui) fn save_pinned_scope_compare_from_sketch(&mut self) -> bool {
+        self.prune_scope_trace_pins();
+        if self.waveform_pinned_traces.is_empty() {
+            self.status =
+                "Pin at least one loaded Scope Activity trace before saving compare.".to_string();
+            return false;
+        }
+        self.save_current_scope_compare_preset(self.waveform_pinned_traces.clone());
+        true
+    }
+
     pub(in crate::gui) fn open_pinned_scope_compare(&mut self) -> bool {
         self.prune_scope_trace_pins();
         let Some(trace) = self.waveform_pinned_traces.first().copied() else {
