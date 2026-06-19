@@ -14,10 +14,10 @@ use super::{
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, select_deferred_waveform_column_picks, waveform_footprint_csv,
     waveform_footprint_largest_unload_targets, waveform_footprint_rows,
-    waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
-    waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
-    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
-    waveform_load_preflight,
+    waveform_footprint_rows_with_diagnostics, waveform_footprint_unload_targets,
+    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
+    waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
+    waveform_load_diagnostics_csv, waveform_load_preflight,
 };
 use crate::gui::CircuitCiApp;
 use std::collections::BTreeSet;
@@ -1138,12 +1138,72 @@ fn waveform_footprint_csv_exports_visible_rows() {
     );
     let csv = waveform_footprint_csv(&rows);
 
-    assert!(
-        csv.starts_with("waveform,path,samples,probes,values,estimated_bytes,estimated_size\n")
-    );
+    assert!(csv.starts_with(
+        "waveform,source,path,samples,probes,values,estimated_bytes,estimated_size\n"
+    ));
     assert!(csv.contains("\"/tmp/run/quoted,\"\"scope\"\".csv\""));
-    assert!(csv.contains(",2,2,6,48,48 B\n"));
+    assert!(csv.contains(",runtime_only,\"/tmp/run/quoted,\"\"scope\"\".csv\",2,2,6,48,48 B\n"));
     assert!(!csv.contains("plain.csv"));
+}
+
+#[test]
+fn waveform_footprint_rows_classify_loaded_source_type() {
+    let full_path = "/tmp/run/full.csv";
+    let selected_path = "/tmp/run/selected.csv";
+    let runtime_path = "/tmp/run/runtime.csv";
+    let full = parse_waveform_csv_text("time,v(out),i(load)\n0,1,0.1\n0.000001,2,0.2\n", full_path)
+        .unwrap();
+    let selected =
+        parse_waveform_csv_text("time,i(load)\n0,0.1\n0.000001,0.2\n", selected_path).unwrap();
+    let runtime =
+        parse_waveform_csv_text("time,v(runtime)\n0,3\n0.000001,4\n", runtime_path).unwrap();
+    let diagnostics = vec![
+        WaveformLoadDiagnostic::loaded(full_path.to_string(), Some(256), 2, 2, 3),
+        WaveformLoadDiagnostic::loaded_selected(
+            selected_path.to_string(),
+            Some(512),
+            2,
+            1,
+            4,
+            vec!["i(load)".to_string()],
+        ),
+    ];
+    let waveforms = vec![full, selected, runtime];
+    let rows = waveform_footprint_rows_with_diagnostics(
+        &waveforms,
+        &diagnostics,
+        "",
+        WaveformFootprintSortKey::Label,
+        false,
+    );
+
+    assert_eq!(
+        rows.iter()
+            .map(|row| (row.path.as_str(), row.source.csv_label()))
+            .collect::<Vec<_>>(),
+        vec![
+            (full_path, "full_csv"),
+            (runtime_path, "runtime_only"),
+            (selected_path, "selected_columns"),
+        ]
+    );
+    assert_eq!(
+        waveform_footprint_rows_with_diagnostics(
+            &waveforms,
+            &diagnostics,
+            "selected_columns",
+            WaveformFootprintSortKey::Label,
+            false,
+        )
+        .iter()
+        .map(|row| row.path.as_str())
+        .collect::<Vec<_>>(),
+        vec![selected_path]
+    );
+    let csv = waveform_footprint_csv(&rows);
+    assert!(csv.contains(",full_csv,/tmp/run/full.csv,"));
+    assert!(csv.contains(",selected_columns,/tmp/run/selected.csv,"));
+    assert!(csv.contains(",runtime_only,/tmp/run/runtime.csv,"));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use super::waveform_load::format_waveform_load_bytes;
+use super::waveform_load::{WaveformLoadDiagnostic, format_waveform_load_bytes};
 use super::{CircuitCiApp, WaveformView};
 use eframe::egui;
 use std::fs;
@@ -7,15 +7,17 @@ const WAVEFORM_FOOTPRINT_WARNING_BYTES: usize = 256 * 1024 * 1024;
 
 impl CircuitCiApp {
     pub(super) fn loaded_waveform_footprint_ui(&mut self, ui: &mut egui::Ui) {
-        let rows = waveform_footprint_rows(
+        let rows = waveform_footprint_rows_with_diagnostics(
             &self.waveforms,
+            &self.waveform_load_diagnostics,
             &self.waveform_footprint_filter,
             self.waveform_footprint_sort_key,
             self.waveform_footprint_descending,
         );
         let total_bytes = waveform_footprint_total_bytes(&self.waveforms);
-        let all_rows = waveform_footprint_rows(
+        let all_rows = waveform_footprint_rows_with_diagnostics(
             &self.waveforms,
+            &self.waveform_load_diagnostics,
             "",
             WaveformFootprintSortKey::EstimatedBytes,
             true,
@@ -56,8 +58,9 @@ impl CircuitCiApp {
                                     sort_key.label(),
                                 );
                             }
-                        });
+                    });
                     ui.checkbox(&mut self.waveform_footprint_descending, "Descending");
+                    ui.checkbox(&mut self.waveform_footprint_group_by_source, "Group Source");
                     ui.label(format!("{} / {} visible", rows.len(), self.waveforms.len()));
                     if ui
                         .add_enabled(!rows.is_empty(), egui::Button::new("Copy CSV"))
@@ -157,45 +160,34 @@ impl CircuitCiApp {
                     ui.small("No loaded waveform matches the current footprint filter.");
                     return;
                 }
-                egui::Grid::new("loaded_waveform_footprint")
-                    .num_columns(7)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        ui.label("Waveform");
-                        ui.label("Rows");
-                        ui.label("Traces");
-                        ui.label("Values");
-                        ui.label("Estimate");
-                        ui.label("Path");
-                        ui.label("Action");
-                        ui.end_row();
-
-                        for row in &rows {
-                            ui.monospace(&row.label);
-                            ui.monospace(row.samples.to_string());
-                            ui.monospace(row.probes.to_string());
-                            ui.monospace(row.values.to_string());
-                            ui.monospace(format_waveform_load_bytes(Some(
-                                row.estimated_bytes as u64,
-                            )));
-                            ui.small(&row.path);
-                            ui.horizontal(|ui| {
-                                if ui.small_button("Select").clicked() {
-                                    next_waveform = Some(row.waveform_index);
-                                }
-                                if ui
-                                    .small_button("Unload")
-                                    .on_hover_text(
-                                        "Unload this parsed waveform artifact from memory.",
-                                    )
-                                    .clicked()
-                                {
-                                    unload_waveform = Some(row.waveform_index);
-                                }
-                            });
-                            ui.end_row();
+                if self.waveform_footprint_group_by_source {
+                    for source in WaveformFootprintSource::ALL {
+                        let source_rows = rows
+                            .iter()
+                            .filter(|row| row.source == source)
+                            .collect::<Vec<_>>();
+                        if source_rows.is_empty() {
+                            continue;
                         }
-                    });
+                        ui.separator();
+                        ui.strong(format!("{} ({})", source.label(), source_rows.len()));
+                        waveform_footprint_grid(
+                            ui,
+                            format!("loaded_waveform_footprint_{}", source.csv_label()),
+                            &source_rows,
+                            &mut next_waveform,
+                            &mut unload_waveform,
+                        );
+                    }
+                } else {
+                    waveform_footprint_grid(
+                        ui,
+                        "loaded_waveform_footprint",
+                        &rows.iter().collect::<Vec<_>>(),
+                        &mut next_waveform,
+                        &mut unload_waveform,
+                    );
+                }
             },
         );
         if export_csv {
@@ -246,6 +238,52 @@ impl CircuitCiApp {
     }
 }
 
+fn waveform_footprint_grid(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash,
+    rows: &[&WaveformFootprintRow],
+    next_waveform: &mut Option<usize>,
+    unload_waveform: &mut Option<usize>,
+) {
+    egui::Grid::new(id)
+        .num_columns(8)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Waveform");
+            ui.label("Source");
+            ui.label("Rows");
+            ui.label("Traces");
+            ui.label("Values");
+            ui.label("Estimate");
+            ui.label("Path");
+            ui.label("Action");
+            ui.end_row();
+
+            for row in rows {
+                ui.monospace(&row.label);
+                ui.monospace(row.source.label());
+                ui.monospace(row.samples.to_string());
+                ui.monospace(row.probes.to_string());
+                ui.monospace(row.values.to_string());
+                ui.monospace(format_waveform_load_bytes(Some(row.estimated_bytes as u64)));
+                ui.small(&row.path);
+                ui.horizontal(|ui| {
+                    if ui.small_button("Select").clicked() {
+                        *next_waveform = Some(row.waveform_index);
+                    }
+                    if ui
+                        .small_button("Unload")
+                        .on_hover_text("Unload this parsed waveform artifact from memory.")
+                        .clicked()
+                    {
+                        *unload_waveform = Some(row.waveform_index);
+                    }
+                });
+                ui.end_row();
+            }
+        });
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(in crate::gui) enum WaveformFootprintSortKey {
     #[default]
@@ -273,9 +311,37 @@ impl WaveformFootprintSortKey {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum WaveformFootprintSource {
+    FullCsv,
+    SelectedColumns,
+    RuntimeOnly,
+}
+
+impl WaveformFootprintSource {
+    const ALL: [Self; 3] = [Self::FullCsv, Self::SelectedColumns, Self::RuntimeOnly];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::FullCsv => "Full CSV",
+            Self::SelectedColumns => "Selected Columns",
+            Self::RuntimeOnly => "Runtime Only",
+        }
+    }
+
+    pub(super) fn csv_label(self) -> &'static str {
+        match self {
+            Self::FullCsv => "full_csv",
+            Self::SelectedColumns => "selected_columns",
+            Self::RuntimeOnly => "runtime_only",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct WaveformFootprintRow {
     pub(super) waveform_index: usize,
+    pub(super) source: WaveformFootprintSource,
     pub(super) label: String,
     pub(super) path: String,
     pub(super) samples: usize,
@@ -313,17 +379,31 @@ pub(super) fn waveform_footprint_rows(
     sort_key: WaveformFootprintSortKey,
     descending: bool,
 ) -> Vec<WaveformFootprintRow> {
+    waveform_footprint_rows_with_diagnostics(waveforms, &[], query, sort_key, descending)
+}
+
+pub(super) fn waveform_footprint_rows_with_diagnostics(
+    waveforms: &[WaveformView],
+    diagnostics: &[WaveformLoadDiagnostic],
+    query: &str,
+    sort_key: WaveformFootprintSortKey,
+    descending: bool,
+) -> Vec<WaveformFootprintRow> {
     let query = query.trim().to_ascii_lowercase();
     let mut rows = waveforms
         .iter()
         .enumerate()
         .filter_map(|(index, waveform)| {
-            if !query.is_empty() && !waveform_footprint_search_text(waveform).contains(&query) {
+            let source = waveform_footprint_source(waveform, diagnostics);
+            if !query.is_empty()
+                && !waveform_footprint_search_text(waveform, source).contains(&query)
+            {
                 return None;
             }
             let values = waveform_footprint_value_count(waveform);
             Some(WaveformFootprintRow {
                 waveform_index: index,
+                source,
                 label: waveform.label.clone(),
                 path: waveform.path.clone(),
                 samples: waveform.time_s.len(),
@@ -364,10 +444,11 @@ pub(super) fn waveform_footprint_unload_targets(
 
 pub(super) fn waveform_footprint_csv(rows: &[WaveformFootprintRow]) -> String {
     let mut csv =
-        String::from("waveform,path,samples,probes,values,estimated_bytes,estimated_size\n");
+        String::from("waveform,source,path,samples,probes,values,estimated_bytes,estimated_size\n");
     for row in rows {
         let fields = [
             row.label.clone(),
+            row.source.csv_label().to_string(),
             row.path.clone(),
             row.samples.to_string(),
             row.probes.to_string(),
@@ -431,14 +512,62 @@ pub(super) fn waveform_footprint_target_index(
     })
 }
 
-fn waveform_footprint_search_text(waveform: &WaveformView) -> String {
+fn waveform_footprint_search_text(
+    waveform: &WaveformView,
+    source: WaveformFootprintSource,
+) -> String {
     let probes = waveform
         .probes
         .iter()
         .map(|probe| probe.label.as_str())
         .collect::<Vec<_>>()
         .join(" ");
-    format!("{} {} {}", waveform.label, waveform.path, probes).to_ascii_lowercase()
+    format!(
+        "{} {} {} {} {}",
+        waveform.label,
+        waveform.path,
+        probes,
+        source.label(),
+        source.csv_label()
+    )
+    .to_ascii_lowercase()
+}
+
+fn waveform_footprint_source(
+    waveform: &WaveformView,
+    diagnostics: &[WaveformLoadDiagnostic],
+) -> WaveformFootprintSource {
+    let probe_labels = waveform_footprint_probe_labels(waveform);
+    for diagnostic in diagnostics {
+        if diagnostic.path != waveform.path || !diagnostic.loaded || diagnostic.deferred {
+            continue;
+        }
+        if diagnostic.is_selected_column_update() {
+            if waveform_footprint_probe_labels_equal(&probe_labels, &diagnostic.probe_preview) {
+                return WaveformFootprintSource::SelectedColumns;
+            }
+        } else if probe_labels.len() == diagnostic.probes {
+            return WaveformFootprintSource::FullCsv;
+        }
+    }
+    WaveformFootprintSource::RuntimeOnly
+}
+
+fn waveform_footprint_probe_labels(waveform: &WaveformView) -> Vec<String> {
+    waveform
+        .probes
+        .iter()
+        .filter(|probe| !probe.derived)
+        .map(|probe| probe.label.clone())
+        .collect()
+}
+
+fn waveform_footprint_probe_labels_equal(left: &[String], right: &[String]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.trim().eq_ignore_ascii_case(right.trim()))
 }
 
 fn waveform_footprint_estimated_bytes(waveform: &WaveformView) -> usize {

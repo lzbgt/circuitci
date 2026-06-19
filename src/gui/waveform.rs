@@ -37,7 +37,7 @@ pub(super) use waveform_footprint::{WaveformFootprintSortKey, WaveformFootprintU
 #[cfg(test)]
 use waveform_footprint::{
     waveform_footprint_csv, waveform_footprint_largest_unload_targets, waveform_footprint_rows,
-    waveform_footprint_unload_targets,
+    waveform_footprint_rows_with_diagnostics, waveform_footprint_unload_targets,
 };
 #[cfg(test)]
 use waveform_io::load_waveform_paths_with_progress_and_cancel;
