@@ -25,10 +25,13 @@ use waveform_plot::{
     scope_visible_styled_trace_refs, scope_visible_trace_refs, scope_zoom_box_interaction,
     waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
-pub(super) use waveform_snapshots::ScopeSnapshotSourceFilter;
+pub(super) use waveform_snapshots::{
+    ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter,
+};
 #[cfg(test)]
 use waveform_snapshots::{
-    scope_snapshot_visible_indexes, scope_snapshots_csv, scope_snapshots_markdown,
+    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
+    scope_snapshots_markdown,
 };
 #[cfg(test)]
 use waveform_trace_selector::{

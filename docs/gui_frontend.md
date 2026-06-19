@@ -222,7 +222,7 @@ read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
-measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, plot markers, and filtered CSV/Markdown copy/export, GUI-only
+measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only
 transient trace pinning/comparison overlays, per-trace overlay visibility/color
 styles, derived waveform channels, promotion of representable derived channels
 to Board IR probes/assertions, and graph-hover/runtime activity extraction from
@@ -243,7 +243,7 @@ readout table, playback controls, transient visible time-window and
 value-window fit/zoom/pan helpers, Back/Forward view-window history, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
 region-stat, and trigger-event measurement snapshot capture, editable labels
-and notes, search/source filtering, plot-marker derivation, filtered CSV/Markdown serialization/export, Jump
+and notes, search/source filtering, sort/group projection, plot-marker derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
@@ -609,8 +609,9 @@ exists, Scopes shows a schematic-context strip with target, probe, scenario,
 and expression plus `Open Sketch` and `Fit Context` actions. This is transient
 GUI selection over the existing Board IR target, not persisted waveform
 metadata.
-Measurement snapshot labels and notes can be edited inline, searched, and
-source-filtered across cursor/trigger/region observations; Copy CSV/Markdown and Export CSV/Markdown operate on the currently visible filtered rows and include those labels and
+Measurement snapshot labels and notes can be edited inline, searched,
+source-filtered, sorted, and grouped across cursor/trigger/region observations;
+Copy CSV/Markdown and Export CSV/Markdown operate on the currently visible projected rows and include those labels and
 notes. Rows can also restore their captured
 trace/cursor/time context or cross-focus the linked schematic probe while
 remaining runtime-only. Visible snapshot marker chips are derived from the same

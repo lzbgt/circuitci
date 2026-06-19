@@ -41,6 +41,61 @@ impl ScopeSnapshotSourceFilter {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(in crate::gui) enum ScopeSnapshotSortKey {
+    #[default]
+    Captured,
+    Newest,
+    Time,
+    Source,
+    Trace,
+    Label,
+}
+
+impl ScopeSnapshotSortKey {
+    const ALL: [Self; 6] = [
+        Self::Captured,
+        Self::Newest,
+        Self::Time,
+        Self::Source,
+        Self::Trace,
+        Self::Label,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Captured => "Captured",
+            Self::Newest => "Newest",
+            Self::Time => "Time",
+            Self::Source => "Source",
+            Self::Trace => "Trace",
+            Self::Label => "Label",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(in crate::gui) enum ScopeSnapshotGroupMode {
+    #[default]
+    None,
+    Source,
+    Trace,
+    Unit,
+}
+
+impl ScopeSnapshotGroupMode {
+    const ALL: [Self; 4] = [Self::None, Self::Source, Self::Trace, Self::Unit];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::Source => "Source",
+            Self::Trace => "Trace",
+            Self::Unit => "Unit",
+        }
+    }
+}
+
 impl CircuitCiApp {
     pub(super) fn capture_scope_cursor_snapshots(&mut self) {
         let rows = self.current_scope_cursor_snapshot_rows();
@@ -175,6 +230,28 @@ impl CircuitCiApp {
                             );
                         }
                     });
+                egui::ComboBox::from_label("Sort")
+                    .selected_text(self.waveform_snapshot_sort_key.label())
+                    .show_ui(ui, |ui| {
+                        for sort_key in ScopeSnapshotSortKey::ALL {
+                            ui.selectable_value(
+                                &mut self.waveform_snapshot_sort_key,
+                                sort_key,
+                                sort_key.label(),
+                            );
+                        }
+                    });
+                egui::ComboBox::from_label("Group")
+                    .selected_text(self.waveform_snapshot_group_mode.label())
+                    .show_ui(ui, |ui| {
+                        for group_mode in ScopeSnapshotGroupMode::ALL {
+                            ui.selectable_value(
+                                &mut self.waveform_snapshot_group_mode,
+                                group_mode,
+                                group_mode.label(),
+                            );
+                        }
+                    });
                 ui.label(format!(
                     "{} / {}",
                     visible_indexes.len(),
@@ -183,6 +260,8 @@ impl CircuitCiApp {
                 if ui.small_button("Clear Filters").clicked() {
                     self.waveform_snapshot_filter.clear();
                     self.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::All;
+                    self.waveform_snapshot_sort_key = ScopeSnapshotSortKey::Captured;
+                    self.waveform_snapshot_group_mode = ScopeSnapshotGroupMode::None;
                 }
             });
             if visible_indexes.is_empty() {
@@ -210,7 +289,22 @@ impl CircuitCiApp {
                                 ui.label("");
                                 ui.end_row();
 
+                                let mut previous_group = None;
                                 for &index in &visible_indexes {
+                                    let group = scope_snapshot_group_label(
+                                        &self.waveform_measurement_snapshots[index],
+                                        self.waveform_snapshot_group_mode,
+                                    );
+                                    if group != previous_group {
+                                        if let Some(group) = &group {
+                                            ui.strong(group);
+                                            for _ in 1..12 {
+                                                ui.label("");
+                                            }
+                                            ui.end_row();
+                                        }
+                                        previous_group = group;
+                                    }
                                     let can_jump = self.waveform_measurement_snapshots[index]
                                         .trace
                                         .is_some_and(|trace| {
@@ -449,10 +543,12 @@ impl CircuitCiApp {
     }
 
     pub(super) fn visible_scope_measurement_snapshot_indexes(&self) -> Vec<usize> {
-        scope_snapshot_visible_indexes(
+        scope_snapshot_visible_indexes_sorted(
             &self.waveform_measurement_snapshots,
             &self.waveform_snapshot_filter,
             self.waveform_snapshot_source_filter,
+            self.waveform_snapshot_sort_key,
+            self.waveform_snapshot_group_mode,
         )
     }
 
@@ -726,6 +822,81 @@ pub(super) fn scope_snapshot_visible_indexes(
             .then_some(index)
         })
         .collect()
+}
+
+pub(super) fn scope_snapshot_visible_indexes_sorted(
+    snapshots: &[ScopeMeasurementSnapshot],
+    query: &str,
+    source_filter: ScopeSnapshotSourceFilter,
+    sort_key: ScopeSnapshotSortKey,
+    group_mode: ScopeSnapshotGroupMode,
+) -> Vec<usize> {
+    let mut indexes = scope_snapshot_visible_indexes(snapshots, query, source_filter);
+    indexes.sort_by(|left, right| {
+        let left_snapshot = &snapshots[*left];
+        let right_snapshot = &snapshots[*right];
+        let group_order = scope_snapshot_group_label(left_snapshot, group_mode)
+            .cmp(&scope_snapshot_group_label(right_snapshot, group_mode));
+        if group_order != std::cmp::Ordering::Equal {
+            return group_order;
+        }
+        scope_snapshot_sort_order(left_snapshot, right_snapshot, *left, *right, sort_key)
+    });
+    indexes
+}
+
+fn scope_snapshot_sort_order(
+    left: &ScopeMeasurementSnapshot,
+    right: &ScopeMeasurementSnapshot,
+    left_index: usize,
+    right_index: usize,
+    sort_key: ScopeSnapshotSortKey,
+) -> std::cmp::Ordering {
+    match sort_key {
+        ScopeSnapshotSortKey::Captured => left_index.cmp(&right_index),
+        ScopeSnapshotSortKey::Newest => right_index.cmp(&left_index),
+        ScopeSnapshotSortKey::Time => snapshot_sort_time(left)
+            .total_cmp(&snapshot_sort_time(right))
+            .then_with(|| left_index.cmp(&right_index)),
+        ScopeSnapshotSortKey::Source => snapshot_source(left)
+            .cmp(&snapshot_source(right))
+            .then_with(|| left_index.cmp(&right_index)),
+        ScopeSnapshotSortKey::Trace => left
+            .trace_label
+            .cmp(&right.trace_label)
+            .then_with(|| left_index.cmp(&right_index)),
+        ScopeSnapshotSortKey::Label => left
+            .label
+            .cmp(&right.label)
+            .then_with(|| left_index.cmp(&right_index)),
+    }
+}
+
+fn snapshot_sort_time(snapshot: &ScopeMeasurementSnapshot) -> f64 {
+    snapshot_times(snapshot)
+        .into_iter()
+        .fold(f64::INFINITY, f64::min)
+}
+
+fn scope_snapshot_group_label(
+    snapshot: &ScopeMeasurementSnapshot,
+    group_mode: ScopeSnapshotGroupMode,
+) -> Option<String> {
+    match group_mode {
+        ScopeSnapshotGroupMode::None => None,
+        ScopeSnapshotGroupMode::Source => Some(snapshot_source(snapshot)),
+        ScopeSnapshotGroupMode::Trace => Some(blank_fallback(&snapshot.trace_label, "untraced")),
+        ScopeSnapshotGroupMode::Unit => Some(blank_fallback(&snapshot.unit, "unitless")),
+    }
+}
+
+fn blank_fallback(value: &str, fallback: &str) -> String {
+    let value = value.trim();
+    if value.is_empty() {
+        fallback.to_string()
+    } else {
+        value.to_string()
+    }
 }
 
 fn snapshot_search_text(snapshot: &ScopeMeasurementSnapshot) -> String {

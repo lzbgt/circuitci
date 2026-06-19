@@ -1,10 +1,10 @@
 use super::waveform_test_support::probe_snapshot;
 use super::{
-    ScopeSnapshotSourceFilter, ScopeTriggerEdge, WaveformTraceRef, interpolated_value,
-    parse_waveform_csv_text, scope_cursor_legend_rows, scope_region_stats_rows,
-    scope_snapshot_visible_indexes, scope_snapshots_csv, scope_snapshots_markdown,
-    scope_trigger_events, scope_visible_trace_refs, waveform_measurement,
-    waveform_probe_value_for_badge,
+    ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
+    WaveformTraceRef, interpolated_value, parse_waveform_csv_text, scope_cursor_legend_rows,
+    scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted,
+    scope_snapshots_csv, scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
+    waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
@@ -625,4 +625,79 @@ fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
     assert!(csv.contains("Region 4,load channel observed,region pinned,i(load)"));
     assert!(!csv.contains("v(out)"));
     assert_eq!(csv.lines().count(), 2);
+}
+
+#[test]
+fn scope_snapshot_sorting_and_grouping_shape_visible_exports() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        waveform_snapshot_sort_key: ScopeSnapshotSortKey::Trace,
+        waveform_snapshot_group_mode: ScopeSnapshotGroupMode::Unit,
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.capture_scope_trigger_snapshot(event);
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+
+    assert_eq!(
+        scope_snapshot_visible_indexes_sorted(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::All,
+            ScopeSnapshotSortKey::Trace,
+            ScopeSnapshotGroupMode::Unit,
+        ),
+        vec![1, 4, 0, 2, 3]
+    );
+    let visible = app.visible_scope_measurement_snapshot_indexes();
+    let filtered: Vec<_> = visible
+        .iter()
+        .map(|&index| app.waveform_measurement_snapshots[index].clone())
+        .collect();
+    let csv = scope_snapshots_csv(&filtered);
+    let labels: Vec<_> = csv
+        .lines()
+        .skip(1)
+        .filter_map(|line| line.split(',').next())
+        .collect();
+
+    assert_eq!(
+        labels,
+        vec!["Cursor 1", "Region 4", "Cursor 1", "Trigger 3", "Region 4"]
+    );
+    assert!(scope_snapshots_markdown(&filtered).contains("| Region 4 |"));
+    assert_eq!(
+        scope_snapshot_visible_indexes_sorted(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::All,
+            ScopeSnapshotSortKey::Newest,
+            ScopeSnapshotGroupMode::None,
+        ),
+        vec![4, 3, 2, 1, 0]
+    );
 }
