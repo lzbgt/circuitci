@@ -242,9 +242,9 @@ transient measurement snapshot marker chips with hover and click actions, and
 shared-axis or per-unit lane axis scaling.
 `src/gui/waveform/waveform_export.rs` owns deterministic runtime SVG rendering
 for the current Scopes plot, including visible traces, split-unit lanes,
-cursors, trigger markers, and snapshot chips for copy/export workflows. Export
-options stay transient and cover report-size presets plus independent cursor,
-trigger, and snapshot annotation inclusion.
+cursors, trigger markers, snapshot chips, and bounded decimated trace polylines
+for copy/export workflows. Export options stay transient and cover report-size
+presets plus independent cursor, trigger, and snapshot annotation inclusion.
 `src/gui/waveform/waveform_view.rs` owns the Scopes plot orchestration, cursor
 readout table, playback controls, transient visible time-window and
 value-window fit/zoom/pan helpers, Back/Forward view-window history, scope plot
@@ -633,7 +633,9 @@ runtime image artifact derived from loaded waveform CSVs, visible traces,
 cursors, trigger markers, and snapshot chips, not a persisted project report.
 The SVG export controls can choose compact/report/wide figure dimensions and
 can omit cursor, trigger, or snapshot annotations for cleaner report figures
-without changing the live Scopes view.
+without changing the live Scopes view. Long traces are exported as bounded
+min/max decimated polylines so report SVG files do not scale linearly with every
+loaded waveform sample.
 Export Bundle writes the same filtered snapshot CSV and Markdown plus the
 configured plot SVG and a README manifest into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.

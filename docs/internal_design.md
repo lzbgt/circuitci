@@ -301,8 +301,8 @@ transient measurement snapshot marker chips with hover and click actions, and sh
 axis scaling, including a transient min/max decimated trace-point cache for
 large CSV plot rendering. `src/gui/waveform/waveform_export.rs` owns deterministic runtime
 SVG rendering for the current Scopes plot, including visible traces,
-split-unit lanes, cursors, trigger markers, snapshot chips, report-size
-presets, and annotation inclusion toggles.
+split-unit lanes, cursors, trigger markers, snapshot chips, bounded decimated
+trace polylines, report-size presets, and annotation inclusion toggles.
 `src/gui/waveform/waveform_view.rs`
 owns Scopes plot orchestration, cursor readout rows, region statistics display and capture, playback controls,
 visible time-window and value-window fit/zoom/pan helpers, Back/Forward

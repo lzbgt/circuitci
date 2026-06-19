@@ -1,11 +1,10 @@
 use super::waveform_plot::{
     WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotMarker, WaveformTraceLane,
-    clamp_value_window, expanded_value_bounds, scope_trace_color_for_style, scope_trace_lanes,
-    waveform_trace_bounds_in_window,
+    clamp_value_window, decimated_trace_samples_for_plot, expanded_value_bounds,
+    scope_trace_color_for_style, scope_trace_lanes, waveform_trace_bounds_in_window,
 };
 use super::{
-    WaveformProbe, WaveformTraceRef, WaveformTraceStyle, WaveformView, format_value,
-    interpolated_value, positive_span,
+    WaveformProbe, WaveformTraceRef, WaveformTraceStyle, WaveformView, format_value, positive_span,
 };
 use eframe::egui;
 
@@ -305,24 +304,11 @@ fn svg_trace_points(
     end_s: f64,
     lane: &SvgLane,
 ) -> Vec<(f64, f64)> {
-    let mut points = Vec::new();
-    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, start_s) {
-        points.push(svg_point(lane, start_s, value, start_s, end_s));
-    }
-    for (time, value) in waveform
-        .time_s
-        .iter()
-        .copied()
-        .zip(probe.values.iter().copied())
-    {
-        if time > start_s && time < end_s {
-            points.push(svg_point(lane, time, value, start_s, end_s));
-        }
-    }
-    if let Some(value) = interpolated_value(&waveform.time_s, &probe.values, end_s) {
-        points.push(svg_point(lane, end_s, value, start_s, end_s));
-    }
-    points
+    let target_columns = lane.rect.width.ceil().max(2.0) as usize;
+    decimated_trace_samples_for_plot(waveform, probe, start_s, end_s, target_columns)
+        .into_iter()
+        .map(|(time, value)| svg_point(lane, time, value, start_s, end_s))
+        .collect()
 }
 
 fn svg_point(lane: &SvgLane, time_s: f64, value: f64, start_s: f64, end_s: f64) -> (f64, f64) {

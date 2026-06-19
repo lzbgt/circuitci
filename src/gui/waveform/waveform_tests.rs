@@ -216,6 +216,54 @@ fn scope_plot_svg_options_control_report_size_and_annotations() {
 }
 
 #[test]
+fn scope_plot_svg_decimates_dense_trace_points() {
+    let mut csv = String::from("time v(out)\n");
+    for index in 0..=5000 {
+        let value = match index {
+            1250 => 9.0,
+            1251 => -8.0,
+            3750 => 7.0,
+            _ => 0.0,
+        };
+        csv.push_str(&format!("{}e-6 {value}\n", index));
+    }
+    let waveform = parse_waveform_csv_text(&csv, "dense.csv").unwrap();
+    let trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    };
+
+    let svg = scope_plot_svg(
+        &[waveform],
+        &[trace],
+        0.0,
+        5000.0,
+        WaveformPlotView {
+            visible_window_us: Some((0.0, 5000.0)),
+            visible_value_window: None,
+            lane_mode: WaveformPlotLaneMode::Shared,
+            trigger: None,
+            snapshot_markers: &[],
+        },
+        &[],
+        ScopePlotSvgOptions {
+            size_preset: ScopePlotSvgSizePreset::Compact,
+            ..ScopePlotSvgOptions::default()
+        },
+    )
+    .unwrap();
+
+    let points_attr = svg
+        .split(r#"<polyline points=""#)
+        .nth(1)
+        .and_then(|tail| tail.split('"').next())
+        .unwrap();
+    let point_count = points_attr.split_whitespace().count();
+    assert!(point_count <= 1260, "{point_count} points");
+    assert!(point_count < 5001);
+}
+
+#[test]
 fn waveform_probe_filter_matches_label_expression_and_kind() {
     let mut waveform = parse_waveform_csv_text(
         "time,v(out),i(load),temp\n0,1,0.1,25\n0.000001,2,0.2,26\n",
