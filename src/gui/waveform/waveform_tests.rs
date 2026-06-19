@@ -7,6 +7,7 @@ use super::{
     waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
     zoom_time_window,
 };
+use super::{nearest_scope_cursor_target, plot_x_to_time_us};
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
 };
@@ -36,6 +37,41 @@ fn scope_plot_size_prefers_oscilloscope_workspace() {
     assert_eq!(
         scope_plot_size(eframe::egui::vec2(320.0, 180.0)),
         eframe::egui::vec2(560.0, 360.0)
+    );
+}
+
+#[test]
+fn scope_plot_x_maps_to_visible_time_window() {
+    let plot_rect = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::vec2(400.0, 240.0),
+    );
+    assert!((plot_x_to_time_us(100.0, plot_rect, 10.0, 50.0) - 10.0).abs() < 1.0e-12);
+    assert!((plot_x_to_time_us(300.0, plot_rect, 10.0, 50.0) - 30.0).abs() < 1.0e-12);
+    assert!((plot_x_to_time_us(500.0, plot_rect, 10.0, 50.0) - 50.0).abs() < 1.0e-12);
+    assert!((plot_x_to_time_us(800.0, plot_rect, 10.0, 50.0) - 50.0).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_cursor_hit_test_prefers_nearest_cursor_handle() {
+    let plot_rect = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::vec2(400.0, 240.0),
+    );
+    let near_a = eframe::egui::pos2(200.0, 26.0);
+    let near_b = eframe::egui::pos2(400.0, 26.0);
+    let far = eframe::egui::pos2(300.0, 180.0);
+    assert_eq!(
+        nearest_scope_cursor_target(near_a, plot_rect, 25.0, 75.0, 0.0, 100.0),
+        Some(super::WaveformCursorTarget::A)
+    );
+    assert_eq!(
+        nearest_scope_cursor_target(near_b, plot_rect, 25.0, 75.0, 0.0, 100.0),
+        Some(super::WaveformCursorTarget::B)
+    );
+    assert_eq!(
+        nearest_scope_cursor_target(far, plot_rect, 25.0, 75.0, 0.0, 100.0),
+        None
     );
 }
 

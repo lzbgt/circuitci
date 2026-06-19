@@ -4,6 +4,34 @@ use super::{
 };
 use eframe::egui;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(in crate::gui) enum WaveformCursorTarget {
+    A,
+    B,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(super) struct WaveformPlotInteraction {
+    pub(super) time_window_us: Option<(f64, f64)>,
+    pub(super) cursor_a_us: Option<f64>,
+    pub(super) cursor_b_us: Option<f64>,
+}
+
+pub(super) struct WaveformPlotCursors<'a> {
+    pub(super) cursor_a_us: f64,
+    pub(super) cursor_b_us: f64,
+    pub(super) active_drag: &'a mut Option<WaveformCursorTarget>,
+}
+
+impl WaveformPlotInteraction {
+    fn set_cursor(&mut self, target: WaveformCursorTarget, time_us: f64) {
+        match target {
+            WaveformCursorTarget::A => self.cursor_a_us = Some(time_us),
+            WaveformCursorTarget::B => self.cursor_b_us = Some(time_us),
+        }
+    }
+}
+
 pub(super) fn waveform_time_window_for_view(
     waveforms: &[WaveformView],
     waveform_index: usize,
@@ -73,21 +101,20 @@ pub(super) fn draw_waveform_plot_sized(
     ui: &mut egui::Ui,
     waveforms: &[WaveformView],
     traces: &[WaveformTraceRef],
-    cursor_a_us: f64,
-    cursor_b_us: f64,
+    cursors: WaveformPlotCursors<'_>,
     visible_window_us: Option<(f64, f64)>,
     desired_size: egui::Vec2,
-) -> Option<(f64, f64)> {
+) -> WaveformPlotInteraction {
     let Some(primary) = traces
         .first()
         .and_then(|trace| waveform_trace(waveforms, *trace))
     else {
         ui.label("No valid scope trace is selected.");
-        return None;
+        return WaveformPlotInteraction::default();
     };
     let Some((full_start_us, full_end_us)) = waveform_time_range_us(primary.0) else {
         ui.label("Waveform has no time samples.");
-        return None;
+        return WaveformPlotInteraction::default();
     };
     let (window_start_us, window_end_us) =
         visible_window_us.unwrap_or((full_start_us, full_end_us));
@@ -96,7 +123,7 @@ pub(super) fn draw_waveform_plot_sized(
     let Some((y_min, y_max)) = waveform_trace_bounds_in_window(waveforms, traces, x_min, x_max)
     else {
         ui.label("Waveform has no time samples.");
-        return None;
+        return WaveformPlotInteraction::default();
     };
 
     ui.label(format!(
@@ -113,13 +140,61 @@ pub(super) fn draw_waveform_plot_sized(
         rect.min + egui::vec2(56.0, 16.0),
         rect.max - egui::vec2(16.0, 38.0),
     );
-    let mut next_window = None;
+    let mut interaction = WaveformPlotInteraction::default();
     let x_span_us = positive_span(window_start_us, window_end_us);
+    let pointer_pos = response.interact_pointer_pos();
+    let pointer_in_plot = pointer_pos.is_some_and(|pos| plot_rect.contains(pos));
+    let cursor_target_at_pointer = pointer_pos
+        .filter(|pos| plot_rect.expand(16.0).contains(*pos))
+        .and_then(|pos| {
+            nearest_scope_cursor_target(
+                pos,
+                plot_rect,
+                cursors.cursor_a_us,
+                cursors.cursor_b_us,
+                window_start_us,
+                window_end_us,
+            )
+        });
+    if response.drag_started_by(egui::PointerButton::Primary) {
+        *cursors.active_drag = cursor_target_at_pointer.or_else(|| {
+            ui.input(|input| input.modifiers.shift)
+                .then_some(WaveformCursorTarget::B)
+        });
+    }
+    if response.drag_stopped_by(egui::PointerButton::Primary)
+        || !ui.input(|input| input.pointer.primary_down())
+    {
+        *cursors.active_drag = None;
+    }
+    if response.clicked_by(egui::PointerButton::Primary)
+        && pointer_in_plot
+        && let Some(position) = pointer_pos
+    {
+        let target = cursor_target_at_pointer
+            .or_else(|| {
+                ui.input(|input| input.modifiers.shift)
+                    .then_some(WaveformCursorTarget::B)
+            })
+            .unwrap_or(WaveformCursorTarget::A);
+        interaction.set_cursor(
+            target,
+            plot_x_to_time_us(position.x, plot_rect, window_start_us, window_end_us),
+        );
+    }
     if response.dragged() {
-        let delta = ui.input(|input| input.pointer.delta());
-        if delta.x.abs() > f32::EPSILON && plot_rect.width() > 1.0 {
-            let delta_us = -(delta.x as f64 / plot_rect.width() as f64) * x_span_us;
-            next_window = Some((window_start_us + delta_us, window_end_us + delta_us));
+        if let (Some(target), Some(position)) = (*cursors.active_drag, pointer_pos) {
+            interaction.set_cursor(
+                target,
+                plot_x_to_time_us(position.x, plot_rect, window_start_us, window_end_us),
+            );
+        } else {
+            let delta = ui.input(|input| input.pointer.delta());
+            if delta.x.abs() > f32::EPSILON && plot_rect.width() > 1.0 {
+                let delta_us = -(delta.x as f64 / plot_rect.width() as f64) * x_span_us;
+                interaction.time_window_us =
+                    Some((window_start_us + delta_us, window_end_us + delta_us));
+            }
         }
     }
     if response.hovered() {
@@ -142,7 +217,7 @@ pub(super) fn draw_waveform_plot_sized(
                 .map(|pos| ((pos.x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0))
                 .unwrap_or(0.5) as f64;
             let focus_us = window_start_us + focus_ratio * x_span_us;
-            next_window = Some(zoom_time_window(
+            interaction.time_window_us = Some(zoom_time_window(
                 window_start_us,
                 window_end_us,
                 focus_us,
@@ -166,20 +241,20 @@ pub(super) fn draw_waveform_plot_sized(
     draw_cursor_line(
         &painter,
         plot_rect,
-        cursor_a_us / 1e6,
-        x_min,
-        x_span,
+        cursors.cursor_a_us / 1e6,
+        (x_min, x_span),
         egui::Color32::from_rgb(255, 196, 87),
         "A",
+        *cursors.active_drag == Some(WaveformCursorTarget::A),
     );
     draw_cursor_line(
         &painter,
         plot_rect,
-        cursor_b_us / 1e6,
-        x_min,
-        x_span,
+        cursors.cursor_b_us / 1e6,
+        (x_min, x_span),
         egui::Color32::from_rgb(135, 220, 140),
         "B",
+        *cursors.active_drag == Some(WaveformCursorTarget::B),
     );
 
     for tick in 0..=4 {
@@ -261,7 +336,15 @@ pub(super) fn draw_waveform_plot_sized(
         font,
         egui::Color32::LIGHT_GRAY,
     );
-    next_window
+    if response.hovered() {
+        let cursor = if cursor_target_at_pointer.is_some() || cursors.active_drag.is_some() {
+            egui::CursorIcon::ResizeHorizontal
+        } else {
+            egui::CursorIcon::Grab
+        };
+        ui.ctx().set_cursor_icon(cursor);
+    }
+    interaction
 }
 
 pub(super) fn scope_plot_size(available: egui::Vec2) -> egui::Vec2 {
@@ -364,15 +447,66 @@ fn scope_trace_color(index: usize) -> egui::Color32 {
     COLORS[index % COLORS.len()]
 }
 
+pub(super) fn plot_x_to_time_us(
+    x: f32,
+    plot_rect: egui::Rect,
+    window_start_us: f64,
+    window_end_us: f64,
+) -> f64 {
+    let ratio = if plot_rect.width() <= 1.0 {
+        0.0
+    } else {
+        ((x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0) as f64
+    };
+    window_start_us + ratio * positive_span(window_start_us, window_end_us)
+}
+
+fn cursor_x(time_us: f64, plot_rect: egui::Rect, window_start_us: f64, window_end_us: f64) -> f32 {
+    let ratio = ((time_us - window_start_us) / positive_span(window_start_us, window_end_us))
+        .clamp(0.0, 1.0) as f32;
+    plot_rect.left() + ratio * plot_rect.width()
+}
+
+pub(super) fn nearest_scope_cursor_target(
+    pointer: egui::Pos2,
+    plot_rect: egui::Rect,
+    cursor_a_us: f64,
+    cursor_b_us: f64,
+    window_start_us: f64,
+    window_end_us: f64,
+) -> Option<WaveformCursorTarget> {
+    const HANDLE_RADIUS: f32 = 10.0;
+    const LINE_RADIUS: f32 = 7.0;
+    let a_x = cursor_x(cursor_a_us, plot_rect, window_start_us, window_end_us);
+    let b_x = cursor_x(cursor_b_us, plot_rect, window_start_us, window_end_us);
+    let a_distance = (pointer.x - a_x).abs();
+    let b_distance = (pointer.x - b_x).abs();
+    let near_top_handle = pointer.y <= plot_rect.top() + HANDLE_RADIUS * 1.8;
+    let threshold = if near_top_handle {
+        HANDLE_RADIUS * 1.6
+    } else {
+        LINE_RADIUS
+    };
+    if a_distance.min(b_distance) > threshold {
+        return None;
+    }
+    if a_distance <= b_distance {
+        Some(WaveformCursorTarget::A)
+    } else {
+        Some(WaveformCursorTarget::B)
+    }
+}
+
 fn draw_cursor_line(
     painter: &egui::Painter,
     plot_rect: egui::Rect,
     time_s: f64,
-    x_min: f64,
-    x_span: f64,
+    x_range: (f64, f64),
     color: egui::Color32,
     label: &str,
+    active: bool,
 ) {
+    let (x_min, x_span) = x_range;
     let ratio = ((time_s - x_min) / x_span).clamp(0.0, 1.0) as f32;
     let x = plot_rect.left() + ratio * plot_rect.width();
     painter.line_segment(
@@ -380,14 +514,23 @@ fn draw_cursor_line(
             egui::pos2(x, plot_rect.top()),
             egui::pos2(x, plot_rect.bottom()),
         ],
-        egui::Stroke::new(1.5, color),
+        egui::Stroke::new(if active { 2.4 } else { 1.5 }, color),
+    );
+    let handle_rect =
+        egui::Rect::from_center_size(egui::pos2(x, plot_rect.top() + 7.0), egui::vec2(18.0, 14.0));
+    painter.rect_filled(handle_rect, 3.0, color);
+    painter.rect_stroke(
+        handle_rect,
+        3.0,
+        egui::Stroke::new(if active { 2.0 } else { 1.0 }, egui::Color32::from_gray(24)),
+        egui::StrokeKind::Outside,
     );
     painter.text(
-        egui::pos2(x + 4.0, plot_rect.top() + 8.0),
-        egui::Align2::LEFT_CENTER,
+        handle_rect.center(),
+        egui::Align2::CENTER_CENTER,
         label,
-        egui::FontId::monospace(12.0),
-        color,
+        egui::FontId::monospace(11.0),
+        egui::Color32::from_gray(20),
     );
 }
 

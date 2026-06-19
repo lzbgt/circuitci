@@ -11,12 +11,15 @@ use eframe::egui;
 use std::path::Path;
 
 mod waveform_plot;
-#[cfg(test)]
-use waveform_plot::waveform_trace_bounds_in_window;
+pub(super) use waveform_plot::WaveformCursorTarget;
 use waveform_plot::{
-    clamp_waveform_time_window, draw_waveform_plot_sized, scope_plot_size,
+    WaveformPlotCursors, clamp_waveform_time_window, draw_waveform_plot_sized, scope_plot_size,
     scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
     zoom_time_window,
+};
+#[cfg(test)]
+use waveform_plot::{
+    nearest_scope_cursor_target, plot_x_to_time_us, waveform_trace_bounds_in_window,
 };
 
 impl CircuitCiApp {
@@ -202,16 +205,26 @@ impl CircuitCiApp {
             &self.waveform_pinned_traces,
         );
         let visible_window = self.visible_waveform_time_window();
-        if let Some((start_us, end_us)) = draw_waveform_plot_sized(
+        let interaction = draw_waveform_plot_sized(
             ui,
             &self.waveforms,
             &traces,
-            self.waveform_cursor_a_us,
-            self.waveform_cursor_b_us,
+            WaveformPlotCursors {
+                cursor_a_us: self.waveform_cursor_a_us,
+                cursor_b_us: self.waveform_cursor_b_us,
+                active_drag: &mut self.waveform_cursor_drag,
+            },
             visible_window,
             scope_plot_size(desired_size),
-        ) {
+        );
+        if let Some((start_us, end_us)) = interaction.time_window_us {
             self.set_waveform_time_window(start_us, end_us);
+        }
+        if let Some(cursor_a_us) = interaction.cursor_a_us {
+            self.set_waveform_cursor_a(cursor_a_us);
+        }
+        if let Some(cursor_b_us) = interaction.cursor_b_us {
+            self.set_waveform_cursor_b(cursor_b_us);
         }
     }
 
@@ -307,7 +320,7 @@ impl CircuitCiApp {
                 ui.label(format!("full {:.3}..{:.3} us", full_start_us, full_end_us));
             });
             ui.small(
-                "Drag the scope plot to pan time; use trackpad/mouse wheel over the plot to zoom around the pointer.",
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time; wheel or pinch zooms around the pointer.",
             );
         });
     }
@@ -342,6 +355,20 @@ impl CircuitCiApp {
         self.waveform_window_end_us = Some(end_us);
         self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
         self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
+    }
+
+    fn set_waveform_cursor_a(&mut self, cursor_us: f64) {
+        if let Some((start_us, end_us)) = self.visible_waveform_time_window() {
+            self.waveform_cursor_a_us = cursor_us.clamp(start_us, end_us);
+            self.waveform_playing = false;
+        }
+    }
+
+    fn set_waveform_cursor_b(&mut self, cursor_us: f64) {
+        if let Some((start_us, end_us)) = self.visible_waveform_time_window() {
+            self.waveform_cursor_b_us = cursor_us.clamp(start_us, end_us);
+            self.waveform_playing = false;
+        }
     }
 
     fn zoom_waveform_time_window(&mut self, scale: f64) {

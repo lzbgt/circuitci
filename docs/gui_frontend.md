@@ -226,8 +226,9 @@ transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
 pending schematic probe-to-scope focus, and graph-hover/runtime activity
 extraction from loaded waveform artifacts. `src/gui/waveform/waveform_plot.rs`
-owns the primary scope plot drawing, transient visible time-window
-fit/zoom/pan helpers, trace overlay selection, and visible-window axis scaling.
+owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
+transient visible time-window fit/zoom/pan helpers, trace overlay selection,
+and visible-window axis scaling.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
 turning the runtime module into a test fixture container.
@@ -342,7 +343,8 @@ form:
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform and
   probe selection, transient selected-probe trace pinning for multi-trace
   comparison overlays, direct plot drag/wheel time-window pan/zoom, explicit
-  time-window controls, play/scrub controls, and A/B cursor measurements.
+  time-window controls, draggable/click-set A/B cursor handles, play/scrub
+  controls, and A/B cursor measurements.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
