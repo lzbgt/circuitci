@@ -269,6 +269,10 @@ impl CircuitCiApp {
         self.shift_scope_trace_pins_after_probe_removal(waveform_index, removed_probe_index);
         self.shift_scope_trace_presets_after_probe_removal(waveform_index, removed_probe_index);
         self.shift_scope_trace_styles_after_probe_removal(waveform_index, removed_probe_index);
+        self.shift_scope_measurement_snapshots_after_probe_removal(
+            waveform_index,
+            removed_probe_index,
+        );
         self.prune_scope_trace_pins();
         self.waveform_math_left = self.waveform_math_left.min(probe_count.saturating_sub(1));
         self.waveform_math_right = self.waveform_math_right.min(probe_count.saturating_sub(1));
@@ -475,6 +479,7 @@ struct WaveformPromotionChoice {
 #[derive(Debug, Clone, PartialEq)]
 struct ScopeCursorLegendRow {
     selected: bool,
+    trace: WaveformTraceRef,
     label: String,
     unit: &'static str,
     cursor_a_value: f64,
@@ -522,6 +527,7 @@ fn scope_cursor_legend_rows(
             };
             Some(ScopeCursorLegendRow {
                 selected: trace_order == 0,
+                trace,
                 label,
                 unit: probe_unit(&probe.label),
                 cursor_a_value: cursor_a.value,

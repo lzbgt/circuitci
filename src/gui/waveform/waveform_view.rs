@@ -480,7 +480,7 @@ impl CircuitCiApp {
         }
     }
 
-    fn set_waveform_cursor_b(&mut self, cursor_us: f64) {
+    pub(super) fn set_waveform_cursor_b(&mut self, cursor_us: f64) {
         if let Some((start_us, end_us)) = self.visible_waveform_time_window() {
             self.waveform_cursor_b_us = cursor_us.clamp(start_us, end_us);
             self.waveform_playing = false;

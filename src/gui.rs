@@ -224,6 +224,7 @@ struct WaveformViewWindow {
 pub(super) struct ScopeMeasurementSnapshot {
     label: String,
     source: String,
+    trace: Option<WaveformTraceRef>,
     trace_label: String,
     time_a_us: Option<f64>,
     time_b_us: Option<f64>,

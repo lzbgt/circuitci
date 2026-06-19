@@ -1,6 +1,8 @@
+use super::waveform_plot::valid_waveform_trace;
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
     ScopeCursorLegendRow, WaveformTraceRef, format_time_s, format_value, scope_cursor_legend_rows,
+    waveform_time_range_for_view,
 };
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
@@ -19,6 +21,7 @@ impl CircuitCiApp {
         for row in rows {
             self.push_scope_measurement_snapshot(cursor_snapshot(
                 &label,
+                Some(row.trace),
                 self.waveform_cursor_a_us,
                 self.waveform_cursor_b_us,
                 &row,
@@ -41,6 +44,7 @@ impl CircuitCiApp {
         let snapshot = ScopeMeasurementSnapshot {
             label: format!("Trigger {}", self.waveform_measurement_snapshots.len() + 1),
             source: "trigger".to_string(),
+            trace: Some(self.selected_scope_trace()),
             trace_label,
             time_a_us: Some(event.time_us),
             time_b_us: None,
@@ -59,10 +63,13 @@ impl CircuitCiApp {
     }
 
     pub(super) fn waveform_measurement_snapshots_panel(&mut self, ui: &mut egui::Ui) {
+        self.prune_scope_measurement_snapshots();
         if self.waveform_measurement_snapshots.is_empty() {
             return;
         }
         let mut remove_index = None;
+        let mut jump_index = None;
+        let mut focus_index = None;
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Measurement Snapshots");
@@ -77,7 +84,7 @@ impl CircuitCiApp {
                 .auto_shrink([false, true])
                 .show(ui, |ui| {
                     egui::Grid::new("scope_measurement_snapshots")
-                        .num_columns(8)
+                        .num_columns(10)
                         .striped(true)
                         .show(ui, |ui| {
                             ui.label("Label");
@@ -87,6 +94,8 @@ impl CircuitCiApp {
                             ui.label("B");
                             ui.label("Delta");
                             ui.label("Unit");
+                            ui.label("");
+                            ui.label("");
                             ui.label("");
                             ui.end_row();
 
@@ -100,6 +109,21 @@ impl CircuitCiApp {
                                 ui.monospace(snapshot_value_b(snapshot));
                                 ui.monospace(snapshot_delta(snapshot));
                                 ui.monospace(&snapshot.unit);
+                                let can_jump = snapshot.trace.is_some_and(|trace| {
+                                    valid_waveform_trace(&self.waveforms, trace)
+                                });
+                                if ui
+                                    .add_enabled(can_jump, egui::Button::new("Jump"))
+                                    .clicked()
+                                {
+                                    jump_index = Some(index);
+                                }
+                                if ui
+                                    .add_enabled(can_jump, egui::Button::new("Focus"))
+                                    .clicked()
+                                {
+                                    focus_index = Some(index);
+                                }
                                 if ui.small_button("Delete").clicked() {
                                     remove_index = Some(index);
                                 }
@@ -108,6 +132,12 @@ impl CircuitCiApp {
                         });
                 });
         });
+        if let Some(index) = jump_index {
+            self.activate_scope_measurement_snapshot(index, false);
+        }
+        if let Some(index) = focus_index {
+            self.activate_scope_measurement_snapshot(index, true);
+        }
         if let Some(index) = remove_index {
             self.waveform_measurement_snapshots.remove(index);
             self.status = "Deleted scope measurement snapshot.".to_string();
@@ -148,10 +178,117 @@ impl CircuitCiApp {
             self.waveform_measurement_snapshots.drain(0..overflow);
         }
     }
+
+    pub(super) fn activate_scope_measurement_snapshot(
+        &mut self,
+        index: usize,
+        focus_schematic: bool,
+    ) -> bool {
+        let Some(snapshot) = self.waveform_measurement_snapshots.get(index).cloned() else {
+            return false;
+        };
+        let Some(trace) = snapshot.trace else {
+            self.status = "Scope measurement snapshot is not linked to a loaded trace.".to_string();
+            return false;
+        };
+        if !valid_waveform_trace(&self.waveforms, trace) {
+            self.status = "Scope measurement snapshot trace is no longer loaded.".to_string();
+            return false;
+        }
+        self.selected_waveform = trace.waveform_index;
+        self.selected_probe = trace.probe_index;
+        self.waveform_math_left = trace.probe_index;
+        self.waveform_math_right = trace.probe_index;
+        self.waveform_playing = false;
+        if let Some(time_us) = snapshot.time_a_us {
+            self.set_waveform_cursor_a(time_us);
+        }
+        if let Some(time_us) = snapshot.time_b_us {
+            self.set_waveform_cursor_b(time_us);
+        }
+        self.apply_waveform_view_change(|app| {
+            app.restore_scope_snapshot_time_window(&snapshot);
+        });
+        if focus_schematic {
+            if self.focus_selected_scope_schematic_context_silent() {
+                self.status = format!(
+                    "Focused schematic context for scope snapshot {}.",
+                    snapshot.label
+                );
+            } else {
+                self.status = format!(
+                    "Restored scope snapshot {}, but no schematic probe context matched.",
+                    snapshot.label
+                );
+            }
+        } else {
+            self.status = format!("Restored scope snapshot {}.", snapshot.label);
+        }
+        true
+    }
+
+    pub(super) fn shift_scope_measurement_snapshots_after_probe_removal(
+        &mut self,
+        waveform_index: usize,
+        removed_probe_index: usize,
+    ) {
+        self.waveform_measurement_snapshots.retain_mut(|snapshot| {
+            let Some(trace) = &mut snapshot.trace else {
+                return true;
+            };
+            if trace.waveform_index != waveform_index {
+                return true;
+            }
+            if trace.probe_index == removed_probe_index {
+                return false;
+            }
+            if trace.probe_index > removed_probe_index {
+                trace.probe_index -= 1;
+            }
+            true
+        });
+    }
+
+    fn prune_scope_measurement_snapshots(&mut self) {
+        let waveforms = &self.waveforms;
+        self.waveform_measurement_snapshots.retain(|snapshot| {
+            snapshot
+                .trace
+                .is_some_and(|trace| valid_waveform_trace(waveforms, trace))
+        });
+    }
+
+    fn restore_scope_snapshot_time_window(&mut self, snapshot: &ScopeMeasurementSnapshot) {
+        let Some((full_start_us, full_end_us)) =
+            waveform_time_range_for_view(&self.waveforms, self.selected_waveform)
+        else {
+            return;
+        };
+        let times = snapshot_times(snapshot);
+        if times.is_empty() {
+            return;
+        }
+        let min_time = times.iter().copied().fold(f64::INFINITY, f64::min);
+        let max_time = times.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        if !min_time.is_finite() || !max_time.is_finite() {
+            return;
+        }
+        let full_span = (full_end_us - full_start_us).max(1.0e-9);
+        let selected_span = (max_time - min_time).abs();
+        let span = if selected_span > 1.0e-9 {
+            selected_span * 1.30
+        } else {
+            full_span * 0.10
+        }
+        .clamp(full_span * 0.002, full_span);
+        let center = (min_time + max_time) * 0.5;
+        self.set_waveform_time_window(center - span * 0.5, center + span * 0.5);
+    }
 }
 
 fn cursor_snapshot(
     label: &str,
+    trace: Option<WaveformTraceRef>,
     cursor_a_us: f64,
     cursor_b_us: f64,
     row: &ScopeCursorLegendRow,
@@ -163,6 +300,7 @@ fn cursor_snapshot(
         } else {
             "cursor pinned".to_string()
         },
+        trace,
         trace_label: row.label.clone(),
         time_a_us: Some(cursor_a_us),
         time_b_us: Some(cursor_b_us),
@@ -215,4 +353,12 @@ fn snapshot_delta(snapshot: &ScopeMeasurementSnapshot) -> String {
         .delta_value
         .map(format_value)
         .unwrap_or_else(|| "-".to_string())
+}
+
+fn snapshot_times(snapshot: &ScopeMeasurementSnapshot) -> Vec<f64> {
+    [snapshot.time_a_us, snapshot.time_b_us]
+        .into_iter()
+        .flatten()
+        .filter(|time_us| time_us.is_finite())
+        .collect()
 }

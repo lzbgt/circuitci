@@ -339,6 +339,13 @@ fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
     let selected = &app.waveform_measurement_snapshots[0];
     assert_eq!(selected.label, "Cursor 1");
     assert_eq!(selected.source, "cursor selected");
+    assert_eq!(
+        selected.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
     assert_eq!(selected.trace_label, "v(out)");
     assert_eq!(selected.unit, "V");
     assert_eq!(selected.time_a_us, Some(0.0));
@@ -349,6 +356,13 @@ fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
 
     let pinned = &app.waveform_measurement_snapshots[1];
     assert_eq!(pinned.source, "cursor pinned");
+    assert_eq!(
+        pinned.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        })
+    );
     assert_eq!(pinned.trace_label, "i(load)");
     assert_eq!(pinned.unit, "A");
     assert!((pinned.delta_value.unwrap() - 0.2).abs() < 1.0e-12);
@@ -372,11 +386,98 @@ fn scope_trigger_snapshots_capture_selected_event() {
     let snapshot = &app.waveform_measurement_snapshots[0];
     assert_eq!(snapshot.label, "Trigger 1");
     assert_eq!(snapshot.source, "trigger");
+    assert_eq!(
+        snapshot.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
     assert_eq!(snapshot.trace_label, "v(out)");
     assert_eq!(snapshot.event_edge.as_deref(), Some("rising"));
     assert_eq!(snapshot.time_a_us, Some(0.5));
     assert_eq!(snapshot.value_a, Some(1.0));
     assert_eq!(snapshot.unit, "V");
+}
+
+#[test]
+fn scope_snapshot_jump_restores_trace_cursors_and_time_window() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n0.000002,0,0.1\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.selected_probe = 0;
+    app.waveform_cursor_a_us = 0.0;
+    app.waveform_cursor_b_us = 0.0;
+    app.set_waveform_time_window(0.0, 2.0);
+
+    assert!(app.activate_scope_measurement_snapshot(1, false));
+
+    assert_eq!(app.selected_probe, 1);
+    assert_eq!(app.waveform_cursor_a_us, 0.0);
+    assert_eq!(app.waveform_cursor_b_us, 2.0);
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+    assert_eq!(app.status, "Restored scope snapshot Cursor 1.");
+}
+
+#[test]
+fn scope_snapshot_focus_selects_originating_schematic_context() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)\n0,0\n0.000001,2\n0.000002,0\n",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "out_voltage".to_string(),
+        expression: "V(out)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("out".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+    app.capture_scope_trigger_snapshot(event);
+
+    assert!(app.activate_scope_measurement_snapshot(0, true));
+
+    assert_eq!(app.selected_probe, 0);
+    assert_eq!(app.waveform_cursor_a_us, 0.5);
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Net("out".to_string()))
+    );
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "tran_main".to_string(),
+            probe_name: "out_voltage".to_string(),
+        })
+    );
+    assert_eq!(
+        app.status,
+        "Focused schematic context for scope snapshot Trigger 1."
+    );
 }
 
 #[test]
