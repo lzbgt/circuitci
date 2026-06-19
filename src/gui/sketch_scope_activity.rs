@@ -1,6 +1,5 @@
 use eframe::egui;
 
-use super::CircuitCiApp;
 use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
@@ -8,6 +7,7 @@ use super::waveform::{
     runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
     waveform_time_range_for_view,
 };
+use super::{CircuitCiApp, ScopeMeasurementSnapshot};
 
 impl CircuitCiApp {
     pub(super) fn sketch_runtime_scope_activity_legend(
@@ -61,13 +61,20 @@ impl CircuitCiApp {
                             targets.len()
                         ));
                     });
-                    ui.checkbox(
-                        &mut self.sketch_runtime_scope_overlay_visible,
-                        "Show on schematic",
-                    )
-                    .on_hover_text(
-                        "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
-                    );
+                    ui.horizontal(|ui| {
+                        ui.checkbox(
+                            &mut self.sketch_runtime_scope_overlay_visible,
+                            "Show on schematic",
+                        )
+                        .on_hover_text(
+                            "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
+                        );
+                        let snapshot_status =
+                            scope_activity_snapshot_status(&self.waveform_measurement_snapshots);
+                        ui.small(snapshot_status).on_hover_text(
+                            "Scope Activity Snap rows are reportable measurement snapshots.",
+                        );
+                    });
                     let mut load_compare_preset = None;
                     let mut delete_compare_preset = None;
                     ui.horizontal_wrapped(|ui| {
@@ -376,6 +383,20 @@ pub(super) fn clamp_runtime_scope_activity_cursor_us(cursor_us: f64, range: (f64
     cursor_us.clamp(range.0, range.1)
 }
 
+pub(super) fn scope_activity_snapshot_count(snapshots: &[ScopeMeasurementSnapshot]) -> usize {
+    snapshots
+        .iter()
+        .filter(|snapshot| snapshot.source == "scope activity")
+        .count()
+}
+
+pub(super) fn scope_activity_snapshot_status(snapshots: &[ScopeMeasurementSnapshot]) -> String {
+    match scope_activity_snapshot_count(snapshots) {
+        1 => "1 activity snapshot".to_string(),
+        count => format!("{count} activity snapshots"),
+    }
+}
+
 fn runtime_scope_activity_matches(target: &RuntimeScopeActivityTarget, query: &str) -> bool {
     target.label.to_ascii_lowercase().contains(query)
         || target
@@ -501,5 +522,44 @@ mod tests {
         assert_eq!(clamp_runtime_scope_activity_cursor_us(0.0, range), 1.0);
         assert_eq!(clamp_runtime_scope_activity_cursor_us(2.0, range), 2.0);
         assert_eq!(clamp_runtime_scope_activity_cursor_us(5.0, range), 3.0);
+    }
+
+    fn snapshot(source: &str) -> ScopeMeasurementSnapshot {
+        ScopeMeasurementSnapshot {
+            label: String::new(),
+            note: String::new(),
+            source: source.to_string(),
+            trace: None,
+            trace_label: String::new(),
+            time_a_us: None,
+            time_b_us: None,
+            value_a: None,
+            value_b: None,
+            delta_value: None,
+            rms_value: None,
+            event_edge: None,
+            unit: String::new(),
+        }
+    }
+
+    #[test]
+    fn scope_activity_snapshot_status_counts_only_scope_activity_rows() {
+        let snapshots = vec![
+            snapshot("cursor"),
+            snapshot("scope activity"),
+            snapshot("trigger"),
+            snapshot("scope activity"),
+        ];
+
+        assert_eq!(scope_activity_snapshot_count(&snapshots), 2);
+        assert_eq!(
+            scope_activity_snapshot_status(&snapshots),
+            "2 activity snapshots"
+        );
+        assert_eq!(
+            scope_activity_snapshot_status(&[snapshot("scope activity")]),
+            "1 activity snapshot"
+        );
+        assert_eq!(scope_activity_snapshot_status(&[]), "0 activity snapshots");
     }
 }
