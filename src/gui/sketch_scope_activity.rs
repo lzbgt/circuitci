@@ -3,6 +3,7 @@ use eframe::egui;
 use super::CircuitCiApp;
 use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
+use super::waveform::runtime_scope_probe_sample_label;
 
 impl CircuitCiApp {
     pub(super) fn sketch_runtime_scope_activity_legend(
@@ -98,19 +99,29 @@ impl CircuitCiApp {
                                 let row = &targets[index];
                                 let button_label =
                                     format!("{} · {}", row.target.probe_name, row.label);
-                                if ui
-                                    .add_sized(
-                                        egui::vec2(292.0, 20.0),
-                                        egui::Button::new(compact_label(&button_label, 48)),
+                                ui.horizontal(|ui| {
+                                    if ui
+                                        .add_sized(
+                                            egui::vec2(180.0, 20.0),
+                                            egui::Button::new(compact_label(&button_label, 34)),
+                                        )
+                                        .on_hover_text(format!(
+                                            "{} in {}",
+                                            row.target.probe_name, row.target.scenario_name
+                                        ))
+                                        .clicked()
+                                    {
+                                        self.open_scope_probe_target(row.target.clone());
+                                    }
+                                    let sample = runtime_scope_probe_sample_label(
+                                        &self.waveforms,
+                                        self.selected_waveform,
+                                        self.waveform_cursor_a_us,
+                                        &row.target,
                                     )
-                                    .on_hover_text(format!(
-                                        "{} in {}",
-                                        row.target.probe_name, row.target.scenario_name
-                                    ))
-                                    .clicked()
-                                {
-                                    self.open_scope_probe_target(row.target.clone());
-                                }
+                                    .unwrap_or_else(|| "sample unavailable".to_string());
+                                    ui.monospace(compact_label(&sample, 30));
+                                });
                             }
                         });
                 });

@@ -815,6 +815,32 @@ pub(super) fn runtime_probe_activity_for_selection(
     matched.then_some(activity)
 }
 
+pub(super) fn runtime_scope_probe_sample_label(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+    target: &ScopeProbeTarget,
+) -> Option<String> {
+    let waveform = waveforms.get(waveform_index)?;
+    if waveform.label != target.scenario_name {
+        return None;
+    }
+    let cursor_s = cursor_us / 1e6;
+    let probe = waveform.probes.iter().find(|probe| {
+        probe
+            .label
+            .trim()
+            .eq_ignore_ascii_case(target.probe_name.trim())
+    })?;
+    let value = interpolated_value(&waveform.time_s, &probe.values, cursor_s)?;
+    Some(format!(
+        "{} {} @ {}",
+        format_value(value),
+        probe_unit(&probe.label),
+        format_time_s(cursor_s)
+    ))
+}
+
 pub(in crate::gui) fn runtime_scope_probe_target_for_selection(
     waveforms: &[WaveformView],
     waveform_index: usize,

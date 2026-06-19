@@ -4,11 +4,11 @@ use super::{
     WaveformMathDraft, WaveformPlotLaneMode, WaveformProbeQuantity, WaveformTracePreset,
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
-    runtime_probe_lines_for_selection, runtime_scope_probe_target_for_selection,
-    sanitized_probe_name, scope_trace_lanes, scope_visible_styled_trace_refs,
-    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
-    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
+    runtime_probe_lines_for_selection, runtime_scope_probe_sample_label,
+    runtime_scope_probe_target_for_selection, sanitized_probe_name, scope_trace_lanes,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_quantity_from_label, waveform_time_range_for_view,
+    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 use super::{
     WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
@@ -394,6 +394,32 @@ fn runtime_probe_activity_ignores_unmatched_selection() {
         &snapshot,
     );
     assert_eq!(activity, None);
+}
+
+#[test]
+fn runtime_scope_probe_sample_label_reports_value_unit_and_time() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(R1)
+0.0 0.0 0.001
+1e-6 3.3 0.003
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let sample = runtime_scope_probe_sample_label(
+        &[waveform],
+        0,
+        0.5,
+        &ScopeProbeTarget {
+            scenario_name: "waveform.csv".to_string(),
+            probe_name: "v(out)".to_string(),
+        },
+    )
+    .unwrap();
+
+    assert!(sample.contains("1.650000e0"));
+    assert!(sample.contains("V"));
+    assert!(sample.contains("5.000000e-7 s"));
 }
 
 #[test]
