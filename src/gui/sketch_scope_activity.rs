@@ -164,6 +164,28 @@ impl CircuitCiApp {
                                 &visible_indexes,
                             );
                         }
+                        ui.add_enabled_ui(!visible_indexes.is_empty(), |ui| {
+                            ui.menu_button("Bundle Visible", |ui| {
+                                if ui.button("Export").clicked() {
+                                    self.export_visible_scope_activity_report_bundle(
+                                        targets,
+                                        &visible_indexes,
+                                    );
+                                    ui.close();
+                                }
+                                if ui.button("Export + Open").clicked() {
+                                    self.export_visible_scope_activity_report_bundle_and_open(
+                                        targets,
+                                        &visible_indexes,
+                                    );
+                                    ui.close();
+                                }
+                            })
+                            .response
+                            .on_hover_text(
+                                "Export visible Scope Activity sample and frequency rows as a focused report bundle.",
+                            );
+                        });
                     });
                     let mut load_compare_preset = None;
                     let mut delete_compare_preset = None;
@@ -767,6 +789,57 @@ impl CircuitCiApp {
         ctx.copy_text(scope_snapshots_markdown(&rows));
         self.status =
             format!("Copied {count} visible Scope Activity observation row(s) as Markdown.");
+        count
+    }
+
+    pub(super) fn export_visible_scope_activity_report_bundle(
+        &mut self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        self.export_visible_scope_activity_report_bundle_impl(targets, visible_indexes, false)
+    }
+
+    pub(super) fn export_visible_scope_activity_report_bundle_and_open(
+        &mut self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        self.export_visible_scope_activity_report_bundle_impl(targets, visible_indexes, true)
+    }
+
+    fn export_visible_scope_activity_report_bundle_impl(
+        &mut self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+        open_index: bool,
+    ) -> usize {
+        let rows = self.visible_scope_activity_observation_snapshots(targets, visible_indexes);
+        if rows.is_empty() {
+            self.status =
+                "No visible Scope Activity observations are available to bundle.".to_string();
+            return 0;
+        }
+        let count = rows.len();
+        self.export_scope_report_bundle(&rows);
+        if self.status.contains("Exported scope report bundle") {
+            self.status = format!(
+                "Exported visible Scope Activity report bundle with {count} observation row(s). {}",
+                self.status
+            );
+        }
+        if open_index {
+            let export_status = self.status.clone();
+            if let Some(bundle) = self.waveform_recent_report_bundles.first().cloned() {
+                if self.open_scope_report_bundle_index(&bundle) {
+                    self.status = format!("{export_status} {}", self.status);
+                }
+            } else {
+                self.status = format!(
+                    "{export_status} No recent visible report bundle was available to open."
+                );
+            }
+        }
         count
     }
 }

@@ -19,6 +19,7 @@ use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTar
 use crate::gui::{CircuitCiApp, ScopeProbeTarget};
 use std::f64::consts::PI;
 use std::fs;
+use std::path::Path;
 
 #[test]
 fn waveform_spectrum_peaks_detects_dominant_frequency() {
@@ -300,6 +301,72 @@ fn scope_activity_visible_observation_rows_include_samples_and_frequencies() {
     let markdown = scope_snapshots_markdown(&rows);
     assert!(markdown.contains("| Scope Activity 1 |"));
     assert!(markdown.contains("| Scope Activity Freq 2 |"));
+}
+
+#[test]
+fn visible_scope_activity_report_bundle_exports_filtered_observations() {
+    let rows = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let out = (2.0 * PI * 1_000.0 * time_s).sin();
+            let flat = 1.0;
+            format!("{time_s:.9},{out:.9},{flat:.9}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out),v(flat)\n{rows}\n"), "startup").unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_activity_visible_bundle_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 500.0,
+        ..Default::default()
+    };
+    let targets = vec![
+        RuntimeScopeActivityTarget {
+            label: "out".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(out)".to_string(),
+            },
+        },
+        RuntimeScopeActivityTarget {
+            label: "flat".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(flat)".to_string(),
+            },
+        },
+    ];
+
+    assert_eq!(
+        app.export_visible_scope_activity_report_bundle(&targets, &[0]),
+        2
+    );
+
+    let bundle = app.waveform_recent_report_bundles.first().unwrap();
+    let csv = fs::read_to_string(Path::new(bundle).join("measurement_snapshots.csv")).unwrap();
+    let markdown = fs::read_to_string(Path::new(bundle).join("measurement_snapshots.md")).unwrap();
+    assert!(csv.contains("scope activity,v(out)"));
+    assert!(csv.contains("scope activity frequency,v(out)"));
+    assert!(!csv.contains("v(flat)"));
+    assert!(markdown.contains("| Scope Activity 1 |"));
+    assert!(markdown.contains("| Scope Activity Freq 2 |"));
+    assert!(Path::new(bundle).join("index.html").exists());
+    assert!(Path::new(bundle).join("artifact_manifest.csv").exists());
+    assert!(app.waveform_measurement_snapshots.is_empty());
+    assert!(
+        app.status
+            .contains("Exported visible Scope Activity report bundle with 2 observation row(s)")
+    );
+
+    fs::remove_dir_all(&base_dir).unwrap();
 }
 
 #[test]
