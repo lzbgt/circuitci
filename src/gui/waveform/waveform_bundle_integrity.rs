@@ -12,6 +12,9 @@ pub(super) const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 6] = [
     ("README.md", "README.md"),
     ("artifact_manifest.csv", "artifact_manifest.csv"),
 ];
+pub(super) const SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV: &str = "artifact_integrity_details.csv";
+pub(super) const SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN: &str =
+    "artifact_integrity_details.md";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ScopeReportBundleArtifactMetadata {

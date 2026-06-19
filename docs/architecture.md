@@ -47,13 +47,15 @@ normalized board, layout, library, scenario, and process evidence.
 | `main` | Own the command-line interface and import/validate/suggest command wiring. |
 
 Scopes report bundles include a local `index.html` plus README manifest. The
-index links the plot SVG and snapshot CSV/Markdown artifacts and surfaces the
-same runtime loaded-waveform footprint source summary and generated content
-artifact size/SHA-256 metadata, so exported folders can be audited for Full CSV,
+index links the plot SVG, snapshot CSV/Markdown artifacts, and optional
+artifact integrity detail CSV/Markdown files while surfacing the same runtime
+loaded-waveform footprint source summary and generated content artifact
+size/SHA-256 metadata, so exported folders can be audited for Full CSV,
 Selected Columns, Runtime Only memory distribution, and report-artifact
 integrity without persisting that diagnostic state into Board IR. Each bundle
 also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
-required bundle files. The recent-bundle UI checks required artifact presence
+required bundle files; the optional integrity detail files are derived from that
+manifest and are not part of the manifest they describe. The recent-bundle UI checks required artifact presence
 and manifest mismatches before opening, can show an integrity details table with
 expected/current size and SHA-256 values, can copy those details as CSV or
 Markdown for troubleshooting reports, can open the latest index directly,

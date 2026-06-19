@@ -1,4 +1,5 @@
 use super::waveform_bundle_integrity::{
+    SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV, SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN,
     ScopeReportBundleArtifactMetadata, html_escape, optional_size_label,
     scope_report_bundle_artifact_manifest_csv, scope_report_bundle_artifact_metadata_html,
     scope_report_bundle_artifact_metadata_markdown, scope_report_bundle_artifact_status,
@@ -108,10 +109,14 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
 - `README.md` - this manifest.
 - `artifact_manifest.csv` - expected size and SHA-256 metadata for required bundle artifacts.
+- `artifact_integrity_details.csv` - artifact integrity detail rows as CSV.
+- `artifact_integrity_details.md` - artifact integrity detail rows as Markdown.
 
 ## Artifact Metadata
 
 The table below covers generated content artifacts. `artifact_manifest.csv` records expected size and SHA-256 metadata for the required bundle files after export.
+The artifact integrity detail files are generated from that manifest as optional
+report conveniences and are not part of the manifest they describe.
 
 {}
 
@@ -198,6 +203,8 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
     <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
     <li><a href=\"artifact_manifest.csv\">artifact_manifest.csv</a> - expected size and SHA-256 metadata.</li>
+    <li><a href=\"artifact_integrity_details.csv\">artifact_integrity_details.csv</a> - artifact integrity detail rows as CSV.</li>
+    <li><a href=\"artifact_integrity_details.md\">artifact_integrity_details.md</a> - artifact integrity detail rows as Markdown.</li>
   </ul>
   {}
   <h2>Plot Preview</h2>
@@ -706,6 +713,19 @@ fn write_scope_report_bundle_files(
         .and_then(|()| {
             let manifest = scope_report_bundle_artifact_manifest_csv(bundle_dir)?;
             fs::write(bundle_dir.join("artifact_manifest.csv"), manifest)
+        })
+        .and_then(|()| {
+            let details = scope_report_bundle_integrity_details(bundle_dir);
+            fs::write(
+                bundle_dir.join(SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV),
+                scope_report_bundle_integrity_details_csv(&details),
+            )
+            .and_then(|()| {
+                fs::write(
+                    bundle_dir.join(SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN),
+                    scope_report_bundle_integrity_details_markdown(&details),
+                )
+            })
         })
 }
 

@@ -661,16 +661,20 @@ min/max decimated polylines so report SVG files do not scale linearly with every
 loaded waveform sample.
 Export Bundle writes the same filtered snapshot CSV and Markdown plus the
 configured plot SVG, a local `index.html`, a README manifest, and
-`artifact_manifest.csv` into a timestamped output folder,
+`artifact_manifest.csv` plus optional artifact integrity detail CSV/Markdown
+audit files into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
-The index links the plot SVG, snapshot CSV/Markdown, and README while surfacing
-the same snapshot, plot, selected-trace, generated content artifact
-size/SHA-256 metadata, and loaded-waveform footprint summary context for quick
-browser review. The README records active snapshot filters, plot SVG options,
-selected trace context, loaded-waveform footprint source totals, generated
-files, and human-readable artifact size/SHA-256 metadata; the CSV manifest
-records expected size/SHA-256 metadata for required bundle files so the GUI can
-distinguish changed artifacts from merely present artifacts. The Scopes panel keeps a bounded transient list of recently exported
+The index links the plot SVG, snapshot CSV/Markdown, README, manifest, and
+optional integrity detail files while surfacing the same snapshot, plot,
+selected-trace, generated content artifact size/SHA-256 metadata, and
+loaded-waveform footprint summary context for quick browser review. The README
+records active snapshot filters, plot SVG options, selected trace context,
+loaded-waveform footprint source totals, generated files, and human-readable
+artifact size/SHA-256 metadata; the CSV manifest records expected size/SHA-256
+metadata for required bundle files so the GUI can distinguish changed artifacts
+from merely present artifacts. The optional integrity detail files are derived
+from that manifest and intentionally not included in the manifest they
+describe. The Scopes panel keeps a bounded transient list of recently exported
 bundles, shows whether each recent bundle still has required and unchanged artifacts, and
 can open the latest bundle index, latest folder, or older bundle folder through
 the host file manager. `Details` opens a transient integrity table with each

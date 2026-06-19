@@ -758,6 +758,9 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
     let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
+    let integrity_csv = fs::read_to_string(bundle.join("artifact_integrity_details.csv")).unwrap();
+    let integrity_markdown =
+        fs::read_to_string(bundle.join("artifact_integrity_details.md")).unwrap();
     let index_path = scope_report_bundle_index_path(bundle);
     let index = fs::read_to_string(index_path).unwrap();
 
@@ -778,6 +781,9 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("- `index.html`"));
     assert!(readme.contains("- `scope_plot.svg`"));
     assert!(readme.contains("- `artifact_manifest.csv`"));
+    assert!(readme.contains("- `artifact_integrity_details.csv`"));
+    assert!(readme.contains("- `artifact_integrity_details.md`"));
+    assert!(readme.contains("optional"));
     assert!(readme.contains("## Artifact Metadata"));
     assert!(readme.contains("| scope_plot.svg |"));
     assert!(readme.contains("| measurement_snapshots.csv |"));
@@ -788,6 +794,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(index.contains("href=\"measurement_snapshots.md\""));
     assert!(index.contains("href=\"README.md\""));
     assert!(index.contains("href=\"artifact_manifest.csv\""));
+    assert!(index.contains("href=\"artifact_integrity_details.csv\""));
+    assert!(index.contains("href=\"artifact_integrity_details.md\""));
     assert!(index.contains("<h2>Artifact Metadata</h2>"));
     assert!(index.contains("<h2>Loaded Waveform Footprint Summary</h2>"));
     assert!(index.contains("<td>Total</td><td class=\"number\">1</td>"));
@@ -796,6 +804,16 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(manifest.contains("scope_plot.svg,scope_plot.svg"));
     assert!(manifest.contains("index.html,index.html"));
     assert!(manifest.contains("README.md,README.md"));
+    assert!(!manifest.contains("artifact_integrity_details.csv"));
+    assert!(!manifest.contains("artifact_integrity_details.md"));
+    assert!(integrity_csv.starts_with(
+        "artifact,state,expected_size_bytes,current_size_bytes,expected_sha256,current_sha256,path\n"
+    ));
+    assert!(integrity_csv.contains("scope_plot.svg,OK,"));
+    assert!(integrity_markdown.contains(
+        "| Artifact | State | Expected size bytes | Current size bytes | Expected SHA-256 | Current SHA-256 | Path |"
+    ));
+    assert!(integrity_markdown.contains("| scope_plot.svg | OK |"));
     assert!(scope_report_bundle_missing_artifacts(bundle).is_empty());
     assert!(
         scope_report_bundle_changed_artifacts(bundle)
