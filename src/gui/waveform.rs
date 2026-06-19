@@ -83,6 +83,7 @@ impl CircuitCiApp {
         self.waveform_probe_selector(ui);
         self.waveform_playback_panel(ui);
         self.waveform_scope_plot(ui, desired_size);
+        self.waveform_scope_cursor_legend(ui);
     }
 
     pub(super) fn waveform_controls_panel(&mut self, ui: &mut egui::Ui) {
@@ -226,6 +227,57 @@ impl CircuitCiApp {
         if let Some(cursor_b_us) = interaction.cursor_b_us {
             self.set_waveform_cursor_b(cursor_b_us);
         }
+    }
+
+    fn waveform_scope_cursor_legend(&self, ui: &mut egui::Ui) {
+        let traces = scope_visible_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+            &self.waveform_pinned_traces,
+        );
+        let rows = scope_cursor_legend_rows(
+            &self.waveforms,
+            &traces,
+            self.waveform_cursor_a_us,
+            self.waveform_cursor_b_us,
+        );
+        if rows.is_empty() {
+            return;
+        }
+
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Cursor Readout");
+                ui.label(format!(
+                    "A {}  B {}",
+                    format_time_s(self.waveform_cursor_a_us / 1e6),
+                    format_time_s(self.waveform_cursor_b_us / 1e6)
+                ));
+            });
+            egui::Grid::new("scope_cursor_readout")
+                .num_columns(6)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("");
+                    ui.label("Trace");
+                    ui.label("A");
+                    ui.label("B");
+                    ui.label("Delta");
+                    ui.label("Unit");
+                    ui.end_row();
+
+                    for row in &rows {
+                        ui.label(if row.selected { "*" } else { " " });
+                        ui.monospace(&row.label);
+                        ui.monospace(format_value(row.cursor_a_value));
+                        ui.monospace(format_value(row.cursor_b_value));
+                        ui.monospace(format_value(row.delta_value));
+                        ui.monospace(row.unit);
+                        ui.end_row();
+                    }
+                });
+        });
     }
 
     fn waveform_playback_panel(&mut self, ui: &mut egui::Ui) {
@@ -778,6 +830,16 @@ struct WaveformPromotionChoice {
     quantity: Option<WaveformProbeQuantity>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct ScopeCursorLegendRow {
+    selected: bool,
+    label: String,
+    unit: &'static str,
+    cursor_a_value: f64,
+    cursor_b_value: f64,
+    delta_value: f64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WaveformProbeQuantity {
     Voltage,
@@ -793,6 +855,39 @@ impl WaveformProbeQuantity {
             Self::Power => "power",
         }
     }
+}
+
+fn scope_cursor_legend_rows(
+    waveforms: &[WaveformView],
+    traces: &[WaveformTraceRef],
+    cursor_a_us: f64,
+    cursor_b_us: f64,
+) -> Vec<ScopeCursorLegendRow> {
+    traces
+        .iter()
+        .copied()
+        .enumerate()
+        .filter_map(|(trace_order, trace)| {
+            let waveform = waveforms.get(trace.waveform_index)?;
+            let probe = waveform.probes.get(trace.probe_index)?;
+            let cursor_a = cursor_measurement(waveform, probe, cursor_a_us)?;
+            let cursor_b = cursor_measurement(waveform, probe, cursor_b_us)?;
+            let trace_label = probe.expression.as_deref().unwrap_or(&probe.label);
+            let label = if waveforms.len() > 1 {
+                format!("{} / {trace_label}", waveform.label)
+            } else {
+                trace_label.to_string()
+            };
+            Some(ScopeCursorLegendRow {
+                selected: trace_order == 0,
+                label,
+                unit: probe_unit(&probe.label),
+                cursor_a_value: cursor_a.value,
+                cursor_b_value: cursor_b.value,
+                delta_value: cursor_b.value - cursor_a.value,
+            })
+        })
+        .collect()
 }
 
 pub(super) fn load_report_waveforms(report: &ValidationReport) -> Vec<WaveformView> {
