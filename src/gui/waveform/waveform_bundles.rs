@@ -319,6 +319,41 @@ report conveniences and are not part of the manifest they describe.
                     "integrity Markdown",
                 );
             }
+            egui::ComboBox::from_id_salt("scope_recent_report_bundle_copy_paths")
+                .selected_text("Copy Path")
+                .show_ui(ui, |ui| {
+                    if ui.button("Folder").clicked() {
+                        self.copy_scope_report_bundle_path(ui, &latest, None, "folder");
+                        ui.close();
+                    }
+                    if ui.button("Index").clicked() {
+                        self.copy_scope_report_bundle_path(
+                            ui,
+                            &latest,
+                            Some("index.html"),
+                            "index",
+                        );
+                        ui.close();
+                    }
+                    if ui.button("Integrity CSV").clicked() {
+                        self.copy_scope_report_bundle_path(
+                            ui,
+                            &latest,
+                            Some(SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV),
+                            "integrity CSV",
+                        );
+                        ui.close();
+                    }
+                    if ui.button("Integrity Markdown").clicked() {
+                        self.copy_scope_report_bundle_path(
+                            ui,
+                            &latest,
+                            Some(SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN),
+                            "integrity Markdown",
+                        );
+                        ui.close();
+                    }
+                });
             if ui.button("Details").clicked() {
                 self.waveform_bundle_integrity_details = Some(latest.clone());
             }
@@ -365,6 +400,10 @@ report conveniences and are not part of the manifest they describe.
                                         SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN,
                                         "integrity Markdown",
                                     );
+                                    ui.close();
+                                }
+                                if ui.small_button("Path").clicked() {
+                                    self.copy_scope_report_bundle_path(ui, &bundle, None, "folder");
                                     ui.close();
                                 }
                                 if ui.small_button("Details").clicked() {
@@ -619,6 +658,31 @@ report conveniences and are not part of the manifest they describe.
                 ));
             }
         }
+    }
+
+    fn copy_scope_report_bundle_path(
+        &mut self,
+        ui: &egui::Ui,
+        bundle: &str,
+        artifact: Option<&str>,
+        label: &str,
+    ) {
+        let path = Path::new(bundle);
+        if !path.exists() {
+            self.status = format!("Scope report bundle no longer exists: {}.", path.display());
+            return;
+        }
+        let copy_path = artifact.map_or_else(|| path.to_path_buf(), |artifact| path.join(artifact));
+        if !copy_path.exists() {
+            self.status = format!(
+                "Scope report bundle {label} path no longer exists: {}.",
+                copy_path.display()
+            );
+            return;
+        }
+        let copied = copy_path.to_string_lossy().into_owned();
+        ui.ctx().copy_text(copied.clone());
+        self.status = format!("Copied scope report bundle {label} path {copied}.");
     }
 
     fn preview_old_scope_report_bundles(&mut self) {

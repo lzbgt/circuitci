@@ -59,9 +59,9 @@ manifest and are not part of the manifest they describe. The recent-bundle UI ch
 and manifest mismatches before opening, can show an integrity details table with
 expected/current size and SHA-256 values, can copy those details as CSV or
 Markdown for troubleshooting reports, can open the latest index or generated
-integrity audit files directly, can open bundle folders through the host file
-manager, and can preview/confirm a refresh that regenerates missing or changed
-bundle artifacts from current
+integrity audit files directly, can copy exact folder/index/audit file paths,
+can open bundle folders through the host file manager, and can preview/confirm
+a refresh that regenerates missing or changed bundle artifacts from current
 filtered Scopes state into an existing `scope_report_bundle_*` folder.
 
 The Sketch canvas implementation is split so the shell stays focused on event

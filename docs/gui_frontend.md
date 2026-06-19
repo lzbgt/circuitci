@@ -679,7 +679,9 @@ bundles, shows whether each recent bundle still has required and unchanged artif
 can open the latest bundle index, latest folder, or older bundle folder through
 the host file manager. Recent bundles also expose direct open actions for the
 generated integrity CSV/Markdown audit files, with explicit missing-file status
-messages if an audit artifact was removed. `Details` opens a transient
+messages if an audit artifact was removed. A compact `Copy Path` control copies
+the latest bundle folder, index, or integrity audit file path, and older bundle
+rows can copy the folder path for issue trackers or lab notes. `Details` opens a transient
 integrity table with each artifact's OK/Missing/Changed state plus
 expected/current size and SHA-256 values, and can copy that detail set as CSV
 or Markdown for troubleshooting reports. If a recent bundle is missing required
