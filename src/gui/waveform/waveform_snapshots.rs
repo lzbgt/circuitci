@@ -3,8 +3,9 @@ use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trace_selector::shift_trace_after_waveform_removal;
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
-    ScopeCursorLegendRow, ScopeRegionStatsRow, WaveformTraceRef, format_time_s, format_value,
-    interpolated_value, probe_unit, scope_cursor_legend_rows, waveform_time_range_for_view,
+    ScopeCursorLegendRow, ScopeRegionStatsRow, WaveformTraceRef, format_frequency_hz,
+    format_time_s, format_value, interpolated_value, probe_unit, runtime_scope_probe_frequency,
+    scope_cursor_legend_rows, waveform_time_range_for_view,
 };
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot, ScopeProbeTarget};
 use eframe::egui;
@@ -47,7 +48,7 @@ impl ScopeSnapshotSourceFilter {
             Self::Cursor => snapshot.source.starts_with("cursor "),
             Self::Trigger => snapshot.source == "trigger",
             Self::Region => is_region_snapshot(snapshot),
-            Self::ScopeActivity => snapshot.source == "scope activity",
+            Self::ScopeActivity => snapshot.source.starts_with("scope activity"),
         }
     }
 }
@@ -225,6 +226,60 @@ impl CircuitCiApp {
         self.status = format!(
             "Captured Scope Activity sample for {trace_label} at {}.",
             format_time_s(cursor_s)
+        );
+        true
+    }
+
+    pub(in crate::gui) fn capture_scope_activity_frequency_snapshot(
+        &mut self,
+        target: ScopeProbeTarget,
+    ) -> bool {
+        let Some((waveform_index, probe_index)) =
+            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)
+        else {
+            self.status = format!(
+                "Scope Activity trace {} from scenario {} is not loaded yet.",
+                target.probe_name, target.scenario_name
+            );
+            return false;
+        };
+        let trace = WaveformTraceRef {
+            waveform_index,
+            probe_index,
+        };
+        let Some(frequency) =
+            runtime_scope_probe_frequency(&self.waveforms, waveform_index, &target)
+        else {
+            self.status = format!(
+                "No dominant frequency is available for Scope Activity trace {}.",
+                target.probe_name
+            );
+            return false;
+        };
+        let trace_label = trace_label(&self.waveforms, trace).unwrap_or(target.probe_name);
+        let snapshot = ScopeMeasurementSnapshot {
+            label: format!(
+                "Scope Activity Freq {}",
+                self.waveform_measurement_snapshots.len() + 1
+            ),
+            note: "Dominant frequency and period from schematic Scope Activity.".to_string(),
+            source: "scope activity frequency".to_string(),
+            trace: Some(trace),
+            trace_label: trace_label.clone(),
+            time_a_us: None,
+            time_b_us: None,
+            value_a: Some(frequency.frequency_hz),
+            value_b: Some(frequency.period_s),
+            delta_value: None,
+            rms_value: None,
+            event_edge: None,
+            unit: "Hz / s".to_string(),
+        };
+        self.push_scope_measurement_snapshot(snapshot);
+        self.status = format!(
+            "Captured Scope Activity frequency for {trace_label}: {} period {}.",
+            format_frequency_hz(frequency.frequency_hz),
+            format_time_s(frequency.period_s)
         );
         true
     }

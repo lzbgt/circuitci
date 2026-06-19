@@ -154,6 +154,101 @@ fn scope_activity_sample_snapshot_reports_missing_target() {
 }
 
 #[test]
+fn scope_activity_frequency_snapshot_captures_peak_and_period() {
+    let samples = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let value = (2.0 * PI * 1_000.0 * time_s).sin();
+            format!("{time_s:.9},{value:.9}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out)\n{samples}\n"), "startup").unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    assert!(
+        app.capture_scope_activity_frequency_snapshot(ScopeProbeTarget {
+            scenario_name: "startup".to_string(),
+            probe_name: "v(out)".to_string(),
+        })
+    );
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+    let snapshot = &app.waveform_measurement_snapshots[0];
+    assert_eq!(snapshot.label, "Scope Activity Freq 1");
+    assert_eq!(snapshot.source, "scope activity frequency");
+    assert_eq!(
+        snapshot.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
+    assert_eq!(snapshot.trace_label, "v(out)");
+    assert!(snapshot.time_a_us.is_none());
+    assert!((snapshot.value_a.unwrap() - 1_000.0).abs() < 80.0);
+    assert!((snapshot.value_b.unwrap() - (1.0 / snapshot.value_a.unwrap())).abs() < 1.0e-12);
+    assert_eq!(snapshot.unit, "Hz / s");
+    assert!(
+        app.status
+            .contains("Captured Scope Activity frequency for v(out)")
+    );
+}
+
+#[test]
+fn scope_activity_snap_visible_frequency_captures_available_targets() {
+    let rows = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let value = (2.0 * PI * 1_000.0 * time_s).sin();
+            format!("{time_s:.9},{value:.9},1.0")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out),v(flat)\n{rows}\n"), "startup").unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+    let targets = vec![
+        RuntimeScopeActivityTarget {
+            label: "out".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(out)".to_string(),
+            },
+        },
+        RuntimeScopeActivityTarget {
+            label: "flat".to_string(),
+            target: ScopeProbeTarget {
+                scenario_name: "startup".to_string(),
+                probe_name: "v(flat)".to_string(),
+            },
+        },
+    ];
+
+    assert_eq!(
+        app.capture_visible_scope_activity_frequency_snapshots_from_sketch(&targets, &[0, 1]),
+        1
+    );
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+    assert_eq!(
+        app.waveform_measurement_snapshots[0].source,
+        "scope activity frequency"
+    );
+    assert_eq!(
+        app.status,
+        "Captured 1 visible Scope Activity frequency snapshot(s); 1 unavailable."
+    );
+}
+
+#[test]
 fn scope_activity_snap_visible_captures_current_visible_targets() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",

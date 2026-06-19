@@ -87,7 +87,7 @@ legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
-visible-list snapshot capture, source-specific snapshot clearing,
+visible-list snapshot capture, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
@@ -121,7 +121,7 @@ loaded-trace jump rows, Cursor A scrub control, cursor-sampled value/time
 readouts, compact frequency/period readouts, bounded per-trace sparklines,
 per-trace edge stepping, compare
 pin/unpin/clear actions, Open Compare jumps, live activity-snapshot status,
-visible-list snapshot capture, source-specific snapshot clearing,
+visible-list snapshot capture, source-specific snapshot clearing for sample and frequency rows,
 source-filtered Open Snapshots routing, and
 matching `Circuit View` toggle control only this transient runtime
 overlay; they must not persist into Board IR.
@@ -326,7 +326,7 @@ scenario/model/source/assertion editors and their Board IR YAML mutation
 helpers. `src/gui/simulation_forms.rs` owns shared Simulation/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
-controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
+controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample and frequency measurement snapshots with editable labels/notes, search/source filters for Scope Activity samples and frequency rows, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
 min/max/delta measurements, bounded selected-trace frequency-domain peak readouts, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
@@ -365,8 +365,8 @@ visible time-window and value-window fit/zoom/pan helpers, Back/Forward
 view-window history, scope plot SVG copy/export actions, and measurement
 snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
-region-stat, trigger-event, and Scope Activity sample measurement snapshot
-capture, editable labels and notes, search/source filtering that includes Scope Activity samples, sort/group projection, plot-marker
+region-stat, trigger-event, and Scope Activity sample and frequency measurement snapshot
+capture, editable labels and notes, search/source filtering that includes Scope Activity samples and frequency rows, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export

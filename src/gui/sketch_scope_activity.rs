@@ -117,6 +117,21 @@ impl CircuitCiApp {
                                 &visible_indexes,
                             );
                         }
+                        if ui
+                            .add_enabled(
+                                !visible_indexes.is_empty(),
+                                egui::Button::new("Freq Visible"),
+                            )
+                            .on_hover_text(
+                                "Capture dominant frequency and period snapshots for every visible Scope Activity trace.",
+                            )
+                            .clicked()
+                        {
+                            self.capture_visible_scope_activity_frequency_snapshots_from_sketch(
+                                targets,
+                                &visible_indexes,
+                            );
+                        }
                     });
                     let mut load_compare_preset = None;
                     let mut delete_compare_preset = None;
@@ -370,6 +385,17 @@ impl CircuitCiApp {
                                             row.target.clone(),
                                         );
                                     }
+                                    if ui
+                                        .button("Freq Snap")
+                                        .on_hover_text(
+                                            "Capture this trace's dominant frequency and period into Scopes measurement snapshots.",
+                                        )
+                                        .clicked()
+                                    {
+                                        self.capture_scope_activity_frequency_snapshot(
+                                            row.target.clone(),
+                                        );
+                                    }
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
@@ -425,7 +451,7 @@ impl CircuitCiApp {
     pub(super) fn clear_scope_activity_snapshots_from_sketch(&mut self) -> usize {
         let before = self.waveform_measurement_snapshots.len();
         self.waveform_measurement_snapshots
-            .retain(|snapshot| snapshot.source != SCOPE_ACTIVITY_SNAPSHOT_SOURCE);
+            .retain(|snapshot| !snapshot.source.starts_with(SCOPE_ACTIVITY_SNAPSHOT_SOURCE));
         let removed = before.saturating_sub(self.waveform_measurement_snapshots.len());
         self.status = if removed == 0 {
             "No Scope Activity snapshots to clear.".to_string()
@@ -465,6 +491,39 @@ impl CircuitCiApp {
         };
         captured
     }
+
+    pub(super) fn capture_visible_scope_activity_frequency_snapshots_from_sketch(
+        &mut self,
+        targets: &[RuntimeScopeActivityTarget],
+        visible_indexes: &[usize],
+    ) -> usize {
+        let visible_targets = visible_indexes
+            .iter()
+            .filter_map(|&index| targets.get(index).map(|row| row.target.clone()))
+            .collect::<Vec<_>>();
+        if visible_targets.is_empty() {
+            self.status = "No visible Scope Activity traces to frequency-snapshot.".to_string();
+            return 0;
+        }
+        let requested = visible_targets.len();
+        let mut captured = 0;
+        for target in visible_targets {
+            if self.capture_scope_activity_frequency_snapshot(target) {
+                captured += 1;
+            }
+        }
+        let skipped = requested.saturating_sub(captured);
+        self.status = match (captured, skipped) {
+            (0, _) => "No visible Scope Activity frequencies could be captured.".to_string(),
+            (_, 0) => {
+                format!("Captured {captured} visible Scope Activity frequency snapshot(s).")
+            }
+            _ => format!(
+                "Captured {captured} visible Scope Activity frequency snapshot(s); {skipped} unavailable."
+            ),
+        };
+        captured
+    }
 }
 
 const SCOPE_ACTIVITY_SNAPSHOT_SOURCE: &str = "scope activity";
@@ -498,7 +557,7 @@ pub(super) fn clamp_runtime_scope_activity_cursor_us(cursor_us: f64, range: (f64
 pub(super) fn scope_activity_snapshot_count(snapshots: &[ScopeMeasurementSnapshot]) -> usize {
     snapshots
         .iter()
-        .filter(|snapshot| snapshot.source == SCOPE_ACTIVITY_SNAPSHOT_SOURCE)
+        .filter(|snapshot| snapshot.source.starts_with(SCOPE_ACTIVITY_SNAPSHOT_SOURCE))
         .count()
 }
 
@@ -664,7 +723,7 @@ mod tests {
             snapshot("cursor"),
             snapshot("scope activity"),
             snapshot("trigger"),
-            snapshot("scope activity"),
+            snapshot("scope activity frequency"),
         ];
 
         assert_eq!(scope_activity_snapshot_count(&snapshots), 2);
@@ -726,7 +785,7 @@ mod tests {
                 snapshot("cursor selected"),
                 snapshot("scope activity"),
                 snapshot("region selected"),
-                snapshot("scope activity"),
+                snapshot("scope activity frequency"),
                 snapshot("trigger"),
             ],
             ..Default::default()

@@ -135,11 +135,17 @@ pub(in crate::gui) fn runtime_scope_probe_sparkline_points(
     Some(points)
 }
 
-pub(in crate::gui) fn runtime_scope_probe_frequency_label(
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(in crate::gui) struct RuntimeScopeProbeFrequency {
+    pub(in crate::gui) frequency_hz: f64,
+    pub(in crate::gui) period_s: f64,
+}
+
+pub(in crate::gui) fn runtime_scope_probe_frequency(
     waveforms: &[WaveformView],
     waveform_index: usize,
     target: &ScopeProbeTarget,
-) -> Option<String> {
+) -> Option<RuntimeScopeProbeFrequency> {
     let waveform = waveforms.get(waveform_index)?;
     if waveform.label != target.scenario_name {
         return None;
@@ -150,16 +156,33 @@ pub(in crate::gui) fn runtime_scope_probe_frequency_label(
             .trim()
             .eq_ignore_ascii_case(target.probe_name.trim())
     })?;
+    let probe = waveform.probes.get(probe_index)?;
+    let (min, max) = min_max(&probe.values)?;
+    if (max - min).abs() <= f64::EPSILON {
+        return None;
+    }
     let peak = waveform_spectrum_peaks(waveform, probe_index, 1)?
         .into_iter()
         .next()?;
     if !peak.frequency_hz.is_finite() || peak.frequency_hz <= 0.0 {
         return None;
     }
+    Some(RuntimeScopeProbeFrequency {
+        frequency_hz: peak.frequency_hz,
+        period_s: 1.0 / peak.frequency_hz,
+    })
+}
+
+pub(in crate::gui) fn runtime_scope_probe_frequency_label(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    target: &ScopeProbeTarget,
+) -> Option<String> {
+    let frequency = runtime_scope_probe_frequency(waveforms, waveform_index, target)?;
     Some(format!(
         "f {} · T {}",
-        format_frequency_hz(peak.frequency_hz),
-        format_time_s(1.0 / peak.frequency_hz)
+        format_frequency_hz(frequency.frequency_hz),
+        format_time_s(frequency.period_s)
     ))
 }
 

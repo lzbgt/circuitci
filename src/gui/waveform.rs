@@ -92,8 +92,9 @@ use waveform_plot::{
 pub(in crate::gui) use waveform_runtime::{
     RuntimeScopeProbeEdgeStep, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, runtime_scope_probe_edge_jump,
-    runtime_scope_probe_frequency_label, runtime_scope_probe_sample_label,
-    runtime_scope_probe_sparkline_points, runtime_scope_probe_target_for_selection,
+    runtime_scope_probe_frequency, runtime_scope_probe_frequency_label,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
+    runtime_scope_probe_target_for_selection,
 };
 pub(super) use waveform_snapshots::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter,
