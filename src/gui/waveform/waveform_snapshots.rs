@@ -123,6 +123,7 @@ impl CircuitCiApp {
         let mut jump_index = None;
         let mut focus_index = None;
         let mut export_csv = false;
+        let mut export_markdown = false;
         let visible_indexes = self.visible_scope_measurement_snapshot_indexes();
         let visible_snapshots = self.filtered_scope_measurement_snapshots(&visible_indexes);
         ui.group(|ui| {
@@ -137,8 +138,19 @@ impl CircuitCiApp {
                         visible_snapshots.len()
                     );
                 }
+                if ui.button("Copy Markdown").clicked() {
+                    let markdown = scope_snapshots_markdown(&visible_snapshots);
+                    ui.ctx().copy_text(markdown);
+                    self.status = format!(
+                        "Copied {} scope measurement snapshot row(s) as Markdown.",
+                        visible_snapshots.len()
+                    );
+                }
                 if ui.button("Export CSV").clicked() {
                     export_csv = true;
+                }
+                if ui.button("Export Markdown").clicked() {
+                    export_markdown = true;
                 }
                 if ui.button("Clear").clicked() {
                     self.waveform_measurement_snapshots.clear();
@@ -254,6 +266,9 @@ impl CircuitCiApp {
         }
         if export_csv {
             self.export_scope_measurement_snapshots_csv(&visible_snapshots);
+        }
+        if export_markdown {
+            self.export_scope_measurement_snapshots_markdown(&visible_snapshots);
         }
     }
 
@@ -477,6 +492,36 @@ impl CircuitCiApp {
             }
         }
     }
+
+    fn export_scope_measurement_snapshots_markdown(
+        &mut self,
+        snapshots: &[ScopeMeasurementSnapshot],
+    ) {
+        if snapshots.is_empty() {
+            self.status =
+                "No scope measurement snapshots match the current export filters.".to_string();
+            return;
+        }
+        let Some(path) = self.pick_scope_snapshot_markdown_export_path() else {
+            return;
+        };
+        let markdown = scope_snapshots_markdown(snapshots);
+        match fs::write(&path, markdown) {
+            Ok(()) => {
+                self.status = format!(
+                    "Exported {} scope measurement snapshot row(s) as Markdown to {}.",
+                    snapshots.len(),
+                    path.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to export scope measurement snapshots as Markdown to {}: {error}",
+                    path.display()
+                ));
+            }
+        }
+    }
 }
 
 fn cursor_snapshot(
@@ -633,6 +678,39 @@ pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> Str
     csv
 }
 
+pub(super) fn scope_snapshots_markdown(snapshots: &[ScopeMeasurementSnapshot]) -> String {
+    let mut markdown = String::from("## Scope Measurement Snapshots\n\n");
+    if snapshots.is_empty() {
+        markdown.push_str("_No measurement snapshots matched the current filters._\n");
+        return markdown;
+    }
+    markdown.push_str(
+        "| Label | Note | Source | Trace | A/Event/Min | B/Max | Delta/Mean | RMS | Unit |\n",
+    );
+    markdown.push_str("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
+    for snapshot in snapshots {
+        let fields = [
+            snapshot.label.clone(),
+            snapshot.note.clone(),
+            snapshot_source(snapshot),
+            snapshot.trace_label.clone(),
+            snapshot_value_a(snapshot),
+            snapshot_value_b(snapshot),
+            snapshot_delta(snapshot),
+            snapshot_rms(snapshot),
+            snapshot.unit.clone(),
+        ];
+        markdown.push('|');
+        for field in fields {
+            markdown.push(' ');
+            markdown.push_str(&markdown_escape(&field));
+            markdown.push_str(" |");
+        }
+        markdown.push('\n');
+    }
+    markdown
+}
+
 pub(super) fn scope_snapshot_visible_indexes(
     snapshots: &[ScopeMeasurementSnapshot],
     query: &str,
@@ -672,6 +750,18 @@ fn csv_escape(value: String) -> String {
     } else {
         value
     }
+}
+
+fn markdown_escape(value: &str) -> String {
+    let value = value.trim();
+    if value.is_empty() {
+        return "-".to_string();
+    }
+    value
+        .replace('\\', "\\\\")
+        .replace('|', "\\|")
+        .replace('\n', "<br>")
+        .replace('\r', "")
 }
 
 fn is_region_snapshot(snapshot: &ScopeMeasurementSnapshot) -> bool {

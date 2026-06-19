@@ -27,7 +27,9 @@ use waveform_plot::{
 };
 pub(super) use waveform_snapshots::ScopeSnapshotSourceFilter;
 #[cfg(test)]
-use waveform_snapshots::{scope_snapshot_visible_indexes, scope_snapshots_csv};
+use waveform_snapshots::{
+    scope_snapshot_visible_indexes, scope_snapshots_csv, scope_snapshots_markdown,
+};
 #[cfg(test)]
 use waveform_trace_selector::{
     WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,

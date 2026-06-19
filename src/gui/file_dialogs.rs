@@ -137,6 +137,15 @@ impl CircuitCiApp {
             &[("CSV", &["csv"])],
         )
     }
+
+    pub(super) fn pick_scope_snapshot_markdown_export_path(&mut self) -> Option<PathBuf> {
+        save_file_dialog(
+            "Export Scope Measurement Snapshots as Markdown",
+            &self.output_dir,
+            "scope_measurement_snapshots.md",
+            &[("Markdown", &["md", "markdown"])],
+        )
+    }
 }
 
 fn pick_file_dialog(

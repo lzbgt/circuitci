@@ -10,10 +10,11 @@ use super::{
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
     scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshots_csv,
-    scope_trace_lanes, scope_trigger_events, scope_visible_styled_trace_refs,
-    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
-    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
-    waveform_trace_bounds_in_window, zoom_time_window,
+    scope_snapshots_markdown, scope_trace_lanes, scope_trigger_events,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -510,6 +511,42 @@ fn scope_snapshot_csv_exports_cursor_trigger_and_region_rows() {
     );
     assert!(csv.contains("Trigger 2,,trigger rising,v(out),5.000000e-7"));
     assert!(csv.contains("Region 3,,region selected,v(out),0.000000e0,2.000000e-6,0.000000e0,2.000000e0,1.000000e0,1.154701e0,,V"));
+}
+
+#[test]
+fn scope_snapshot_markdown_exports_report_table_rows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.waveform_measurement_snapshots[0].label = "Startup | edge".to_string();
+    app.waveform_measurement_snapshots[0].note = "settles\nquickly".to_string();
+
+    let markdown = scope_snapshots_markdown(&app.waveform_measurement_snapshots);
+
+    assert!(markdown.starts_with("## Scope Measurement Snapshots\n\n"));
+    assert!(markdown.contains(
+        "| Label | Note | Source | Trace | A/Event/Min | B/Max | Delta/Mean | RMS | Unit |"
+    ));
+    assert!(markdown.contains(
+        "| Startup \\| edge | settles<br>quickly | cursor selected | v(out) | 0.000000e0 @ 0.000000e0 s | 2.000000e0 @ 1.000000e-6 s | 2.000000e0 | - | V |"
+    ));
+    assert_eq!(
+        scope_snapshots_markdown(&[]),
+        "## Scope Measurement Snapshots\n\n_No measurement snapshots matched the current filters._\n"
+    );
 }
 
 #[test]
