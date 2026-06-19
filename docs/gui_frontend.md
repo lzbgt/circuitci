@@ -221,9 +221,10 @@ scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
-simulation-time scrub/playback controls, value-scale controls, cursor
-measurement tools, selected-plus-pinned cursor readout table, GUI-only
-transient trace pinning/comparison overlays, derived waveform channels,
+simulation-time scrub/playback controls, searchable/grouped trace selection,
+value-scale controls, cursor measurement tools, selected-plus-pinned cursor
+readout table, GUI-only transient trace pinning/comparison overlays, derived
+waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
 and graph-hover/runtime activity extraction from loaded waveform artifacts.
 `src/gui/waveform/waveform_context.rs` owns pending schematic
@@ -345,9 +346,9 @@ form:
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
 - Simulation/Scopes: presents a runtime-first oscilloscope workspace linked
-  from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform and
-  probe selection, transient selected-probe trace pinning for multi-trace
-  comparison overlays, direct plot drag time/value-window panning, wheel time
+  from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform
+  selection, searchable/grouped trace selection, transient selected-probe trace
+  pinning for multi-trace comparison overlays, direct plot drag time/value-window panning, wheel time
   zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls, and
   selected-plus-pinned A/B cursor readouts.

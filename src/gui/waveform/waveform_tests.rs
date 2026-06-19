@@ -1,14 +1,15 @@
 use super::waveform_context::find_scope_probe;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformMathDraft, WaveformProbeQuantity, WaveformTraceRef, append_derived_waveform_probe,
-    derived_waveform_quantity, interpolated_value, parse_waveform_csv_text,
-    runtime_probe_activity_for_selection, runtime_probe_lines_for_selection, sanitized_probe_name,
-    scope_cursor_legend_rows, scope_plot_size, scope_trigger_event_rows, scope_trigger_events,
-    scope_visible_trace_refs, select_scope_trigger_event, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
-    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
+    WaveformMathDraft, WaveformProbeGroup, WaveformProbeQuantity, WaveformTraceRef,
+    append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
+    parse_waveform_csv_text, runtime_probe_activity_for_selection,
+    runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
+    scope_plot_size, scope_trigger_event_rows, scope_trigger_events, scope_visible_trace_refs,
+    select_scope_trigger_event, waveform_measurement, waveform_probe_choices,
+    waveform_probe_group_choices, waveform_probe_quantity_from_label,
+    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 use super::{
     clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
@@ -32,6 +33,81 @@ fn waveform_parser_accepts_ngspice_header_and_samples() {
     assert_eq!(waveform.probes[0].values, vec![0.0, 3.3]);
     assert_eq!(waveform.probes[1].label, "i(load)");
     assert_eq!(waveform.probes[1].values, vec![0.001, 0.002]);
+}
+
+#[test]
+fn waveform_probe_filter_matches_label_expression_and_kind() {
+    let mut waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),temp\n0,1,0.1,25\n0.000001,2,0.2,26\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    append_derived_waveform_probe(
+        &mut waveform,
+        &WaveformMathDraft {
+            left_probe: 0,
+            right_probe: 1,
+            operation: "product".to_string(),
+            label: "load_power".to_string(),
+        },
+    )
+    .unwrap();
+
+    let labels = |query: &str| {
+        waveform_probe_choices(&waveform, query)
+            .into_iter()
+            .map(|choice| choice.label)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(labels("out"), vec!["v(out)", "load_power"]);
+    assert_eq!(labels("current"), vec!["i(load)"]);
+    assert_eq!(labels("derived"), vec!["load_power"]);
+    assert_eq!(labels("temp"), vec!["temp"]);
+    assert!(labels("missing").is_empty());
+}
+
+#[test]
+fn waveform_probe_grouping_orders_visible_traces_by_quantity() {
+    let mut waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),temp\n0,1,0.1,25\n0.000001,2,0.2,26\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    append_derived_waveform_probe(
+        &mut waveform,
+        &WaveformMathDraft {
+            left_probe: 0,
+            right_probe: 1,
+            operation: "product".to_string(),
+            label: "load_power".to_string(),
+        },
+    )
+    .unwrap();
+
+    let choices = waveform_probe_choices(&waveform, "");
+    let groups = waveform_probe_group_choices(&choices)
+        .into_iter()
+        .map(|(group, choices)| {
+            (
+                group,
+                choices
+                    .into_iter()
+                    .map(|choice| choice.index)
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        groups,
+        vec![
+            (WaveformProbeGroup::Voltage, vec![0]),
+            (WaveformProbeGroup::Current, vec![1]),
+            (WaveformProbeGroup::Derived, vec![3]),
+            (WaveformProbeGroup::Other, vec![2]),
+        ]
+    );
 }
 
 #[test]
