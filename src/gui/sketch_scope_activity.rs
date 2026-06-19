@@ -428,6 +428,26 @@ impl CircuitCiApp {
                                             row.target.clone(),
                                         );
                                     }
+                                    ui.menu_button("Copy", |ui| {
+                                        if ui.button("CSV").clicked() {
+                                            self.copy_scope_activity_target_observations_csv(
+                                                ui.ctx(),
+                                                &row.target,
+                                            );
+                                            ui.close();
+                                        }
+                                        if ui.button("Markdown").clicked() {
+                                            self.copy_scope_activity_target_observations_markdown(
+                                                ui.ctx(),
+                                                &row.target,
+                                            );
+                                            ui.close();
+                                        }
+                                    })
+                                    .response
+                                    .on_hover_text(
+                                        "Copy this trace's current sample plus frequency row.",
+                                    );
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
@@ -567,20 +587,81 @@ impl CircuitCiApp {
             let Some(target) = targets.get(index).map(|row| &row.target) else {
                 continue;
             };
-            if let Ok(snapshot) = self.scope_activity_sample_snapshot_row(
-                target,
-                format!("Scope Activity {}", rows.len() + 1),
-            ) {
-                rows.push(snapshot);
-            }
-            if let Ok(snapshot) = self.scope_activity_frequency_snapshot_row(
-                target,
-                format!("Scope Activity Freq {}", rows.len() + 1),
-            ) {
-                rows.push(snapshot);
-            }
+            self.append_scope_activity_observation_snapshots(&mut rows, target);
         }
         rows
+    }
+
+    pub(super) fn scope_activity_target_observation_snapshots(
+        &self,
+        target: &super::ScopeProbeTarget,
+    ) -> Vec<ScopeMeasurementSnapshot> {
+        let mut rows = Vec::new();
+        self.append_scope_activity_observation_snapshots(&mut rows, target);
+        rows
+    }
+
+    fn append_scope_activity_observation_snapshots(
+        &self,
+        rows: &mut Vec<ScopeMeasurementSnapshot>,
+        target: &super::ScopeProbeTarget,
+    ) {
+        if let Ok(snapshot) = self.scope_activity_sample_snapshot_row(
+            target,
+            format!("Scope Activity {}", rows.len() + 1),
+        ) {
+            rows.push(snapshot);
+        }
+        if let Ok(snapshot) = self.scope_activity_frequency_snapshot_row(
+            target,
+            format!("Scope Activity Freq {}", rows.len() + 1),
+        ) {
+            rows.push(snapshot);
+        }
+    }
+
+    fn copy_scope_activity_target_observations_csv(
+        &mut self,
+        ctx: &egui::Context,
+        target: &super::ScopeProbeTarget,
+    ) -> usize {
+        let rows = self.scope_activity_target_observation_snapshots(target);
+        if rows.is_empty() {
+            self.status = format!(
+                "No Scope Activity observations are available to copy for {}.",
+                target.probe_name
+            );
+            return 0;
+        }
+        let count = rows.len();
+        ctx.copy_text(scope_snapshots_csv(&rows));
+        self.status = format!(
+            "Copied {count} Scope Activity observation row(s) for {} as CSV.",
+            target.probe_name
+        );
+        count
+    }
+
+    fn copy_scope_activity_target_observations_markdown(
+        &mut self,
+        ctx: &egui::Context,
+        target: &super::ScopeProbeTarget,
+    ) -> usize {
+        let rows = self.scope_activity_target_observation_snapshots(target);
+        if rows.is_empty() {
+            self.status = format!(
+                "No Scope Activity observations are available to copy for {}.",
+                target.probe_name
+            );
+            return 0;
+        }
+        let count = rows.len();
+        ctx.copy_text(scope_snapshots_markdown(&rows));
+        self.status = format!(
+            "Copied {count} Scope Activity observation row(s) for {} as Markdown.",
+            target.probe_name
+        );
+        count
     }
 
     fn copy_visible_scope_activity_observations_csv(

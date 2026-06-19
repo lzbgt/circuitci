@@ -303,6 +303,44 @@ fn scope_activity_visible_observation_rows_include_samples_and_frequencies() {
 }
 
 #[test]
+fn scope_activity_target_observation_rows_copy_one_trace_only() {
+    let rows = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let value = (2.0 * PI * 1_000.0 * time_s).sin();
+            format!("{time_s:.9},{value:.9},1.0")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time,v(out),v(flat)\n{rows}\n"), "startup").unwrap();
+    let app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_cursor_a_us: 500.0,
+        ..Default::default()
+    };
+
+    let out_rows = app.scope_activity_target_observation_snapshots(&ScopeProbeTarget {
+        scenario_name: "startup".to_string(),
+        probe_name: "v(out)".to_string(),
+    });
+    assert_eq!(out_rows.len(), 2);
+    assert_eq!(out_rows[0].source, "scope activity");
+    assert_eq!(out_rows[1].source, "scope activity frequency");
+    assert!(out_rows.iter().all(|row| row.trace_label == "v(out)"));
+
+    let flat_rows = app.scope_activity_target_observation_snapshots(&ScopeProbeTarget {
+        scenario_name: "startup".to_string(),
+        probe_name: "v(flat)".to_string(),
+    });
+    assert_eq!(flat_rows.len(), 1);
+    assert_eq!(flat_rows[0].source, "scope activity");
+    assert_eq!(flat_rows[0].trace_label, "v(flat)");
+
+    assert!(app.waveform_measurement_snapshots.is_empty());
+}
+
+#[test]
 fn scope_activity_snap_visible_captures_current_visible_targets() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",
