@@ -454,10 +454,11 @@ impl CircuitCiApp {
         ui: &egui::Ui,
         rect: egui::Rect,
         response: &egui::Response,
+        pan_drag_start_allowed: bool,
         blank_canvas_hovered: bool,
     ) {
         if response.drag_started_by(egui::PointerButton::Primary)
-            && blank_canvas_hovered
+            && pan_drag_start_allowed
             && ui.input(|input| SketchSelectionBoxMode::from_modifiers(input.modifiers).is_none())
         {
             self.sketch_pan_drag_active = true;

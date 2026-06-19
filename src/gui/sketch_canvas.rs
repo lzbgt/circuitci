@@ -80,7 +80,11 @@ impl CircuitCiApp {
             .as_ref()
             .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
             .unwrap_or_default();
-        let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
+        let bundle_badges = if self.sketch_net_bundles_visible {
+            sketch_bundles::layout_net_bundle_badges(snapshot, &graph)
+        } else {
+            Vec::new()
+        };
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         let component_label_badges = sketch_component_labels::layout_component_label_badges(
             snapshot,
@@ -222,14 +226,76 @@ impl CircuitCiApp {
             && hovered_net_label_badge.is_none()
             && hovered_component_label_badge.is_none()
             && !pointer_over_minimap;
+        let position_hits_interactive_item = |position: egui::Pos2| -> bool {
+            graph.nodes.iter().any(|node| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.interaction_visible(&node.selection))
+                    && node.rect.contains(position)
+            }) || graph.pin_anchors.iter().any(|anchor| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.anchor_visible(anchor))
+                    && anchor.pos.distance(position) <= 8.0
+            }) || hit_test_wire_route_handle(&graph, position).is_some_and(|(edge, _)| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.edge_visible(edge))
+            }) || hit_test_wire(&graph, position).is_some_and(|edge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.edge_visible(edge))
+            }) || hit_test_probe_badge(&graph.probe_badges, position).is_some_and(|badge| {
+                hierarchy_view
+                    .as_ref()
+                    .is_none_or(|view| view.probe_badge_visible(badge))
+            }) || sketch_bundles::hit_test_net_bundle_badge(&bundle_badges, position).is_some_and(
+                |badge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.bundle_badge_visible(badge))
+                },
+            ) || sketch_hierarchy::hit_test_hierarchy_connector_badge(
+                &hierarchy_connector_badges,
+                position,
+            )
+            .is_some()
+                || sketch_net_labels::hit_test_net_label_badge(&net_label_badges, position)
+                    .is_some_and(|badge| {
+                        hierarchy_view.as_ref().is_none_or(|view| {
+                            view.interaction_visible(&SketchSelection::Net(badge.net_id.clone()))
+                        })
+                    })
+                || sketch_component_labels::hit_test_component_label_badge(
+                    &component_label_badges,
+                    position,
+                )
+                .is_some_and(|badge| {
+                    hierarchy_view.as_ref().is_none_or(|view| {
+                        view.interaction_visible(&SketchSelection::Component(
+                            badge.component_id.clone(),
+                        ))
+                    })
+                })
+                || minimap
+                    .as_ref()
+                    .is_some_and(|minimap| minimap.rect.contains(position))
+        };
+        let placement_armed = self.sketch_palette_place_armed
+            || self.sketch_library_place_armed
+            || self.sketch_net_label_place_armed;
+        let pan_drag_start_allowed = !placement_armed
+            && ui.input(|input| {
+                input.pointer.press_origin().is_some_and(|origin| {
+                    rect.contains(origin) && !position_hits_interactive_item(origin)
+                })
+            });
         self.handle_sketch_viewport_input(
             ui,
             rect,
             &response,
-            blank_canvas_hovered
-                && !self.sketch_palette_place_armed
-                && !self.sketch_library_place_armed
-                && !self.sketch_net_label_place_armed,
+            pan_drag_start_allowed,
+            blank_canvas_hovered && !placement_armed,
         );
         let viewport = self.sketch_viewport();
         let graph = layout_sketch_graph_viewport(rect, snapshot, viewport);
@@ -237,7 +303,11 @@ impl CircuitCiApp {
             .as_ref()
             .map(|view| sketch_hierarchy::layout_hierarchy_connector_badges(snapshot, &graph, view))
             .unwrap_or_default();
-        let bundle_badges = sketch_bundles::layout_net_bundle_badges(snapshot, &graph);
+        let bundle_badges = if self.sketch_net_bundles_visible {
+            sketch_bundles::layout_net_bundle_badges(snapshot, &graph)
+        } else {
+            Vec::new()
+        };
         let net_label_badges = sketch_net_labels::layout_net_label_badges(snapshot, rect, viewport);
         let component_label_badges = sketch_component_labels::layout_component_label_badges(
             snapshot,
@@ -938,6 +1008,7 @@ impl CircuitCiApp {
         }
 
         if response.drag_started_by(egui::PointerButton::Primary)
+            && !self.sketch_pan_drag_active
             && !pointer_over_minimap
             && self.sketch_group_frame_drag.is_none()
             && let Some(position) = response.interact_pointer_pos()

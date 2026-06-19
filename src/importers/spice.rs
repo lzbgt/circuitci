@@ -197,6 +197,8 @@ struct StimulusYaml {
 struct ProbeYaml {
     name: String,
     expression: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    quantity: Option<&'static str>,
 }
 
 #[derive(Debug, Serialize)]
@@ -714,15 +716,32 @@ fn build_project_yaml(
             net: net_name_for_node(node),
         })
         .collect();
-    let probes = deck
+    let mut probes = deck
         .nodes
         .iter()
         .filter(|node| !is_ground_node(node))
         .map(|node| ProbeYaml {
             name: format!("v_{}", sanitize_identifier(node)),
             expression: format!("V({node})"),
+            quantity: None,
         })
-        .collect();
+        .collect::<Vec<_>>();
+    probes.extend(
+        deck.elements
+            .iter()
+            .filter(|element| {
+                matches!(
+                    element.spice,
+                    Some(SpicePrimitiveSpec::DcVoltageSource { .. })
+                        | Some(SpicePrimitiveSpec::PulseVoltageSource { .. })
+                )
+            })
+            .map(|element| ProbeYaml {
+                name: format!("i_{}", sanitize_identifier(&element.name)),
+                expression: format!("I({})", element.name),
+                quantity: Some("current"),
+            }),
+    );
     let tran = deck.tran.as_ref();
     Ok(ProjectYaml {
         project: ProjectMetaYaml {

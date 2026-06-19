@@ -138,7 +138,8 @@ themselves. `src/gui/sketch_bundles.rs` owns conservative derived grouping for
 bracketed, dot-qualified, and common paired interface nets, plus visual
 bundle trunks/badges and bundle multi-selection. Bundle overlays must remain
 GUI-only navigation aids over scalar Board IR nets, not persisted bus
-topology/evidence. `src/gui/sketch_net_labels.rs` owns persisted schematic
+topology/evidence, and they default off in the canvas so schematic readability
+is driven by connected components, nets, labels, and wires. `src/gui/sketch_net_labels.rs` owns persisted schematic
 named-net and off-page connector labels under `board.schematic.net_labels`.
 Those labels may be placed from selected-net controls, typed net-label controls,
 or net/wire context menus. A typed label may reuse an existing net or create a
@@ -282,11 +283,14 @@ populate existing project/import/output path fields or request the same guarded
 project load action; they must not bypass validation, import, save, or the
 dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
-panels stay docked as secondary controls. `src/gui/simulation_forms.rs` owns
+panels stay docked as secondary controls. It also owns scope-run preparation:
+when no analog probes exist, Run may add a generated transient voltage probe
+or add a voltage probe to the first analog scenario with node bindings before
+saving and validating. `src/gui/simulation_forms.rs` owns
 shared Simulation/Scopes form defaults, combo widgets, stimulus field loading,
 and status-color helpers for those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
-min/max/delta measurements, transient selected-probe trace pinning/comparison
+min/max/delta measurements, bounded selected-trace frequency-domain peak readouts, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
 Board IR analog probes/assertions, exact probe-value lookup, and normalized

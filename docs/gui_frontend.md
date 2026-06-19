@@ -164,7 +164,10 @@ introducing a second connection model.
 `src/gui/sketch_bundles.rs` owns conservative, derived net-bundle grouping,
 overlay drawing, badge hit-testing, and bundle multi-selection for bracketed,
 dot-qualified, and common paired interface nets. Bundle overlays are a visual
-navigation aid over scalar Board IR nets and do not persist bus evidence.
+navigation aid over scalar Board IR nets and do not persist bus evidence; the
+Sketch canvas defaults them off so imported examples open as a connected
+schematic network first, with the `Circuit View` toggle enabling the helper
+overlay only when users explicitly audit derived groups.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge
 layout, drawing, hit-testing, typed create-or-reuse placement, inline
@@ -414,6 +417,10 @@ form:
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls,
   selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, current-plot SVG copy/export for reports, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, filtered CSV/Markdown copy/export actions, and timestamped report bundles containing the configured plot SVG, filtered snapshot CSV/Markdown, local index page, and README manifest with loaded-waveform footprint source totals.
+  If a schematic has no analog scope probes, `Run` prepares the Scopes workflow
+  by adding a generated transient voltage probe on the default non-ground net
+  before validation. The selected trace side dock also includes a bounded
+  frequency-domain peak readout derived from the loaded transient waveform.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
@@ -652,6 +659,11 @@ exists, Scopes shows a schematic-context strip with target, probe, scenario,
 and expression plus `Open Sketch` and `Fit Context` actions. This is transient
 GUI selection over the existing Board IR target, not persisted waveform
 metadata.
+When no analog probe exists yet, Scopes `Run` creates a default generated
+transient scenario or adds a voltage probe to the first existing analog
+scenario with node bindings, records that probe as the pending scope target,
+then saves and validates the project so users get an inspectable voltage trace
+instead of a report with no oscilloscope waveform.
 Measurement snapshot labels and notes can be edited inline, searched,
 source-filtered, sorted, and grouped across cursor/trigger/region observations;
 Copy CSV/Markdown and Export CSV/Markdown operate on the currently visible projected rows and include those labels and

@@ -21,6 +21,22 @@ pub(super) struct SketchNetBundleBadge {
 }
 
 impl CircuitCiApp {
+    pub(super) fn sketch_overlay_panel(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
+        egui::CollapsingHeader::new("Circuit View")
+            .default_open(true)
+            .show(ui, |ui| {
+                let bundle_count = derive_net_bundles(snapshot).len();
+                ui.checkbox(
+                    &mut self.sketch_net_bundles_visible,
+                    format!("Show derived net bundles ({bundle_count})"),
+                )
+                .on_hover_text(
+                    "Derived bundles are navigation overlays for similarly named nets. They are not components, pins, or required circuit connections.",
+                );
+                ui.label("Default view shows the connected schematic network; enable overlays only when auditing imported buses or grouped nets.");
+            });
+    }
+
     pub(super) fn select_net_bundle(&mut self, bundle: &SketchNetBundle) {
         self.selected_sketch_items = bundle
             .members

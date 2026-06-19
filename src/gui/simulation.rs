@@ -1,10 +1,10 @@
 use super::CircuitCiApp;
 use super::analog::{
     AnalogAssertionDraft, AnalogAssertionRemoveDraft, AnalogAssertionReplaceDraft,
-    AnalogProbeAssertionsRemoveDraft, AnalogScenarioDraft, analog_probe_assertion_summaries,
-    analog_scenario_choices, append_analog_assertion, append_analog_transient_scenario,
-    remove_analog_assertion, remove_analog_assertions_for_probe, replace_analog_assertion,
-    unique_analog_assertion_name,
+    AnalogProbeAssertionsRemoveDraft, AnalogProbeDraft, AnalogScenarioDraft,
+    analog_probe_assertion_summaries, analog_scenario_choices, append_analog_assertion,
+    append_analog_transient_scenario, append_analog_voltage_probe, remove_analog_assertion,
+    remove_analog_assertions_for_probe, replace_analog_assertion, unique_analog_assertion_name,
 };
 use super::analog_generated::{
     AnalogGeneratedComponentDraft, AnalogGeneratedNodeBindingDraft, AnalogGeneratedSettingsDraft,
@@ -23,6 +23,7 @@ use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
 use super::sketch_probes::SketchProbe;
 use super::waveform::{format_value, quick_assertion_margin, waveform_probe_value_for_badge};
+use anyhow::{Context, Result};
 use eframe::egui;
 use std::path::Path;
 
@@ -109,7 +110,37 @@ impl CircuitCiApp {
                 return;
             }
         }
+        match self.prepare_scope_run_inputs() {
+            Ok(true) => {
+                self.save_project_yaml();
+                if self.project_yaml_dirty {
+                    return;
+                }
+            }
+            Ok(false) => {}
+            Err(error) => {
+                self.record_error(error);
+                return;
+            }
+        }
         self.validate_project();
+    }
+
+    fn prepare_scope_run_inputs(&mut self) -> Result<bool> {
+        let preparation = prepare_scope_run_yaml(
+            &self.project_yaml,
+            &self.analog_scenario_name,
+            &self.analog_probe_name,
+            self.analog_stop_time_us,
+            self.analog_max_step_us,
+        )?;
+        let Some((updated, preparation)) = preparation else {
+            return Ok(false);
+        };
+        self.remember_scope_probe_target(preparation.scenario_name(), preparation.probe_name());
+        let status = preparation.status_message();
+        self.apply_edited_project_yaml(updated, &status);
+        Ok(true)
     }
 
     fn scope_side_dock(&mut self, ui: &mut egui::Ui) {
@@ -1355,5 +1386,362 @@ impl CircuitCiApp {
             }
             Err(error) => self.record_error(error),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ScopeRunPreparation {
+    AddedScenario {
+        scenario_name: String,
+        probe_name: String,
+        net_id: String,
+    },
+    AddedProbe {
+        scenario_name: String,
+        probe_name: String,
+        net_id: String,
+    },
+}
+
+impl ScopeRunPreparation {
+    fn scenario_name(&self) -> &str {
+        match self {
+            Self::AddedScenario { scenario_name, .. } | Self::AddedProbe { scenario_name, .. } => {
+                scenario_name
+            }
+        }
+    }
+
+    fn probe_name(&self) -> &str {
+        match self {
+            Self::AddedScenario { probe_name, .. } | Self::AddedProbe { probe_name, .. } => {
+                probe_name
+            }
+        }
+    }
+
+    fn status_message(&self) -> String {
+        match self {
+            Self::AddedScenario {
+                scenario_name,
+                probe_name,
+                net_id,
+            } => format!(
+                "Run created transient scope scenario {scenario_name} with voltage probe {probe_name} on net {net_id}."
+            ),
+            Self::AddedProbe {
+                scenario_name,
+                probe_name,
+                net_id,
+            } => format!(
+                "Run added voltage probe {probe_name} on net {net_id} to scope scenario {scenario_name}."
+            ),
+        }
+    }
+}
+
+fn prepare_scope_run_yaml(
+    text: &str,
+    preferred_scenario_name: &str,
+    preferred_probe_name: &str,
+    stop_time_us: f64,
+    max_step_us: f64,
+) -> Result<Option<(String, ScopeRunPreparation)>> {
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if project
+        .scenarios
+        .iter()
+        .filter_map(|scenario| scenario.analog.as_ref())
+        .any(|analog| !analog.probes.is_empty())
+    {
+        return Ok(None);
+    }
+
+    if let Some((scenario_name, net_id, probe_name)) =
+        scope_probe_for_existing_analog_scenario(&project, preferred_probe_name)?
+    {
+        let draft = AnalogProbeDraft {
+            scenario_name: scenario_name.clone(),
+            net_id: net_id.clone(),
+            probe_name: probe_name.clone(),
+        };
+        let updated = append_analog_voltage_probe(text, &draft)?;
+        return Ok(Some((
+            updated,
+            ScopeRunPreparation::AddedProbe {
+                scenario_name,
+                probe_name,
+                net_id,
+            },
+        )));
+    }
+
+    let ground_net = default_scope_ground_net(&project)?;
+    let probe_net = default_scope_probe_net(&project)?;
+    let scenario_name = unique_scope_scenario_name(&project, preferred_scenario_name);
+    let probe_name = nonblank_id(preferred_probe_name, "probe_voltage");
+    let draft = AnalogScenarioDraft {
+        name: scenario_name.clone(),
+        ground_net,
+        probe_net: probe_net.clone(),
+        probe_name: probe_name.clone(),
+        stop_time_us,
+        max_step_us,
+    };
+    let updated = append_analog_transient_scenario(text, &draft)?;
+    Ok(Some((
+        updated,
+        ScopeRunPreparation::AddedScenario {
+            scenario_name,
+            probe_name,
+            net_id: probe_net,
+        },
+    )))
+}
+
+fn scope_probe_for_existing_analog_scenario(
+    project: &crate::board_ir::BoardProject,
+    preferred_probe_name: &str,
+) -> Result<Option<(String, String, String)>> {
+    for scenario in &project.scenarios {
+        let Some(analog) = scenario.analog.as_ref() else {
+            continue;
+        };
+        let Some(net_id) = analog
+            .node_bindings
+            .iter()
+            .map(|binding| binding.net.as_str())
+            .find(|net_id| {
+                project
+                    .board
+                    .nets
+                    .get(*net_id)
+                    .is_some_and(|net| net.kind != crate::board_ir::NetKind::Ground)
+            })
+            .or_else(|| {
+                analog
+                    .node_bindings
+                    .first()
+                    .map(|binding| binding.net.as_str())
+            })
+        else {
+            anyhow::bail!(
+                "Analog scenario {} has no node bindings; add a voltage probe manually after binding schematic nets.",
+                scenario.name
+            );
+        };
+        let probe_name = unique_scope_probe_name(analog, preferred_probe_name);
+        return Ok(Some((
+            scenario.name.clone(),
+            net_id.to_string(),
+            probe_name,
+        )));
+    }
+    Ok(None)
+}
+
+fn default_scope_ground_net(project: &crate::board_ir::BoardProject) -> Result<String> {
+    project
+        .board
+        .nets
+        .iter()
+        .find_map(|(id, net)| (net.kind == crate::board_ir::NetKind::Ground).then(|| id.clone()))
+        .context("Run needs a ground net before it can create a default scope scenario.")
+}
+
+fn default_scope_probe_net(project: &crate::board_ir::BoardProject) -> Result<String> {
+    project
+        .board
+        .nets
+        .iter()
+        .find_map(|(id, net)| (net.kind != crate::board_ir::NetKind::Ground).then(|| id.clone()))
+        .or_else(|| project.board.nets.keys().next().cloned())
+        .context("Run needs at least one schematic net before it can create a default scope probe.")
+}
+
+fn unique_scope_scenario_name(
+    project: &crate::board_ir::BoardProject,
+    preferred_scenario_name: &str,
+) -> String {
+    let existing = project
+        .scenarios
+        .iter()
+        .map(|scenario| scenario.name.as_str())
+        .collect::<Vec<_>>();
+    unique_id(preferred_scenario_name, "gui_transient", &existing)
+}
+
+fn unique_scope_probe_name(
+    analog: &crate::board_ir::AnalogScenario,
+    preferred_probe_name: &str,
+) -> String {
+    let existing = analog
+        .probes
+        .iter()
+        .map(|probe| probe.name.as_str())
+        .collect::<Vec<_>>();
+    unique_id(preferred_probe_name, "probe_voltage", &existing)
+}
+
+fn unique_id(preferred: &str, fallback: &str, existing: &[&str]) -> String {
+    let base = nonblank_id(preferred, fallback);
+    if !existing.iter().any(|name| *name == base) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}_{suffix}");
+        if !existing.iter().any(|name| *name == candidate) {
+            return candidate;
+        }
+    }
+    unreachable!("unbounded suffix search should always find a unique id")
+}
+
+fn nonblank_id(preferred: &str, fallback: &str) -> String {
+    let trimmed = preferred.trim();
+    if trimmed.is_empty() {
+        fallback.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ScopeRunPreparation, prepare_scope_run_yaml};
+
+    const BASE_PROJECT: &str = "project:
+  name: scope_run_auto_probe_test
+  version: 0.1.0
+board:
+  components:
+    V1:
+      model: generic.analog.voltage_source
+      spice:
+        primitive: dc_voltage_source
+        dc_voltage_v: 5.0
+      pins:
+        P: rail_5v
+        N: gnd
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+      pins:
+        A: rail_5v
+        B: out
+    C1:
+      model: generic.analog.capacitor
+      spice:
+        primitive: capacitor
+        value_f: 0.000001
+      pins:
+        A: out
+        B: gnd
+  nets:
+    gnd: {kind: ground}
+    out: {kind: digital_or_analog}
+    rail_5v: {kind: power, nominal_voltage: 5.0, powered: true}
+scenarios: []
+";
+
+    #[test]
+    fn scope_run_preparation_adds_generated_scenario_and_probe() {
+        let (updated, preparation) =
+            prepare_scope_run_yaml(BASE_PROJECT, "gui_transient", "probe_voltage", 100.0, 1.0)
+                .unwrap()
+                .unwrap();
+
+        assert_eq!(
+            preparation,
+            ScopeRunPreparation::AddedScenario {
+                scenario_name: "gui_transient".to_string(),
+                probe_name: "probe_voltage".to_string(),
+                net_id: "out".to_string(),
+            }
+        );
+        let choices = crate::gui::analog::analog_scenario_choices(&updated).unwrap();
+        assert_eq!(choices.len(), 1);
+        assert_eq!(choices[0].name, "gui_transient");
+        assert_eq!(choices[0].probes[0].name, "probe_voltage");
+    }
+
+    #[test]
+    fn scope_run_preparation_adds_probe_to_existing_empty_analog_scenario() {
+        let project = BASE_PROJECT.replace(
+            "scenarios: []",
+            "scenarios:
+  - name: existing_transient
+    type: analog
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated: {components: [V1, R1, C1], ground_net: gnd}
+      model_files: []
+      node_bindings:
+        - {node: '0', net: gnd}
+        - {node: out, net: out}
+        - {node: rail_5v, net: rail_5v}
+      pin_bindings:
+        - {node: rail_5v, endpoint: {component: V1, pin: P}}
+        - {node: '0', endpoint: {component: V1, pin: N}}
+        - {node: rail_5v, endpoint: {component: R1, pin: A}}
+        - {node: out, endpoint: {component: R1, pin: B}}
+        - {node: out, endpoint: {component: C1, pin: A}}
+        - {node: '0', endpoint: {component: C1, pin: B}}
+      analysis: {type: tran, stop_time_us: 100.0, max_step_us: 1.0}
+      stimuli: []
+      probes: []
+      assertions: []
+",
+        );
+        let (updated, preparation) =
+            prepare_scope_run_yaml(&project, "gui_transient", "probe_voltage", 100.0, 1.0)
+                .unwrap()
+                .unwrap();
+
+        assert_eq!(
+            preparation,
+            ScopeRunPreparation::AddedProbe {
+                scenario_name: "existing_transient".to_string(),
+                probe_name: "probe_voltage".to_string(),
+                net_id: "out".to_string(),
+            }
+        );
+        let choices = crate::gui::analog::analog_scenario_choices(&updated).unwrap();
+        assert_eq!(choices[0].probes[0].name, "probe_voltage");
+    }
+
+    #[test]
+    fn scope_run_preparation_keeps_existing_scope_probe() {
+        let project = BASE_PROJECT.replace(
+            "scenarios: []",
+            "scenarios:
+  - name: existing_transient
+    type: analog
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated: {components: [V1, R1, C1], ground_net: gnd}
+      model_files: []
+      node_bindings:
+        - {node: '0', net: gnd}
+        - {node: out, net: out}
+      pin_bindings: []
+      analysis: {type: tran, stop_time_us: 100.0, max_step_us: 1.0}
+      stimuli: []
+      probes:
+        - {name: out_voltage, expression: V(out), quantity: voltage}
+      assertions: []
+",
+        );
+
+        assert!(
+            prepare_scope_run_yaml(&project, "gui_transient", "probe_voltage", 100.0, 1.0)
+                .unwrap()
+                .is_none()
+        );
     }
 }

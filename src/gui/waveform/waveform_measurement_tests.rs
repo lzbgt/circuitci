@@ -11,11 +11,32 @@ use super::{
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
     scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
     unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
+    waveform_spectrum_peaks_from_samples,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget};
+use std::f64::consts::PI;
 use std::fs;
+
+#[test]
+fn waveform_spectrum_peaks_detects_dominant_frequency() {
+    let sample_rate_hz = 20_000.0;
+    let frequency_hz = 1_000.0;
+    let samples = 512;
+    let times = (0..samples)
+        .map(|index| index as f64 / sample_rate_hz)
+        .collect::<Vec<_>>();
+    let values = times
+        .iter()
+        .map(|time_s| (2.0 * PI * frequency_hz * time_s).sin())
+        .collect::<Vec<_>>();
+
+    let peaks = waveform_spectrum_peaks_from_samples(&times, &values, 3).unwrap();
+
+    assert!((peaks[0].frequency_hz - frequency_hz).abs() < 80.0);
+    assert!(peaks[0].magnitude > peaks[1].magnitude);
+}
 
 #[test]
 fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {

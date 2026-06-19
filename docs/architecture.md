@@ -65,6 +65,13 @@ can open bundle folders through the host file manager, and can preview/confirm
 a refresh that regenerates missing or changed bundle artifacts from current
 filtered Scopes state into an existing `scope_report_bundle_*` folder.
 
+The Sketch canvas defaults derived net-bundle overlays off so imported examples
+present the connected circuit network first; users can enable them from the
+`Circuit View` panel when they need scalar-net grouping aids. Scopes `Run`
+prepares an inspectable waveform path by adding a generated transient voltage
+probe when a schematic has no analog probes, and the selected trace controls
+include a bounded frequency-domain peak readout for transient waveforms.
+
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_interaction` owns reusable viewport zoom math,
 schematic canvas sizing, wire-target hit testing, route-handle hit testing, and

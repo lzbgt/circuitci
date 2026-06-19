@@ -127,7 +127,8 @@ impl CircuitCiApp {
 
     pub(super) fn waveform_controls_panel(&mut self, ui: &mut egui::Ui) {
         if self.waveforms.is_empty() {
-            ui.label("Run a simulation to load scope traces.");
+            ui.label("Run creates a default transient voltage probe when the schematic has no analog probes.");
+            ui.label("For explicit traces, select a net/component in Schematic and add Probe V, Probe I, or Probe P.");
             return;
         }
         self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
@@ -146,13 +147,14 @@ impl CircuitCiApp {
             &mut self.waveform_cursor_a_us,
             &mut self.waveform_cursor_b_us,
         );
+        waveform_frequency_panel(ui, waveform, self.selected_probe);
     }
 
     fn waveform_scope_header(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.strong("Scopes");
             if self.waveforms.is_empty() {
-                ui.label("No parsed CSV waveform is available. Run the schematic model first.");
+                ui.label("No scope traces loaded. Run will auto-create a default voltage probe if none exist.");
             }
         });
     }
@@ -1229,6 +1231,38 @@ fn waveform_measurement_panel(
     });
 }
 
+fn waveform_frequency_panel(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: usize) {
+    let Some(peaks) = waveform_spectrum_peaks(waveform, probe_index, 5) else {
+        return;
+    };
+    ui.group(|ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.strong("Frequency Domain");
+            if let Some(peak) = peaks.first() {
+                ui.label(format!(
+                    "dominant {}",
+                    format_frequency_hz(peak.frequency_hz)
+                ));
+            }
+        });
+        egui::Grid::new("waveform_frequency_peaks")
+            .num_columns(3)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Peak");
+                ui.label("Frequency");
+                ui.label("Magnitude");
+                ui.end_row();
+                for (index, peak) in peaks.iter().enumerate() {
+                    ui.monospace((index + 1).to_string());
+                    ui.monospace(format_frequency_hz(peak.frequency_hz));
+                    ui.monospace(format_value(peak.magnitude));
+                    ui.end_row();
+                }
+            });
+    });
+}
+
 fn min_max(values: &[f64]) -> Option<(f64, f64)> {
     let mut iter = values.iter().copied();
     let first = iter.next()?;
@@ -1268,6 +1302,12 @@ struct WaveformRegionStats {
     rms: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) struct WaveformSpectrumPeak {
+    frequency_hz: f64,
+    magnitude: f64,
+}
+
 fn waveform_measurement(
     waveform: &WaveformView,
     probe_index: usize,
@@ -1293,6 +1333,76 @@ fn waveform_measurement(
         window_min: window_range.0,
         window_max: window_range.1,
     })
+}
+
+pub(super) fn waveform_spectrum_peaks(
+    waveform: &WaveformView,
+    probe_index: usize,
+    max_peaks: usize,
+) -> Option<Vec<WaveformSpectrumPeak>> {
+    let probe = waveform.probes.get(probe_index)?;
+    waveform_spectrum_peaks_from_samples(&waveform.time_s, &probe.values, max_peaks)
+}
+
+pub(super) fn waveform_spectrum_peaks_from_samples(
+    times: &[f64],
+    values: &[f64],
+    max_peaks: usize,
+) -> Option<Vec<WaveformSpectrumPeak>> {
+    const MAX_SPECTRUM_SAMPLES: usize = 512;
+    if times.len() != values.len() || times.len() < 8 || max_peaks == 0 {
+        return None;
+    }
+    let start_s = *times.first()?;
+    let end_s = *times.last()?;
+    let duration_s = end_s - start_s;
+    if !duration_s.is_finite() || duration_s <= 0.0 {
+        return None;
+    }
+    let sample_cap = times.len().min(MAX_SPECTRUM_SAMPLES);
+    let sample_count = sample_cap.next_power_of_two() >> usize::from(!sample_cap.is_power_of_two());
+    if sample_count < 8 {
+        return None;
+    }
+    let step_s = duration_s / (sample_count - 1) as f64;
+    let mut samples = (0..sample_count)
+        .filter_map(|index| {
+            let time_s = start_s + index as f64 * step_s;
+            interpolated_value(times, values, time_s)
+        })
+        .collect::<Vec<_>>();
+    if samples.len() != sample_count {
+        return None;
+    }
+    let mean = samples.iter().sum::<f64>() / samples.len() as f64;
+    for (index, sample) in samples.iter_mut().enumerate() {
+        let window = 0.5
+            - 0.5 * (2.0 * std::f64::consts::PI * index as f64 / (sample_count - 1) as f64).cos();
+        *sample = (*sample - mean) * window;
+    }
+
+    let sample_rate_hz = (sample_count - 1) as f64 / duration_s;
+    let mut peaks = Vec::with_capacity(sample_count / 2);
+    for bin in 1..=(sample_count / 2) {
+        let mut real = 0.0;
+        let mut imag = 0.0;
+        for (index, sample) in samples.iter().copied().enumerate() {
+            let angle =
+                -2.0 * std::f64::consts::PI * bin as f64 * index as f64 / sample_count as f64;
+            real += sample * angle.cos();
+            imag += sample * angle.sin();
+        }
+        let magnitude = 2.0 * real.hypot(imag) / sample_count as f64;
+        if magnitude.is_finite() {
+            peaks.push(WaveformSpectrumPeak {
+                frequency_hz: bin as f64 * sample_rate_hz / sample_count as f64,
+                magnitude,
+            });
+        }
+    }
+    peaks.sort_by(|left, right| right.magnitude.total_cmp(&left.magnitude));
+    peaks.truncate(max_peaks);
+    Some(peaks)
 }
 
 fn waveform_region_stats(
@@ -1470,6 +1580,16 @@ fn ordered_pair(left: f64, right: f64) -> (f64, f64) {
 
 fn format_time_s(value: f64) -> String {
     format!("{value:.6e} s")
+}
+
+fn format_frequency_hz(value: f64) -> String {
+    if value.abs() >= 1.0e6 {
+        format!("{:.6e} MHz", value / 1.0e6)
+    } else if value.abs() >= 1.0e3 {
+        format!("{:.6e} kHz", value / 1.0e3)
+    } else {
+        format!("{value:.6e} Hz")
+    }
 }
 
 pub(super) fn format_value(value: f64) -> String {

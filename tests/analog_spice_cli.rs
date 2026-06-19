@@ -211,6 +211,17 @@ fn import_spice_generates_schema_valid_file_backed_project() {
             < 1.0e-18
     );
     assert!(imported["board"]["components"].get("D1").is_some());
+    let probes = imported["scenarios"][0]["analog"]["probes"]
+        .as_array()
+        .unwrap();
+    assert!(
+        probes
+            .iter()
+            .any(|probe| { probe["name"] == "v_out" && probe["expression"] == "V(out)" })
+    );
+    assert!(probes.iter().any(|probe| {
+        probe["name"] == "i_v1" && probe["expression"] == "I(V1)" && probe["quantity"] == "current"
+    }));
     let model_file = &imported["scenarios"][0]["analog"]["model_files"][0];
     assert!(
         model_file["path"]

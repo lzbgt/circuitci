@@ -1,0 +1,11 @@
+* NE555 astable-style scope smoke fixture.
+* VOUT is an idealized timer output source for GUI scope verification.
+* It exercises a typical 555 astable output, timing-capacitor node, supply,
+* load current, transient waveform loading, and frequency-domain inspection.
+VCC vcc 0 DC 5
+VOUT out 0 PULSE(0 5 0 1u 1u 326u 686u)
+RTIM out timing 10k
+CTIM timing 0 10n
+RLOAD out 0 10k
+.tran 2u 5m
+.end

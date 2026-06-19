@@ -52,6 +52,12 @@ import. Primitive values are preserved in Board IR where they can be represented
 losslessly, but `netlist_source: file` still makes the deck the solver source
 of truth.
 
+The importer derives voltage probes for every non-ground deck node and current
+probes for imported independent voltage sources using SPICE branch expressions
+such as `I(V1)`. Those current probes support GUI oscilloscope inspection of
+supply or stimulus source current without requiring generated-from-Board branch
+instrumentation.
+
 ## File-Backed Scenario Contract
 
 Imported projects use `analog.netlist_source: file`, so the original deck
