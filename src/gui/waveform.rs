@@ -99,10 +99,17 @@ impl CircuitCiApp {
         });
     }
 
-    fn waveform_load_diagnostics_panel(&self, ui: &mut egui::Ui) {
+    fn waveform_load_diagnostics_panel(&mut self, ui: &mut egui::Ui) {
         if self.waveform_load_diagnostics.is_empty() {
             return;
         }
+        let visible_indexes = waveform_load_diagnostic_visible_indexes(
+            &self.waveform_load_diagnostics,
+            &self.waveform_load_filter,
+            self.waveform_load_status_filter,
+            self.waveform_load_min_ms,
+            self.waveform_load_slowest_first,
+        );
         let loaded = self
             .waveform_load_diagnostics
             .iter()
@@ -114,7 +121,55 @@ impl CircuitCiApp {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Waveform Load Diagnostics");
                 ui.label(format!("{} loaded, {} skipped", loaded, skipped));
+                if ui.button("Copy CSV").clicked() {
+                    let rows: Vec<_> = visible_indexes
+                        .iter()
+                        .filter_map(|&index| self.waveform_load_diagnostics.get(index))
+                        .collect();
+                    ui.ctx().copy_text(waveform_load_diagnostics_csv(&rows));
+                }
             });
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Find");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.waveform_load_filter)
+                        .desired_width(180.0)
+                        .hint_text("path or detail"),
+                );
+                egui::ComboBox::from_label("Status")
+                    .selected_text(self.waveform_load_status_filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in WaveformLoadStatusFilter::ALL {
+                            ui.selectable_value(
+                                &mut self.waveform_load_status_filter,
+                                filter,
+                                filter.label(),
+                            );
+                        }
+                    });
+                ui.label("Min ms");
+                ui.add(
+                    egui::DragValue::new(&mut self.waveform_load_min_ms)
+                        .range(0.0..=3_600_000.0)
+                        .speed(10.0),
+                );
+                ui.checkbox(&mut self.waveform_load_slowest_first, "Slowest first");
+                ui.label(format!(
+                    "{} / {}",
+                    visible_indexes.len(),
+                    self.waveform_load_diagnostics.len()
+                ));
+                if ui.small_button("Clear Filters").clicked() {
+                    self.waveform_load_filter.clear();
+                    self.waveform_load_status_filter = WaveformLoadStatusFilter::All;
+                    self.waveform_load_min_ms = 0.0;
+                    self.waveform_load_slowest_first = false;
+                }
+            });
+            if visible_indexes.is_empty() {
+                ui.label("No waveform load diagnostics match the current filters.");
+                return;
+            }
             egui::Grid::new("waveform_load_diagnostics")
                 .num_columns(7)
                 .striped(true)
@@ -128,7 +183,8 @@ impl CircuitCiApp {
                     ui.label("Detail");
                     ui.end_row();
 
-                    for diagnostic in &self.waveform_load_diagnostics {
+                    for &index in &visible_indexes {
+                        let diagnostic = &self.waveform_load_diagnostics[index];
                         ui.label(if diagnostic.loaded {
                             "Loaded"
                         } else {
@@ -456,6 +512,25 @@ pub(super) struct WaveformLoadDiagnostic {
     probes: usize,
     elapsed_ms: u128,
     detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum WaveformLoadStatusFilter {
+    All,
+    Loaded,
+    Skipped,
+}
+
+impl WaveformLoadStatusFilter {
+    const ALL: [Self; 3] = [Self::All, Self::Loaded, Self::Skipped];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::Loaded => "Loaded",
+            Self::Skipped => "Skipped",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1650,6 +1725,106 @@ fn format_waveform_load_bytes(bytes: Option<u64>) -> String {
         format!("{:.1} KiB", bytes / KIB)
     } else {
         format!("{bytes:.0} B")
+    }
+}
+
+fn waveform_load_diagnostic_visible_indexes(
+    diagnostics: &[WaveformLoadDiagnostic],
+    query: &str,
+    status_filter: WaveformLoadStatusFilter,
+    min_elapsed_ms: f64,
+    slowest_first: bool,
+) -> Vec<usize> {
+    let query = query.trim().to_ascii_lowercase();
+    let min_elapsed_ms = min_elapsed_ms.max(0.0).round() as u128;
+    let mut indexes: Vec<_> = diagnostics
+        .iter()
+        .enumerate()
+        .filter_map(|(index, diagnostic)| {
+            if !matches!(
+                (status_filter, diagnostic.loaded),
+                (WaveformLoadStatusFilter::All, _)
+                    | (WaveformLoadStatusFilter::Loaded, true)
+                    | (WaveformLoadStatusFilter::Skipped, false)
+            ) {
+                return None;
+            }
+            if diagnostic.elapsed_ms < min_elapsed_ms {
+                return None;
+            }
+            if !query.is_empty()
+                && !waveform_load_diagnostic_search_text(diagnostic).contains(&query)
+            {
+                return None;
+            }
+            Some(index)
+        })
+        .collect();
+    if slowest_first {
+        indexes.sort_by(|left, right| {
+            diagnostics[*right]
+                .elapsed_ms
+                .cmp(&diagnostics[*left].elapsed_ms)
+                .then_with(|| left.cmp(right))
+        });
+    }
+    indexes
+}
+
+fn waveform_load_diagnostic_search_text(diagnostic: &WaveformLoadDiagnostic) -> String {
+    format!(
+        "{} {} {}",
+        if diagnostic.loaded {
+            "loaded"
+        } else {
+            "skipped"
+        },
+        diagnostic.path,
+        diagnostic.detail
+    )
+    .to_ascii_lowercase()
+}
+
+fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) -> String {
+    let mut csv = String::from("status,path,size_bytes,samples,probes,elapsed_ms,detail\n");
+    for diagnostic in rows {
+        let fields = [
+            if diagnostic.loaded {
+                "loaded"
+            } else {
+                "skipped"
+            }
+            .to_string(),
+            diagnostic.path.clone(),
+            diagnostic
+                .bytes
+                .map(|bytes| bytes.to_string())
+                .unwrap_or_default(),
+            diagnostic.samples.to_string(),
+            diagnostic.probes.to_string(),
+            diagnostic.elapsed_ms.to_string(),
+            diagnostic.detail.clone(),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(waveform_load_csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
+fn waveform_load_csv_escape(value: String) -> String {
+    if value
+        .chars()
+        .any(|character| matches!(character, ',' | '"' | '\n' | '\r'))
+    {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value
     }
 }
 

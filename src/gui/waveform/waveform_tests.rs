@@ -2,15 +2,17 @@ use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
+    WaveformLoadDiagnostic, WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger,
+    WaveformPlotView, WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceRef,
+    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_plot_size,
+    scope_snapshot_chip_hit, scope_zoom_box_interaction,
+};
+use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_scope_trigger_event, waveform_probe_choices, waveform_probe_group_choices,
-};
-use super::{
-    WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip,
-    WaveformSnapshotMarker, WaveformTraceRef, nearest_scope_cursor_target, plot_x_to_time_us,
-    plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
+    select_scope_trigger_event, waveform_load_diagnostic_visible_indexes,
+    waveform_load_diagnostics_csv, waveform_probe_choices, waveform_probe_group_choices,
 };
 
 #[test]
@@ -105,6 +107,78 @@ fn report_waveform_loader_records_loaded_and_skipped_diagnostics() {
             .detail
             .contains("Failed to read waveform CSV")
     );
+}
+
+#[test]
+fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "fast.csv".to_string(),
+            loaded: true,
+            bytes: Some(128),
+            samples: 2,
+            probes: 1,
+            elapsed_ms: 4,
+            detail: "Loaded 2 sample row(s).".to_string(),
+        },
+        WaveformLoadDiagnostic {
+            path: "slow.csv".to_string(),
+            loaded: true,
+            bytes: Some(2048),
+            samples: 4000,
+            probes: 3,
+            elapsed_ms: 180,
+            detail: "Loaded 4000 sample row(s).".to_string(),
+        },
+        WaveformLoadDiagnostic {
+            path: "missing.csv".to_string(),
+            loaded: false,
+            bytes: None,
+            samples: 0,
+            probes: 0,
+            elapsed_ms: 12,
+            detail: "Failed, \"missing\" file".to_string(),
+        },
+    ];
+
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "missing",
+            WaveformLoadStatusFilter::Skipped,
+            0.0,
+            false,
+        ),
+        vec![2]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::Loaded,
+            10.0,
+            true,
+        ),
+        vec![1]
+    );
+
+    let visible_indexes = waveform_load_diagnostic_visible_indexes(
+        &diagnostics,
+        "",
+        WaveformLoadStatusFilter::All,
+        10.0,
+        true,
+    );
+    let rows: Vec<_> = visible_indexes
+        .iter()
+        .map(|&index| &diagnostics[index])
+        .collect();
+    let csv = waveform_load_diagnostics_csv(&rows);
+
+    assert!(csv.starts_with("status,path,size_bytes,samples,probes,elapsed_ms,detail\n"));
+    assert!(csv.contains("loaded,slow.csv,2048,4000,3,180"));
+    assert!(csv.contains("skipped,missing.csv,,0,0,12,\"Failed, \"\"missing\"\" file\""));
+    assert!(!csv.contains("fast.csv"));
 }
 
 #[test]

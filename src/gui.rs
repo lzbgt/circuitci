@@ -69,9 +69,9 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
-    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformLoadDiagnostic, WaveformPlotCache,
-    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    waveform_time_range_for_view,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformLoadDiagnostic,
+    WaveformLoadStatusFilter, WaveformPlotCache, WaveformTracePreset, WaveformTraceRef,
+    WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -369,6 +369,10 @@ pub struct CircuitCiApp {
     sketch_component_label_drag: Option<SketchComponentLabelDrag>,
     waveforms: Vec<WaveformView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
+    waveform_load_filter: String,
+    waveform_load_status_filter: WaveformLoadStatusFilter,
+    waveform_load_min_ms: f64,
+    waveform_load_slowest_first: bool,
     selected_waveform: usize,
     selected_probe: usize,
     waveform_probe_filter: String,
@@ -555,6 +559,10 @@ impl Default for CircuitCiApp {
             sketch_component_label_drag: None,
             waveforms: Vec::new(),
             waveform_load_diagnostics: Vec::new(),
+            waveform_load_filter: String::new(),
+            waveform_load_status_filter: WaveformLoadStatusFilter::All,
+            waveform_load_min_ms: 0.0,
+            waveform_load_slowest_first: false,
             selected_waveform: 0,
             selected_probe: 0,
             waveform_probe_filter: String::new(),
