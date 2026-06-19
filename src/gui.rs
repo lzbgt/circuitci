@@ -69,9 +69,10 @@ use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
     ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
-    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformLoadDiagnostic,
-    WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformFootprintSortKey,
+    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadStatusFilter, WaveformPlotCache,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -378,6 +379,9 @@ pub struct CircuitCiApp {
     waveform_deferred_filter: String,
     waveform_deferred_column_filter: String,
     waveform_deferred_column_picks: BTreeSet<(String, String)>,
+    waveform_footprint_filter: String,
+    waveform_footprint_sort_key: WaveformFootprintSortKey,
+    waveform_footprint_descending: bool,
     selected_waveform: usize,
     selected_probe: usize,
     waveform_probe_filter: String,
@@ -573,6 +577,9 @@ impl Default for CircuitCiApp {
             waveform_deferred_filter: String::new(),
             waveform_deferred_column_filter: String::new(),
             waveform_deferred_column_picks: BTreeSet::new(),
+            waveform_footprint_filter: String::new(),
+            waveform_footprint_sort_key: WaveformFootprintSortKey::EstimatedBytes,
+            waveform_footprint_descending: true,
             selected_waveform: 0,
             selected_probe: 0,
             waveform_probe_filter: String::new(),

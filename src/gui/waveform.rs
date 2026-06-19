@@ -72,9 +72,11 @@ use waveform_snapshots::{
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
     scope_snapshots_markdown, unique_scope_report_bundle_dir,
 };
+pub(super) use waveform_trace_selector::WaveformFootprintSortKey;
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
+    WaveformProbeGroup, waveform_footprint_rows, waveform_probe_choices,
+    waveform_probe_group_choices,
 };
 #[cfg(test)]
 use waveform_trigger::{

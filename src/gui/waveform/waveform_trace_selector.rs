@@ -1,3 +1,4 @@
+use super::waveform_load::format_waveform_load_bytes;
 use super::waveform_plot::{
     scope_trace_color_for_style, scope_trace_style, scope_visible_styled_trace_refs,
     scope_visible_trace_refs, valid_waveform_trace,
@@ -65,6 +66,7 @@ impl CircuitCiApp {
             return;
         }
         self.deferred_waveform_artifacts_ui(ui, &deferred_artifacts, &mut load_deferred_path);
+        self.loaded_waveform_footprint_ui(ui);
         if let Some(index) = next_waveform.filter(|index| *index != self.selected_waveform) {
             self.selected_waveform = index;
             self.selected_probe = 0;
@@ -83,6 +85,123 @@ impl CircuitCiApp {
         }
         if let Some(path) = load_deferred_path {
             self.load_deferred_waveform_path(path);
+        }
+    }
+
+    fn loaded_waveform_footprint_ui(&mut self, ui: &mut egui::Ui) {
+        let rows = waveform_footprint_rows(
+            &self.waveforms,
+            &self.waveform_footprint_filter,
+            self.waveform_footprint_sort_key,
+            self.waveform_footprint_descending,
+        );
+        let total_bytes = self
+            .waveforms
+            .iter()
+            .map(waveform_footprint_estimated_bytes)
+            .sum::<usize>();
+        let mut next_waveform = None;
+        let mut unload_waveform = None;
+        ui.collapsing(
+            format!(
+                "Loaded Footprint ({}; {})",
+                self.waveforms.len(),
+                format_waveform_load_bytes(Some(total_bytes as u64))
+            ),
+            |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Find");
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut self.waveform_footprint_filter)
+                            .desired_width(180.0)
+                            .hint_text("file, path, probe"),
+                    );
+                    if response.changed() {
+                        self.waveform_footprint_filter =
+                            self.waveform_footprint_filter.trim_start().to_string();
+                    }
+                    egui::ComboBox::from_label("Sort")
+                        .selected_text(self.waveform_footprint_sort_key.label())
+                        .show_ui(ui, |ui| {
+                            for sort_key in WaveformFootprintSortKey::ALL {
+                                ui.selectable_value(
+                                    &mut self.waveform_footprint_sort_key,
+                                    sort_key,
+                                    sort_key.label(),
+                                );
+                            }
+                        });
+                    ui.checkbox(&mut self.waveform_footprint_descending, "Descending");
+                    ui.label(format!("{} / {} visible", rows.len(), self.waveforms.len()));
+                    if ui
+                        .add_enabled(
+                            !self.waveform_footprint_filter.trim().is_empty(),
+                            egui::Button::new("Clear"),
+                        )
+                        .clicked()
+                    {
+                        self.waveform_footprint_filter.clear();
+                    }
+                });
+                if rows.is_empty() {
+                    ui.small("No loaded waveform matches the current footprint filter.");
+                    return;
+                }
+                egui::Grid::new("loaded_waveform_footprint")
+                    .num_columns(7)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Waveform");
+                        ui.label("Rows");
+                        ui.label("Traces");
+                        ui.label("Values");
+                        ui.label("Estimate");
+                        ui.label("Path");
+                        ui.label("Action");
+                        ui.end_row();
+
+                        for row in rows {
+                            ui.monospace(&row.label);
+                            ui.monospace(row.samples.to_string());
+                            ui.monospace(row.probes.to_string());
+                            ui.monospace(row.values.to_string());
+                            ui.monospace(format_waveform_load_bytes(Some(
+                                row.estimated_bytes as u64,
+                            )));
+                            ui.small(&row.path);
+                            ui.horizontal(|ui| {
+                                if ui.small_button("Select").clicked() {
+                                    next_waveform = Some(row.waveform_index);
+                                }
+                                if ui
+                                    .small_button("Unload")
+                                    .on_hover_text(
+                                        "Unload this parsed waveform artifact from memory.",
+                                    )
+                                    .clicked()
+                                {
+                                    unload_waveform = Some(row.waveform_index);
+                                }
+                            });
+                            ui.end_row();
+                        }
+                    });
+            },
+        );
+        if let Some(index) = unload_waveform {
+            self.unload_waveform_view(index);
+        } else if let Some(index) = next_waveform {
+            self.selected_waveform = index.min(self.waveforms.len().saturating_sub(1));
+            self.selected_probe = 0;
+            self.waveform_cursor_a_us = 0.0;
+            self.waveform_cursor_b_us = 0.0;
+            self.waveform_window_start_us = None;
+            self.waveform_window_end_us = None;
+            self.waveform_value_min = None;
+            self.waveform_value_max = None;
+            self.clear_waveform_view_history();
+            self.waveform_trigger_threshold = 0.0;
+            self.waveform_playing = false;
         }
     }
 
@@ -632,6 +751,114 @@ pub(super) fn shift_trace_after_waveform_removal(
         trace.waveform_index -= 1;
     }
     true
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(in crate::gui) enum WaveformFootprintSortKey {
+    #[default]
+    EstimatedBytes,
+    Samples,
+    Probes,
+    Label,
+}
+
+impl WaveformFootprintSortKey {
+    pub(super) const ALL: [Self; 4] = [
+        Self::EstimatedBytes,
+        Self::Samples,
+        Self::Probes,
+        Self::Label,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::EstimatedBytes => "Memory",
+            Self::Samples => "Rows",
+            Self::Probes => "Traces",
+            Self::Label => "Label",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformFootprintRow {
+    pub(super) waveform_index: usize,
+    pub(super) label: String,
+    pub(super) path: String,
+    pub(super) samples: usize,
+    pub(super) probes: usize,
+    pub(super) values: usize,
+    pub(super) estimated_bytes: usize,
+}
+
+pub(super) fn waveform_footprint_rows(
+    waveforms: &[WaveformView],
+    query: &str,
+    sort_key: WaveformFootprintSortKey,
+    descending: bool,
+) -> Vec<WaveformFootprintRow> {
+    let query = query.trim().to_ascii_lowercase();
+    let mut rows = waveforms
+        .iter()
+        .enumerate()
+        .filter_map(|(index, waveform)| {
+            if !query.is_empty() && !waveform_footprint_search_text(waveform).contains(&query) {
+                return None;
+            }
+            let values = waveform_footprint_value_count(waveform);
+            Some(WaveformFootprintRow {
+                waveform_index: index,
+                label: waveform.label.clone(),
+                path: waveform.path.clone(),
+                samples: waveform.time_s.len(),
+                probes: waveform.probes.len(),
+                values,
+                estimated_bytes: values * std::mem::size_of::<f64>(),
+            })
+        })
+        .collect::<Vec<_>>();
+    rows.sort_by(|left, right| {
+        let order = match sort_key {
+            WaveformFootprintSortKey::EstimatedBytes => left
+                .estimated_bytes
+                .cmp(&right.estimated_bytes)
+                .then_with(|| left.label.cmp(&right.label)),
+            WaveformFootprintSortKey::Samples => left
+                .samples
+                .cmp(&right.samples)
+                .then_with(|| left.label.cmp(&right.label)),
+            WaveformFootprintSortKey::Probes => left
+                .probes
+                .cmp(&right.probes)
+                .then_with(|| left.label.cmp(&right.label)),
+            WaveformFootprintSortKey::Label => left.label.cmp(&right.label),
+        };
+        if descending { order.reverse() } else { order }
+    });
+    rows
+}
+
+fn waveform_footprint_search_text(waveform: &WaveformView) -> String {
+    let probes = waveform
+        .probes
+        .iter()
+        .map(|probe| probe.label.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!("{} {} {}", waveform.label, waveform.path, probes).to_ascii_lowercase()
+}
+
+fn waveform_footprint_estimated_bytes(waveform: &WaveformView) -> usize {
+    waveform_footprint_value_count(waveform) * std::mem::size_of::<f64>()
+}
+
+fn waveform_footprint_value_count(waveform: &WaveformView) -> usize {
+    waveform.time_s.len()
+        + waveform
+            .probes
+            .iter()
+            .map(|probe| probe.values.len())
+            .sum::<usize>()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

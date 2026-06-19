@@ -3,11 +3,12 @@ use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadRequest,
-    WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
-    WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceColor, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle, nearest_scope_cursor_target, plot_x_to_time_us,
-    plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
+    WaveformFootprintSortKey, WaveformLoadDiagnostic, WaveformLoadPreviewFilter,
+    WaveformLoadRequest, WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger,
+    WaveformPlotView, WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceColor,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, nearest_scope_cursor_target,
+    plot_x_to_time_us, plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit,
+    scope_zoom_box_interaction,
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
@@ -19,7 +20,7 @@ use super::{
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_deferred_waveform_column_picks, select_scope_trigger_event,
+    select_deferred_waveform_column_picks, select_scope_trigger_event, waveform_footprint_rows,
     waveform_load_deferred_artifacts, waveform_load_deferred_paths,
     waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
     waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
@@ -1373,6 +1374,42 @@ fn waveform_probe_filter_matches_label_expression_and_kind() {
     assert_eq!(labels("derived"), vec!["load_power"]);
     assert_eq!(labels("temp"), vec!["temp"]);
     assert!(labels("missing").is_empty());
+}
+
+#[test]
+fn waveform_footprint_rows_filter_and_sort_loaded_views() {
+    let small = parse_waveform_csv_text("time,v(out)\n0,1\n0.000001,2\n", "small.csv").unwrap();
+    let large = parse_waveform_csv_text(
+        "time,v(bus),i(load),temp\n0,12,0.1,25\n0.000001,11,0.2,26\n0.000002,10,0.3,27\n",
+        "large.csv",
+    )
+    .unwrap();
+    let waveforms = vec![small, large];
+
+    let rows = waveform_footprint_rows(
+        &waveforms,
+        "",
+        WaveformFootprintSortKey::EstimatedBytes,
+        true,
+    );
+
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].label, "large.csv");
+    assert_eq!(rows[0].samples, 3);
+    assert_eq!(rows[0].probes, 3);
+    assert_eq!(rows[0].values, 12);
+    assert_eq!(rows[0].estimated_bytes, 12 * std::mem::size_of::<f64>());
+    assert_eq!(rows[1].label, "small.csv");
+
+    let filtered = waveform_footprint_rows(
+        &waveforms,
+        "i(load)",
+        WaveformFootprintSortKey::Label,
+        false,
+    );
+
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].label, "large.csv");
 }
 
 #[test]
