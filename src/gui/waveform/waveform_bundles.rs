@@ -21,38 +21,22 @@ const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 5] = [
     ("README.md", "README.md"),
 ];
 
+struct ScopeReportBundleFiles {
+    scope_plot_svg: String,
+    index_html: String,
+    measurement_snapshots_csv: String,
+    measurement_snapshots_markdown: String,
+    readme: String,
+}
+
 impl CircuitCiApp {
     pub(super) fn export_scope_report_bundle(&mut self, snapshots: &[ScopeMeasurementSnapshot]) {
-        if snapshots.is_empty() {
-            self.status =
-                "No scope measurement snapshots match the current bundle filters.".to_string();
-            return;
-        }
-        let Some(svg) = self.current_scope_plot_svg() else {
-            self.status = "No scope plot is available to include in the report bundle.".to_string();
+        let Some(files) = self.prepare_scope_report_bundle_files(snapshots) else {
             return;
         };
         let base_dir = output_bundle_base_dir(&self.output_dir);
         let bundle_dir = unique_scope_report_bundle_dir(&base_dir, current_unix_millis());
-        let readme = self.scope_report_bundle_readme(snapshots);
-        let index_html = self.scope_report_bundle_index_html(snapshots);
-        match fs::create_dir_all(&bundle_dir)
-            .and_then(|()| fs::write(bundle_dir.join("scope_plot.svg"), svg))
-            .and_then(|()| fs::write(scope_report_bundle_index_path(&bundle_dir), index_html))
-            .and_then(|()| {
-                fs::write(
-                    bundle_dir.join("measurement_snapshots.csv"),
-                    scope_snapshots_csv(snapshots),
-                )
-            })
-            .and_then(|()| {
-                fs::write(
-                    bundle_dir.join("measurement_snapshots.md"),
-                    scope_snapshots_markdown(snapshots),
-                )
-            })
-            .and_then(|()| fs::write(bundle_dir.join("README.md"), readme))
-        {
+        match write_scope_report_bundle_files(&bundle_dir, &files) {
             Ok(()) => {
                 self.push_recent_scope_report_bundle(bundle_dir.to_string_lossy().into_owned());
                 self.status = format!(
@@ -68,6 +52,28 @@ impl CircuitCiApp {
                 ));
             }
         }
+    }
+
+    fn prepare_scope_report_bundle_files(
+        &mut self,
+        snapshots: &[ScopeMeasurementSnapshot],
+    ) -> Option<ScopeReportBundleFiles> {
+        if snapshots.is_empty() {
+            self.status =
+                "No scope measurement snapshots match the current bundle filters.".to_string();
+            return None;
+        }
+        let Some(scope_plot_svg) = self.current_scope_plot_svg() else {
+            self.status = "No scope plot is available to include in the report bundle.".to_string();
+            return None;
+        };
+        Some(ScopeReportBundleFiles {
+            scope_plot_svg,
+            index_html: self.scope_report_bundle_index_html(snapshots),
+            measurement_snapshots_csv: scope_snapshots_csv(snapshots),
+            measurement_snapshots_markdown: scope_snapshots_markdown(snapshots),
+            readme: self.scope_report_bundle_readme(snapshots),
+        })
     }
 
     fn scope_report_bundle_readme(&self, snapshots: &[ScopeMeasurementSnapshot]) -> String {
@@ -246,11 +252,16 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         (rows.len(), total_bytes, summaries)
     }
 
-    pub(super) fn scope_recent_report_bundles_ui(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn scope_recent_report_bundles_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        snapshots: &[ScopeMeasurementSnapshot],
+    ) {
         let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
             return;
         };
-        let latest_status = scope_report_bundle_artifact_status_label(Path::new(&latest));
+        let latest_missing = scope_report_bundle_missing_artifacts(Path::new(&latest));
+        let latest_status = scope_report_bundle_artifact_status_label_from_missing(&latest_missing);
         ui.horizontal_wrapped(|ui| {
             ui.label("Recent bundle");
             ui.monospace(display_path_tail(&latest));
@@ -260,6 +271,9 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             }
             if ui.button("Open Bundle Index").clicked() {
                 self.open_scope_report_bundle_index(&latest);
+            }
+            if !latest_missing.is_empty() && ui.button("Preview Refresh").clicked() {
+                self.preview_scope_report_bundle_refresh(&latest);
             }
             if ui.button("Clean Old Bundles").clicked() {
                 self.preview_old_scope_report_bundles();
@@ -275,19 +289,45 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                     .selected_text("Older")
                     .show_ui(ui, |ui| {
                         for bundle in older_bundles {
-                            let label = format!(
-                                "{} - {}",
-                                display_path_tail(&bundle),
-                                scope_report_bundle_artifact_status_label(Path::new(&bundle))
-                            );
-                            if ui.button(label).clicked() {
-                                self.open_scope_report_bundle(&bundle);
-                                ui.close();
-                            }
+                            let missing = scope_report_bundle_missing_artifacts(Path::new(&bundle));
+                            ui.horizontal(|ui| {
+                                ui.label(format!(
+                                    "{} - {}",
+                                    display_path_tail(&bundle),
+                                    scope_report_bundle_artifact_status_label_from_missing(
+                                        &missing
+                                    )
+                                ));
+                                if ui.small_button("Open").clicked() {
+                                    self.open_scope_report_bundle(&bundle);
+                                    ui.close();
+                                }
+                                if !missing.is_empty() && ui.small_button("Refresh").clicked() {
+                                    self.preview_scope_report_bundle_refresh(&bundle);
+                                    ui.close();
+                                }
+                            });
                         }
                     });
             }
         });
+        if let Some(bundle) = self.waveform_bundle_refresh_preview.clone() {
+            let missing = scope_report_bundle_missing_artifacts(Path::new(&bundle));
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "Refresh preview: regenerate {} missing artifact(s) for {}.",
+                    missing.len(),
+                    display_path_tail(&bundle)
+                ));
+                if ui.button("Confirm Refresh").clicked() {
+                    self.confirm_scope_report_bundle_refresh(snapshots);
+                }
+                if ui.button("Cancel").clicked() {
+                    self.waveform_bundle_refresh_preview = None;
+                    self.status = "Canceled scope report bundle refresh.".to_string();
+                }
+            });
+        }
         if !self.waveform_bundle_cleanup_preview.is_empty() {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
@@ -311,6 +351,65 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         self.waveform_recent_report_bundles.insert(0, bundle);
         self.waveform_recent_report_bundles
             .truncate(MAX_RECENT_SCOPE_BUNDLES);
+    }
+
+    pub(super) fn preview_scope_report_bundle_refresh(&mut self, bundle: &str) {
+        let path = Path::new(bundle);
+        if !is_scope_report_bundle_path(path) {
+            self.status = format!("Refusing to refresh non-bundle path {}.", path.display());
+            return;
+        }
+        let missing = scope_report_bundle_missing_artifacts(path);
+        if missing.is_empty() {
+            self.waveform_bundle_refresh_preview = None;
+            self.status = format!(
+                "Scope report bundle artifacts are already complete for {}.",
+                path.display()
+            );
+            return;
+        }
+        self.waveform_bundle_refresh_preview = Some(bundle.to_string());
+        self.status = format!(
+            "Previewing refresh for {} missing scope report bundle artifact(s).",
+            missing.len()
+        );
+    }
+
+    pub(super) fn confirm_scope_report_bundle_refresh(
+        &mut self,
+        snapshots: &[ScopeMeasurementSnapshot],
+    ) {
+        let Some(bundle) = self.waveform_bundle_refresh_preview.clone() else {
+            return;
+        };
+        let bundle_dir = PathBuf::from(&bundle);
+        if !is_scope_report_bundle_path(&bundle_dir) {
+            self.waveform_bundle_refresh_preview = None;
+            self.status = format!(
+                "Refusing to refresh non-bundle path {}.",
+                bundle_dir.display()
+            );
+            return;
+        }
+        let Some(files) = self.prepare_scope_report_bundle_files(snapshots) else {
+            return;
+        };
+        match write_scope_report_bundle_files(&bundle_dir, &files) {
+            Ok(()) => {
+                self.waveform_bundle_refresh_preview = None;
+                self.push_recent_scope_report_bundle(bundle);
+                self.status = format!(
+                    "Refreshed scope report bundle artifacts in {}.",
+                    bundle_dir.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to refresh scope report bundle {}: {error}",
+                    bundle_dir.display()
+                ));
+            }
+        }
     }
 
     fn open_scope_report_bundle(&mut self, bundle: &str) {
@@ -391,6 +490,13 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                 self.waveform_bundle_cleanup_preview.clear();
                 self.waveform_recent_report_bundles
                     .retain(|bundle| Path::new(bundle).exists());
+                if self
+                    .waveform_bundle_refresh_preview
+                    .as_deref()
+                    .is_some_and(|bundle| !Path::new(bundle).exists())
+                {
+                    self.waveform_bundle_refresh_preview = None;
+                }
                 self.status = format!("Removed {removed} old scope report bundle folder(s).");
             }
             Err(error) => {
@@ -482,6 +588,33 @@ fn open_path_in_file_manager(path: &Path) -> std::io::Result<()> {
     command.spawn().map(|_| ())
 }
 
+fn write_scope_report_bundle_files(
+    bundle_dir: &Path,
+    files: &ScopeReportBundleFiles,
+) -> std::io::Result<()> {
+    fs::create_dir_all(bundle_dir)
+        .and_then(|()| fs::write(bundle_dir.join("scope_plot.svg"), &files.scope_plot_svg))
+        .and_then(|()| {
+            fs::write(
+                scope_report_bundle_index_path(bundle_dir),
+                &files.index_html,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("measurement_snapshots.csv"),
+                &files.measurement_snapshots_csv,
+            )
+        })
+        .and_then(|()| {
+            fs::write(
+                bundle_dir.join("measurement_snapshots.md"),
+                &files.measurement_snapshots_markdown,
+            )
+        })
+        .and_then(|()| fs::write(bundle_dir.join("README.md"), &files.readme))
+}
+
 pub(super) fn output_bundle_base_dir(output_dir: &str) -> PathBuf {
     let trimmed = output_dir.trim();
     if trimmed.is_empty() {
@@ -523,8 +656,7 @@ pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'
         .collect()
 }
 
-fn scope_report_bundle_artifact_status_label(bundle_dir: &Path) -> String {
-    let missing = scope_report_bundle_missing_artifacts(bundle_dir);
+fn scope_report_bundle_artifact_status_label_from_missing(missing: &[&str]) -> String {
     if missing.is_empty() {
         "Artifacts OK".to_string()
     } else {
@@ -586,11 +718,13 @@ fn scope_report_bundle_dirs(base_dir: &Path) -> std::io::Result<Vec<PathBuf>> {
 }
 
 fn is_scope_report_bundle_dir(path: &Path) -> bool {
-    path.is_dir()
-        && path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.starts_with("scope_report_bundle_"))
+    path.is_dir() && is_scope_report_bundle_path(path)
+}
+
+fn is_scope_report_bundle_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("scope_report_bundle_"))
 }
 
 fn report_bundle_sort_key(path: &Path) -> u128 {

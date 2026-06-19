@@ -219,7 +219,7 @@ impl CircuitCiApp {
                     self.status = "Cleared scope measurement snapshots.".to_string();
                 }
             });
-            self.scope_recent_report_bundles_ui(ui);
+            self.scope_recent_report_bundles_ui(ui, &visible_snapshots);
             if self.waveform_measurement_snapshots.is_empty() {
                 return;
             }

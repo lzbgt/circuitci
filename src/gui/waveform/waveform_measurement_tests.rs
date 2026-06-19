@@ -797,6 +797,53 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
 }
 
 #[test]
+fn scope_report_bundle_refresh_recreates_missing_artifacts() {
+    let waveform =
+        parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n", "waveform.csv").unwrap();
+    let base_dir = std::env::temp_dir().join(format!(
+        "circuitci_scope_bundle_refresh_test_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&base_dir);
+    fs::create_dir_all(&base_dir).unwrap();
+
+    let mut app = CircuitCiApp {
+        output_dir: base_dir.to_string_lossy().into_owned(),
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    let visible = app.visible_scope_measurement_snapshot_indexes();
+    let filtered: Vec<_> = visible
+        .iter()
+        .map(|&index| app.waveform_measurement_snapshots[index].clone())
+        .collect();
+    app.export_scope_report_bundle(&filtered);
+
+    let bundle = app.waveform_recent_report_bundles[0].clone();
+    let bundle_path = std::path::Path::new(&bundle);
+    fs::remove_file(bundle_path.join("index.html")).unwrap();
+    assert_eq!(
+        scope_report_bundle_missing_artifacts(bundle_path),
+        vec!["index.html"]
+    );
+
+    app.preview_scope_report_bundle_refresh(&bundle);
+    assert_eq!(app.waveform_bundle_refresh_preview, Some(bundle.clone()));
+    app.confirm_scope_report_bundle_refresh(&filtered);
+
+    assert!(scope_report_bundle_missing_artifacts(bundle_path).is_empty());
+    assert!(bundle_path.join("index.html").is_file());
+    assert_eq!(app.waveform_bundle_refresh_preview, None);
+    assert!(app.status.contains("Refreshed scope report bundle"));
+
+    fs::remove_dir_all(&base_dir).unwrap();
+}
+
+#[test]
 fn scope_report_bundle_dir_uses_collision_suffix() {
     let base_dir = std::env::temp_dir().join(format!(
         "circuitci_scope_bundle_collision_test_{}",
