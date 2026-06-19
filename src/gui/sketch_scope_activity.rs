@@ -68,6 +68,8 @@ impl CircuitCiApp {
                     .on_hover_text(
                         "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                     );
+                    let mut load_compare_preset = None;
+                    let mut delete_compare_preset = None;
                     ui.horizontal_wrapped(|ui| {
                         ui.label(format!(
                             "{} pinned compare trace(s)",
@@ -105,6 +107,34 @@ impl CircuitCiApp {
                         {
                             self.save_pinned_scope_compare_from_sketch();
                         }
+                        ui.menu_button(
+                            format!("Saved ({})", self.waveform_trace_presets.len()),
+                            |ui| {
+                                if self.waveform_trace_presets.is_empty() {
+                                    ui.label("No saved compare sets.");
+                                }
+                                for index in 0..self.waveform_trace_presets.len() {
+                                    let name = self
+                                        .scope_compare_preset_name_at(index)
+                                        .unwrap_or("unnamed")
+                                        .to_string();
+                                    ui.horizontal(|ui| {
+                                        if ui.button(&name).clicked() {
+                                            load_compare_preset = Some(index);
+                                            ui.close();
+                                        }
+                                        if ui.small_button("Delete").clicked() {
+                                            delete_compare_preset = Some(index);
+                                            ui.close();
+                                        }
+                                    });
+                                }
+                            },
+                        )
+                        .response
+                        .on_hover_text(
+                            "Load or delete reusable Scopes compare sets from the schematic.",
+                        );
                         if ui
                             .add_enabled(
                                 !self.waveform_pinned_traces.is_empty(),
@@ -118,6 +148,12 @@ impl CircuitCiApp {
                             self.clear_scope_compare_pins_from_sketch();
                         }
                     });
+                    if let Some(index) = delete_compare_preset {
+                        self.delete_scope_compare_preset_from_sketch(index);
+                    }
+                    if let Some(index) = load_compare_preset {
+                        self.load_scope_compare_preset_from_sketch(index);
+                    }
                     if let Some(range) =
                         runtime_scope_activity_cursor_range_us(&self.waveforms, self.selected_waveform)
                     {

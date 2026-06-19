@@ -690,6 +690,67 @@ fn save_pinned_scope_compare_from_sketch_reports_empty_after_prune() {
 }
 
 #[test]
+fn load_scope_compare_preset_from_sketch_restores_saved_set() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load),v(ref)
+0,0,0.1,3.3
+0.000001,1,0.2,3.2
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 2,
+        waveform_trace_presets: vec![WaveformTracePreset {
+            name: "startup".to_string(),
+            traces: vec![
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 0,
+                },
+                WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+            ],
+        }],
+        ..Default::default()
+    };
+
+    assert!(app.load_scope_compare_preset_from_sketch(0));
+
+    assert_eq!(app.selected_probe, 0);
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }]
+    );
+    assert!(app.status.contains("Loaded scope compare set startup"));
+}
+
+#[test]
+fn delete_scope_compare_preset_from_sketch_removes_saved_set() {
+    let mut app = CircuitCiApp {
+        waveform_trace_presets: vec![WaveformTracePreset {
+            name: "startup".to_string(),
+            traces: vec![WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            }],
+        }],
+        ..Default::default()
+    };
+
+    assert!(app.delete_scope_compare_preset_from_sketch(0));
+
+    assert!(app.waveform_trace_presets.is_empty());
+    assert!(app.status.contains("Deleted scope compare set startup"));
+}
+
+#[test]
 fn open_pinned_scope_compare_selects_first_valid_pin_and_opens_scopes() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),i(load),v(ref)

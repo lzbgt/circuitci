@@ -102,6 +102,31 @@ impl CircuitCiApp {
         true
     }
 
+    pub(in crate::gui) fn scope_compare_preset_name_at(&self, index: usize) -> Option<&str> {
+        self.waveform_trace_presets
+            .get(index)
+            .map(|preset| preset.name.as_str())
+    }
+
+    pub(in crate::gui) fn load_scope_compare_preset_from_sketch(&mut self, index: usize) -> bool {
+        if index >= self.waveform_trace_presets.len() {
+            self.status = "Saved scope compare set is no longer available.".to_string();
+            return false;
+        }
+        self.apply_scope_compare_preset(index);
+        true
+    }
+
+    pub(in crate::gui) fn delete_scope_compare_preset_from_sketch(&mut self, index: usize) -> bool {
+        if index >= self.waveform_trace_presets.len() {
+            self.status = "Saved scope compare set is no longer available.".to_string();
+            return false;
+        }
+        let preset = self.waveform_trace_presets.remove(index);
+        self.status = format!("Deleted scope compare set {} from Sketch.", preset.name);
+        true
+    }
+
     pub(in crate::gui) fn open_pinned_scope_compare(&mut self) -> bool {
         self.prune_scope_trace_pins();
         let Some(trace) = self.waveform_pinned_traces.first().copied() else {
