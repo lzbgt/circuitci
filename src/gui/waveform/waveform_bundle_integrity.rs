@@ -82,6 +82,10 @@ impl ScopeReportBundleArtifactState {
             Self::Untracked => "Untracked",
         }
     }
+
+    pub(super) fn is_problem(self) -> bool {
+        !matches!(self, Self::Ok)
+    }
 }
 
 pub(super) struct ScopeReportBundleIntegrityDetails {
@@ -361,6 +365,22 @@ pub(super) fn scope_report_bundle_integrity_details(
     ScopeReportBundleIntegrityDetails {
         rows,
         manifest_error,
+    }
+}
+
+pub(super) fn scope_report_bundle_integrity_projected_details(
+    details: &ScopeReportBundleIntegrityDetails,
+    problems_only: bool,
+) -> ScopeReportBundleIntegrityDetails {
+    let rows = details
+        .rows
+        .iter()
+        .filter(|row| !problems_only || row.state.is_problem())
+        .cloned()
+        .collect();
+    ScopeReportBundleIntegrityDetails {
+        rows,
+        manifest_error: details.manifest_error.clone(),
     }
 }
 

@@ -686,7 +686,8 @@ messages if an audit artifact was removed. A compact `Copy Path` control copies
 the latest bundle folder, index, or integrity audit file path, and older bundle
 rows can copy the folder path for issue trackers or lab notes. `Details` opens a transient
 integrity table with each artifact's OK/Missing/Changed state plus
-expected/current size and SHA-256 values, and can copy that detail set as CSV
+expected/current size and SHA-256 values, can reveal only missing, changed, or
+untracked problem artifacts, and can copy the current detail projection as CSV
 or Markdown for troubleshooting reports. If a recent bundle is missing required
 files or has files
 that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`

@@ -6,7 +6,8 @@ use super::{
     scope_region_stats_rows, scope_report_bundle_artifact_detail_rows,
     scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
     scope_report_bundle_integrity_details, scope_report_bundle_integrity_details_csv,
-    scope_report_bundle_integrity_details_markdown, scope_report_bundle_missing_artifacts,
+    scope_report_bundle_integrity_details_markdown,
+    scope_report_bundle_integrity_projected_details, scope_report_bundle_missing_artifacts,
     scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
     scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
     unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
@@ -914,6 +915,27 @@ fn scope_report_bundle_refresh_recreates_missing_artifacts() {
     assert!(changed_markdown.contains("| scope_plot.svg | Changed |"));
     assert!(changed_markdown.contains(changed_plot_row.4.as_deref().unwrap()));
     assert!(changed_markdown.contains(changed_plot_row.5.as_deref().unwrap()));
+    let problem_details = scope_report_bundle_integrity_projected_details(&changed_details, true);
+    assert!(
+        problem_details
+            .rows
+            .iter()
+            .any(|row| row.label == "scope_plot.svg")
+    );
+    assert!(
+        problem_details
+            .rows
+            .iter()
+            .all(|row| row.state.is_problem())
+    );
+    let problem_csv = scope_report_bundle_integrity_details_csv(&problem_details);
+    assert!(problem_csv.contains("scope_plot.svg,Changed,"));
+    assert!(!problem_csv.contains("index.html,OK,"));
+    let problem_markdown = scope_report_bundle_integrity_details_markdown(&problem_details);
+    assert!(problem_markdown.contains("| scope_plot.svg | Changed |"));
+    assert!(!problem_markdown.contains("| index.html | OK |"));
+    let all_details = scope_report_bundle_integrity_projected_details(&changed_details, false);
+    assert_eq!(all_details.rows.len(), changed_details.rows.len());
     app.preview_scope_report_bundle_refresh(&bundle);
     assert_eq!(app.waveform_bundle_refresh_preview, Some(bundle.clone()));
     app.confirm_scope_report_bundle_refresh(&filtered);

@@ -324,11 +324,12 @@ optional artifact integrity detail files, and loaded-waveform footprint source
 totals.
 `src/gui/waveform/waveform_bundle_recent.rs` owns recent-bundle
 folder/index/integrity-audit opening, path copy actions, missing-folder
-pruning, guarded refresh, and previewed/confirmed bounded old-bundle cleanup.
+pruning, integrity problem filtering, guarded refresh, and
+previewed/confirmed bounded old-bundle cleanup.
 `src/gui/waveform/waveform_bundle_integrity.rs` owns report-bundle artifact
 size/SHA-256 metadata, `artifact_manifest.csv`, missing/changed artifact status
-checks, expected/current artifact integrity detail rows, and report-friendly
-CSV/Markdown detail serialization.
+checks, expected/current artifact integrity detail rows, problem-only detail
+projection, and report-friendly CSV/Markdown detail serialization.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime

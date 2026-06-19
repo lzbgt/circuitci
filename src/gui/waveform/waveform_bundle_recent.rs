@@ -2,7 +2,8 @@ use super::waveform_bundle_integrity::{
     SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV, SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN,
     optional_size_label, scope_report_bundle_artifact_status,
     scope_report_bundle_integrity_details, scope_report_bundle_integrity_details_csv,
-    scope_report_bundle_integrity_details_markdown, short_optional_sha,
+    scope_report_bundle_integrity_details_markdown,
+    scope_report_bundle_integrity_projected_details, short_optional_sha,
 };
 use super::waveform_bundles::{
     output_bundle_base_dir, scope_report_bundle_index_path, write_scope_report_bundle_files,
@@ -230,16 +231,33 @@ impl CircuitCiApp {
     fn scope_report_bundle_integrity_details_ui(&mut self, ui: &mut egui::Ui, bundle: &str) {
         let bundle_path = Path::new(bundle);
         let details = scope_report_bundle_integrity_details(bundle_path);
+        let mut visible_details = scope_report_bundle_integrity_projected_details(
+            &details,
+            self.waveform_bundle_integrity_problems_only,
+        );
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Bundle Integrity Details");
                 ui.monospace(display_path_tail(bundle));
+                ui.checkbox(
+                    &mut self.waveform_bundle_integrity_problems_only,
+                    "Problems Only",
+                );
+                visible_details = scope_report_bundle_integrity_projected_details(
+                    &details,
+                    self.waveform_bundle_integrity_problems_only,
+                );
+                ui.label(format!(
+                    "{} / {} row(s)",
+                    visible_details.rows.len(),
+                    details.rows.len()
+                ));
                 if let Some(error) = &details.manifest_error {
                     ui.label(format!("Manifest: {error}"));
                 }
                 if ui.button("Copy Details CSV").clicked() {
                     ui.ctx()
-                        .copy_text(scope_report_bundle_integrity_details_csv(&details));
+                        .copy_text(scope_report_bundle_integrity_details_csv(&visible_details));
                     self.status = format!(
                         "Copied integrity details for {} as CSV.",
                         display_path_tail(bundle)
@@ -247,7 +265,9 @@ impl CircuitCiApp {
                 }
                 if ui.button("Copy Details Markdown").clicked() {
                     ui.ctx()
-                        .copy_text(scope_report_bundle_integrity_details_markdown(&details));
+                        .copy_text(scope_report_bundle_integrity_details_markdown(
+                            &visible_details,
+                        ));
                     self.status = format!(
                         "Copied integrity details for {} as Markdown.",
                         display_path_tail(bundle)
@@ -273,7 +293,7 @@ impl CircuitCiApp {
                             ui.label("Current SHA-256");
                             ui.label("Path");
                             ui.end_row();
-                            for row in &details.rows {
+                            for row in &visible_details.rows {
                                 ui.monospace(&row.label);
                                 ui.label(row.state.label());
                                 ui.monospace(optional_size_label(row.expected_size));
@@ -284,6 +304,9 @@ impl CircuitCiApp {
                                 ui.end_row();
                             }
                         });
+                    if visible_details.rows.is_empty() {
+                        ui.label("No missing, changed, or untracked bundle artifacts.");
+                    }
                 });
         });
     }
