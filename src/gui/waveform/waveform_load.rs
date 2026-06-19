@@ -1,5 +1,11 @@
 use crate::gui::CircuitCiApp;
 use eframe::egui;
+use std::io::Read;
+use std::path::Path;
+
+const PREFLIGHT_SAMPLE_BYTES: usize = 64 * 1024;
+const LARGE_WAVEFORM_BYTES: u64 = 50 * 1024 * 1024;
+const LARGE_WAVEFORM_ROWS: usize = 1_000_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct WaveformLoadDiagnostic {
@@ -10,6 +16,14 @@ pub(crate) struct WaveformLoadDiagnostic {
     pub(super) probes: usize,
     pub(super) elapsed_ms: u128,
     pub(super) detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformLoadPreflight {
+    pub(super) bytes: Option<u64>,
+    pub(super) estimated_rows: Option<usize>,
+    pub(super) warning: bool,
+    pub(super) summary: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +42,32 @@ impl WaveformLoadStatusFilter {
             Self::Loaded => "Loaded",
             Self::Skipped => "Skipped",
         }
+    }
+}
+
+pub(super) fn waveform_load_preflight(path: &Path) -> WaveformLoadPreflight {
+    let bytes = path.metadata().ok().map(|metadata| metadata.len());
+    let estimated_rows = estimate_waveform_data_rows(path, bytes).ok().flatten();
+    let warning = bytes.is_some_and(|bytes| bytes >= LARGE_WAVEFORM_BYTES)
+        || estimated_rows.is_some_and(|rows| rows >= LARGE_WAVEFORM_ROWS);
+    let mut parts = Vec::new();
+    match bytes {
+        Some(bytes) => parts.push(format!(
+            "{} on disk",
+            format_waveform_load_bytes(Some(bytes))
+        )),
+        None => parts.push("size unknown".to_string()),
+    }
+    match estimated_rows {
+        Some(rows) => parts.push(format!("~{rows} data row(s)")),
+        None => parts.push("row estimate unavailable".to_string()),
+    }
+    let summary = parts.join(", ");
+    WaveformLoadPreflight {
+        bytes,
+        estimated_rows,
+        warning,
+        summary,
     }
 }
 
@@ -134,6 +174,37 @@ impl CircuitCiApp {
                 });
         });
     }
+}
+
+fn estimate_waveform_data_rows(path: &Path, bytes: Option<u64>) -> std::io::Result<Option<usize>> {
+    let Some(total_bytes) = bytes else {
+        return Ok(None);
+    };
+    if total_bytes == 0 {
+        return Ok(Some(0));
+    }
+    let mut file = std::fs::File::open(path)?;
+    let mut buffer = vec![0_u8; PREFLIGHT_SAMPLE_BYTES.min(total_bytes as usize)];
+    let bytes_read = file.read(&mut buffer)?;
+    if bytes_read == 0 {
+        return Ok(Some(0));
+    }
+    buffer.truncate(bytes_read);
+    let line_breaks = buffer.iter().filter(|byte| **byte == b'\n').count();
+    let sample_rows = line_breaks.saturating_sub(1);
+    if bytes_read as u64 >= total_bytes {
+        return Ok(Some(sample_rows));
+    }
+    if line_breaks <= 1 {
+        return Ok(None);
+    }
+    let estimated_total_lines = ((line_breaks as u128) * (total_bytes as u128)
+        + (bytes_read as u128).saturating_sub(1))
+        / bytes_read as u128;
+    let estimated_rows = estimated_total_lines
+        .saturating_sub(1)
+        .min(usize::MAX as u128) as usize;
+    Ok(Some(estimated_rows))
 }
 
 pub(super) fn waveform_load_diagnostic_visible_indexes(

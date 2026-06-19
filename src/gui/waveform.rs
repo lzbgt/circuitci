@@ -22,6 +22,7 @@ mod waveform_view;
 pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
+use waveform_load::waveform_load_preflight;
 pub(super) use waveform_load::{WaveformLoadDiagnostic, WaveformLoadStatusFilter};
 #[cfg(test)]
 use waveform_load::{waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv};
@@ -627,7 +628,8 @@ where
         }
         let started_at = Instant::now();
         let path = Path::new(waveform);
-        let bytes = path.metadata().ok().map(|metadata| metadata.len());
+        let preflight = waveform_load_preflight(path);
+        let bytes = preflight.bytes;
         on_progress(
             "Loading waveforms",
             format!(
@@ -636,6 +638,15 @@ where
                 waveform_count,
                 waveform
             ),
+        );
+        let preflight_stage = if preflight.warning {
+            "Large waveform artifact"
+        } else {
+            "Waveform preflight"
+        };
+        on_progress(
+            preflight_stage,
+            format!("{}: {}.", waveform, preflight.summary),
         );
         match load_waveform_csv_with_progress_and_cancel(
             path,

@@ -12,7 +12,8 @@ use super::{
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
     select_scope_trigger_event, waveform_load_diagnostic_visible_indexes,
-    waveform_load_diagnostics_csv, waveform_probe_choices, waveform_probe_group_choices,
+    waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
+    waveform_probe_group_choices,
 };
 
 #[test]
@@ -107,6 +108,59 @@ fn report_waveform_loader_records_loaded_and_skipped_diagnostics() {
             .detail
             .contains("Failed to read waveform CSV")
     );
+}
+
+#[test]
+fn waveform_load_preflight_estimates_rows_and_warns_for_large_artifacts() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "time v(out)").unwrap();
+    for index in 0..10 {
+        writeln!(file, "{}e-6 {}", index, index).unwrap();
+    }
+    let preflight = waveform_load_preflight(file.path());
+
+    assert_eq!(preflight.estimated_rows, Some(10));
+    assert!(!preflight.warning);
+    assert!(preflight.summary.contains("10 data row"));
+
+    let large_file = tempfile::NamedTempFile::new().unwrap();
+    large_file.as_file().set_len(51 * 1024 * 1024).unwrap();
+    let preflight = waveform_load_preflight(large_file.path());
+
+    assert!(preflight.warning);
+    assert!(preflight.summary.contains("MiB"));
+}
+
+#[test]
+fn report_waveform_loader_emits_preflight_progress_before_parsing() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let waveform_path = temp_dir.path().join("scope.csv");
+    std::fs::write(&waveform_path, "time v(out)\n0 0\n1e-6 3.3\n").unwrap();
+    let report = crate::reports::ValidationReport::from_parts(
+        "project".to_string(),
+        "default".to_string(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        vec![waveform_path.to_string_lossy().into_owned()],
+        "validate".to_string(),
+    );
+    let mut progress = Vec::new();
+
+    load_report_waveforms_with_progress_and_cancel(
+        &report,
+        |stage, detail| progress.push((stage, detail)),
+        || false,
+    )
+    .unwrap();
+
+    assert!(progress.iter().any(|(stage, detail)| {
+        *stage == "Waveform preflight"
+            && detail.contains("scope.csv")
+            && detail.contains("2 data row")
+    }));
 }
 
 #[test]

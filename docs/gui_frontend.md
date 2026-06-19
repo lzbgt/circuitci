@@ -227,10 +227,10 @@ transient trace pinning/comparison overlays, per-trace overlay visibility/color
 styles, derived waveform channels, promotion of representable derived channels
 to Board IR probes/assertions, and graph-hover/runtime activity extraction from
 loaded waveform artifacts. Validation workers parse waveform artifacts with
-progress/cancel checks and record loaded/skipped file diagnostics before the
+bounded preflight size/row estimates, large-artifact progress warnings, progress/cancel checks, and loaded/skipped file diagnostics before the
 GUI applies the completed report, keeping large CSV files out of the UI thread
 while making missing traces and slow artifacts filterable and exportable from Scopes.
-`src/gui/waveform/waveform_load.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/skipped CSV artifacts.
+`src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates plus filterable/copyable transient waveform-load diagnostics for loaded/skipped CSV artifacts.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset
