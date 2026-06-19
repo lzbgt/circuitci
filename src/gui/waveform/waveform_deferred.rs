@@ -29,6 +29,12 @@ impl CircuitCiApp {
             .iter()
             .map(WaveformLoadRequest::probe_count)
             .sum::<usize>();
+        let remaining_probe_requests =
+            deferred_waveform_remaining_probe_requests(artifacts, &visible_indexes);
+        let remaining_probe_count = remaining_probe_requests
+            .iter()
+            .map(WaveformLoadRequest::probe_count)
+            .sum::<usize>();
         let mut load_probe_requests = None;
         ui.horizontal_wrapped(|ui| {
             ui.menu_button(format!("Deferred Waveforms ({})", artifacts.len()), |ui| {
@@ -94,9 +100,23 @@ impl CircuitCiApp {
                                         )]);
                                     ui.close();
                                 }
+                                let unloaded_probes =
+                                    deferred_waveform_artifact_unloaded_probe_labels(artifact);
+                                if ui
+                                    .add_enabled(
+                                        !unloaded_probes.is_empty(),
+                                        egui::Button::new("Load Remaining"),
+                                    )
+                                    .clicked()
+                                {
+                                    load_probe_requests =
+                                        Some(vec![WaveformLoadRequest::selected_columns(
+                                            artifact.path.clone(),
+                                            unloaded_probes.clone(),
+                                        )]);
+                                    ui.close();
+                                }
                                 ui.menu_button("Columns", |ui| {
-                                    let unloaded_probes =
-                                        deferred_waveform_artifact_unloaded_probe_labels(artifact);
                                     ui.label(format!(
                                         "{} unloaded preview column(s)",
                                         unloaded_probes.len()
@@ -232,6 +252,15 @@ impl CircuitCiApp {
             {
                 load_probe_requests = Some(matching_probe_requests);
             }
+            if ui
+                .add_enabled(
+                    !remaining_probe_requests.is_empty(),
+                    egui::Button::new(format!("Load Remaining Preview ({remaining_probe_count})")),
+                )
+                .clicked()
+            {
+                load_probe_requests = Some(remaining_probe_requests);
+            }
         });
         if let Some(requests) = load_probe_requests {
             self.load_deferred_waveform_requests(requests);
@@ -284,6 +313,21 @@ pub(super) fn deferred_waveform_matching_probe_requests(
         .filter_map(|&index| artifacts.get(index))
         .filter_map(|artifact| {
             let probes = deferred_waveform_artifact_matching_probe_labels(artifact, query);
+            (!probes.is_empty())
+                .then(|| WaveformLoadRequest::selected_columns(artifact.path.clone(), probes))
+        })
+        .collect()
+}
+
+pub(super) fn deferred_waveform_remaining_probe_requests(
+    artifacts: &[DeferredWaveformArtifact],
+    visible_indexes: &[usize],
+) -> Vec<WaveformLoadRequest> {
+    visible_indexes
+        .iter()
+        .filter_map(|&index| artifacts.get(index))
+        .filter_map(|artifact| {
+            let probes = deferred_waveform_artifact_unloaded_probe_labels(artifact);
             (!probes.is_empty())
                 .then(|| WaveformLoadRequest::selected_columns(artifact.path.clone(), probes))
         })

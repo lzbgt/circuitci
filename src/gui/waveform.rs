@@ -22,7 +22,7 @@ mod waveform_view;
 use waveform_deferred::{
     deferred_waveform_artifact_picked_probe_labels,
     deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
-    deferred_waveform_matching_probe_requests,
+    deferred_waveform_matching_probe_requests, deferred_waveform_remaining_probe_requests,
 };
 pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
