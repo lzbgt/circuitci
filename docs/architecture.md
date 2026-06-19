@@ -81,7 +81,7 @@ projection for graph items, minimap exclusion, probe/bundle/label badges, and
 runtime `scope` chip hit-testing. `gui::sketch_scope_activity` owns the
 runtime Scope Activity canvas legend, searchable loaded-trace browser,
 Cursor A scrub control, per-trace edge stepping, cursor-sampled value/time readouts,
-bounded per-trace sparklines, and overlay visibility checkbox.
+bounded per-trace sparklines, compare-pin actions, and overlay visibility checkbox.
 `gui::sketch_canvas_interaction` owns reusable viewport
 zoom math, schematic canvas sizing, wire-target hit testing, route-handle hit
 testing, and placement orientation cycling. Selection boxes are transient GUI

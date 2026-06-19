@@ -150,6 +150,20 @@ impl CircuitCiApp {
                                     {
                                         self.open_scope_probe_target(row.target.clone());
                                     }
+                                    let pinned =
+                                        self.scope_probe_target_pinned_for_compare(&row.target);
+                                    if ui
+                                        .add_enabled(
+                                            !pinned,
+                                            egui::Button::new(if pinned { "Pinned" } else { "Pin" }),
+                                        )
+                                        .on_hover_text(
+                                            "Pin this loaded trace into the Scopes compare overlay.",
+                                        )
+                                        .clicked()
+                                    {
+                                        self.pin_scope_probe_target_for_compare(row.target.clone());
+                                    }
                                     let previous_edge = runtime_scope_probe_edge_jump(
                                         &self.waveforms,
                                         self.selected_waveform,

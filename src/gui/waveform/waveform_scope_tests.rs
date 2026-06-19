@@ -503,6 +503,63 @@ fn runtime_scope_probe_edge_jump_selects_previous_next_and_wraps() {
 }
 
 #[test]
+fn scope_probe_target_pin_for_compare_adds_loaded_trace_once() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)
+0,0,0.1
+0.000001,1,0.2
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "i(load)".to_string(),
+    };
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    assert!(app.pin_scope_probe_target_for_compare(target.clone()));
+    assert!(app.scope_probe_target_pinned_for_compare(&target));
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1
+        }]
+    );
+
+    assert!(app.pin_scope_probe_target_for_compare(target));
+    assert_eq!(app.waveform_pinned_traces.len(), 1);
+}
+
+#[test]
+fn scope_probe_target_pin_for_compare_reports_missing_loaded_trace() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)
+0,0
+0.000001,1
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "i(load)".to_string(),
+    };
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    assert!(!app.pin_scope_probe_target_for_compare(target));
+    assert!(app.waveform_pinned_traces.is_empty());
+    assert!(app.status.contains("is not loaded yet"));
+}
+
+#[test]
 fn waveform_time_range_for_view_returns_microseconds() {
     let waveform = parse_waveform_csv_text(
         "time v(out)

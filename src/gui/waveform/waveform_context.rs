@@ -1,4 +1,4 @@
-use super::{WaveformProbe, WaveformView};
+use super::{WaveformProbe, WaveformTraceRef, WaveformView};
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
@@ -20,6 +20,40 @@ impl CircuitCiApp {
                 target.probe_name, target.scenario_name
             );
         }
+    }
+
+    pub(in crate::gui) fn scope_probe_target_pinned_for_compare(
+        &self,
+        target: &ScopeProbeTarget,
+    ) -> bool {
+        self.scope_probe_target_trace_ref(target)
+            .is_some_and(|trace| self.waveform_pinned_traces.contains(&trace))
+    }
+
+    pub(in crate::gui) fn pin_scope_probe_target_for_compare(
+        &mut self,
+        target: ScopeProbeTarget,
+    ) -> bool {
+        let Some(trace) = self.scope_probe_target_trace_ref(&target) else {
+            self.status = format!(
+                "Scope trace {} from scenario {} is not loaded yet.",
+                target.probe_name, target.scenario_name
+            );
+            return false;
+        };
+        if self.waveform_pinned_traces.contains(&trace) {
+            self.status = format!(
+                "Scope trace {} is already pinned for comparison.",
+                target.probe_name
+            );
+            return true;
+        }
+        self.waveform_pinned_traces.push(trace);
+        self.status = format!(
+            "Pinned scope trace {} for comparison from Sketch.",
+            target.probe_name
+        );
+        true
     }
 
     pub(in crate::gui) fn remember_scope_probe_target(
@@ -59,6 +93,15 @@ impl CircuitCiApp {
         self.clear_waveform_view_history();
         self.waveform_playing = false;
         true
+    }
+
+    fn scope_probe_target_trace_ref(&self, target: &ScopeProbeTarget) -> Option<WaveformTraceRef> {
+        let (waveform_index, probe_index) =
+            find_scope_probe(&self.waveforms, &target.scenario_name, &target.probe_name)?;
+        Some(WaveformTraceRef {
+            waveform_index,
+            probe_index,
+        })
     }
 
     pub(super) fn focus_selected_scope_schematic_context(&mut self) -> bool {
