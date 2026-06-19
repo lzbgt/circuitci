@@ -91,6 +91,18 @@ impl CircuitCiApp {
                         }
                         if ui
                             .add_enabled(
+                                activity_snapshot_count > 0,
+                                egui::Button::new("Clear Activity Snapshots"),
+                            )
+                            .on_hover_text(
+                                "Clear only Scope Activity measurement snapshots; keep cursor, trigger, and region snapshots.",
+                            )
+                            .clicked()
+                        {
+                            self.clear_scope_activity_snapshots_from_sketch();
+                        }
+                        if ui
+                            .add_enabled(
                                 !visible_indexes.is_empty(),
                                 egui::Button::new("Snap Visible"),
                             )
@@ -402,6 +414,19 @@ impl CircuitCiApp {
         );
     }
 
+    pub(super) fn clear_scope_activity_snapshots_from_sketch(&mut self) -> usize {
+        let before = self.waveform_measurement_snapshots.len();
+        self.waveform_measurement_snapshots
+            .retain(|snapshot| snapshot.source != SCOPE_ACTIVITY_SNAPSHOT_SOURCE);
+        let removed = before.saturating_sub(self.waveform_measurement_snapshots.len());
+        self.status = if removed == 0 {
+            "No Scope Activity snapshots to clear.".to_string()
+        } else {
+            format!("Cleared {removed} Scope Activity snapshot(s).")
+        };
+        removed
+    }
+
     pub(super) fn capture_visible_scope_activity_snapshots_from_sketch(
         &mut self,
         targets: &[RuntimeScopeActivityTarget],
@@ -434,6 +459,8 @@ impl CircuitCiApp {
     }
 }
 
+const SCOPE_ACTIVITY_SNAPSHOT_SOURCE: &str = "scope activity";
+
 pub(super) fn runtime_scope_activity_visible_indexes(
     targets: &[RuntimeScopeActivityTarget],
     query: &str,
@@ -463,7 +490,7 @@ pub(super) fn clamp_runtime_scope_activity_cursor_us(cursor_us: f64, range: (f64
 pub(super) fn scope_activity_snapshot_count(snapshots: &[ScopeMeasurementSnapshot]) -> usize {
     snapshots
         .iter()
-        .filter(|snapshot| snapshot.source == "scope activity")
+        .filter(|snapshot| snapshot.source == SCOPE_ACTIVITY_SNAPSHOT_SOURCE)
         .count()
 }
 
@@ -682,5 +709,44 @@ mod tests {
             ScopeSnapshotSourceFilter::Region
         );
         assert_eq!(app.status, "No Scope Activity snapshots captured yet.");
+    }
+
+    #[test]
+    fn clear_scope_activity_snapshots_keeps_other_sources() {
+        let mut app = CircuitCiApp {
+            waveform_measurement_snapshots: vec![
+                snapshot("cursor selected"),
+                snapshot("scope activity"),
+                snapshot("region selected"),
+                snapshot("scope activity"),
+                snapshot("trigger"),
+            ],
+            ..Default::default()
+        };
+
+        assert_eq!(app.clear_scope_activity_snapshots_from_sketch(), 2);
+
+        let sources = app
+            .waveform_measurement_snapshots
+            .iter()
+            .map(|snapshot| snapshot.source.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            sources,
+            vec!["cursor selected", "region selected", "trigger"]
+        );
+        assert_eq!(app.status, "Cleared 2 Scope Activity snapshot(s).");
+    }
+
+    #[test]
+    fn clear_scope_activity_snapshots_reports_noop() {
+        let mut app = CircuitCiApp {
+            waveform_measurement_snapshots: vec![snapshot("cursor selected")],
+            ..Default::default()
+        };
+
+        assert_eq!(app.clear_scope_activity_snapshots_from_sketch(), 0);
+        assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+        assert_eq!(app.status, "No Scope Activity snapshots to clear.");
     }
 }

@@ -86,7 +86,8 @@ runtime `scope` chip hit-testing.
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, bounded per-trace sparklines, activity-snapshot status plus
-visible-list snapshot capture, source-filtered Open Snapshots routing, and
+visible-list snapshot capture, source-specific snapshot clearing,
+source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
@@ -118,7 +119,8 @@ and kind-aware pin chips. The on-canvas Scope Activity legend, searchable
 loaded-trace jump rows, Cursor A scrub control, cursor-sampled value/time
 readouts, bounded per-trace sparklines, per-trace edge stepping, compare
 pin/unpin/clear actions, Open Compare jumps, live activity-snapshot status,
-visible-list snapshot capture, source-filtered Open Snapshots routing, and
+visible-list snapshot capture, source-specific snapshot clearing,
+source-filtered Open Snapshots routing, and
 matching `Circuit View` toggle control only this transient runtime
 overlay; they must not persist into Board IR.
 `src/gui/sketch_canvas_render.rs` owns the
