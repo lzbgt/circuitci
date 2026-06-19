@@ -14,9 +14,15 @@ use super::{
     WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
     scope_trace_color_for_style,
 };
-use crate::gui::sketch::SketchSelection;
+use crate::gui::sketch::{
+    SketchSelection, SketchViewport, layout_sketch_graph_viewport, runtime_scope_chip_rect,
+};
+use crate::gui::sketch_canvas_hits::{
+    SketchCanvasHitContext, hover_targets, runtime_scope_activity_count,
+};
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
+use eframe::egui;
 
 #[test]
 fn scope_trace_lanes_split_visible_traces_by_inferred_unit() {
@@ -275,6 +281,67 @@ fn runtime_scope_probe_target_matches_loaded_node_trace() {
             scenario_name: "scope/run/gui_transient/waveform.csv".to_string(),
             probe_name: "i(R1)".to_string(),
         })
+    );
+}
+
+#[test]
+fn runtime_scope_overlay_visibility_gates_chip_hover_but_keeps_activity_count() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(R1)
+0.0 0.0 0.001
+1e-6 3.3 0.003
+",
+        "scope/run/gui_transient/waveform.csv",
+    )
+    .unwrap();
+    let snapshot = probe_snapshot();
+    let graph = layout_sketch_graph_viewport(
+        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(500.0, 320.0)),
+        &snapshot,
+        SketchViewport {
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        },
+    );
+    let component = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+        .unwrap();
+    let chip_center = runtime_scope_chip_rect(component).center();
+    let visible_context = SketchCanvasHitContext {
+        graph: &graph,
+        hierarchy_view: None,
+        bundle_badges: &[],
+        hierarchy_connector_badges: &[],
+        net_label_badges: &[],
+        component_label_badges: &[],
+        minimap: None,
+        waveforms: std::slice::from_ref(&waveform),
+        selected_waveform: 0,
+        waveform_cursor_a_us: 0.5,
+        snapshot: &snapshot,
+        runtime_scope_overlay_visible: true,
+    };
+
+    assert_eq!(runtime_scope_activity_count(&visible_context), 2);
+    assert_eq!(
+        hover_targets(&visible_context, Some(chip_center))
+            .runtime_scope_node
+            .map(|node| &node.selection),
+        Some(&SketchSelection::Component("R1".to_string()))
+    );
+
+    let hidden_context = SketchCanvasHitContext {
+        runtime_scope_overlay_visible: false,
+        ..visible_context
+    };
+
+    assert_eq!(runtime_scope_activity_count(&hidden_context), 2);
+    assert!(
+        hover_targets(&hidden_context, Some(chip_center))
+            .runtime_scope_node
+            .is_none()
     );
 }
 

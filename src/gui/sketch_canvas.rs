@@ -8,6 +8,7 @@ use super::sketch::{
 };
 use super::sketch_canvas_hits::{
     SketchCanvasHitContext, hover_targets as collect_hover_targets, position_hits_interactive_item,
+    runtime_scope_activity_count,
 };
 use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, schematic_canvas_size, wire_drag_target_at,
@@ -153,6 +154,7 @@ impl CircuitCiApp {
             selected_waveform: self.selected_waveform,
             waveform_cursor_a_us: self.waveform_cursor_a_us,
             snapshot,
+            runtime_scope_overlay_visible: self.sketch_runtime_scope_overlay_visible,
         };
         let hover_targets = collect_hover_targets(&hit_context, pointer_hover);
         let pointer_over_minimap = hover_targets.pointer_over_minimap;
@@ -215,8 +217,10 @@ impl CircuitCiApp {
             selected_waveform: self.selected_waveform,
             waveform_cursor_a_us: self.waveform_cursor_a_us,
             snapshot,
+            runtime_scope_overlay_visible: self.sketch_runtime_scope_overlay_visible,
         };
         let hover_targets = collect_hover_targets(&hit_context, pointer_hover);
+        let runtime_scope_activity_count = runtime_scope_activity_count(&hit_context);
         let hovered_node = hover_targets.node;
         let hovered_anchor = hover_targets.anchor;
         let hovered_route_handle = hover_targets.route_handle;
@@ -367,15 +371,20 @@ impl CircuitCiApp {
                 1.0
             };
             let selected = self.selection_is_selected(&node.selection);
-            let runtime_activity = runtime_probe_activity_for_selection(
-                &self.waveforms,
-                self.selected_waveform,
-                self.waveform_cursor_a_us,
-                &node.selection,
-                snapshot,
-            );
-            let runtime_scope_chip_hovered =
-                hover_targets.runtime_scope_chip_hovered(&node.selection);
+            let runtime_activity = self
+                .sketch_runtime_scope_overlay_visible
+                .then(|| {
+                    runtime_probe_activity_for_selection(
+                        &self.waveforms,
+                        self.selected_waveform,
+                        self.waveform_cursor_a_us,
+                        &node.selection,
+                        snapshot,
+                    )
+                })
+                .flatten();
+            let runtime_scope_chip_hovered = self.sketch_runtime_scope_overlay_visible
+                && hover_targets.runtime_scope_chip_hovered(&node.selection);
             draw_sketch_node(
                 &painter,
                 node,
@@ -385,6 +394,7 @@ impl CircuitCiApp {
                 opacity,
             );
         }
+        self.sketch_runtime_scope_activity_legend(ui, rect, runtime_scope_activity_count);
         for badge in &net_label_badges {
             let dragged = self
                 .sketch_net_label_drag
@@ -688,31 +698,36 @@ impl CircuitCiApp {
                         && node.rect.contains(position)
                 })
                 .map(|node| node.selection.clone());
-            let clicked_runtime_scope_target = graph
-                .nodes
-                .iter()
-                .find(|node| {
-                    hierarchy_view
-                        .as_ref()
-                        .is_none_or(|view| view.interaction_visible(&node.selection))
-                        && runtime_scope_chip_rect(node).contains(position)
-                        && runtime_probe_activity_for_selection(
-                            &self.waveforms,
-                            self.selected_waveform,
-                            self.waveform_cursor_a_us,
-                            &node.selection,
-                            snapshot,
-                        )
-                        .is_some()
+            let clicked_runtime_scope_target = self
+                .sketch_runtime_scope_overlay_visible
+                .then(|| {
+                    graph
+                        .nodes
+                        .iter()
+                        .find(|node| {
+                            hierarchy_view
+                                .as_ref()
+                                .is_none_or(|view| view.interaction_visible(&node.selection))
+                                && runtime_scope_chip_rect(node).contains(position)
+                                && runtime_probe_activity_for_selection(
+                                    &self.waveforms,
+                                    self.selected_waveform,
+                                    self.waveform_cursor_a_us,
+                                    &node.selection,
+                                    snapshot,
+                                )
+                                .is_some()
+                        })
+                        .and_then(|node| {
+                            runtime_scope_probe_target_for_selection(
+                                &self.waveforms,
+                                self.selected_waveform,
+                                &node.selection,
+                                snapshot,
+                            )
+                        })
                 })
-                .and_then(|node| {
-                    runtime_scope_probe_target_for_selection(
-                        &self.waveforms,
-                        self.selected_waveform,
-                        &node.selection,
-                        snapshot,
-                    )
-                });
+                .flatten();
             let clicked_wire = if clicked_anchor.is_none()
                 && clicked_component_label_badge.is_none()
                 && clicked.is_none()
@@ -1501,15 +1516,19 @@ impl CircuitCiApp {
             response.context_menu(|ui| {
                 self.sketch_node_context_menu(ui, node, snapshot, rect, viewport, pointer_hover);
             });
-            let runtime_lines = runtime_probe_lines_for_selection(
-                &self.waveforms,
-                self.selected_waveform,
-                self.waveform_cursor_a_us,
-                &node.selection,
-                snapshot,
-            );
-            let runtime_scope_chip_hovered =
-                hover_targets.runtime_scope_chip_hovered(&node.selection);
+            let runtime_lines = if self.sketch_runtime_scope_overlay_visible {
+                runtime_probe_lines_for_selection(
+                    &self.waveforms,
+                    self.selected_waveform,
+                    self.waveform_cursor_a_us,
+                    &node.selection,
+                    snapshot,
+                )
+            } else {
+                Vec::new()
+            };
+            let runtime_scope_chip_hovered = self.sketch_runtime_scope_overlay_visible
+                && hover_targets.runtime_scope_chip_hovered(&node.selection);
             response.on_hover_ui(|ui| {
                 sketch_hover_tooltip(ui, node, &runtime_lines);
                 if runtime_scope_chip_hovered {
@@ -1558,5 +1577,61 @@ impl CircuitCiApp {
         self.sketch_selection_quick_toolbar(ui, rect, &graph);
         self.sketch_net_label_inline_editor(ui, &net_label_badges, snapshot);
         self.sketch_component_inline_editor(ui, &graph);
+    }
+
+    fn sketch_runtime_scope_activity_legend(
+        &mut self,
+        ui: &egui::Ui,
+        canvas_rect: egui::Rect,
+        target_count: usize,
+    ) {
+        if target_count == 0 {
+            return;
+        }
+        let legend_size = egui::vec2(248.0, 56.0);
+        let pos = canvas_rect.right_top()
+            + egui::vec2(
+                -(legend_size.x + 12.0),
+                12.0 + self.sketch_hierarchy_focus.as_ref().map_or(0.0, |_| 30.0),
+            );
+        egui::Area::new(egui::Id::new("sketch_runtime_scope_activity_legend"))
+            .order(egui::Order::Foreground)
+            .fixed_pos(pos)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.set_min_width(legend_size.x);
+                    ui.horizontal(|ui| {
+                        let (swatch_rect, _) = ui
+                            .allocate_exact_size(egui::vec2(44.0, 18.0), egui::Sense::hover());
+                        ui.painter().rect_filled(
+                            swatch_rect,
+                            4.0,
+                            egui::Color32::from_rgb(20, 70, 55),
+                        );
+                        ui.painter().rect_stroke(
+                            swatch_rect,
+                            4.0,
+                            egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 235, 170)),
+                            egui::StrokeKind::Inside,
+                        );
+                        ui.painter().text(
+                            swatch_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "scope",
+                            egui::FontId::monospace(10.5),
+                            egui::Color32::WHITE,
+                        );
+                        ui.strong("Scope Activity");
+                        ui.label(format!("{target_count} targets"));
+                    });
+                    ui.checkbox(
+                        &mut self.sketch_runtime_scope_overlay_visible,
+                        "Show on schematic",
+                    )
+                    .on_hover_text(
+                        "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
+                    );
+                });
+            });
     }
 }

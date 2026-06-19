@@ -34,6 +34,14 @@ impl CircuitCiApp {
                     "Derived bundles are navigation overlays for similarly named nets. They are not components, pins, or required circuit connections.",
                 );
                 ui.label("Default view shows the connected schematic network; enable overlays only when auditing imported buses or grouped nets.");
+                ui.separator();
+                ui.checkbox(
+                    &mut self.sketch_runtime_scope_overlay_visible,
+                    "Show runtime scope activity",
+                )
+                .on_hover_text(
+                    "Shows transient tinting and clickable scope chips for loaded waveform traces. This is a runtime observation overlay, not a circuit element.",
+                );
             });
     }
 

@@ -27,6 +27,7 @@ pub(super) struct SketchCanvasHitContext<'a, 'runtime> {
     pub(super) selected_waveform: usize,
     pub(super) waveform_cursor_a_us: f64,
     pub(super) snapshot: &'runtime ProjectSnapshot,
+    pub(super) runtime_scope_overlay_visible: bool,
 }
 
 #[derive(Default)]
@@ -88,25 +89,16 @@ pub(super) fn hover_targets<'a>(
     let node = context.graph.nodes.iter().find(|node| {
         selection_visible(context.hierarchy_view, &node.selection) && node.rect.contains(position)
     });
-    let runtime_scope_node = context.graph.nodes.iter().find(|node| {
-        selection_visible(context.hierarchy_view, &node.selection)
-            && runtime_scope_chip_rect(node).contains(position)
-            && runtime_probe_activity_for_selection(
-                context.waveforms,
-                context.selected_waveform,
-                context.waveform_cursor_a_us,
-                &node.selection,
-                context.snapshot,
-            )
-            .is_some()
-            && runtime_scope_probe_target_for_selection(
-                context.waveforms,
-                context.selected_waveform,
-                &node.selection,
-                context.snapshot,
-            )
-            .is_some()
-    });
+    let runtime_scope_node = context
+        .runtime_scope_overlay_visible
+        .then(|| {
+            context.graph.nodes.iter().find(|node| {
+                selection_visible(context.hierarchy_view, &node.selection)
+                    && runtime_scope_chip_rect(node).contains(position)
+                    && node_has_runtime_scope_activity(context, node)
+            })
+        })
+        .flatten();
     let anchor = context.graph.pin_anchors.iter().find(|anchor| {
         anchor_visible(context.hierarchy_view, anchor) && anchor.pos.distance(position) <= 8.0
     });
@@ -207,6 +199,18 @@ pub(super) fn position_hits_interactive_item(
             .is_some_and(|minimap| minimap.rect.contains(position))
 }
 
+pub(super) fn runtime_scope_activity_count(context: &SketchCanvasHitContext<'_, '_>) -> usize {
+    context
+        .graph
+        .nodes
+        .iter()
+        .filter(|node| {
+            selection_visible(context.hierarchy_view, &node.selection)
+                && node_has_runtime_scope_activity(context, node)
+        })
+        .count()
+}
+
 fn selection_visible(view: Option<&SketchHierarchyView>, selection: &SketchSelection) -> bool {
     view.is_none_or(|view| view.interaction_visible(selection))
 }
@@ -225,4 +229,25 @@ fn probe_badge_visible(view: Option<&SketchHierarchyView>, badge: &SketchProbeBa
 
 fn bundle_badge_visible(view: Option<&SketchHierarchyView>, badge: &SketchNetBundleBadge) -> bool {
     view.is_none_or(|view| view.bundle_badge_visible(badge))
+}
+
+fn node_has_runtime_scope_activity(
+    context: &SketchCanvasHitContext<'_, '_>,
+    node: &SketchNode,
+) -> bool {
+    runtime_probe_activity_for_selection(
+        context.waveforms,
+        context.selected_waveform,
+        context.waveform_cursor_a_us,
+        &node.selection,
+        context.snapshot,
+    )
+    .is_some()
+        && runtime_scope_probe_target_for_selection(
+            context.waveforms,
+            context.selected_waveform,
+            &node.selection,
+            context.snapshot,
+        )
+        .is_some()
 }

@@ -184,7 +184,9 @@ dot-qualified, and common paired interface nets. Bundle overlays are a visual
 navigation aid over scalar Board IR nets and do not persist bus evidence; the
 Sketch canvas defaults them off so imported examples open as a connected
 schematic network first, with the `Circuit View` toggle enabling the helper
-overlay only when users explicitly audit derived groups.
+overlay only when users explicitly audit derived groups. The same panel owns
+the runtime-only Scope Activity overlay toggle; those chips and tints mark
+loaded waveform trace targets and are not schematic components, pins, or nets.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
 connector label metadata under `board.schematic.net_labels`, plus label badge
 layout, drawing, hit-testing, typed create-or-reuse placement, inline
@@ -401,8 +403,9 @@ form:
   menus, placed net-label/off-page connector badges that select the underlying
   Board IR net, can be moved by dragging, accept active-wire drops onto their
   underlying net, and can be converted or deleted from their context menu,
-  runtime tinting, hoverable/clickable `scope` activity chips, hover readouts,
-  and context-menu Scopes jumps for matching loaded waveform probes,
+  runtime tinting, an on-canvas Scope Activity legend/toggle,
+  hoverable/clickable `scope` activity chips, hover readouts, and context-menu
+  Scopes jumps for matching loaded waveform probes,
   primary-toolbar probe controls that add voltage probes for selected nets or
   current/power probes for selected components,
   one-click `Run + Scopes` validation from the schematic toolbar,

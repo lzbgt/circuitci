@@ -67,10 +67,13 @@ filtered Scopes state into an existing `scope_report_bundle_*` folder.
 
 The Sketch canvas defaults derived net-bundle overlays off so imported examples
 present the connected circuit network first; users can enable them from the
-`Circuit View` panel when they need scalar-net grouping aids. Scopes `Run`
-prepares an inspectable waveform path by adding a generated transient voltage
-probe when a schematic has no analog probes, and the selected trace controls
-include a bounded frequency-domain peak readout for transient waveforms.
+`Circuit View` panel when they need scalar-net grouping aids. Runtime Scope
+Activity chips and tints are also transient observation overlays: the canvas
+legend and `Circuit View` toggle can hide or restore them without editing Board
+IR. Scopes `Run` prepares an inspectable waveform path by adding a generated
+transient voltage probe when a schematic has no analog probes, and the selected
+trace controls include a bounded frequency-domain peak readout for transient
+waveforms.
 
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_hits` owns canvas hover and press-origin target

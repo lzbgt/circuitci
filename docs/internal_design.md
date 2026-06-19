@@ -107,7 +107,9 @@ viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
 painting, including runtime tinting, transient loaded-waveform `scope` chips
 with shared paint/hit-test geometry, opacity handling, symbol glyph dispatch,
-and kind-aware pin chips. `src/gui/sketch_canvas_render.rs` owns the
+and kind-aware pin chips. The on-canvas Scope Activity legend and matching
+`Circuit View` toggle control only this transient runtime overlay; they must not
+persist into Board IR. `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
 wire target affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
 right-click menus for component, net, wire, probe badge, route-handle, and
