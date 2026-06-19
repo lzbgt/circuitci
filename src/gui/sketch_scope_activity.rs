@@ -4,8 +4,9 @@ use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
     RuntimeScopeProbeEdgeStep, ScopeSnapshotSourceFilter, WaveformView,
-    runtime_scope_probe_edge_jump, runtime_scope_probe_sample_label,
-    runtime_scope_probe_sparkline_points, waveform_time_range_for_view,
+    runtime_scope_probe_edge_jump, runtime_scope_probe_frequency_label,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
+    waveform_time_range_for_view,
 };
 use super::{CircuitCiApp, ScopeMeasurementSnapshot, Stage};
 
@@ -377,6 +378,13 @@ impl CircuitCiApp {
                                     )
                                     .unwrap_or_else(|| "sample unavailable".to_string());
                                     ui.monospace(compact_label(&sample, 20));
+                                    if let Some(frequency) = runtime_scope_probe_frequency_label(
+                                        &self.waveforms,
+                                        self.selected_waveform,
+                                        &row.target,
+                                    ) {
+                                        ui.monospace(compact_label(&frequency, 22));
+                                    }
                                     if let Some(points) = runtime_scope_probe_sparkline_points(
                                         &self.waveforms,
                                         self.selected_waveform,

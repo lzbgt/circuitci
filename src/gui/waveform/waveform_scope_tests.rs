@@ -5,10 +5,10 @@ use super::{
     WaveformMathDraft, WaveformPlotLaneMode, WaveformProbeQuantity, WaveformTraceRef,
     append_derived_waveform_probe, derived_waveform_quantity, parse_waveform_csv_text,
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
-    runtime_scope_probe_edge_jump, runtime_scope_probe_sample_label,
-    runtime_scope_probe_sparkline_points, runtime_scope_probe_target_for_selection,
-    sanitized_probe_name, scope_trace_lanes, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_time_range_for_view,
+    runtime_scope_probe_edge_jump, runtime_scope_probe_frequency_label,
+    runtime_scope_probe_sample_label, runtime_scope_probe_sparkline_points,
+    runtime_scope_probe_target_for_selection, sanitized_probe_name, scope_trace_lanes,
+    waveform_measurement, waveform_probe_quantity_from_label, waveform_time_range_for_view,
     waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 use crate::gui::sketch::{
@@ -417,6 +417,34 @@ fn runtime_scope_probe_sample_label_reports_value_unit_and_time() {
     assert!(sample.contains("1.650000e0"));
     assert!(sample.contains("V"));
     assert!(sample.contains("5.000000e-7 s"));
+}
+
+#[test]
+fn runtime_scope_probe_frequency_label_reports_peak_and_period() {
+    let samples = (0..128)
+        .map(|index| {
+            let time_s = index as f64 / 64_000.0;
+            let value = (2.0 * std::f64::consts::PI * 1_000.0 * time_s).sin();
+            format!("{time_s:.9} {value:.9}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let waveform =
+        parse_waveform_csv_text(&format!("time v(out)\n{samples}\n"), "waveform.csv").unwrap();
+    let label = runtime_scope_probe_frequency_label(
+        &[waveform],
+        0,
+        &ScopeProbeTarget {
+            scenario_name: "waveform.csv".to_string(),
+            probe_name: "v(out)".to_string(),
+        },
+    )
+    .unwrap();
+
+    assert!(label.contains("f 1."));
+    assert!(label.contains("kHz"));
+    assert!(label.contains("T 1."));
+    assert!(label.contains("e-3 s"));
 }
 
 #[test]

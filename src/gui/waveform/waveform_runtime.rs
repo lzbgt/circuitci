@@ -4,7 +4,10 @@ use crate::gui::sketch::{ProjectSnapshot, SketchSelection};
 use super::waveform_trigger::{
     ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_events, select_scope_trigger_event,
 };
-use super::{WaveformView, format_time_s, format_value, interpolated_value, min_max, probe_unit};
+use super::{
+    WaveformView, format_frequency_hz, format_time_s, format_value, interpolated_value, min_max,
+    probe_unit, waveform_spectrum_peaks,
+};
 
 pub(in crate::gui) fn runtime_probe_lines_for_selection(
     waveforms: &[WaveformView],
@@ -130,6 +133,34 @@ pub(in crate::gui) fn runtime_scope_probe_sparkline_points(
         points.push((x as f32, y as f32));
     }
     Some(points)
+}
+
+pub(in crate::gui) fn runtime_scope_probe_frequency_label(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    target: &ScopeProbeTarget,
+) -> Option<String> {
+    let waveform = waveforms.get(waveform_index)?;
+    if waveform.label != target.scenario_name {
+        return None;
+    }
+    let probe_index = waveform.probes.iter().position(|probe| {
+        probe
+            .label
+            .trim()
+            .eq_ignore_ascii_case(target.probe_name.trim())
+    })?;
+    let peak = waveform_spectrum_peaks(waveform, probe_index, 1)?
+        .into_iter()
+        .next()?;
+    if !peak.frequency_hz.is_finite() || peak.frequency_hz <= 0.0 {
+        return None;
+    }
+    Some(format!(
+        "f {} · T {}",
+        format_frequency_hz(peak.frequency_hz),
+        format_time_s(1.0 / peak.frequency_hz)
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

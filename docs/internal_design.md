@@ -85,7 +85,8 @@ runtime `scope` chip hit-testing.
 `src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
 legend, overlay visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
-value/time readouts, bounded per-trace sparklines, activity-snapshot status plus
+value/time readouts, compact frequency/period readouts, bounded per-trace
+sparklines, activity-snapshot status plus
 visible-list snapshot capture, source-specific snapshot clearing,
 source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
@@ -117,7 +118,8 @@ painting, including runtime tinting, transient loaded-waveform `scope` chips
 with shared paint/hit-test geometry, opacity handling, symbol glyph dispatch,
 and kind-aware pin chips. The on-canvas Scope Activity legend, searchable
 loaded-trace jump rows, Cursor A scrub control, cursor-sampled value/time
-readouts, bounded per-trace sparklines, per-trace edge stepping, compare
+readouts, compact frequency/period readouts, bounded per-trace sparklines,
+per-trace edge stepping, compare
 pin/unpin/clear actions, Open Compare jumps, live activity-snapshot status,
 visible-list snapshot capture, source-specific snapshot clearing,
 source-filtered Open Snapshots routing, and
@@ -345,7 +347,8 @@ schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_runtime.rs` owns runtime probe matching between
 loaded waveform artifacts and Sketch selections, graph-hover readout lines,
 normalized activity values for graph tinting, exact Scope Activity sample
-rows, bounded Scope Activity sparkline samples, and per-trace edge stepping for
+rows, compact frequency/period readouts, bounded Scope Activity sparkline
+samples, and per-trace edge stepping for
 schematic-side observation.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
