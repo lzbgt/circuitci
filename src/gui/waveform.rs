@@ -3,7 +3,7 @@ use super::analog::{
     append_analog_assertion, append_analog_expression_probe, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
-use super::sketch_probes::SketchProbe;
+use super::sketch_probes::{SketchProbe, SketchProbeTarget};
 use super::{CircuitCiApp, ScopeProbeTarget, Stage};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
@@ -77,6 +77,63 @@ impl CircuitCiApp {
         self.waveform_value_max = None;
         self.waveform_playing = false;
         true
+    }
+
+    pub(super) fn focus_selected_scope_schematic_context(&mut self) -> bool {
+        self.focus_selected_scope_schematic_context_with_status(true)
+    }
+
+    fn focus_selected_scope_schematic_context_silent(&mut self) -> bool {
+        self.focus_selected_scope_schematic_context_with_status(false)
+    }
+
+    fn focus_selected_scope_schematic_context_with_status(&mut self, update_status: bool) -> bool {
+        let Some(sketch_probe) = self.selected_scope_sketch_probe() else {
+            if update_status {
+                self.status =
+                    "Selected scope trace is not linked to a schematic probe.".to_string();
+            }
+            return false;
+        };
+        let selection = match &sketch_probe.target {
+            SketchProbeTarget::Component(component_id) => {
+                SketchSelection::Component(component_id.clone())
+            }
+            SketchProbeTarget::Net(net_id) => SketchSelection::Net(net_id.clone()),
+        };
+        self.selected_sketch_item = Some(selection.clone());
+        self.selected_sketch_items.clear();
+        self.selected_sketch_items.insert(selection);
+        self.remember_scope_probe_target(&sketch_probe.scenario_name, &sketch_probe.probe_name);
+        if update_status {
+            self.status = format!(
+                "Focused schematic {} for scope probe {}.",
+                sketch_probe_target_label(&sketch_probe.target),
+                sketch_probe.probe_name
+            );
+        }
+        true
+    }
+
+    fn selected_scope_sketch_probe(&self) -> Option<SketchProbe> {
+        let waveform = self.waveforms.get(self.selected_waveform)?;
+        let probe = waveform.probes.get(self.selected_probe)?;
+        let snapshot = self.project_snapshot.as_ref()?;
+        snapshot
+            .probes
+            .iter()
+            .find(|sketch_probe| {
+                scope_waveform_matches_scenario(waveform, &sketch_probe.scenario_name)
+                    && scope_probe_matches_sketch_probe(probe, sketch_probe)
+            })
+            .cloned()
+            .or_else(|| {
+                snapshot
+                    .probes
+                    .iter()
+                    .find(|sketch_probe| scope_probe_matches_sketch_probe(probe, sketch_probe))
+                    .cloned()
+            })
     }
 
     pub(super) fn waveform_scope_view(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
@@ -159,6 +216,7 @@ impl CircuitCiApp {
         }
 
         self.selected_probe = self.selected_probe.min(waveform.probes.len() - 1);
+        let mut selected_new_trace = false;
         ui.horizontal_wrapped(|ui| {
             for (index, probe) in waveform.probes.iter().enumerate() {
                 if ui
@@ -176,9 +234,15 @@ impl CircuitCiApp {
                     self.waveform_value_max = None;
                     self.waveform_trigger_threshold = 0.0;
                     self.waveform_playing = false;
+                    selected_new_trace = true;
                 }
             }
         });
+        if selected_new_trace {
+            self.focus_selected_scope_schematic_context_silent();
+        }
+        let can_focus_schematic = self.selected_scope_sketch_probe().is_some();
+        let mut focus_schematic = false;
         ui.horizontal_wrapped(|ui| {
             let pinned = self.selected_scope_trace_pinned();
             if ui
@@ -204,7 +268,16 @@ impl CircuitCiApp {
                     self.waveform_pinned_traces.len()
                 ));
             }
+            if ui
+                .add_enabled(can_focus_schematic, egui::Button::new("Focus Schematic"))
+                .clicked()
+            {
+                focus_schematic = true;
+            }
         });
+        if focus_schematic {
+            self.focus_selected_scope_schematic_context();
+        }
     }
 
     fn waveform_scope_plot(&mut self, ui: &mut egui::Ui, desired_size: egui::Vec2) {
@@ -935,6 +1008,29 @@ fn find_scope_probe(
                         .map(|probe_index| (waveform_index, probe_index))
                 })
         })
+}
+
+fn scope_waveform_matches_scenario(waveform: &WaveformView, scenario_name: &str) -> bool {
+    let scenario_name = scenario_name.trim();
+    scenario_name.is_empty()
+        || waveform.label.contains(scenario_name)
+        || waveform.path.contains(scenario_name)
+}
+
+fn scope_probe_matches_sketch_probe(probe: &WaveformProbe, sketch_probe: &SketchProbe) -> bool {
+    let label = probe.label.trim();
+    let expression = probe.expression.as_deref().unwrap_or(label).trim();
+    label.eq_ignore_ascii_case(sketch_probe.probe_name.trim())
+        || label.eq_ignore_ascii_case(sketch_probe.expression.trim())
+        || expression.eq_ignore_ascii_case(sketch_probe.probe_name.trim())
+        || expression.eq_ignore_ascii_case(sketch_probe.expression.trim())
+}
+
+fn sketch_probe_target_label(target: &SketchProbeTarget) -> String {
+    match target {
+        SketchProbeTarget::Component(component_id) => format!("component {component_id}"),
+        SketchProbeTarget::Net(net_id) => format!("net {net_id}"),
+    }
 }
 
 #[derive(Debug, Clone)]

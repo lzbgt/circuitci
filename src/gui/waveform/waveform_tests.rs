@@ -607,6 +607,89 @@ fn pending_scope_probe_focus_selects_loaded_trace() {
 }
 
 #[test]
+fn selected_scope_trace_focuses_originating_schematic_net() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 1.0
+1e-6 2.0
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "out_voltage".to_string(),
+        expression: "V(out)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("out".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert!(app.focus_selected_scope_schematic_context());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Net("out".to_string()))
+    );
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Net("out".to_string()))
+    );
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "tran_main".to_string(),
+            probe_name: "out_voltage".to_string(),
+        })
+    );
+}
+
+#[test]
+fn selected_scope_trace_focuses_originating_schematic_component() {
+    let waveform = parse_waveform_csv_text(
+        "time R1_power
+0.0 0.1
+1e-6 0.2
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "R1_power".to_string(),
+        expression: "V(out)*I(VSENSE_R1)".to_string(),
+        quantity: SketchProbeQuantity::Power,
+        target: SketchProbeTarget::Component("R1".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert!(app.focus_selected_scope_schematic_context());
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Component("R1".to_string()))
+    );
+    assert!(
+        app.selected_sketch_items
+            .contains(&SketchSelection::Component("R1".to_string()))
+    );
+}
+
+#[test]
 fn scope_visible_traces_keep_selected_first_and_dedupe_pins() {
     let waveform = parse_waveform_csv_text(
         "time out_voltage current_probe aux_probe

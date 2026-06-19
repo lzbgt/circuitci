@@ -225,7 +225,8 @@ simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, trigger event readout table, GUI-only
 transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
-pending schematic probe-to-scope focus, selected-trace trigger threshold state, and graph-hover/runtime activity
+pending schematic probe-to-scope focus, runtime trace/event-to-schematic
+cross-focus selection, selected-trace trigger threshold state, and graph-hover/runtime activity
 extraction from loaded waveform artifacts. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 transient visible time-window and value-window fit/zoom/pan helpers, direct
@@ -346,7 +347,7 @@ form:
   probe selection, transient selected-probe trace pinning for multi-trace
   comparison overlays, direct plot drag time/value-window panning, wheel time
   zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
-  draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, and previous/next or row-level edge jumps, play/scrub controls, and
+  draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus, play/scrub controls, and
   selected-plus-pinned A/B cursor readouts.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
@@ -579,7 +580,11 @@ Clicking a probe badge, choosing a probe row in the object navigator, or using
 the primary toolbar scope action records the selected scenario/probe as the
 runtime scope target. If waveform artifacts are already loaded, the Scopes view
 selects the matching trace immediately; otherwise the target is applied after
-the next successful Run loads waveform CSV data. Right-clicking a probe badge
+the next successful Run loads waveform CSV data. Selecting or focusing a
+Scopes trace or trigger-event row can select the originating schematic probe's
+net or component while staying in the runtime workspace; this is transient GUI
+selection over the existing Board IR target, not persisted waveform metadata.
+Right-clicking a probe badge
 opens an explicit action menu for opening the probe in Simulation, adding an
 assertion from current settings, quick adding above/below cursor-sample
 assertions, clearing assertions, or removing the probe. These menu actions call
