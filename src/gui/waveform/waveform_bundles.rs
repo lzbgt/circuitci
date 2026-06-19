@@ -8,6 +8,7 @@ use super::waveform_snapshots::{markdown_escape, scope_snapshots_csv, scope_snap
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -60,6 +61,48 @@ impl ScopeReportBundleArtifactStatus {
             "Artifacts OK".to_string()
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ScopeReportBundleArtifactDetail {
+    path: String,
+    label: String,
+    state: ScopeReportBundleArtifactState,
+    expected_size: Option<usize>,
+    current_size: Option<usize>,
+    expected_sha256: Option<String>,
+    current_sha256: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+struct ScopeReportBundleExpectedArtifact {
+    label: String,
+    size_bytes: usize,
+    sha256: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ScopeReportBundleArtifactState {
+    Ok,
+    Missing,
+    Changed,
+    Untracked,
+}
+
+impl ScopeReportBundleArtifactState {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Ok => "OK",
+            Self::Missing => "Missing",
+            Self::Changed => "Changed",
+            Self::Untracked => "Untracked",
+        }
+    }
+}
+
+struct ScopeReportBundleIntegrityDetails {
+    rows: Vec<ScopeReportBundleArtifactDetail>,
+    manifest_error: Option<String>,
 }
 
 impl CircuitCiApp {
@@ -331,6 +374,9 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
             if ui.button("Open Bundle Index").clicked() {
                 self.open_scope_report_bundle_index(&latest);
             }
+            if ui.button("Details").clicked() {
+                self.waveform_bundle_integrity_details = Some(latest.clone());
+            }
             if latest_needs_refresh && ui.button("Preview Refresh").clicked() {
                 self.preview_scope_report_bundle_refresh(&latest);
             }
@@ -360,6 +406,10 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
                                     self.open_scope_report_bundle(&bundle);
                                     ui.close();
                                 }
+                                if ui.small_button("Details").clicked() {
+                                    self.waveform_bundle_integrity_details = Some(bundle.clone());
+                                    ui.close();
+                                }
                                 if needs_refresh && ui.small_button("Refresh").clicked() {
                                     self.preview_scope_report_bundle_refresh(&bundle);
                                     ui.close();
@@ -386,6 +436,9 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
                 }
             });
         }
+        if let Some(bundle) = self.waveform_bundle_integrity_details.clone() {
+            self.scope_report_bundle_integrity_details_ui(ui, &bundle);
+        }
         if !self.waveform_bundle_cleanup_preview.is_empty() {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
@@ -409,6 +462,51 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
         self.waveform_recent_report_bundles.insert(0, bundle);
         self.waveform_recent_report_bundles
             .truncate(MAX_RECENT_SCOPE_BUNDLES);
+    }
+
+    fn scope_report_bundle_integrity_details_ui(&mut self, ui: &mut egui::Ui, bundle: &str) {
+        let bundle_path = Path::new(bundle);
+        let details = scope_report_bundle_integrity_details(bundle_path);
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Bundle Integrity Details");
+                ui.monospace(display_path_tail(bundle));
+                if let Some(error) = &details.manifest_error {
+                    ui.label(format!("Manifest: {error}"));
+                }
+                if ui.button("Close").clicked() {
+                    self.waveform_bundle_integrity_details = None;
+                }
+            });
+            egui::ScrollArea::vertical()
+                .max_height(150.0)
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    egui::Grid::new("scope_bundle_integrity_details")
+                        .num_columns(7)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("Artifact");
+                            ui.label("State");
+                            ui.label("Expected Size");
+                            ui.label("Current Size");
+                            ui.label("Expected SHA-256");
+                            ui.label("Current SHA-256");
+                            ui.label("Path");
+                            ui.end_row();
+                            for row in &details.rows {
+                                ui.monospace(&row.label);
+                                ui.label(row.state.label());
+                                ui.monospace(optional_size_label(row.expected_size));
+                                ui.monospace(optional_size_label(row.current_size));
+                                ui.monospace(short_optional_sha(row.expected_sha256.as_deref()));
+                                ui.monospace(short_optional_sha(row.current_sha256.as_deref()));
+                                ui.monospace(&row.path);
+                                ui.end_row();
+                            }
+                        });
+                });
+        });
     }
 
     pub(super) fn preview_scope_report_bundle_refresh(&mut self, bundle: &str) {
@@ -554,6 +652,13 @@ The table below covers generated content artifacts. `artifact_manifest.csv` reco
                     .is_some_and(|bundle| !Path::new(bundle).exists())
                 {
                     self.waveform_bundle_refresh_preview = None;
+                }
+                if self
+                    .waveform_bundle_integrity_details
+                    .as_deref()
+                    .is_some_and(|bundle| !Path::new(bundle).exists())
+                {
+                    self.waveform_bundle_integrity_details = None;
                 }
                 self.status = format!("Removed {removed} old scope report bundle folder(s).");
             }
@@ -807,6 +912,114 @@ fn manifest_csv_escape(value: &str) -> String {
     }
 }
 
+fn read_scope_report_bundle_manifest(
+    bundle_dir: &Path,
+) -> std::io::Result<BTreeMap<String, ScopeReportBundleExpectedArtifact>> {
+    let manifest_path = bundle_dir.join("artifact_manifest.csv");
+    let manifest = fs::read_to_string(manifest_path)?;
+    let mut expected = BTreeMap::new();
+    for line in manifest.lines().skip(1) {
+        let columns = parse_manifest_csv_line(line);
+        if columns.len() != 4 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "artifact manifest row must have four columns",
+            ));
+        }
+        let size_bytes = columns[2].parse::<usize>().map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("invalid artifact size for {}", columns[0]),
+            )
+        })?;
+        expected.insert(
+            columns[0].clone(),
+            ScopeReportBundleExpectedArtifact {
+                label: if columns[1].is_empty() {
+                    columns[0].clone()
+                } else {
+                    columns[1].clone()
+                },
+                size_bytes,
+                sha256: columns[3].trim().to_string(),
+            },
+        );
+    }
+    Ok(expected)
+}
+
+fn scope_report_bundle_integrity_details(bundle_dir: &Path) -> ScopeReportBundleIntegrityDetails {
+    let expected = read_scope_report_bundle_manifest(bundle_dir);
+    let manifest_error = expected.as_ref().err().map(ToString::to_string);
+    let expected = expected.unwrap_or_default();
+    let rows = SCOPE_REPORT_BUNDLE_ARTIFACTS
+        .iter()
+        .map(|(path, fallback_label)| {
+            let expected_artifact = expected.get(*path);
+            let current = fs::read(bundle_dir.join(path)).ok();
+            let current_size = current.as_ref().map(Vec::len);
+            let current_sha256 = current.as_deref().map(sha256_hex);
+            let state = match (&current, expected_artifact) {
+                (None, _) => ScopeReportBundleArtifactState::Missing,
+                (Some(_), None) => ScopeReportBundleArtifactState::Untracked,
+                (Some(_), Some(expected)) => {
+                    if current_size == Some(expected.size_bytes)
+                        && current_sha256
+                            .as_deref()
+                            .is_some_and(|sha| sha.eq_ignore_ascii_case(&expected.sha256))
+                    {
+                        ScopeReportBundleArtifactState::Ok
+                    } else {
+                        ScopeReportBundleArtifactState::Changed
+                    }
+                }
+            };
+            ScopeReportBundleArtifactDetail {
+                path: (*path).to_string(),
+                label: expected_artifact
+                    .map(|artifact| artifact.label.clone())
+                    .unwrap_or_else(|| (*fallback_label).to_string()),
+                state,
+                expected_size: expected_artifact.map(|artifact| artifact.size_bytes),
+                current_size,
+                expected_sha256: expected_artifact.map(|artifact| artifact.sha256.clone()),
+                current_sha256,
+            }
+        })
+        .collect();
+    ScopeReportBundleIntegrityDetails {
+        rows,
+        manifest_error,
+    }
+}
+
+#[cfg(test)]
+pub(super) fn scope_report_bundle_artifact_detail_rows(
+    bundle_dir: &Path,
+) -> Vec<(
+    String,
+    String,
+    Option<usize>,
+    Option<usize>,
+    Option<String>,
+    Option<String>,
+)> {
+    scope_report_bundle_integrity_details(bundle_dir)
+        .rows
+        .into_iter()
+        .map(|row| {
+            (
+                row.label,
+                row.state.label().to_string(),
+                row.expected_size,
+                row.current_size,
+                row.expected_sha256,
+                row.current_sha256,
+            )
+        })
+        .collect()
+}
+
 pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'static str> {
     if !bundle_dir.is_dir() {
         return vec!["bundle folder"];
@@ -823,34 +1036,16 @@ pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'
 pub(super) fn scope_report_bundle_changed_artifacts(
     bundle_dir: &Path,
 ) -> std::io::Result<Vec<String>> {
-    let manifest_path = bundle_dir.join("artifact_manifest.csv");
-    let manifest = fs::read_to_string(manifest_path)?;
-    let mut changed = Vec::new();
-    for line in manifest.lines().skip(1) {
-        let columns = parse_manifest_csv_line(line);
-        if columns.len() != 4 {
-            changed.push("artifact_manifest.csv".to_string());
-            continue;
-        }
-        let path = &columns[0];
-        let label = if columns[1].is_empty() {
-            path.as_str()
-        } else {
-            columns[1].as_str()
-        };
-        let expected_size = columns[2].parse::<usize>().ok();
-        let expected_sha = columns[3].trim();
-        let artifact_path = bundle_dir.join(path);
-        let Ok(bytes) = fs::read(&artifact_path) else {
-            changed.push(label.to_string());
-            continue;
-        };
-        if expected_size != Some(bytes.len())
-            || !sha256_hex(&bytes).eq_ignore_ascii_case(expected_sha)
-        {
-            changed.push(label.to_string());
-        }
+    let details = scope_report_bundle_integrity_details(bundle_dir);
+    if let Some(error) = details.manifest_error {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error));
     }
+    let mut changed = details
+        .rows
+        .iter()
+        .filter(|row| row.state == ScopeReportBundleArtifactState::Changed)
+        .map(|row| row.label.clone())
+        .collect::<Vec<_>>();
     changed.sort();
     changed.dedup();
     Ok(changed)
@@ -876,6 +1071,16 @@ fn parse_manifest_csv_line(line: &str) -> Vec<String> {
     }
     columns.push(current);
     columns
+}
+
+fn optional_size_label(size: Option<usize>) -> String {
+    size.map(|bytes| bytes.to_string())
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn short_optional_sha(sha: Option<&str>) -> String {
+    sha.map(|value| value.chars().take(16).collect())
+        .unwrap_or_else(|| "-".to_string())
 }
 
 fn scope_report_bundle_artifact_status(bundle_dir: &Path) -> ScopeReportBundleArtifactStatus {

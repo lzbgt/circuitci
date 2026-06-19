@@ -274,9 +274,9 @@ restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export
 with the configured plot SVG, local index page, README manifest, artifact
 size/SHA-256 manifest, loaded-waveform footprint source totals, recent-bundle
-missing/changed artifact status checks, folder/index opening, guarded refresh
-of missing or changed bundle artifacts, and previewed/confirmed bounded
-old-bundle cleanup.
+missing/changed artifact status checks, expected/current artifact integrity
+detail rows, folder/index opening, guarded refresh of missing or changed bundle
+artifacts, and previewed/confirmed bounded old-bundle cleanup.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage,
@@ -672,7 +672,9 @@ records expected size/SHA-256 metadata for required bundle files so the GUI can
 distinguish changed artifacts from merely present artifacts. The Scopes panel keeps a bounded transient list of recently exported
 bundles, shows whether each recent bundle still has required and unchanged artifacts, and
 can open the latest bundle index, latest folder, or older bundle folder through
-the host file manager. If a recent bundle is missing required files or has files
+the host file manager. `Details` opens a transient integrity table with each
+artifact's OK/Missing/Changed state plus expected/current size and SHA-256
+values. If a recent bundle is missing required files or has files
 that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`
 regenerates the plot SVG, snapshot CSV/Markdown, index, README, and manifest
 from the current filtered Scopes state into that same

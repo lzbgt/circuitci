@@ -3,7 +3,8 @@ use super::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, interpolated_value,
     old_scope_report_bundle_dirs, parse_waveform_csv_text, scope_cursor_legend_rows,
-    scope_region_stats_rows, scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
+    scope_region_stats_rows, scope_report_bundle_artifact_detail_rows,
+    scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
     scope_report_bundle_missing_artifacts, scope_snapshot_visible_indexes,
     scope_snapshot_visible_indexes_sorted, scope_snapshots_csv, scope_snapshots_markdown,
     scope_trigger_events, scope_visible_trace_refs, unique_scope_report_bundle_dir,
@@ -857,12 +858,28 @@ fn scope_report_bundle_refresh_recreates_missing_artifacts() {
     assert!(bundle_path.join("index.html").is_file());
     assert_eq!(app.waveform_bundle_refresh_preview, None);
     assert!(app.status.contains("Refreshed scope report bundle"));
+    let clean_rows = scope_report_bundle_artifact_detail_rows(bundle_path);
+    let clean_plot_row = clean_rows
+        .iter()
+        .find(|row| row.0 == "scope_plot.svg")
+        .unwrap();
+    assert_eq!(clean_plot_row.1, "OK");
+    assert_eq!(clean_plot_row.2, clean_plot_row.3);
+    assert_eq!(clean_plot_row.4, clean_plot_row.5);
 
     fs::write(bundle_path.join("scope_plot.svg"), "<svg>changed</svg>").unwrap();
     assert_eq!(
         scope_report_bundle_changed_artifacts(bundle_path).unwrap(),
         vec!["scope_plot.svg".to_string()]
     );
+    let changed_rows = scope_report_bundle_artifact_detail_rows(bundle_path);
+    let changed_plot_row = changed_rows
+        .iter()
+        .find(|row| row.0 == "scope_plot.svg")
+        .unwrap();
+    assert_eq!(changed_plot_row.1, "Changed");
+    assert_ne!(changed_plot_row.2, changed_plot_row.3);
+    assert_ne!(changed_plot_row.4, changed_plot_row.5);
     app.preview_scope_report_bundle_refresh(&bundle);
     assert_eq!(app.waveform_bundle_refresh_preview, Some(bundle.clone()));
     app.confirm_scope_report_bundle_refresh(&filtered);
