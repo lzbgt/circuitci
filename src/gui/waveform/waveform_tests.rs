@@ -315,6 +315,71 @@ fn scope_trigger_event_rows_include_exact_times_values_and_delta() {
 }
 
 #[test]
+fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+
+    app.capture_scope_cursor_snapshots();
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 2);
+    let selected = &app.waveform_measurement_snapshots[0];
+    assert_eq!(selected.label, "Cursor 1");
+    assert_eq!(selected.source, "cursor selected");
+    assert_eq!(selected.trace_label, "v(out)");
+    assert_eq!(selected.unit, "V");
+    assert_eq!(selected.time_a_us, Some(0.0));
+    assert_eq!(selected.time_b_us, Some(1.0));
+    assert_eq!(selected.value_a, Some(0.0));
+    assert_eq!(selected.value_b, Some(2.0));
+    assert_eq!(selected.delta_value, Some(2.0));
+
+    let pinned = &app.waveform_measurement_snapshots[1];
+    assert_eq!(pinned.source, "cursor pinned");
+    assert_eq!(pinned.trace_label, "i(load)");
+    assert_eq!(pinned.unit, "A");
+    assert!((pinned.delta_value.unwrap() - 0.2).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_trigger_snapshots_capture_selected_event() {
+    let waveform =
+        parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n0.000002,0\n", "waveform.csv")
+            .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    app.capture_scope_trigger_snapshot(event);
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+    let snapshot = &app.waveform_measurement_snapshots[0];
+    assert_eq!(snapshot.label, "Trigger 1");
+    assert_eq!(snapshot.source, "trigger");
+    assert_eq!(snapshot.trace_label, "v(out)");
+    assert_eq!(snapshot.event_edge.as_deref(), Some("rising"));
+    assert_eq!(snapshot.time_a_us, Some(0.5));
+    assert_eq!(snapshot.value_a, Some(1.0));
+    assert_eq!(snapshot.unit, "V");
+}
+
+#[test]
 fn waveform_parser_rejects_non_increasing_time() {
     let error = parse_waveform_csv_text(
         "time v(out)

@@ -12,6 +12,7 @@ use std::path::Path;
 
 mod waveform_context;
 mod waveform_plot;
+mod waveform_snapshots;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;

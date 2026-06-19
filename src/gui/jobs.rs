@@ -517,6 +517,7 @@ impl CircuitCiApp {
                 self.waveform_pinned_traces.clear();
                 self.waveform_trace_presets.clear();
                 self.waveform_trace_styles.clear();
+                self.waveform_measurement_snapshots.clear();
                 self.selected_waveform = 0;
                 self.selected_probe = 0;
                 self.apply_pending_scope_probe_focus();

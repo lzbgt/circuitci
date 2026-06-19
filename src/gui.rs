@@ -220,6 +220,20 @@ struct WaveformViewWindow {
     value_max: Option<f64>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ScopeMeasurementSnapshot {
+    label: String,
+    source: String,
+    trace_label: String,
+    time_a_us: Option<f64>,
+    time_b_us: Option<f64>,
+    value_a: Option<f64>,
+    value_b: Option<f64>,
+    delta_value: Option<f64>,
+    event_edge: Option<String>,
+    unit: String,
+}
+
 pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
@@ -356,6 +370,7 @@ pub struct CircuitCiApp {
     waveform_pinned_traces: Vec<WaveformTraceRef>,
     waveform_trace_presets: Vec<WaveformTracePreset>,
     waveform_trace_styles: Vec<WaveformTraceStyle>,
+    waveform_measurement_snapshots: Vec<ScopeMeasurementSnapshot>,
     waveform_trace_preset_name: String,
     waveform_split_trace_units: bool,
     pending_scope_probe: Option<ScopeProbeTarget>,
@@ -529,6 +544,7 @@ impl Default for CircuitCiApp {
             waveform_pinned_traces: Vec::new(),
             waveform_trace_presets: Vec::new(),
             waveform_trace_styles: Vec::new(),
+            waveform_measurement_snapshots: Vec::new(),
             waveform_trace_preset_name: String::new(),
             waveform_split_trace_units: false,
             pending_scope_probe: None,

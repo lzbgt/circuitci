@@ -140,6 +140,7 @@ impl CircuitCiApp {
         }
         let rows = scope_trigger_event_rows(events, self.waveform_cursor_a_us);
         let mut jump_event = None;
+        let mut snapshot_event = None;
         let mut focus_schematic = false;
         let can_focus_schematic = self.selected_scope_sketch_probe().is_some();
         ui.group(|ui| {
@@ -155,7 +156,7 @@ impl CircuitCiApp {
                 .auto_shrink([false, true])
                 .show(ui, |ui| {
                     egui::Grid::new("scope_trigger_events")
-                        .num_columns(7)
+                        .num_columns(8)
                         .striped(true)
                         .show(ui, |ui| {
                             ui.label("#");
@@ -163,6 +164,7 @@ impl CircuitCiApp {
                             ui.label("Time");
                             ui.label("Value");
                             ui.label("Delta A");
+                            ui.label("");
                             ui.label("");
                             ui.label("");
                             ui.end_row();
@@ -175,6 +177,9 @@ impl CircuitCiApp {
                                 ui.monospace(format_time_s(row.delta_t_s));
                                 if ui.button("Jump").clicked() {
                                     jump_event = events.get(row.index - 1).copied();
+                                }
+                                if ui.button("Snap").clicked() {
+                                    snapshot_event = events.get(row.index - 1).copied();
                                 }
                                 if ui
                                     .add_enabled(can_focus_schematic, egui::Button::new("Focus"))
@@ -196,6 +201,9 @@ impl CircuitCiApp {
                 format_time_s(event.time_us / 1e6)
             );
             self.focus_selected_scope_schematic_context_silent();
+        }
+        if let Some(event) = snapshot_event {
+            self.capture_scope_trigger_snapshot(event);
         }
         if focus_schematic {
             self.focus_selected_scope_schematic_context();

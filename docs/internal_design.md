@@ -281,7 +281,7 @@ dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, Scopes state orchestration, simulation-time scrub/playback
-controls, cursor readouts, selected-plus-pinned cursor readout rows,
+controls, cursor readouts, selected-plus-pinned cursor readout rows, transient cursor-region and trigger-event measurement snapshots,
 min/max/delta measurements, transient selected-probe trace pinning/comparison
 overlays, transient per-trace overlay visibility/color styles, GUI-only derived
 waveform channels, promotion of representable derived channels to explicit
@@ -299,8 +299,11 @@ draggable/click-set A/B cursor handles, direct plot drag/wheel/Shift-wheel
 interactions, trace overlay selection, Alt/Option-drag box zoom, and
 shared-axis or per-unit lane axis scaling. `src/gui/waveform/waveform_view.rs`
 owns Scopes plot orchestration, cursor readout rows, playback controls,
-visible time-window and value-window fit/zoom/pan helpers, and Back/Forward
-view-window history. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
+visible time-window and value-window fit/zoom/pan helpers, Back/Forward
+view-window history, and measurement snapshot display.
+`src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region and
+trigger-event measurement snapshot capture/rendering over loaded waveform
+artifacts. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
 waveform probes, but those values must come from report waveform artifacts and

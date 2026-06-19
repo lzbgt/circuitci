@@ -85,7 +85,7 @@ impl CircuitCiApp {
         }
     }
 
-    pub(super) fn waveform_scope_cursor_legend(&self, ui: &mut egui::Ui) {
+    pub(super) fn waveform_scope_cursor_legend(&mut self, ui: &mut egui::Ui) {
         let traces = scope_visible_trace_refs(
             &self.waveforms,
             self.selected_waveform,
@@ -111,6 +111,9 @@ impl CircuitCiApp {
                     format_time_s(self.waveform_cursor_a_us / 1e6),
                     format_time_s(self.waveform_cursor_b_us / 1e6)
                 ));
+                if ui.button("Snapshot").clicked() {
+                    self.capture_scope_cursor_snapshots();
+                }
             });
             egui::Grid::new("scope_cursor_readout")
                 .num_columns(6)
@@ -135,6 +138,7 @@ impl CircuitCiApp {
                     }
                 });
         });
+        self.waveform_measurement_snapshots_panel(ui);
     }
 
     pub(super) fn waveform_playback_panel(&mut self, ui: &mut egui::Ui) {
