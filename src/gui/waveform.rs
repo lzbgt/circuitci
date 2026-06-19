@@ -18,11 +18,13 @@ pub(super) use waveform_plot::WaveformCursorTarget;
 use waveform_plot::{
     WaveformPlotCursors, WaveformPlotTrigger, WaveformPlotView, clamp_value_window,
     clamp_waveform_time_window, draw_waveform_plot_sized, expanded_value_bounds, scope_plot_size,
-    scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
-    waveform_trace_bounds_in_window, zoom_time_window,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, valid_waveform_trace,
+    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
-use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value};
+use waveform_plot::{
+    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_trace_color_for_style,
+};
 #[cfg(test)]
 use waveform_trace_selector::{
     WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
@@ -92,6 +94,7 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         );
+        let traces = scope_visible_styled_trace_refs(&traces, &self.waveform_trace_styles);
         let visible_window = self.visible_waveform_time_window();
         let visible_value_window = self.visible_waveform_value_window();
         let trigger_events = self.selected_scope_trigger_events();
@@ -113,6 +116,7 @@ impl CircuitCiApp {
                     events_us: &trigger_times_us,
                 }),
             },
+            &self.waveform_trace_styles,
             scope_plot_size(desired_size),
         );
         if let Some((start_us, end_us)) = interaction.time_window_us {
@@ -136,6 +140,7 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         );
+        let traces = scope_visible_styled_trace_refs(&traces, &self.waveform_trace_styles);
         let rows = scope_cursor_legend_rows(
             &self.waveforms,
             &traces,
@@ -370,6 +375,7 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         );
+        let traces = scope_visible_styled_trace_refs(&traces, &self.waveform_trace_styles);
         let (start_us, end_us) = self.visible_waveform_time_window()?;
         let (value_min, value_max) = waveform_trace_bounds_in_window(
             &self.waveforms,
@@ -488,6 +494,8 @@ impl CircuitCiApp {
         let waveforms = &self.waveforms;
         self.waveform_pinned_traces
             .retain(|trace| valid_waveform_trace(waveforms, *trace));
+        self.waveform_trace_styles
+            .retain(|style| valid_waveform_trace(waveforms, style.trace));
     }
 
     fn waveform_math_panel(&mut self, ui: &mut egui::Ui) {
@@ -674,6 +682,7 @@ impl CircuitCiApp {
         self.selected_probe = self.selected_probe.min(probe_count.saturating_sub(1));
         self.shift_scope_trace_pins_after_probe_removal(waveform_index, removed_probe_index);
         self.shift_scope_trace_presets_after_probe_removal(waveform_index, removed_probe_index);
+        self.shift_scope_trace_styles_after_probe_removal(waveform_index, removed_probe_index);
         self.prune_scope_trace_pins();
         self.waveform_math_left = self.waveform_math_left.min(probe_count.saturating_sub(1));
         self.waveform_math_right = self.waveform_math_right.min(probe_count.saturating_sub(1));
@@ -790,6 +799,72 @@ pub(super) struct WaveformTraceRef {
 pub(super) struct WaveformTracePreset {
     name: String,
     traces: Vec<WaveformTraceRef>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum WaveformTraceColor {
+    Blue,
+    Amber,
+    Green,
+    Red,
+    Purple,
+    Cyan,
+}
+
+impl WaveformTraceColor {
+    fn all() -> [Self; 6] {
+        [
+            Self::Blue,
+            Self::Amber,
+            Self::Green,
+            Self::Red,
+            Self::Purple,
+            Self::Cyan,
+        ]
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Blue => "Blue",
+            Self::Amber => "Amber",
+            Self::Green => "Green",
+            Self::Red => "Red",
+            Self::Purple => "Purple",
+            Self::Cyan => "Cyan",
+        }
+    }
+
+    fn color(self) -> egui::Color32 {
+        match self {
+            Self::Blue => egui::Color32::from_rgb(93, 185, 255),
+            Self::Amber => egui::Color32::from_rgb(255, 196, 87),
+            Self::Green => egui::Color32::from_rgb(135, 220, 140),
+            Self::Red => egui::Color32::from_rgb(247, 118, 142),
+            Self::Purple => egui::Color32::from_rgb(187, 154, 247),
+            Self::Cyan => egui::Color32::from_rgb(125, 207, 255),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct WaveformTraceStyle {
+    trace: WaveformTraceRef,
+    color: Option<WaveformTraceColor>,
+    visible: bool,
+}
+
+impl WaveformTraceStyle {
+    fn default_for(trace: WaveformTraceRef) -> Self {
+        Self {
+            trace,
+            color: None,
+            visible: true,
+        }
+    }
+
+    fn is_default(self) -> bool {
+        self.color.is_none() && self.visible
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -5,15 +5,16 @@ use super::{
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
-    scope_plot_size, scope_trigger_event_rows, scope_trigger_events, scope_visible_trace_refs,
-    select_scope_trigger_event, waveform_measurement, waveform_probe_choices,
-    waveform_probe_group_choices, waveform_probe_quantity_from_label,
-    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
-    waveform_trace_bounds_in_window, zoom_time_window,
+    scope_plot_size, scope_trigger_event_rows, scope_trigger_events,
+    scope_visible_styled_trace_refs, scope_visible_trace_refs, select_scope_trigger_event,
+    waveform_measurement, waveform_probe_choices, waveform_probe_group_choices,
+    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use super::{
-    clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
-    plot_y_to_value,
+    WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
+    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_trace_color_for_style,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -920,6 +921,107 @@ fn pinned_scope_trace_pruning_drops_invalid_loaded_refs() {
 }
 
 #[test]
+fn scope_trace_styles_hide_pinned_traces_but_keep_active_trace_visible() {
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 2,
+        },
+    ];
+    let styles = vec![
+        WaveformTraceStyle {
+            trace: traces[0],
+            color: None,
+            visible: false,
+        },
+        WaveformTraceStyle {
+            trace: traces[1],
+            color: None,
+            visible: false,
+        },
+    ];
+
+    assert_eq!(
+        scope_visible_styled_trace_refs(&traces, &styles),
+        vec![traces[0], traces[2]]
+    );
+}
+
+#[test]
+fn scope_trace_style_color_overrides_auto_palette() {
+    let trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 1,
+    };
+    let styles = vec![WaveformTraceStyle {
+        trace,
+        color: Some(WaveformTraceColor::Red),
+        visible: true,
+    }];
+
+    assert_eq!(
+        scope_trace_color_for_style(1, trace, &styles),
+        WaveformTraceColor::Red.color()
+    );
+}
+
+#[test]
+fn scope_trace_style_pruning_drops_invalid_loaded_refs() {
+    let waveform = parse_waveform_csv_text(
+        "time out_voltage current_probe
+0.0 1.0 0.1
+1e-6 2.0 0.2
+",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        waveform_trace_styles: vec![
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+                color: Some(WaveformTraceColor::Green),
+                visible: true,
+            },
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 9,
+                },
+                color: Some(WaveformTraceColor::Red),
+                visible: true,
+            },
+        ],
+        ..Default::default()
+    };
+
+    app.prune_scope_trace_pins();
+
+    assert_eq!(
+        app.waveform_trace_styles,
+        vec![WaveformTraceStyle {
+            trace: WaveformTraceRef {
+                waveform_index: 0,
+                probe_index: 1,
+            },
+            color: Some(WaveformTraceColor::Green),
+            visible: true,
+        }]
+    );
+}
+
+#[test]
 fn pinned_scope_refs_shift_after_probe_removal() {
     let mut app = CircuitCiApp {
         waveform_pinned_traces: vec![
@@ -951,6 +1053,63 @@ fn pinned_scope_refs_shift_after_probe_removal() {
             WaveformTraceRef {
                 waveform_index: 1,
                 probe_index: 3,
+            },
+        ]
+    );
+}
+
+#[test]
+fn scope_trace_styles_shift_after_probe_removal() {
+    let mut app = CircuitCiApp {
+        waveform_trace_styles: vec![
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 1,
+                },
+                color: Some(WaveformTraceColor::Blue),
+                visible: true,
+            },
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 3,
+                },
+                color: None,
+                visible: false,
+            },
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 1,
+                    probe_index: 3,
+                },
+                color: Some(WaveformTraceColor::Cyan),
+                visible: true,
+            },
+        ],
+        ..Default::default()
+    };
+
+    app.shift_scope_trace_styles_after_probe_removal(0, 1);
+
+    assert_eq!(
+        app.waveform_trace_styles,
+        vec![
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 0,
+                    probe_index: 2,
+                },
+                color: None,
+                visible: false,
+            },
+            WaveformTraceStyle {
+                trace: WaveformTraceRef {
+                    waveform_index: 1,
+                    probe_index: 3,
+                },
+                color: Some(WaveformTraceColor::Cyan),
+                visible: true,
             },
         ]
     );

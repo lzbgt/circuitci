@@ -223,12 +223,13 @@ editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, GUI-only
-transient trace pinning/comparison overlays, derived waveform channels,
-promotion of representable derived channels to Board IR probes/assertions,
-and graph-hover/runtime activity extraction from loaded waveform artifacts.
+transient trace pinning/comparison overlays, per-trace overlay visibility/color
+styles, derived waveform channels, promotion of representable derived channels
+to Board IR probes/assertions, and graph-hover/runtime activity extraction from
+loaded waveform artifacts.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
-searchable/grouped trace selection, transient saved compare sets, and
-selected-trace reset behavior.
+searchable/grouped trace selection, transient saved compare sets, transient
+trace-style controls, and selected-trace reset behavior.
 `src/gui/waveform/waveform_context.rs` owns pending schematic
 probe-to-scope focus, runtime trace/event-to-schematic cross-focus
 selection, selected-trace schematic-context strip actions, and scope probe
@@ -350,7 +351,8 @@ form:
 - Simulation/Scopes: presents a runtime-first oscilloscope workspace linked
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform
   selection, searchable/grouped trace selection, transient selected-probe trace
-  pinning and saved compare sets for multi-trace comparison overlays, direct
+  pinning, saved compare sets, and per-trace visibility/color styles for
+  multi-trace comparison overlays, direct
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls, and
   selected-plus-pinned A/B cursor readouts.

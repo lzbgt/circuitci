@@ -1,6 +1,7 @@
 use super::{
-    WaveformProbe, WaveformTraceRef, WaveformView, interpolated_value, min_max, ordered_pair,
-    positive_span, waveform_time_range_for_view, waveform_time_range_us, window_min_max,
+    WaveformProbe, WaveformTraceColor, WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    interpolated_value, min_max, ordered_pair, positive_span, waveform_time_range_for_view,
+    waveform_time_range_us, window_min_max,
 };
 use eframe::egui;
 
@@ -167,6 +168,7 @@ pub(super) fn draw_waveform_plot_sized(
     traces: &[WaveformTraceRef],
     cursors: WaveformPlotCursors<'_>,
     view: WaveformPlotView<'_>,
+    trace_styles: &[WaveformTraceStyle],
     desired_size: egui::Vec2,
 ) -> WaveformPlotInteraction {
     let Some(primary) = traces
@@ -380,7 +382,7 @@ pub(super) fn draw_waveform_plot_sized(
         let Some((trace_waveform, trace_probe)) = waveform_trace(waveforms, trace) else {
             continue;
         };
-        let color = scope_trace_color(trace_order);
+        let color = scope_trace_color_for_style(trace_order, trace, trace_styles);
         let points = visible_trace_points(trace_waveform, trace_probe, x_min, x_max, &map_point);
         if points.len() >= 2 {
             painter.add(egui::Shape::line(
@@ -484,6 +486,24 @@ pub(super) fn scope_visible_trace_refs(
     traces
 }
 
+pub(super) fn scope_visible_styled_trace_refs(
+    traces: &[WaveformTraceRef],
+    styles: &[WaveformTraceStyle],
+) -> Vec<WaveformTraceRef> {
+    traces
+        .iter()
+        .copied()
+        .enumerate()
+        .filter_map(|(index, trace)| {
+            if index == 0 || scope_trace_style(styles, trace).visible {
+                Some(trace)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub(super) fn waveform_trace_bounds_in_window(
     waveforms: &[WaveformView],
     traces: &[WaveformTraceRef],
@@ -534,15 +554,28 @@ fn visible_trace_points(
 }
 
 fn scope_trace_color(index: usize) -> egui::Color32 {
-    const COLORS: [egui::Color32; 6] = [
-        egui::Color32::from_rgb(93, 185, 255),
-        egui::Color32::from_rgb(255, 196, 87),
-        egui::Color32::from_rgb(135, 220, 140),
-        egui::Color32::from_rgb(247, 118, 142),
-        egui::Color32::from_rgb(187, 154, 247),
-        egui::Color32::from_rgb(125, 207, 255),
-    ];
-    COLORS[index % COLORS.len()]
+    WaveformTraceColor::all()[index % WaveformTraceColor::all().len()].color()
+}
+
+pub(super) fn scope_trace_color_for_style(
+    index: usize,
+    trace: WaveformTraceRef,
+    styles: &[WaveformTraceStyle],
+) -> egui::Color32 {
+    scope_trace_style(styles, trace)
+        .color
+        .map_or_else(|| scope_trace_color(index), WaveformTraceColor::color)
+}
+
+pub(super) fn scope_trace_style(
+    styles: &[WaveformTraceStyle],
+    trace: WaveformTraceRef,
+) -> WaveformTraceStyle {
+    styles
+        .iter()
+        .copied()
+        .find(|style| style.trace == trace)
+        .unwrap_or_else(|| WaveformTraceStyle::default_for(trace))
 }
 
 pub(super) fn plot_x_to_time_us(

@@ -68,7 +68,7 @@ use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
-    WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef, WaveformView,
+    WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
     waveform_time_range_for_view,
 };
 
@@ -347,6 +347,7 @@ pub struct CircuitCiApp {
     waveform_probe_group_by_kind: bool,
     waveform_pinned_traces: Vec<WaveformTraceRef>,
     waveform_trace_presets: Vec<WaveformTracePreset>,
+    waveform_trace_styles: Vec<WaveformTraceStyle>,
     waveform_trace_preset_name: String,
     pending_scope_probe: Option<ScopeProbeTarget>,
     waveform_math_left: usize,
@@ -514,6 +515,7 @@ impl Default for CircuitCiApp {
             waveform_probe_group_by_kind: false,
             waveform_pinned_traces: Vec::new(),
             waveform_trace_presets: Vec::new(),
+            waveform_trace_styles: Vec::new(),
             waveform_trace_preset_name: String::new(),
             pending_scope_probe: None,
             waveform_math_left: 0,

@@ -1,7 +1,10 @@
-use super::waveform_plot::{scope_visible_trace_refs, valid_waveform_trace};
+use super::waveform_plot::{
+    scope_trace_color_for_style, scope_trace_style, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, valid_waveform_trace,
+};
 use super::{
-    CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformTracePreset, WaveformTraceRef,
-    WaveformView,
+    CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformTraceColor, WaveformTracePreset,
+    WaveformTraceRef, WaveformTraceStyle, WaveformView,
 };
 use eframe::egui;
 
@@ -160,6 +163,7 @@ impl CircuitCiApp {
         if focus_schematic {
             self.focus_selected_scope_schematic_context();
         }
+        self.waveform_trace_styles_ui(ui);
         self.waveform_compare_presets_ui(ui);
     }
 
@@ -237,6 +241,88 @@ impl CircuitCiApp {
         }
     }
 
+    fn waveform_trace_styles_ui(&mut self, ui: &mut egui::Ui) {
+        let current_traces = self.current_scope_compare_traces();
+        if current_traces.len() < 2 {
+            return;
+        }
+        let visible_traces =
+            scope_visible_styled_trace_refs(&current_traces, &self.waveform_trace_styles);
+        let mut reset_current = false;
+
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Trace Styles");
+                ui.label(format!(
+                    "{} / {} visible",
+                    visible_traces.len(),
+                    current_traces.len()
+                ));
+                if ui
+                    .add_enabled(
+                        current_traces
+                            .iter()
+                            .any(|trace| self.trace_style_has_override(*trace)),
+                        egui::Button::new("Reset Current"),
+                    )
+                    .clicked()
+                {
+                    reset_current = true;
+                }
+            });
+
+            egui::Grid::new("scope_trace_styles")
+                .num_columns(4)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Show");
+                    ui.label("Trace");
+                    ui.label("Color");
+                    ui.label("Role");
+                    ui.end_row();
+
+                    for (index, trace) in current_traces.iter().copied().enumerate() {
+                        let active = index == 0;
+                        let style = scope_trace_style(&self.waveform_trace_styles, trace);
+                        let mut visible = style.visible;
+                        if active {
+                            let mut checked = true;
+                            ui.add_enabled(false, egui::Checkbox::new(&mut checked, ""));
+                        } else if ui.checkbox(&mut visible, "").changed() {
+                            self.set_scope_trace_visible(trace, visible);
+                        }
+
+                        ui.monospace(self.scope_trace_display_label(trace));
+
+                        let mut color = style.color;
+                        let swatch =
+                            scope_trace_color_for_style(index, trace, &self.waveform_trace_styles);
+                        egui::ComboBox::from_id_salt((
+                            "scope_trace_color",
+                            trace.waveform_index,
+                            trace.probe_index,
+                        ))
+                        .selected_text(color.map_or("Auto", WaveformTraceColor::label))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut color, None, "Auto");
+                            for choice in WaveformTraceColor::all() {
+                                ui.selectable_value(&mut color, Some(choice), choice.label());
+                            }
+                        });
+                        if color != style.color {
+                            self.set_scope_trace_color(trace, color);
+                        }
+                        ui.colored_label(swatch, if active { "active" } else { "pinned" });
+                        ui.end_row();
+                    }
+                });
+        });
+
+        if reset_current {
+            self.reset_current_scope_trace_styles(&current_traces);
+        }
+    }
+
     pub(super) fn current_scope_compare_traces(&self) -> Vec<WaveformTraceRef> {
         scope_visible_trace_refs(
             &self.waveforms,
@@ -244,6 +330,89 @@ impl CircuitCiApp {
             self.selected_probe,
             &self.waveform_pinned_traces,
         )
+    }
+
+    fn scope_trace_display_label(&self, trace: WaveformTraceRef) -> String {
+        let Some((waveform, probe)) =
+            self.waveforms
+                .get(trace.waveform_index)
+                .and_then(|waveform| {
+                    waveform
+                        .probes
+                        .get(trace.probe_index)
+                        .map(|probe| (waveform, probe))
+                })
+        else {
+            return format!("{}:{}", trace.waveform_index, trace.probe_index);
+        };
+        format!(
+            "{} / {}",
+            waveform.label,
+            probe.expression.as_deref().unwrap_or(&probe.label)
+        )
+    }
+
+    fn trace_style_has_override(&self, trace: WaveformTraceRef) -> bool {
+        self.waveform_trace_styles
+            .iter()
+            .any(|style| style.trace == trace && !style.is_default())
+    }
+
+    fn set_scope_trace_visible(&mut self, trace: WaveformTraceRef, visible: bool) {
+        self.update_scope_trace_style(trace, |style| {
+            style.visible = visible;
+        });
+        self.status = if visible {
+            "Scope trace shown.".to_string()
+        } else {
+            "Scope trace hidden from compare overlay.".to_string()
+        };
+    }
+
+    fn set_scope_trace_color(
+        &mut self,
+        trace: WaveformTraceRef,
+        color: Option<WaveformTraceColor>,
+    ) {
+        self.update_scope_trace_style(trace, |style| {
+            style.color = color;
+        });
+        self.status = match color {
+            Some(color) => format!("Scope trace color set to {}.", color.label()),
+            None => "Scope trace color reset to Auto.".to_string(),
+        };
+    }
+
+    fn update_scope_trace_style(
+        &mut self,
+        trace: WaveformTraceRef,
+        update: impl FnOnce(&mut WaveformTraceStyle),
+    ) {
+        if !valid_waveform_trace(&self.waveforms, trace) {
+            return;
+        }
+        let mut style = scope_trace_style(&self.waveform_trace_styles, trace);
+        update(&mut style);
+        if style.is_default() {
+            self.waveform_trace_styles
+                .retain(|existing| existing.trace != trace);
+        } else if let Some(existing) = self
+            .waveform_trace_styles
+            .iter_mut()
+            .find(|existing| existing.trace == trace)
+        {
+            *existing = style;
+        } else {
+            self.waveform_trace_styles.push(style);
+        }
+    }
+
+    fn reset_current_scope_trace_styles(&mut self, traces: &[WaveformTraceRef]) {
+        let count = self.waveform_trace_styles.len();
+        self.waveform_trace_styles
+            .retain(|style| !traces.contains(&style.trace));
+        let removed = count - self.waveform_trace_styles.len();
+        self.status = format!("Reset {removed} current scope trace style override(s).");
     }
 
     pub(super) fn save_current_scope_compare_preset(&mut self, traces: Vec<WaveformTraceRef>) {
@@ -338,6 +507,25 @@ impl CircuitCiApp {
         }
         self.waveform_trace_presets
             .retain(|preset| !preset.traces.is_empty());
+    }
+
+    pub(super) fn shift_scope_trace_styles_after_probe_removal(
+        &mut self,
+        waveform_index: usize,
+        removed_probe_index: usize,
+    ) {
+        self.waveform_trace_styles.retain_mut(|style| {
+            if style.trace.waveform_index != waveform_index {
+                return true;
+            }
+            if style.trace.probe_index == removed_probe_index {
+                return false;
+            }
+            if style.trace.probe_index > removed_probe_index {
+                style.trace.probe_index -= 1;
+            }
+            true
+        });
     }
 }
 
