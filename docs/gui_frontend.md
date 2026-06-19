@@ -231,13 +231,13 @@ bounded preflight size/row estimates, large-artifact progress warnings, optional
 large-artifact deferral, progress/cancel checks, and loaded/deferred/skipped file
 diagnostics before the GUI applies the completed report, keeping large CSV files
 out of the UI thread while making missing, deferred, and slow artifacts
-filterable and exportable from Scopes with compact preview-column loaded/unloaded summaries. Deferred artifacts keep header-only
+filterable, actionable, and exportable from Scopes with compact preview-column loaded/unloaded summaries. Deferred artifacts keep header-only
 trace previews, can be filtered by file/probe/detail from the selector, and can
 be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report. Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces, mark loaded preview labels, skip already loaded columns, and preserve the full
 deferred artifact placeholder for later all-column loading.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, and preserves full deferred placeholders until full load. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, and preserves full deferred placeholders until full load. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata and row-level selected-column load shortcuts for deferred artifacts.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact

@@ -19,8 +19,9 @@ use super::{
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
     select_deferred_waveform_column_picks, select_scope_trigger_event,
     waveform_load_deferred_artifacts, waveform_load_deferred_paths,
-    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
-    waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
+    waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
+    waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
+    waveform_probe_group_choices,
 };
 use std::collections::BTreeSet;
 
@@ -518,6 +519,43 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
     assert!(deferred_csv.contains(
         "deferred,huge.csv,62914560,1200000,2,2,v(out); i(load),i(load),v(out),Deferred large waveform artifact"
     ));
+}
+
+#[test]
+fn waveform_load_diagnostics_unloaded_preview_columns_skip_selected_loads() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "huge.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(60 * 1024 * 1024),
+            samples: 1_200_000,
+            probes: 3,
+            probe_preview: vec![
+                "v(out)".to_string(),
+                "i(load)".to_string(),
+                "p(load)".to_string(),
+            ],
+            elapsed_ms: 2,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "huge.csv".to_string(),
+            Some(60 * 1024 * 1024),
+            32,
+            1,
+            15,
+            vec!["i(load)".to_string()],
+        ),
+    ];
+
+    assert_eq!(
+        waveform_load_diagnostic_unloaded_preview_columns(&diagnostics, &diagnostics[0]),
+        vec!["v(out)", "p(load)"]
+    );
+    assert!(
+        waveform_load_diagnostic_unloaded_preview_columns(&diagnostics, &diagnostics[1]).is_empty()
+    );
 }
 
 #[test]

@@ -48,7 +48,8 @@ pub(super) use waveform_load::{
 };
 #[cfg(test)]
 use waveform_load_diagnostics::{
-    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
+    waveform_load_diagnostic_unloaded_preview_columns, waveform_load_diagnostic_visible_indexes,
+    waveform_load_diagnostics_csv,
 };
 pub(super) use waveform_plot::{WaveformCursorTarget, WaveformPlotCache};
 #[cfg(test)]
