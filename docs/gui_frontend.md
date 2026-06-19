@@ -220,7 +220,7 @@ oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
-`src/gui/waveform.rs` owns streaming, cancel-aware waveform CSV parsing, Scopes state orchestration,
+`src/gui/waveform.rs` owns Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
 measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with editable labels/notes, search/source filters, sort/group controls, plot markers, and filtered CSV/Markdown copy/export, GUI-only
 transient trace pinning/comparison overlays, per-trace overlay visibility/color
@@ -236,7 +236,7 @@ trace previews, can be filtered by file/probe/detail from the selector, and can
 be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report.
-`src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, deferred waveform artifact placeholders
 with header-only probe previews, selector-side filtering, and row/visible/all
