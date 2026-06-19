@@ -24,6 +24,7 @@ circuitci-gui
   -> src/gui/jobs.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
+  -> src/gui/sketch_layout.rs
   -> src/gui/sketch_actions.rs
   -> src/gui/sketch_bundles.rs
   -> src/gui/sketch_canvas.rs
@@ -83,11 +84,13 @@ typed operation-canceled error so checkpoint cancellation is shown as
 load, save, parse validation, import path/name helpers, shared Board IR
 undo/redo history, and the unsaved-change confirmation guard used before
 load/import/quit actions. `src/gui/sketch.rs` owns the Board IR graph snapshot,
-graph layout helpers, persisted schematic node positions/styles, view-state
-transforms, schematic grid/snap helpers, orthogonal wire geometry, wire
-hit-testing, fit-all and fit-selection bounds, bounded full-list logical layout
-for pannable imported designs, and model-aware pin-anchor layout/rendering
-primitives. Pin anchors are colored from the connected Board IR net kind and
+sketch data types, persisted schematic node positions/styles, schematic wire
+route waypoint metadata, shared sketch YAML helpers, and model-port default
+pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.rs`
+owns graph layout helpers, view-state transforms, schematic grid/snap helpers,
+fit-all and fit-selection bounds, bounded full-list logical layout for pannable
+imported designs, orthogonal wire geometry, wire hit-testing, and model-aware
+pin-anchor layout primitives. Pin anchors are colored from the connected Board IR net kind and
 show compact pin/kind chips while hovered, selected, connected-highlighted, or
 used as an active wire target; this is a canvas affordance, not another
 connectivity model. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route

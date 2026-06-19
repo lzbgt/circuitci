@@ -39,6 +39,7 @@ mod sketch_duplicate;
 mod sketch_hierarchy;
 mod sketch_inline_edit;
 mod sketch_inspector;
+mod sketch_layout;
 mod sketch_minimap;
 mod sketch_navigator;
 mod sketch_net_labels;

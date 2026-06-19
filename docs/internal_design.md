@@ -63,11 +63,13 @@ schematic, KiCad PCB, and SPICE deck import command wiring.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
-owns Board IR graph snapshots, graph layout helpers, bounded full-list logical
-layout for pannable imported designs, schematic grid/snap helpers, orthogonal
-wire geometry, schematic wire route waypoint metadata, wire hit-testing,
-shared sketch YAML helpers, and model-port default pin/net seeding for
-library-backed component insertion. `src/gui/sketch_routes.rs` owns shared
+owns Board IR graph snapshots, sketch data types, schematic wire route waypoint
+metadata, shared sketch YAML helpers, and model-port default pin/net seeding
+for library-backed component insertion. `src/gui/sketch_layout.rs` owns graph
+layout helpers, bounded full-list logical layout for pannable imported designs,
+view-state transforms, schematic grid/snap helpers, orthogonal wire geometry,
+wire hit-testing, fit bounds, and model-aware pin-anchor layout primitives.
+`src/gui/sketch_routes.rs` owns shared
 orthogonal wire-route geometry helpers so display, hit-testing, insertion,
 active wire preview, and drag preview all use the same route semantics.
 `src/gui/sketch_wire_draft.rs` owns transient in-progress wire-bend points while

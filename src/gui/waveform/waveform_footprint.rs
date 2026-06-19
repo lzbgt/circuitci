@@ -468,6 +468,7 @@ impl WaveformFootprintUnloadTarget {
     }
 }
 
+#[cfg(test)]
 pub(super) fn waveform_footprint_rows(
     waveforms: &[WaveformView],
     query: &str,

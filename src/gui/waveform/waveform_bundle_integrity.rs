@@ -385,16 +385,19 @@ pub(super) fn scope_report_bundle_integrity_projected_details(
 }
 
 #[cfg(test)]
+type ArtifactDetailRowTuple = (
+    String,
+    String,
+    Option<usize>,
+    Option<usize>,
+    Option<String>,
+    Option<String>,
+);
+
+#[cfg(test)]
 pub(super) fn scope_report_bundle_artifact_detail_rows(
     bundle_dir: &Path,
-) -> Vec<(
-    String,
-    String,
-    Option<usize>,
-    Option<usize>,
-    Option<String>,
-    Option<String>,
-)> {
+) -> Vec<ArtifactDetailRowTuple> {
     scope_report_bundle_integrity_details(bundle_dir)
         .rows
         .into_iter()
