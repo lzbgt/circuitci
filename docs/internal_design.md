@@ -280,22 +280,23 @@ project load action; they must not bypass validation, import, save, or the
 dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage UI,
 keeping the runtime oscilloscope primary while analog scenario/model/assertion
 panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
-CSV parsing, the primary scope plot, simulation-time scrub/playback controls,
-transient visible time-window fit/zoom/pan controls, cursor readouts,
-min/max/delta measurements, pending schematic probe-to-scope focus, transient
-selected-probe trace pinning/comparison overlays, GUI-only derived waveform
-channels, promotion of representable derived channels to explicit Board IR
-analog probes/assertions, exact probe-value lookup, and normalized runtime
-activity values for graph tinting. It may display graph hover readouts,
-activity coloring, pinned trace overlays over the currently loaded CSV set,
-visible-window axis scaling, and derived
+CSV parsing, Scopes state orchestration, simulation-time scrub/playback
+controls, cursor readouts, min/max/delta measurements, pending schematic
+probe-to-scope focus, transient selected-probe trace pinning/comparison
+overlays, GUI-only derived waveform channels, promotion of representable
+derived channels to explicit Board IR analog probes/assertions, exact
+probe-value lookup, and normalized runtime activity values for graph tinting.
+`src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
+visible-window fit/zoom/pan helpers, trace overlay selection, and
+visible-window axis scaling. It may display graph hover readouts, activity
+coloring, pinned trace overlays over the currently loaded CSV set, and derived
 difference, sum, product, or ratio channels for runtime waveform probes, but
 those values must come from report waveform artifacts and the shared waveform
 interpolation helpers rather than an unsynchronized live simulation model.
-Focused waveform
-and Scopes regressions are split into
+Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_tests.rs`; production waveform code should stay in
-`src/gui/waveform.rs` and avoid depending on test-only helpers.
+`src/gui/waveform.rs` / `src/gui/waveform/waveform_plot.rs` and avoid depending
+on test-only helpers.
 Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing
 analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to

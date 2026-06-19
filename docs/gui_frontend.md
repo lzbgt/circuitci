@@ -220,13 +220,15 @@ oscilloscope workspace with model-run controls and secondary docked
 scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
-`src/gui/waveform.rs` owns waveform CSV parsing, the primary scope plot,
-simulation-time scrub/playback controls, transient visible time-window
-fit/zoom/pan controls, cursor measurement tools, GUI-only transient trace
-pinning/comparison overlays, derived waveform channels, promotion of
-representable derived channels to Board IR probes/assertions, pending schematic
-probe-to-scope focus, and graph-hover/runtime activity extraction from loaded
-waveform artifacts. Focused waveform and scope regressions live in
+`src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
+simulation-time scrub/playback controls, cursor measurement tools, GUI-only
+transient trace pinning/comparison overlays, derived waveform channels,
+promotion of representable derived channels to Board IR probes/assertions,
+pending schematic probe-to-scope focus, and graph-hover/runtime activity
+extraction from loaded waveform artifacts. `src/gui/waveform/waveform_plot.rs`
+owns the primary scope plot drawing, transient visible time-window
+fit/zoom/pan helpers, trace overlay selection, and visible-window axis scaling.
+Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
 turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
