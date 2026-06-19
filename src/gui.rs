@@ -68,8 +68,8 @@ use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
-    WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    waveform_time_range_for_view,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef,
+    WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -373,6 +373,8 @@ pub struct CircuitCiApp {
     waveform_trace_presets: Vec<WaveformTracePreset>,
     waveform_trace_styles: Vec<WaveformTraceStyle>,
     waveform_measurement_snapshots: Vec<ScopeMeasurementSnapshot>,
+    waveform_snapshot_filter: String,
+    waveform_snapshot_source_filter: ScopeSnapshotSourceFilter,
     waveform_trace_preset_name: String,
     waveform_split_trace_units: bool,
     pending_scope_probe: Option<ScopeProbeTarget>,
@@ -547,6 +549,8 @@ impl Default for CircuitCiApp {
             waveform_trace_presets: Vec::new(),
             waveform_trace_styles: Vec::new(),
             waveform_measurement_snapshots: Vec::new(),
+            waveform_snapshot_filter: String::new(),
+            waveform_snapshot_source_filter: ScopeSnapshotSourceFilter::All,
             waveform_trace_preset_name: String::new(),
             waveform_split_trace_units: false,
             pending_scope_probe: None,

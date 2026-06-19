@@ -10,6 +10,37 @@ use std::fs;
 
 const MAX_SCOPE_SNAPSHOTS: usize = 64;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(in crate::gui) enum ScopeSnapshotSourceFilter {
+    #[default]
+    All,
+    Cursor,
+    Trigger,
+    Region,
+}
+
+impl ScopeSnapshotSourceFilter {
+    const ALL: [Self; 4] = [Self::All, Self::Cursor, Self::Trigger, Self::Region];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::Cursor => "Cursor",
+            Self::Trigger => "Trigger",
+            Self::Region => "Region",
+        }
+    }
+
+    fn matches(self, snapshot: &ScopeMeasurementSnapshot) -> bool {
+        match self {
+            Self::All => true,
+            Self::Cursor => snapshot.source.starts_with("cursor "),
+            Self::Trigger => snapshot.source == "trigger",
+            Self::Region => is_region_snapshot(snapshot),
+        }
+    }
+}
+
 impl CircuitCiApp {
     pub(super) fn capture_scope_cursor_snapshots(&mut self) {
         let rows = self.current_scope_cursor_snapshot_rows();
@@ -91,16 +122,18 @@ impl CircuitCiApp {
         let mut jump_index = None;
         let mut focus_index = None;
         let mut export_csv = false;
+        let visible_indexes = self.visible_scope_measurement_snapshot_indexes();
+        let visible_snapshots = self.filtered_scope_measurement_snapshots(&visible_indexes);
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Measurement Snapshots");
                 ui.label("runtime only");
                 if ui.button("Copy CSV").clicked() {
-                    let csv = scope_snapshots_csv(&self.waveform_measurement_snapshots);
+                    let csv = scope_snapshots_csv(&visible_snapshots);
                     ui.ctx().copy_text(csv);
                     self.status = format!(
                         "Copied {} scope measurement snapshot row(s) as CSV.",
-                        self.waveform_measurement_snapshots.len()
+                        visible_snapshots.len()
                     );
                 }
                 if ui.button("Export CSV").clicked() {
@@ -111,60 +144,91 @@ impl CircuitCiApp {
                     self.status = "Cleared scope measurement snapshots.".to_string();
                 }
             });
-            egui::ScrollArea::vertical()
-                .max_height(132.0)
-                .auto_shrink([false, true])
-                .show(ui, |ui| {
-                    egui::Grid::new("scope_measurement_snapshots")
-                        .num_columns(11)
-                        .striped(true)
-                        .show(ui, |ui| {
-                            ui.label("Label");
-                            ui.label("Source");
-                            ui.label("Trace");
-                            ui.label("A/Event/Min");
-                            ui.label("B/Max");
-                            ui.label("Delta/Mean");
-                            ui.label("RMS");
-                            ui.label("Unit");
-                            ui.label("");
-                            ui.label("");
-                            ui.label("");
-                            ui.end_row();
-
-                            for (index, snapshot) in
-                                self.waveform_measurement_snapshots.iter().enumerate()
-                            {
-                                ui.monospace(&snapshot.label);
-                                ui.monospace(snapshot_source(snapshot));
-                                ui.monospace(&snapshot.trace_label);
-                                ui.monospace(snapshot_value_a(snapshot));
-                                ui.monospace(snapshot_value_b(snapshot));
-                                ui.monospace(snapshot_delta(snapshot));
-                                ui.monospace(snapshot_rms(snapshot));
-                                ui.monospace(&snapshot.unit);
-                                let can_jump = snapshot.trace.is_some_and(|trace| {
-                                    valid_waveform_trace(&self.waveforms, trace)
-                                });
-                                if ui
-                                    .add_enabled(can_jump, egui::Button::new("Jump"))
-                                    .clicked()
-                                {
-                                    jump_index = Some(index);
-                                }
-                                if ui
-                                    .add_enabled(can_jump, egui::Button::new("Focus"))
-                                    .clicked()
-                                {
-                                    focus_index = Some(index);
-                                }
-                                if ui.small_button("Delete").clicked() {
-                                    remove_index = Some(index);
-                                }
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Find");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.waveform_snapshot_filter)
+                        .desired_width(180.0)
+                        .hint_text("label, trace, unit, source"),
+                );
+                egui::ComboBox::from_label("Source")
+                    .selected_text(self.waveform_snapshot_source_filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in ScopeSnapshotSourceFilter::ALL {
+                            ui.selectable_value(
+                                &mut self.waveform_snapshot_source_filter,
+                                filter,
+                                filter.label(),
+                            );
+                        }
+                    });
+                ui.label(format!(
+                    "{} / {}",
+                    visible_indexes.len(),
+                    self.waveform_measurement_snapshots.len()
+                ));
+                if ui.small_button("Clear Filters").clicked() {
+                    self.waveform_snapshot_filter.clear();
+                    self.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::All;
+                }
+            });
+            if visible_indexes.is_empty() {
+                ui.label("No measurement snapshots match the current filters.");
+            } else {
+                egui::ScrollArea::vertical()
+                    .max_height(132.0)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        egui::Grid::new("scope_measurement_snapshots")
+                            .num_columns(11)
+                            .striped(true)
+                            .show(ui, |ui| {
+                                ui.label("Label");
+                                ui.label("Source");
+                                ui.label("Trace");
+                                ui.label("A/Event/Min");
+                                ui.label("B/Max");
+                                ui.label("Delta/Mean");
+                                ui.label("RMS");
+                                ui.label("Unit");
+                                ui.label("");
+                                ui.label("");
+                                ui.label("");
                                 ui.end_row();
-                            }
-                        });
-                });
+
+                                for &index in &visible_indexes {
+                                    let snapshot = &self.waveform_measurement_snapshots[index];
+                                    ui.monospace(&snapshot.label);
+                                    ui.monospace(snapshot_source(snapshot));
+                                    ui.monospace(&snapshot.trace_label);
+                                    ui.monospace(snapshot_value_a(snapshot));
+                                    ui.monospace(snapshot_value_b(snapshot));
+                                    ui.monospace(snapshot_delta(snapshot));
+                                    ui.monospace(snapshot_rms(snapshot));
+                                    ui.monospace(&snapshot.unit);
+                                    let can_jump = snapshot.trace.is_some_and(|trace| {
+                                        valid_waveform_trace(&self.waveforms, trace)
+                                    });
+                                    if ui
+                                        .add_enabled(can_jump, egui::Button::new("Jump"))
+                                        .clicked()
+                                    {
+                                        jump_index = Some(index);
+                                    }
+                                    if ui
+                                        .add_enabled(can_jump, egui::Button::new("Focus"))
+                                        .clicked()
+                                    {
+                                        focus_index = Some(index);
+                                    }
+                                    if ui.small_button("Delete").clicked() {
+                                        remove_index = Some(index);
+                                    }
+                                    ui.end_row();
+                                }
+                            });
+                    });
+            }
         });
         if let Some(index) = jump_index {
             self.activate_scope_measurement_snapshot(index, false);
@@ -177,7 +241,7 @@ impl CircuitCiApp {
             self.status = "Deleted scope measurement snapshot.".to_string();
         }
         if export_csv {
-            self.export_scope_measurement_snapshots_csv();
+            self.export_scope_measurement_snapshots_csv(&visible_snapshots);
         }
     }
 
@@ -356,20 +420,39 @@ impl CircuitCiApp {
         self.set_waveform_time_window(center - span * 0.5, center + span * 0.5);
     }
 
-    fn export_scope_measurement_snapshots_csv(&mut self) {
-        if self.waveform_measurement_snapshots.is_empty() {
-            self.status = "No scope measurement snapshots are available to export.".to_string();
+    pub(super) fn visible_scope_measurement_snapshot_indexes(&self) -> Vec<usize> {
+        scope_snapshot_visible_indexes(
+            &self.waveform_measurement_snapshots,
+            &self.waveform_snapshot_filter,
+            self.waveform_snapshot_source_filter,
+        )
+    }
+
+    fn filtered_scope_measurement_snapshots(
+        &self,
+        indexes: &[usize],
+    ) -> Vec<ScopeMeasurementSnapshot> {
+        indexes
+            .iter()
+            .filter_map(|&index| self.waveform_measurement_snapshots.get(index).cloned())
+            .collect()
+    }
+
+    fn export_scope_measurement_snapshots_csv(&mut self, snapshots: &[ScopeMeasurementSnapshot]) {
+        if snapshots.is_empty() {
+            self.status =
+                "No scope measurement snapshots match the current export filters.".to_string();
             return;
         }
         let Some(path) = self.pick_scope_snapshot_export_path() else {
             return;
         };
-        let csv = scope_snapshots_csv(&self.waveform_measurement_snapshots);
+        let csv = scope_snapshots_csv(snapshots);
         match fs::write(&path, csv) {
             Ok(()) => {
                 self.status = format!(
                     "Exported {} scope measurement snapshot row(s) to {}.",
-                    self.waveform_measurement_snapshots.len(),
+                    snapshots.len(),
                     path.display()
                 );
             }
@@ -532,6 +615,35 @@ pub(super) fn scope_snapshots_csv(snapshots: &[ScopeMeasurementSnapshot]) -> Str
         csv.push('\n');
     }
     csv
+}
+
+pub(super) fn scope_snapshot_visible_indexes(
+    snapshots: &[ScopeMeasurementSnapshot],
+    query: &str,
+    source_filter: ScopeSnapshotSourceFilter,
+) -> Vec<usize> {
+    let query = query.trim().to_ascii_lowercase();
+    snapshots
+        .iter()
+        .enumerate()
+        .filter_map(|(index, snapshot)| {
+            (source_filter.matches(snapshot)
+                && (query.is_empty() || snapshot_search_text(snapshot).contains(&query)))
+            .then_some(index)
+        })
+        .collect()
+}
+
+fn snapshot_search_text(snapshot: &ScopeMeasurementSnapshot) -> String {
+    [
+        snapshot.label.as_str(),
+        snapshot.source.as_str(),
+        snapshot.event_edge.as_deref().unwrap_or(""),
+        snapshot.trace_label.as_str(),
+        snapshot.unit.as_str(),
+    ]
+    .join(" ")
+    .to_ascii_lowercase()
 }
 
 fn csv_escape(value: String) -> String {

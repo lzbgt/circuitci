@@ -1,19 +1,19 @@
 use super::ScopeTriggerEdge;
 use super::waveform_context::find_scope_probe;
 use super::{
+    ScopeSnapshotSourceFilter, WaveformTraceColor, WaveformTraceStyle, clamp_value_window,
+    expanded_value_bounds, scope_trace_color_for_style,
+};
+use super::{
     WaveformMathDraft, WaveformPlotLaneMode, WaveformProbeQuantity, WaveformTracePreset,
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity, interpolated_value,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
     runtime_probe_lines_for_selection, sanitized_probe_name, scope_cursor_legend_rows,
-    scope_region_stats_rows, scope_snapshots_csv, scope_trace_lanes, scope_trigger_events,
-    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
-    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
-};
-use super::{
-    WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
-    scope_trace_color_for_style,
+    scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshots_csv,
+    scope_trace_lanes, scope_trigger_events, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
+    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -505,6 +505,87 @@ fn scope_snapshot_csv_exports_cursor_trigger_and_region_rows() {
     assert!(csv.contains("Cursor 1,cursor selected,\"quoted, \"\"trace\"\"\""));
     assert!(csv.contains("Trigger 2,trigger rising,v(out),5.000000e-7"));
     assert!(csv.contains("Region 3,region selected,v(out),0.000000e0,2.000000e-6,0.000000e0,2.000000e0,1.000000e0,1.154701e0,,V"));
+}
+
+#[test]
+fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.capture_scope_trigger_snapshot(event);
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![0, 1, 2, 3, 4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::Cursor,
+        ),
+        vec![0, 1]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "load",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![1, 4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "load",
+            ScopeSnapshotSourceFilter::Region,
+        ),
+        vec![4]
+    );
+
+    app.waveform_snapshot_filter = "load".to_string();
+    app.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::Region;
+    let visible = app.visible_scope_measurement_snapshot_indexes();
+    let filtered: Vec<_> = visible
+        .iter()
+        .map(|&index| app.waveform_measurement_snapshots[index].clone())
+        .collect();
+    let csv = scope_snapshots_csv(&filtered);
+
+    assert!(csv.contains("Region 4,region pinned,i(load)"));
+    assert!(!csv.contains("v(out)"));
+    assert_eq!(csv.lines().count(), 2);
 }
 
 #[test]

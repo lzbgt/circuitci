@@ -222,7 +222,7 @@ read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
-measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with plot markers plus CSV copy/export, GUI-only
+measurement tools, selected-plus-pinned cursor readout table, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, and trigger-event measurement snapshots with search/source filters, plot markers, and filtered CSV copy/export, GUI-only
 transient trace pinning/comparison overlays, per-trace overlay visibility/color
 styles, derived waveform channels, promotion of representable derived channels
 to Board IR probes/assertions, and graph-hover/runtime activity extraction from
@@ -241,8 +241,9 @@ trace overlay selection, transient measurement snapshot marker chips with hover 
 `src/gui/waveform/waveform_view.rs` owns the Scopes plot orchestration, cursor
 readout table, playback controls, transient visible time-window and
 value-window fit/zoom/pan helpers, Back/Forward view-window history, and measurement snapshot display.
-`src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region and
-trigger-event measurement snapshot capture, plot-marker derivation, Jump
+`src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
+region-stat, and trigger-event measurement snapshot capture, search/source
+filtering, plot-marker derivation, filtered CSV serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
@@ -367,7 +368,7 @@ form:
   history, direct
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls,
-  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, and transient measurement snapshots from cursor regions, region stats, or trigger events with interactive plot marker chips plus row-level Jump, schematic Focus, and CSV copy/export actions.
+  selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with interactive plot marker chips plus row-level Jump, schematic Focus, and filtered CSV copy/export actions.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
   scenario timing/backend, source/probe/assertion/model-file/node-binding
@@ -606,9 +607,13 @@ exists, Scopes shows a schematic-context strip with target, probe, scenario,
 and expression plus `Open Sketch` and `Fit Context` actions. This is transient
 GUI selection over the existing Board IR target, not persisted waveform
 metadata.
-Measurement snapshot rows can also restore their captured trace/cursor/time
-context or cross-focus the linked schematic probe while remaining runtime-only.
-Visible snapshot marker chips are derived from the same transient rows, draw only for currently visible selected/pinned traces, show hover details, and support click-to-Jump plus Shift-click schematic Focus.
+Measurement snapshot rows can be searched or source-filtered across
+cursor/trigger/region observations; Copy CSV and Export CSV operate on the
+currently visible filtered rows. Rows can also restore their captured
+trace/cursor/time context or cross-focus the linked schematic probe while
+remaining runtime-only. Visible snapshot marker chips are derived from the same
+transient rows, draw only for currently visible selected/pinned traces, show
+hover details, and support click-to-Jump plus Shift-click schematic Focus.
 Right-clicking a probe badge
 opens an explicit action menu for opening the probe in Simulation, adding an
 assertion from current settings, quick adding above/below cursor-sample

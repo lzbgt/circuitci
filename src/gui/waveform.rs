@@ -25,8 +25,9 @@ use waveform_plot::{
     scope_visible_styled_trace_refs, scope_visible_trace_refs, scope_zoom_box_interaction,
     waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
+pub(super) use waveform_snapshots::ScopeSnapshotSourceFilter;
 #[cfg(test)]
-use waveform_snapshots::scope_snapshots_csv;
+use waveform_snapshots::{scope_snapshot_visible_indexes, scope_snapshots_csv};
 #[cfg(test)]
 use waveform_trace_selector::{
     WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
