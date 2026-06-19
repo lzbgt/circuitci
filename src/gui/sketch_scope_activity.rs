@@ -3,7 +3,9 @@ use eframe::egui;
 use super::CircuitCiApp;
 use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
-use super::waveform::runtime_scope_probe_sample_label;
+use super::waveform::{
+    WaveformView, runtime_scope_probe_sample_label, waveform_time_range_for_view,
+};
 
 impl CircuitCiApp {
     pub(super) fn sketch_runtime_scope_activity_legend(
@@ -17,7 +19,7 @@ impl CircuitCiApp {
         }
         let visible_indexes =
             runtime_scope_activity_visible_indexes(targets, &self.sketch_runtime_scope_filter);
-        let legend_size = egui::vec2(328.0, 252.0);
+        let legend_size = egui::vec2(328.0, 292.0);
         let pos = canvas_rect.right_top()
             + egui::vec2(
                 -(legend_size.x + 12.0),
@@ -64,6 +66,39 @@ impl CircuitCiApp {
                     .on_hover_text(
                         "Show runtime scope tinting and clickable scope chips for loaded waveform traces.",
                     );
+                    if let Some(range) =
+                        runtime_scope_activity_cursor_range_us(&self.waveforms, self.selected_waveform)
+                    {
+                        let clamped =
+                            clamp_runtime_scope_activity_cursor_us(self.waveform_cursor_a_us, range);
+                        if (clamped - self.waveform_cursor_a_us).abs() > f64::EPSILON {
+                            self.waveform_cursor_a_us = clamped;
+                        }
+                        ui.horizontal(|ui| {
+                            ui.label("Cursor A");
+                            let mut cursor_us = self.waveform_cursor_a_us;
+                            let slider_changed = ui
+                                .add_sized(
+                                    egui::vec2(150.0, 18.0),
+                                    egui::Slider::new(&mut cursor_us, range.0..=range.1)
+                                        .show_value(false),
+                                )
+                                .changed();
+                            let drag_changed = ui
+                                .add(
+                                    egui::DragValue::new(&mut cursor_us)
+                                        .speed(((range.1 - range.0) / 200.0).max(0.001))
+                                        .range(range.0..=range.1)
+                                        .suffix(" us"),
+                                )
+                                .changed();
+                            if slider_changed || drag_changed {
+                                self.waveform_cursor_a_us =
+                                    clamp_runtime_scope_activity_cursor_us(cursor_us, range);
+                                self.waveform_playing = false;
+                            }
+                        });
+                    }
                     ui.horizontal(|ui| {
                         ui.label("Find");
                         let response = ui.add_sized(
@@ -143,6 +178,18 @@ pub(super) fn runtime_scope_activity_visible_indexes(
         .collect()
 }
 
+pub(super) fn runtime_scope_activity_cursor_range_us(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+) -> Option<(f64, f64)> {
+    waveform_time_range_for_view(waveforms, waveform_index)
+        .filter(|(start_us, end_us)| end_us > start_us)
+}
+
+pub(super) fn clamp_runtime_scope_activity_cursor_us(cursor_us: f64, range: (f64, f64)) -> f64 {
+    cursor_us.clamp(range.0, range.1)
+}
+
 fn runtime_scope_activity_matches(target: &RuntimeScopeActivityTarget, query: &str) -> bool {
     target.label.to_ascii_lowercase().contains(query)
         || target
@@ -197,5 +244,14 @@ mod tests {
             vec![2]
         );
         assert!(runtime_scope_activity_visible_indexes(&targets, "missing").is_empty());
+    }
+
+    #[test]
+    fn runtime_scope_activity_cursor_clamp_stays_inside_loaded_range() {
+        let range = (1.0, 3.0);
+
+        assert_eq!(clamp_runtime_scope_activity_cursor_us(0.0, range), 1.0);
+        assert_eq!(clamp_runtime_scope_activity_cursor_us(2.0, range), 2.0);
+        assert_eq!(clamp_runtime_scope_activity_cursor_us(5.0, range), 3.0);
     }
 }
