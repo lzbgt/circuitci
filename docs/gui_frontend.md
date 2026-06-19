@@ -221,12 +221,13 @@ scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
-simulation-time scrub/playback controls, searchable/grouped trace selection,
-value-scale controls, cursor measurement tools, selected-plus-pinned cursor
-readout table, GUI-only transient trace pinning/comparison overlays, derived
-waveform channels,
+simulation-time scrub/playback controls, value-scale controls, cursor
+measurement tools, selected-plus-pinned cursor readout table, GUI-only
+transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
 and graph-hover/runtime activity extraction from loaded waveform artifacts.
+`src/gui/waveform/waveform_trace_selector.rs` owns waveform and
+searchable/grouped trace selection plus selected-trace reset behavior.
 `src/gui/waveform/waveform_context.rs` owns pending schematic
 probe-to-scope focus, runtime trace/event-to-schematic cross-focus
 selection, selected-trace schematic-context strip actions, and scope probe
