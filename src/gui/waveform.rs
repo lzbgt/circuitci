@@ -21,6 +21,7 @@ mod waveform_trigger;
 mod waveform_view;
 #[cfg(test)]
 use waveform_deferred::{
+    clear_deferred_waveform_column_picks,
     deferred_waveform_artifact_filtered_unloaded_probe_labels,
     deferred_waveform_artifact_picked_probe_labels,
     deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,

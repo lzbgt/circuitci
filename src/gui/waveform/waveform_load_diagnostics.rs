@@ -2,10 +2,12 @@ use crate::gui::CircuitCiApp;
 use eframe::egui;
 
 use super::WaveformLoadRequest;
+use super::waveform_deferred::deferred_waveform_column_picker_menu;
 use super::waveform_load::{
     WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadStatusFilter,
     format_waveform_load_bytes, waveform_load_selected_probes_for_path,
 };
+use super::waveform_load_deferred_artifacts;
 
 impl CircuitCiApp {
     pub(super) fn waveform_load_diagnostics_panel(&mut self, ui: &mut egui::Ui) {
@@ -20,6 +22,7 @@ impl CircuitCiApp {
             self.waveform_load_min_ms,
             self.waveform_load_slowest_first,
         );
+        let deferred_artifacts = waveform_load_deferred_artifacts(&self.waveform_load_diagnostics);
         let loaded = self
             .waveform_load_diagnostics
             .iter()
@@ -125,7 +128,7 @@ impl CircuitCiApp {
                     ui.end_row();
 
                     for &index in &visible_indexes {
-                        let diagnostic = &self.waveform_load_diagnostics[index];
+                        let diagnostic = self.waveform_load_diagnostics[index].clone();
                         ui.label(diagnostic.status_label());
                         ui.monospace(&diagnostic.path);
                         ui.monospace(format_waveform_load_bytes(diagnostic.bytes));
@@ -134,11 +137,11 @@ impl CircuitCiApp {
                         ui.vertical(|ui| {
                             ui.monospace(waveform_load_probe_summary_counts(
                                 &self.waveform_load_diagnostics,
-                                diagnostic,
+                                &diagnostic,
                             ));
                             let preview = waveform_load_probe_summary_preview(
                                 &self.waveform_load_diagnostics,
-                                diagnostic,
+                                &diagnostic,
                             );
                             if !preview.is_empty() {
                                 ui.small(preview);
@@ -150,7 +153,7 @@ impl CircuitCiApp {
                             let unloaded_preview =
                                 waveform_load_diagnostic_unloaded_preview_columns(
                                     &self.waveform_load_diagnostics,
-                                    diagnostic,
+                                    &diagnostic,
                                 );
                             ui.horizontal(|ui| {
                                 if ui.small_button("Load").clicked() {
@@ -171,6 +174,22 @@ impl CircuitCiApp {
                                             diagnostic.path.clone(),
                                             unloaded_preview,
                                         ));
+                                }
+                                if let Some(artifact) = deferred_artifacts
+                                    .iter()
+                                    .find(|artifact| artifact.path == diagnostic.path)
+                                {
+                                    let mut picked_request = None;
+                                    deferred_waveform_column_picker_menu(
+                                        ui,
+                                        artifact,
+                                        &mut self.waveform_deferred_column_filter,
+                                        &mut self.waveform_deferred_column_picks,
+                                        &mut picked_request,
+                                    );
+                                    if let Some(request) = picked_request {
+                                        load_deferred_request = Some(request);
+                                    }
                                 }
                             });
                         } else {

@@ -11,6 +11,7 @@ use super::{
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
+    clear_deferred_waveform_column_picks,
     deferred_waveform_artifact_filtered_unloaded_probe_labels,
     deferred_waveform_artifact_picked_probe_labels,
     deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
@@ -924,6 +925,8 @@ fn deferred_waveform_column_picker_filters_and_selects_visible_unloaded_columns(
         deferred_waveform_artifact_picked_probe_labels(artifact, &picks),
         vec!["p(aux)"]
     );
+    clear_deferred_waveform_column_picks(&mut picks, artifact, &visible_unloaded);
+    assert!(deferred_waveform_artifact_picked_probe_labels(artifact, &picks).is_empty());
 
     let empty = deferred_waveform_artifact_filtered_unloaded_probe_labels(artifact, "p(load)");
     assert!(empty.is_empty());
