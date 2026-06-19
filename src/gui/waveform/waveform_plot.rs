@@ -24,6 +24,19 @@ pub(super) struct WaveformPlotCursors<'a> {
     pub(super) active_drag: &'a mut Option<WaveformCursorTarget>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(super) struct WaveformPlotTrigger<'a> {
+    pub(super) threshold: f64,
+    pub(super) events_us: &'a [f64],
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct WaveformPlotView<'a> {
+    pub(super) visible_window_us: Option<(f64, f64)>,
+    pub(super) visible_value_window: Option<(f64, f64)>,
+    pub(super) trigger: Option<WaveformPlotTrigger<'a>>,
+}
+
 impl WaveformPlotInteraction {
     fn set_cursor(&mut self, target: WaveformCursorTarget, time_us: f64) {
         match target {
@@ -153,8 +166,7 @@ pub(super) fn draw_waveform_plot_sized(
     waveforms: &[WaveformView],
     traces: &[WaveformTraceRef],
     cursors: WaveformPlotCursors<'_>,
-    visible_window_us: Option<(f64, f64)>,
-    visible_value_window: Option<(f64, f64)>,
+    view: WaveformPlotView<'_>,
     desired_size: egui::Vec2,
 ) -> WaveformPlotInteraction {
     let Some(primary) = traces
@@ -168,8 +180,9 @@ pub(super) fn draw_waveform_plot_sized(
         ui.label("Waveform has no time samples.");
         return WaveformPlotInteraction::default();
     };
-    let (window_start_us, window_end_us) =
-        visible_window_us.unwrap_or((full_start_us, full_end_us));
+    let (window_start_us, window_end_us) = view
+        .visible_window_us
+        .unwrap_or((full_start_us, full_end_us));
     let x_min = window_start_us / 1e6;
     let x_max = window_end_us / 1e6;
     let Some((data_y_min, data_y_max)) =
@@ -182,7 +195,8 @@ pub(super) fn draw_waveform_plot_sized(
         ui.label("Waveform has no finite value samples.");
         return WaveformPlotInteraction::default();
     };
-    let (y_min, y_max) = visible_value_window
+    let (y_min, y_max) = view
+        .visible_value_window
         .and_then(|(value_min, value_max)| {
             clamp_value_window(data_y_min, data_y_max, value_min, value_max)
         })
@@ -349,6 +363,15 @@ pub(super) fn draw_waveform_plot_sized(
                 egui::pos2(plot_rect.right(), y),
             ],
             egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
+        );
+    }
+    if let Some(trigger) = view.trigger {
+        draw_trigger_markers(
+            &painter,
+            plot_rect,
+            trigger,
+            (window_start_us, window_end_us),
+            (y_min, y_max),
         );
     }
 
@@ -621,6 +644,58 @@ fn draw_cursor_line(
         egui::FontId::monospace(11.0),
         egui::Color32::from_gray(20),
     );
+}
+
+fn draw_trigger_markers(
+    painter: &egui::Painter,
+    plot_rect: egui::Rect,
+    trigger: WaveformPlotTrigger<'_>,
+    time_window_us: (f64, f64),
+    value_window: (f64, f64),
+) {
+    if !trigger.threshold.is_finite() {
+        return;
+    }
+    let (window_start_us, window_end_us) = time_window_us;
+    let (value_min, value_max) = value_window;
+    let x_span = positive_span(window_start_us, window_end_us);
+    let y_span = positive_span(value_min, value_max);
+    let marker_color = egui::Color32::from_rgb(104, 214, 255);
+
+    if trigger.threshold >= value_min && trigger.threshold <= value_max {
+        let y_ratio = ((trigger.threshold - value_min) / y_span).clamp(0.0, 1.0) as f32;
+        let y = plot_rect.bottom() - y_ratio * plot_rect.height();
+        painter.line_segment(
+            [
+                egui::pos2(plot_rect.left(), y),
+                egui::pos2(plot_rect.right(), y),
+            ],
+            egui::Stroke::new(1.2, marker_color.linear_multiply(0.55)),
+        );
+        painter.text(
+            egui::pos2(plot_rect.right() - 4.0, y - 4.0),
+            egui::Align2::RIGHT_BOTTOM,
+            "T",
+            egui::FontId::monospace(11.0),
+            marker_color,
+        );
+    }
+
+    for event_us in trigger.events_us.iter().copied().take(128) {
+        if event_us < window_start_us || event_us > window_end_us {
+            continue;
+        }
+        let x_ratio = ((event_us - window_start_us) / x_span).clamp(0.0, 1.0) as f32;
+        let x = plot_rect.left() + x_ratio * plot_rect.width();
+        painter.line_segment(
+            [
+                egui::pos2(x, plot_rect.top()),
+                egui::pos2(x, plot_rect.bottom()),
+            ],
+            egui::Stroke::new(1.0, marker_color.linear_multiply(0.65)),
+        );
+        painter.circle_filled(egui::pos2(x, plot_rect.top() + 5.0), 3.0, marker_color);
+    }
 }
 
 fn draw_plot_frame(painter: &egui::Painter, rect: egui::Rect) {

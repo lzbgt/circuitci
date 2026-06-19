@@ -359,6 +359,8 @@ pub struct CircuitCiApp {
     waveform_window_end_us: Option<f64>,
     waveform_value_min: Option<f64>,
     waveform_value_max: Option<f64>,
+    waveform_trigger_threshold: f64,
+    waveform_trigger_edge: String,
     background_job: Option<jobs::BackgroundGuiJob>,
     background_job_history: Vec<jobs::BackgroundJobRecord>,
 }
@@ -520,6 +522,8 @@ impl Default for CircuitCiApp {
             waveform_window_end_us: None,
             waveform_value_min: None,
             waveform_value_max: None,
+            waveform_trigger_threshold: 0.0,
+            waveform_trigger_edge: "rising".to_string(),
             background_job: None,
             background_job_history: Vec::new(),
         }

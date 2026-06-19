@@ -1,11 +1,12 @@
+use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeQuantity, WaveformTraceRef, append_derived_waveform_probe,
     derived_waveform_quantity, find_scope_probe, interpolated_value, parse_waveform_csv_text,
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection, sanitized_probe_name,
-    scope_cursor_legend_rows, scope_plot_size, scope_visible_trace_refs, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_probe_value_for_badge,
-    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
-    zoom_time_window,
+    scope_cursor_legend_rows, scope_plot_size, scope_trigger_events, scope_visible_trace_refs,
+    select_scope_trigger_event, waveform_measurement, waveform_probe_quantity_from_label,
+    waveform_probe_value_for_badge, waveform_time_range_for_view, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 use super::{
     clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
@@ -87,6 +88,62 @@ fn scope_cursor_hit_test_prefers_nearest_cursor_handle() {
     assert_eq!(
         nearest_scope_cursor_target(far, plot_rect, 25.0, 75.0, 0.0, 100.0),
         None
+    );
+}
+
+#[test]
+fn scope_trigger_events_interpolate_selected_edges() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)\n0,0\n0.000001,2\n0.000002,0\n0.000003,3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+
+    let rising = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising);
+    assert_eq!(rising.len(), 2);
+    assert!((rising[0].time_us - 0.5).abs() < 1.0e-12);
+    assert!((rising[1].time_us - 2.333333333333333).abs() < 1.0e-12);
+
+    let falling = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Falling);
+    assert_eq!(falling.len(), 1);
+    assert!((falling[0].time_us - 1.5).abs() < 1.0e-12);
+
+    let either = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Either);
+    assert_eq!(either.len(), 3);
+}
+
+#[test]
+fn scope_trigger_jump_selects_next_previous_with_wraparound() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)\n0,0\n0.000001,2\n0.000002,0\n0.000003,3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let events = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Either);
+
+    assert_eq!(
+        select_scope_trigger_event(&events, 0.75, ScopeTriggerJump::Next)
+            .unwrap()
+            .time_us,
+        1.5
+    );
+    assert_eq!(
+        select_scope_trigger_event(&events, 0.75, ScopeTriggerJump::Previous)
+            .unwrap()
+            .time_us,
+        0.5
+    );
+    assert_eq!(
+        select_scope_trigger_event(&events, 4.0, ScopeTriggerJump::Next)
+            .unwrap()
+            .time_us,
+        0.5
+    );
+    assert_eq!(
+        select_scope_trigger_event(&events, 0.0, ScopeTriggerJump::Previous)
+            .unwrap()
+            .time_us,
+        2.333333333333333
     );
 }
 

@@ -283,14 +283,14 @@ panels stay docked as secondary controls. `src/gui/waveform.rs` owns waveform
 CSV parsing, Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows,
 min/max/delta measurements, pending schematic
-probe-to-scope focus, transient selected-probe trace pinning/comparison
+probe-to-scope focus, transient selected-trace trigger threshold state, transient selected-probe trace pinning/comparison
 overlays, GUI-only derived waveform channels, promotion of representable
 derived channels to explicit Board IR analog probes/assertions, exact
 probe-value lookup, and normalized runtime activity values for graph tinting.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, visible time-window and value-window
 fit/zoom/pan helpers, direct plot drag/wheel/Shift-wheel interactions, trace
-overlay selection, and visible-window axis scaling. It may display graph hover
+overlay selection, and visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, and previous/next trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
 waveform probes, but those values must come from report waveform artifacts and

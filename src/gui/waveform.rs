@@ -11,14 +11,20 @@ use eframe::egui;
 use std::path::Path;
 
 mod waveform_plot;
+mod waveform_trigger;
 pub(super) use waveform_plot::WaveformCursorTarget;
 use waveform_plot::{
-    WaveformPlotCursors, clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
-    expanded_value_bounds, scope_plot_size, scope_visible_trace_refs, valid_waveform_trace,
-    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
+    WaveformPlotCursors, WaveformPlotTrigger, WaveformPlotView, clamp_value_window,
+    clamp_waveform_time_window, draw_waveform_plot_sized, expanded_value_bounds, scope_plot_size,
+    scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
 use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value};
+#[cfg(test)]
+use waveform_trigger::{
+    ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_events, select_scope_trigger_event,
+};
 
 impl CircuitCiApp {
     pub(super) fn open_scope_probe_target(&mut self, target: ScopeProbeTarget) {
@@ -137,6 +143,7 @@ impl CircuitCiApp {
                     self.waveform_window_end_us = None;
                     self.waveform_value_min = None;
                     self.waveform_value_max = None;
+                    self.waveform_trigger_threshold = 0.0;
                     self.waveform_playing = false;
                 }
             }
@@ -166,6 +173,7 @@ impl CircuitCiApp {
                     self.waveform_cursor_b_us = 0.0;
                     self.waveform_value_min = None;
                     self.waveform_value_max = None;
+                    self.waveform_trigger_threshold = 0.0;
                     self.waveform_playing = false;
                 }
             }
@@ -211,6 +219,8 @@ impl CircuitCiApp {
         );
         let visible_window = self.visible_waveform_time_window();
         let visible_value_window = self.visible_waveform_value_window();
+        let trigger_events = self.selected_scope_trigger_events();
+        let trigger_times_us: Vec<f64> = trigger_events.iter().map(|event| event.time_us).collect();
         let interaction = draw_waveform_plot_sized(
             ui,
             &self.waveforms,
@@ -220,8 +230,14 @@ impl CircuitCiApp {
                 cursor_b_us: self.waveform_cursor_b_us,
                 active_drag: &mut self.waveform_cursor_drag,
             },
-            visible_window,
-            visible_value_window,
+            WaveformPlotView {
+                visible_window_us: visible_window,
+                visible_value_window,
+                trigger: Some(WaveformPlotTrigger {
+                    threshold: self.waveform_trigger_threshold,
+                    events_us: &trigger_times_us,
+                }),
+            },
             scope_plot_size(desired_size),
         );
         if let Some((start_us, end_us)) = interaction.time_window_us {
@@ -428,8 +444,9 @@ impl CircuitCiApp {
                     }
                 });
             }
+            self.waveform_trigger_panel(ui);
             ui.small(
-                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value.",
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value. Trigger markers are derived from the selected trace only.",
             );
         });
     }
