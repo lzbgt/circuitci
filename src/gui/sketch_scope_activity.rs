@@ -73,6 +73,14 @@ impl CircuitCiApp {
                             "{} pinned compare trace(s)",
                             self.waveform_pinned_traces.len()
                         ));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.waveform_trace_preset_name)
+                                .desired_width(96.0)
+                                .hint_text("set name"),
+                        )
+                        .on_hover_text(
+                            "Optional name for the saved Scope Activity compare set.",
+                        );
                         if ui
                             .add_enabled(
                                 !self.waveform_pinned_traces.is_empty(),
