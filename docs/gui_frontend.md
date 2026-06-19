@@ -232,12 +232,15 @@ large-artifact deferral, progress/cancel checks, and loaded/deferred/skipped fil
 diagnostics before the GUI applies the completed report, keeping large CSV files
 out of the UI thread while making missing, deferred, and slow artifacts
 filterable and exportable from Scopes. Deferred artifacts keep header-only
-trace previews and can be force-loaded later through the same background
-waveform loader without changing Board IR or the validation report.
+trace previews, can be filtered by file/probe/detail from the selector, and can
+be force-loaded individually, all visible matches, or all deferred files through
+the same background waveform loader without changing Board IR or the validation
+report.
 `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, deferred waveform artifact placeholders
-with header-only probe previews and row-level background load actions, transient saved compare sets, transient
+with header-only probe previews, selector-side filtering, and row/visible/all
+background load actions, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset
 behavior.
 `src/gui/waveform/waveform_context.rs` owns pending schematic

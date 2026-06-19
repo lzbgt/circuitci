@@ -9,10 +9,10 @@ use super::{
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
-    load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
-    load_waveform_paths_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
-    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
-    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
+    deferred_waveform_artifact_visible_indexes, load_report_waveforms_with_progress_and_cancel,
+    load_waveform_csv_with_progress_and_cancel, load_waveform_paths_with_progress_and_cancel,
+    parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
+    select_scope_trigger_event, waveform_load_deferred_artifacts, waveform_load_deferred_paths,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
     waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
 };
@@ -368,6 +368,52 @@ fn deferred_waveform_artifacts_project_selector_placeholders() {
     assert_eq!(artifacts[0].samples, 1_200_000);
     assert_eq!(artifacts[0].probes, 2);
     assert_eq!(artifacts[0].probe_preview, vec!["v(out)", "i(load)"]);
+}
+
+#[test]
+fn deferred_waveform_artifact_filter_matches_probe_preview_and_metadata() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_voltage.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(60 * 1024 * 1024),
+            samples: 1_200_000,
+            probes: 2,
+            probe_preview: vec!["v(out)".to_string(), "v(ref)".to_string()],
+            elapsed_ms: 2,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_power.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(80 * 1024 * 1024),
+            samples: 2_400_000,
+            probes: 2,
+            probe_preview: vec!["i(load)".to_string(), "p(load)".to_string()],
+            elapsed_ms: 3,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+    ];
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+
+    assert_eq!(
+        deferred_waveform_artifact_visible_indexes(&artifacts, ""),
+        vec![0, 1]
+    );
+    assert_eq!(
+        deferred_waveform_artifact_visible_indexes(&artifacts, "p(load)"),
+        vec![1]
+    );
+    assert_eq!(
+        deferred_waveform_artifact_visible_indexes(&artifacts, "voltage"),
+        vec![0]
+    );
+    assert_eq!(
+        deferred_waveform_artifact_visible_indexes(&artifacts, "not-present"),
+        Vec::<usize>::new()
+    );
 }
 
 #[test]

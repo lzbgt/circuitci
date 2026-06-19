@@ -51,7 +51,8 @@ use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
+    WaveformProbeGroup, deferred_waveform_artifact_visible_indexes, waveform_probe_choices,
+    waveform_probe_group_choices,
 };
 #[cfg(test)]
 use waveform_trigger::{

@@ -242,12 +242,50 @@ impl CircuitCiApp {
         if artifacts.is_empty() {
             return;
         }
+        let visible_indexes =
+            deferred_waveform_artifact_visible_indexes(artifacts, &self.waveform_deferred_filter);
+        let visible_paths = visible_indexes
+            .iter()
+            .filter_map(|&index| artifacts.get(index))
+            .map(|artifact| artifact.path.clone())
+            .collect::<Vec<_>>();
         ui.horizontal_wrapped(|ui| {
             ui.menu_button(format!("Deferred Waveforms ({})", artifacts.len()), |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Find");
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut self.waveform_deferred_filter)
+                            .desired_width(180.0)
+                            .hint_text("file, probe, detail"),
+                    );
+                    if response.changed() {
+                        self.waveform_deferred_filter =
+                            self.waveform_deferred_filter.trim_start().to_string();
+                    }
+                    if ui
+                        .add_enabled(
+                            !self.waveform_deferred_filter.trim().is_empty(),
+                            egui::Button::new("Clear"),
+                        )
+                        .clicked()
+                    {
+                        self.waveform_deferred_filter.clear();
+                    }
+                    ui.label(format!(
+                        "{} / {} visible",
+                        visible_indexes.len(),
+                        artifacts.len()
+                    ));
+                });
+                if visible_indexes.is_empty() {
+                    ui.label("No deferred waveform artifact matches the current filter.");
+                    return;
+                }
                 egui::ScrollArea::vertical()
                     .max_height(180.0)
                     .show(ui, |ui| {
-                        for artifact in artifacts {
+                        for &index in &visible_indexes {
+                            let artifact = &artifacts[index];
                             ui.horizontal(|ui| {
                                 if ui.button("Load").clicked() {
                                     *load_deferred_path = Some(artifact.path.clone());
@@ -271,6 +309,15 @@ impl CircuitCiApp {
             });
             if ui.button("Load All Deferred").clicked() {
                 self.load_deferred_waveforms();
+            }
+            if ui
+                .add_enabled(
+                    !visible_paths.is_empty() && visible_paths.len() < artifacts.len(),
+                    egui::Button::new("Load Visible"),
+                )
+                .clicked()
+            {
+                self.load_deferred_waveform_paths(visible_paths);
             }
         });
     }
@@ -640,6 +687,38 @@ fn deferred_probe_preview_text(probes: &[String]) -> String {
     } else {
         visible
     }
+}
+
+pub(super) fn deferred_waveform_artifact_visible_indexes(
+    artifacts: &[DeferredWaveformArtifact],
+    query: &str,
+) -> Vec<usize> {
+    let query = query.trim().to_ascii_lowercase();
+    artifacts
+        .iter()
+        .enumerate()
+        .filter_map(|(index, artifact)| {
+            if query.is_empty() || deferred_waveform_artifact_search_text(artifact).contains(&query)
+            {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn deferred_waveform_artifact_search_text(artifact: &DeferredWaveformArtifact) -> String {
+    format!(
+        "{} {} {} {} {} {}",
+        artifact.label,
+        artifact.path,
+        artifact.size_label,
+        artifact.samples,
+        artifact.detail,
+        artifact.probe_preview.join(" ")
+    )
+    .to_ascii_lowercase()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

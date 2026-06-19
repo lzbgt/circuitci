@@ -180,7 +180,7 @@ impl CircuitCiApp {
         self.load_deferred_waveform_paths(vec![path]);
     }
 
-    fn load_deferred_waveform_paths(&mut self, paths: Vec<String>) {
+    pub(super) fn load_deferred_waveform_paths(&mut self, paths: Vec<String>) {
         if paths.is_empty() {
             self.status = "No deferred waveform artifacts to load.".to_string();
             self.push_diagnostic("No deferred waveform artifacts to load.");
