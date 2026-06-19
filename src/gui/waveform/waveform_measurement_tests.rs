@@ -3,9 +3,10 @@ use super::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, interpolated_value,
     old_scope_report_bundle_dirs, parse_waveform_csv_text, scope_cursor_legend_rows,
-    scope_region_stats_rows, scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted,
-    scope_snapshots_csv, scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
-    unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
+    scope_region_stats_rows, scope_report_bundle_index_path, scope_snapshot_visible_indexes,
+    scope_snapshot_visible_indexes_sorted, scope_snapshots_csv, scope_snapshots_markdown,
+    scope_trigger_events, scope_visible_trace_refs, unique_scope_report_bundle_dir,
+    waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
@@ -753,7 +754,8 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
-    let index = fs::read_to_string(bundle.join("index.html")).unwrap();
+    let index_path = scope_report_bundle_index_path(bundle);
+    let index = fs::read_to_string(index_path).unwrap();
 
     assert!(svg.contains("CircuitCI Scope Plot"));
     assert!(csv.contains("Cursor 1"));

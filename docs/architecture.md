@@ -51,6 +51,8 @@ index links the plot SVG and snapshot CSV/Markdown artifacts and surfaces the
 same runtime loaded-waveform footprint source summary, so exported folders can
 be audited for Full CSV, Selected Columns, and Runtime Only memory distribution
 without persisting that diagnostic state into Board IR.
+The recent-bundle UI can open the latest index directly or open bundle folders
+through the host file manager.
 
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_interaction` owns reusable viewport zoom math,

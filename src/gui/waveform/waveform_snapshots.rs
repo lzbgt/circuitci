@@ -671,7 +671,7 @@ impl CircuitCiApp {
         let index_html = self.scope_report_bundle_index_html(snapshots);
         match fs::create_dir_all(&bundle_dir)
             .and_then(|()| fs::write(bundle_dir.join("scope_plot.svg"), svg))
-            .and_then(|()| fs::write(bundle_dir.join("index.html"), index_html))
+            .and_then(|()| fs::write(scope_report_bundle_index_path(&bundle_dir), index_html))
             .and_then(|()| {
                 fs::write(
                     bundle_dir.join("measurement_snapshots.csv"),
@@ -889,6 +889,9 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             if ui.button("Open Bundle Folder").clicked() {
                 self.open_scope_report_bundle(&latest);
             }
+            if ui.button("Open Bundle Index").clicked() {
+                self.open_scope_report_bundle_index(&latest);
+            }
             if ui.button("Clean Old Bundles").clicked() {
                 self.preview_old_scope_report_bundles();
             }
@@ -950,6 +953,33 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                 self.record_error(anyhow::anyhow!(
                     "failed to open scope report bundle folder {}: {error}",
                     path.display()
+                ));
+            }
+        }
+    }
+
+    fn open_scope_report_bundle_index(&mut self, bundle: &str) {
+        let path = Path::new(bundle);
+        if !path.exists() {
+            self.status = format!("Scope report bundle no longer exists: {}.", path.display());
+            return;
+        }
+        let index_path = scope_report_bundle_index_path(path);
+        if !index_path.exists() {
+            self.status = format!(
+                "Scope report bundle index no longer exists: {}.",
+                index_path.display()
+            );
+            return;
+        }
+        match open_path_in_file_manager(&index_path) {
+            Ok(()) => {
+                self.status = format!("Opened scope report bundle index {}.", index_path.display());
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to open scope report bundle index {}: {error}",
+                    index_path.display()
                 ));
             }
         }
@@ -1427,6 +1457,10 @@ pub(super) fn unique_scope_report_bundle_dir(base_dir: &Path, unix_millis: u128)
         }
     }
     base_dir.join(format!("{stem}_overflow"))
+}
+
+pub(super) fn scope_report_bundle_index_path(bundle_dir: &Path) -> PathBuf {
+    bundle_dir.join("index.html")
 }
 
 #[cfg(test)]
