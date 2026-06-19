@@ -50,6 +50,7 @@ mod sketch_rename;
 mod sketch_rename_tests;
 mod sketch_render;
 mod sketch_routes;
+mod sketch_scope_feedback;
 mod sketch_scope_tools;
 mod sketch_selection_inspector;
 #[cfg(test)]

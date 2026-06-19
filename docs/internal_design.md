@@ -82,6 +82,9 @@ completion, overview-minimap event routing, and runtime tint routing.
 drawing, direct wire-route edits, component placement orientation controls,
 selected-component orientation transforms, canvas probe defaults, and viewport
 pan/zoom input.
+`src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
+projection, valid/invalid feedback geometry, and canvas feedback painting for
+the V/I/P scope placement tools.
 `src/gui/sketch_alignment.rs` owns transient alignment-guide derivation,
 drawing, and optional guide-snap target adjustment for component placement plus
 selected-node and selected-group drag affordances. The primary schematic toolbar
