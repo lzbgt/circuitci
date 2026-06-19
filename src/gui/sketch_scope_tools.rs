@@ -12,7 +12,7 @@ pub(in crate::gui) enum SketchScopeProbeTool {
 }
 
 impl SketchScopeProbeTool {
-    fn button_label(self) -> &'static str {
+    pub(super) fn button_label(self) -> &'static str {
         match self {
             Self::Voltage => "V",
             Self::Current => "I",
@@ -32,6 +32,40 @@ impl SketchScopeProbeTool {
         match self {
             Self::Voltage => "click a net, wire, pin, or net label",
             Self::Current | Self::Power => "click a component, pin, or component label",
+        }
+    }
+
+    pub(super) fn accepts_selection(self, selection: &SketchSelection) -> bool {
+        matches!(
+            (self, selection),
+            (Self::Voltage, SketchSelection::Net(_))
+                | (Self::Current | Self::Power, SketchSelection::Component(_))
+        )
+    }
+
+    pub(super) fn target_label(self, selection: Option<&SketchSelection>) -> String {
+        match selection {
+            Some(SketchSelection::Net(net_id)) if self == Self::Voltage => {
+                format!("Scope V -> {net_id}")
+            }
+            Some(SketchSelection::Component(component_id))
+                if matches!(self, Self::Current | Self::Power) =>
+            {
+                format!("Scope {} -> {component_id}", self.button_label())
+            }
+            Some(SketchSelection::Net(net_id)) => {
+                format!("{} cannot attach to net {net_id}", self.status_label())
+            }
+            Some(SketchSelection::Component(component_id)) => {
+                format!(
+                    "{} cannot attach to component {component_id}",
+                    self.status_label()
+                )
+            }
+            Some(SketchSelection::Overflow(label)) => {
+                format!("{} cannot attach to bundle {label}", self.status_label())
+            }
+            None => format!("{}: {}", self.status_label(), self.target_hint()),
         }
     }
 }
@@ -80,6 +114,10 @@ impl CircuitCiApp {
 
     pub(super) fn scope_probe_tool_armed(&self) -> bool {
         self.sketch_scope_probe_tool.is_some()
+    }
+
+    pub(super) fn active_scope_probe_tool(&self) -> Option<SketchScopeProbeTool> {
+        self.sketch_scope_probe_tool
     }
 
     pub(super) fn apply_scope_probe_tool_to_selection(
@@ -131,5 +169,56 @@ impl CircuitCiApp {
                 true
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SketchScopeProbeTool;
+    use crate::gui::sketch::SketchSelection;
+
+    #[test]
+    fn scope_probe_tool_accepts_matching_targets() {
+        assert!(
+            SketchScopeProbeTool::Voltage.accepts_selection(&SketchSelection::Net("out".into()))
+        );
+        assert!(
+            SketchScopeProbeTool::Current
+                .accepts_selection(&SketchSelection::Component("V1".into()))
+        );
+        assert!(
+            SketchScopeProbeTool::Power
+                .accepts_selection(&SketchSelection::Component("RLOAD".into()))
+        );
+        assert!(
+            !SketchScopeProbeTool::Voltage
+                .accepts_selection(&SketchSelection::Component("V1".into()))
+        );
+        assert!(
+            !SketchScopeProbeTool::Current.accepts_selection(&SketchSelection::Net("out".into()))
+        );
+    }
+
+    #[test]
+    fn scope_probe_tool_target_labels_explain_valid_and_invalid_hover() {
+        assert_eq!(
+            SketchScopeProbeTool::Voltage.target_label(Some(&SketchSelection::Net("out".into()))),
+            "Scope V -> out"
+        );
+        assert_eq!(
+            SketchScopeProbeTool::Current
+                .target_label(Some(&SketchSelection::Component("V1".into()))),
+            "Scope I -> V1"
+        );
+        assert!(
+            SketchScopeProbeTool::Power
+                .target_label(Some(&SketchSelection::Net("out".into())))
+                .contains("cannot attach")
+        );
+        assert!(
+            SketchScopeProbeTool::Voltage
+                .target_label(None)
+                .contains("click a net")
+        );
     }
 }
