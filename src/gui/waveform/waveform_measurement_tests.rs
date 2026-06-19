@@ -403,6 +403,25 @@ fn scope_activity_target_report_bundle_exports_one_trace_observations() {
 }
 
 #[test]
+fn scope_activity_target_report_bundle_and_open_handles_empty_observations() {
+    let mut app = CircuitCiApp::default();
+
+    assert_eq!(
+        app.export_scope_activity_target_report_bundle_and_open(ScopeProbeTarget {
+            scenario_name: "startup".to_string(),
+            probe_name: "v(out)".to_string(),
+        }),
+        0
+    );
+
+    assert!(app.waveform_recent_report_bundles.is_empty());
+    assert!(
+        app.status
+            .contains("No Scope Activity observations are available to bundle for v(out)")
+    );
+}
+
+#[test]
 fn scope_activity_snap_visible_captures_current_visible_targets() {
     let waveform = parse_waveform_csv_text(
         "time,v(out),v(timing),i(load)\n0,0,1,0.1\n0.000001,2,3,0.3\n",

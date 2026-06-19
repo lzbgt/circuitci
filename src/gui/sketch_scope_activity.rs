@@ -448,17 +448,24 @@ impl CircuitCiApp {
                                     .on_hover_text(
                                         "Copy this trace's current sample plus frequency row.",
                                     );
-                                    if ui
-                                        .button("Bundle")
-                                        .on_hover_text(
-                                            "Export this trace's sample/frequency observations as a scope report bundle.",
-                                        )
-                                        .clicked()
-                                    {
-                                        self.export_scope_activity_target_report_bundle(
-                                            row.target.clone(),
-                                        );
-                                    }
+                                    ui.menu_button("Bundle", |ui| {
+                                        if ui.button("Export").clicked() {
+                                            self.export_scope_activity_target_report_bundle(
+                                                row.target.clone(),
+                                            );
+                                            ui.close();
+                                        }
+                                        if ui.button("Export + Open").clicked() {
+                                            self.export_scope_activity_target_report_bundle_and_open(
+                                                row.target.clone(),
+                                            );
+                                            ui.close();
+                                        }
+                                    })
+                                    .response
+                                    .on_hover_text(
+                                        "Export this trace's sample/frequency observations as a scope report bundle.",
+                                    );
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
@@ -679,6 +686,21 @@ impl CircuitCiApp {
         &mut self,
         target: super::ScopeProbeTarget,
     ) -> usize {
+        self.export_scope_activity_target_report_bundle_impl(target, false)
+    }
+
+    pub(super) fn export_scope_activity_target_report_bundle_and_open(
+        &mut self,
+        target: super::ScopeProbeTarget,
+    ) -> usize {
+        self.export_scope_activity_target_report_bundle_impl(target, true)
+    }
+
+    fn export_scope_activity_target_report_bundle_impl(
+        &mut self,
+        target: super::ScopeProbeTarget,
+        open_index: bool,
+    ) -> usize {
         let rows = self.scope_activity_target_observation_snapshots(&target);
         if rows.is_empty() {
             self.status = format!(
@@ -694,6 +716,19 @@ impl CircuitCiApp {
                 "Exported Scope Activity report bundle with {count} observation row(s) for {}. {}",
                 target.probe_name, self.status
             );
+        }
+        if open_index {
+            let export_status = self.status.clone();
+            if let Some(bundle) = self.waveform_recent_report_bundles.first().cloned() {
+                if self.open_scope_report_bundle_index(&bundle) {
+                    self.status = format!("{export_status} {}", self.status);
+                }
+            } else {
+                self.status = format!(
+                    "{export_status} No recent report bundle was available to open for {}.",
+                    target.probe_name
+                );
+            }
         }
         count
     }

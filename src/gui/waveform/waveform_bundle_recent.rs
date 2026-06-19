@@ -389,11 +389,11 @@ impl CircuitCiApp {
         }
     }
 
-    fn open_scope_report_bundle_index(&mut self, bundle: &str) {
+    pub(in crate::gui) fn open_scope_report_bundle_index(&mut self, bundle: &str) -> bool {
         let path = Path::new(bundle);
         if !path.exists() {
             self.status = format!("Scope report bundle no longer exists: {}.", path.display());
-            return;
+            return false;
         }
         let index_path = scope_report_bundle_index_path(path);
         if !index_path.exists() {
@@ -401,17 +401,19 @@ impl CircuitCiApp {
                 "Scope report bundle index no longer exists: {}.",
                 index_path.display()
             );
-            return;
+            return false;
         }
         match open_path_in_file_manager(&index_path) {
             Ok(()) => {
                 self.status = format!("Opened scope report bundle index {}.", index_path.display());
+                true
             }
             Err(error) => {
                 self.record_error(anyhow::anyhow!(
                     "failed to open scope report bundle index {}: {error}",
                     index_path.display()
                 ));
+                false
             }
         }
     }
