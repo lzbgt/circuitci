@@ -677,10 +677,13 @@ from that manifest and intentionally not included in the manifest they
 describe. The Scopes panel keeps a bounded transient list of recently exported
 bundles, shows whether each recent bundle still has required and unchanged artifacts, and
 can open the latest bundle index, latest folder, or older bundle folder through
-the host file manager. `Details` opens a transient integrity table with each
-artifact's OK/Missing/Changed state plus expected/current size and SHA-256
-values, and can copy that detail set as CSV or Markdown for troubleshooting
-reports. If a recent bundle is missing required files or has files
+the host file manager. Recent bundles also expose direct open actions for the
+generated integrity CSV/Markdown audit files, with explicit missing-file status
+messages if an audit artifact was removed. `Details` opens a transient
+integrity table with each artifact's OK/Missing/Changed state plus
+expected/current size and SHA-256 values, and can copy that detail set as CSV
+or Markdown for troubleshooting reports. If a recent bundle is missing required
+files or has files
 that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`
 regenerates the plot SVG, snapshot CSV/Markdown, index, README, and manifest
 from the current filtered Scopes state into that same

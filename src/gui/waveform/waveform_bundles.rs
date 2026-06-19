@@ -305,6 +305,20 @@ report conveniences and are not part of the manifest they describe.
             if ui.button("Open Bundle Index").clicked() {
                 self.open_scope_report_bundle_index(&latest);
             }
+            if ui.button("Open Integrity CSV").clicked() {
+                self.open_scope_report_bundle_artifact(
+                    &latest,
+                    SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV,
+                    "integrity CSV",
+                );
+            }
+            if ui.button("Open Integrity Markdown").clicked() {
+                self.open_scope_report_bundle_artifact(
+                    &latest,
+                    SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN,
+                    "integrity Markdown",
+                );
+            }
             if ui.button("Details").clicked() {
                 self.waveform_bundle_integrity_details = Some(latest.clone());
             }
@@ -335,6 +349,22 @@ report conveniences and are not part of the manifest they describe.
                                 ));
                                 if ui.small_button("Open").clicked() {
                                     self.open_scope_report_bundle(&bundle);
+                                    ui.close();
+                                }
+                                if ui.small_button("CSV").clicked() {
+                                    self.open_scope_report_bundle_artifact(
+                                        &bundle,
+                                        SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_CSV,
+                                        "integrity CSV",
+                                    );
+                                    ui.close();
+                                }
+                                if ui.small_button("MD").clicked() {
+                                    self.open_scope_report_bundle_artifact(
+                                        &bundle,
+                                        SCOPE_REPORT_BUNDLE_INTEGRITY_DETAILS_MARKDOWN,
+                                        "integrity Markdown",
+                                    );
                                     ui.close();
                                 }
                                 if ui.small_button("Details").clicked() {
@@ -556,6 +586,36 @@ report conveniences and are not part of the manifest they describe.
                 self.record_error(anyhow::anyhow!(
                     "failed to open scope report bundle index {}: {error}",
                     index_path.display()
+                ));
+            }
+        }
+    }
+
+    fn open_scope_report_bundle_artifact(&mut self, bundle: &str, artifact: &str, label: &str) {
+        let path = Path::new(bundle);
+        if !path.exists() {
+            self.status = format!("Scope report bundle no longer exists: {}.", path.display());
+            return;
+        }
+        let artifact_path = path.join(artifact);
+        if !artifact_path.exists() {
+            self.status = format!(
+                "Scope report bundle {label} file no longer exists: {}.",
+                artifact_path.display()
+            );
+            return;
+        }
+        match open_path_in_file_manager(&artifact_path) {
+            Ok(()) => {
+                self.status = format!(
+                    "Opened scope report bundle {label} file {}.",
+                    artifact_path.display()
+                );
+            }
+            Err(error) => {
+                self.record_error(anyhow::anyhow!(
+                    "failed to open scope report bundle {label} file {}: {error}",
+                    artifact_path.display()
                 ));
             }
         }
