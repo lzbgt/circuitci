@@ -15,6 +15,7 @@ use super::{
     parse_waveform_csv_text, select_deferred_waveform_column_picks, waveform_footprint_csv,
     waveform_footprint_largest_unload_targets, waveform_footprint_rows,
     waveform_footprint_rows_with_diagnostics, waveform_footprint_source_summaries,
+    waveform_footprint_summary_csv, waveform_footprint_summary_markdown,
     waveform_footprint_unload_targets, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths, waveform_load_diagnostic_unloaded_preview_columns,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
@@ -1206,6 +1207,19 @@ fn waveform_footprint_rows_classify_loaded_source_type() {
             ("runtime_only", 1, 32),
         ]
     );
+    let summaries = waveform_footprint_source_summaries(&rows);
+    assert_eq!(
+        waveform_footprint_summary_csv(&summaries, rows.len(), 112),
+        "source,count,estimated_bytes,estimated_size\n\
+total,3,112,112 B\n\
+full_csv,1,48,48 B\n\
+selected_columns,1,32,32 B\n\
+runtime_only,1,32,32 B\n"
+    );
+    let markdown = waveform_footprint_summary_markdown(&summaries, rows.len(), 112);
+    assert!(markdown.starts_with("## Loaded Waveform Footprint Summary\n\n"));
+    assert!(markdown.contains("| Total | 3 | 112 | 112 B |"));
+    assert!(markdown.contains("| Selected Columns | 1 | 32 | 32 B |"));
     assert_eq!(
         waveform_footprint_rows_with_diagnostics(
             &waveforms,

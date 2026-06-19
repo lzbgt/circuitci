@@ -134,6 +134,24 @@ impl CircuitCiApp {
                                 format_waveform_load_bytes(Some(summary.estimated_bytes as u64))
                             ));
                         }
+                        if ui.button("Copy Summary CSV").clicked() {
+                            ui.ctx().copy_text(waveform_footprint_summary_csv(
+                                &source_summaries,
+                                all_rows.len(),
+                                total_bytes,
+                            ));
+                            self.status =
+                                "Copied loaded waveform footprint summary as CSV.".to_string();
+                        }
+                        if ui.button("Copy Summary Markdown").clicked() {
+                            ui.ctx().copy_text(waveform_footprint_summary_markdown(
+                                &source_summaries,
+                                all_rows.len(),
+                                total_bytes,
+                            ));
+                            self.status =
+                                "Copied loaded waveform footprint summary as Markdown.".to_string();
+                        }
                     });
                 }
                 if total_bytes > WAVEFORM_FOOTPRINT_WARNING_BYTES {
@@ -543,6 +561,69 @@ pub(super) fn waveform_footprint_source_summaries(
         .collect()
 }
 
+pub(super) fn waveform_footprint_summary_csv(
+    summaries: &[WaveformFootprintSourceSummary],
+    total_count: usize,
+    total_bytes: usize,
+) -> String {
+    let mut csv = String::from("source,count,estimated_bytes,estimated_size\n");
+    let total_fields = [
+        "total".to_string(),
+        total_count.to_string(),
+        total_bytes.to_string(),
+        format_waveform_load_bytes(Some(total_bytes as u64)),
+    ];
+    csv.push_str(
+        &total_fields
+            .into_iter()
+            .map(waveform_footprint_csv_escape)
+            .collect::<Vec<_>>()
+            .join(","),
+    );
+    csv.push('\n');
+    for summary in summaries {
+        let fields = [
+            summary.source.csv_label().to_string(),
+            summary.count.to_string(),
+            summary.estimated_bytes.to_string(),
+            format_waveform_load_bytes(Some(summary.estimated_bytes as u64)),
+        ];
+        csv.push_str(
+            &fields
+                .into_iter()
+                .map(waveform_footprint_csv_escape)
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        csv.push('\n');
+    }
+    csv
+}
+
+pub(super) fn waveform_footprint_summary_markdown(
+    summaries: &[WaveformFootprintSourceSummary],
+    total_count: usize,
+    total_bytes: usize,
+) -> String {
+    let mut markdown = String::from("## Loaded Waveform Footprint Summary\n\n");
+    markdown.push_str("| Source | Views | Estimated bytes | Estimated size |\n");
+    markdown.push_str("| --- | ---: | ---: | ---: |\n");
+    markdown.push_str(&format!(
+        "| Total | {total_count} | {total_bytes} | {} |\n",
+        format_waveform_load_bytes(Some(total_bytes as u64))
+    ));
+    for summary in summaries {
+        markdown.push_str(&format!(
+            "| {} | {} | {} | {} |\n",
+            waveform_footprint_markdown_escape(summary.source.label()),
+            summary.count,
+            summary.estimated_bytes,
+            format_waveform_load_bytes(Some(summary.estimated_bytes as u64))
+        ));
+    }
+    markdown
+}
+
 pub(super) fn waveform_footprint_unload_targets(
     rows: &[WaveformFootprintRow],
 ) -> Vec<WaveformFootprintUnloadTarget> {
@@ -699,6 +780,10 @@ fn waveform_footprint_csv_escape(value: String) -> String {
     } else {
         value
     }
+}
+
+fn waveform_footprint_markdown_escape(value: &str) -> String {
+    value.replace('|', "\\|").replace('\n', " ")
 }
 
 fn waveform_footprint_value_count(waveform: &WaveformView) -> usize {
