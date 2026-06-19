@@ -159,6 +159,23 @@ impl CircuitCiApp {
             {
                 focus_schematic = true;
             }
+            let can_split_units = self.current_scope_compare_traces().len() > 1;
+            let split_response = ui.add_enabled(
+                can_split_units,
+                egui::Checkbox::new(&mut self.waveform_split_trace_units, "Split Units"),
+            );
+            if split_response.changed() {
+                self.waveform_value_min = None;
+                self.waveform_value_max = None;
+                self.status = if self.waveform_split_trace_units {
+                    "Scopes split visible compare traces into per-unit lanes.".to_string()
+                } else {
+                    "Scopes returned to shared-axis overlay mode.".to_string()
+                };
+            }
+            if !can_split_units {
+                self.waveform_split_trace_units = false;
+            }
         });
         if focus_schematic {
             self.focus_selected_scope_schematic_context();

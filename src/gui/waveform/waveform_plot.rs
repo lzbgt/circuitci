@@ -1,7 +1,7 @@
 use super::{
     WaveformProbe, WaveformTraceColor, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    interpolated_value, min_max, ordered_pair, positive_span, waveform_time_range_for_view,
-    waveform_time_range_us, window_min_max,
+    interpolated_value, min_max, ordered_pair, positive_span, probe_unit,
+    waveform_time_range_for_view, waveform_time_range_us, window_min_max,
 };
 use eframe::egui;
 
@@ -35,7 +35,29 @@ pub(super) struct WaveformPlotTrigger<'a> {
 pub(super) struct WaveformPlotView<'a> {
     pub(super) visible_window_us: Option<(f64, f64)>,
     pub(super) visible_value_window: Option<(f64, f64)>,
+    pub(super) lane_mode: WaveformPlotLaneMode,
     pub(super) trigger: Option<WaveformPlotTrigger<'a>>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum WaveformPlotLaneMode {
+    #[default]
+    Shared,
+    ByUnit,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct WaveformTraceLane {
+    pub(super) unit: &'static str,
+    pub(super) traces: Vec<WaveformTraceRef>,
+}
+
+struct WaveformRenderedLane {
+    unit: &'static str,
+    traces: Vec<WaveformTraceRef>,
+    rect: egui::Rect,
+    y_min: f64,
+    y_max: f64,
 }
 
 impl WaveformPlotInteraction {
@@ -187,28 +209,18 @@ pub(super) fn draw_waveform_plot_sized(
         .unwrap_or((full_start_us, full_end_us));
     let x_min = window_start_us / 1e6;
     let x_max = window_end_us / 1e6;
-    let Some((data_y_min, data_y_max)) =
-        waveform_trace_bounds_in_window(waveforms, traces, x_min, x_max)
-    else {
-        ui.label("Waveform has no time samples.");
-        return WaveformPlotInteraction::default();
-    };
-    let Some((data_y_min, data_y_max)) = expanded_value_bounds(data_y_min, data_y_max) else {
-        ui.label("Waveform has no finite value samples.");
-        return WaveformPlotInteraction::default();
-    };
-    let (y_min, y_max) = view
-        .visible_value_window
-        .and_then(|(value_min, value_max)| {
-            clamp_value_window(data_y_min, data_y_max, value_min, value_max)
-        })
-        .unwrap_or((data_y_min, data_y_max));
+    let lanes = scope_trace_lanes(waveforms, traces, view.lane_mode);
 
     ui.label(format!(
-        "{} samples from {}; showing {} trace(s)",
+        "{} samples from {}; showing {} trace(s){}",
         primary.0.time_s.len(),
         primary.0.path,
-        traces.len()
+        traces.len(),
+        if lanes.len() > 1 {
+            " in split lanes"
+        } else {
+            ""
+        }
     ));
     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::drag());
     let painter = ui.painter_at(rect);
@@ -218,6 +230,17 @@ pub(super) fn draw_waveform_plot_sized(
         rect.min + egui::vec2(56.0, 16.0),
         rect.max - egui::vec2(16.0, 38.0),
     );
+    let Some(rendered_lanes) = rendered_scope_lanes(
+        waveforms,
+        &lanes,
+        plot_rect,
+        x_min,
+        x_max,
+        view.visible_value_window,
+    ) else {
+        ui.label("Waveform has no finite value samples.");
+        return WaveformPlotInteraction::default();
+    };
     let mut interaction = WaveformPlotInteraction::default();
     let x_span_us = positive_span(window_start_us, window_end_us);
     let pointer_pos = response.interact_pointer_pos();
@@ -273,10 +296,13 @@ pub(super) fn draw_waveform_plot_sized(
                 interaction.time_window_us =
                     Some((window_start_us + delta_us, window_end_us + delta_us));
             }
-            if delta.y.abs() > f32::EPSILON && plot_rect.height() > 1.0 {
-                let y_span = positive_span(y_min, y_max);
+            if rendered_lanes.len() == 1 && delta.y.abs() > f32::EPSILON && plot_rect.height() > 1.0
+            {
+                let lane = &rendered_lanes[0];
+                let y_span = positive_span(lane.y_min, lane.y_max);
                 let delta_value = (delta.y as f64 / plot_rect.height() as f64) * y_span;
-                interaction.value_window = Some((y_min + delta_value, y_max + delta_value));
+                interaction.value_window =
+                    Some((lane.y_min + delta_value, lane.y_max + delta_value));
             }
         }
     }
@@ -297,11 +323,13 @@ pub(super) fn draw_waveform_plot_sized(
             None
         };
         if let Some(scale) = scale {
-            if shift {
+            if shift && rendered_lanes.len() == 1 {
+                let lane = &rendered_lanes[0];
                 let focus_value = pointer
-                    .map(|pos| plot_y_to_value(pos.y, plot_rect, y_min, y_max))
-                    .unwrap_or((y_min + y_max) * 0.5);
-                interaction.value_window = Some(zoom_time_window(y_min, y_max, focus_value, scale));
+                    .map(|pos| plot_y_to_value(pos.y, plot_rect, lane.y_min, lane.y_max))
+                    .unwrap_or((lane.y_min + lane.y_max) * 0.5);
+                interaction.value_window =
+                    Some(zoom_time_window(lane.y_min, lane.y_max, focus_value, scale));
             } else {
                 let focus_ratio = pointer
                     .map(|pos| ((pos.x - plot_rect.left()) / plot_rect.width()).clamp(0.0, 1.0))
@@ -319,13 +347,13 @@ pub(super) fn draw_waveform_plot_sized(
     draw_plot_frame(&painter, plot_rect);
 
     let x_span = positive_span(x_min, x_max);
-    let y_span = positive_span(y_min, y_max);
-    let map_point = |x: f64, y: f64| -> egui::Pos2 {
+    let map_point = |lane_rect: egui::Rect, y_min: f64, y_max: f64, x: f64, y: f64| -> egui::Pos2 {
         let x_ratio = ((x - x_min) / x_span).clamp(0.0, 1.0) as f32;
+        let y_span = positive_span(y_min, y_max);
         let y_ratio = ((y - y_min) / y_span).clamp(0.0, 1.0) as f32;
         egui::pos2(
-            plot_rect.left() + x_ratio * plot_rect.width(),
-            plot_rect.bottom() - y_ratio * plot_rect.height(),
+            lane_rect.left() + x_ratio * lane_rect.width(),
+            lane_rect.bottom() - y_ratio * lane_rect.height(),
         )
     };
 
@@ -348,65 +376,82 @@ pub(super) fn draw_waveform_plot_sized(
         *cursors.active_drag == Some(WaveformCursorTarget::B),
     );
 
-    for tick in 0..=4 {
-        let ratio = tick as f32 / 4.0;
-        let x = plot_rect.left() + ratio * plot_rect.width();
-        painter.line_segment(
-            [
-                egui::pos2(x, plot_rect.top()),
-                egui::pos2(x, plot_rect.bottom()),
-            ],
-            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
-        );
-        let y = plot_rect.top() + ratio * plot_rect.height();
-        painter.line_segment(
-            [
-                egui::pos2(plot_rect.left(), y),
-                egui::pos2(plot_rect.right(), y),
-            ],
-            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
-        );
-    }
-    if let Some(trigger) = view.trigger {
-        draw_trigger_markers(
-            &painter,
-            plot_rect,
-            trigger,
-            (window_start_us, window_end_us),
-            (y_min, y_max),
-        );
-    }
-
     let font = egui::FontId::monospace(12.0);
-    for (trace_order, trace) in traces.iter().copied().enumerate() {
-        let Some((trace_waveform, trace_probe)) = waveform_trace(waveforms, trace) else {
-            continue;
-        };
-        let color = scope_trace_color_for_style(trace_order, trace, trace_styles);
-        let points = visible_trace_points(trace_waveform, trace_probe, x_min, x_max, &map_point);
-        if points.len() >= 2 {
-            painter.add(egui::Shape::line(
-                points,
-                egui::Stroke::new(if trace_order == 0 { 2.4 } else { 1.8 }, color),
-            ));
+    for lane in &rendered_lanes {
+        draw_lane_grid(&painter, lane.rect);
+        if let Some(trigger) = view.trigger
+            && lane.traces.contains(&traces[0])
+        {
+            draw_trigger_markers(
+                &painter,
+                lane.rect,
+                trigger,
+                (window_start_us, window_end_us),
+                (lane.y_min, lane.y_max),
+            );
         }
-        if trace_order < 6 {
+        painter.text(
+            egui::pos2(lane.rect.left(), lane.rect.top() + 8.0),
+            egui::Align2::LEFT_CENTER,
+            format!("{} {:.3e}..{:.3e}", lane.unit, lane.y_min, lane.y_max),
+            font.clone(),
+            egui::Color32::LIGHT_GRAY,
+        );
+        for (lane_order, trace) in lane.traces.iter().copied().enumerate() {
+            let Some((trace_waveform, trace_probe)) = waveform_trace(waveforms, trace) else {
+                continue;
+            };
+            let trace_order = traces
+                .iter()
+                .position(|candidate| *candidate == trace)
+                .unwrap_or(lane_order);
+            let color = scope_trace_color_for_style(trace_order, trace, trace_styles);
+            let points =
+                visible_trace_points(trace_waveform, trace_probe, x_min, x_max, &|x, y| {
+                    map_point(lane.rect, lane.y_min, lane.y_max, x, y)
+                });
+            if points.len() >= 2 {
+                painter.add(egui::Shape::line(
+                    points,
+                    egui::Stroke::new(if trace_order == 0 { 2.4 } else { 1.8 }, color),
+                ));
+            }
+            if trace_order < 6 {
+                painter.text(
+                    egui::pos2(
+                        lane.rect.left() + 8.0,
+                        lane.rect.top() + 24.0 + lane_order as f32 * 16.0,
+                    ),
+                    egui::Align2::LEFT_CENTER,
+                    format!(
+                        "{}{}",
+                        if trace_order == 0 { "* " } else { "  " },
+                        trace_probe
+                            .expression
+                            .as_deref()
+                            .unwrap_or(&trace_probe.label)
+                    ),
+                    font.clone(),
+                    color,
+                );
+            }
+        }
+        if rendered_lanes.len() > 1 {
             painter.text(
-                egui::pos2(
-                    plot_rect.left() + 8.0,
-                    plot_rect.top() + 14.0 + trace_order as f32 * 16.0,
-                ),
-                egui::Align2::LEFT_CENTER,
-                format!(
-                    "{}{}",
-                    if trace_order == 0 { "* " } else { "  " },
-                    trace_probe
-                        .expression
-                        .as_deref()
-                        .unwrap_or(&trace_probe.label)
-                ),
+                egui::pos2(lane.rect.right() - 8.0, lane.rect.top() + 12.0),
+                egui::Align2::RIGHT_CENTER,
+                format!("{} trace(s)", lane.traces.len()),
                 font.clone(),
-                color,
+                egui::Color32::LIGHT_GRAY,
+            );
+        }
+        if lane.rect.bottom() < plot_rect.bottom() {
+            painter.line_segment(
+                [
+                    egui::pos2(plot_rect.left(), lane.rect.bottom() + 4.0),
+                    egui::pos2(plot_rect.right(), lane.rect.bottom() + 4.0),
+                ],
+                egui::Stroke::new(1.0, egui::Color32::from_gray(60)),
             );
         }
     }
@@ -421,18 +466,6 @@ pub(super) fn draw_waveform_plot_sized(
             full_start_us / 1e6,
             full_end_us / 1e6
         ),
-        font.clone(),
-        egui::Color32::LIGHT_GRAY,
-    );
-    painter.text(
-        egui::pos2(plot_rect.left(), rect.top() + 8.0),
-        egui::Align2::LEFT_CENTER,
-        format!(
-            "{} {:.3e}..{:.3e}",
-            primary.1.expression.as_deref().unwrap_or(&primary.1.label),
-            y_min,
-            y_max
-        ),
         font,
         egui::Color32::LIGHT_GRAY,
     );
@@ -445,6 +478,132 @@ pub(super) fn draw_waveform_plot_sized(
         ui.ctx().set_cursor_icon(cursor);
     }
     interaction
+}
+
+fn draw_lane_grid(painter: &egui::Painter, lane_rect: egui::Rect) {
+    for tick in 0..=4 {
+        let ratio = tick as f32 / 4.0;
+        let x = lane_rect.left() + ratio * lane_rect.width();
+        painter.line_segment(
+            [
+                egui::pos2(x, lane_rect.top()),
+                egui::pos2(x, lane_rect.bottom()),
+            ],
+            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
+        );
+        let y = lane_rect.top() + ratio * lane_rect.height();
+        painter.line_segment(
+            [
+                egui::pos2(lane_rect.left(), y),
+                egui::pos2(lane_rect.right(), y),
+            ],
+            egui::Stroke::new(1.0, egui::Color32::from_gray(44)),
+        );
+    }
+}
+
+fn rendered_scope_lanes(
+    waveforms: &[WaveformView],
+    lanes: &[WaveformTraceLane],
+    plot_rect: egui::Rect,
+    x_min: f64,
+    x_max: f64,
+    visible_value_window: Option<(f64, f64)>,
+) -> Option<Vec<WaveformRenderedLane>> {
+    let lane_count = lanes.len().max(1);
+    let lane_gap = if lane_count > 1 { 8.0 } else { 0.0 };
+    let lane_height = ((plot_rect.height() - lane_gap * (lane_count.saturating_sub(1) as f32))
+        / lane_count as f32)
+        .max(1.0);
+    let mut rendered = Vec::new();
+    for (index, lane) in lanes.iter().enumerate() {
+        let Some((data_y_min, data_y_max)) =
+            waveform_trace_bounds_in_window(waveforms, &lane.traces, x_min, x_max)
+        else {
+            continue;
+        };
+        let Some((data_y_min, data_y_max)) = expanded_value_bounds(data_y_min, data_y_max) else {
+            continue;
+        };
+        let (y_min, y_max) = if lanes.len() == 1 {
+            visible_value_window
+                .and_then(|(value_min, value_max)| {
+                    clamp_value_window(data_y_min, data_y_max, value_min, value_max)
+                })
+                .unwrap_or((data_y_min, data_y_max))
+        } else {
+            (data_y_min, data_y_max)
+        };
+        let top = plot_rect.top() + index as f32 * (lane_height + lane_gap);
+        let bottom = if index + 1 == lane_count {
+            plot_rect.bottom()
+        } else {
+            (top + lane_height).min(plot_rect.bottom())
+        };
+        rendered.push(WaveformRenderedLane {
+            unit: lane.unit,
+            traces: lane.traces.clone(),
+            rect: egui::Rect::from_min_max(
+                egui::pos2(plot_rect.left(), top),
+                egui::pos2(plot_rect.right(), bottom),
+            ),
+            y_min,
+            y_max,
+        });
+    }
+    (!rendered.is_empty()).then_some(rendered)
+}
+
+pub(super) fn scope_trace_lanes(
+    waveforms: &[WaveformView],
+    traces: &[WaveformTraceRef],
+    lane_mode: WaveformPlotLaneMode,
+) -> Vec<WaveformTraceLane> {
+    if lane_mode == WaveformPlotLaneMode::Shared || traces.len() <= 1 {
+        return vec![WaveformTraceLane {
+            unit: scope_shared_lane_unit(waveforms, traces),
+            traces: traces.to_vec(),
+        }];
+    }
+    let mut lanes: Vec<WaveformTraceLane> = Vec::new();
+    for trace in traces.iter().copied() {
+        let Some((_waveform, probe)) = waveform_trace(waveforms, trace) else {
+            continue;
+        };
+        let unit = probe_unit(&probe.label);
+        if let Some(lane) = lanes.iter_mut().find(|lane| lane.unit == unit) {
+            lane.traces.push(trace);
+        } else {
+            lanes.push(WaveformTraceLane {
+                unit,
+                traces: vec![trace],
+            });
+        }
+    }
+    if lanes.is_empty() {
+        vec![WaveformTraceLane {
+            unit: "",
+            traces: Vec::new(),
+        }]
+    } else {
+        lanes
+    }
+}
+
+fn scope_shared_lane_unit(waveforms: &[WaveformView], traces: &[WaveformTraceRef]) -> &'static str {
+    let mut unit = None;
+    for trace in traces.iter().copied() {
+        let Some((_waveform, probe)) = waveform_trace(waveforms, trace) else {
+            continue;
+        };
+        let trace_unit = probe_unit(&probe.label);
+        match unit {
+            Some(existing) if existing != trace_unit => return "mixed",
+            Some(_) => {}
+            None => unit = Some(trace_unit),
+        }
+    }
+    unit.unwrap_or("")
 }
 
 pub(super) fn scope_plot_size(available: egui::Vec2) -> egui::Vec2 {

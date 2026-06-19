@@ -289,14 +289,15 @@ Board IR analog probes/assertions, exact probe-value lookup, and normalized
 runtime activity values for graph tinting.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, transient saved compare sets, transient
-trace-style controls, and selected-trace reset behavior.
+trace-style controls, split-unit lane toggling, and selected-trace reset
+behavior.
 `src/gui/waveform/waveform_context.rs` owns
 pending schematic probe-to-scope focus, runtime trace/event-to-schematic cross-focus selection, selected-trace
 schematic-context strip actions, and scope probe lookup.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, visible time-window and value-window
 fit/zoom/pan helpers, direct plot drag/wheel/Shift-wheel interactions, trace
-overlay selection, and visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
+overlay selection, and shared-axis or per-unit lane axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
 waveform probes, but those values must come from report waveform artifacts and

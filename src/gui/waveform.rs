@@ -16,14 +16,16 @@ mod waveform_trace_selector;
 mod waveform_trigger;
 pub(super) use waveform_plot::WaveformCursorTarget;
 use waveform_plot::{
-    WaveformPlotCursors, WaveformPlotTrigger, WaveformPlotView, clamp_value_window,
-    clamp_waveform_time_window, draw_waveform_plot_sized, expanded_value_bounds, scope_plot_size,
-    scope_visible_styled_trace_refs, scope_visible_trace_refs, valid_waveform_trace,
-    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
+    WaveformPlotCursors, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
+    clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
+    expanded_value_bounds, scope_plot_size, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
+    waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
 use waveform_plot::{
     nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_trace_color_for_style,
+    scope_trace_lanes,
 };
 #[cfg(test)]
 use waveform_trace_selector::{
@@ -111,6 +113,11 @@ impl CircuitCiApp {
             WaveformPlotView {
                 visible_window_us: visible_window,
                 visible_value_window,
+                lane_mode: if self.waveform_split_trace_units {
+                    WaveformPlotLaneMode::ByUnit
+                } else {
+                    WaveformPlotLaneMode::Shared
+                },
                 trigger: Some(WaveformPlotTrigger {
                     threshold: self.waveform_trigger_threshold,
                     events_us: &trigger_times_us,
@@ -276,7 +283,12 @@ impl CircuitCiApp {
                 }
                 ui.label(format!("full {:.3}..{:.3} us", full_start_us, full_end_us));
             });
-            if let Some((value_min, value_max)) = self.visible_waveform_value_window() {
+            if self.waveform_split_trace_units {
+                ui.horizontal_wrapped(|ui| {
+                    ui.strong("Value Scale");
+                    ui.label("Split Units auto-fits each lane independently.");
+                });
+            } else if let Some((value_min, value_max)) = self.visible_waveform_value_window() {
                 ui.horizontal_wrapped(|ui| {
                     ui.strong("Value Scale");
                     if ui.button("Fit Y").clicked() {
@@ -325,9 +337,14 @@ impl CircuitCiApp {
                 });
             }
             self.waveform_trigger_panel(ui);
-            ui.small(
-                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value. Trigger markers are derived from the selected trace only.",
-            );
+            let value_hint = if self.waveform_split_trace_units {
+                "Split Units auto-fits value lanes; drag empty plot space pans time, wheel zooms time."
+            } else {
+                "Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value."
+            };
+            ui.small(format!(
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. {value_hint} Trigger markers are derived from the selected trace only."
+            ));
         });
     }
 

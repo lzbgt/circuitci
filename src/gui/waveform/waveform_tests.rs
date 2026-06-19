@@ -13,8 +13,9 @@ use super::{
     zoom_time_window,
 };
 use super::{
-    WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
-    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_trace_color_for_style,
+    WaveformPlotLaneMode, WaveformTraceColor, WaveformTraceStyle, clamp_value_window,
+    expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
+    scope_trace_color_for_style, scope_trace_lanes,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -353,6 +354,74 @@ fn scope_cursor_legend_rows_include_selected_and_pinned_traces() {
     assert_eq!(rows[1].unit, "A");
     assert!((rows[1].cursor_a_value - 0.002).abs() < 1.0e-12);
     assert!((rows[1].cursor_b_value - 0.004).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_trace_lanes_split_visible_traces_by_inferred_unit() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load) p(load) v(ref)
+0.0 0.0 0.001 0.01 3.3
+1e-6 2.0 0.003 0.02 3.2
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 2,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 3,
+        },
+    ];
+
+    let lanes = scope_trace_lanes(&[waveform], &traces, WaveformPlotLaneMode::ByUnit);
+
+    assert_eq!(lanes.len(), 3);
+    assert_eq!(lanes[0].unit, "V");
+    assert_eq!(lanes[0].traces, vec![traces[0], traces[3]]);
+    assert_eq!(lanes[1].unit, "A");
+    assert_eq!(lanes[1].traces, vec![traces[1]]);
+    assert_eq!(lanes[2].unit, "W");
+    assert_eq!(lanes[2].traces, vec![traces[2]]);
+}
+
+#[test]
+fn scope_trace_lanes_shared_mode_keeps_mixed_overlay() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+    ];
+
+    let lanes = scope_trace_lanes(&[waveform], &traces, WaveformPlotLaneMode::Shared);
+
+    assert_eq!(lanes.len(), 1);
+    assert_eq!(lanes[0].unit, "mixed");
+    assert_eq!(lanes[0].traces, traces);
 }
 
 #[test]
