@@ -34,7 +34,8 @@ form-heavy page.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, the `eframe`
-update loop, and shared validation/report command helpers. `src/gui/shell.rs`
+update loop, and shared validation/report command helpers, with focused core
+GUI regressions split into `src/gui/gui_core_tests.rs`. `src/gui/shell.rs`
 owns menus, workflow stage routing, the left project panel, the status panel,
 Project/Reports views, and finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
 state, worker-thread launch, channel polling, stale-result rejection, and

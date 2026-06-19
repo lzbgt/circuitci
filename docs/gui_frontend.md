@@ -18,6 +18,7 @@ the default CLI dependency graph:
 ```text
 circuitci-gui
   -> src/gui.rs
+  -> src/gui/gui_core_tests.rs (GUI test builds only)
   -> src/gui/shell.rs
   -> src/gui/import_flow.rs
   -> src/gui/file_dialogs.rs
@@ -58,7 +59,8 @@ Normal `cargo build --release` and CI validation builds do not compile GUI
 dependencies unless `--features gui` is explicitly enabled.
 
 `src/gui.rs` owns application state, the `eframe` update loop, and shared
-validation/report command helpers.
+validation/report command helpers, with focused core GUI regressions split into
+`src/gui/gui_core_tests.rs`.
 `src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow stage bar,
 left project panel, status panel, central stage routing, Project landing view,
 Reports view, and finding/limitation rendering. The Sketch stage intentionally

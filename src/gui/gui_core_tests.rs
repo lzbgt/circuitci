@@ -1,0 +1,474 @@
+use super::sketch::{
+    DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
+    SketchPin, SketchSelection, edit_component_model, edit_component_part_number, edit_net_kind,
+    edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
+};
+use super::sketch_canvas_render::component_context_pin;
+use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, Stage, egui};
+use std::path::Path;
+
+fn editable_project_yaml() -> &'static str {
+    "project:
+  name: gui_editor_test
+  version: 0.1.0
+board:
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins:
+        A: net_a
+        B: gnd
+  nets:
+    net_a:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+"
+}
+
+fn analog_scope_project_yaml() -> &'static str {
+    "project:
+  name: gui_scope_toolbar_test
+  version: 0.1.0
+board:
+  components:
+    V1:
+      model: generic.analog.dc_voltage_source
+      spice:
+        primitive: dc_voltage_source
+        dc_v: 5.0
+      pins:
+        P: rail
+        N: gnd
+    R1:
+      model: generic.analog.resistor
+      spice:
+        primitive: resistor
+        value_ohm: 1000
+      pins:
+        A: rail
+        B: out
+  nets:
+    rail:
+      kind: power
+    out:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+scenarios:
+  - name: gui_transient
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated:
+        ground_net: gnd
+        components: [V1, R1]
+      model_files: []
+      node_bindings:
+        - { net: rail, node: rail }
+        - { net: out, node: out }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: V1, pin: P }, node: rail }
+        - { endpoint: { component: V1, pin: N }, node: '0' }
+        - { endpoint: { component: R1, pin: A }, node: rail }
+        - { endpoint: { component: R1, pin: B }, node: out }
+      analysis: { type: tran, stop_time_us: 100, max_step_us: 1 }
+      stimuli: []
+      probes: []
+      assertions: []
+"
+}
+
+#[test]
+fn board_ir_editor_accepts_minimal_project_yaml() {
+    validate_board_ir_yaml_text(
+        "project:
+  name: gui_editor_test
+  version: 0.1.0
+board:
+  components: {}
+  nets: {}
+",
+    )
+    .unwrap();
+}
+
+#[test]
+fn board_ir_editor_rejects_invalid_project_yaml() {
+    let error = validate_board_ir_yaml_text(
+        "project:
+  name: gui_editor_test
+",
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("Board IR"));
+}
+
+#[test]
+fn scope_voltage_action_creates_probe_and_opens_scopes() {
+    let yaml = analog_scope_project_yaml();
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..Default::default()
+    };
+
+    app.open_or_create_scope_voltage_probe_for_net("out");
+
+    assert_eq!(app.stage, Stage::Simulation);
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "out_voltage".to_string(),
+        })
+    );
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+    assert!(probes.iter().any(|probe| {
+        probe.name == "out_voltage"
+            && probe.expression == "V(out)"
+            && probe.quantity == crate::board_ir::AnalogQuantity::Voltage
+    }));
+}
+
+#[test]
+fn scope_component_actions_create_current_and_power_probes() {
+    let yaml = analog_scope_project_yaml();
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..Default::default()
+    };
+
+    app.open_or_create_scope_component_probe(
+        "V1",
+        super::sketch_probes::SketchProbeQuantity::Current,
+    );
+    assert_eq!(app.stage, Stage::Simulation);
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "V1_current".to_string(),
+        })
+    );
+    app.open_or_create_scope_component_probe(
+        "V1",
+        super::sketch_probes::SketchProbeQuantity::Power,
+    );
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "V1_power".to_string(),
+        })
+    );
+
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let probes = &project.scenarios[0].analog.as_ref().unwrap().probes;
+    assert!(probes.iter().any(|probe| {
+        probe.name == "V1_current"
+            && probe.expression == "I(V1)"
+            && probe.quantity == crate::board_ir::AnalogQuantity::Current
+    }));
+    assert!(probes.iter().any(|probe| {
+        probe.name == "V1_power"
+            && probe.expression == "V(rail,0)*I(V1)"
+            && probe.quantity == crate::board_ir::AnalogQuantity::Power
+    }));
+}
+
+#[test]
+fn armed_scope_voltage_tool_creates_probe_from_net_click() {
+    let yaml = analog_scope_project_yaml();
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..Default::default()
+    };
+
+    app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Voltage);
+    assert!(
+        app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
+    );
+
+    assert_eq!(app.stage, Stage::Simulation);
+    assert!(!app.scope_probe_tool_armed());
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "out_voltage".to_string(),
+        })
+    );
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    assert!(
+        project.scenarios[0]
+            .analog
+            .as_ref()
+            .unwrap()
+            .probes
+            .iter()
+            .any(|probe| probe.name == "out_voltage")
+    );
+}
+
+#[test]
+fn armed_scope_current_tool_rejects_net_without_mutation() {
+    let yaml = analog_scope_project_yaml();
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..Default::default()
+    };
+
+    app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Current);
+    assert!(
+        app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
+    );
+
+    assert_ne!(app.stage, Stage::Simulation);
+    assert!(app.scope_probe_tool_armed());
+    assert_eq!(app.project_yaml, yaml);
+    assert!(app.status.contains("needs a component"));
+}
+
+#[test]
+fn validate_from_gui_emits_phase_progress() {
+    let output = tempfile::tempdir().unwrap();
+    let mut stages = Vec::new();
+
+    let (report, markdown) = super::validate_from_gui(
+        Path::new("examples/good_current_source_load/project.yaml"),
+        "default",
+        output.path(),
+        |stage, _detail| stages.push(stage.to_string()),
+        || false,
+    )
+    .unwrap();
+
+    assert_eq!(report.result, "pass");
+    assert!(markdown.contains("# CircuitCI Report"));
+    for expected in [
+        "Loading project",
+        "Loading models",
+        "Binding models",
+        "Running validation",
+        "Preparing analog transient",
+        "Checking analog model evidence",
+        "Preparing analog deck",
+        "Selecting analog backend",
+        "Writing analog wrapper deck",
+        "Running analog backend",
+        "Loading analog waveform",
+        "Evaluating analog assertions",
+        "Applying profile coverage",
+        "Assembling report",
+        "Writing report",
+        "Loading markdown report",
+    ] {
+        assert!(stages.iter().any(|stage| stage == expected), "{expected}");
+    }
+}
+
+#[test]
+fn suggest_from_gui_cancellation_stops_before_yaml_output() {
+    let error = super::suggest_from_gui_with_cancel(
+        Path::new("examples/scenario_suggestions_power_reset/project.yaml"),
+        "default",
+        || true,
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("canceled"));
+}
+
+#[test]
+fn board_ir_component_form_edits_emit_valid_yaml() {
+    let edited =
+        edit_component_model(editable_project_yaml(), "R1", "vendor.test.resistor").unwrap();
+    let edited = edit_component_part_number(&edited, "R1", "RC0603FR-0710KL").unwrap();
+    validate_board_ir_yaml_text(&edited).unwrap();
+    assert!(edited.contains("vendor.test.resistor"));
+    assert!(edited.contains("RC0603FR-0710KL"));
+}
+
+#[test]
+fn board_ir_net_form_edits_emit_valid_yaml() {
+    let edited = edit_net_kind(editable_project_yaml(), "net_a", "power").unwrap();
+    let edited = edit_net_nominal_voltage(&edited, "net_a", Some(3.3)).unwrap();
+    let edited = edit_net_powered(&edited, "net_a", Some(true)).unwrap();
+    validate_board_ir_yaml_text(&edited).unwrap();
+    assert!(edited.contains("kind: power"));
+    assert!(edited.contains("nominal_voltage: 3.3"));
+    assert!(edited.contains("powered: true"));
+}
+
+#[test]
+fn component_context_pin_prefers_existing_wire_pin_then_first_pin() {
+    let snapshot = ProjectSnapshot {
+        name: "graph".to_string(),
+        components: 1,
+        nets: 2,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: vec![SketchComponent {
+            id: "U1".to_string(),
+            model: "generic.ic".to_string(),
+            part_number: None,
+            spice: None,
+            position: None,
+            pins: vec![
+                SketchPin {
+                    pin: "VCC".to_string(),
+                    net: "rail".to_string(),
+                },
+                SketchPin {
+                    pin: "GND".to_string(),
+                    net: "gnd".to_string(),
+                },
+            ],
+            style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
+        }],
+        nets_detail: Vec::new(),
+        probes: Vec::new(),
+        wire_routes: Default::default(),
+        net_labels: Default::default(),
+        component_labels: Default::default(),
+    };
+
+    assert_eq!(
+        component_context_pin(&snapshot, "U1", " GND "),
+        ("GND".to_string(), "gnd".to_string())
+    );
+    assert_eq!(
+        component_context_pin(&snapshot, "U1", "OUT"),
+        ("VCC".to_string(), "rail".to_string())
+    );
+    assert_eq!(
+        component_context_pin(&snapshot, "MISSING", "OUT"),
+        ("P1".to_string(), String::new())
+    );
+}
+
+#[test]
+fn sketch_graph_layout_connects_component_to_net() {
+    let snapshot = ProjectSnapshot {
+        name: "graph".to_string(),
+        components: 1,
+        nets: 1,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: vec![SketchComponent {
+            id: "R1".to_string(),
+            model: "generic.analog.resistor".to_string(),
+            part_number: None,
+            spice: None,
+            position: None,
+            pins: vec![SketchPin {
+                pin: "A".to_string(),
+                net: "net_a".to_string(),
+            }],
+            style: SketchNodeStyle::default(),
+            source_paths: Vec::new(),
+        }],
+        nets_detail: vec![SketchNet {
+            id: "net_a".to_string(),
+            kind: "DigitalOrAnalog".to_string(),
+            nominal_voltage: None,
+            powered: None,
+            connections: vec!["R1.A".to_string()],
+            position: None,
+        }],
+        probes: Vec::new(),
+        wire_routes: Default::default(),
+        net_labels: Default::default(),
+        component_labels: Default::default(),
+    };
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0)),
+        &snapshot,
+    );
+    assert_eq!(graph.nodes.len(), 2);
+    assert_eq!(graph.edges.len(), 1);
+}
+
+#[test]
+fn sketch_snap_mode_maps_grid_and_guide_flags() {
+    let mut app = CircuitCiApp::default();
+
+    app.set_sketch_snap_mode(SketchSnapMode::Free);
+    assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Free);
+    assert!(!app.sketch_snap_enabled);
+    assert!(!app.sketch_guide_snap_enabled);
+
+    app.set_sketch_snap_mode(SketchSnapMode::Grid);
+    assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Grid);
+    assert!(app.sketch_snap_enabled);
+    assert!(!app.sketch_guide_snap_enabled);
+
+    app.set_sketch_snap_mode(SketchSnapMode::Guides);
+    assert_eq!(app.sketch_snap_mode(), SketchSnapMode::Guides);
+    assert!(!app.sketch_snap_enabled);
+    assert!(app.sketch_guide_snap_enabled);
+
+    app.set_sketch_snap_mode(SketchSnapMode::GridAndGuides);
+    assert_eq!(app.sketch_snap_mode(), SketchSnapMode::GridAndGuides);
+    assert!(app.sketch_snap_enabled);
+    assert!(app.sketch_guide_snap_enabled);
+}
+
+#[test]
+fn sketch_grid_step_normalizes_toolbar_input() {
+    let mut app = CircuitCiApp {
+        sketch_grid_step: f32::NAN,
+        ..Default::default()
+    };
+    app.normalize_sketch_grid_step();
+    assert_eq!(app.sketch_grid_step, DEFAULT_SKETCH_GRID_STEP);
+
+    app.sketch_grid_step = 1.0;
+    app.normalize_sketch_grid_step();
+    assert_eq!(app.sketch_grid_step, 4.0);
+
+    app.sketch_grid_step = 128.0;
+    app.normalize_sketch_grid_step();
+    assert_eq!(app.sketch_grid_step, 96.0);
+}
+
+#[test]
+fn run_plus_scopes_transition_opens_simulation_stage() {
+    let mut app = CircuitCiApp {
+        stage: Stage::Sketch,
+        pending_scope_probe: Some(ScopeProbeTarget {
+            scenario_name: "astable".to_string(),
+            probe_name: "v_out".to_string(),
+        }),
+        ..Default::default()
+    };
+
+    app.open_scopes_for_running_validation();
+
+    assert_eq!(app.stage, Stage::Simulation);
+    assert_eq!(app.status, "Running validation in Scopes.");
+    assert!(
+        app.diagnostics
+            .iter()
+            .any(|line| line.contains("Run + Scopes opened the Scopes workspace"))
+    );
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "astable".to_string(),
+            probe_name: "v_out".to_string(),
+        })
+    );
+}
