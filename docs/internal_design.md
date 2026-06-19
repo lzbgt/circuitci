@@ -222,7 +222,8 @@ Rename actions must rewrite explicit Board IR IDs rather than introducing a
 display alias. Component rename must move `board.components` keys, schematic
 component metadata keys, generated analog component lists, analog pin-binding
 endpoints, and supported generated/source branch probe expressions such as
-`I(VCCI_R1)` before reparsing the edited YAML. Net rename must move
+`I(VCCI_R1)` before reparsing the edited YAML; focused rename regressions live
+in `src/gui/sketch_rename_tests.rs`. Net rename must move
 `board.nets` keys, component pin net values, schematic net metadata keys,
 generated analog ground/net bindings, and then revalidate. It must also rewrite
 `board.schematic.net_labels` entries that point at the old net ID. It may

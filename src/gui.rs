@@ -45,6 +45,8 @@ mod sketch_net_labels;
 mod sketch_palette;
 mod sketch_probes;
 mod sketch_rename;
+#[cfg(test)]
+mod sketch_rename_tests;
 mod sketch_render;
 mod sketch_routes;
 mod sketch_selection_inspector;

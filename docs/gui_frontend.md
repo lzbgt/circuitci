@@ -98,7 +98,8 @@ transient in-progress wire-bend points while a pin connection is being drawn.
 YAML mutation used by the Sketch toolbar, shortcut, and context menu.
 `src/gui/sketch_rename.rs` owns structured component/net rename mutations that
 rewrite Board IR graph keys, schematic metadata keys, and generated analog
-scenario references before reparsing the edited YAML.
+scenario references before reparsing the edited YAML. Focused rename
+regressions live in `src/gui/sketch_rename_tests.rs`.
 `src/gui/sketch_spice.rs` owns selected-component SPICE primitive/value edits
 for Board IR component-level evidence. It validates the required pin convention
 for passive and independent-source primitives, updates exact generated/source
