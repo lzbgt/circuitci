@@ -8,6 +8,7 @@ use super::sketch_probes::SketchProbe;
 use anyhow::{Context, Result};
 use eframe::egui;
 
+mod waveform_bundle_integrity;
 mod waveform_bundles;
 mod waveform_context;
 mod waveform_deferred;
@@ -22,11 +23,14 @@ mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
 #[cfg(test)]
+use waveform_bundle_integrity::{
+    scope_report_bundle_artifact_detail_rows, scope_report_bundle_changed_artifacts,
+    scope_report_bundle_missing_artifacts,
+};
+#[cfg(test)]
 use waveform_bundles::{
     cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    scope_report_bundle_artifact_detail_rows, scope_report_bundle_changed_artifacts,
-    scope_report_bundle_index_path, scope_report_bundle_missing_artifacts,
-    unique_scope_report_bundle_dir,
+    scope_report_bundle_index_path, unique_scope_report_bundle_dir,
 };
 #[cfg(test)]
 use waveform_deferred::{
