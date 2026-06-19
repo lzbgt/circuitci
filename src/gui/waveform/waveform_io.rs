@@ -134,12 +134,23 @@ where
             Err(error) if crate::cancellation::is_canceled(&error) => return Err(error),
             Err(error) => {
                 let detail = format!("{error:#}");
-                diagnostics.push(WaveformLoadDiagnostic::skipped(
-                    request.path.clone(),
-                    bytes,
-                    started_at.elapsed().as_millis(),
-                    detail.clone(),
-                ));
+                let diagnostic = if request.probe_labels.is_empty() {
+                    WaveformLoadDiagnostic::skipped(
+                        request.path.clone(),
+                        bytes,
+                        started_at.elapsed().as_millis(),
+                        detail.clone(),
+                    )
+                } else {
+                    WaveformLoadDiagnostic::skipped_selected(
+                        request.path.clone(),
+                        bytes,
+                        started_at.elapsed().as_millis(),
+                        request.probe_labels.clone(),
+                        detail.clone(),
+                    )
+                };
+                diagnostics.push(diagnostic);
                 on_progress(
                     "Skipping waveform",
                     format!("Skipped waveform {}: {detail}.", request.path),

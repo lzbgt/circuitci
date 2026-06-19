@@ -1,3 +1,4 @@
+use super::merge_waveform_load_diagnostics;
 use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
@@ -127,6 +128,110 @@ fn waveform_request_loader_rejects_missing_selected_probe_columns() {
             .detail
             .contains("does not contain requested probe column")
     );
+    assert_eq!(diagnostics[0].probe_preview, vec!["i(load)"]);
+    assert!(diagnostics[0].detail.contains("Selected probe column"));
+}
+
+#[test]
+fn selected_deferred_waveform_load_preserves_deferred_placeholder() {
+    let path = "/tmp/run/scope.csv".to_string();
+    let mut diagnostics = vec![WaveformLoadDiagnostic {
+        path: path.clone(),
+        loaded: false,
+        deferred: true,
+        bytes: Some(60 * 1024 * 1024),
+        samples: 1_200_000,
+        probes: 3,
+        probe_preview: vec![
+            "v(out)".to_string(),
+            "i(load)".to_string(),
+            "p(load)".to_string(),
+        ],
+        elapsed_ms: 2,
+        detail: "Deferred large waveform artifact".to_string(),
+    }];
+
+    merge_waveform_load_diagnostics(
+        &mut diagnostics,
+        vec![WaveformLoadDiagnostic::loaded_selected(
+            path.clone(),
+            Some(60 * 1024 * 1024),
+            4,
+            1,
+            9,
+            vec!["i(load)".to_string()],
+        )],
+    );
+
+    assert_eq!(diagnostics.len(), 2);
+    assert_eq!(
+        waveform_load_deferred_paths(&diagnostics),
+        vec![path.clone()]
+    );
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(
+        artifacts[0].probe_preview,
+        vec!["v(out)", "i(load)", "p(load)"]
+    );
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic.loaded
+            && !diagnostic.deferred
+            && diagnostic.probe_preview == vec!["i(load)".to_string()]
+    }));
+
+    merge_waveform_load_diagnostics(
+        &mut diagnostics,
+        vec![WaveformLoadDiagnostic::loaded(
+            path.clone(),
+            Some(60 * 1024 * 1024),
+            4,
+            3,
+            12,
+        )],
+    );
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].loaded);
+    assert!(!diagnostics[0].deferred);
+    assert!(diagnostics[0].probe_preview.is_empty());
+    assert!(waveform_load_deferred_paths(&diagnostics).is_empty());
+}
+
+#[test]
+fn failed_selected_deferred_waveform_load_preserves_deferred_placeholder() {
+    let path = "/tmp/run/scope.csv".to_string();
+    let mut diagnostics = vec![WaveformLoadDiagnostic {
+        path: path.clone(),
+        loaded: false,
+        deferred: true,
+        bytes: Some(60 * 1024 * 1024),
+        samples: 1_200_000,
+        probes: 2,
+        probe_preview: vec!["v(out)".to_string(), "i(load)".to_string()],
+        elapsed_ms: 2,
+        detail: "Deferred large waveform artifact".to_string(),
+    }];
+
+    merge_waveform_load_diagnostics(
+        &mut diagnostics,
+        vec![WaveformLoadDiagnostic::skipped_selected(
+            path.clone(),
+            Some(60 * 1024 * 1024),
+            8,
+            vec!["p(load)".to_string()],
+            "missing selected column".to_string(),
+        )],
+    );
+
+    assert_eq!(diagnostics.len(), 2);
+    assert_eq!(waveform_load_deferred_paths(&diagnostics), vec![path]);
+    assert!(diagnostics.iter().any(|diagnostic| {
+        !diagnostic.loaded
+            && !diagnostic.deferred
+            && diagnostic.probe_preview == vec!["p(load)".to_string()]
+            && diagnostic.detail.contains("Selected probe column")
+    }));
 }
 
 #[test]

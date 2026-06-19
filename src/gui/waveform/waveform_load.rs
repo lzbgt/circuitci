@@ -100,8 +100,28 @@ impl WaveformLoadDiagnostic {
             probe_preview,
             elapsed_ms,
             detail: format!(
-                "Loaded {samples} sample row(s) across {probes} selected probe column(s)."
+                "Loaded {samples} sample row(s) across {probes} selected probe column(s); full deferred artifact remains available."
             ),
+        }
+    }
+
+    pub(super) fn skipped_selected(
+        path: String,
+        bytes: Option<u64>,
+        elapsed_ms: u128,
+        probe_preview: Vec<String>,
+        detail: String,
+    ) -> Self {
+        Self {
+            path,
+            loaded: false,
+            deferred: false,
+            bytes,
+            samples: 0,
+            probes: probe_preview.len(),
+            probe_preview,
+            elapsed_ms,
+            detail: format!("Selected probe column load failed: {detail}"),
         }
     }
 
@@ -163,6 +183,10 @@ impl WaveformLoadDiagnostic {
         } else {
             "skipped"
         }
+    }
+
+    fn is_selected_column_update(&self) -> bool {
+        !self.deferred && !self.probe_preview.is_empty()
     }
 }
 
@@ -517,10 +541,18 @@ pub(crate) fn merge_waveform_load_diagnostics(
     updates: Vec<WaveformLoadDiagnostic>,
 ) {
     for update in updates {
-        if let Some(existing) = diagnostics
-            .iter_mut()
-            .find(|diagnostic| diagnostic.path == update.path)
-        {
+        if update.loaded && !update.deferred && !update.is_selected_column_update() {
+            diagnostics.retain(|diagnostic| diagnostic.path != update.path);
+            diagnostics.push(update);
+            continue;
+        }
+        if let Some(existing) = diagnostics.iter_mut().find(|diagnostic| {
+            diagnostic.path == update.path
+                && diagnostic.deferred == update.deferred
+                && diagnostic.is_selected_column_update() == update.is_selected_column_update()
+                && (!update.is_selected_column_update()
+                    || diagnostic.probe_preview == update.probe_preview)
+        }) {
             *existing = update;
         } else {
             diagnostics.push(update);
