@@ -23,7 +23,8 @@ use waveform_plot::{
 use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value};
 #[cfg(test)]
 use waveform_trigger::{
-    ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_events, select_scope_trigger_event,
+    ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_event_rows, scope_trigger_events,
+    select_scope_trigger_event,
 };
 
 impl CircuitCiApp {

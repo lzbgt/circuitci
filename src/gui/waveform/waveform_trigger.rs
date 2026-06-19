@@ -33,7 +33,17 @@ impl ScopeTriggerEdge {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct ScopeTriggerEvent {
     pub(super) time_us: f64,
-    value: f64,
+    pub(super) value: f64,
+    pub(super) edge: ScopeTriggerEdge,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ScopeTriggerEventRow {
+    pub(super) index: usize,
+    pub(super) edge: &'static str,
+    pub(super) time_s: f64,
+    pub(super) value: f64,
+    pub(super) delta_t_s: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +131,62 @@ impl CircuitCiApp {
         if jump_next {
             self.jump_scope_trigger_event(ScopeTriggerJump::Next);
         }
+        self.waveform_trigger_event_table(ui, &events);
+    }
+
+    fn waveform_trigger_event_table(&mut self, ui: &mut egui::Ui, events: &[ScopeTriggerEvent]) {
+        if events.is_empty() {
+            return;
+        }
+        let rows = scope_trigger_event_rows(events, self.waveform_cursor_a_us);
+        let mut jump_event = None;
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Trigger Events");
+                ui.label("jump sets cursor A");
+                if rows.len() > 64 {
+                    ui.label(format!("showing 64 of {}", rows.len()));
+                }
+            });
+            egui::ScrollArea::vertical()
+                .max_height(132.0)
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    egui::Grid::new("scope_trigger_events")
+                        .num_columns(6)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("#");
+                            ui.label("Edge");
+                            ui.label("Time");
+                            ui.label("Value");
+                            ui.label("Delta A");
+                            ui.label("");
+                            ui.end_row();
+
+                            for row in rows.iter().take(64) {
+                                ui.monospace(row.index.to_string());
+                                ui.monospace(row.edge);
+                                ui.monospace(format_time_s(row.time_s));
+                                ui.monospace(format_value(row.value));
+                                ui.monospace(format_time_s(row.delta_t_s));
+                                if ui.button("Jump").clicked() {
+                                    jump_event = events.get(row.index - 1).copied();
+                                }
+                                ui.end_row();
+                            }
+                        });
+                });
+        });
+        if let Some(event) = jump_event {
+            self.set_waveform_cursor_a(event.time_us);
+            self.waveform_playing = false;
+            self.status = format!(
+                "Jumped to trigger event {} at {}.",
+                event.edge.label(),
+                format_time_s(event.time_us / 1e6)
+            );
+        }
     }
 
     pub(super) fn selected_scope_trigger_edge(&self) -> ScopeTriggerEdge {
@@ -189,19 +255,38 @@ pub(super) fn scope_trigger_events(
             }
             let rising = v0 < threshold && v1 >= threshold;
             let falling = v0 > threshold && v1 <= threshold;
-            let matched = match edge {
-                ScopeTriggerEdge::Rising => rising,
-                ScopeTriggerEdge::Falling => falling,
-                ScopeTriggerEdge::Either => rising || falling,
+            let matched_edge = match edge {
+                ScopeTriggerEdge::Rising if rising => Some(ScopeTriggerEdge::Rising),
+                ScopeTriggerEdge::Falling if falling => Some(ScopeTriggerEdge::Falling),
+                ScopeTriggerEdge::Either if rising => Some(ScopeTriggerEdge::Rising),
+                ScopeTriggerEdge::Either if falling => Some(ScopeTriggerEdge::Falling),
+                _ => None,
             };
-            if !matched {
-                return None;
-            }
+            let matched_edge = matched_edge?;
             let ratio = ((threshold - v0) / (v1 - v0)).clamp(0.0, 1.0);
             Some(ScopeTriggerEvent {
                 time_us: (t0 + (t1 - t0) * ratio) * 1e6,
                 value: threshold,
+                edge: matched_edge,
             })
+        })
+        .collect()
+}
+
+pub(super) fn scope_trigger_event_rows(
+    events: &[ScopeTriggerEvent],
+    cursor_a_us: f64,
+) -> Vec<ScopeTriggerEventRow> {
+    events
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, event)| ScopeTriggerEventRow {
+            index: index + 1,
+            edge: event.edge.label(),
+            time_s: event.time_us / 1e6,
+            value: event.value,
+            delta_t_s: (event.time_us - cursor_a_us) / 1e6,
         })
         .collect()
 }

@@ -290,7 +290,7 @@ probe-value lookup, and normalized runtime activity values for graph tinting.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
 draggable/click-set A/B cursor handles, visible time-window and value-window
 fit/zoom/pan helpers, direct plot drag/wheel/Shift-wheel interactions, trace
-overlay selection, and visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, and previous/next trigger jumps. It may display graph hover
+overlay selection, and visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
 waveform probes, but those values must come from report waveform artifacts and

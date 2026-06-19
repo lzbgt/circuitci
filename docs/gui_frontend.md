@@ -222,7 +222,7 @@ read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
-measurement tools, selected-plus-pinned cursor readout table, GUI-only
+measurement tools, selected-plus-pinned cursor readout table, trigger event readout table, GUI-only
 transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
 pending schematic probe-to-scope focus, selected-trace trigger threshold state, and graph-hover/runtime activity
@@ -230,7 +230,7 @@ extraction from loaded waveform artifacts. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 transient visible time-window and value-window fit/zoom/pan helpers, direct
 plot drag/wheel/Shift-wheel interactions, trace overlay selection, and
-visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, and previous/next trigger jumps.
+visible-window axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
 turning the runtime module into a test fixture container.
@@ -346,7 +346,7 @@ form:
   probe selection, transient selected-probe trace pinning for multi-trace
   comparison overlays, direct plot drag time/value-window panning, wheel time
   zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
-  draggable/click-set A/B cursor handles, selected-trace trigger threshold markers and previous/next edge jumps, play/scrub controls, and
+  draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, and previous/next or row-level edge jumps, play/scrub controls, and
   selected-plus-pinned A/B cursor readouts.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated
