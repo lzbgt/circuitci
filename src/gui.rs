@@ -311,6 +311,7 @@ pub struct CircuitCiApp {
     analog_assertion_start_us: f64,
     analog_assertion_end_us: f64,
     analog_probe_scenario: String,
+    scope_auto_probes_before_run: bool,
     analog_canvas_probe_name: String,
     analog_canvas_component_probe_name: String,
     analog_canvas_component_power_probe_name: String,
@@ -515,6 +516,7 @@ impl Default for CircuitCiApp {
             analog_assertion_start_us: 0.0,
             analog_assertion_end_us: 100.0,
             analog_probe_scenario: String::new(),
+            scope_auto_probes_before_run: true,
             analog_canvas_probe_name: String::new(),
             analog_canvas_component_probe_name: String::new(),
             analog_canvas_component_power_probe_name: String::new(),
@@ -734,6 +736,7 @@ impl CircuitCiApp {
                 self.stage = Stage::Simulation;
             }
             self.scope_auto_probe_button(ui);
+            self.scope_auto_probe_run_toggle(ui);
             self.schematic_probe_toolbar_controls(ui);
             if ui.button("Fit All").clicked() {
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
@@ -991,13 +994,7 @@ impl CircuitCiApp {
     }
 
     fn run_schematic_model(&mut self) {
-        if self.project_yaml_dirty {
-            self.save_project_yaml();
-            if self.project_yaml_dirty {
-                return;
-            }
-        }
-        self.validate_project();
+        self.run_model_with_scope_preparation();
     }
 
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {

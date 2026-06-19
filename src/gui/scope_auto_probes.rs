@@ -71,6 +71,32 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn scope_auto_probe_run_toggle(&mut self, ui: &mut egui::Ui) {
+        ui.checkbox(&mut self.scope_auto_probes_before_run, "Auto before Run")
+            .on_hover_text(
+                "When enabled, Run first adds missing useful scope probes for analog nets and source branches.",
+            );
+    }
+
+    pub(super) fn prepare_auto_scope_probes_for_run(&mut self) -> Result<bool> {
+        if !self.scope_auto_probes_before_run {
+            return Ok(false);
+        }
+        let edit =
+            auto_scope_probe_project_yaml(&self.project_yaml, Path::new(&self.project_path))?;
+        if edit.added_total() == 0 {
+            self.push_diagnostic("Auto Scope Probes before Run found no missing useful probes.");
+            return Ok(false);
+        }
+        let status = edit.status_message();
+        let target = edit.first_target.clone();
+        self.apply_edited_project_yaml(edit.updated_yaml, &status);
+        if let Some(target) = target {
+            self.remember_scope_probe_target(&target.scenario_name, &target.probe_name);
+        }
+        Ok(true)
+    }
+
     fn apply_auto_scope_probes(&mut self) {
         match auto_scope_probe_project_yaml(&self.project_yaml, Path::new(&self.project_path)) {
             Ok(edit) if edit.added_total() == 0 => {
@@ -329,6 +355,7 @@ fn sanitize_probe_id(value: &str) -> String {
 mod tests {
     use super::{auto_scope_probe_candidates, auto_scope_probe_project_yaml};
     use crate::gui::analog::analog_scenario_choices;
+    use crate::gui::{CircuitCiApp, ScopeProbeTarget};
     use std::path::Path;
 
     const AUTO_SCOPE_PROJECT: &str = "project:
@@ -407,5 +434,43 @@ scenarios:
         let second =
             auto_scope_probe_project_yaml(&edit.updated_yaml, Path::new("project.yaml")).unwrap();
         assert_eq!(second.added_total(), 0);
+    }
+
+    #[test]
+    fn auto_scope_before_run_edits_project_and_remembers_first_probe() {
+        let mut app = CircuitCiApp {
+            project_yaml: AUTO_SCOPE_PROJECT.to_string(),
+            project_path: "project.yaml".to_string(),
+            ..CircuitCiApp::default()
+        };
+
+        assert!(app.prepare_auto_scope_probes_for_run().unwrap());
+
+        assert!(app.project_yaml_dirty);
+        assert_eq!(
+            app.pending_scope_probe,
+            Some(ScopeProbeTarget {
+                scenario_name: "astable".to_string(),
+                probe_name: "v_out".to_string(),
+            })
+        );
+        let choices = analog_scenario_choices(&app.project_yaml).unwrap();
+        assert_eq!(choices[0].probes.len(), 5);
+    }
+
+    #[test]
+    fn auto_scope_before_run_can_be_disabled() {
+        let mut app = CircuitCiApp {
+            project_yaml: AUTO_SCOPE_PROJECT.to_string(),
+            project_path: "project.yaml".to_string(),
+            scope_auto_probes_before_run: false,
+            ..CircuitCiApp::default()
+        };
+
+        assert!(!app.prepare_auto_scope_probes_for_run().unwrap());
+
+        assert!(!app.project_yaml_dirty);
+        assert_eq!(app.pending_scope_probe, None);
+        assert_eq!(app.project_yaml, AUTO_SCOPE_PROJECT);
     }
 }

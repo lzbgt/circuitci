@@ -75,6 +75,7 @@ impl CircuitCiApp {
                 self.run_scope_model();
             }
             self.scope_auto_probe_button(ui);
+            self.scope_auto_probe_run_toggle(ui);
             if ui.button("Fit Time").clicked() {
                 self.fit_waveform_time_window();
             }
@@ -105,9 +106,26 @@ impl CircuitCiApp {
     }
 
     fn run_scope_model(&mut self) {
+        self.run_model_with_scope_preparation();
+    }
+
+    pub(super) fn run_model_with_scope_preparation(&mut self) {
         if self.project_yaml_dirty {
             self.save_project_yaml();
             if self.project_yaml_dirty {
+                return;
+            }
+        }
+        match self.prepare_auto_scope_probes_for_run() {
+            Ok(true) => {
+                self.save_project_yaml();
+                if self.project_yaml_dirty {
+                    return;
+                }
+            }
+            Ok(false) => {}
+            Err(error) => {
+                self.record_error(error);
                 return;
             }
         }
