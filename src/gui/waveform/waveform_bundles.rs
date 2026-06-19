@@ -7,18 +7,20 @@ use super::waveform_load::format_waveform_load_bytes;
 use super::waveform_snapshots::{markdown_escape, scope_snapshots_csv, scope_snapshots_markdown};
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_RECENT_SCOPE_BUNDLES: usize = 5;
-const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 5] = [
+const SCOPE_REPORT_BUNDLE_ARTIFACTS: [(&str, &str); 6] = [
     ("index.html", "index.html"),
     ("scope_plot.svg", "scope_plot.svg"),
     ("measurement_snapshots.csv", "measurement_snapshots.csv"),
     ("measurement_snapshots.md", "measurement_snapshots.md"),
     ("README.md", "README.md"),
+    ("artifact_manifest.csv", "artifact_manifest.csv"),
 ];
 
 struct ScopeReportBundleFiles {
@@ -27,6 +29,37 @@ struct ScopeReportBundleFiles {
     measurement_snapshots_csv: String,
     measurement_snapshots_markdown: String,
     readme: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ScopeReportBundleArtifactMetadata {
+    label: &'static str,
+    size_bytes: usize,
+    sha256: String,
+}
+
+struct ScopeReportBundleArtifactStatus {
+    missing: Vec<&'static str>,
+    changed: Vec<String>,
+    integrity_error: Option<String>,
+}
+
+impl ScopeReportBundleArtifactStatus {
+    fn needs_refresh(&self) -> bool {
+        !self.missing.is_empty() || !self.changed.is_empty() || self.integrity_error.is_some()
+    }
+
+    fn label(&self) -> String {
+        if !self.missing.is_empty() {
+            format!("Missing: {}", self.missing.join(", "))
+        } else if !self.changed.is_empty() {
+            format!("Changed: {}", self.changed.join(", "))
+        } else if let Some(error) = &self.integrity_error {
+            format!("Integrity unavailable: {error}")
+        } else {
+            "Artifacts OK".to_string()
+        }
+    }
 }
 
 impl CircuitCiApp {
@@ -67,16 +100,27 @@ impl CircuitCiApp {
             self.status = "No scope plot is available to include in the report bundle.".to_string();
             return None;
         };
+        let measurement_snapshots_csv = scope_snapshots_csv(snapshots);
+        let measurement_snapshots_markdown = scope_snapshots_markdown(snapshots);
+        let metadata = scope_report_bundle_content_metadata(
+            &scope_plot_svg,
+            &measurement_snapshots_csv,
+            &measurement_snapshots_markdown,
+        );
         Some(ScopeReportBundleFiles {
             scope_plot_svg,
-            index_html: self.scope_report_bundle_index_html(snapshots),
-            measurement_snapshots_csv: scope_snapshots_csv(snapshots),
-            measurement_snapshots_markdown: scope_snapshots_markdown(snapshots),
-            readme: self.scope_report_bundle_readme(snapshots),
+            index_html: self.scope_report_bundle_index_html(snapshots, &metadata),
+            measurement_snapshots_csv,
+            measurement_snapshots_markdown,
+            readme: self.scope_report_bundle_readme(snapshots, &metadata),
         })
     }
 
-    fn scope_report_bundle_readme(&self, snapshots: &[ScopeMeasurementSnapshot]) -> String {
+    fn scope_report_bundle_readme(
+        &self,
+        snapshots: &[ScopeMeasurementSnapshot],
+        metadata: &[ScopeReportBundleArtifactMetadata],
+    ) -> String {
         let selected_context = self
             .selected_scope_trace_label()
             .unwrap_or_else(|| "unavailable".to_string());
@@ -96,6 +140,13 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 - `measurement_snapshots.csv` - filtered measurement snapshot rows.
 - `measurement_snapshots.md` - filtered measurement snapshot rows as Markdown.
 - `README.md` - this manifest.
+- `artifact_manifest.csv` - expected size and SHA-256 metadata for required bundle artifacts.
+
+## Artifact Metadata
+
+The table below covers generated content artifacts. `artifact_manifest.csv` records expected size and SHA-256 metadata for the required bundle files after export.
+
+{}
 
 ## Snapshot Projection
 
@@ -121,6 +172,7 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 
 {}
 ",
+            scope_report_bundle_artifact_metadata_markdown(metadata),
             snapshots.len(),
             markdown_escape(query),
             self.waveform_snapshot_source_filter.label(),
@@ -138,7 +190,11 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         )
     }
 
-    fn scope_report_bundle_index_html(&self, snapshots: &[ScopeMeasurementSnapshot]) -> String {
+    fn scope_report_bundle_index_html(
+        &self,
+        snapshots: &[ScopeMeasurementSnapshot],
+        metadata: &[ScopeReportBundleArtifactMetadata],
+    ) -> String {
         let selected_context = self
             .selected_scope_trace_label()
             .unwrap_or_else(|| "unavailable".to_string());
@@ -174,7 +230,9 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
     <li><a href=\"measurement_snapshots.csv\">measurement_snapshots.csv</a> - filtered measurement snapshot rows.</li>
     <li><a href=\"measurement_snapshots.md\">measurement_snapshots.md</a> - filtered measurement snapshot rows as Markdown.</li>
     <li><a href=\"README.md\">README.md</a> - text manifest.</li>
+    <li><a href=\"artifact_manifest.csv\">artifact_manifest.csv</a> - expected size and SHA-256 metadata.</li>
   </ul>
+  {}
   <h2>Plot Preview</h2>
   <p><a href=\"scope_plot.svg\"><img src=\"scope_plot.svg\" alt=\"CircuitCI scope plot\"></a></p>
   <h2>Snapshot Projection</h2>
@@ -210,6 +268,7 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
 </body>
 </html>
 ",
+            scope_report_bundle_artifact_metadata_html(metadata),
             snapshots.len(),
             html_escape(query),
             html_escape(self.waveform_snapshot_source_filter.label()),
@@ -260,19 +319,19 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         let Some(latest) = self.waveform_recent_report_bundles.first().cloned() else {
             return;
         };
-        let latest_missing = scope_report_bundle_missing_artifacts(Path::new(&latest));
-        let latest_status = scope_report_bundle_artifact_status_label_from_missing(&latest_missing);
+        let latest_status = scope_report_bundle_artifact_status(Path::new(&latest));
+        let latest_needs_refresh = latest_status.needs_refresh();
         ui.horizontal_wrapped(|ui| {
             ui.label("Recent bundle");
             ui.monospace(display_path_tail(&latest));
-            ui.label(latest_status);
+            ui.label(latest_status.label());
             if ui.button("Open Bundle Folder").clicked() {
                 self.open_scope_report_bundle(&latest);
             }
             if ui.button("Open Bundle Index").clicked() {
                 self.open_scope_report_bundle_index(&latest);
             }
-            if !latest_missing.is_empty() && ui.button("Preview Refresh").clicked() {
+            if latest_needs_refresh && ui.button("Preview Refresh").clicked() {
                 self.preview_scope_report_bundle_refresh(&latest);
             }
             if ui.button("Clean Old Bundles").clicked() {
@@ -289,20 +348,19 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
                     .selected_text("Older")
                     .show_ui(ui, |ui| {
                         for bundle in older_bundles {
-                            let missing = scope_report_bundle_missing_artifacts(Path::new(&bundle));
+                            let status = scope_report_bundle_artifact_status(Path::new(&bundle));
+                            let needs_refresh = status.needs_refresh();
                             ui.horizontal(|ui| {
                                 ui.label(format!(
                                     "{} - {}",
                                     display_path_tail(&bundle),
-                                    scope_report_bundle_artifact_status_label_from_missing(
-                                        &missing
-                                    )
+                                    status.label()
                                 ));
                                 if ui.small_button("Open").clicked() {
                                     self.open_scope_report_bundle(&bundle);
                                     ui.close();
                                 }
-                                if !missing.is_empty() && ui.small_button("Refresh").clicked() {
+                                if needs_refresh && ui.small_button("Refresh").clicked() {
                                     self.preview_scope_report_bundle_refresh(&bundle);
                                     ui.close();
                                 }
@@ -312,12 +370,12 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             }
         });
         if let Some(bundle) = self.waveform_bundle_refresh_preview.clone() {
-            let missing = scope_report_bundle_missing_artifacts(Path::new(&bundle));
+            let status = scope_report_bundle_artifact_status(Path::new(&bundle));
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!(
-                    "Refresh preview: regenerate {} missing artifact(s) for {}.",
-                    missing.len(),
-                    display_path_tail(&bundle)
+                    "Refresh preview: regenerate artifacts for {} ({}).",
+                    display_path_tail(&bundle),
+                    status.label()
                 ));
                 if ui.button("Confirm Refresh").clicked() {
                     self.confirm_scope_report_bundle_refresh(snapshots);
@@ -359,8 +417,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
             self.status = format!("Refusing to refresh non-bundle path {}.", path.display());
             return;
         }
-        let missing = scope_report_bundle_missing_artifacts(path);
-        if missing.is_empty() {
+        let status = scope_report_bundle_artifact_status(path);
+        if !status.needs_refresh() {
             self.waveform_bundle_refresh_preview = None;
             self.status = format!(
                 "Scope report bundle artifacts are already complete for {}.",
@@ -370,8 +428,8 @@ This folder is a runtime export from the Scopes workspace. It is derived from lo
         }
         self.waveform_bundle_refresh_preview = Some(bundle.to_string());
         self.status = format!(
-            "Previewing refresh for {} missing scope report bundle artifact(s).",
-            missing.len()
+            "Previewing scope report bundle refresh for {}.",
+            status.label()
         );
     }
 
@@ -521,6 +579,81 @@ fn html_escape(value: &str) -> String {
         .replace('\'', "&#39;")
 }
 
+fn scope_report_bundle_content_metadata(
+    scope_plot_svg: &str,
+    measurement_snapshots_csv: &str,
+    measurement_snapshots_markdown: &str,
+) -> Vec<ScopeReportBundleArtifactMetadata> {
+    vec![
+        artifact_metadata_for_bytes("scope_plot.svg", scope_plot_svg.as_bytes()),
+        artifact_metadata_for_bytes(
+            "measurement_snapshots.csv",
+            measurement_snapshots_csv.as_bytes(),
+        ),
+        artifact_metadata_for_bytes(
+            "measurement_snapshots.md",
+            measurement_snapshots_markdown.as_bytes(),
+        ),
+    ]
+}
+
+fn artifact_metadata_for_bytes(
+    label: &'static str,
+    bytes: &[u8],
+) -> ScopeReportBundleArtifactMetadata {
+    ScopeReportBundleArtifactMetadata {
+        label,
+        size_bytes: bytes.len(),
+        sha256: sha256_hex(bytes),
+    }
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    format!("{digest:x}")
+}
+
+fn scope_report_bundle_artifact_metadata_markdown(
+    metadata: &[ScopeReportBundleArtifactMetadata],
+) -> String {
+    let mut markdown = String::from("| Artifact | Size bytes | SHA-256 |\n| --- | ---: | --- |\n");
+    for artifact in metadata {
+        markdown.push_str(&format!(
+            "| {} | {} | `{}` |\n",
+            markdown_escape(artifact.label),
+            artifact.size_bytes,
+            artifact.sha256
+        ));
+    }
+    markdown
+}
+
+fn scope_report_bundle_artifact_metadata_html(
+    metadata: &[ScopeReportBundleArtifactMetadata],
+) -> String {
+    let mut html = String::from(
+        "\
+<h2>Artifact Metadata</h2>
+<p><code>artifact_manifest.csv</code> records expected size and SHA-256 metadata for required bundle artifacts after export.</p>
+<table>
+  <thead>
+    <tr><th>Artifact</th><th>Size bytes</th><th>SHA-256</th></tr>
+  </thead>
+  <tbody>
+",
+    );
+    for artifact in metadata {
+        html.push_str(&format!(
+            "    <tr><td>{}</td><td class=\"number\">{}</td><td><code>{}</code></td></tr>\n",
+            html_escape(artifact.label),
+            artifact.size_bytes,
+            html_escape(&artifact.sha256)
+        ));
+    }
+    html.push_str("  </tbody>\n</table>");
+    html
+}
+
 fn scope_report_bundle_footprint_summary_html(
     summaries: &[WaveformFootprintSourceSummary],
     total_count: usize,
@@ -613,6 +746,10 @@ fn write_scope_report_bundle_files(
             )
         })
         .and_then(|()| fs::write(bundle_dir.join("README.md"), &files.readme))
+        .and_then(|()| {
+            let manifest = scope_report_bundle_artifact_manifest_csv(bundle_dir)?;
+            fs::write(bundle_dir.join("artifact_manifest.csv"), manifest)
+        })
 }
 
 pub(super) fn output_bundle_base_dir(output_dir: &str) -> PathBuf {
@@ -643,6 +780,33 @@ pub(super) fn scope_report_bundle_index_path(bundle_dir: &Path) -> PathBuf {
     bundle_dir.join("index.html")
 }
 
+fn scope_report_bundle_artifact_manifest_csv(bundle_dir: &Path) -> std::io::Result<String> {
+    let mut csv = String::from("path,label,size_bytes,sha256\n");
+    for (path, label) in SCOPE_REPORT_BUNDLE_ARTIFACTS
+        .iter()
+        .filter(|(path, _)| *path != "artifact_manifest.csv")
+    {
+        let artifact_path = bundle_dir.join(path);
+        let bytes = fs::read(&artifact_path)?;
+        csv.push_str(&format!(
+            "{},{},{},{}\n",
+            manifest_csv_escape(path),
+            manifest_csv_escape(label),
+            bytes.len(),
+            sha256_hex(&bytes)
+        ));
+    }
+    Ok(csv)
+}
+
+fn manifest_csv_escape(value: &str) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
 pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'static str> {
     if !bundle_dir.is_dir() {
         return vec!["bundle folder"];
@@ -656,11 +820,84 @@ pub(super) fn scope_report_bundle_missing_artifacts(bundle_dir: &Path) -> Vec<&'
         .collect()
 }
 
-fn scope_report_bundle_artifact_status_label_from_missing(missing: &[&str]) -> String {
-    if missing.is_empty() {
-        "Artifacts OK".to_string()
-    } else {
-        format!("Missing: {}", missing.join(", "))
+pub(super) fn scope_report_bundle_changed_artifacts(
+    bundle_dir: &Path,
+) -> std::io::Result<Vec<String>> {
+    let manifest_path = bundle_dir.join("artifact_manifest.csv");
+    let manifest = fs::read_to_string(manifest_path)?;
+    let mut changed = Vec::new();
+    for line in manifest.lines().skip(1) {
+        let columns = parse_manifest_csv_line(line);
+        if columns.len() != 4 {
+            changed.push("artifact_manifest.csv".to_string());
+            continue;
+        }
+        let path = &columns[0];
+        let label = if columns[1].is_empty() {
+            path.as_str()
+        } else {
+            columns[1].as_str()
+        };
+        let expected_size = columns[2].parse::<usize>().ok();
+        let expected_sha = columns[3].trim();
+        let artifact_path = bundle_dir.join(path);
+        let Ok(bytes) = fs::read(&artifact_path) else {
+            changed.push(label.to_string());
+            continue;
+        };
+        if expected_size != Some(bytes.len())
+            || !sha256_hex(&bytes).eq_ignore_ascii_case(expected_sha)
+        {
+            changed.push(label.to_string());
+        }
+    }
+    changed.sort();
+    changed.dedup();
+    Ok(changed)
+}
+
+fn parse_manifest_csv_line(line: &str) -> Vec<String> {
+    let mut columns = Vec::new();
+    let mut current = String::new();
+    let mut chars = line.chars().peekable();
+    let mut quoted = false;
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' if quoted && chars.peek() == Some(&'"') => {
+                current.push('"');
+                chars.next();
+            }
+            '"' => quoted = !quoted,
+            ',' if !quoted => {
+                columns.push(std::mem::take(&mut current));
+            }
+            _ => current.push(ch),
+        }
+    }
+    columns.push(current);
+    columns
+}
+
+fn scope_report_bundle_artifact_status(bundle_dir: &Path) -> ScopeReportBundleArtifactStatus {
+    let missing = scope_report_bundle_missing_artifacts(bundle_dir);
+    if !missing.is_empty() {
+        return ScopeReportBundleArtifactStatus {
+            missing,
+            changed: Vec::new(),
+            integrity_error: None,
+        };
+    }
+    match scope_report_bundle_changed_artifacts(bundle_dir) {
+        Ok(changed) => ScopeReportBundleArtifactStatus {
+            missing,
+            changed,
+            integrity_error: None,
+        },
+        Err(error) => ScopeReportBundleArtifactStatus {
+            missing,
+            changed: Vec::new(),
+            integrity_error: Some(error.to_string()),
+        },
     }
 }
 

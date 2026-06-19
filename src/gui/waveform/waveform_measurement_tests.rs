@@ -3,10 +3,11 @@ use super::{
     ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, ScopeTriggerEdge,
     WaveformTraceRef, cleanup_old_scope_report_bundle_dirs, interpolated_value,
     old_scope_report_bundle_dirs, parse_waveform_csv_text, scope_cursor_legend_rows,
-    scope_region_stats_rows, scope_report_bundle_index_path, scope_report_bundle_missing_artifacts,
-    scope_snapshot_visible_indexes, scope_snapshot_visible_indexes_sorted, scope_snapshots_csv,
-    scope_snapshots_markdown, scope_trigger_events, scope_visible_trace_refs,
-    unique_scope_report_bundle_dir, waveform_measurement, waveform_probe_value_for_badge,
+    scope_region_stats_rows, scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
+    scope_report_bundle_missing_artifacts, scope_snapshot_visible_indexes,
+    scope_snapshot_visible_indexes_sorted, scope_snapshots_csv, scope_snapshots_markdown,
+    scope_trigger_events, scope_visible_trace_refs, unique_scope_report_bundle_dir,
+    waveform_measurement, waveform_probe_value_for_badge,
 };
 use crate::gui::sketch::SketchSelection;
 use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
@@ -754,6 +755,7 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     let csv = fs::read_to_string(bundle.join("measurement_snapshots.csv")).unwrap();
     let markdown = fs::read_to_string(bundle.join("measurement_snapshots.md")).unwrap();
     let readme = fs::read_to_string(bundle.join("README.md")).unwrap();
+    let manifest = fs::read_to_string(bundle.join("artifact_manifest.csv")).unwrap();
     let index_path = scope_report_bundle_index_path(bundle);
     let index = fs::read_to_string(index_path).unwrap();
 
@@ -773,15 +775,31 @@ fn scope_report_bundle_exports_filtered_snapshots_and_plot_svg() {
     assert!(readme.contains("| Runtime Only | 1 | 48 | 48 B |"));
     assert!(readme.contains("- `index.html`"));
     assert!(readme.contains("- `scope_plot.svg`"));
+    assert!(readme.contains("- `artifact_manifest.csv`"));
+    assert!(readme.contains("## Artifact Metadata"));
+    assert!(readme.contains("| scope_plot.svg |"));
+    assert!(readme.contains("| measurement_snapshots.csv |"));
+    assert!(readme.contains("SHA-256"));
     assert!(index.contains("<title>CircuitCI Scope Report Bundle</title>"));
     assert!(index.contains("href=\"scope_plot.svg\""));
     assert!(index.contains("href=\"measurement_snapshots.csv\""));
     assert!(index.contains("href=\"measurement_snapshots.md\""));
     assert!(index.contains("href=\"README.md\""));
+    assert!(index.contains("href=\"artifact_manifest.csv\""));
+    assert!(index.contains("<h2>Artifact Metadata</h2>"));
     assert!(index.contains("<h2>Loaded Waveform Footprint Summary</h2>"));
     assert!(index.contains("<td>Total</td><td class=\"number\">1</td>"));
     assert!(index.contains("<td>Runtime Only</td><td class=\"number\">1</td>"));
+    assert!(manifest.contains("path,label,size_bytes,sha256"));
+    assert!(manifest.contains("scope_plot.svg,scope_plot.svg"));
+    assert!(manifest.contains("index.html,index.html"));
+    assert!(manifest.contains("README.md,README.md"));
     assert!(scope_report_bundle_missing_artifacts(bundle).is_empty());
+    assert!(
+        scope_report_bundle_changed_artifacts(bundle)
+            .unwrap()
+            .is_empty()
+    );
     fs::remove_file(bundle.join("measurement_snapshots.md")).unwrap();
     assert_eq!(
         scope_report_bundle_missing_artifacts(bundle),
@@ -839,6 +857,20 @@ fn scope_report_bundle_refresh_recreates_missing_artifacts() {
     assert!(bundle_path.join("index.html").is_file());
     assert_eq!(app.waveform_bundle_refresh_preview, None);
     assert!(app.status.contains("Refreshed scope report bundle"));
+
+    fs::write(bundle_path.join("scope_plot.svg"), "<svg>changed</svg>").unwrap();
+    assert_eq!(
+        scope_report_bundle_changed_artifacts(bundle_path).unwrap(),
+        vec!["scope_plot.svg".to_string()]
+    );
+    app.preview_scope_report_bundle_refresh(&bundle);
+    assert_eq!(app.waveform_bundle_refresh_preview, Some(bundle.clone()));
+    app.confirm_scope_report_bundle_refresh(&filtered);
+    assert!(
+        scope_report_bundle_changed_artifacts(bundle_path)
+            .unwrap()
+            .is_empty()
+    );
 
     fs::remove_dir_all(&base_dir).unwrap();
 }

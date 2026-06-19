@@ -24,8 +24,8 @@ mod waveform_view;
 #[cfg(test)]
 use waveform_bundles::{
     cleanup_old_scope_report_bundle_dirs, old_scope_report_bundle_dirs,
-    scope_report_bundle_index_path, scope_report_bundle_missing_artifacts,
-    unique_scope_report_bundle_dir,
+    scope_report_bundle_changed_artifacts, scope_report_bundle_index_path,
+    scope_report_bundle_missing_artifacts, unique_scope_report_bundle_dir,
 };
 #[cfg(test)]
 use waveform_deferred::{

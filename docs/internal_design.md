@@ -319,10 +319,11 @@ and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export
-with the configured plot SVG, local index page, README manifest, loaded-waveform
-footprint source totals, recent-bundle artifact status checks, folder/index
-opening, guarded refresh of missing bundle artifacts, and previewed/confirmed
-bounded old-bundle cleanup.
+with the configured plot SVG, local index page, README manifest, artifact
+size/SHA-256 manifest, loaded-waveform footprint source totals, recent-bundle
+missing/changed artifact status checks, folder/index opening, guarded refresh
+of missing or changed bundle artifacts, and previewed/confirmed bounded
+old-bundle cleanup.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps. It may display graph hover
 readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime

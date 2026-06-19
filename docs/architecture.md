@@ -48,14 +48,16 @@ normalized board, layout, library, scenario, and process evidence.
 
 Scopes report bundles include a local `index.html` plus README manifest. The
 index links the plot SVG and snapshot CSV/Markdown artifacts and surfaces the
-same runtime loaded-waveform footprint source summary, so exported folders can
-be audited for Full CSV, Selected Columns, and Runtime Only memory distribution
-without persisting that diagnostic state into Board IR.
-The recent-bundle UI checks required artifact presence before opening, can open
-the latest index directly, can open bundle folders through the host file
-manager, and can preview/confirm a refresh that regenerates missing bundle
-artifacts from current filtered Scopes state into an existing
-`scope_report_bundle_*` folder.
+same runtime loaded-waveform footprint source summary and generated content
+artifact size/SHA-256 metadata, so exported folders can be audited for Full CSV,
+Selected Columns, Runtime Only memory distribution, and report-artifact
+integrity without persisting that diagnostic state into Board IR. Each bundle
+also writes `artifact_manifest.csv` with expected size/SHA-256 metadata for the
+required bundle files. The recent-bundle UI checks required artifact presence
+and manifest mismatches before opening, can open the latest index directly, can
+open bundle folders through the host file manager, and can preview/confirm a
+refresh that regenerates missing or changed bundle artifacts from current
+filtered Scopes state into an existing `scope_report_bundle_*` folder.
 
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_interaction` owns reusable viewport zoom math,

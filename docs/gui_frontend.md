@@ -272,10 +272,11 @@ and notes, search/source filtering, sort/group projection, plot-marker
 derivation, filtered CSV/Markdown serialization/export, Jump
 restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_bundles.rs` owns timestamped report bundle export
-with the configured plot SVG, local index page, README manifest, loaded-waveform
-footprint source totals, recent-bundle artifact status checks, folder/index
-opening, guarded refresh of missing bundle artifacts, and previewed/confirmed
-bounded old-bundle cleanup.
+with the configured plot SVG, local index page, README manifest, artifact
+size/SHA-256 manifest, loaded-waveform footprint source totals, recent-bundle
+missing/changed artifact status checks, folder/index opening, guarded refresh
+of missing or changed bundle artifacts, and previewed/confirmed bounded
+old-bundle cleanup.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage,
@@ -658,18 +659,23 @@ without changing the live Scopes view. Long traces are exported as bounded
 min/max decimated polylines so report SVG files do not scale linearly with every
 loaded waveform sample.
 Export Bundle writes the same filtered snapshot CSV and Markdown plus the
-configured plot SVG, a local `index.html`, and a README manifest into a timestamped output folder,
+configured plot SVG, a local `index.html`, a README manifest, and
+`artifact_manifest.csv` into a timestamped output folder,
 keeping report artifacts together while still avoiding persisted project truth.
 The index links the plot SVG, snapshot CSV/Markdown, and README while surfacing
-the same snapshot, plot, selected-trace, and loaded-waveform footprint summary
-context for quick browser review. The manifest records active snapshot filters,
-plot SVG options, selected trace context, loaded-waveform footprint source totals,
-and generated files so the folder remains understandable outside the GUI. The Scopes panel keeps a bounded transient list of recently exported
-bundles, shows whether each recent bundle still has its required artifacts, and
+the same snapshot, plot, selected-trace, generated content artifact
+size/SHA-256 metadata, and loaded-waveform footprint summary context for quick
+browser review. The README records active snapshot filters, plot SVG options,
+selected trace context, loaded-waveform footprint source totals, generated
+files, and human-readable artifact size/SHA-256 metadata; the CSV manifest
+records expected size/SHA-256 metadata for required bundle files so the GUI can
+distinguish changed artifacts from merely present artifacts. The Scopes panel keeps a bounded transient list of recently exported
+bundles, shows whether each recent bundle still has required and unchanged artifacts, and
 can open the latest bundle index, latest folder, or older bundle folder through
-the host file manager. If a recent bundle is missing required files, `Preview
-Refresh` / `Confirm Refresh` regenerates the plot SVG, snapshot CSV/Markdown,
-index, and README from the current filtered Scopes state into that same
+the host file manager. If a recent bundle is missing required files or has files
+that no longer match the manifest, `Preview Refresh` / `Confirm Refresh`
+regenerates the plot SVG, snapshot CSV/Markdown, index, README, and manifest
+from the current filtered Scopes state into that same
 `scope_report_bundle_*` folder. `Clean Old Bundles` previews older direct child directories named
 `scope_report_bundle_*` under the configured output directory; `Confirm Cleanup`
 then removes only those previewed bundle folders, preserving the newest bounded
