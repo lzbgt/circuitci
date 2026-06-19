@@ -289,7 +289,7 @@ runtime activity values for graph tinting.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact
-preview-column picker background load actions that mark loaded preview labels, skip duplicate selected-column
+searchable preview-column picker background load actions with select-visible helpers that mark loaded preview labels, skip duplicate selected-column
 reloads, and keep full deferred artifacts available after partial column
 loads.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
@@ -331,9 +331,9 @@ run on the UI thread, deferred/skipped traces and slow artifacts are visible to
 the user, diagnostics can be copied as CSV, and stale waveform data does not
 outlive its report. Deferred artifacts are parsed only through the same
 background waveform-loader path when the user explicitly loads them.
-Matching-column, remaining-preview-column, and exact preview-column picker loads append selected traces and diagnostics, mark loaded preview labels, skip already loaded columns, and preserve
+Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces and diagnostics, mark loaded preview labels, skip already loaded columns, and preserve
 the original full deferred placeholder until a full-column load succeeds.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, and preserves full deferred placeholders until full load, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts. `src/gui/waveform/waveform_deferred.rs` owns the selector-side deferred placeholder UI plus remaining-preview and exact preview-column picking/loading actions.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, and preserves full deferred placeholders until full load, and filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts. `src/gui/waveform/waveform_deferred.rs` owns the selector-side deferred placeholder UI plus remaining-preview and searchable exact preview-column picking/loading actions.
 Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helpers and
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and

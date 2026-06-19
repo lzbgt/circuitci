@@ -117,6 +117,11 @@ impl CircuitCiApp {
                                     ui.close();
                                 }
                                 ui.menu_button("Columns", |ui| {
+                                    let visible_unloaded_probes =
+                                        deferred_waveform_artifact_filtered_unloaded_probe_labels(
+                                            artifact,
+                                            &self.waveform_deferred_column_filter,
+                                        );
                                     ui.label(format!(
                                         "{} unloaded preview column(s)",
                                         unloaded_probes.len()
@@ -125,10 +130,80 @@ impl CircuitCiApp {
                                         ui.label("All preview columns are already loaded.");
                                         return;
                                     }
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.label("Find");
+                                        let response = ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut self.waveform_deferred_column_filter,
+                                            )
+                                            .desired_width(160.0)
+                                            .hint_text("probe column"),
+                                        );
+                                        if response.changed() {
+                                            self.waveform_deferred_column_filter = self
+                                                .waveform_deferred_column_filter
+                                                .trim_start()
+                                                .to_string();
+                                        }
+                                        if ui
+                                            .add_enabled(
+                                                !self
+                                                    .waveform_deferred_column_filter
+                                                    .trim()
+                                                    .is_empty(),
+                                                egui::Button::new("Clear"),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.waveform_deferred_column_filter.clear();
+                                        }
+                                        ui.label(format!(
+                                            "{} / {} unloaded visible",
+                                            visible_unloaded_probes.len(),
+                                            unloaded_probes.len()
+                                        ));
+                                    });
+                                    ui.horizontal(|ui| {
+                                        if ui
+                                            .add_enabled(
+                                                !visible_unloaded_probes.is_empty(),
+                                                egui::Button::new("Select Visible"),
+                                            )
+                                            .clicked()
+                                        {
+                                            select_deferred_waveform_column_picks(
+                                                &mut self.waveform_deferred_column_picks,
+                                                artifact,
+                                                &visible_unloaded_probes,
+                                            );
+                                        }
+                                        if ui
+                                            .add_enabled(
+                                                !visible_unloaded_probes.is_empty(),
+                                                egui::Button::new("Clear Visible"),
+                                            )
+                                            .clicked()
+                                        {
+                                            clear_deferred_waveform_column_picks(
+                                                &mut self.waveform_deferred_column_picks,
+                                                artifact,
+                                                &visible_unloaded_probes,
+                                            );
+                                        }
+                                    });
+                                    if visible_unloaded_probes.is_empty() {
+                                        ui.label("No unloaded preview column matches the current filter.");
+                                    }
                                     egui::ScrollArea::vertical()
                                         .max_height(160.0)
                                         .show(ui, |ui| {
                                             for probe in &artifact.probe_preview {
+                                                if !deferred_waveform_column_filter_matches(
+                                                    probe,
+                                                    &self.waveform_deferred_column_filter,
+                                                ) {
+                                                    continue;
+                                                }
                                                 let loaded = deferred_waveform_probe_is_loaded(
                                                     probe,
                                                     &artifact.loaded_probe_preview,
@@ -364,6 +439,21 @@ pub(super) fn deferred_waveform_artifact_unloaded_probe_labels(
         .collect()
 }
 
+pub(super) fn deferred_waveform_artifact_filtered_unloaded_probe_labels(
+    artifact: &DeferredWaveformArtifact,
+    query: &str,
+) -> Vec<String> {
+    artifact
+        .probe_preview
+        .iter()
+        .filter(|probe| {
+            deferred_waveform_column_filter_matches(probe, query)
+                && !deferred_waveform_probe_is_loaded(probe, &artifact.loaded_probe_preview)
+        })
+        .cloned()
+        .collect()
+}
+
 pub(super) fn deferred_waveform_artifact_picked_probe_labels(
     artifact: &DeferredWaveformArtifact,
     picks: &BTreeSet<(String, String)>,
@@ -385,11 +475,26 @@ fn deferred_waveform_probe_is_loaded(probe: &str, loaded_probes: &[String]) -> b
         .any(|loaded| loaded.trim().eq_ignore_ascii_case(probe.trim()))
 }
 
+fn deferred_waveform_column_filter_matches(probe: &str, query: &str) -> bool {
+    let query = query.trim().to_ascii_lowercase();
+    query.is_empty() || probe.to_ascii_lowercase().contains(&query)
+}
+
 fn deferred_waveform_column_pick_key(
     artifact: &DeferredWaveformArtifact,
     probe: &str,
 ) -> (String, String) {
     (artifact.path.clone(), probe.trim().to_string())
+}
+
+pub(super) fn select_deferred_waveform_column_picks(
+    picks: &mut BTreeSet<(String, String)>,
+    artifact: &DeferredWaveformArtifact,
+    probes: &[String],
+) {
+    for probe in probes {
+        picks.insert(deferred_waveform_column_pick_key(artifact, probe));
+    }
 }
 
 fn clear_deferred_waveform_column_picks(

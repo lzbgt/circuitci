@@ -10,13 +10,15 @@ use super::{
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
+    deferred_waveform_artifact_filtered_unloaded_probe_labels,
     deferred_waveform_artifact_picked_probe_labels,
     deferred_waveform_artifact_unloaded_probe_labels, deferred_waveform_artifact_visible_indexes,
     deferred_waveform_matching_probe_requests, deferred_waveform_remaining_probe_requests,
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_scope_trigger_event, waveform_load_deferred_artifacts, waveform_load_deferred_paths,
+    select_deferred_waveform_column_picks, select_scope_trigger_event,
+    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
     waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
 };
@@ -723,6 +725,52 @@ fn deferred_waveform_column_picker_uses_unloaded_preview_columns() {
         deferred_waveform_artifact_picked_probe_labels(artifact, &picks),
         vec!["i(load)", "p(aux)"]
     );
+}
+
+#[test]
+fn deferred_waveform_column_picker_filters_and_selects_visible_unloaded_columns() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_power.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(80 * 1024 * 1024),
+            samples: 2_400_000,
+            probes: 4,
+            probe_preview: vec![
+                "i(load)".to_string(),
+                "p(load)".to_string(),
+                "p(aux)".to_string(),
+                "v(out)".to_string(),
+            ],
+            elapsed_ms: 3,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "/tmp/run/scope_power.csv".to_string(),
+            Some(80 * 1024 * 1024),
+            16,
+            1,
+            20,
+            vec!["p(load)".to_string()],
+        ),
+    ];
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+    let artifact = &artifacts[0];
+    let visible_unloaded =
+        deferred_waveform_artifact_filtered_unloaded_probe_labels(artifact, "P(");
+
+    assert_eq!(visible_unloaded, vec!["p(aux)"]);
+
+    let mut picks = BTreeSet::new();
+    select_deferred_waveform_column_picks(&mut picks, artifact, &visible_unloaded);
+    assert_eq!(
+        deferred_waveform_artifact_picked_probe_labels(artifact, &picks),
+        vec!["p(aux)"]
+    );
+
+    let empty = deferred_waveform_artifact_filtered_unloaded_probe_labels(artifact, "p(load)");
+    assert!(empty.is_empty());
 }
 
 #[test]
