@@ -82,6 +82,29 @@ impl WaveformLoadDiagnostic {
         }
     }
 
+    pub(super) fn loaded_selected(
+        path: String,
+        bytes: Option<u64>,
+        samples: usize,
+        probes: usize,
+        elapsed_ms: u128,
+        probe_preview: Vec<String>,
+    ) -> Self {
+        Self {
+            path,
+            loaded: true,
+            deferred: false,
+            bytes,
+            samples,
+            probes,
+            probe_preview,
+            elapsed_ms,
+            detail: format!(
+                "Loaded {samples} sample row(s) across {probes} selected probe column(s)."
+            ),
+        }
+    }
+
     pub(super) fn skipped(
         path: String,
         bytes: Option<u64>,

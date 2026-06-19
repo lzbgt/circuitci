@@ -290,7 +290,7 @@ runtime activity values for graph tinting.
 `src/gui/waveform/waveform_trace_selector.rs` owns waveform and
 searchable/grouped trace selection, deferred waveform artifact placeholders
 with header-only probe previews, selector-side filtering, and row/visible/all
-background load actions, transient saved compare sets, transient
+or matching-column background load actions, transient saved compare sets, transient
 trace-style controls, split-unit lane toggling, and selected-trace reset
 behavior.
 `src/gui/waveform/waveform_context.rs` owns

@@ -51,7 +51,8 @@ use waveform_snapshots::{
 };
 #[cfg(test)]
 use waveform_trace_selector::{
-    WaveformProbeGroup, deferred_waveform_artifact_visible_indexes, waveform_probe_choices,
+    WaveformProbeGroup, deferred_waveform_artifact_visible_indexes,
+    deferred_waveform_matching_probe_requests, waveform_probe_choices,
     waveform_probe_group_choices,
 };
 #[cfg(test)]
@@ -642,17 +643,40 @@ where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
-    let waveform_count = waveform_paths.len();
+    let requests: Vec<_> = waveform_paths
+        .iter()
+        .cloned()
+        .map(WaveformLoadRequest::all_columns)
+        .collect();
+    load_waveform_requests_with_progress_and_cancel(
+        &requests,
+        &mut on_progress,
+        should_cancel,
+        defer_large_waveforms,
+    )
+}
+
+pub(super) fn load_waveform_requests_with_progress_and_cancel<F, C>(
+    waveform_requests: &[WaveformLoadRequest],
+    mut on_progress: F,
+    should_cancel: C,
+    defer_large_waveforms: bool,
+) -> Result<(Vec<WaveformView>, Vec<WaveformLoadDiagnostic>)>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let waveform_count = waveform_requests.len();
     let mut waveforms = Vec::new();
     let mut diagnostics = Vec::new();
-    for (index, waveform) in waveform_paths.iter().enumerate() {
+    for (index, request) in waveform_requests.iter().enumerate() {
         if should_cancel() {
             return Err(crate::cancellation::canceled(
                 "Waveform loading canceled before completion.",
             ));
         }
         let started_at = Instant::now();
-        let path = Path::new(waveform);
+        let path = Path::new(&request.path);
         let preflight = waveform_load_preflight(path);
         let bytes = preflight.bytes;
         on_progress(
@@ -661,7 +685,7 @@ where
                 "Loading waveform {} of {}: {}.",
                 index + 1,
                 waveform_count,
-                waveform
+                request.path
             ),
         );
         let preflight_stage = if preflight.warning {
@@ -671,50 +695,64 @@ where
         };
         on_progress(
             preflight_stage,
-            format!("{}: {}.", waveform, preflight.summary),
+            format!("{}: {}.", request.path, preflight.summary),
         );
         if defer_large_waveforms && preflight.warning {
             diagnostics.push(WaveformLoadDiagnostic::deferred(
-                waveform.clone(),
+                request.path.clone(),
                 &preflight,
                 started_at.elapsed().as_millis(),
             ));
             on_progress(
                 "Deferred waveform artifact",
-                format!("Deferred waveform {}: {}.", waveform, preflight.summary),
+                format!("Deferred waveform {}: {}.", request.path, preflight.summary),
             );
             continue;
         }
-        match load_waveform_csv_with_progress_and_cancel(
+        match load_waveform_csv_selected_with_progress_and_cancel(
             path,
-            waveform,
+            &request.path,
+            &request.probe_labels,
             &mut on_progress,
             &should_cancel,
         ) {
             Ok(view) => {
                 let samples = view.time_s.len();
                 let probes = view.probes.len();
-                diagnostics.push(WaveformLoadDiagnostic::loaded(
-                    waveform.clone(),
-                    bytes,
-                    samples,
-                    probes,
-                    started_at.elapsed().as_millis(),
-                ));
+                let elapsed_ms = started_at.elapsed().as_millis();
+                let diagnostic = if request.probe_labels.is_empty() {
+                    WaveformLoadDiagnostic::loaded(
+                        request.path.clone(),
+                        bytes,
+                        samples,
+                        probes,
+                        elapsed_ms,
+                    )
+                } else {
+                    WaveformLoadDiagnostic::loaded_selected(
+                        request.path.clone(),
+                        bytes,
+                        samples,
+                        probes,
+                        elapsed_ms,
+                        request.probe_labels.clone(),
+                    )
+                };
+                diagnostics.push(diagnostic);
                 waveforms.push(view);
             }
             Err(error) if crate::cancellation::is_canceled(&error) => return Err(error),
             Err(error) => {
                 let detail = format!("{error:#}");
                 diagnostics.push(WaveformLoadDiagnostic::skipped(
-                    waveform.clone(),
+                    request.path.clone(),
                     bytes,
                     started_at.elapsed().as_millis(),
                     detail.clone(),
                 ));
                 on_progress(
                     "Skipping waveform",
-                    format!("Skipped waveform {}: {detail}.", waveform),
+                    format!("Skipped waveform {}: {detail}.", request.path),
                 );
             }
         }
@@ -888,9 +926,53 @@ fn probe_unit(label: &str) -> &'static str {
 pub(super) fn quick_assertion_margin(value: f64) -> f64 {
     (value.abs() * 0.01).max(1.0e-9)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WaveformLoadRequest {
+    path: String,
+    probe_labels: Vec<String>,
+}
+
+impl WaveformLoadRequest {
+    pub(super) fn all_columns(path: String) -> Self {
+        Self {
+            path,
+            probe_labels: Vec::new(),
+        }
+    }
+
+    pub(super) fn selected_columns(path: String, probe_labels: Vec<String>) -> Self {
+        Self { path, probe_labels }
+    }
+
+    pub(super) fn probe_count(&self) -> usize {
+        self.probe_labels.len()
+    }
+}
+
 fn load_waveform_csv_with_progress_and_cancel<F, C>(
     path: &Path,
     label: &str,
+    mut on_progress: F,
+    should_cancel: C,
+) -> Result<WaveformView>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    load_waveform_csv_selected_with_progress_and_cancel(
+        path,
+        label,
+        &[],
+        &mut on_progress,
+        should_cancel,
+    )
+}
+
+fn load_waveform_csv_selected_with_progress_and_cancel<F, C>(
+    path: &Path,
+    label: &str,
+    selected_probe_labels: &[String],
     mut on_progress: F,
     should_cancel: C,
 ) -> Result<WaveformView>
@@ -908,7 +990,7 @@ where
     let mut line_index = 0usize;
     let mut bytes_read = 0u64;
     let mut last_progress_bytes = 0u64;
-    let mut builder = WaveformCsvBuilder::default();
+    let mut builder = WaveformCsvBuilder::new(selected_probe_labels.to_vec());
 
     loop {
         if line_index.is_multiple_of(4096) && should_cancel() {
@@ -956,7 +1038,7 @@ where
 
 #[cfg(test)]
 fn parse_waveform_csv_text(text: &str, label: &str) -> Result<WaveformView> {
-    let mut builder = WaveformCsvBuilder::default();
+    let mut builder = WaveformCsvBuilder::new(Vec::new());
     for (line_index, line) in text.lines().enumerate() {
         builder.ingest_line(line_index, line)?;
     }
@@ -968,9 +1050,18 @@ struct WaveformCsvBuilder {
     time_s: Vec<f64>,
     probe_labels: Vec<String>,
     probe_values: Vec<Vec<f64>>,
+    selected_probe_labels: Vec<String>,
+    selected_probe_columns: Option<Vec<usize>>,
 }
 
 impl WaveformCsvBuilder {
+    fn new(selected_probe_labels: Vec<String>) -> Self {
+        Self {
+            selected_probe_labels,
+            ..Self::default()
+        }
+    }
+
     fn sample_count(&self) -> usize {
         self.time_s.len()
     }
@@ -982,11 +1073,12 @@ impl WaveformCsvBuilder {
         }
         let Some(time) = parse_waveform_float(fields[0]) else {
             if self.time_s.is_empty() {
-                self.probe_labels = fields
+                let labels: Vec<_> = fields
                     .iter()
                     .skip(1)
                     .map(|field| (*field).to_string())
                     .collect();
+                self.apply_header_labels(labels)?;
                 return Ok(());
             }
             anyhow::bail!(
@@ -1009,13 +1101,65 @@ impl WaveformCsvBuilder {
             anyhow::bail!("Waveform row {} has no probe columns.", line_index + 1);
         }
         if self.probe_values.is_empty() {
-            self.probe_values = vec![Vec::new(); probe_count];
-            if self.probe_labels.len() != probe_count {
-                self.probe_labels = (0..probe_count)
-                    .map(|index| format!("probe_{}", index + 1))
-                    .collect();
+            if !self.selected_probe_labels.is_empty() && self.selected_probe_columns.is_none() {
+                anyhow::bail!(
+                    "Column-selective waveform loading requires a header row before numeric samples."
+                );
             }
-        } else if probe_count < self.probe_values.len() {
+            let selected_columns = self
+                .selected_probe_columns
+                .clone()
+                .unwrap_or_else(|| (0..probe_count).collect());
+            if selected_columns.is_empty() {
+                anyhow::bail!("Waveform selection did not match any probe columns.");
+            }
+            let required_probe_count = selected_columns
+                .iter()
+                .copied()
+                .max()
+                .map(|index| index + 1)
+                .unwrap_or(0);
+            if probe_count < required_probe_count {
+                anyhow::bail!(
+                    "Waveform row {} has {} probe columns, expected at least {}.",
+                    line_index + 1,
+                    probe_count,
+                    required_probe_count
+                );
+            }
+            self.selected_probe_columns = Some(selected_columns);
+            let selected_count = self.selected_probe_columns.as_ref().map_or(0, Vec::len);
+            self.probe_values = vec![Vec::new(); selected_count];
+            if self.probe_labels.len() != selected_count {
+                let labels = self
+                    .selected_probe_columns
+                    .as_ref()
+                    .into_iter()
+                    .flatten()
+                    .map(|index| format!("probe_{}", index + 1))
+                    .collect::<Vec<_>>();
+                self.probe_labels = labels;
+            }
+        } else {
+            let required_probe_count = self
+                .selected_probe_columns
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .copied()
+                .max()
+                .map(|index| index + 1)
+                .unwrap_or(self.probe_values.len());
+            if probe_count < required_probe_count {
+                anyhow::bail!(
+                    "Waveform row {} has {} probe columns, expected at least {}.",
+                    line_index + 1,
+                    probe_count,
+                    required_probe_count
+                );
+            }
+        }
+        if probe_count < self.probe_values.len() {
             anyhow::bail!(
                 "Waveform row {} has {} probe columns, expected at least {}.",
                 line_index + 1,
@@ -1024,16 +1168,52 @@ impl WaveformCsvBuilder {
             );
         }
         self.time_s.push(time);
-        for (index, values) in self.probe_values.iter_mut().enumerate() {
-            let value = parse_waveform_float(fields[index + 1]).with_context(|| {
+        let selected_columns = self
+            .selected_probe_columns
+            .clone()
+            .unwrap_or_else(|| (0..self.probe_values.len()).collect());
+        for (values_index, column_index) in selected_columns.into_iter().enumerate() {
+            let value = parse_waveform_float(fields[column_index + 1]).with_context(|| {
                 format!(
                     "Waveform row {} has non-numeric probe value {}.",
                     line_index + 1,
-                    fields[index + 1]
+                    fields[column_index + 1]
                 )
             })?;
-            values.push(value);
+            self.probe_values[values_index].push(value);
         }
+        Ok(())
+    }
+
+    fn apply_header_labels(&mut self, labels: Vec<String>) -> Result<()> {
+        if self.selected_probe_labels.is_empty() {
+            self.probe_labels = labels;
+            self.selected_probe_columns = None;
+            return Ok(());
+        }
+        let mut columns = Vec::new();
+        let mut selected_labels = Vec::new();
+        for requested in &self.selected_probe_labels {
+            let Some((index, label)) = labels
+                .iter()
+                .enumerate()
+                .find(|(_, label)| label.trim().eq_ignore_ascii_case(requested.trim()))
+            else {
+                continue;
+            };
+            if !columns.contains(&index) {
+                columns.push(index);
+                selected_labels.push(label.clone());
+            }
+        }
+        if columns.is_empty() {
+            anyhow::bail!(
+                "Waveform header does not contain requested probe column(s): {}.",
+                self.selected_probe_labels.join(", ")
+            );
+        }
+        self.probe_labels = selected_labels;
+        self.selected_probe_columns = Some(columns);
         Ok(())
     }
 
@@ -1042,6 +1222,7 @@ impl WaveformCsvBuilder {
             time_s,
             probe_labels,
             probe_values,
+            ..
         } = self;
         if time_s.is_empty() {
             anyhow::bail!("Waveform CSV has no numeric samples.");

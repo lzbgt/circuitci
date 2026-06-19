@@ -3,9 +3,9 @@ use super::waveform_plot::{
     scope_visible_trace_refs, valid_waveform_trace,
 };
 use super::{
-    CircuitCiApp, DeferredWaveformArtifact, WaveformProbe, WaveformProbeQuantity,
-    WaveformTraceColor, WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    waveform_load_deferred_artifacts,
+    CircuitCiApp, DeferredWaveformArtifact, WaveformLoadRequest, WaveformProbe,
+    WaveformProbeQuantity, WaveformTraceColor, WaveformTracePreset, WaveformTraceRef,
+    WaveformTraceStyle, WaveformView, waveform_load_deferred_artifacts,
 };
 use eframe::egui;
 
@@ -249,6 +249,16 @@ impl CircuitCiApp {
             .filter_map(|&index| artifacts.get(index))
             .map(|artifact| artifact.path.clone())
             .collect::<Vec<_>>();
+        let matching_probe_requests = deferred_waveform_matching_probe_requests(
+            artifacts,
+            &visible_indexes,
+            &self.waveform_deferred_filter,
+        );
+        let matching_probe_count = matching_probe_requests
+            .iter()
+            .map(WaveformLoadRequest::probe_count)
+            .sum::<usize>();
+        let mut load_probe_requests = None;
         ui.horizontal_wrapped(|ui| {
             ui.menu_button(format!("Deferred Waveforms ({})", artifacts.len()), |ui| {
                 ui.horizontal_wrapped(|ui| {
@@ -286,9 +296,27 @@ impl CircuitCiApp {
                     .show(ui, |ui| {
                         for &index in &visible_indexes {
                             let artifact = &artifacts[index];
+                            let matching_probes = deferred_waveform_artifact_matching_probe_labels(
+                                artifact,
+                                &self.waveform_deferred_filter,
+                            );
                             ui.horizontal(|ui| {
                                 if ui.button("Load").clicked() {
                                     *load_deferred_path = Some(artifact.path.clone());
+                                    ui.close();
+                                }
+                                if ui
+                                    .add_enabled(
+                                        !matching_probes.is_empty(),
+                                        egui::Button::new("Load Matching"),
+                                    )
+                                    .clicked()
+                                {
+                                    load_probe_requests =
+                                        Some(vec![WaveformLoadRequest::selected_columns(
+                                            artifact.path.clone(),
+                                            matching_probes.clone(),
+                                        )]);
                                     ui.close();
                                 }
                                 ui.monospace(&artifact.label);
@@ -319,7 +347,19 @@ impl CircuitCiApp {
             {
                 self.load_deferred_waveform_paths(visible_paths);
             }
+            if ui
+                .add_enabled(
+                    !matching_probe_requests.is_empty(),
+                    egui::Button::new(format!("Load Matching Traces ({matching_probe_count})")),
+                )
+                .clicked()
+            {
+                load_probe_requests = Some(matching_probe_requests);
+            }
         });
+        if let Some(requests) = load_probe_requests {
+            self.load_deferred_waveform_requests(requests);
+        }
     }
 
     fn waveform_compare_presets_ui(&mut self, ui: &mut egui::Ui) {
@@ -687,6 +727,38 @@ fn deferred_probe_preview_text(probes: &[String]) -> String {
     } else {
         visible
     }
+}
+
+pub(super) fn deferred_waveform_matching_probe_requests(
+    artifacts: &[DeferredWaveformArtifact],
+    visible_indexes: &[usize],
+    query: &str,
+) -> Vec<WaveformLoadRequest> {
+    visible_indexes
+        .iter()
+        .filter_map(|&index| artifacts.get(index))
+        .filter_map(|artifact| {
+            let probes = deferred_waveform_artifact_matching_probe_labels(artifact, query);
+            (!probes.is_empty())
+                .then(|| WaveformLoadRequest::selected_columns(artifact.path.clone(), probes))
+        })
+        .collect()
+}
+
+fn deferred_waveform_artifact_matching_probe_labels(
+    artifact: &DeferredWaveformArtifact,
+    query: &str,
+) -> Vec<String> {
+    let query = query.trim().to_ascii_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+    artifact
+        .probe_preview
+        .iter()
+        .filter(|probe| probe.to_ascii_lowercase().contains(&query))
+        .cloned()
+        .collect()
 }
 
 pub(super) fn deferred_waveform_artifact_visible_indexes(

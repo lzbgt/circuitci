@@ -2,15 +2,16 @@ use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformLoadDiagnostic, WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger,
-    WaveformPlotView, WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceRef,
-    nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_plot_size,
-    scope_snapshot_chip_hit, scope_zoom_box_interaction,
+    WaveformLoadDiagnostic, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformPlotLaneMode,
+    WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip, WaveformSnapshotMarker,
+    WaveformTraceRef, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
+    scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
-    deferred_waveform_artifact_visible_indexes, load_report_waveforms_with_progress_and_cancel,
-    load_waveform_csv_with_progress_and_cancel, load_waveform_paths_with_progress_and_cancel,
+    deferred_waveform_artifact_visible_indexes, deferred_waveform_matching_probe_requests,
+    load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
+    load_waveform_paths_with_progress_and_cancel, load_waveform_requests_with_progress_and_cancel,
     parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
     select_scope_trigger_event, waveform_load_deferred_artifacts, waveform_load_deferred_paths,
     waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
@@ -71,6 +72,61 @@ fn waveform_csv_file_loader_honors_cancellation() {
             .unwrap_err();
 
     assert!(crate::cancellation::is_canceled(&error));
+}
+
+#[test]
+fn waveform_request_loader_reads_only_selected_probe_columns() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "time v(out) i(load) p(load)").unwrap();
+    writeln!(file, "0 0 0.001 0").unwrap();
+    writeln!(file, "1e-6 3.3 0.002 0.0066").unwrap();
+    let path = file.path().to_string_lossy().into_owned();
+    let requests = vec![WaveformLoadRequest::selected_columns(
+        path,
+        vec!["i(load)".to_string()],
+    )];
+
+    let (waveforms, diagnostics) =
+        load_waveform_requests_with_progress_and_cancel(&requests, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(waveforms[0].time_s, vec![0.0, 1e-6]);
+    assert_eq!(waveforms[0].probes.len(), 1);
+    assert_eq!(waveforms[0].probes[0].label, "i(load)");
+    assert_eq!(waveforms[0].probes[0].values, vec![0.001, 0.002]);
+    assert!(diagnostics[0].loaded);
+    assert_eq!(diagnostics[0].probes, 1);
+    assert_eq!(diagnostics[0].probe_preview, vec!["i(load)"]);
+    assert!(diagnostics[0].detail.contains("selected probe column"));
+}
+
+#[test]
+fn waveform_request_loader_rejects_missing_selected_probe_columns() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "time v(out)").unwrap();
+    writeln!(file, "0 0").unwrap();
+    let path = file.path().to_string_lossy().into_owned();
+    let requests = vec![WaveformLoadRequest::selected_columns(
+        path,
+        vec!["i(load)".to_string()],
+    )];
+
+    let (waveforms, diagnostics) =
+        load_waveform_requests_with_progress_and_cancel(&requests, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert!(waveforms.is_empty());
+    assert!(!diagnostics[0].loaded);
+    assert!(
+        diagnostics[0]
+            .detail
+            .contains("does not contain requested probe column")
+    );
 }
 
 #[test]
@@ -413,6 +469,19 @@ fn deferred_waveform_artifact_filter_matches_probe_preview_and_metadata() {
     assert_eq!(
         deferred_waveform_artifact_visible_indexes(&artifacts, "not-present"),
         Vec::<usize>::new()
+    );
+
+    let visible_indexes = deferred_waveform_artifact_visible_indexes(&artifacts, "load");
+    assert_eq!(
+        deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "LOAD"),
+        vec![WaveformLoadRequest::selected_columns(
+            "/tmp/run/scope_power.csv".to_string(),
+            vec!["i(load)".to_string(), "p(load)".to_string()]
+        )]
+    );
+    assert!(
+        deferred_waveform_matching_probe_requests(&artifacts, &visible_indexes, "missing")
+            .is_empty()
     );
 }
 

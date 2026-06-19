@@ -1,7 +1,8 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::waveform::{
-    WaveformLoadDiagnostic, WaveformView, load_report_waveforms_with_progress_and_cancel,
-    load_waveform_paths_with_progress_and_cancel, merge_waveform_load_diagnostics,
+    WaveformLoadDiagnostic, WaveformLoadRequest, WaveformView,
+    load_report_waveforms_with_progress_and_cancel,
+    load_waveform_requests_with_progress_and_cancel, merge_waveform_load_diagnostics,
     waveform_load_deferred_paths,
 };
 use super::{CircuitCiApp, Stage, validate_from_gui};
@@ -181,7 +182,15 @@ impl CircuitCiApp {
     }
 
     pub(super) fn load_deferred_waveform_paths(&mut self, paths: Vec<String>) {
-        if paths.is_empty() {
+        let requests = paths
+            .into_iter()
+            .map(WaveformLoadRequest::all_columns)
+            .collect();
+        self.load_deferred_waveform_requests(requests);
+    }
+
+    pub(super) fn load_deferred_waveform_requests(&mut self, requests: Vec<WaveformLoadRequest>) {
+        if requests.is_empty() {
             self.status = "No deferred waveform artifacts to load.".to_string();
             self.push_diagnostic("No deferred waveform artifacts to load.");
             return;
@@ -189,20 +198,20 @@ impl CircuitCiApp {
         let project_path = PathBuf::from(self.project_path.clone());
         let profile = self.profile.clone();
         let output_dir = PathBuf::from(self.output_dir.clone());
-        let target = format!("{} deferred waveform artifact(s)", paths.len());
+        let target = format!("{} deferred waveform artifact(s)", requests.len());
         self.start_background_job("waveform load", target, move |sender, cancel_token| {
             let thread_project_path = project_path.clone();
             let thread_profile = profile.clone();
             let thread_output_dir = output_dir.clone();
-            let thread_paths = paths.clone();
+            let thread_requests = requests.clone();
             thread::spawn(move || {
                 send_background_progress(
                     &sender,
                     "Preparing waveform load",
-                    format!("{} deferred artifact(s).", thread_paths.len()),
+                    format!("{} deferred artifact(s).", thread_requests.len()),
                 );
-                let result = load_waveform_paths_with_progress_and_cancel(
-                    &thread_paths,
+                let result = load_waveform_requests_with_progress_and_cancel(
+                    &thread_requests,
                     |stage, detail| send_background_progress(&sender, stage, detail),
                     || cancel_token.load(Ordering::Relaxed),
                     false,
