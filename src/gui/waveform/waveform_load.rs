@@ -60,6 +60,35 @@ impl WaveformLoadStatusFilter {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WaveformLoadPreviewFilter {
+    All,
+    HasPreview,
+    HasUnloadedPreview,
+    FullyLoadedPreview,
+    NoPreview,
+}
+
+impl WaveformLoadPreviewFilter {
+    pub(super) const ALL: [Self; 5] = [
+        Self::All,
+        Self::HasPreview,
+        Self::HasUnloadedPreview,
+        Self::FullyLoadedPreview,
+        Self::NoPreview,
+    ];
+
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::HasPreview => "Has preview",
+            Self::HasUnloadedPreview => "Has unloaded preview",
+            Self::FullyLoadedPreview => "Preview loaded",
+            Self::NoPreview => "No preview",
+        }
+    }
+}
+
 impl WaveformLoadDiagnostic {
     pub(super) fn loaded(
         path: String,

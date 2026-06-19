@@ -3,8 +3,8 @@ use eframe::egui;
 
 use super::WaveformLoadRequest;
 use super::waveform_load::{
-    WaveformLoadDiagnostic, WaveformLoadStatusFilter, format_waveform_load_bytes,
-    waveform_load_selected_probes_for_path,
+    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadStatusFilter,
+    format_waveform_load_bytes, waveform_load_selected_probes_for_path,
 };
 
 impl CircuitCiApp {
@@ -16,6 +16,7 @@ impl CircuitCiApp {
             &self.waveform_load_diagnostics,
             &self.waveform_load_filter,
             self.waveform_load_status_filter,
+            self.waveform_load_preview_filter,
             self.waveform_load_min_ms,
             self.waveform_load_slowest_first,
         );
@@ -73,6 +74,17 @@ impl CircuitCiApp {
                             );
                         }
                     });
+                egui::ComboBox::from_label("Preview")
+                    .selected_text(self.waveform_load_preview_filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in WaveformLoadPreviewFilter::ALL {
+                            ui.selectable_value(
+                                &mut self.waveform_load_preview_filter,
+                                filter,
+                                filter.label(),
+                            );
+                        }
+                    });
                 ui.label("Min ms");
                 ui.add(
                     egui::DragValue::new(&mut self.waveform_load_min_ms)
@@ -88,6 +100,7 @@ impl CircuitCiApp {
                 if ui.small_button("Clear Filters").clicked() {
                     self.waveform_load_filter.clear();
                     self.waveform_load_status_filter = WaveformLoadStatusFilter::All;
+                    self.waveform_load_preview_filter = WaveformLoadPreviewFilter::All;
                     self.waveform_load_min_ms = 0.0;
                     self.waveform_load_slowest_first = false;
                 }
@@ -180,6 +193,7 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
     diagnostics: &[WaveformLoadDiagnostic],
     query: &str,
     status_filter: WaveformLoadStatusFilter,
+    preview_filter: WaveformLoadPreviewFilter,
     min_elapsed_ms: f64,
     slowest_first: bool,
 ) -> Vec<usize> {
@@ -204,6 +218,9 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
             if status_filter == WaveformLoadStatusFilter::Skipped && diagnostic.deferred {
                 return None;
             }
+            if !waveform_load_preview_filter_matches(diagnostics, diagnostic, preview_filter) {
+                return None;
+            }
             if diagnostic.elapsed_ms < min_elapsed_ms {
                 return None;
             }
@@ -224,6 +241,29 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
         });
     }
     indexes
+}
+
+fn waveform_load_preview_filter_matches(
+    diagnostics: &[WaveformLoadDiagnostic],
+    diagnostic: &WaveformLoadDiagnostic,
+    filter: WaveformLoadPreviewFilter,
+) -> bool {
+    match filter {
+        WaveformLoadPreviewFilter::All => true,
+        WaveformLoadPreviewFilter::HasPreview => !diagnostic.probe_preview.is_empty(),
+        WaveformLoadPreviewFilter::HasUnloadedPreview => {
+            diagnostic.deferred
+                && !waveform_load_diagnostic_unloaded_preview_columns(diagnostics, diagnostic)
+                    .is_empty()
+        }
+        WaveformLoadPreviewFilter::FullyLoadedPreview => {
+            diagnostic.deferred
+                && !diagnostic.probe_preview.is_empty()
+                && waveform_load_diagnostic_unloaded_preview_columns(diagnostics, diagnostic)
+                    .is_empty()
+        }
+        WaveformLoadPreviewFilter::NoPreview => diagnostic.probe_preview.is_empty(),
+    }
 }
 
 fn waveform_load_diagnostic_search_text(diagnostic: &WaveformLoadDiagnostic) -> String {

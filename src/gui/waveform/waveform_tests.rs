@@ -3,10 +3,11 @@ use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::waveform_plot::decimated_trace_samples_for_plot;
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
-    WaveformLoadDiagnostic, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformPlotLaneMode,
-    WaveformPlotTrigger, WaveformPlotView, WaveformSnapshotChip, WaveformSnapshotMarker,
-    WaveformTraceRef, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
-    scope_plot_size, scope_snapshot_chip_hit, scope_zoom_box_interaction,
+    WaveformLoadDiagnostic, WaveformLoadPreviewFilter, WaveformLoadRequest,
+    WaveformLoadStatusFilter, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
+    WaveformSnapshotChip, WaveformSnapshotMarker, WaveformTraceRef, nearest_scope_cursor_target,
+    plot_x_to_time_us, plot_y_to_value, scope_plot_size, scope_snapshot_chip_hit,
+    scope_zoom_box_interaction,
 };
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
@@ -452,6 +453,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "missing",
             WaveformLoadStatusFilter::Skipped,
+            WaveformLoadPreviewFilter::All,
             0.0,
             false,
         ),
@@ -462,6 +464,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "",
             WaveformLoadStatusFilter::Deferred,
+            WaveformLoadPreviewFilter::All,
             0.0,
             false,
         ),
@@ -472,6 +475,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "i(load)",
             WaveformLoadStatusFilter::All,
+            WaveformLoadPreviewFilter::All,
             0.0,
             false,
         ),
@@ -482,6 +486,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "",
             WaveformLoadStatusFilter::Loaded,
+            WaveformLoadPreviewFilter::All,
             10.0,
             true,
         ),
@@ -492,6 +497,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
         &diagnostics,
         "",
         WaveformLoadStatusFilter::All,
+        WaveformLoadPreviewFilter::All,
         10.0,
         true,
     );
@@ -512,6 +518,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
         &diagnostics,
         "",
         WaveformLoadStatusFilter::Deferred,
+        WaveformLoadPreviewFilter::All,
         0.0,
         false,
     );
@@ -519,6 +526,96 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
     assert!(deferred_csv.contains(
         "deferred,huge.csv,62914560,1200000,2,2,v(out); i(load),i(load),v(out),Deferred large waveform artifact"
     ));
+}
+
+#[test]
+fn waveform_load_diagnostics_preview_state_filters_deferred_rows() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "partial.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(60 * 1024 * 1024),
+            samples: 1_200_000,
+            probes: 2,
+            probe_preview: vec!["v(out)".to_string(), "i(load)".to_string()],
+            elapsed_ms: 2,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "partial.csv".to_string(),
+            Some(60 * 1024 * 1024),
+            32,
+            1,
+            15,
+            vec!["i(load)".to_string()],
+        ),
+        WaveformLoadDiagnostic {
+            path: "complete.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(64 * 1024 * 1024),
+            samples: 1_400_000,
+            probes: 1,
+            probe_preview: vec!["p(load)".to_string()],
+            elapsed_ms: 3,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic::loaded_selected(
+            "complete.csv".to_string(),
+            Some(64 * 1024 * 1024),
+            40,
+            1,
+            16,
+            vec!["p(load)".to_string()],
+        ),
+        WaveformLoadDiagnostic::loaded("plain.csv".to_string(), Some(128), 2, 1, 4),
+    ];
+
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::All,
+            WaveformLoadPreviewFilter::HasUnloadedPreview,
+            0.0,
+            false,
+        ),
+        vec![0]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::All,
+            WaveformLoadPreviewFilter::FullyLoadedPreview,
+            0.0,
+            false,
+        ),
+        vec![2]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::All,
+            WaveformLoadPreviewFilter::NoPreview,
+            0.0,
+            false,
+        ),
+        vec![4]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::Loaded,
+            WaveformLoadPreviewFilter::HasPreview,
+            0.0,
+            false,
+        ),
+        vec![1, 3]
+    );
 }
 
 #[test]

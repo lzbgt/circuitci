@@ -42,8 +42,8 @@ use waveform_io::{load_waveform_csv_with_progress_and_cancel, parse_waveform_csv
 #[cfg(test)]
 use waveform_load::waveform_load_preflight;
 pub(super) use waveform_load::{
-    DeferredWaveformArtifact, WaveformLoadDiagnostic, WaveformLoadStatusFilter,
-    merge_waveform_load_diagnostics, waveform_load_deferred_artifacts,
+    DeferredWaveformArtifact, WaveformLoadDiagnostic, WaveformLoadPreviewFilter,
+    WaveformLoadStatusFilter, merge_waveform_load_diagnostics, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths,
 };
 #[cfg(test)]
