@@ -741,6 +741,100 @@ fn value_window_clamps_zoomed_ranges_to_data_bounds() {
 }
 
 #[test]
+fn scope_view_history_restores_time_and_value_windows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 4.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    app.apply_waveform_view_change(|app| app.set_waveform_time_window(0.25, 1.75));
+    app.apply_waveform_view_change(|app| app.set_waveform_value_window(1.0, 3.0));
+
+    assert_eq!(app.waveform_view_back_stack.len(), 2);
+    assert!(app.waveform_view_forward_stack.is_empty());
+    assert_eq!(app.visible_waveform_time_window(), Some((0.25, 1.75)));
+    assert_eq!(app.visible_waveform_value_window(), Some((1.0, 3.0)));
+
+    app.restore_previous_waveform_view_window();
+    assert_eq!(app.visible_waveform_time_window(), Some((0.25, 1.75)));
+    assert_eq!(app.waveform_value_min, None);
+    assert_eq!(app.waveform_value_max, None);
+    assert_eq!(app.waveform_view_forward_stack.len(), 1);
+
+    app.restore_previous_waveform_view_window();
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+    assert_eq!(app.waveform_view_forward_stack.len(), 2);
+
+    app.restore_next_waveform_view_window();
+    assert_eq!(app.visible_waveform_time_window(), Some((0.25, 1.75)));
+    assert_eq!(app.waveform_value_min, None);
+}
+
+#[test]
+fn scope_view_history_clears_forward_on_new_window_change() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 4.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    app.apply_waveform_view_change(|app| app.set_waveform_time_window(0.25, 1.75));
+    app.restore_previous_waveform_view_window();
+    assert_eq!(app.waveform_view_forward_stack.len(), 1);
+
+    app.apply_waveform_view_change(|app| app.set_waveform_time_window(0.5, 1.5));
+
+    assert!(app.waveform_view_forward_stack.is_empty());
+    assert_eq!(app.visible_waveform_time_window(), Some((0.5, 1.5)));
+}
+
+#[test]
+fn scope_view_history_coalesces_plot_drag_windows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 4.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        ..Default::default()
+    };
+
+    app.waveform_view_drag_start = Some(app.waveform_view_window());
+    app.set_waveform_time_window(0.25, 1.75);
+    app.set_waveform_time_window(0.5, 1.5);
+    app.commit_waveform_view_drag();
+
+    assert_eq!(app.waveform_view_back_stack.len(), 1);
+    assert_eq!(app.visible_waveform_time_window(), Some((0.5, 1.5)));
+
+    app.restore_previous_waveform_view_window();
+
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+}
+
+#[test]
 fn waveform_trace_bounds_use_visible_window() {
     let waveform = parse_waveform_csv_text(
         "time v(out)

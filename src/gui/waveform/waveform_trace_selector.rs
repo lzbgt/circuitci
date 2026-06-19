@@ -11,28 +11,33 @@ use eframe::egui;
 impl CircuitCiApp {
     pub(super) fn waveform_selector(&mut self, ui: &mut egui::Ui) {
         self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
+        let mut next_waveform = None;
         ui.horizontal_wrapped(|ui| {
             for (index, waveform) in self.waveforms.iter().enumerate() {
                 if ui
                     .selectable_label(self.selected_waveform == index, &waveform.label)
                     .clicked()
                 {
-                    self.selected_waveform = index;
-                    self.selected_probe = 0;
-                    self.waveform_math_left = 0;
-                    self.waveform_math_right = 0;
-                    self.waveform_math_name.clear();
-                    self.waveform_cursor_a_us = 0.0;
-                    self.waveform_cursor_b_us = 0.0;
-                    self.waveform_window_start_us = None;
-                    self.waveform_window_end_us = None;
-                    self.waveform_value_min = None;
-                    self.waveform_value_max = None;
-                    self.waveform_trigger_threshold = 0.0;
-                    self.waveform_playing = false;
+                    next_waveform = Some(index);
                 }
             }
         });
+        if let Some(index) = next_waveform.filter(|index| *index != self.selected_waveform) {
+            self.selected_waveform = index;
+            self.selected_probe = 0;
+            self.waveform_math_left = 0;
+            self.waveform_math_right = 0;
+            self.waveform_math_name.clear();
+            self.waveform_cursor_a_us = 0.0;
+            self.waveform_cursor_b_us = 0.0;
+            self.waveform_window_start_us = None;
+            self.waveform_window_end_us = None;
+            self.waveform_value_min = None;
+            self.waveform_value_max = None;
+            self.clear_waveform_view_history();
+            self.waveform_trigger_threshold = 0.0;
+            self.waveform_playing = false;
+        }
     }
 
     pub(super) fn waveform_probe_selector(&mut self, ui: &mut egui::Ui) {
@@ -167,6 +172,7 @@ impl CircuitCiApp {
             if split_response.changed() {
                 self.waveform_value_min = None;
                 self.waveform_value_max = None;
+                self.clear_waveform_view_history();
                 self.status = if self.waveform_split_trace_units {
                     "Scopes split visible compare traces into per-unit lanes.".to_string()
                 } else {
@@ -192,6 +198,7 @@ impl CircuitCiApp {
         self.waveform_cursor_b_us = 0.0;
         self.waveform_value_min = None;
         self.waveform_value_max = None;
+        self.clear_waveform_view_history();
         self.waveform_trigger_threshold = 0.0;
         self.waveform_playing = false;
     }

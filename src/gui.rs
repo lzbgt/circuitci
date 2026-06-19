@@ -212,6 +212,14 @@ pub(super) struct ScopeProbeTarget {
     pub(super) probe_name: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct WaveformViewWindow {
+    time_start_us: Option<f64>,
+    time_end_us: Option<f64>,
+    value_min: Option<f64>,
+    value_max: Option<f64>,
+}
+
 pub struct CircuitCiApp {
     project_path: String,
     output_dir: String,
@@ -367,6 +375,9 @@ pub struct CircuitCiApp {
     waveform_window_end_us: Option<f64>,
     waveform_value_min: Option<f64>,
     waveform_value_max: Option<f64>,
+    waveform_view_back_stack: Vec<WaveformViewWindow>,
+    waveform_view_forward_stack: Vec<WaveformViewWindow>,
+    waveform_view_drag_start: Option<WaveformViewWindow>,
     waveform_trigger_threshold: f64,
     waveform_trigger_edge: String,
     background_job: Option<jobs::BackgroundGuiJob>,
@@ -537,6 +548,9 @@ impl Default for CircuitCiApp {
             waveform_window_end_us: None,
             waveform_value_min: None,
             waveform_value_max: None,
+            waveform_view_back_stack: Vec::new(),
+            waveform_view_forward_stack: Vec::new(),
+            waveform_view_drag_start: None,
             waveform_trigger_threshold: 0.0,
             waveform_trigger_edge: "rising".to_string(),
             background_job: None,

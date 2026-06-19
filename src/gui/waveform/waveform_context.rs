@@ -56,6 +56,7 @@ impl CircuitCiApp {
         self.waveform_window_end_us = None;
         self.waveform_value_min = None;
         self.waveform_value_max = None;
+        self.clear_waveform_view_history();
         self.waveform_playing = false;
         true
     }

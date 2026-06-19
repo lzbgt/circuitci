@@ -527,6 +527,7 @@ impl CircuitCiApp {
                 self.waveform_window_end_us = None;
                 self.waveform_value_min = None;
                 self.waveform_value_max = None;
+                self.clear_waveform_view_history();
                 self.waveform_trigger_threshold = 0.0;
                 self.stage = if waveform_count == 0 {
                     Stage::Reports

@@ -1,10 +1,10 @@
-use super::CircuitCiApp;
 use super::analog::{
     AnalogAssertionDraft, AnalogExpressionProbeDraft, analog_scenario_choices,
     append_analog_assertion, append_analog_expression_probe, unique_analog_assertion_name,
 };
 use super::sketch::{ProjectSnapshot, SketchSelection};
 use super::sketch_probes::SketchProbe;
+use super::{CircuitCiApp, WaveformViewWindow};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use eframe::egui;
@@ -127,11 +127,30 @@ impl CircuitCiApp {
             &self.waveform_trace_styles,
             scope_plot_size(desired_size),
         );
-        if let Some((start_us, end_us)) = interaction.time_window_us {
-            self.set_waveform_time_window(start_us, end_us);
+        if interaction.time_window_us.is_some() || interaction.value_window.is_some() {
+            if interaction.view_dragging && self.waveform_view_drag_start.is_none() {
+                self.waveform_view_drag_start = Some(self.waveform_view_window());
+            }
+            if interaction.view_dragging {
+                if let Some((start_us, end_us)) = interaction.time_window_us {
+                    self.set_waveform_time_window(start_us, end_us);
+                }
+                if let Some((value_min, value_max)) = interaction.value_window {
+                    self.set_waveform_value_window(value_min, value_max);
+                }
+            } else {
+                self.apply_waveform_view_change(|app| {
+                    if let Some((start_us, end_us)) = interaction.time_window_us {
+                        app.set_waveform_time_window(start_us, end_us);
+                    }
+                    if let Some((value_min, value_max)) = interaction.value_window {
+                        app.set_waveform_value_window(value_min, value_max);
+                    }
+                });
+            }
         }
-        if let Some((value_min, value_max)) = interaction.value_window {
-            self.set_waveform_value_window(value_min, value_max);
+        if !ui.input(|input| input.pointer.primary_down()) {
+            self.commit_waveform_view_drag();
         }
         if let Some(cursor_a_us) = interaction.cursor_a_us {
             self.set_waveform_cursor_a(cursor_a_us);
@@ -244,20 +263,38 @@ impl CircuitCiApp {
             });
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Time Window");
+                if ui
+                    .add_enabled(
+                        !self.waveform_view_back_stack.is_empty(),
+                        egui::Button::new("Back"),
+                    )
+                    .clicked()
+                {
+                    self.restore_previous_waveform_view_window();
+                }
+                if ui
+                    .add_enabled(
+                        !self.waveform_view_forward_stack.is_empty(),
+                        egui::Button::new("Forward"),
+                    )
+                    .clicked()
+                {
+                    self.restore_next_waveform_view_window();
+                }
                 if ui.button("Fit Time").clicked() {
-                    self.fit_waveform_time_window();
+                    self.apply_waveform_view_change(|app| app.fit_waveform_time_window());
                 }
                 if ui.button("Zoom In").clicked() {
-                    self.zoom_waveform_time_window(0.5);
+                    self.apply_waveform_view_change(|app| app.zoom_waveform_time_window(0.5));
                 }
                 if ui.button("Zoom Out").clicked() {
-                    self.zoom_waveform_time_window(2.0);
+                    self.apply_waveform_view_change(|app| app.zoom_waveform_time_window(2.0));
                 }
                 if ui.button("Pan Left").clicked() {
-                    self.pan_waveform_time_window(-0.25);
+                    self.apply_waveform_view_change(|app| app.pan_waveform_time_window(-0.25));
                 }
                 if ui.button("Pan Right").clicked() {
-                    self.pan_waveform_time_window(0.25);
+                    self.apply_waveform_view_change(|app| app.pan_waveform_time_window(0.25));
                 }
             });
             let mut edited_start = window_start_us;
@@ -280,7 +317,9 @@ impl CircuitCiApp {
                     )
                     .changed();
                 if start_changed || end_changed {
-                    self.set_waveform_time_window(edited_start, edited_end);
+                    self.apply_waveform_view_change(|app| {
+                        app.set_waveform_time_window(edited_start, edited_end)
+                    });
                 }
                 ui.label(format!("full {:.3}..{:.3} us", full_start_us, full_end_us));
             });
@@ -293,19 +332,19 @@ impl CircuitCiApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.strong("Value Scale");
                     if ui.button("Fit Y").clicked() {
-                        self.fit_waveform_value_window();
+                        self.apply_waveform_view_change(|app| app.fit_waveform_value_window());
                     }
                     if ui.button("Y Zoom In").clicked() {
-                        self.zoom_waveform_value_window(0.5);
+                        self.apply_waveform_view_change(|app| app.zoom_waveform_value_window(0.5));
                     }
                     if ui.button("Y Zoom Out").clicked() {
-                        self.zoom_waveform_value_window(2.0);
+                        self.apply_waveform_view_change(|app| app.zoom_waveform_value_window(2.0));
                     }
                     if ui.button("Pan Down").clicked() {
-                        self.pan_waveform_value_window(-0.25);
+                        self.apply_waveform_view_change(|app| app.pan_waveform_value_window(-0.25));
                     }
                     if ui.button("Pan Up").clicked() {
-                        self.pan_waveform_value_window(0.25);
+                        self.apply_waveform_view_change(|app| app.pan_waveform_value_window(0.25));
                     }
                 });
                 let mut edited_min = value_min;
@@ -326,7 +365,9 @@ impl CircuitCiApp {
                         )
                         .changed();
                     if min_changed || max_changed {
-                        self.set_waveform_value_window(edited_min, edited_max);
+                        self.apply_waveform_view_change(|app| {
+                            app.set_waveform_value_window(edited_min, edited_max)
+                        });
                     }
                     if let Some((data_min, data_max)) = self.waveform_data_value_window() {
                         ui.label(format!(
@@ -344,9 +385,85 @@ impl CircuitCiApp {
                 "Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value."
             };
             ui.small(format!(
-                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Alt/Option-drag a box to zoom. {value_hint} Trigger markers are derived from the selected trace only."
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Alt/Option-drag a box to zoom. Back/Forward restores prior scope windows. {value_hint} Trigger markers are derived from the selected trace only."
             ));
         });
+    }
+
+    fn waveform_view_window(&self) -> WaveformViewWindow {
+        WaveformViewWindow {
+            time_start_us: self.waveform_window_start_us,
+            time_end_us: self.waveform_window_end_us,
+            value_min: self.waveform_value_min,
+            value_max: self.waveform_value_max,
+        }
+    }
+
+    fn restore_waveform_view_window(&mut self, window: WaveformViewWindow) {
+        self.waveform_window_start_us = window.time_start_us;
+        self.waveform_window_end_us = window.time_end_us;
+        self.waveform_value_min = window.value_min;
+        self.waveform_value_max = window.value_max;
+        if let Some((start_us, end_us)) = self.visible_waveform_time_window() {
+            self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
+            self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
+        }
+        self.waveform_playing = false;
+    }
+
+    fn apply_waveform_view_change(&mut self, change: impl FnOnce(&mut Self)) {
+        let before = self.waveform_view_window();
+        change(self);
+        let after = self.waveform_view_window();
+        self.push_waveform_view_history(before, after);
+    }
+
+    fn push_waveform_view_history(
+        &mut self,
+        before: WaveformViewWindow,
+        after: WaveformViewWindow,
+    ) {
+        if before == after {
+            return;
+        }
+        self.waveform_view_back_stack.push(before);
+        const MAX_SCOPE_VIEW_HISTORY: usize = 64;
+        if self.waveform_view_back_stack.len() > MAX_SCOPE_VIEW_HISTORY {
+            self.waveform_view_back_stack.remove(0);
+        }
+        self.waveform_view_forward_stack.clear();
+    }
+
+    fn commit_waveform_view_drag(&mut self) {
+        let Some(before) = self.waveform_view_drag_start.take() else {
+            return;
+        };
+        let after = self.waveform_view_window();
+        self.push_waveform_view_history(before, after);
+    }
+
+    fn restore_previous_waveform_view_window(&mut self) {
+        let Some(previous) = self.waveform_view_back_stack.pop() else {
+            return;
+        };
+        let current = self.waveform_view_window();
+        self.restore_waveform_view_window(previous);
+        self.waveform_view_forward_stack.push(current);
+    }
+
+    fn restore_next_waveform_view_window(&mut self) {
+        let Some(next) = self.waveform_view_forward_stack.pop() else {
+            return;
+        };
+        let current = self.waveform_view_window();
+        self.restore_waveform_view_window(next);
+        self.waveform_view_back_stack.push(current);
+    }
+
+    pub(super) fn clear_waveform_view_history(&mut self) {
+        self.waveform_view_back_stack.clear();
+        self.waveform_view_forward_stack.clear();
+        self.waveform_view_drag_start = None;
     }
 
     pub(super) fn fit_waveform_time_window(&mut self) {
@@ -670,11 +787,12 @@ impl CircuitCiApp {
         };
         match append_derived_waveform_probe(waveform, &draft) {
             Ok(index) => {
+                let label = waveform.probes[index].label.clone();
                 self.selected_probe = index;
-                self.status = format!(
-                    "Derived waveform channel {} added.",
-                    waveform.probes[index].label
-                );
+                self.waveform_value_min = None;
+                self.waveform_value_max = None;
+                self.clear_waveform_view_history();
+                self.status = format!("Derived waveform channel {label} added.");
                 self.waveform_math_name.clear();
             }
             Err(error) => self.record_error(error),
@@ -704,6 +822,9 @@ impl CircuitCiApp {
         self.prune_scope_trace_pins();
         self.waveform_math_left = self.waveform_math_left.min(probe_count.saturating_sub(1));
         self.waveform_math_right = self.waveform_math_right.min(probe_count.saturating_sub(1));
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
+        self.clear_waveform_view_history();
         self.status = format!("Derived waveform channel {label} removed.");
     }
 

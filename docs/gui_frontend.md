@@ -237,7 +237,7 @@ selection, selected-trace schematic-context strip actions, and scope probe
 lookup. `src/gui/waveform/waveform_plot.rs`
 owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 transient visible time-window and value-window fit/zoom/pan helpers, direct
-plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom, trace overlay selection, and
+plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom, Back/Forward view-window history, trace overlay selection, and
 shared-axis or per-unit lane axis scaling. `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` so Scopes interaction work can grow without
@@ -355,7 +355,8 @@ form:
   pinning, saved compare sets, and per-trace visibility/color styles for
   multi-trace comparison overlays, optional per-unit split lanes for mixed
   voltage/current/power compares, Alt/Option-drag box zoom for shared-axis
-  time/value windows or split-lane time windows, direct
+  time/value windows or split-lane time windows, Back/Forward view-window
+  history, direct
   plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls, and
   selected-plus-pinned A/B cursor readouts.

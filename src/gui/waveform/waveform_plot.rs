@@ -17,6 +17,7 @@ pub(super) struct WaveformPlotInteraction {
     pub(super) value_window: Option<(f64, f64)>,
     pub(super) cursor_a_us: Option<f64>,
     pub(super) cursor_b_us: Option<f64>,
+    pub(super) view_dragging: bool,
 }
 
 pub(super) struct WaveformPlotCursors<'a> {
@@ -328,6 +329,7 @@ pub(super) fn draw_waveform_plot_sized(
                 let delta_us = -(delta.x as f64 / plot_rect.width() as f64) * x_span_us;
                 interaction.time_window_us =
                     Some((window_start_us + delta_us, window_end_us + delta_us));
+                interaction.view_dragging = true;
             }
             if rendered_lanes.len() == 1 && delta.y.abs() > f32::EPSILON && plot_rect.height() > 1.0
             {
@@ -336,6 +338,7 @@ pub(super) fn draw_waveform_plot_sized(
                 let delta_value = (delta.y as f64 / plot_rect.height() as f64) * y_span;
                 interaction.value_window =
                     Some((lane.y_min + delta_value, lane.y_max + delta_value));
+                interaction.view_dragging = true;
             }
         }
     }
