@@ -17,6 +17,7 @@ mod waveform_snapshots;
 mod waveform_trace_selector;
 mod waveform_trigger;
 mod waveform_view;
+pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
 pub(super) use waveform_plot::WaveformCursorTarget;

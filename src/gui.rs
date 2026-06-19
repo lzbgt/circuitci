@@ -68,9 +68,9 @@ use sketch_inline_edit::SketchComponentInlineEdit;
 use sketch_navigator::SketchNavigatorTarget;
 use sketch_spice::SketchSpiceKind;
 use waveform::{
-    ScopeSnapshotGroupMode, ScopeSnapshotSortKey, ScopeSnapshotSourceFilter, WaveformCursorTarget,
-    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
-    waveform_time_range_for_view,
+    ScopePlotSvgSizePreset, ScopeSnapshotGroupMode, ScopeSnapshotSortKey,
+    ScopeSnapshotSourceFilter, WaveformCursorTarget, WaveformTracePreset, WaveformTraceRef,
+    WaveformTraceStyle, WaveformView, waveform_time_range_for_view,
 };
 
 pub fn run() -> eframe::Result<()> {
@@ -381,6 +381,10 @@ pub struct CircuitCiApp {
     waveform_snapshot_group_mode: ScopeSnapshotGroupMode,
     waveform_trace_preset_name: String,
     waveform_split_trace_units: bool,
+    waveform_plot_export_size: ScopePlotSvgSizePreset,
+    waveform_plot_export_cursors: bool,
+    waveform_plot_export_trigger: bool,
+    waveform_plot_export_snapshots: bool,
     pending_scope_probe: Option<ScopeProbeTarget>,
     waveform_math_left: usize,
     waveform_math_right: usize,
@@ -559,6 +563,10 @@ impl Default for CircuitCiApp {
             waveform_snapshot_group_mode: ScopeSnapshotGroupMode::None,
             waveform_trace_preset_name: String::new(),
             waveform_split_trace_units: false,
+            waveform_plot_export_size: ScopePlotSvgSizePreset::Report,
+            waveform_plot_export_cursors: true,
+            waveform_plot_export_trigger: true,
+            waveform_plot_export_snapshots: true,
             pending_scope_probe: None,
             waveform_math_left: 0,
             waveform_math_right: 0,

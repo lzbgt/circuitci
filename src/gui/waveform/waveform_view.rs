@@ -1,4 +1,4 @@
-use super::waveform_export::scope_plot_svg;
+use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset, scope_plot_svg};
 use super::waveform_plot::{
     WaveformPlotCursors, WaveformPlotLaneMode, WaveformPlotTrigger, WaveformPlotView,
     clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
@@ -25,7 +25,21 @@ impl CircuitCiApp {
         }
         ui.horizontal_wrapped(|ui| {
             ui.strong("Scope Plot");
-            ui.label("runtime SVG");
+            ui.label("SVG");
+            egui::ComboBox::from_id_salt("scope_plot_svg_size_preset")
+                .selected_text(self.waveform_plot_export_size.label())
+                .show_ui(ui, |ui| {
+                    for preset in ScopePlotSvgSizePreset::ALL {
+                        ui.selectable_value(
+                            &mut self.waveform_plot_export_size,
+                            preset,
+                            preset.label(),
+                        );
+                    }
+                });
+            ui.checkbox(&mut self.waveform_plot_export_cursors, "Cursors");
+            ui.checkbox(&mut self.waveform_plot_export_trigger, "Trigger");
+            ui.checkbox(&mut self.waveform_plot_export_snapshots, "Snapshots");
             if ui.button("Copy SVG").clicked() {
                 self.copy_scope_plot_svg(ui.ctx());
             }
@@ -148,6 +162,12 @@ impl CircuitCiApp {
                 snapshot_markers: &snapshot_markers,
             },
             &self.waveform_trace_styles,
+            ScopePlotSvgOptions {
+                size_preset: self.waveform_plot_export_size,
+                include_cursors: self.waveform_plot_export_cursors,
+                include_trigger: self.waveform_plot_export_trigger,
+                include_snapshots: self.waveform_plot_export_snapshots,
+            },
         )
     }
 

@@ -9,12 +9,62 @@ use super::{
 };
 use eframe::egui;
 
-const SVG_WIDTH: f64 = 960.0;
-const SVG_HEIGHT: f64 = 540.0;
 const SVG_LEFT: f64 = 72.0;
 const SVG_TOP: f64 = 48.0;
 const SVG_RIGHT: f64 = 24.0;
 const SVG_BOTTOM: f64 = 54.0;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::gui) enum ScopePlotSvgSizePreset {
+    Compact,
+    Report,
+    Wide,
+}
+
+impl ScopePlotSvgSizePreset {
+    pub(super) const ALL: [Self; 3] = [Self::Report, Self::Compact, Self::Wide];
+
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Compact => "Compact 720x405",
+            Self::Report => "Report 960x540",
+            Self::Wide => "Wide 1280x720",
+        }
+    }
+
+    fn dimensions(self) -> (f64, f64) {
+        match self {
+            Self::Compact => (720.0, 405.0),
+            Self::Report => (960.0, 540.0),
+            Self::Wide => (1280.0, 720.0),
+        }
+    }
+}
+
+impl Default for ScopePlotSvgSizePreset {
+    fn default() -> Self {
+        Self::Report
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::gui) struct ScopePlotSvgOptions {
+    pub(super) size_preset: ScopePlotSvgSizePreset,
+    pub(super) include_cursors: bool,
+    pub(super) include_trigger: bool,
+    pub(super) include_snapshots: bool,
+}
+
+impl Default for ScopePlotSvgOptions {
+    fn default() -> Self {
+        Self {
+            size_preset: ScopePlotSvgSizePreset::Report,
+            include_cursors: true,
+            include_trigger: true,
+            include_snapshots: true,
+        }
+    }
+}
 
 pub(super) fn scope_plot_svg(
     waveforms: &[WaveformView],
@@ -23,6 +73,7 @@ pub(super) fn scope_plot_svg(
     cursor_b_us: f64,
     view: WaveformPlotView<'_>,
     trace_styles: &[WaveformTraceStyle],
+    options: ScopePlotSvgOptions,
 ) -> Option<String> {
     let primary = traces
         .first()
@@ -33,11 +84,12 @@ pub(super) fn scope_plot_svg(
     let x_min = window_start_us / 1e6;
     let x_max = window_end_us / 1e6;
     let lanes = scope_trace_lanes(waveforms, traces, view.lane_mode);
+    let (svg_width, svg_height) = options.size_preset.dimensions();
     let plot = SvgRect {
         x: SVG_LEFT,
         y: SVG_TOP,
-        width: SVG_WIDTH - SVG_LEFT - SVG_RIGHT,
-        height: SVG_HEIGHT - SVG_TOP - SVG_BOTTOM,
+        width: svg_width - SVG_LEFT - SVG_RIGHT,
+        height: svg_height - SVG_TOP - SVG_BOTTOM,
     };
     let rendered = rendered_svg_lanes(
         waveforms,
@@ -49,7 +101,7 @@ pub(super) fn scope_plot_svg(
     )?;
     let mut svg = String::new();
     svg.push_str(&format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH:.0}" height="{SVG_HEIGHT:.0}" viewBox="0 0 {SVG_WIDTH:.0} {SVG_HEIGHT:.0}" role="img" aria-label="CircuitCI scope plot">"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width:.0}" height="{svg_height:.0}" viewBox="0 0 {svg_width:.0} {svg_height:.0}" role="img" aria-label="CircuitCI scope plot">"##
     ));
     svg.push('\n');
     svg.push_str(r##"<rect width="100%" height="100%" fill="#101114"/>"##);
@@ -62,7 +114,7 @@ pub(super) fn scope_plot_svg(
     svg.push_str(&format!(
         r##"<text x="{:.1}" y="{:.1}" fill="#aeb6c2" font-family="monospace" font-size="12">t {}..{} s</text>"##,
         plot.x,
-        SVG_HEIGHT - 22.0,
+        svg_height - 22.0,
         format_value(x_min),
         format_value(x_max)
     ));
@@ -84,7 +136,8 @@ pub(super) fn scope_plot_svg(
             format_value(lane.y_max)
         ));
         svg.push('\n');
-        if let Some(trigger) = view.trigger
+        if options.include_trigger
+            && let Some(trigger) = view.trigger
             && lane.traces.contains(&traces[0])
         {
             draw_svg_trigger(&mut svg, lane, trigger, (window_start_us, window_end_us));
@@ -125,29 +178,33 @@ pub(super) fn scope_plot_svg(
                 svg.push('\n');
             }
         }
-        draw_svg_snapshot_markers(
+        if options.include_snapshots {
+            draw_svg_snapshot_markers(
+                &mut svg,
+                lane,
+                view.snapshot_markers,
+                (window_start_us, window_end_us),
+            );
+        }
+    }
+    if options.include_cursors {
+        draw_svg_cursor(
             &mut svg,
-            lane,
-            view.snapshot_markers,
+            plot,
+            cursor_a_us,
             (window_start_us, window_end_us),
+            "A",
+            "#ffc457",
+        );
+        draw_svg_cursor(
+            &mut svg,
+            plot,
+            cursor_b_us,
+            (window_start_us, window_end_us),
+            "B",
+            "#87dc8c",
         );
     }
-    draw_svg_cursor(
-        &mut svg,
-        plot,
-        cursor_a_us,
-        (window_start_us, window_end_us),
-        "A",
-        "#ffc457",
-    );
-    draw_svg_cursor(
-        &mut svg,
-        plot,
-        cursor_b_us,
-        (window_start_us, window_end_us),
-        "B",
-        "#87dc8c",
-    );
     svg.push_str("</svg>\n");
     Some(svg)
 }

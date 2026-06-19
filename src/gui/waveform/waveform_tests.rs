@@ -1,3 +1,4 @@
+use super::waveform_export::{ScopePlotSvgOptions, ScopePlotSvgSizePreset};
 use super::{ScopeTriggerEdge, ScopeTriggerJump};
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe, parse_waveform_csv_text,
@@ -75,6 +76,7 @@ fn scope_plot_svg_exports_visible_runtime_annotations() {
             snapshot_markers: &markers,
         },
         &[],
+        ScopePlotSvgOptions::default(),
     )
     .unwrap();
 
@@ -87,6 +89,66 @@ fn scope_plot_svg_exports_visible_runtime_annotations() {
     assert!(svg.contains(">T<"));
     assert!(svg.contains("Startup A"));
     assert!(svg.contains("Startup B"));
+}
+
+#[test]
+fn scope_plot_svg_options_control_report_size_and_annotations() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 3.3
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    };
+    let markers = vec![WaveformSnapshotMarker {
+        snapshot_index: 0,
+        trace,
+        label: "Edge".to_string(),
+        note: String::new(),
+        source: "trigger event".to_string(),
+        trace_label: "v(out)".to_string(),
+        time_a_us: Some(1.0),
+        time_b_us: None,
+        value_a: Some(3.3),
+        value_b: None,
+        event_edge: Some("rising".to_string()),
+    }];
+
+    let svg = scope_plot_svg(
+        &[waveform],
+        &[trace],
+        0.0,
+        1.0,
+        WaveformPlotView {
+            visible_window_us: Some((0.0, 1.0)),
+            visible_value_window: None,
+            lane_mode: WaveformPlotLaneMode::Shared,
+            trigger: Some(WaveformPlotTrigger {
+                threshold: 1.5,
+                events_us: &[1.0],
+            }),
+            snapshot_markers: &markers,
+        },
+        &[],
+        ScopePlotSvgOptions {
+            size_preset: ScopePlotSvgSizePreset::Compact,
+            include_cursors: false,
+            include_trigger: false,
+            include_snapshots: false,
+        },
+    )
+    .unwrap();
+
+    assert!(svg.contains(r#"width="720" height="405""#));
+    assert!(!svg.contains(">A<"));
+    assert!(!svg.contains(">B<"));
+    assert!(!svg.contains(">T<"));
+    assert!(!svg.contains("Edge rising"));
 }
 
 #[test]
