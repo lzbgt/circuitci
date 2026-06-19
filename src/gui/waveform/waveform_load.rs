@@ -27,6 +27,15 @@ pub(super) struct WaveformLoadPreflight {
     pub(super) summary: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DeferredWaveformArtifact {
+    pub(crate) path: String,
+    pub(crate) label: String,
+    pub(crate) size_label: String,
+    pub(crate) samples: usize,
+    pub(crate) detail: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WaveformLoadStatusFilter {
     All,
@@ -408,6 +417,22 @@ pub(crate) fn waveform_load_deferred_paths(diagnostics: &[WaveformLoadDiagnostic
         .collect()
 }
 
+pub(crate) fn waveform_load_deferred_artifacts(
+    diagnostics: &[WaveformLoadDiagnostic],
+) -> Vec<DeferredWaveformArtifact> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.deferred)
+        .map(|diagnostic| DeferredWaveformArtifact {
+            path: diagnostic.path.clone(),
+            label: deferred_waveform_label(&diagnostic.path),
+            size_label: format_waveform_load_bytes(diagnostic.bytes),
+            samples: diagnostic.samples,
+            detail: diagnostic.detail.clone(),
+        })
+        .collect()
+}
+
 pub(crate) fn merge_waveform_load_diagnostics(
     diagnostics: &mut Vec<WaveformLoadDiagnostic>,
     updates: Vec<WaveformLoadDiagnostic>,
@@ -422,6 +447,15 @@ pub(crate) fn merge_waveform_load_diagnostics(
             diagnostics.push(update);
         }
     }
+}
+
+fn deferred_waveform_label(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .and_then(|file_name| file_name.to_str())
+        .filter(|file_name| !file_name.is_empty())
+        .unwrap_or(path)
+        .to_string()
 }
 
 fn waveform_load_csv_escape(value: String) -> String {

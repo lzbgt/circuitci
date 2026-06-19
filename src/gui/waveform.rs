@@ -24,7 +24,8 @@ pub(super) use waveform_export::ScopePlotSvgSizePreset;
 use waveform_export::scope_plot_svg;
 use waveform_load::waveform_load_preflight;
 pub(super) use waveform_load::{
-    WaveformLoadDiagnostic, WaveformLoadStatusFilter, merge_waveform_load_diagnostics,
+    DeferredWaveformArtifact, WaveformLoadDiagnostic, WaveformLoadStatusFilter,
+    merge_waveform_load_diagnostics, waveform_load_deferred_artifacts,
     waveform_load_deferred_paths,
 };
 #[cfg(test)]
@@ -63,6 +64,7 @@ impl CircuitCiApp {
         self.waveform_scope_header(ui);
         self.waveform_load_diagnostics_panel(ui);
         if self.waveforms.is_empty() {
+            self.waveform_selector(ui);
             return;
         }
         self.prune_scope_trace_pins();

@@ -12,9 +12,9 @@ use super::{
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
     load_waveform_paths_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
     scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
-    waveform_load_deferred_paths, waveform_load_diagnostic_visible_indexes,
-    waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
-    waveform_probe_group_choices,
+    waveform_load_deferred_artifacts, waveform_load_deferred_paths,
+    waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv,
+    waveform_load_preflight, waveform_probe_choices, waveform_probe_group_choices,
 };
 
 #[test]
@@ -307,6 +307,40 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
     assert!(csv.contains("skipped,missing.csv,,0,0,12,\"Failed, \"\"missing\"\" file\""));
     assert!(!csv.contains("huge.csv"));
     assert!(!csv.contains("fast.csv"));
+}
+
+#[test]
+fn deferred_waveform_artifacts_project_selector_placeholders() {
+    let diagnostics = vec![
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/scope_a.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(60 * 1024 * 1024),
+            samples: 1_200_000,
+            probes: 0,
+            elapsed_ms: 2,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic {
+            path: "/tmp/run/missing.csv".to_string(),
+            loaded: false,
+            deferred: false,
+            bytes: None,
+            samples: 0,
+            probes: 0,
+            elapsed_ms: 3,
+            detail: "Skipped".to_string(),
+        },
+    ];
+
+    let artifacts = waveform_load_deferred_artifacts(&diagnostics);
+
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].path, "/tmp/run/scope_a.csv");
+    assert_eq!(artifacts[0].label, "scope_a.csv");
+    assert_eq!(artifacts[0].size_label, "60.0 MiB");
+    assert_eq!(artifacts[0].samples, 1_200_000);
 }
 
 #[test]

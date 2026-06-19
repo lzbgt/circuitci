@@ -3,16 +3,39 @@ use super::waveform_plot::{
     scope_visible_trace_refs, valid_waveform_trace,
 };
 use super::{
-    CircuitCiApp, WaveformProbe, WaveformProbeQuantity, WaveformTraceColor, WaveformTracePreset,
-    WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    CircuitCiApp, DeferredWaveformArtifact, WaveformProbe, WaveformProbeQuantity,
+    WaveformTraceColor, WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformView,
+    waveform_load_deferred_artifacts,
 };
 use eframe::egui;
 
 impl CircuitCiApp {
     pub(super) fn waveform_selector(&mut self, ui: &mut egui::Ui) {
+        let mut load_deferred_path = None;
+        let deferred_artifacts = waveform_load_deferred_artifacts(&self.waveform_load_diagnostics);
+        if self.waveforms.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Waveforms");
+                if deferred_artifacts.is_empty() {
+                    ui.label("No parsed or deferred waveform artifacts.");
+                } else {
+                    ui.label(format!(
+                        "{} deferred waveform artifact(s)",
+                        deferred_artifacts.len()
+                    ));
+                }
+            });
+            self.deferred_waveform_artifacts_ui(ui, &deferred_artifacts, &mut load_deferred_path);
+            if let Some(path) = load_deferred_path {
+                self.load_deferred_waveform_path(path);
+            }
+            return;
+        }
+
         self.selected_waveform = self.selected_waveform.min(self.waveforms.len() - 1);
         let mut next_waveform = None;
         ui.horizontal_wrapped(|ui| {
+            ui.strong("Waveforms");
             for (index, waveform) in self.waveforms.iter().enumerate() {
                 if ui
                     .selectable_label(self.selected_waveform == index, &waveform.label)
@@ -21,7 +44,11 @@ impl CircuitCiApp {
                     next_waveform = Some(index);
                 }
             }
+            if !deferred_artifacts.is_empty() {
+                ui.label(format!("{} deferred", deferred_artifacts.len()));
+            }
         });
+        self.deferred_waveform_artifacts_ui(ui, &deferred_artifacts, &mut load_deferred_path);
         if let Some(index) = next_waveform.filter(|index| *index != self.selected_waveform) {
             self.selected_waveform = index;
             self.selected_probe = 0;
@@ -37,6 +64,9 @@ impl CircuitCiApp {
             self.clear_waveform_view_history();
             self.waveform_trigger_threshold = 0.0;
             self.waveform_playing = false;
+        }
+        if let Some(path) = load_deferred_path {
+            self.load_deferred_waveform_path(path);
         }
     }
 
@@ -201,6 +231,44 @@ impl CircuitCiApp {
         self.clear_waveform_view_history();
         self.waveform_trigger_threshold = 0.0;
         self.waveform_playing = false;
+    }
+
+    fn deferred_waveform_artifacts_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        artifacts: &[DeferredWaveformArtifact],
+        load_deferred_path: &mut Option<String>,
+    ) {
+        if artifacts.is_empty() {
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.menu_button(format!("Deferred Waveforms ({})", artifacts.len()), |ui| {
+                egui::ScrollArea::vertical()
+                    .max_height(180.0)
+                    .show(ui, |ui| {
+                        for artifact in artifacts {
+                            ui.horizontal(|ui| {
+                                if ui.button("Load").clicked() {
+                                    *load_deferred_path = Some(artifact.path.clone());
+                                    ui.close();
+                                }
+                                ui.monospace(&artifact.label);
+                                ui.label(format!(
+                                    "{}; ~{} row(s)",
+                                    artifact.size_label, artifact.samples
+                                ));
+                            });
+                            if !artifact.detail.is_empty() {
+                                ui.small(&artifact.detail);
+                            }
+                        }
+                    });
+            });
+            if ui.button("Load All Deferred").clicked() {
+                self.load_deferred_waveforms();
+            }
+        });
     }
 
     fn waveform_compare_presets_ui(&mut self, ui: &mut egui::Ui) {
