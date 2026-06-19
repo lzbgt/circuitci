@@ -10,8 +10,9 @@ use super::{
 use super::{
     WaveformMathDraft, WaveformProbeGroup, append_derived_waveform_probe,
     load_report_waveforms_with_progress_and_cancel, load_waveform_csv_with_progress_and_cancel,
-    parse_waveform_csv_text, scope_plot_svg, scope_trigger_event_rows, scope_trigger_events,
-    select_scope_trigger_event, waveform_load_diagnostic_visible_indexes,
+    load_waveform_paths_with_progress_and_cancel, parse_waveform_csv_text, scope_plot_svg,
+    scope_trigger_event_rows, scope_trigger_events, select_scope_trigger_event,
+    waveform_load_deferred_paths, waveform_load_diagnostic_visible_indexes,
     waveform_load_diagnostics_csv, waveform_load_preflight, waveform_probe_choices,
     waveform_probe_group_choices,
 };
@@ -92,16 +93,19 @@ fn report_waveform_loader_records_loaded_and_skipped_diagnostics() {
     );
 
     let (waveforms, diagnostics) =
-        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false).unwrap();
+        load_report_waveforms_with_progress_and_cancel(&report, |_, _| {}, || false, false)
+            .unwrap();
 
     assert_eq!(waveforms.len(), 1);
     assert_eq!(diagnostics.len(), 2);
     assert!(diagnostics[0].loaded);
+    assert!(!diagnostics[0].deferred);
     assert_eq!(diagnostics[0].samples, 2);
     assert_eq!(diagnostics[0].probes, 1);
     assert!(diagnostics[0].bytes.unwrap() > 0);
     assert!(diagnostics[0].detail.contains("Loaded 2 sample row"));
     assert!(!diagnostics[1].loaded);
+    assert!(!diagnostics[1].deferred);
     assert_eq!(diagnostics[1].path, missing_path.to_string_lossy());
     assert!(
         diagnostics[1]
@@ -153,6 +157,7 @@ fn report_waveform_loader_emits_preflight_progress_before_parsing() {
         &report,
         |stage, detail| progress.push((stage, detail)),
         || false,
+        false,
     )
     .unwrap();
 
@@ -164,11 +169,57 @@ fn report_waveform_loader_emits_preflight_progress_before_parsing() {
 }
 
 #[test]
+fn report_waveform_loader_defers_large_artifacts_until_requested() {
+    let large_file = tempfile::NamedTempFile::new().unwrap();
+    large_file.as_file().set_len(51 * 1024 * 1024).unwrap();
+    let path = large_file.path().to_string_lossy().into_owned();
+    let mut progress = Vec::new();
+
+    let (waveforms, diagnostics) = load_waveform_paths_with_progress_and_cancel(
+        std::slice::from_ref(&path),
+        |stage, detail| progress.push((stage, detail)),
+        || false,
+        true,
+    )
+    .unwrap();
+
+    assert!(waveforms.is_empty());
+    assert_eq!(diagnostics.len(), 1);
+    assert!(!diagnostics[0].loaded);
+    assert!(diagnostics[0].deferred);
+    assert_eq!(
+        waveform_load_deferred_paths(&diagnostics),
+        vec![path.clone()]
+    );
+    assert!(
+        progress
+            .iter()
+            .any(|(stage, detail)| *stage == "Deferred waveform artifact"
+                && detail.contains(&path))
+    );
+
+    let (waveforms, diagnostics) = load_waveform_paths_with_progress_and_cancel(
+        std::slice::from_ref(&path),
+        |_, _| {},
+        || false,
+        false,
+    )
+    .unwrap();
+
+    assert!(waveforms.is_empty());
+    assert_eq!(diagnostics.len(), 1);
+    assert!(!diagnostics[0].loaded);
+    assert!(!diagnostics[0].deferred);
+    assert!(diagnostics[0].detail.contains("Waveform CSV"));
+}
+
+#[test]
 fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
     let diagnostics = vec![
         WaveformLoadDiagnostic {
             path: "fast.csv".to_string(),
             loaded: true,
+            deferred: false,
             bytes: Some(128),
             samples: 2,
             probes: 1,
@@ -178,6 +229,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
         WaveformLoadDiagnostic {
             path: "slow.csv".to_string(),
             loaded: true,
+            deferred: false,
             bytes: Some(2048),
             samples: 4000,
             probes: 3,
@@ -185,8 +237,19 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             detail: "Loaded 4000 sample row(s).".to_string(),
         },
         WaveformLoadDiagnostic {
+            path: "huge.csv".to_string(),
+            loaded: false,
+            deferred: true,
+            bytes: Some(60 * 1024 * 1024),
+            samples: 1_200_000,
+            probes: 0,
+            elapsed_ms: 2,
+            detail: "Deferred large waveform artifact".to_string(),
+        },
+        WaveformLoadDiagnostic {
             path: "missing.csv".to_string(),
             loaded: false,
+            deferred: false,
             bytes: None,
             samples: 0,
             probes: 0,
@@ -200,6 +263,16 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
             &diagnostics,
             "missing",
             WaveformLoadStatusFilter::Skipped,
+            0.0,
+            false,
+        ),
+        vec![3]
+    );
+    assert_eq!(
+        waveform_load_diagnostic_visible_indexes(
+            &diagnostics,
+            "",
+            WaveformLoadStatusFilter::Deferred,
             0.0,
             false,
         ),
@@ -232,6 +305,7 @@ fn waveform_load_diagnostics_filter_and_csv_use_visible_rows() {
     assert!(csv.starts_with("status,path,size_bytes,samples,probes,elapsed_ms,detail\n"));
     assert!(csv.contains("loaded,slow.csv,2048,4000,3,180"));
     assert!(csv.contains("skipped,missing.csv,,0,0,12,\"Failed, \"\"missing\"\" file\""));
+    assert!(!csv.contains("huge.csv"));
     assert!(!csv.contains("fast.csv"));
 }
 

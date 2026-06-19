@@ -11,6 +11,7 @@ const LARGE_WAVEFORM_ROWS: usize = 1_000_000;
 pub(crate) struct WaveformLoadDiagnostic {
     pub(super) path: String,
     pub(super) loaded: bool,
+    pub(super) deferred: bool,
     pub(super) bytes: Option<u64>,
     pub(super) samples: usize,
     pub(super) probes: usize,
@@ -30,17 +31,98 @@ pub(super) struct WaveformLoadPreflight {
 pub(crate) enum WaveformLoadStatusFilter {
     All,
     Loaded,
+    Deferred,
     Skipped,
 }
 
 impl WaveformLoadStatusFilter {
-    pub(super) const ALL: [Self; 3] = [Self::All, Self::Loaded, Self::Skipped];
+    pub(super) const ALL: [Self; 4] = [Self::All, Self::Loaded, Self::Deferred, Self::Skipped];
 
     pub(super) fn label(self) -> &'static str {
         match self {
             Self::All => "All",
             Self::Loaded => "Loaded",
+            Self::Deferred => "Deferred",
             Self::Skipped => "Skipped",
+        }
+    }
+}
+
+impl WaveformLoadDiagnostic {
+    pub(super) fn loaded(
+        path: String,
+        bytes: Option<u64>,
+        samples: usize,
+        probes: usize,
+        elapsed_ms: u128,
+    ) -> Self {
+        Self {
+            path,
+            loaded: true,
+            deferred: false,
+            bytes,
+            samples,
+            probes,
+            elapsed_ms,
+            detail: format!("Loaded {samples} sample row(s) across {probes} probe(s)."),
+        }
+    }
+
+    pub(super) fn skipped(
+        path: String,
+        bytes: Option<u64>,
+        elapsed_ms: u128,
+        detail: String,
+    ) -> Self {
+        Self {
+            path,
+            loaded: false,
+            deferred: false,
+            bytes,
+            samples: 0,
+            probes: 0,
+            elapsed_ms,
+            detail,
+        }
+    }
+
+    pub(super) fn deferred(
+        path: String,
+        preflight: &WaveformLoadPreflight,
+        elapsed_ms: u128,
+    ) -> Self {
+        Self {
+            path,
+            loaded: false,
+            deferred: true,
+            bytes: preflight.bytes,
+            samples: preflight.estimated_rows.unwrap_or(0),
+            probes: 0,
+            elapsed_ms,
+            detail: format!(
+                "Deferred large waveform artifact; use Load Deferred to parse it when needed ({})",
+                preflight.summary
+            ),
+        }
+    }
+
+    fn status_label(&self) -> &'static str {
+        if self.loaded {
+            "Loaded"
+        } else if self.deferred {
+            "Deferred"
+        } else {
+            "Skipped"
+        }
+    }
+
+    fn csv_status(&self) -> &'static str {
+        if self.loaded {
+            "loaded"
+        } else if self.deferred {
+            "deferred"
+        } else {
+            "skipped"
         }
     }
 }
@@ -88,12 +170,29 @@ impl CircuitCiApp {
             .iter()
             .filter(|diagnostic| diagnostic.loaded)
             .count();
-        let skipped = self.waveform_load_diagnostics.len().saturating_sub(loaded);
+        let deferred = self
+            .waveform_load_diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.deferred)
+            .count();
+        let skipped = self
+            .waveform_load_diagnostics
+            .len()
+            .saturating_sub(loaded)
+            .saturating_sub(deferred);
 
+        let mut load_deferred_path = None;
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Waveform Load Diagnostics");
-                ui.label(format!("{} loaded, {} skipped", loaded, skipped));
+                ui.label(format!(
+                    "{} loaded, {} deferred, {} skipped",
+                    loaded, deferred, skipped
+                ));
+                ui.checkbox(&mut self.waveform_defer_large_loads, "Defer large");
+                if deferred > 0 && ui.button("Load Deferred").clicked() {
+                    self.load_deferred_waveforms();
+                }
                 if ui.button("Copy CSV").clicked() {
                     let rows: Vec<_> = visible_indexes
                         .iter()
@@ -144,7 +243,7 @@ impl CircuitCiApp {
                 return;
             }
             egui::Grid::new("waveform_load_diagnostics")
-                .num_columns(7)
+                .num_columns(8)
                 .striped(true)
                 .show(ui, |ui| {
                     ui.label("Status");
@@ -154,25 +253,32 @@ impl CircuitCiApp {
                     ui.label("Probes");
                     ui.label("Load");
                     ui.label("Detail");
+                    ui.label("Action");
                     ui.end_row();
 
                     for &index in &visible_indexes {
                         let diagnostic = &self.waveform_load_diagnostics[index];
-                        ui.label(if diagnostic.loaded {
-                            "Loaded"
-                        } else {
-                            "Skipped"
-                        });
+                        ui.label(diagnostic.status_label());
                         ui.monospace(&diagnostic.path);
                         ui.monospace(format_waveform_load_bytes(diagnostic.bytes));
                         ui.monospace(diagnostic.samples.to_string());
                         ui.monospace(diagnostic.probes.to_string());
                         ui.monospace(format!("{} ms", diagnostic.elapsed_ms));
                         ui.label(&diagnostic.detail);
+                        if diagnostic.deferred {
+                            if ui.small_button("Load").clicked() {
+                                load_deferred_path = Some(diagnostic.path.clone());
+                            }
+                        } else {
+                            ui.label("");
+                        }
                         ui.end_row();
                     }
                 });
         });
+        if let Some(path) = load_deferred_path {
+            self.load_deferred_waveform_path(path);
+        }
     }
 }
 
@@ -224,8 +330,15 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
                 (status_filter, diagnostic.loaded),
                 (WaveformLoadStatusFilter::All, _)
                     | (WaveformLoadStatusFilter::Loaded, true)
+                    | (WaveformLoadStatusFilter::Deferred, false)
                     | (WaveformLoadStatusFilter::Skipped, false)
             ) {
+                return None;
+            }
+            if status_filter == WaveformLoadStatusFilter::Deferred && !diagnostic.deferred {
+                return None;
+            }
+            if status_filter == WaveformLoadStatusFilter::Skipped && diagnostic.deferred {
                 return None;
             }
             if diagnostic.elapsed_ms < min_elapsed_ms {
@@ -253,11 +366,7 @@ pub(super) fn waveform_load_diagnostic_visible_indexes(
 fn waveform_load_diagnostic_search_text(diagnostic: &WaveformLoadDiagnostic) -> String {
     format!(
         "{} {} {}",
-        if diagnostic.loaded {
-            "loaded"
-        } else {
-            "skipped"
-        },
+        diagnostic.csv_status(),
         diagnostic.path,
         diagnostic.detail
     )
@@ -268,12 +377,7 @@ pub(super) fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) ->
     let mut csv = String::from("status,path,size_bytes,samples,probes,elapsed_ms,detail\n");
     for diagnostic in rows {
         let fields = [
-            if diagnostic.loaded {
-                "loaded"
-            } else {
-                "skipped"
-            }
-            .to_string(),
+            diagnostic.csv_status().to_string(),
             diagnostic.path.clone(),
             diagnostic
                 .bytes
@@ -294,6 +398,30 @@ pub(super) fn waveform_load_diagnostics_csv(rows: &[&WaveformLoadDiagnostic]) ->
         csv.push('\n');
     }
     csv
+}
+
+pub(crate) fn waveform_load_deferred_paths(diagnostics: &[WaveformLoadDiagnostic]) -> Vec<String> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.deferred)
+        .map(|diagnostic| diagnostic.path.clone())
+        .collect()
+}
+
+pub(crate) fn merge_waveform_load_diagnostics(
+    diagnostics: &mut Vec<WaveformLoadDiagnostic>,
+    updates: Vec<WaveformLoadDiagnostic>,
+) {
+    for update in updates {
+        if let Some(existing) = diagnostics
+            .iter_mut()
+            .find(|diagnostic| diagnostic.path == update.path)
+        {
+            *existing = update;
+        } else {
+            diagnostics.push(update);
+        }
+    }
 }
 
 fn waveform_load_csv_escape(value: String) -> String {

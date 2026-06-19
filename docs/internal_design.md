@@ -319,11 +319,14 @@ readouts, activity coloring, pinned trace overlays over the currently loaded
 CSV set, and derived difference, sum, product, or ratio channels for runtime
 waveform probes, but those values must come from report waveform artifacts and
 the shared waveform interpolation helpers rather than an unsynchronized live
-simulation model. Validation workers load waveform artifacts with bounded preflight size/row estimates, large-artifact progress warnings, progress and
-cancel checks, loaded/skipped file diagnostics, and report/waveform co-application,
-so large CSV parsing does not run on the UI thread, skipped traces and slow artifacts are visible
-to the user, diagnostics can be copied as CSV, and stale waveform data does not outlive its report.
-`src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates plus filterable/copyable transient waveform-load diagnostics for loaded/skipped CSV artifacts.
+simulation model. Validation workers load waveform artifacts with bounded preflight size/row estimates, large-artifact progress warnings, optional
+large-artifact deferral, progress and cancel checks, loaded/deferred/skipped file
+diagnostics, and report/waveform co-application, so large CSV parsing does not
+run on the UI thread, deferred/skipped traces and slow artifacts are visible to
+the user, diagnostics can be copied as CSV, and stale waveform data does not
+outlive its report. Deferred artifacts are parsed only through the same
+background waveform-loader path when the user explicitly loads them.
+`src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates plus filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts.
 Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helpers and
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and

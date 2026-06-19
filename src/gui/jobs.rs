@@ -1,6 +1,8 @@
 use super::project::{optional_path, sanitized_project_name};
 use super::waveform::{
     WaveformLoadDiagnostic, WaveformView, load_report_waveforms_with_progress_and_cancel,
+    load_waveform_paths_with_progress_and_cancel, merge_waveform_load_diagnostics,
+    waveform_load_deferred_paths,
 };
 use super::{CircuitCiApp, Stage, validate_from_gui};
 use crate::cancellation;
@@ -53,6 +55,7 @@ struct BackgroundJobProgress {
 
 enum BackgroundJobResult {
     Validation(Box<ValidationJobResult>),
+    WaveformLoad(Box<WaveformLoadJobResult>),
     Suggestions(Box<SuggestionJobResult>),
     ImportProject(Box<ImportProjectJobResult>),
 }
@@ -69,6 +72,18 @@ struct ValidationJobOutput {
     markdown: String,
     waveforms: Vec<WaveformView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
+}
+
+struct WaveformLoadJobResult {
+    project_path: PathBuf,
+    profile: String,
+    output_dir: PathBuf,
+    result: Result<WaveformLoadJobOutput>,
+}
+
+struct WaveformLoadJobOutput {
+    waveforms: Vec<WaveformView>,
+    diagnostics: Vec<WaveformLoadDiagnostic>,
 }
 
 struct SuggestionJobResult {
@@ -101,6 +116,7 @@ impl CircuitCiApp {
         let project_path = PathBuf::from(self.project_path.clone());
         let profile = self.profile.clone();
         let output_dir = PathBuf::from(self.output_dir.clone());
+        let defer_large_waveforms = self.waveform_defer_large_loads;
         let target = format!("{} -> {}", project_path.display(), output_dir.display());
         self.start_background_job("validation", target, move |sender, cancel_token| {
             let thread_project_path = project_path.clone();
@@ -129,6 +145,7 @@ impl CircuitCiApp {
                             &report,
                             |stage, detail| send_background_progress(&sender, stage, detail),
                             || cancel_token.load(Ordering::Relaxed),
+                            defer_large_waveforms,
                         )?;
                     Ok(ValidationJobOutput {
                         report,
@@ -144,6 +161,63 @@ impl CircuitCiApp {
                 );
                 let _ = sender.send(BackgroundJobMessage::Finished(
                     BackgroundJobResult::Validation(Box::new(ValidationJobResult {
+                        project_path: thread_project_path,
+                        profile: thread_profile,
+                        output_dir: thread_output_dir,
+                        result,
+                    })),
+                ));
+            });
+        });
+    }
+
+    pub(super) fn load_deferred_waveforms(&mut self) {
+        let paths = waveform_load_deferred_paths(&self.waveform_load_diagnostics);
+        self.load_deferred_waveform_paths(paths);
+    }
+
+    pub(super) fn load_deferred_waveform_path(&mut self, path: String) {
+        self.load_deferred_waveform_paths(vec![path]);
+    }
+
+    fn load_deferred_waveform_paths(&mut self, paths: Vec<String>) {
+        if paths.is_empty() {
+            self.status = "No deferred waveform artifacts to load.".to_string();
+            self.push_diagnostic("No deferred waveform artifacts to load.");
+            return;
+        }
+        let project_path = PathBuf::from(self.project_path.clone());
+        let profile = self.profile.clone();
+        let output_dir = PathBuf::from(self.output_dir.clone());
+        let target = format!("{} deferred waveform artifact(s)", paths.len());
+        self.start_background_job("waveform load", target, move |sender, cancel_token| {
+            let thread_project_path = project_path.clone();
+            let thread_profile = profile.clone();
+            let thread_output_dir = output_dir.clone();
+            let thread_paths = paths.clone();
+            thread::spawn(move || {
+                send_background_progress(
+                    &sender,
+                    "Preparing waveform load",
+                    format!("{} deferred artifact(s).", thread_paths.len()),
+                );
+                let result = load_waveform_paths_with_progress_and_cancel(
+                    &thread_paths,
+                    |stage, detail| send_background_progress(&sender, stage, detail),
+                    || cancel_token.load(Ordering::Relaxed),
+                    false,
+                )
+                .map(|(waveforms, diagnostics)| WaveformLoadJobOutput {
+                    waveforms,
+                    diagnostics,
+                });
+                send_background_progress(
+                    &sender,
+                    "Waveform load finished",
+                    "Applying deferred waveform artifacts.".to_string(),
+                );
+                let _ = sender.send(BackgroundJobMessage::Finished(
+                    BackgroundJobResult::WaveformLoad(Box::new(WaveformLoadJobResult {
                         project_path: thread_project_path,
                         profile: thread_profile,
                         output_dir: thread_output_dir,
@@ -493,6 +567,9 @@ impl CircuitCiApp {
             BackgroundJobResult::Validation(result) => {
                 self.apply_validation_result(*result, elapsed_secs)
             }
+            BackgroundJobResult::WaveformLoad(result) => {
+                self.apply_waveform_load_result(*result, elapsed_secs)
+            }
             BackgroundJobResult::Suggestions(result) => {
                 self.apply_suggestion_result(*result, elapsed_secs)
             }
@@ -527,6 +604,8 @@ impl CircuitCiApp {
             Ok(output) => {
                 let waveforms = output.waveforms;
                 let waveform_count = waveforms.len();
+                let deferred_count =
+                    waveform_load_deferred_paths(&output.waveform_load_diagnostics).len();
                 self.status = format!("Validation {}", output.report.result);
                 self.report_markdown = output.markdown;
                 self.report = Some(output.report);
@@ -549,20 +628,20 @@ impl CircuitCiApp {
                 self.waveform_value_max = None;
                 self.clear_waveform_view_history();
                 self.waveform_trigger_threshold = 0.0;
-                self.stage = if waveform_count == 0 {
+                self.stage = if waveform_count == 0 && deferred_count == 0 {
                     Stage::Reports
                 } else {
                     Stage::Simulation
                 };
                 self.push_diagnostic(&format!(
-                    "Background validation report written; loaded {waveform_count} waveform view(s)."
+                    "Background validation report written; loaded {waveform_count} waveform view(s), deferred {deferred_count} artifact(s)."
                 ));
                 self.push_background_job_record(
                     "validation",
                     "completed",
                     elapsed_secs,
                     format!(
-                        "Validation {}; loaded {waveform_count} waveform view(s).",
+                        "Validation {}; loaded {waveform_count} waveform view(s), deferred {deferred_count} artifact(s).",
                         self.status.trim_start_matches("Validation ")
                     ),
                     Some(result.output_dir.to_string_lossy().into_owned()),
@@ -588,6 +667,83 @@ impl CircuitCiApp {
                 );
                 self.push_background_job_record(
                     "validation",
+                    "failed",
+                    elapsed_secs,
+                    detail,
+                    Some(result.output_dir.to_string_lossy().into_owned()),
+                );
+                self.record_error(error);
+            }
+        }
+    }
+
+    fn apply_waveform_load_result(&mut self, result: WaveformLoadJobResult, elapsed_secs: f32) {
+        if PathBuf::from(self.project_path.clone()) != result.project_path
+            || self.profile != result.profile
+            || PathBuf::from(self.output_dir.clone()) != result.output_dir
+        {
+            self.status = "Ignored stale waveform load result.".to_string();
+            self.push_diagnostic(
+                "Ignored a deferred waveform load result because project/profile/output changed.",
+            );
+            self.push_background_job_record(
+                "waveform load",
+                "stale",
+                elapsed_secs,
+                format!(
+                    "Ignored waveform load for {} because project/profile/output changed.",
+                    result.project_path.display()
+                ),
+                Some(result.output_dir.to_string_lossy().into_owned()),
+            );
+            return;
+        }
+        match result.result {
+            Ok(output) => {
+                let waveform_count = output.waveforms.len();
+                merge_waveform_load_diagnostics(
+                    &mut self.waveform_load_diagnostics,
+                    output.diagnostics,
+                );
+                self.waveforms.extend(output.waveforms);
+                self.waveform_plot_cache.clear();
+                if !self.waveforms.is_empty() {
+                    self.stage = Stage::Simulation;
+                    if self.selected_waveform >= self.waveforms.len() {
+                        self.selected_waveform = 0;
+                        self.selected_probe = 0;
+                    }
+                }
+                let detail = format!("Loaded {waveform_count} deferred waveform view(s).");
+                self.status = detail.clone();
+                self.push_diagnostic(&detail);
+                self.push_background_job_record(
+                    "waveform load",
+                    "completed",
+                    elapsed_secs,
+                    detail,
+                    Some(result.output_dir.to_string_lossy().into_owned()),
+                );
+            }
+            Err(error) => {
+                if cancellation::is_canceled(&error) {
+                    let detail = format!("{error:#}");
+                    self.status = "Background job canceled.".to_string();
+                    self.push_diagnostic(&detail);
+                    self.push_canceled_background_job_record(
+                        "waveform load",
+                        elapsed_secs,
+                        detail,
+                        Some(result.output_dir.to_string_lossy().into_owned()),
+                    );
+                    return;
+                }
+                let detail = format!(
+                    "Background waveform load failed for {}.\n{error:#}",
+                    result.project_path.display()
+                );
+                self.push_background_job_record(
+                    "waveform load",
                     "failed",
                     elapsed_secs,
                     detail,
@@ -843,6 +999,12 @@ fn canceled_job_detail(result: &BackgroundJobResult) -> Option<String> {
             .err()
             .filter(|error| cancellation::is_canceled(error))
             .map(|error| format!("{error:#}")),
+        BackgroundJobResult::WaveformLoad(result) => result
+            .result
+            .as_ref()
+            .err()
+            .filter(|error| cancellation::is_canceled(error))
+            .map(|error| format!("{error:#}")),
         BackgroundJobResult::Suggestions(result) => result
             .result
             .as_ref()
@@ -861,6 +1023,9 @@ fn canceled_job_detail(result: &BackgroundJobResult) -> Option<String> {
 fn background_job_output_path(result: &BackgroundJobResult) -> Option<String> {
     match result {
         BackgroundJobResult::Validation(result) => {
+            Some(result.output_dir.to_string_lossy().into_owned())
+        }
+        BackgroundJobResult::WaveformLoad(result) => {
             Some(result.output_dir.to_string_lossy().into_owned())
         }
         BackgroundJobResult::ImportProject(result) => {

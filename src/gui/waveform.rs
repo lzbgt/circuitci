@@ -23,7 +23,10 @@ pub(super) use waveform_export::ScopePlotSvgSizePreset;
 #[cfg(test)]
 use waveform_export::scope_plot_svg;
 use waveform_load::waveform_load_preflight;
-pub(super) use waveform_load::{WaveformLoadDiagnostic, WaveformLoadStatusFilter};
+pub(super) use waveform_load::{
+    WaveformLoadDiagnostic, WaveformLoadStatusFilter, merge_waveform_load_diagnostics,
+    waveform_load_deferred_paths,
+};
 #[cfg(test)]
 use waveform_load::{waveform_load_diagnostic_visible_indexes, waveform_load_diagnostics_csv};
 pub(super) use waveform_plot::{WaveformCursorTarget, WaveformPlotCache};
@@ -610,17 +613,36 @@ fn scope_region_stats_rows(
 
 pub(super) fn load_report_waveforms_with_progress_and_cancel<F, C>(
     report: &ValidationReport,
-    mut on_progress: F,
+    on_progress: F,
     should_cancel: C,
+    defer_large_waveforms: bool,
 ) -> Result<(Vec<WaveformView>, Vec<WaveformLoadDiagnostic>)>
 where
     F: FnMut(&'static str, String),
     C: Fn() -> bool,
 {
-    let waveform_count = report.waveforms.len();
+    load_waveform_paths_with_progress_and_cancel(
+        &report.waveforms,
+        on_progress,
+        should_cancel,
+        defer_large_waveforms,
+    )
+}
+
+pub(super) fn load_waveform_paths_with_progress_and_cancel<F, C>(
+    waveform_paths: &[String],
+    mut on_progress: F,
+    should_cancel: C,
+    defer_large_waveforms: bool,
+) -> Result<(Vec<WaveformView>, Vec<WaveformLoadDiagnostic>)>
+where
+    F: FnMut(&'static str, String),
+    C: Fn() -> bool,
+{
+    let waveform_count = waveform_paths.len();
     let mut waveforms = Vec::new();
     let mut diagnostics = Vec::new();
-    for (index, waveform) in report.waveforms.iter().enumerate() {
+    for (index, waveform) in waveform_paths.iter().enumerate() {
         if should_cancel() {
             return Err(crate::cancellation::canceled(
                 "Waveform loading canceled before completion.",
@@ -648,6 +670,18 @@ where
             preflight_stage,
             format!("{}: {}.", waveform, preflight.summary),
         );
+        if defer_large_waveforms && preflight.warning {
+            diagnostics.push(WaveformLoadDiagnostic::deferred(
+                waveform.clone(),
+                &preflight,
+                started_at.elapsed().as_millis(),
+            ));
+            on_progress(
+                "Deferred waveform artifact",
+                format!("Deferred waveform {}: {}.", waveform, preflight.summary),
+            );
+            continue;
+        }
         match load_waveform_csv_with_progress_and_cancel(
             path,
             waveform,
@@ -657,29 +691,24 @@ where
             Ok(view) => {
                 let samples = view.time_s.len();
                 let probes = view.probes.len();
-                diagnostics.push(WaveformLoadDiagnostic {
-                    path: waveform.clone(),
-                    loaded: true,
+                diagnostics.push(WaveformLoadDiagnostic::loaded(
+                    waveform.clone(),
                     bytes,
                     samples,
                     probes,
-                    elapsed_ms: started_at.elapsed().as_millis(),
-                    detail: format!("Loaded {samples} sample row(s) across {probes} probe(s)."),
-                });
+                    started_at.elapsed().as_millis(),
+                ));
                 waveforms.push(view);
             }
             Err(error) if crate::cancellation::is_canceled(&error) => return Err(error),
             Err(error) => {
                 let detail = format!("{error:#}");
-                diagnostics.push(WaveformLoadDiagnostic {
-                    path: waveform.clone(),
-                    loaded: false,
+                diagnostics.push(WaveformLoadDiagnostic::skipped(
+                    waveform.clone(),
                     bytes,
-                    samples: 0,
-                    probes: 0,
-                    elapsed_ms: started_at.elapsed().as_millis(),
-                    detail: detail.clone(),
-                });
+                    started_at.elapsed().as_millis(),
+                    detail.clone(),
+                ));
                 on_progress(
                     "Skipping waveform",
                     format!("Skipped waveform {}: {detail}.", waveform),
