@@ -231,6 +231,7 @@ pub(super) struct ScopeMeasurementSnapshot {
     value_a: Option<f64>,
     value_b: Option<f64>,
     delta_value: Option<f64>,
+    rms_value: Option<f64>,
     event_edge: Option<String>,
     unit: String,
 }

@@ -175,6 +175,9 @@ impl CircuitCiApp {
                     format_time_s(start_us / 1e6),
                     format_time_s(end_us / 1e6)
                 ));
+                if ui.button("Snapshot").clicked() {
+                    self.capture_scope_region_stat_snapshots(&rows, start_us, end_us);
+                }
             });
             egui::Grid::new("scope_region_statistics")
                 .num_columns(7)

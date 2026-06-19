@@ -397,6 +397,76 @@ fn scope_region_stats_rows_include_interpolated_region_edges() {
 }
 
 #[test]
+fn scope_region_stat_snapshots_capture_stats_and_restore_context() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 2);
+    let selected = &app.waveform_measurement_snapshots[0];
+    assert_eq!(selected.label, "Region 1");
+    assert_eq!(selected.source, "region selected");
+    assert_eq!(
+        selected.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
+    assert_eq!(selected.trace_label, "v(out)");
+    assert_eq!(selected.time_a_us, Some(0.0));
+    assert_eq!(selected.time_b_us, Some(2.0));
+    assert_eq!(selected.value_a, Some(0.0));
+    assert_eq!(selected.value_b, Some(2.0));
+    assert!((selected.delta_value.unwrap() - 1.0).abs() < 1.0e-12);
+    assert!((selected.rms_value.unwrap() - (4.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
+
+    let pinned = &app.waveform_measurement_snapshots[1];
+    assert_eq!(pinned.source, "region pinned");
+    assert_eq!(pinned.trace_label, "i(load)");
+    assert!((pinned.rms_value.unwrap() - (31.0e-6_f64 / 3.0).sqrt()).abs() < 1.0e-15);
+
+    app.selected_probe = 0;
+    app.waveform_cursor_a_us = 0.0;
+    app.waveform_cursor_b_us = 0.0;
+    app.set_waveform_time_window(0.0, 1.0);
+
+    assert!(app.activate_scope_measurement_snapshot(1, false));
+
+    assert_eq!(app.selected_probe, 1);
+    assert_eq!(app.waveform_cursor_a_us, 0.0);
+    assert_eq!(app.waveform_cursor_b_us, 2.0);
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+    assert_eq!(app.status, "Restored scope snapshot Region 1.");
+}
+
+#[test]
 fn scope_trace_lanes_split_visible_traces_by_inferred_unit() {
     let waveform = parse_waveform_csv_text(
         "time v(out) i(load) p(load) v(ref)

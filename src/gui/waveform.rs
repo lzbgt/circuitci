@@ -490,6 +490,7 @@ struct ScopeCursorLegendRow {
 #[derive(Debug, Clone, PartialEq)]
 struct ScopeRegionStatsRow {
     selected: bool,
+    trace: WaveformTraceRef,
     label: String,
     unit: &'static str,
     min: f64,
@@ -572,6 +573,7 @@ fn scope_region_stats_rows(
             };
             Some(ScopeRegionStatsRow {
                 selected: trace_order == 0,
+                trace,
                 label,
                 unit: probe_unit(&probe.label),
                 min: stats.min,

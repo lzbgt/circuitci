@@ -1,8 +1,8 @@
 use super::waveform_plot::{WaveformSnapshotMarker, valid_waveform_trace};
 use super::waveform_trigger::ScopeTriggerEvent;
 use super::{
-    ScopeCursorLegendRow, WaveformTraceRef, format_time_s, format_value, scope_cursor_legend_rows,
-    waveform_time_range_for_view,
+    ScopeCursorLegendRow, ScopeRegionStatsRow, WaveformTraceRef, format_time_s, format_value,
+    scope_cursor_legend_rows, waveform_time_range_for_view,
 };
 use crate::gui::{CircuitCiApp, ScopeMeasurementSnapshot};
 use eframe::egui;
@@ -51,6 +51,7 @@ impl CircuitCiApp {
             value_a: Some(event.value),
             value_b: None,
             delta_value: None,
+            rms_value: None,
             event_edge: Some(event.edge.label().to_string()),
             unit: unit.to_string(),
         };
@@ -60,6 +61,24 @@ impl CircuitCiApp {
             event.edge.label(),
             format_time_s(event.time_us / 1e6)
         );
+    }
+
+    pub(super) fn capture_scope_region_stat_snapshots(
+        &mut self,
+        rows: &[ScopeRegionStatsRow],
+        start_us: f64,
+        end_us: f64,
+    ) {
+        if rows.is_empty() {
+            self.status = "No scope region statistics are available to snapshot.".to_string();
+            return;
+        }
+        let count = rows.len();
+        let label = format!("Region {}", self.waveform_measurement_snapshots.len() + 1);
+        for row in rows {
+            self.push_scope_measurement_snapshot(region_snapshot(&label, start_us, end_us, row));
+        }
+        self.status = format!("Captured {count} scope region statistic snapshot(s).");
     }
 
     pub(super) fn waveform_measurement_snapshots_panel(&mut self, ui: &mut egui::Ui) {
@@ -84,15 +103,16 @@ impl CircuitCiApp {
                 .auto_shrink([false, true])
                 .show(ui, |ui| {
                     egui::Grid::new("scope_measurement_snapshots")
-                        .num_columns(10)
+                        .num_columns(11)
                         .striped(true)
                         .show(ui, |ui| {
                             ui.label("Label");
                             ui.label("Source");
                             ui.label("Trace");
-                            ui.label("A/Event");
-                            ui.label("B");
-                            ui.label("Delta");
+                            ui.label("A/Event/Min");
+                            ui.label("B/Max");
+                            ui.label("Delta/Mean");
+                            ui.label("RMS");
                             ui.label("Unit");
                             ui.label("");
                             ui.label("");
@@ -108,6 +128,7 @@ impl CircuitCiApp {
                                 ui.monospace(snapshot_value_a(snapshot));
                                 ui.monospace(snapshot_value_b(snapshot));
                                 ui.monospace(snapshot_delta(snapshot));
+                                ui.monospace(snapshot_rms(snapshot));
                                 ui.monospace(&snapshot.unit);
                                 let can_jump = snapshot.trace.is_some_and(|trace| {
                                     valid_waveform_trace(&self.waveforms, trace)
@@ -176,8 +197,16 @@ impl CircuitCiApp {
                         trace_label: snapshot.trace_label.clone(),
                         time_a_us: snapshot.time_a_us,
                         time_b_us: snapshot.time_b_us,
-                        value_a: snapshot.value_a,
-                        value_b: snapshot.value_b,
+                        value_a: if is_region_snapshot(snapshot) {
+                            None
+                        } else {
+                            snapshot.value_a
+                        },
+                        value_b: if is_region_snapshot(snapshot) {
+                            None
+                        } else {
+                            snapshot.value_b
+                        },
                         event_edge: snapshot.event_edge.clone(),
                     })
             })
@@ -226,15 +255,15 @@ impl CircuitCiApp {
         self.waveform_math_left = trace.probe_index;
         self.waveform_math_right = trace.probe_index;
         self.waveform_playing = false;
+        self.apply_waveform_view_change(|app| {
+            app.restore_scope_snapshot_time_window(&snapshot);
+        });
         if let Some(time_us) = snapshot.time_a_us {
             self.set_waveform_cursor_a(time_us);
         }
         if let Some(time_us) = snapshot.time_b_us {
             self.set_waveform_cursor_b(time_us);
         }
-        self.apply_waveform_view_change(|app| {
-            app.restore_scope_snapshot_time_window(&snapshot);
-        });
         if focus_schematic {
             if self.focus_selected_scope_schematic_context_silent() {
                 self.status = format!(
@@ -333,6 +362,33 @@ fn cursor_snapshot(
         value_a: Some(row.cursor_a_value),
         value_b: Some(row.cursor_b_value),
         delta_value: Some(row.delta_value),
+        rms_value: None,
+        event_edge: None,
+        unit: row.unit.to_string(),
+    }
+}
+
+fn region_snapshot(
+    label: &str,
+    start_us: f64,
+    end_us: f64,
+    row: &ScopeRegionStatsRow,
+) -> ScopeMeasurementSnapshot {
+    ScopeMeasurementSnapshot {
+        label: label.to_string(),
+        source: if row.selected {
+            "region selected".to_string()
+        } else {
+            "region pinned".to_string()
+        },
+        trace: Some(row.trace),
+        trace_label: row.label.clone(),
+        time_a_us: Some(start_us),
+        time_b_us: Some(end_us),
+        value_a: Some(row.min),
+        value_b: Some(row.max),
+        delta_value: Some(row.mean),
+        rms_value: Some(row.rms),
         event_edge: None,
         unit: row.unit.to_string(),
     }
@@ -357,6 +413,12 @@ fn snapshot_source(snapshot: &ScopeMeasurementSnapshot) -> String {
 }
 
 fn snapshot_value_a(snapshot: &ScopeMeasurementSnapshot) -> String {
+    if is_region_snapshot(snapshot) {
+        return snapshot
+            .value_a
+            .map(format_value)
+            .unwrap_or_else(|| "-".to_string());
+    }
     match (snapshot.time_a_us, snapshot.value_a) {
         (Some(time_us), Some(value)) => {
             format!("{} @ {}", format_value(value), format_time_s(time_us / 1e6))
@@ -366,6 +428,12 @@ fn snapshot_value_a(snapshot: &ScopeMeasurementSnapshot) -> String {
 }
 
 fn snapshot_value_b(snapshot: &ScopeMeasurementSnapshot) -> String {
+    if is_region_snapshot(snapshot) {
+        return snapshot
+            .value_b
+            .map(format_value)
+            .unwrap_or_else(|| "-".to_string());
+    }
     match (snapshot.time_b_us, snapshot.value_b) {
         (Some(time_us), Some(value)) => {
             format!("{} @ {}", format_value(value), format_time_s(time_us / 1e6))
@@ -379,6 +447,17 @@ fn snapshot_delta(snapshot: &ScopeMeasurementSnapshot) -> String {
         .delta_value
         .map(format_value)
         .unwrap_or_else(|| "-".to_string())
+}
+
+fn snapshot_rms(snapshot: &ScopeMeasurementSnapshot) -> String {
+    snapshot
+        .rms_value
+        .map(format_value)
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn is_region_snapshot(snapshot: &ScopeMeasurementSnapshot) -> bool {
+    snapshot.source.starts_with("region ")
 }
 
 fn snapshot_times(snapshot: &ScopeMeasurementSnapshot) -> Vec<f64> {
