@@ -102,9 +102,9 @@ use waveform_trace_selector::{
     WaveformProbeGroup, waveform_probe_choices, waveform_probe_group_choices,
 };
 #[cfg(test)]
+use waveform_trigger::scope_trigger_event_rows;
 use waveform_trigger::{
-    ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_event_rows, scope_trigger_events,
-    select_scope_trigger_event,
+    ScopeTriggerEdge, ScopeTriggerJump, scope_trigger_events, select_scope_trigger_event,
 };
 
 impl CircuitCiApp {
@@ -839,6 +839,61 @@ pub(super) fn runtime_scope_probe_sample_label(
         probe_unit(&probe.label),
         format_time_s(cursor_s)
     ))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum RuntimeScopeProbeEdgeStep {
+    Previous,
+    Next,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct RuntimeScopeProbeEdgeJump {
+    pub(super) time_us: f64,
+    pub(super) label: String,
+}
+
+pub(super) fn runtime_scope_probe_edge_jump(
+    waveforms: &[WaveformView],
+    waveform_index: usize,
+    cursor_us: f64,
+    target: &ScopeProbeTarget,
+    step: RuntimeScopeProbeEdgeStep,
+) -> Option<RuntimeScopeProbeEdgeJump> {
+    let waveform = waveforms.get(waveform_index)?;
+    if waveform.label != target.scenario_name {
+        return None;
+    }
+    let probe_index = waveform.probes.iter().position(|probe| {
+        probe
+            .label
+            .trim()
+            .eq_ignore_ascii_case(target.probe_name.trim())
+    })?;
+    let probe = waveform.probes.get(probe_index)?;
+    let (min, max) = min_max(&probe.values)?;
+    if (max - min).abs() <= f64::EPSILON {
+        return None;
+    }
+    let threshold = (min + max) * 0.5;
+    let events = scope_trigger_events(waveform, probe_index, threshold, ScopeTriggerEdge::Either);
+    let event = select_scope_trigger_event(
+        &events,
+        cursor_us,
+        match step {
+            RuntimeScopeProbeEdgeStep::Previous => ScopeTriggerJump::Previous,
+            RuntimeScopeProbeEdgeStep::Next => ScopeTriggerJump::Next,
+        },
+    )?;
+    Some(RuntimeScopeProbeEdgeJump {
+        time_us: event.time_us,
+        label: format!(
+            "{} edge @ {} ({})",
+            event.edge.label(),
+            format_time_s(event.time_us / 1e6),
+            format_value(event.value)
+        ),
+    })
 }
 
 pub(in crate::gui) fn runtime_scope_probe_target_for_selection(

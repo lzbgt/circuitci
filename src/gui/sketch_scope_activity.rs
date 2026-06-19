@@ -4,7 +4,8 @@ use super::CircuitCiApp;
 use super::sketch::compact_label;
 use super::sketch_canvas_hits::RuntimeScopeActivityTarget;
 use super::waveform::{
-    WaveformView, runtime_scope_probe_sample_label, waveform_time_range_for_view,
+    RuntimeScopeProbeEdgeStep, WaveformView, runtime_scope_probe_edge_jump,
+    runtime_scope_probe_sample_label, waveform_time_range_for_view,
 };
 
 impl CircuitCiApp {
@@ -137,8 +138,8 @@ impl CircuitCiApp {
                                 ui.horizontal(|ui| {
                                     if ui
                                         .add_sized(
-                                            egui::vec2(180.0, 20.0),
-                                            egui::Button::new(compact_label(&button_label, 34)),
+                                            egui::vec2(132.0, 20.0),
+                                            egui::Button::new(compact_label(&button_label, 26)),
                                         )
                                         .on_hover_text(format!(
                                             "{} in {}",
@@ -148,6 +149,56 @@ impl CircuitCiApp {
                                     {
                                         self.open_scope_probe_target(row.target.clone());
                                     }
+                                    let previous_edge = runtime_scope_probe_edge_jump(
+                                        &self.waveforms,
+                                        self.selected_waveform,
+                                        self.waveform_cursor_a_us,
+                                        &row.target,
+                                        RuntimeScopeProbeEdgeStep::Previous,
+                                    );
+                                    if ui
+                                        .add_enabled(previous_edge.is_some(), egui::Button::new("Prev"))
+                                        .on_hover_text(
+                                            previous_edge
+                                                .as_ref()
+                                                .map(|edge| edge.label.as_str())
+                                                .unwrap_or("No edge event for this trace."),
+                                        )
+                                        .clicked()
+                                        && let Some(edge) = previous_edge
+                                    {
+                                        self.waveform_cursor_a_us = edge.time_us;
+                                        self.waveform_playing = false;
+                                        self.status = format!(
+                                            "Scope Activity jumped {} to {}.",
+                                            row.target.probe_name, edge.label
+                                        );
+                                    }
+                                    let next_edge = runtime_scope_probe_edge_jump(
+                                        &self.waveforms,
+                                        self.selected_waveform,
+                                        self.waveform_cursor_a_us,
+                                        &row.target,
+                                        RuntimeScopeProbeEdgeStep::Next,
+                                    );
+                                    if ui
+                                        .add_enabled(next_edge.is_some(), egui::Button::new("Next"))
+                                        .on_hover_text(
+                                            next_edge
+                                                .as_ref()
+                                                .map(|edge| edge.label.as_str())
+                                                .unwrap_or("No edge event for this trace."),
+                                        )
+                                        .clicked()
+                                        && let Some(edge) = next_edge
+                                    {
+                                        self.waveform_cursor_a_us = edge.time_us;
+                                        self.waveform_playing = false;
+                                        self.status = format!(
+                                            "Scope Activity jumped {} to {}.",
+                                            row.target.probe_name, edge.label
+                                        );
+                                    }
                                     let sample = runtime_scope_probe_sample_label(
                                         &self.waveforms,
                                         self.selected_waveform,
@@ -155,7 +206,7 @@ impl CircuitCiApp {
                                         &row.target,
                                     )
                                     .unwrap_or_else(|| "sample unavailable".to_string());
-                                    ui.monospace(compact_label(&sample, 30));
+                                    ui.monospace(compact_label(&sample, 20));
                                 });
                             }
                         });

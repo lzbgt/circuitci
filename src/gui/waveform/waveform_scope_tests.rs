@@ -1,18 +1,19 @@
 use super::waveform_context::find_scope_probe;
 use super::waveform_test_support::probe_snapshot;
 use super::{
+    RuntimeScopeProbeEdgeStep, WaveformTraceColor, WaveformTraceStyle, clamp_value_window,
+    expanded_value_bounds, scope_trace_color_for_style,
+};
+use super::{
     WaveformMathDraft, WaveformPlotLaneMode, WaveformProbeQuantity, WaveformTracePreset,
     WaveformTraceRef, append_derived_waveform_probe, derived_waveform_quantity,
     parse_waveform_csv_text, runtime_probe_activity_for_selection,
-    runtime_probe_lines_for_selection, runtime_scope_probe_sample_label,
-    runtime_scope_probe_target_for_selection, sanitized_probe_name, scope_trace_lanes,
-    scope_visible_styled_trace_refs, scope_visible_trace_refs, waveform_measurement,
-    waveform_probe_quantity_from_label, waveform_time_range_for_view,
-    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
-};
-use super::{
-    WaveformTraceColor, WaveformTraceStyle, clamp_value_window, expanded_value_bounds,
-    scope_trace_color_for_style,
+    runtime_probe_lines_for_selection, runtime_scope_probe_edge_jump,
+    runtime_scope_probe_sample_label, runtime_scope_probe_target_for_selection,
+    sanitized_probe_name, scope_trace_lanes, scope_visible_styled_trace_refs,
+    scope_visible_trace_refs, waveform_measurement, waveform_probe_quantity_from_label,
+    waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
+    zoom_time_window,
 };
 use crate::gui::sketch::{
     SketchSelection, SketchViewport, layout_sketch_graph_viewport, runtime_scope_chip_rect,
@@ -420,6 +421,50 @@ fn runtime_scope_probe_sample_label_reports_value_unit_and_time() {
     assert!(sample.contains("1.650000e0"));
     assert!(sample.contains("V"));
     assert!(sample.contains("5.000000e-7 s"));
+}
+
+#[test]
+fn runtime_scope_probe_edge_jump_selects_previous_next_and_wraps() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 0.0
+3e-6 2.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let target = ScopeProbeTarget {
+        scenario_name: "waveform.csv".to_string(),
+        probe_name: "v(out)".to_string(),
+    };
+    let waveforms = [waveform];
+
+    let next = runtime_scope_probe_edge_jump(
+        &waveforms,
+        0,
+        0.75,
+        &target,
+        RuntimeScopeProbeEdgeStep::Next,
+    )
+    .unwrap();
+    let previous = runtime_scope_probe_edge_jump(
+        &waveforms,
+        0,
+        0.75,
+        &target,
+        RuntimeScopeProbeEdgeStep::Previous,
+    )
+    .unwrap();
+    let wrapped_next =
+        runtime_scope_probe_edge_jump(&waveforms, 0, 4.0, &target, RuntimeScopeProbeEdgeStep::Next)
+            .unwrap();
+
+    assert_eq!(next.time_us, 1.5);
+    assert_eq!(previous.time_us, 0.5);
+    assert_eq!(wrapped_next.time_us, 0.5);
+    assert!(next.label.contains("falling edge"));
 }
 
 #[test]
