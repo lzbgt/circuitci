@@ -25,7 +25,7 @@ use waveform_plot::{
 #[cfg(test)]
 use waveform_plot::{
     nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value, scope_trace_color_for_style,
-    scope_trace_lanes,
+    scope_trace_lanes, scope_zoom_box_interaction,
 };
 #[cfg(test)]
 use waveform_trace_selector::{
@@ -109,6 +109,7 @@ impl CircuitCiApp {
                 cursor_a_us: self.waveform_cursor_a_us,
                 cursor_b_us: self.waveform_cursor_b_us,
                 active_drag: &mut self.waveform_cursor_drag,
+                box_zoom_start: &mut self.waveform_box_zoom_start,
             },
             WaveformPlotView {
                 visible_window_us: visible_window,
@@ -343,7 +344,7 @@ impl CircuitCiApp {
                 "Drag empty plot space to pan time/value; wheel zooms time, Shift-wheel zooms value."
             };
             ui.small(format!(
-                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. {value_hint} Trigger markers are derived from the selected trace only."
+                "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Alt/Option-drag a box to zoom. {value_hint} Trigger markers are derived from the selected trace only."
             ));
         });
     }

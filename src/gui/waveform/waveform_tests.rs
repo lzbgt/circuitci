@@ -15,7 +15,7 @@ use super::{
 use super::{
     WaveformPlotLaneMode, WaveformTraceColor, WaveformTraceStyle, clamp_value_window,
     expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us, plot_y_to_value,
-    scope_trace_color_for_style, scope_trace_lanes,
+    scope_trace_color_for_style, scope_trace_lanes, scope_zoom_box_interaction,
 };
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
@@ -146,6 +146,68 @@ fn scope_plot_y_maps_to_visible_value_window() {
     assert!((plot_y_to_value(140.0, plot_rect, -2.0, 6.0) - 2.0).abs() < 1.0e-12);
     assert!((plot_y_to_value(20.0, plot_rect, -2.0, 6.0) - 6.0).abs() < 1.0e-12);
     assert!((plot_y_to_value(-100.0, plot_rect, -2.0, 6.0) - 6.0).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_zoom_box_maps_shared_axis_time_and_value_windows() {
+    let plot_rect = eframe::egui::Rect::from_min_max(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::pos2(500.0, 260.0),
+    );
+
+    let interaction = scope_zoom_box_interaction(
+        eframe::egui::pos2(200.0, 80.0),
+        eframe::egui::pos2(400.0, 200.0),
+        plot_rect,
+        10.0,
+        50.0,
+        Some((plot_rect, -2.0, 6.0)),
+    );
+
+    assert_eq!(interaction.time_window_us, Some((20.0, 40.0)));
+    let (value_min, value_max) = interaction.value_window.unwrap();
+    assert!((value_min - 0.0).abs() < 1.0e-12);
+    assert!((value_max - 4.0).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_zoom_box_maps_split_lanes_to_time_window_only() {
+    let plot_rect = eframe::egui::Rect::from_min_max(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::pos2(500.0, 260.0),
+    );
+
+    let interaction = scope_zoom_box_interaction(
+        eframe::egui::pos2(150.0, 40.0),
+        eframe::egui::pos2(450.0, 180.0),
+        plot_rect,
+        0.0,
+        100.0,
+        None,
+    );
+
+    assert_eq!(interaction.time_window_us, Some((12.5, 87.5)));
+    assert_eq!(interaction.value_window, None);
+}
+
+#[test]
+fn scope_zoom_box_ignores_tiny_regions() {
+    let plot_rect = eframe::egui::Rect::from_min_max(
+        eframe::egui::pos2(100.0, 20.0),
+        eframe::egui::pos2(500.0, 260.0),
+    );
+
+    let interaction = scope_zoom_box_interaction(
+        eframe::egui::pos2(150.0, 40.0),
+        eframe::egui::pos2(154.0, 44.0),
+        plot_rect,
+        0.0,
+        100.0,
+        Some((plot_rect, -1.0, 1.0)),
+    );
+
+    assert_eq!(interaction.time_window_us, None);
+    assert_eq!(interaction.value_window, None);
 }
 
 #[test]

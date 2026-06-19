@@ -23,6 +23,7 @@ pub(super) struct WaveformPlotCursors<'a> {
     pub(super) cursor_a_us: f64,
     pub(super) cursor_b_us: f64,
     pub(super) active_drag: &'a mut Option<WaveformCursorTarget>,
+    pub(super) box_zoom_start: &'a mut Option<egui::Pos2>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -258,15 +259,45 @@ pub(super) fn draw_waveform_plot_sized(
             )
         });
     if response.drag_started_by(egui::PointerButton::Primary) {
-        *cursors.active_drag = cursor_target_at_pointer.or_else(|| {
-            ui.input(|input| input.modifiers.shift)
-                .then_some(WaveformCursorTarget::B)
-        });
+        let alt_drag = ui.input(|input| input.modifiers.alt);
+        if alt_drag
+            && cursor_target_at_pointer.is_none()
+            && let Some(position) = pointer_pos.filter(|pos| plot_rect.contains(*pos))
+        {
+            *cursors.box_zoom_start = Some(position);
+            *cursors.active_drag = None;
+        } else {
+            *cursors.active_drag = cursor_target_at_pointer.or_else(|| {
+                ui.input(|input| input.modifiers.shift)
+                    .then_some(WaveformCursorTarget::B)
+            });
+            *cursors.box_zoom_start = None;
+        }
     }
-    if response.drag_stopped_by(egui::PointerButton::Primary)
-        || !ui.input(|input| input.pointer.primary_down())
-    {
+    if response.drag_stopped_by(egui::PointerButton::Primary) {
+        if let (Some(start), Some(end)) = (cursors.box_zoom_start.take(), pointer_pos) {
+            let value_lane = (rendered_lanes.len() == 1).then(|| {
+                let lane = &rendered_lanes[0];
+                (lane.rect, lane.y_min, lane.y_max)
+            });
+            let zoom = scope_zoom_box_interaction(
+                start,
+                end,
+                plot_rect,
+                window_start_us,
+                window_end_us,
+                value_lane,
+            );
+            if zoom.time_window_us.is_some() {
+                interaction.time_window_us = zoom.time_window_us;
+                interaction.value_window = zoom.value_window;
+            }
+        }
         *cursors.active_drag = None;
+    }
+    if !ui.input(|input| input.pointer.primary_down()) {
+        *cursors.active_drag = None;
+        *cursors.box_zoom_start = None;
     }
     if response.clicked_by(egui::PointerButton::Primary)
         && pointer_in_plot
@@ -284,12 +315,14 @@ pub(super) fn draw_waveform_plot_sized(
         );
     }
     if response.dragged() {
-        if let (Some(target), Some(position)) = (*cursors.active_drag, pointer_pos) {
+        if let (Some(target), Some(position)) = (*cursors.active_drag, pointer_pos)
+            && cursors.box_zoom_start.is_none()
+        {
             interaction.set_cursor(
                 target,
                 plot_x_to_time_us(position.x, plot_rect, window_start_us, window_end_us),
             );
-        } else {
+        } else if cursors.box_zoom_start.is_none() {
             let delta = ui.input(|input| input.pointer.delta());
             if delta.x.abs() > f32::EPSILON && plot_rect.width() > 1.0 {
                 let delta_us = -(delta.x as f64 / plot_rect.width() as f64) * x_span_us;
@@ -456,6 +489,10 @@ pub(super) fn draw_waveform_plot_sized(
         }
     }
 
+    if let (Some(start), Some(end)) = (*cursors.box_zoom_start, pointer_pos) {
+        draw_zoom_box(&painter, plot_rect, start, end);
+    }
+
     painter.text(
         egui::pos2(plot_rect.left(), rect.bottom() - 22.0),
         egui::Align2::LEFT_CENTER,
@@ -470,12 +507,61 @@ pub(super) fn draw_waveform_plot_sized(
         egui::Color32::LIGHT_GRAY,
     );
     if response.hovered() {
-        let cursor = if cursor_target_at_pointer.is_some() || cursors.active_drag.is_some() {
+        let cursor = if cursors.box_zoom_start.is_some() {
+            egui::CursorIcon::Crosshair
+        } else if cursor_target_at_pointer.is_some() || cursors.active_drag.is_some() {
             egui::CursorIcon::ResizeHorizontal
         } else {
             egui::CursorIcon::Grab
         };
         ui.ctx().set_cursor_icon(cursor);
+    }
+    interaction
+}
+
+fn draw_zoom_box(
+    painter: &egui::Painter,
+    plot_rect: egui::Rect,
+    start: egui::Pos2,
+    end: egui::Pos2,
+) {
+    let selection = egui::Rect::from_two_pos(start, end).intersect(plot_rect);
+    if selection.width() < 1.0 || selection.height() < 1.0 {
+        return;
+    }
+    painter.rect_filled(
+        selection,
+        2.0,
+        egui::Color32::from_rgba_unmultiplied(93, 185, 255, 28),
+    );
+    painter.rect_stroke(
+        selection,
+        2.0,
+        egui::Stroke::new(1.5, egui::Color32::from_rgb(93, 185, 255)),
+        egui::StrokeKind::Inside,
+    );
+}
+
+pub(super) fn scope_zoom_box_interaction(
+    start: egui::Pos2,
+    end: egui::Pos2,
+    plot_rect: egui::Rect,
+    window_start_us: f64,
+    window_end_us: f64,
+    value_lane: Option<(egui::Rect, f64, f64)>,
+) -> WaveformPlotInteraction {
+    const MIN_BOX_PIXELS: f32 = 8.0;
+    if (start.x - end.x).abs() < MIN_BOX_PIXELS || (start.y - end.y).abs() < MIN_BOX_PIXELS {
+        return WaveformPlotInteraction::default();
+    }
+    let mut interaction = WaveformPlotInteraction::default();
+    let start_us = plot_x_to_time_us(start.x, plot_rect, window_start_us, window_end_us);
+    let end_us = plot_x_to_time_us(end.x, plot_rect, window_start_us, window_end_us);
+    interaction.time_window_us = Some(ordered_pair(start_us, end_us));
+    if let Some((lane_rect, y_min, y_max)) = value_lane {
+        let start_value = plot_y_to_value(start.y, lane_rect, y_min, y_max);
+        let end_value = plot_y_to_value(end.y, lane_rect, y_min, y_max);
+        interaction.value_window = Some(ordered_pair(start_value, end_value));
     }
     interaction
 }
