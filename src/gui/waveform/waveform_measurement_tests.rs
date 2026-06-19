@@ -1,0 +1,628 @@
+use super::waveform_test_support::probe_snapshot;
+use super::{
+    ScopeSnapshotSourceFilter, ScopeTriggerEdge, WaveformTraceRef, interpolated_value,
+    parse_waveform_csv_text, scope_cursor_legend_rows, scope_region_stats_rows,
+    scope_snapshot_visible_indexes, scope_snapshots_csv, scope_snapshots_markdown,
+    scope_trigger_events, scope_visible_trace_refs, waveform_measurement,
+    waveform_probe_value_for_badge,
+};
+use crate::gui::sketch::SketchSelection;
+use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
+use crate::gui::{CircuitCiApp, ScopeProbeTarget};
+
+#[test]
+fn scope_cursor_snapshots_capture_selected_and_pinned_traces() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+
+    app.capture_scope_cursor_snapshots();
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 2);
+    let selected = &app.waveform_measurement_snapshots[0];
+    assert_eq!(selected.label, "Cursor 1");
+    assert_eq!(selected.source, "cursor selected");
+    assert_eq!(
+        selected.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
+    assert_eq!(selected.trace_label, "v(out)");
+    assert_eq!(selected.unit, "V");
+    assert_eq!(selected.time_a_us, Some(0.0));
+    assert_eq!(selected.time_b_us, Some(1.0));
+    assert_eq!(selected.value_a, Some(0.0));
+    assert_eq!(selected.value_b, Some(2.0));
+    assert_eq!(selected.delta_value, Some(2.0));
+
+    let pinned = &app.waveform_measurement_snapshots[1];
+    assert_eq!(pinned.source, "cursor pinned");
+    assert_eq!(
+        pinned.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        })
+    );
+    assert_eq!(pinned.trace_label, "i(load)");
+    assert_eq!(pinned.unit, "A");
+    assert!((pinned.delta_value.unwrap() - 0.2).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_trigger_snapshots_capture_selected_event() {
+    let waveform =
+        parse_waveform_csv_text("time,v(out)\n0,0\n0.000001,2\n0.000002,0\n", "waveform.csv")
+            .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    app.capture_scope_trigger_snapshot(event);
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 1);
+    let snapshot = &app.waveform_measurement_snapshots[0];
+    assert_eq!(snapshot.label, "Trigger 1");
+    assert_eq!(snapshot.source, "trigger");
+    assert_eq!(
+        snapshot.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
+    assert_eq!(snapshot.trace_label, "v(out)");
+    assert_eq!(snapshot.event_edge.as_deref(), Some("rising"));
+    assert_eq!(snapshot.time_a_us, Some(0.5));
+    assert_eq!(snapshot.value_a, Some(1.0));
+    assert_eq!(snapshot.unit, "V");
+}
+
+#[test]
+fn scope_snapshot_jump_restores_trace_cursors_and_time_window() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n0.000002,0,0.1\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.selected_probe = 0;
+    app.waveform_cursor_a_us = 0.0;
+    app.waveform_cursor_b_us = 0.0;
+    app.set_waveform_time_window(0.0, 2.0);
+
+    assert!(app.activate_scope_measurement_snapshot(1, false));
+
+    assert_eq!(app.selected_probe, 1);
+    assert_eq!(app.waveform_cursor_a_us, 0.0);
+    assert_eq!(app.waveform_cursor_b_us, 2.0);
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+    assert_eq!(app.status, "Restored scope snapshot Cursor 1.");
+}
+
+#[test]
+fn scope_snapshot_focus_selects_originating_schematic_context() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out)\n0,0\n0.000001,2\n0.000002,0\n",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut snapshot = probe_snapshot();
+    snapshot.probes.push(SketchProbe {
+        scenario_name: "tran_main".to_string(),
+        probe_name: "out_voltage".to_string(),
+        expression: "V(out)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("out".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        project_snapshot: Some(snapshot),
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+    app.capture_scope_trigger_snapshot(event);
+
+    assert!(app.activate_scope_measurement_snapshot(0, true));
+
+    assert_eq!(app.selected_probe, 0);
+    assert_eq!(app.waveform_cursor_a_us, 0.5);
+    assert_eq!(
+        app.selected_sketch_item,
+        Some(SketchSelection::Net("out".to_string()))
+    );
+    assert_eq!(
+        app.pending_scope_probe,
+        Some(ScopeProbeTarget {
+            scenario_name: "tran_main".to_string(),
+            probe_name: "out_voltage".to_string(),
+        })
+    );
+    assert_eq!(
+        app.status,
+        "Focused schematic context for scope snapshot Trigger 1."
+    );
+}
+
+#[test]
+fn scope_snapshot_markers_follow_visible_traces_only() {
+    let waveform = parse_waveform_csv_text(
+        "time,v(out),i(load)\n0,0,0.1\n0.000001,2,0.3\n",
+        "waveform.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    let selected_trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    };
+    let pinned_trace = WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 1,
+    };
+
+    let selected_only = app.scope_snapshot_markers(&[selected_trace]);
+    assert_eq!(selected_only.len(), 1);
+    assert_eq!(selected_only[0].trace, selected_trace);
+    assert_eq!(selected_only[0].label, "Cursor 1");
+    assert_eq!(selected_only[0].time_a_us, Some(0.0));
+    assert_eq!(selected_only[0].time_b_us, Some(1.0));
+
+    let both = app.scope_snapshot_markers(&[selected_trace, pinned_trace]);
+    assert_eq!(both.len(), 2);
+    assert_eq!(both[1].trace, pinned_trace);
+    assert_eq!(both[1].source, "cursor pinned");
+}
+
+#[test]
+fn waveform_parser_rejects_non_increasing_time() {
+    let error = parse_waveform_csv_text(
+        "time v(out)
+1e-6 1.0
+1e-6 2.0
+",
+        "waveform.csv",
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("non-increasing time"));
+}
+
+#[test]
+fn interpolation_returns_linear_value_between_samples() {
+    let value = interpolated_value(&[0.0, 1.0e-6, 2.0e-6], &[0.0, 2.0, 4.0], 1.5e-6).unwrap();
+    assert!((value - 3.0).abs() < 1.0e-12);
+}
+
+#[test]
+fn waveform_probe_value_for_badge_matches_probe_expression() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 3.3
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let probe = SketchProbe {
+        scenario_name: "gui_transient".to_string(),
+        probe_name: "out_voltage".to_string(),
+        expression: "V(out)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("out".to_string()),
+        assertion_names: Vec::new(),
+    };
+    let value = waveform_probe_value_for_badge(&[waveform], 0, 0.5, &probe).unwrap();
+    assert!((value - 1.65).abs() < 1.0e-12);
+}
+
+#[test]
+fn quick_assertion_margin_is_relative_with_zero_floor() {
+    assert!((super::quick_assertion_margin(5.0) - 0.05).abs() < 1.0e-12);
+    assert_eq!(super::quick_assertion_margin(0.0), 1.0e-9);
+}
+
+#[test]
+fn waveform_measurement_reports_cursor_delta_and_ranges() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 1.0
+",
+        "waveform.csv",
+    )
+    .unwrap();
+    let measurement = waveform_measurement(&waveform, 0, 0.5, 1.5).unwrap();
+    assert!((measurement.cursor_a.value - 1.0).abs() < 1.0e-12);
+    assert!((measurement.cursor_b.value - 1.5).abs() < 1.0e-12);
+    assert!((measurement.delta_t_s - 1.0e-6).abs() < 1.0e-18);
+    assert!((measurement.delta_value - 0.5).abs() < 1.0e-12);
+    assert_eq!(measurement.full_min, 0.0);
+    assert_eq!(measurement.full_max, 2.0);
+    assert_eq!(measurement.window_max, 2.0);
+}
+
+#[test]
+fn scope_cursor_legend_rows_include_selected_and_pinned_traces() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 4.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+    ];
+    let rows = scope_cursor_legend_rows(&[waveform], &traces, 0.5, 1.5);
+    assert_eq!(rows.len(), 2);
+    assert!(rows[0].selected);
+    assert!(!rows[1].selected);
+    assert_eq!(rows[0].label, "v(out)");
+    assert_eq!(rows[0].unit, "V");
+    assert!((rows[0].cursor_a_value - 1.0).abs() < 1.0e-12);
+    assert!((rows[0].cursor_b_value - 3.0).abs() < 1.0e-12);
+    assert!((rows[0].delta_value - 2.0).abs() < 1.0e-12);
+    assert_eq!(rows[1].label, "i(load)");
+    assert_eq!(rows[1].unit, "A");
+    assert!((rows[1].cursor_a_value - 0.002).abs() < 1.0e-12);
+    assert!((rows[1].cursor_b_value - 0.004).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_region_stats_rows_compute_time_weighted_statistics() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        },
+    ];
+
+    let rows = scope_region_stats_rows(&[waveform], &traces, 0.0, 2.0);
+
+    assert_eq!(rows.len(), 2);
+    assert!(rows[0].selected);
+    assert!(!rows[1].selected);
+    assert_eq!(rows[0].label, "v(out)");
+    assert_eq!(rows[0].unit, "V");
+    assert!((rows[0].min - 0.0).abs() < 1.0e-12);
+    assert!((rows[0].max - 2.0).abs() < 1.0e-12);
+    assert!((rows[0].mean - 1.0).abs() < 1.0e-12);
+    assert!((rows[0].rms - (4.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
+    assert_eq!(rows[1].label, "i(load)");
+    assert_eq!(rows[1].unit, "A");
+    assert!((rows[1].mean - 0.003).abs() < 1.0e-12);
+    assert!((rows[1].rms - (31.0e-6_f64 / 3.0).sqrt()).abs() < 1.0e-15);
+}
+
+#[test]
+fn scope_region_stats_rows_include_interpolated_region_edges() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+2e-6 0.0
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let traces = vec![WaveformTraceRef {
+        waveform_index: 0,
+        probe_index: 0,
+    }];
+
+    let rows = scope_region_stats_rows(&[waveform], &traces, 0.5, 1.5);
+
+    assert_eq!(rows.len(), 1);
+    assert!((rows[0].min - 1.0).abs() < 1.0e-12);
+    assert!((rows[0].max - 2.0).abs() < 1.0e-12);
+    assert!((rows[0].mean - 1.5).abs() < 1.0e-12);
+    assert!((rows[0].rms - (7.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
+}
+
+#[test]
+fn scope_region_stat_snapshots_capture_stats_and_restore_context() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+
+    assert_eq!(app.waveform_measurement_snapshots.len(), 2);
+    let selected = &app.waveform_measurement_snapshots[0];
+    assert_eq!(selected.label, "Region 1");
+    assert_eq!(selected.source, "region selected");
+    assert_eq!(
+        selected.trace,
+        Some(WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        })
+    );
+    assert_eq!(selected.trace_label, "v(out)");
+    assert_eq!(selected.time_a_us, Some(0.0));
+    assert_eq!(selected.time_b_us, Some(2.0));
+    assert_eq!(selected.value_a, Some(0.0));
+    assert_eq!(selected.value_b, Some(2.0));
+    assert!((selected.delta_value.unwrap() - 1.0).abs() < 1.0e-12);
+    assert!((selected.rms_value.unwrap() - (4.0_f64 / 3.0).sqrt()).abs() < 1.0e-12);
+
+    let pinned = &app.waveform_measurement_snapshots[1];
+    assert_eq!(pinned.source, "region pinned");
+    assert_eq!(pinned.trace_label, "i(load)");
+    assert!((pinned.rms_value.unwrap() - (31.0e-6_f64 / 3.0).sqrt()).abs() < 1.0e-15);
+
+    app.selected_probe = 0;
+    app.waveform_cursor_a_us = 0.0;
+    app.waveform_cursor_b_us = 0.0;
+    app.set_waveform_time_window(0.0, 1.0);
+
+    assert!(app.activate_scope_measurement_snapshot(1, false));
+
+    assert_eq!(app.selected_probe, 1);
+    assert_eq!(app.waveform_cursor_a_us, 0.0);
+    assert_eq!(app.waveform_cursor_b_us, 2.0);
+    assert_eq!(app.visible_waveform_time_window(), Some((0.0, 2.0)));
+    assert_eq!(app.status, "Restored scope snapshot Region 1.");
+}
+
+#[test]
+fn scope_snapshot_csv_exports_cursor_trigger_and_region_rows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.capture_scope_trigger_snapshot(event);
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+    app.waveform_measurement_snapshots[0].trace_label = "quoted, \"trace\"".to_string();
+    app.waveform_measurement_snapshots[0].note = "settling, \"fast\"".to_string();
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+
+    let csv = scope_snapshots_csv(&app.waveform_measurement_snapshots);
+
+    assert!(csv.starts_with(
+        "label,note,source,trace,time_a_s,time_b_s,value_a_or_min,value_b_or_max,delta_or_mean,rms,event_edge,unit\n"
+    ));
+    assert!(
+        csv.contains(
+            "Cursor 1,\"settling, \"\"fast\"\"\",cursor selected,\"quoted, \"\"trace\"\"\""
+        )
+    );
+    assert!(csv.contains("Trigger 2,,trigger rising,v(out),5.000000e-7"));
+    assert!(csv.contains("Region 3,,region selected,v(out),0.000000e0,2.000000e-6,0.000000e0,2.000000e0,1.000000e0,1.154701e0,,V"));
+}
+
+#[test]
+fn scope_snapshot_markdown_exports_report_table_rows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out)
+0.0 0.0
+1e-6 2.0
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 1.0,
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.waveform_measurement_snapshots[0].label = "Startup | edge".to_string();
+    app.waveform_measurement_snapshots[0].note = "settles\nquickly".to_string();
+
+    let markdown = scope_snapshots_markdown(&app.waveform_measurement_snapshots);
+
+    assert!(markdown.starts_with("## Scope Measurement Snapshots\n\n"));
+    assert!(markdown.contains(
+        "| Label | Note | Source | Trace | A/Event/Min | B/Max | Delta/Mean | RMS | Unit |"
+    ));
+    assert!(markdown.contains(
+        "| Startup \\| edge | settles<br>quickly | cursor selected | v(out) | 0.000000e0 @ 0.000000e0 s | 2.000000e0 @ 1.000000e-6 s | 2.000000e0 | - | V |"
+    ));
+    assert_eq!(
+        scope_snapshots_markdown(&[]),
+        "## Scope Measurement Snapshots\n\n_No measurement snapshots matched the current filters._\n"
+    );
+}
+
+#[test]
+fn scope_snapshot_filters_match_source_and_text_for_visible_rows() {
+    let waveform = parse_waveform_csv_text(
+        "time v(out) i(load)
+0.0 0.0 0.001
+1e-6 2.0 0.003
+2e-6 0.0 0.005
+",
+        "scope.csv",
+    )
+    .unwrap();
+    let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
+    let mut app = CircuitCiApp {
+        waveforms: vec![waveform],
+        selected_probe: 0,
+        waveform_cursor_a_us: 0.0,
+        waveform_cursor_b_us: 2.0,
+        waveform_pinned_traces: vec![WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 1,
+        }],
+        ..Default::default()
+    };
+    app.capture_scope_cursor_snapshots();
+    app.capture_scope_trigger_snapshot(event);
+    let traces = scope_visible_trace_refs(
+        &app.waveforms,
+        app.selected_waveform,
+        app.selected_probe,
+        &app.waveform_pinned_traces,
+    );
+    let rows = scope_region_stats_rows(&app.waveforms, &traces, 0.0, 2.0);
+    app.capture_scope_region_stat_snapshots(&rows, 0.0, 2.0);
+    app.waveform_measurement_snapshots[4].note = "load channel observed".to_string();
+
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![0, 1, 2, 3, 4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "",
+            ScopeSnapshotSourceFilter::Cursor,
+        ),
+        vec![0, 1]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "load",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![1, 4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "load",
+            ScopeSnapshotSourceFilter::Region,
+        ),
+        vec![4]
+    );
+    assert_eq!(
+        scope_snapshot_visible_indexes(
+            &app.waveform_measurement_snapshots,
+            "observed",
+            ScopeSnapshotSourceFilter::All,
+        ),
+        vec![4]
+    );
+
+    app.waveform_snapshot_filter = "load".to_string();
+    app.waveform_snapshot_source_filter = ScopeSnapshotSourceFilter::Region;
+    let visible = app.visible_scope_measurement_snapshot_indexes();
+    let filtered: Vec<_> = visible
+        .iter()
+        .map(|&index| app.waveform_measurement_snapshots[index].clone())
+        .collect();
+    let csv = scope_snapshots_csv(&filtered);
+
+    assert!(csv.contains("Region 4,load channel observed,region pinned,i(load)"));
+    assert!(!csv.contains("v(out)"));
+    assert_eq!(csv.lines().count(), 2);
+}

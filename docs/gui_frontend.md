@@ -248,9 +248,11 @@ restore, schematic Focus, and rendering over loaded waveform artifacts.
 `src/gui/waveform/waveform_trigger.rs` owns transient selected-trace trigger edge/threshold controls, CSV-derived crossing interpolation, exact event readout rows, and previous/next or row-level trigger jumps.
 Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helper coverage
-and `src/gui/waveform/waveform_scope_tests.rs` for app-level Scopes state,
-snapshot, context, style, and compare-set coverage so interaction work can grow
-without turning the runtime module into a test fixture container.
+`src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
+snapshot measurement coverage, and `src/gui/waveform/waveform_scope_tests.rs`
+for app-level Scopes context, style, lane, probe, and compare-set coverage so
+interaction work can grow without turning the runtime module into a test
+fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.

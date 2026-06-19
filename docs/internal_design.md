@@ -313,10 +313,11 @@ the shared waveform interpolation helpers rather than an unsynchronized live
 simulation model.
 Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_tests.rs` for parser/plot/trigger helpers and
-`src/gui/waveform/waveform_scope_tests.rs` for app-level Scopes state,
-snapshot, context, style, and compare-set behavior; production waveform code
-should stay in `src/gui/waveform.rs` / `src/gui/waveform/waveform_plot.rs` and
-avoid depending on test-only helpers.
+`src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
+snapshot measurement behavior, and `src/gui/waveform/waveform_scope_tests.rs`
+for app-level Scopes context, style, lane, probe, and compare-set behavior;
+production waveform code should stay in `src/gui/waveform.rs` /
+`src/gui/waveform/waveform_plot.rs` and avoid depending on test-only helpers.
 Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing
 analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
