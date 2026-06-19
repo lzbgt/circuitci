@@ -1491,6 +1491,8 @@ mod waveform_loading_tests;
 #[cfg(test)]
 mod waveform_measurement_tests;
 #[cfg(test)]
+mod waveform_scope_compare_tests;
+#[cfg(test)]
 mod waveform_scope_tests;
 #[cfg(test)]
 mod waveform_test_support;

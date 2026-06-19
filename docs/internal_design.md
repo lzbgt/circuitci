@@ -390,7 +390,9 @@ Focused waveform and Scopes regressions are split into
 `src/gui/waveform/waveform_loading_tests.rs` for waveform loading, deferred-artifact, diagnostics, and footprint behavior,
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
 snapshot measurement behavior, and `src/gui/waveform/waveform_scope_tests.rs`
-for app-level Scopes context, style, lane, probe, and compare-set behavior;
+for app-level Scopes context, lane, probe, and runtime behavior, with
+`src/gui/waveform/waveform_scope_compare_tests.rs` covering compare pins,
+trace styles, and saved compare-set behavior;
 production waveform code should stay in `src/gui/waveform.rs` /
 `src/gui/waveform/waveform_plot.rs` and avoid depending on test-only helpers.
 Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing

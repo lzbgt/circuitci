@@ -327,9 +327,10 @@ Focused waveform and scope regressions live in
 `src/gui/waveform/waveform_loading_tests.rs` for waveform loading, deferred-artifact, diagnostics, and footprint coverage,
 `src/gui/waveform/waveform_measurement_tests.rs` for cursor, region-stat, and
 snapshot measurement coverage, and `src/gui/waveform/waveform_scope_tests.rs`
-for app-level Scopes context, style, lane, probe, and compare-set coverage so
-interaction work can grow without turning the runtime module into a test
-fixture container.
+for app-level Scopes context, lane, probe, and runtime coverage, with
+`src/gui/waveform/waveform_scope_compare_tests.rs` covering compare pins,
+trace styles, and saved compare-set coverage so interaction work can grow
+without turning the runtime module into a test fixture container.
 `src/gui/analog_models.rs` owns SHA-backed analog `model_files` listing,
 selection, add, hash computation, and remove mutations for declared analog
 scenarios.
