@@ -221,7 +221,7 @@ scenario/model/assertion panels. `src/gui/analog_overview.rs` owns the
 read-only generated scenario audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns waveform CSV parsing, Scopes state orchestration,
-simulation-time scrub/playback controls, cursor measurement tools, selected-plus-pinned cursor readout table, GUI-only
+simulation-time scrub/playback controls, value-scale controls, cursor measurement tools, selected-plus-pinned cursor readout table, GUI-only
 transient trace pinning/comparison overlays, derived waveform channels,
 promotion of representable derived channels to Board IR probes/assertions,
 pending schematic probe-to-scope focus, and graph-hover/runtime activity
@@ -343,7 +343,7 @@ form:
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform and
   probe selection, transient selected-probe trace pinning for multi-trace
   comparison overlays, direct plot drag/wheel time-window pan/zoom, explicit
-  time-window controls, draggable/click-set A/B cursor handles, play/scrub
+  time-window and value-scale controls, draggable/click-set A/B cursor handles, play/scrub
   controls, and selected-plus-pinned A/B cursor readouts.
   Scenario setup is secondary and docked: users can append a generated-from-Board
   `analog_transient` scenario with ground/probe net selection, audit generated

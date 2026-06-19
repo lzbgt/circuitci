@@ -523,6 +523,8 @@ impl CircuitCiApp {
                 self.waveform_playing = false;
                 self.waveform_window_start_us = None;
                 self.waveform_window_end_us = None;
+                self.waveform_value_min = None;
+                self.waveform_value_max = None;
                 self.stage = if waveform_count == 0 {
                     Stage::Reports
                 } else {

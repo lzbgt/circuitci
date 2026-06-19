@@ -97,12 +97,63 @@ pub(super) fn zoom_time_window(
     (new_start, new_start + new_span)
 }
 
+pub(super) fn expanded_value_bounds(value_min: f64, value_max: f64) -> Option<(f64, f64)> {
+    if !value_min.is_finite() || !value_max.is_finite() {
+        return None;
+    }
+    let (value_min, value_max) = ordered_pair(value_min, value_max);
+    if value_max > value_min {
+        Some((value_min, value_max))
+    } else {
+        let pad = value_min.abs().max(1.0) * 0.05;
+        Some((value_min - pad, value_max + pad))
+    }
+}
+
+pub(super) fn clamp_value_window(
+    data_min: f64,
+    data_max: f64,
+    value_min: f64,
+    value_max: f64,
+) -> Option<(f64, f64)> {
+    let (full_min, full_max) = expanded_value_bounds(data_min, data_max)?;
+    if !value_min.is_finite() || !value_max.is_finite() {
+        return Some((full_min, full_max));
+    }
+    let (mut value_min, mut value_max) = ordered_pair(value_min, value_max);
+    let full_span = positive_span(full_min, full_max);
+    let min_span = (full_span * 0.0001).max(1e-12);
+    if value_max - value_min < min_span {
+        let center = (value_min + value_max) * 0.5;
+        value_min = center - min_span * 0.5;
+        value_max = center + min_span * 0.5;
+    }
+    if value_min < full_min {
+        let shift = full_min - value_min;
+        value_min += shift;
+        value_max += shift;
+    }
+    if value_max > full_max {
+        let shift = value_max - full_max;
+        value_min -= shift;
+        value_max -= shift;
+    }
+    value_min = value_min.clamp(full_min, full_max);
+    value_max = value_max.clamp(full_min, full_max);
+    if value_max <= value_min {
+        Some((full_min, full_max))
+    } else {
+        Some((value_min, value_max))
+    }
+}
+
 pub(super) fn draw_waveform_plot_sized(
     ui: &mut egui::Ui,
     waveforms: &[WaveformView],
     traces: &[WaveformTraceRef],
     cursors: WaveformPlotCursors<'_>,
     visible_window_us: Option<(f64, f64)>,
+    visible_value_window: Option<(f64, f64)>,
     desired_size: egui::Vec2,
 ) -> WaveformPlotInteraction {
     let Some(primary) = traces
@@ -120,11 +171,21 @@ pub(super) fn draw_waveform_plot_sized(
         visible_window_us.unwrap_or((full_start_us, full_end_us));
     let x_min = window_start_us / 1e6;
     let x_max = window_end_us / 1e6;
-    let Some((y_min, y_max)) = waveform_trace_bounds_in_window(waveforms, traces, x_min, x_max)
+    let Some((data_y_min, data_y_max)) =
+        waveform_trace_bounds_in_window(waveforms, traces, x_min, x_max)
     else {
         ui.label("Waveform has no time samples.");
         return WaveformPlotInteraction::default();
     };
+    let Some((data_y_min, data_y_max)) = expanded_value_bounds(data_y_min, data_y_max) else {
+        ui.label("Waveform has no finite value samples.");
+        return WaveformPlotInteraction::default();
+    };
+    let (y_min, y_max) = visible_value_window
+        .and_then(|(value_min, value_max)| {
+            clamp_value_window(data_y_min, data_y_max, value_min, value_max)
+        })
+        .unwrap_or((data_y_min, data_y_max));
 
     ui.label(format!(
         "{} samples from {}; showing {} trace(s)",

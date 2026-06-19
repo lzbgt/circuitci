@@ -357,6 +357,8 @@ pub struct CircuitCiApp {
     waveform_playback_speed: f64,
     waveform_window_start_us: Option<f64>,
     waveform_window_end_us: Option<f64>,
+    waveform_value_min: Option<f64>,
+    waveform_value_max: Option<f64>,
     background_job: Option<jobs::BackgroundGuiJob>,
     background_job_history: Vec<jobs::BackgroundJobRecord>,
 }
@@ -516,6 +518,8 @@ impl Default for CircuitCiApp {
             waveform_playback_speed: 1.0,
             waveform_window_start_us: None,
             waveform_window_end_us: None,
+            waveform_value_min: None,
+            waveform_value_max: None,
             background_job: None,
             background_job_history: Vec::new(),
         }

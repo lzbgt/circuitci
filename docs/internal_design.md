@@ -287,7 +287,7 @@ overlays, GUI-only derived waveform channels, promotion of representable
 derived channels to explicit Board IR analog probes/assertions, exact
 probe-value lookup, and normalized runtime activity values for graph tinting.
 `src/gui/waveform/waveform_plot.rs` owns the primary scope plot drawing,
-draggable/click-set A/B cursor handles, visible-window fit/zoom/pan helpers,
+draggable/click-set A/B cursor handles, visible time-window and value-window fit/zoom/pan helpers,
 trace overlay selection, and visible-window axis scaling. It may display graph hover readouts, activity coloring,
 pinned trace overlays over the currently loaded CSV set, and derived
 difference, sum, product, or ratio channels for runtime waveform probes, but

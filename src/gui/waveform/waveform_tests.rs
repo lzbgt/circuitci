@@ -7,7 +7,9 @@ use super::{
     waveform_time_range_for_view, waveform_time_window_for_view, waveform_trace_bounds_in_window,
     zoom_time_window,
 };
-use super::{nearest_scope_cursor_target, plot_x_to_time_us};
+use super::{
+    clamp_value_window, expanded_value_bounds, nearest_scope_cursor_target, plot_x_to_time_us,
+};
 use crate::gui::sketch::{
     ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchSelection,
 };
@@ -415,6 +417,22 @@ fn zoom_time_window_keeps_focus_ratio() {
     let (start, end) = zoom_time_window(0.0, 100.0, 25.0, 0.5);
 
     assert_eq!((start, end), (12.5, 62.5));
+}
+
+#[test]
+fn value_window_expands_flat_traces_for_visible_y_scale() {
+    let (min, max) = expanded_value_bounds(3.3, 3.3).unwrap();
+
+    assert!(min < 3.3);
+    assert!(max > 3.3);
+    assert!((max - min - 0.33).abs() < 1.0e-12);
+}
+
+#[test]
+fn value_window_clamps_zoomed_ranges_to_data_bounds() {
+    assert_eq!(clamp_value_window(0.0, 10.0, 2.0, 8.0), Some((2.0, 8.0)));
+    assert_eq!(clamp_value_window(0.0, 10.0, -4.0, 4.0), Some((0.0, 8.0)));
+    assert_eq!(clamp_value_window(0.0, 10.0, 8.0, 14.0), Some((4.0, 10.0)));
 }
 
 #[test]

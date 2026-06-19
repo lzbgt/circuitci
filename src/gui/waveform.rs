@@ -13,14 +13,12 @@ use std::path::Path;
 mod waveform_plot;
 pub(super) use waveform_plot::WaveformCursorTarget;
 use waveform_plot::{
-    WaveformPlotCursors, clamp_waveform_time_window, draw_waveform_plot_sized, scope_plot_size,
-    scope_visible_trace_refs, valid_waveform_trace, waveform_time_window_for_view,
-    zoom_time_window,
+    WaveformPlotCursors, clamp_value_window, clamp_waveform_time_window, draw_waveform_plot_sized,
+    expanded_value_bounds, scope_plot_size, scope_visible_trace_refs, valid_waveform_trace,
+    waveform_time_window_for_view, waveform_trace_bounds_in_window, zoom_time_window,
 };
 #[cfg(test)]
-use waveform_plot::{
-    nearest_scope_cursor_target, plot_x_to_time_us, waveform_trace_bounds_in_window,
-};
+use waveform_plot::{nearest_scope_cursor_target, plot_x_to_time_us};
 
 impl CircuitCiApp {
     pub(super) fn open_scope_probe_target(&mut self, target: ScopeProbeTarget) {
@@ -68,6 +66,8 @@ impl CircuitCiApp {
         self.waveform_cursor_b_us = 0.0;
         self.waveform_window_start_us = None;
         self.waveform_window_end_us = None;
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
         self.waveform_playing = false;
         true
     }
@@ -135,6 +135,8 @@ impl CircuitCiApp {
                     self.waveform_cursor_b_us = 0.0;
                     self.waveform_window_start_us = None;
                     self.waveform_window_end_us = None;
+                    self.waveform_value_min = None;
+                    self.waveform_value_max = None;
                     self.waveform_playing = false;
                 }
             }
@@ -162,6 +164,8 @@ impl CircuitCiApp {
                         self.waveform_math_right.min(waveform.probes.len() - 1);
                     self.waveform_cursor_a_us = 0.0;
                     self.waveform_cursor_b_us = 0.0;
+                    self.waveform_value_min = None;
+                    self.waveform_value_max = None;
                     self.waveform_playing = false;
                 }
             }
@@ -206,6 +210,7 @@ impl CircuitCiApp {
             &self.waveform_pinned_traces,
         );
         let visible_window = self.visible_waveform_time_window();
+        let visible_value_window = self.visible_waveform_value_window();
         let interaction = draw_waveform_plot_sized(
             ui,
             &self.waveforms,
@@ -216,6 +221,7 @@ impl CircuitCiApp {
                 active_drag: &mut self.waveform_cursor_drag,
             },
             visible_window,
+            visible_value_window,
             scope_plot_size(desired_size),
         );
         if let Some((start_us, end_us)) = interaction.time_window_us {
@@ -371,6 +377,54 @@ impl CircuitCiApp {
                 }
                 ui.label(format!("full {:.3}..{:.3} us", full_start_us, full_end_us));
             });
+            if let Some((value_min, value_max)) = self.visible_waveform_value_window() {
+                ui.horizontal_wrapped(|ui| {
+                    ui.strong("Value Scale");
+                    if ui.button("Fit Y").clicked() {
+                        self.fit_waveform_value_window();
+                    }
+                    if ui.button("Y Zoom In").clicked() {
+                        self.zoom_waveform_value_window(0.5);
+                    }
+                    if ui.button("Y Zoom Out").clicked() {
+                        self.zoom_waveform_value_window(2.0);
+                    }
+                    if ui.button("Pan Down").clicked() {
+                        self.pan_waveform_value_window(-0.25);
+                    }
+                    if ui.button("Pan Up").clicked() {
+                        self.pan_waveform_value_window(0.25);
+                    }
+                });
+                let mut edited_min = value_min;
+                let mut edited_max = value_max;
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("min");
+                    let min_changed = ui
+                        .add(
+                            egui::DragValue::new(&mut edited_min)
+                                .speed(((value_max - value_min).abs() / 200.0).max(1.0e-12)),
+                        )
+                        .changed();
+                    ui.label("max");
+                    let max_changed = ui
+                        .add(
+                            egui::DragValue::new(&mut edited_max)
+                                .speed(((value_max - value_min).abs() / 200.0).max(1.0e-12)),
+                        )
+                        .changed();
+                    if min_changed || max_changed {
+                        self.set_waveform_value_window(edited_min, edited_max);
+                    }
+                    if let Some((data_min, data_max)) = self.waveform_data_value_window() {
+                        ui.label(format!(
+                            "auto {}..{}",
+                            format_value(data_min),
+                            format_value(data_max)
+                        ));
+                    }
+                });
+            }
             ui.small(
                 "Click or drag cursor handles to set cursor A/B; Shift-click sets B. Drag empty plot space to pan time; wheel or pinch zooms around the pointer.",
             );
@@ -386,6 +440,11 @@ impl CircuitCiApp {
             self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
             self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
         }
+    }
+
+    fn fit_waveform_value_window(&mut self) {
+        self.waveform_value_min = None;
+        self.waveform_value_max = None;
     }
 
     fn visible_waveform_time_window(&self) -> Option<(f64, f64)> {
@@ -407,6 +466,46 @@ impl CircuitCiApp {
         self.waveform_window_end_us = Some(end_us);
         self.waveform_cursor_a_us = self.waveform_cursor_a_us.clamp(start_us, end_us);
         self.waveform_cursor_b_us = self.waveform_cursor_b_us.clamp(start_us, end_us);
+    }
+
+    fn waveform_data_value_window(&self) -> Option<(f64, f64)> {
+        let traces = scope_visible_trace_refs(
+            &self.waveforms,
+            self.selected_waveform,
+            self.selected_probe,
+            &self.waveform_pinned_traces,
+        );
+        let (start_us, end_us) = self.visible_waveform_time_window()?;
+        let (value_min, value_max) = waveform_trace_bounds_in_window(
+            &self.waveforms,
+            &traces,
+            start_us / 1e6,
+            end_us / 1e6,
+        )?;
+        expanded_value_bounds(value_min, value_max)
+    }
+
+    fn visible_waveform_value_window(&self) -> Option<(f64, f64)> {
+        let (data_min, data_max) = self.waveform_data_value_window()?;
+        match (self.waveform_value_min, self.waveform_value_max) {
+            (Some(value_min), Some(value_max)) => {
+                clamp_value_window(data_min, data_max, value_min, value_max)
+            }
+            _ => Some((data_min, data_max)),
+        }
+    }
+
+    fn set_waveform_value_window(&mut self, value_min: f64, value_max: f64) {
+        let Some((data_min, data_max)) = self.waveform_data_value_window() else {
+            return;
+        };
+        let Some((value_min, value_max)) =
+            clamp_value_window(data_min, data_max, value_min, value_max)
+        else {
+            return;
+        };
+        self.waveform_value_min = Some(value_min);
+        self.waveform_value_max = Some(value_max);
     }
 
     fn set_waveform_cursor_a(&mut self, cursor_us: f64) {
@@ -432,12 +531,29 @@ impl CircuitCiApp {
         self.set_waveform_time_window(new_start, new_end);
     }
 
+    fn zoom_waveform_value_window(&mut self, scale: f64) {
+        let Some((value_min, value_max)) = self.visible_waveform_value_window() else {
+            return;
+        };
+        let center = (value_min + value_max) * 0.5;
+        let (new_min, new_max) = zoom_time_window(value_min, value_max, center, scale);
+        self.set_waveform_value_window(new_min, new_max);
+    }
+
     fn pan_waveform_time_window(&mut self, span_fraction: f64) {
         let Some((start_us, end_us)) = self.visible_waveform_time_window() else {
             return;
         };
         let delta_us = (end_us - start_us) * span_fraction;
         self.set_waveform_time_window(start_us + delta_us, end_us + delta_us);
+    }
+
+    fn pan_waveform_value_window(&mut self, span_fraction: f64) {
+        let Some((value_min, value_max)) = self.visible_waveform_value_window() else {
+            return;
+        };
+        let delta = (value_max - value_min) * span_fraction;
+        self.set_waveform_value_window(value_min + delta, value_max + delta);
     }
 
     fn selected_scope_trace(&self) -> WaveformTraceRef {
