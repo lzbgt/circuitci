@@ -194,6 +194,8 @@ pub(super) struct SketchEdge {
     pub(super) route: Vec<egui::Pos2>,
 }
 
+pub(super) type SketchWireRouteEdit = (String, String, Vec<(f64, f64)>);
+
 pub(super) fn load_project_snapshot(path: &Path) -> Result<ProjectSnapshot> {
     let project = crate::board_ir::load_project(path)?;
     Ok(project_snapshot_from_project(project))
@@ -464,25 +466,42 @@ pub(super) fn edit_schematic_wire_route(
     net_id: &str,
     points: &[(f64, f64)],
 ) -> Result<String> {
-    let (component_id, pin_id) = parse_wire_source(source)?;
-    let net_id = validated_graph_id(net_id, "net")?;
-    if points.is_empty() {
-        anyhow::bail!("At least one schematic wire route point is required.");
-    }
-    for (x, y) in points {
-        if !x.is_finite() || !y.is_finite() {
-            anyhow::bail!("Schematic wire route points must be finite.");
-        }
+    edit_schematic_wire_routes(
+        text,
+        &[(source.to_string(), net_id.to_string(), points.to_vec())],
+    )
+}
+
+pub(super) fn edit_schematic_wire_routes(
+    text: &str,
+    route_edits: &[SketchWireRouteEdit],
+) -> Result<String> {
+    if route_edits.is_empty() {
+        return Ok(text.to_string());
     }
     let project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
-    if !project.board.nets.contains_key(net_id) {
-        anyhow::bail!("Board IR net {net_id} was not found.");
-    }
-    let pin_net = component_pin_net(&project, component_id, pin_id)?
-        .with_context(|| format!("Board IR pin {source} is not connected to a net."))?;
-    if pin_net != net_id {
-        anyhow::bail!("Board IR pin {source} is connected to {pin_net}, not {net_id}.");
+    let mut validated_routes = Vec::with_capacity(route_edits.len());
+    for (source, net_id, points) in route_edits {
+        let (component_id, pin_id) = parse_wire_source(source)?;
+        let net_id = validated_graph_id(net_id, "net")?.to_string();
+        if points.is_empty() {
+            anyhow::bail!("At least one schematic wire route point is required.");
+        }
+        for (x, y) in points {
+            if !x.is_finite() || !y.is_finite() {
+                anyhow::bail!("Schematic wire route points must be finite.");
+            }
+        }
+        if !project.board.nets.contains_key(&net_id) {
+            anyhow::bail!("Board IR net {net_id} was not found.");
+        }
+        let pin_net = component_pin_net(&project, component_id, pin_id)?
+            .with_context(|| format!("Board IR pin {source} is not connected to a net."))?;
+        if pin_net != net_id {
+            anyhow::bail!("Board IR pin {source} is connected to {pin_net}, not {net_id}.");
+        }
+        validated_routes.push((source.clone(), net_id, points.clone()));
     }
 
     let mut yaml: serde_yaml_ng::Value =
@@ -497,31 +516,33 @@ pub(super) fn edit_schematic_wire_route(
             .context("Board IR field board must be an object.")?;
         let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
         let routes = ensure_child_mapping_mut(schematic, "wire_routes", "schematic wire routes")?;
-        let mut route = serde_yaml_ng::Mapping::new();
-        route.insert(
-            serde_yaml_ng::Value::String("points".to_string()),
-            serde_yaml_ng::Value::Sequence(
-                points
-                    .iter()
-                    .map(|(x, y)| -> Result<serde_yaml_ng::Value> {
-                        let mut point = serde_yaml_ng::Mapping::new();
-                        point.insert(
-                            serde_yaml_ng::Value::String("x".to_string()),
-                            serde_yaml_ng::to_value(*x)?,
-                        );
-                        point.insert(
-                            serde_yaml_ng::Value::String("y".to_string()),
-                            serde_yaml_ng::to_value(*y)?,
-                        );
-                        Ok(serde_yaml_ng::Value::Mapping(point))
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-            ),
-        );
-        routes.insert(
-            serde_yaml_ng::Value::String(wire_route_key(source, net_id)),
-            serde_yaml_ng::Value::Mapping(route),
-        );
+        for (source, net_id, points) in validated_routes {
+            let mut route = serde_yaml_ng::Mapping::new();
+            route.insert(
+                serde_yaml_ng::Value::String("points".to_string()),
+                serde_yaml_ng::Value::Sequence(
+                    points
+                        .iter()
+                        .map(|(x, y)| -> Result<serde_yaml_ng::Value> {
+                            let mut point = serde_yaml_ng::Mapping::new();
+                            point.insert(
+                                serde_yaml_ng::Value::String("x".to_string()),
+                                serde_yaml_ng::to_value(*x)?,
+                            );
+                            point.insert(
+                                serde_yaml_ng::Value::String("y".to_string()),
+                                serde_yaml_ng::to_value(*y)?,
+                            );
+                            Ok(serde_yaml_ng::Value::Mapping(point))
+                        })
+                        .collect::<Result<Vec<_>>>()?,
+                ),
+            );
+            routes.insert(
+                serde_yaml_ng::Value::String(wire_route_key(&source, &net_id)),
+                serde_yaml_ng::Value::Mapping(route),
+            );
+        }
     }
     encode_edited_project_yaml(yaml)
 }

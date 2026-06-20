@@ -1,7 +1,7 @@
 use super::sketch::{
     self, ProjectSnapshot, SketchSelection, SketchViewport, classical_sketch_auto_layout,
-    edit_schematic_component_styles, edit_schematic_node_positions, layout_sketch_graph,
-    layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+    edit_schematic_component_styles, edit_schematic_node_positions, edit_schematic_wire_routes,
+    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     remove_component, remove_net, sketch_graph_bounds,
 };
@@ -341,16 +341,19 @@ impl CircuitCiApp {
             return;
         }
         let updated = edit_schematic_node_positions(&self.project_yaml, &plan.positions)
-            .and_then(|yaml| edit_schematic_component_styles(&yaml, &plan.styles));
+            .and_then(|yaml| edit_schematic_component_styles(&yaml, &plan.styles))
+            .and_then(|yaml| edit_schematic_wire_routes(&yaml, &plan.wire_routes));
         match updated {
             Ok(updated) => {
                 let style_count = plan.styles.len();
+                let route_count = plan.wire_routes.len();
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
-                        "Classical auto layout positioned {} node(s) and oriented {} component(s).",
+                        "Classical auto layout positioned {} node(s), oriented {} component(s), and routed {} wire(s).",
                         plan.positions.len(),
-                        style_count
+                        style_count,
+                        route_count
                     ),
                 );
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);

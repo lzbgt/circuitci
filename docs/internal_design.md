@@ -186,7 +186,10 @@ position still requires explicit schematic metadata. The explicit Sketch
 `Auto Layout` action may persist the same classical placement into
 `board.schematic.node_positions` and may write standard non-default
 `board.schematic.node_styles` for textbook orientation rules such as vertical
-ground shunts and horizontal two-terminal signal-path parts.
+ground shunts and horizontal two-terminal signal-path parts. It may also
+derive `board.schematic.wire_routes` from the post-layout pin anchors so route
+metadata follows the rendered KiCad/imported symbol geometry while remaining
+display-only.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and
@@ -290,7 +293,9 @@ for the specific rendered edge, drag a named-net label display point, finish an
 active source pin connection on a named-net label's underlying net, or clear
 those display waypoints. Completing an active multi-bend wire may persist the pending bend points as
 `board.schematic.wire_routes` in the same validated edit as the pin-to-net
-connection. None of those actions may persist a separate wire object.
+connection. Sketch Auto Layout may batch-write the same display waypoint
+metadata after computing role-aware positions/styles. None of those actions may
+persist a separate wire object.
 Rotate/flip/pin-side editor actions and canvas `R` / `Shift+R` rotation,
 `F` flip, and `Shift+F` pin-side shortcuts for selected components or armed
 component placement must write `board.schematic.node_styles` and remain

@@ -140,6 +140,20 @@ fn classical_auto_layout_action_persists_positions_and_fit_command() {
     assert!(positions.contains_key("component:R1"));
     assert!(positions.contains_key("net:net_a"));
     assert!(positions.contains_key("net:gnd"));
+    assert!(
+        project
+            .board
+            .schematic
+            .wire_routes
+            .contains_key("R1.A->net_a")
+    );
+    assert!(
+        project
+            .board
+            .schematic
+            .wire_routes
+            .contains_key("R1.B->gnd")
+    );
     let style = project
         .board
         .schematic

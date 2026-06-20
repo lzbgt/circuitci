@@ -50,7 +50,8 @@ Sketch Auto Layout uses the same role-aware classical placement engine as the
 view fallback, but persists its result through normal Board IR schematic
 metadata and undo history. It writes component/net positions and only the
 non-default symbol orientations needed for standard schematic conventions such
-as vertical ground shunts.
+as vertical ground shunts, then derives display-only orthogonal wire-route
+waypoints from the resulting pin anchors.
 
 Scopes report bundles include a local `index.html` plus README manifest. The
 index links the plot SVG, snapshot CSV/Markdown artifacts, and optional

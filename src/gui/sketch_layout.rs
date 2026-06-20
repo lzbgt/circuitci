@@ -6,7 +6,7 @@ use super::kicad_symbol_library::{
 use super::sketch::{
     ProjectSnapshot, SketchComponent, SketchEdge, SketchGraph, SketchNode, SketchNodeStyle,
     SketchPinAnchor, SketchPinSide, SketchPosition, SketchSelection, SketchViewport,
-    wire_route_key,
+    SketchWireRouteEdit, wire_route_key,
 };
 use super::sketch_probes::layout_probe_badges;
 use super::sketch_routes;
@@ -31,6 +31,7 @@ struct SchematicDefaultLayout {
 pub(super) struct SketchAutoLayoutPlan {
     pub(super) positions: Vec<(SketchSelection, f64, f64)>,
     pub(super) styles: Vec<(String, SketchNodeStyle)>,
+    pub(super) wire_routes: Vec<SketchWireRouteEdit>,
 }
 
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
@@ -277,7 +278,7 @@ pub(super) fn classical_sketch_auto_layout(
         .iter()
         .map(|net| (net.id.as_str(), net.kind.as_str()))
         .collect::<std::collections::BTreeMap<_, _>>();
-    let styles = snapshot
+    let styles: Vec<(String, SketchNodeStyle)> = snapshot
         .components_detail
         .iter()
         .take(component_count)
@@ -287,7 +288,20 @@ pub(super) fn classical_sketch_auto_layout(
         })
         .collect();
 
-    SketchAutoLayoutPlan { positions, styles }
+    let wire_routes = classical_auto_layout_wire_routes(
+        snapshot,
+        &positions,
+        &styles,
+        canvas,
+        snap_enabled,
+        grid_step,
+    );
+
+    SketchAutoLayoutPlan {
+        positions,
+        styles,
+        wire_routes,
+    }
 }
 
 pub(super) fn layout_sketch_graph_viewport(
@@ -750,6 +764,87 @@ fn classical_component_style(
         mirrored: false,
         pin_side: SketchPinSide::Auto,
     })
+}
+
+fn classical_auto_layout_wire_routes(
+    snapshot: &ProjectSnapshot,
+    positions: &[(SketchSelection, f64, f64)],
+    styles: &[(String, SketchNodeStyle)],
+    canvas: egui::Rect,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> Vec<SketchWireRouteEdit> {
+    let mut planned = snapshot.clone();
+    for (selection, x, y) in positions {
+        match selection {
+            SketchSelection::Component(id) => {
+                if let Some(component) = planned
+                    .components_detail
+                    .iter_mut()
+                    .find(|component| component.id == *id)
+                {
+                    component.position = Some(SketchPosition { x: *x, y: *y });
+                }
+            }
+            SketchSelection::Net(id) => {
+                if let Some(net) = planned.nets_detail.iter_mut().find(|net| net.id == *id) {
+                    net.position = Some(SketchPosition { x: *x, y: *y });
+                }
+            }
+            SketchSelection::Overflow(_) => {}
+        }
+    }
+    for (component_id, style) in styles {
+        if let Some(component) = planned
+            .components_detail
+            .iter_mut()
+            .find(|component| component.id == *component_id)
+        {
+            component.style = *style;
+        }
+    }
+    planned.wire_routes.clear();
+    let graph = layout_sketch_graph(canvas, &planned);
+    let net_kinds = planned
+        .nets_detail
+        .iter()
+        .map(|net| (net.id.as_str(), net.kind.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    graph
+        .edges
+        .iter()
+        .filter_map(|edge| {
+            let kind = net_kinds.get(edge.net_id.as_str()).copied().unwrap_or("");
+            let waypoint = classical_route_waypoint(edge.start, edge.end, kind)?;
+            let (x, y) = snap_schematic_position(
+                (waypoint.x - canvas.left()) as f64,
+                (waypoint.y - canvas.top()) as f64,
+                snap_enabled,
+                grid_step,
+            );
+            Some((edge.source.clone(), edge.net_id.clone(), vec![(x, y)]))
+        })
+        .collect()
+}
+
+fn classical_route_waypoint(
+    start: egui::Pos2,
+    end: egui::Pos2,
+    net_kind: &str,
+) -> Option<egui::Pos2> {
+    if (start.x - end.x).abs() <= 0.5 || (start.y - end.y).abs() <= 0.5 {
+        return None;
+    }
+    let waypoint = if is_ground_kind(net_kind) || net_kind.eq_ignore_ascii_case("power") {
+        egui::pos2(start.x, end.y)
+    } else {
+        egui::pos2(end.x, start.y)
+    };
+    if waypoint.distance_sq(start) <= 0.25 || waypoint.distance_sq(end) <= 0.25 {
+        None
+    } else {
+        Some(waypoint)
+    }
 }
 
 fn connected_component_average_x(
@@ -1246,6 +1341,15 @@ mod tests {
                     pin_side: SketchPinSide::Auto,
                 }
             )]
+        );
+        assert_eq!(plan.wire_routes.len(), 6);
+        assert!(plan.wire_routes.iter().any(|(source, net_id, points)| {
+            source == "C1.B" && net_id == "gnd" && points.len() == 1
+        }));
+        assert!(
+            plan.wire_routes
+                .iter()
+                .all(|(_, _, points)| points.iter().all(|(x, y)| *x >= 0.0 && *y >= 0.0))
         );
     }
 
