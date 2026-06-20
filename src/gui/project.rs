@@ -9,12 +9,35 @@ use std::path::{Path, PathBuf};
 const PROJECT_YAML_HISTORY_LIMIT: usize = 64;
 const NE555_SCOPE_EXAMPLE_PROJECT: &str = "examples/ne555_astable_scope_smoke/project.yaml";
 const NE555_SCOPE_EXAMPLE_NAME: &str = "ne555_astable_scope";
-const NE555_SCOPE_EXPECTED_TRACES: [&str; 5] =
-    ["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"];
+const NE555_SCOPE_EXPECTED_TRACES: &[&str] =
+    &["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"];
 const NE555_SCOPE_EXPECTED_FREQUENCY: &str = "about 1.46 kHz";
+const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[GuiProjectExample {
+    id: "ne555_astable_scope",
+    open_label: "Open NE555 Scope Example",
+    run_label: "Open NE555 + Run Scopes",
+    workflow_title: "NE555 Scope Workflow",
+    project_path: NE555_SCOPE_EXAMPLE_PROJECT,
+    project_name: NE555_SCOPE_EXAMPLE_NAME,
+    expected_traces: NE555_SCOPE_EXPECTED_TRACES,
+    expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
+}];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct GuiProjectExample {
+    pub(super) id: &'static str,
+    pub(super) open_label: &'static str,
+    pub(super) run_label: &'static str,
+    pub(super) workflow_title: &'static str,
+    pub(super) project_path: &'static str,
+    pub(super) project_name: &'static str,
+    pub(super) expected_traces: &'static [&'static str],
+    pub(super) expected_frequency: &'static str,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Ne555ScopeExampleWorkflowStatus {
+pub(super) struct ScopeExampleWorkflowStatus {
+    pub(super) title: &'static str,
     pub(super) state: &'static str,
     pub(super) action: &'static str,
     pub(super) expected_traces: &'static [&'static str],
@@ -46,13 +69,13 @@ impl PendingProjectAction {
     }
 }
 
+pub(super) fn gui_project_examples() -> &'static [GuiProjectExample] {
+    GUI_PROJECT_EXAMPLES
+}
+
 impl CircuitCiApp {
-    pub(super) fn ne555_scope_example_workflow_status(
-        &self,
-    ) -> Option<Ne555ScopeExampleWorkflowStatus> {
-        if !self.is_ne555_scope_example_project() {
-            return None;
-        }
+    pub(super) fn scope_example_workflow_status(&self) -> Option<ScopeExampleWorkflowStatus> {
+        let example = self.active_scope_project_example()?;
         let (state, action) = if self.background_job_elapsed_secs().is_some() {
             (
                 "Validation running",
@@ -69,39 +92,45 @@ impl CircuitCiApp {
                 "Use Run + Scopes to simulate and open oscilloscope traces.",
             )
         };
-        Some(Ne555ScopeExampleWorkflowStatus {
+        Some(ScopeExampleWorkflowStatus {
+            title: example.workflow_title,
             state,
             action,
-            expected_traces: &NE555_SCOPE_EXPECTED_TRACES,
-            expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
+            expected_traces: example.expected_traces,
+            expected_frequency: example.expected_frequency,
         })
     }
 
-    pub(super) fn request_ne555_scope_example_load(&mut self, ctx: Option<&egui::Context>) {
+    pub(super) fn request_project_example_load(
+        &mut self,
+        example: GuiProjectExample,
+        ctx: Option<&egui::Context>,
+    ) {
         self.request_project_action(
             PendingProjectAction::LoadProjectSummary {
-                path: NE555_SCOPE_EXAMPLE_PROJECT.to_string(),
+                path: example.project_path.to_string(),
             },
             ctx,
         );
     }
 
-    pub(super) fn request_ne555_scope_example_load_and_run_scopes(
+    pub(super) fn request_project_example_load_and_run_scopes(
         &mut self,
+        example: GuiProjectExample,
         ctx: Option<&egui::Context>,
     ) {
         self.request_project_action(
             PendingProjectAction::LoadProjectSummaryAndRunScopes {
-                path: NE555_SCOPE_EXAMPLE_PROJECT.to_string(),
+                path: example.project_path.to_string(),
             },
             ctx,
         );
     }
 
-    pub(super) fn run_ne555_scope_example_workflow_scopes(&mut self) -> bool {
-        if !self.is_ne555_scope_example_project() {
+    pub(super) fn run_scope_example_workflow_scopes(&mut self) -> bool {
+        if self.active_scope_project_example().is_none() {
             self.status =
-                "Open the NE555 scope example before using this workflow action.".to_string();
+                "Open a scope-ready example before using this workflow action.".to_string();
             return false;
         }
         let was_running = self.background_job_elapsed_secs().is_some();
@@ -110,31 +139,32 @@ impl CircuitCiApp {
             || (was_running && self.stage == Stage::Simulation)
     }
 
-    pub(super) fn open_ne555_scope_example_workflow_activity(&mut self) -> bool {
-        if !self.is_ne555_scope_example_project() {
+    pub(super) fn open_scope_example_workflow_activity(&mut self) -> bool {
+        if self.active_scope_project_example().is_none() {
             self.status =
-                "Open the NE555 scope example before using this workflow action.".to_string();
+                "Open a scope-ready example before using this workflow action.".to_string();
             return false;
         }
         self.stage = Stage::Sketch;
         self.sketch_runtime_scope_overlay_visible = true;
         if self.waveforms.is_empty() {
             self.status =
-                "NE555 Scope Activity is visible; run validation to load waveform traces."
-                    .to_string();
+                "Scope Activity is visible; run validation to load waveform traces.".to_string();
         } else {
-            self.status = "Opened NE555 Scope Activity on the schematic.".to_string();
+            self.status = "Opened Scope Activity on the schematic.".to_string();
         }
-        self.push_diagnostic("NE555 workflow opened the Scope Activity schematic overlay.");
+        self.push_diagnostic("Example workflow opened the Scope Activity schematic overlay.");
         true
     }
 
-    fn is_ne555_scope_example_project(&self) -> bool {
-        self.project_path == NE555_SCOPE_EXAMPLE_PROJECT
-            || self
-                .project_snapshot
-                .as_ref()
-                .is_some_and(|snapshot| snapshot.name == NE555_SCOPE_EXAMPLE_NAME)
+    fn active_scope_project_example(&self) -> Option<GuiProjectExample> {
+        GUI_PROJECT_EXAMPLES.iter().copied().find(|example| {
+            self.project_path == example.project_path
+                || self
+                    .project_snapshot
+                    .as_ref()
+                    .is_some_and(|snapshot| snapshot.name == example.project_name)
+        })
     }
 
     pub(super) fn handle_close_request(&mut self, ctx: &egui::Context) {

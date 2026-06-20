@@ -1,4 +1,4 @@
-use super::project::PendingProjectAction;
+use super::project::{PendingProjectAction, gui_project_examples};
 use super::{CircuitCiApp, Stage};
 use crate::reports::{Finding, Limitation, ValidationReport};
 use eframe::egui;
@@ -43,17 +43,7 @@ impl CircuitCiApp {
                         self.pick_and_request_project_load(ui.ctx());
                         ui.close();
                     }
-                    if ui.button("Open NE555 Scope Example").clicked() {
-                        self.request_ne555_scope_example_load(Some(ui.ctx()));
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(can_start_job, egui::Button::new("Open NE555 + Run Scopes"))
-                        .clicked()
-                    {
-                        self.request_ne555_scope_example_load_and_run_scopes(Some(ui.ctx()));
-                        ui.close();
-                    }
+                    self.project_examples_menu(ui, can_start_job);
                     if ui.button("Load Project").clicked() {
                         self.request_project_action(
                             PendingProjectAction::LoadProjectSummary {
@@ -191,19 +181,8 @@ impl CircuitCiApp {
                         self.pick_and_request_project_load(ui.ctx());
                     }
                 });
-                if ui.button("Open NE555 Scope Example").clicked() {
-                    self.request_ne555_scope_example_load(Some(ui.ctx()));
-                }
-                if ui
-                    .add_enabled(
-                        self.background_job_elapsed_secs().is_none(),
-                        egui::Button::new("Open NE555 + Run Scopes"),
-                    )
-                    .clicked()
-                {
-                    self.request_ne555_scope_example_load_and_run_scopes(Some(ui.ctx()));
-                }
-                self.ne555_scope_example_workflow_panel(ui);
+                self.project_examples_menu(ui, self.background_job_elapsed_secs().is_none());
+                self.scope_example_workflow_panel(ui);
                 ui.label("Output");
                 ui.horizontal(|ui| {
                     ui.text_edit_singleline(&mut self.output_dir);
@@ -316,12 +295,30 @@ impl CircuitCiApp {
             });
     }
 
-    fn ne555_scope_example_workflow_panel(&mut self, ui: &mut egui::Ui) {
-        let Some(status) = self.ne555_scope_example_workflow_status() else {
+    fn project_examples_menu(&mut self, ui: &mut egui::Ui, can_start_job: bool) {
+        ui.menu_button("Examples", |ui| {
+            for example in gui_project_examples() {
+                if ui.button(example.open_label).clicked() {
+                    self.request_project_example_load(*example, Some(ui.ctx()));
+                    ui.close();
+                }
+                if ui
+                    .add_enabled(can_start_job, egui::Button::new(example.run_label))
+                    .clicked()
+                {
+                    self.request_project_example_load_and_run_scopes(*example, Some(ui.ctx()));
+                    ui.close();
+                }
+            }
+        });
+    }
+
+    fn scope_example_workflow_panel(&mut self, ui: &mut egui::Ui) {
+        let Some(status) = self.scope_example_workflow_status() else {
             return;
         };
         ui.group(|ui| {
-            ui.strong("NE555 Scope Workflow");
+            ui.strong(status.title);
             ui.label(format!("State: {}", status.state));
             ui.label(format!("Next: {}", status.action));
             ui.horizontal(|ui| {
@@ -330,10 +327,10 @@ impl CircuitCiApp {
                     .add_enabled(can_start_run, egui::Button::new("Run + Scopes"))
                     .clicked()
                 {
-                    self.run_ne555_scope_example_workflow_scopes();
+                    self.run_scope_example_workflow_scopes();
                 }
                 if ui.button("Open Scope Activity").clicked() {
-                    self.open_ne555_scope_example_workflow_activity();
+                    self.open_scope_example_workflow_activity();
                 }
             });
             ui.label(format!(

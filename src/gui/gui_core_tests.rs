@@ -1,4 +1,4 @@
-use super::project::PendingProjectAction;
+use super::project::{PendingProjectAction, gui_project_examples};
 use super::sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
     SketchPin, SketchSelection, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -266,7 +266,7 @@ fn ne555_scope_example_import_preset_sets_scope_ready_spice_fields() {
 fn ne555_scope_example_shortcut_loads_direct_project() {
     let mut app = CircuitCiApp::default();
 
-    app.request_ne555_scope_example_load(None);
+    app.request_project_example_load(gui_project_examples()[0], None);
 
     assert_eq!(
         app.project_path,
@@ -282,13 +282,34 @@ fn ne555_scope_example_shortcut_loads_direct_project() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_ne555_scope_fixture() {
+    let examples = gui_project_examples();
+
+    assert_eq!(examples.len(), 1);
+    let example = examples[0];
+    assert_eq!(example.id, "ne555_astable_scope");
+    assert_eq!(example.open_label, "Open NE555 Scope Example");
+    assert_eq!(example.run_label, "Open NE555 + Run Scopes");
+    assert_eq!(
+        example.project_path,
+        "examples/ne555_astable_scope_smoke/project.yaml"
+    );
+    assert_eq!(example.project_name, "ne555_astable_scope");
+    assert_eq!(
+        example.expected_traces,
+        &["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"]
+    );
+}
+
+#[test]
 fn ne555_scope_example_workflow_status_is_contextual() {
     let mut app = CircuitCiApp::default();
-    assert!(app.ne555_scope_example_workflow_status().is_none());
+    assert!(app.scope_example_workflow_status().is_none());
 
-    app.request_ne555_scope_example_load(None);
-    let status = app.ne555_scope_example_workflow_status().unwrap();
+    app.request_project_example_load(gui_project_examples()[0], None);
+    let status = app.scope_example_workflow_status().unwrap();
 
+    assert_eq!(status.title, "NE555 Scope Workflow");
     assert_eq!(status.state, "Ready");
     assert_eq!(
         status.expected_traces,
@@ -305,7 +326,7 @@ fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
         ..Default::default()
     };
 
-    app.request_ne555_scope_example_load(None);
+    app.request_project_example_load(gui_project_examples()[0], None);
 
     assert_eq!(
         app.pending_project_action,
@@ -324,7 +345,7 @@ fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
 fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
     let mut app = CircuitCiApp::default();
 
-    app.request_ne555_scope_example_load_and_run_scopes(None);
+    app.request_project_example_load_and_run_scopes(gui_project_examples()[0], None);
 
     assert_eq!(
         app.project_path,
@@ -333,7 +354,7 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
     assert_eq!(app.stage, Stage::Simulation);
     assert!(app.background_job_elapsed_secs().is_some());
     assert!(app.status.contains("Running validation in Scopes"));
-    let status = app.ne555_scope_example_workflow_status().unwrap();
+    let status = app.scope_example_workflow_status().unwrap();
     assert_eq!(status.state, "Validation running");
     assert!(status.action.contains("waveform loading"));
     assert!(app.project_yaml.contains("name: ne555_astable_scope"));
@@ -345,13 +366,13 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
 fn ne555_scope_example_workflow_run_action_starts_scopes_validation() {
     let mut app = CircuitCiApp::default();
 
-    app.request_ne555_scope_example_load(None);
+    app.request_project_example_load(gui_project_examples()[0], None);
 
-    assert!(app.run_ne555_scope_example_workflow_scopes());
+    assert!(app.run_scope_example_workflow_scopes());
     assert_eq!(app.stage, Stage::Simulation);
     assert!(app.background_job_elapsed_secs().is_some());
     assert!(app.status.contains("Running validation in Scopes"));
-    let status = app.ne555_scope_example_workflow_status().unwrap();
+    let status = app.scope_example_workflow_status().unwrap();
     assert_eq!(status.state, "Validation running");
 }
 
@@ -363,9 +384,9 @@ fn ne555_scope_example_workflow_activity_action_opens_sketch_overlay() {
         ..Default::default()
     };
 
-    app.request_ne555_scope_example_load(None);
+    app.request_project_example_load(gui_project_examples()[0], None);
 
-    assert!(app.open_ne555_scope_example_workflow_activity());
+    assert!(app.open_scope_example_workflow_activity());
     assert_eq!(app.stage, Stage::Sketch);
     assert!(app.sketch_runtime_scope_overlay_visible);
     assert!(app.status.contains("Scope Activity"));
@@ -378,7 +399,7 @@ fn ne555_scope_example_run_shortcut_uses_unsaved_project_guard() {
         ..Default::default()
     };
 
-    app.request_ne555_scope_example_load_and_run_scopes(None);
+    app.request_project_example_load_and_run_scopes(gui_project_examples()[0], None);
 
     assert_eq!(
         app.pending_project_action,
