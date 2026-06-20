@@ -342,6 +342,36 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
 }
 
 #[test]
+fn ne555_scope_example_workflow_run_action_starts_scopes_validation() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_ne555_scope_example_load(None);
+
+    assert!(app.run_ne555_scope_example_workflow_scopes());
+    assert_eq!(app.stage, Stage::Simulation);
+    assert!(app.background_job_elapsed_secs().is_some());
+    assert!(app.status.contains("Running validation in Scopes"));
+    let status = app.ne555_scope_example_workflow_status().unwrap();
+    assert_eq!(status.state, "Validation running");
+}
+
+#[test]
+fn ne555_scope_example_workflow_activity_action_opens_sketch_overlay() {
+    let mut app = CircuitCiApp {
+        stage: Stage::Simulation,
+        sketch_runtime_scope_overlay_visible: false,
+        ..Default::default()
+    };
+
+    app.request_ne555_scope_example_load(None);
+
+    assert!(app.open_ne555_scope_example_workflow_activity());
+    assert_eq!(app.stage, Stage::Sketch);
+    assert!(app.sketch_runtime_scope_overlay_visible);
+    assert!(app.status.contains("Scope Activity"));
+}
+
+#[test]
 fn ne555_scope_example_run_shortcut_uses_unsaved_project_guard() {
     let mut app = CircuitCiApp {
         project_yaml_dirty: true,

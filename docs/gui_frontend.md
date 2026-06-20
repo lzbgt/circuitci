@@ -378,7 +378,8 @@ form:
   scope-ready analog fixture plus `Open NE555 + Run Scopes` for loading that
   fixture and starting validation directly in Scopes. When the NE555 fixture is
   active, the Project panel shows a compact workflow status with expected
-  traces and approximate output frequency.
+  traces, approximate output frequency, and direct `Run + Scopes` / `Open Scope
+  Activity` actions.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

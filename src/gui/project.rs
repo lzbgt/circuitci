@@ -98,6 +98,37 @@ impl CircuitCiApp {
         );
     }
 
+    pub(super) fn run_ne555_scope_example_workflow_scopes(&mut self) -> bool {
+        if !self.is_ne555_scope_example_project() {
+            self.status =
+                "Open the NE555 scope example before using this workflow action.".to_string();
+            return false;
+        }
+        let was_running = self.background_job_elapsed_secs().is_some();
+        self.run_schematic_model_open_scopes();
+        self.background_job_elapsed_secs().is_some()
+            || (was_running && self.stage == Stage::Simulation)
+    }
+
+    pub(super) fn open_ne555_scope_example_workflow_activity(&mut self) -> bool {
+        if !self.is_ne555_scope_example_project() {
+            self.status =
+                "Open the NE555 scope example before using this workflow action.".to_string();
+            return false;
+        }
+        self.stage = Stage::Sketch;
+        self.sketch_runtime_scope_overlay_visible = true;
+        if self.waveforms.is_empty() {
+            self.status =
+                "NE555 Scope Activity is visible; run validation to load waveform traces."
+                    .to_string();
+        } else {
+            self.status = "Opened NE555 Scope Activity on the schematic.".to_string();
+        }
+        self.push_diagnostic("NE555 workflow opened the Scope Activity schematic overlay.");
+        true
+    }
+
     fn is_ne555_scope_example_project(&self) -> bool {
         self.project_path == NE555_SCOPE_EXAMPLE_PROJECT
             || self

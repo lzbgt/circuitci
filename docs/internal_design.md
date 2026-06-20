@@ -68,8 +68,9 @@ not depend on regenerating import output first.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, the guarded direct NE555 scope example load and load-then-run-Scopes
-shortcuts, contextual NE555 workflow status projection, and the shared Board IR
-edit history. `src/gui/sketch.rs`
+shortcuts, contextual NE555 workflow status/action projection, workflow-panel
+launchers for Run + Scopes and Scope Activity, and the shared Board IR edit
+history. `src/gui/sketch.rs`
 owns Board IR graph snapshots, sketch data types, schematic wire route waypoint
 metadata, shared sketch YAML helpers, and model-port default pin/net seeding
 for library-backed component insertion. `src/gui/sketch_layout.rs` owns graph
