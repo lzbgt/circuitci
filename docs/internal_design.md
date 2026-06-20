@@ -171,8 +171,9 @@ symbol geometry documented in
 `docs/research/kicad/default_gui_symbol_reference.md`.
 `src/gui/kicad_symbol_library.rs` owns installed KiCad symbol-library discovery,
 installed and user-imported `.kicad_sym` catalog parsing, pin metadata
-extraction for schematic insertion, on-demand drawing parse/cache, and
-deterministic fallback routing when KiCad is absent or a symbol is unsupported.
+extraction for schematic insertion, numbered pin-line anchor projection,
+on-demand drawing parse/cache, and deterministic fallback routing when KiCad is
+absent or a symbol is unsupported.
 It must continue to persist only Board IR components, nets, pins, and optional
 schematic display metadata such as positions/styles/symbol ids;
 symbol-library rendering must not introduce a second connectivity model.
@@ -245,7 +246,8 @@ duplication, and delete paths instead of creating another mutation model.
 `src/gui/sketch_probes.rs`
 owns derived schematic voltage/current/power probe-element targeting, layout,
 hit-testing, KiCad meter/scope drawing, and fallback drawing. Rendered pin anchors are UI affordances derived from
-component pin bindings and connected net kind. They may show color and
+component pin bindings, connected net kind, and matching KiCad symbol pin
+geometry when available. They may show color and
 pin/kind chips for hover, selection, connectivity, and active wire targeting,
 but must not persist a second port or connectivity model. Clicking or dragging
 an anchor may start or complete a wire assignment. Pin-to-pin wiring should

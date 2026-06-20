@@ -44,6 +44,7 @@ enum KiCadSymbolPrimitive {
         at: KiCadPoint,
     },
     PinLine {
+        pin: Option<String>,
         start: KiCadPoint,
         end: KiCadPoint,
     },
@@ -78,6 +79,14 @@ pub(super) struct KiCadSymbolPin {
     pub(super) id: String,
     pub(super) name: String,
     pub(super) electrical_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct KiCadSymbolPinAnchor {
+    pub(super) pin: String,
+    pub(super) pos: egui::Pos2,
+    pub(super) label_pos: egui::Pos2,
+    pub(super) label_align: egui::Align2,
 }
 
 #[derive(Clone, Copy)]
@@ -217,6 +226,36 @@ pub(super) fn draw_kicad_symbol_by_id(
     };
     drawing.draw(painter, rect, style, 0, stroke, color);
     true
+}
+
+pub(super) fn kicad_symbol_pin_anchors(
+    symbol_id: &str,
+    rect: egui::Rect,
+    style: SketchNodeStyle,
+) -> Vec<KiCadSymbolPinAnchor> {
+    cached_kicad_symbol_drawing(symbol_id)
+        .map(|drawing| drawing.pin_anchors(rect.shrink2(egui::vec2(3.0, 3.0)), style, 0))
+        .unwrap_or_default()
+}
+
+pub(super) fn kicad_default_symbol_pin_anchors(
+    kind: SketchSymbolKind,
+    rect: egui::Rect,
+    style: SketchNodeStyle,
+) -> Vec<KiCadSymbolPinAnchor> {
+    let Some(spec) = symbol_spec_for_kind(kind) else {
+        return Vec::new();
+    };
+    default_symbol_cache()
+        .get(spec.key)
+        .map(|drawing| {
+            drawing.pin_anchors(
+                rect.shrink2(egui::vec2(3.0, 3.0)),
+                style,
+                spec.rotation_offset_deg,
+            )
+        })
+        .unwrap_or_default()
 }
 
 pub(super) fn installed_kicad_symbol_catalog() -> &'static [KiCadSymbolCatalogEntry] {
@@ -568,7 +607,11 @@ fn collect_symbol_primitives(list: &[Sexp], primitives: &mut Vec<KiCadSymbolPrim
             }
             Some("pin") => {
                 if let Some((start, end)) = parse_pin_line(child) {
-                    primitives.push(KiCadSymbolPrimitive::PinLine { start, end });
+                    primitives.push(KiCadSymbolPrimitive::PinLine {
+                        pin: parse_pin_id(child),
+                        start,
+                        end,
+                    });
                 }
             }
             Some("symbol") => collect_symbol_primitives(child, primitives),
@@ -587,6 +630,14 @@ fn parse_points(list: &[Sexp]) -> Option<Vec<KiCadPoint>> {
 
 fn parse_xy_pair(list: &[Sexp]) -> Option<KiCadPoint> {
     Some(KiCadPoint::new(numeric_at(list, 1)?, numeric_at(list, 2)?))
+}
+
+fn parse_pin_id(pin: &[Sexp]) -> Option<String> {
+    child_list(pin, "number")
+        .and_then(|number| string_at(number, 1))
+        .or_else(|| child_list(pin, "name").and_then(|name| string_at(name, 1)))
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_string)
 }
 
 fn parse_pin_line(pin: &[Sexp]) -> Option<(KiCadPoint, KiCadPoint)> {
@@ -656,6 +707,42 @@ impl KiCadSymbolDrawing {
         }
     }
 
+    fn pin_anchors(
+        &self,
+        rect: egui::Rect,
+        style: SketchNodeStyle,
+        rotation_offset_deg: i32,
+    ) -> Vec<KiCadSymbolPinAnchor> {
+        let mut anchors = Vec::new();
+        for primitive in &self.primitives {
+            let KiCadSymbolPrimitive::PinLine {
+                pin: Some(pin),
+                start,
+                end,
+            } = primitive
+            else {
+                continue;
+            };
+            let pos = self.project(*start, rect, style, rotation_offset_deg);
+            let inner = self.project(*end, rect, style, rotation_offset_deg);
+            let outward = pos - inner;
+            let outward = if outward.length_sq() > f32::EPSILON {
+                outward.normalized()
+            } else {
+                outward_from_center(pos, rect.center())
+            };
+            anchors.push(KiCadSymbolPinAnchor {
+                pin: pin.clone(),
+                pos,
+                label_pos: pos + outward * 10.0,
+                label_align: align_for_outward(outward),
+            });
+        }
+        anchors.sort_by(|left, right| left.pin.cmp(&right.pin));
+        anchors.dedup_by(|left, right| left.pin == right.pin);
+        anchors
+    }
+
     fn project(
         &self,
         point: KiCadPoint,
@@ -684,6 +771,29 @@ impl KiCadSymbolDrawing {
     }
 }
 
+fn outward_from_center(pos: egui::Pos2, center: egui::Pos2) -> egui::Vec2 {
+    let outward = pos - center;
+    if outward.length_sq() > f32::EPSILON {
+        outward.normalized()
+    } else {
+        egui::vec2(1.0, 0.0)
+    }
+}
+
+fn align_for_outward(outward: egui::Vec2) -> egui::Align2 {
+    if outward.x.abs() >= outward.y.abs() {
+        if outward.x < 0.0 {
+            egui::Align2::RIGHT_CENTER
+        } else {
+            egui::Align2::LEFT_CENTER
+        }
+    } else if outward.y < 0.0 {
+        egui::Align2::CENTER_BOTTOM
+    } else {
+        egui::Align2::CENTER_TOP
+    }
+}
+
 impl KiCadSymbolPrimitive {
     fn collect_points(&self, points: &mut Vec<KiCadPoint>) {
         match self {
@@ -708,7 +818,7 @@ impl KiCadSymbolPrimitive {
                 points.push(*end);
             }
             Self::Text { at, .. } => points.push(*at),
-            Self::PinLine { start, end } => {
+            Self::PinLine { start, end, .. } => {
                 points.push(*start);
                 points.push(*end);
             }
@@ -799,7 +909,7 @@ impl KiCadSymbolPrimitive {
                     context.color,
                 );
             }
-            Self::PinLine { start, end } => draw_polyline(
+            Self::PinLine { start, end, .. } => draw_polyline(
                 context.painter,
                 context.drawing,
                 context.rect,
@@ -914,6 +1024,25 @@ mod tests {
         assert!(drawing.primitives.len() >= 5);
         assert!(drawing.max.y >= 3.0);
         assert!(drawing.min.y <= -3.0);
+    }
+
+    #[test]
+    fn projects_kicad_pin_lines_as_named_screen_anchors() {
+        let drawing = parse_kicad_symbol_drawing(TEST_LIB, "R").unwrap();
+        let anchors = drawing.pin_anchors(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(120.0, 120.0)),
+            SketchNodeStyle::default(),
+            0,
+        );
+        let by_pin = anchors
+            .iter()
+            .map(|anchor| (anchor.pin.as_str(), anchor))
+            .collect::<BTreeMap<_, _>>();
+
+        assert_eq!(anchors.len(), 2);
+        assert!(by_pin["1"].pos.y < by_pin["2"].pos.y);
+        assert_eq!(by_pin["1"].label_align, egui::Align2::CENTER_BOTTOM);
+        assert_eq!(by_pin["2"].label_align, egui::Align2::CENTER_TOP);
     }
 
     #[test]

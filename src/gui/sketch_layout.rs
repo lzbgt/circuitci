@@ -1,5 +1,8 @@
 use eframe::egui;
 
+use super::kicad_symbol_library::{
+    KiCadSymbolPinAnchor, kicad_default_symbol_pin_anchors, kicad_symbol_pin_anchors,
+};
 use super::sketch::{
     ProjectSnapshot, SketchComponent, SketchEdge, SketchGraph, SketchNode, SketchNodeStyle,
     SketchPinAnchor, SketchPinSide, SketchPosition, SketchSelection, SketchViewport,
@@ -7,12 +10,13 @@ use super::sketch::{
 };
 use super::sketch_probes::layout_probe_badges;
 use super::sketch_routes;
-use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind};
+use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, symbol_glyph_rect};
 
 const MIN_SKETCH_GRID_STEP: f32 = 4.0;
 const MAX_SKETCH_GRID_STEP: f32 = 96.0;
 const MAX_SKETCH_ITEMS_PER_SIDE: usize = 512;
 const MAX_SKETCH_EDGES: usize = 512;
+const MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT: usize = 64;
 
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
@@ -488,34 +492,98 @@ fn component_pin_anchors(
     rect: egui::Rect,
     net_kinds: &std::collections::BTreeMap<&str, &str>,
 ) -> Vec<SketchPinAnchor> {
-    let visible_count = component.pins.len().min(8);
+    let visible_count = component
+        .pins
+        .len()
+        .min(MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT);
     if visible_count == 0 {
         return Vec::new();
     }
-    if component.pins.len() == 2 && component_symbol_kind(component).is_kicad_device_symbol() {
-        return component
-            .pins
-            .iter()
-            .enumerate()
-            .map(|(index, pin)| {
-                let (pos, label_pos, label_align) =
-                    two_terminal_pin_anchor(rect, index, component.style);
-                SketchPinAnchor {
-                    component_id: component.id.clone(),
-                    pin: pin.pin.clone(),
-                    net: pin.net.clone(),
-                    kind: net_kinds
-                        .get(pin.net.as_str())
-                        .copied()
-                        .unwrap_or("unresolved")
-                        .to_string(),
-                    pos,
-                    label_pos,
-                    label_align,
-                }
-            })
-            .collect();
+    let symbol = component_symbol_kind(component);
+    if let Some(glyph_rect) = symbol_glyph_rect(rect, symbol, component.kicad_symbol_id.is_some()) {
+        let kicad_anchors = component
+            .kicad_symbol_id
+            .as_deref()
+            .map(|symbol_id| kicad_symbol_pin_anchors(symbol_id, glyph_rect, component.style))
+            .unwrap_or_else(|| {
+                kicad_default_symbol_pin_anchors(symbol, glyph_rect, component.style)
+            });
+        let anchors =
+            component_pin_anchors_from_kicad(component, &kicad_anchors, net_kinds, visible_count);
+        if !anchors.is_empty() {
+            return anchors;
+        }
     }
+    if component.pins.len() == 2 && symbol.is_kicad_device_symbol() {
+        return two_terminal_component_pin_anchors(component, rect, net_kinds);
+    }
+    generic_component_pin_anchors(component, rect, net_kinds, visible_count)
+}
+
+fn component_pin_anchors_from_kicad(
+    component: &SketchComponent,
+    kicad_anchors: &[KiCadSymbolPinAnchor],
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+    visible_count: usize,
+) -> Vec<SketchPinAnchor> {
+    component
+        .pins
+        .iter()
+        .take(visible_count)
+        .filter_map(|pin| {
+            let anchor = kicad_anchors.iter().find(|anchor| anchor.pin == pin.pin)?;
+            Some(SketchPinAnchor {
+                component_id: component.id.clone(),
+                pin: pin.pin.clone(),
+                net: pin.net.clone(),
+                kind: net_kinds
+                    .get(pin.net.as_str())
+                    .copied()
+                    .unwrap_or("unresolved")
+                    .to_string(),
+                pos: anchor.pos,
+                label_pos: anchor.label_pos,
+                label_align: anchor.label_align,
+            })
+        })
+        .collect()
+}
+
+fn two_terminal_component_pin_anchors(
+    component: &SketchComponent,
+    rect: egui::Rect,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> Vec<SketchPinAnchor> {
+    component
+        .pins
+        .iter()
+        .enumerate()
+        .map(|(index, pin)| {
+            let (pos, label_pos, label_align) =
+                two_terminal_pin_anchor(rect, index, component.style);
+            SketchPinAnchor {
+                component_id: component.id.clone(),
+                pin: pin.pin.clone(),
+                net: pin.net.clone(),
+                kind: net_kinds
+                    .get(pin.net.as_str())
+                    .copied()
+                    .unwrap_or("unresolved")
+                    .to_string(),
+                pos,
+                label_pos,
+                label_align,
+            }
+        })
+        .collect()
+}
+
+fn generic_component_pin_anchors(
+    component: &SketchComponent,
+    rect: egui::Rect,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+    visible_count: usize,
+) -> Vec<SketchPinAnchor> {
     let pin_side = component_pin_side(component.style);
     component
         .pins
@@ -678,4 +746,78 @@ pub(super) fn compact_label(value: &str, max_chars: usize) -> String {
         .collect::<String>();
     text.push_str("...");
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gui::sketch::SketchPin;
+
+    fn test_component() -> SketchComponent {
+        SketchComponent {
+            id: "U1".to_string(),
+            model: "generic.schematic.imported_component".to_string(),
+            part_number: None,
+            spice: None,
+            pins: vec![
+                SketchPin {
+                    pin: "1".to_string(),
+                    net: "in".to_string(),
+                },
+                SketchPin {
+                    pin: "2".to_string(),
+                    net: "out".to_string(),
+                },
+            ],
+            position: None,
+            style: SketchNodeStyle::default(),
+            kicad_symbol_id: Some("Device:R".to_string()),
+            source_paths: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn component_pin_anchors_use_matching_kicad_pin_geometry() {
+        let kicad = vec![
+            KiCadSymbolPinAnchor {
+                pin: "1".to_string(),
+                pos: egui::pos2(20.0, 40.0),
+                label_pos: egui::pos2(10.0, 40.0),
+                label_align: egui::Align2::RIGHT_CENTER,
+            },
+            KiCadSymbolPinAnchor {
+                pin: "2".to_string(),
+                pos: egui::pos2(80.0, 40.0),
+                label_pos: egui::pos2(90.0, 40.0),
+                label_align: egui::Align2::LEFT_CENTER,
+            },
+        ];
+        let net_kinds = [("in", "analog"), ("out", "analog")]
+            .into_iter()
+            .collect::<std::collections::BTreeMap<_, _>>();
+
+        let anchors = component_pin_anchors_from_kicad(&test_component(), &kicad, &net_kinds, 2);
+
+        assert_eq!(anchors.len(), 2);
+        assert_eq!(anchors[0].pin, "1");
+        assert_eq!(anchors[0].pos, egui::pos2(20.0, 40.0));
+        assert_eq!(anchors[0].label_align, egui::Align2::RIGHT_CENTER);
+        assert_eq!(anchors[1].pin, "2");
+        assert_eq!(anchors[1].pos, egui::pos2(80.0, 40.0));
+    }
+
+    #[test]
+    fn component_pin_anchors_ignore_unmatched_kicad_pins() {
+        let kicad = vec![KiCadSymbolPinAnchor {
+            pin: "3".to_string(),
+            pos: egui::pos2(20.0, 40.0),
+            label_pos: egui::pos2(10.0, 40.0),
+            label_align: egui::Align2::RIGHT_CENTER,
+        }];
+        let net_kinds = std::collections::BTreeMap::new();
+
+        let anchors = component_pin_anchors_from_kicad(&test_component(), &kicad, &net_kinds, 2);
+
+        assert!(anchors.is_empty());
+    }
 }

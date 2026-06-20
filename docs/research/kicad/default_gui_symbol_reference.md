@@ -11,10 +11,12 @@ The GUI Sketch defaults treat installed KiCad symbol libraries as the canonical
 source for built-in schematic symbols. Runtime rendering discovers installed
 KiCad symbol directories, catalogs every top-level symbol from `.kicad_sym`
 files for the Library panel, parses selected drawing primitives on demand,
-caches them, and falls back to checked-in geometry only when KiCad is
-unavailable or a symbol cannot be parsed. User-provided `.kicad_sym` files can
-also be imported into the GUI library; imported symbols share the same catalog,
-pin extraction, insertion, and drawing cache path.
+caches them, and projects numbered KiCad pin lines into Sketch pin anchors for
+wire hit-testing/routing. It falls back to checked-in geometry only when KiCad
+is unavailable or a symbol cannot be parsed. User-provided `.kicad_sym` files
+can also be imported into the GUI library; imported symbols share the same
+catalog, pin extraction, insertion, drawing cache, and pin-anchor projection
+path.
 
 ## Symbols Checked
 

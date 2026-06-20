@@ -97,10 +97,13 @@ pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.r
 owns graph layout helpers, view-state transforms, schematic grid/snap helpers,
 fit-all and fit-selection bounds, bounded full-list logical layout for pannable
 imported designs, orthogonal wire geometry, wire hit-testing, and model-aware
-pin-anchor layout primitives. Pin anchors are colored from the connected Board IR net kind and
-show compact pin/kind chips while hovered, selected, connected-highlighted, or
-used as an active wire target; this is a canvas affordance, not another
-connectivity model. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
+pin-anchor layout primitives. For installed or imported KiCad symbols,
+matching pin anchors project from the symbol's own numbered pin lines, so wire
+starts and hit targets line up with the rendered schematic symbol instead of a
+generic component box. Pin anchors are colored from the connected Board IR net
+kind and show compact pin/kind chips while hovered, selected,
+connected-highlighted, or used as an active wire target; this is a canvas
+affordance, not another connectivity model. `src/gui/sketch_routes.rs` owns orthogonal schematic wire-route
 geometry helpers used for custom route display, hit-testing, insertion, active
 wire previews, and drag previews. `src/gui/sketch_wire_draft.rs` owns the
 transient in-progress wire-bend points while a pin connection is being drawn.
@@ -183,8 +186,8 @@ schematic labels/junction targets rather than green boxes. The checked local
 KiCad libraries documented in `docs/research/kicad/default_gui_symbol_reference.md`
 are the canonical visual source. `src/gui/kicad_symbol_library.rs` discovers
 installed KiCad symbol directories, parses and caches the needed `.kicad_sym`
-drawing primitives, and leaves deterministic built-in fallback geometry for
-machines without KiCad.
+drawing primitives and numbered pin-line anchors, and leaves deterministic
+built-in fallback geometry for machines without KiCad.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
 fit-all/fit-selection/home viewport commands, multi-selected
 drag/nudge/alignment/distribution, and batched selected-item deletion as
@@ -258,7 +261,9 @@ browser scans installed `.kicad_sym` files, accepts user-imported
 `.kicad_sym` files, filters by library/symbol/pin metadata, can apply a KiCad
 `Library:Symbol` id to a selected component, and can insert a generic
 schematic component with default pins derived from KiCad pin numbers while
-persisting the display glyph under `board.schematic.component_symbols`. The
+persisting the display glyph under `board.schematic.component_symbols`. When
+the component pin IDs match the KiCad symbol pin numbers, Sketch routes from
+the symbol's real pin locations. The
 model browser remains the source of Board IR model semantics: it filters
 component models, stages selected models, assigns models to selected
 components, and inserts model-backed components through the same Board IR YAML
