@@ -22,7 +22,8 @@ use super::sketch_canvas_render::{
     sketch_wire_hover_tooltip, sketch_wire_route_handle_tooltip, wire_preview_start,
 };
 use super::sketch_probes::{
-    SketchProbeTarget, draw_probe_badge, hit_test_probe_badge, probe_assertion_status,
+    SketchProbe, SketchProbeRuntimeReadout, SketchProbeTarget, draw_probe_badge,
+    hit_test_probe_badge, probe_assertion_status,
 };
 use super::sketch_routes;
 use super::sketch_scope_feedback::{
@@ -31,11 +32,13 @@ use super::sketch_scope_feedback::{
 use super::sketch_scope_tools::{SketchScopeProbePlacement, SketchScopeProbeTool};
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
-    runtime_scope_probe_target_for_selection, waveform_probe_value_for_badge,
+    runtime_scope_probe_frequency_label, runtime_scope_probe_sample_label,
+    runtime_scope_probe_sparkline_points, runtime_scope_probe_target_for_selection,
+    waveform_probe_value_for_badge, waveform_time_range_for_view,
 };
 use super::{
-    CircuitCiApp, sketch_alignment, sketch_bundles, sketch_component_labels, sketch_connectivity,
-    sketch_hierarchy, sketch_minimap, sketch_net_labels,
+    CircuitCiApp, ScopeProbeTarget, sketch_alignment, sketch_bundles, sketch_component_labels,
+    sketch_connectivity, sketch_hierarchy, sketch_minimap, sketch_net_labels,
 };
 
 impl CircuitCiApp {
@@ -647,7 +650,12 @@ impl CircuitCiApp {
                     && hovered.probe.probe_name == badge.probe.probe_name
             });
             let status = probe_assertion_status(self.report.as_ref(), &badge.probe);
-            draw_probe_badge(&painter, badge, hovered, status, opacity);
+            let runtime = badge
+                .probe
+                .element_id
+                .as_ref()
+                .and_then(|_| self.probe_badge_runtime_readout(&badge.probe));
+            draw_probe_badge(&painter, badge, hovered, status, runtime.as_ref(), opacity);
         }
 
         let mut placement_applied = false;
@@ -1655,5 +1663,46 @@ impl CircuitCiApp {
         self.sketch_selection_quick_toolbar(ui, rect, &graph);
         self.sketch_net_label_inline_editor(ui, &net_label_badges, snapshot);
         self.sketch_component_inline_editor(ui, &graph);
+    }
+
+    fn probe_badge_runtime_readout(
+        &self,
+        probe: &SketchProbe,
+    ) -> Option<SketchProbeRuntimeReadout> {
+        let target = ScopeProbeTarget {
+            scenario_name: probe.scenario_name.clone(),
+            probe_name: probe.probe_name.clone(),
+        };
+        for waveform_index in 0..self.waveforms.len() {
+            let Some(sample_label) = runtime_scope_probe_sample_label(
+                &self.waveforms,
+                waveform_index,
+                self.waveform_cursor_a_us,
+                &target,
+            ) else {
+                continue;
+            };
+            let sparkline_points =
+                runtime_scope_probe_sparkline_points(&self.waveforms, waveform_index, &target, 24)
+                    .unwrap_or_default();
+            let cursor_fraction = waveform_time_range_for_view(&self.waveforms, waveform_index)
+                .and_then(|(start_us, end_us)| {
+                    (end_us > start_us).then_some(
+                        ((self.waveform_cursor_a_us - start_us) / (end_us - start_us))
+                            .clamp(0.0, 1.0) as f32,
+                    )
+                });
+            return Some(SketchProbeRuntimeReadout {
+                sample_label,
+                frequency_label: runtime_scope_probe_frequency_label(
+                    &self.waveforms,
+                    waveform_index,
+                    &target,
+                ),
+                sparkline_points,
+                cursor_fraction,
+            });
+        }
+        None
     }
 }

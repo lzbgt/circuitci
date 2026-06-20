@@ -753,7 +753,11 @@ net/component, attachment kind (`node`, `pin`, or `wire`), and optional
 component-pin source when placement came from a pin or routed wire. Pin and
 wire placements render from actual pin/wire geometry; dragging a probe element
 writes optional display-only `x`/`y` coordinates so the probe behaves like a
-placed EDA symbol without changing solver connectivity. Voltage
+placed EDA symbol without changing solver connectivity. After simulation, a
+loaded matching waveform paints a compact strip beside the probe with the
+current Cursor A sample, optional frequency/period readout, and a small
+sparkline; the strip is non-mutating and does not replace Scopes or measurement
+snapshots. Voltage
 probe elements attach to Board IR nets only when the probe expression's SPICE
 node maps back through `analog.node_bindings`; current and power elements attach
 to components only when the expression references a generated/source branch

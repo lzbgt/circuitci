@@ -117,7 +117,11 @@ upserts and display-position edits. Probe elements are display metadata: they
 record the placed node/pin/wire attachment, schematic target, optional
 component-pin source, and optional manual `x`/`y` placement, while the analog
 scenario probe remains the source of truth for solver expressions, waveform
-columns, assertions, and reports.
+columns, assertions, and reports. When loaded waveforms contain the exact
+scenario/probe, `sketch_canvas` supplies `sketch_probes` with a compact runtime
+readout model so the placed symbol can paint a Cursor A sample, optional
+frequency/period label, and bounded sparkline without introducing another
+waveform cache.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by
@@ -467,7 +471,9 @@ components only when their `I(...)` branch maps to a generated/source branch
 name CircuitCI can prove. Persisted `pin` attachments anchor to the matching
 rendered component pin, persisted `wire` attachments anchor to the matching
 component-pin-to-net edge, and a stored `x`/`y` position overrides both so users
-can drag probes as normal schematic elements. Probe assertion-status markers
+can drag probes as normal schematic elements. Loaded waveform readouts are
+display-only and are derived from the same exact scenario/probe matching used
+by Scope Activity. Probe assertion-status markers
 are derived from the latest loaded `ValidationReport`, not from live simulation state. A probe element is
 unasserted when no Board IR assertion references its probe, unknown when no
 report is loaded or the scenario had a non-assertion failure, failed when a

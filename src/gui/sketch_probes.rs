@@ -69,6 +69,14 @@ pub(super) struct SketchProbeBadge {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct SketchProbeRuntimeReadout {
+    pub(super) sample_label: String,
+    pub(super) frequency_label: Option<String>,
+    pub(super) sparkline_points: Vec<(f32, f32)>,
+    pub(super) cursor_fraction: Option<f32>,
+}
+
+#[derive(Debug, Clone)]
 struct SchematicProbeElementPlacement {
     element_id: String,
     target: SketchProbeTarget,
@@ -395,6 +403,7 @@ pub(super) fn draw_probe_badge(
     badge: &SketchProbeBadge,
     hovered: bool,
     status: SketchProbeStatus,
+    runtime: Option<&SketchProbeRuntimeReadout>,
     opacity: f32,
 ) {
     let opacity = opacity.clamp(0.0, 1.0);
@@ -464,6 +473,127 @@ pub(super) fn draw_probe_badge(
             "!",
             egui::FontId::monospace(7.0),
             with_opacity(egui::Color32::WHITE, opacity),
+        );
+    }
+    if let Some(runtime) = runtime {
+        draw_probe_runtime_readout(painter, badge, runtime, opacity);
+    }
+}
+
+fn draw_probe_runtime_readout(
+    painter: &egui::Painter,
+    badge: &SketchProbeBadge,
+    runtime: &SketchProbeRuntimeReadout,
+    opacity: f32,
+) {
+    let rect = probe_runtime_readout_rect(badge.rect);
+    painter.rect_filled(
+        rect,
+        2.0,
+        with_opacity(egui::Color32::from_rgb(12, 19, 22), opacity * 0.88),
+    );
+    painter.rect_stroke(
+        rect,
+        2.0,
+        egui::Stroke::new(
+            0.8,
+            with_opacity(egui::Color32::from_rgb(64, 93, 96), opacity),
+        ),
+        egui::StrokeKind::Inside,
+    );
+    let spark_rect = egui::Rect::from_min_size(
+        rect.left_top() + egui::vec2(3.0, 3.0),
+        egui::vec2(48.0, rect.height() - 6.0),
+    );
+    draw_probe_runtime_sparkline(painter, spark_rect, runtime, opacity);
+    painter.text(
+        egui::pos2(spark_rect.right() + 5.0, rect.top() + 4.0),
+        egui::Align2::LEFT_TOP,
+        compact_probe_runtime_label(&runtime.sample_label, 19),
+        egui::FontId::monospace(8.0),
+        with_opacity(egui::Color32::from_rgb(213, 240, 234), opacity),
+    );
+    if let Some(frequency_label) = &runtime.frequency_label {
+        painter.text(
+            egui::pos2(spark_rect.right() + 5.0, rect.top() + 16.0),
+            egui::Align2::LEFT_TOP,
+            compact_probe_runtime_label(frequency_label, 19),
+            egui::FontId::monospace(7.0),
+            with_opacity(egui::Color32::from_rgb(166, 197, 204), opacity),
+        );
+    }
+}
+
+fn probe_runtime_readout_rect(probe_rect: egui::Rect) -> egui::Rect {
+    egui::Rect::from_min_size(
+        egui::pos2(probe_rect.right() + 6.0, probe_rect.top() + 1.0),
+        egui::vec2(148.0, 32.0),
+    )
+}
+
+fn compact_probe_runtime_label(label: &str, max_chars: usize) -> std::borrow::Cow<'_, str> {
+    let trimmed = label.trim();
+    if trimmed.chars().count() <= max_chars {
+        return std::borrow::Cow::Borrowed(trimmed);
+    }
+    let keep = max_chars.saturating_sub(3).max(1);
+    let mut compact = trimmed.chars().take(keep).collect::<String>();
+    compact.push_str("...");
+    std::borrow::Cow::Owned(compact)
+}
+
+fn draw_probe_runtime_sparkline(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    runtime: &SketchProbeRuntimeReadout,
+    opacity: f32,
+) {
+    painter.rect_filled(
+        rect,
+        1.5,
+        with_opacity(egui::Color32::from_rgb(8, 13, 15), opacity),
+    );
+    painter.line_segment(
+        [
+            egui::pos2(rect.left(), rect.center().y),
+            egui::pos2(rect.right(), rect.center().y),
+        ],
+        egui::Stroke::new(
+            0.6,
+            with_opacity(egui::Color32::from_rgb(42, 55, 58), opacity),
+        ),
+    );
+    let plot_rect = rect.shrink2(egui::vec2(2.0, 2.0));
+    let points = runtime
+        .sparkline_points
+        .iter()
+        .map(|(x, y)| {
+            egui::pos2(
+                plot_rect.left() + plot_rect.width() * x.clamp(0.0, 1.0),
+                plot_rect.bottom() - plot_rect.height() * y.clamp(0.0, 1.0),
+            )
+        })
+        .collect::<Vec<_>>();
+    if points.len() >= 2 {
+        painter.add(egui::Shape::line(
+            points,
+            egui::Stroke::new(
+                1.0,
+                with_opacity(egui::Color32::from_rgb(103, 232, 173), opacity),
+            ),
+        ));
+    }
+    if let Some(cursor_fraction) = runtime.cursor_fraction {
+        let x = plot_rect.left() + plot_rect.width() * cursor_fraction.clamp(0.0, 1.0);
+        painter.line_segment(
+            [
+                egui::pos2(x, plot_rect.top()),
+                egui::pos2(x, plot_rect.bottom()),
+            ],
+            egui::Stroke::new(
+                0.8,
+                with_opacity(egui::Color32::from_rgb(255, 204, 92), opacity),
+            ),
         );
     }
 }
@@ -882,6 +1012,31 @@ mod tests {
         assert_eq!(
             probe_assertion_status(Some(&report(vec![finding])), &probe),
             SketchProbeStatus::Pass
+        );
+    }
+
+    #[test]
+    fn probe_runtime_readout_stays_compact_next_to_probe_symbol() {
+        let probe_rect = eframe::egui::Rect::from_min_size(
+            eframe::egui::pos2(20.0, 30.0),
+            eframe::egui::vec2(46.0, 34.0),
+        );
+        let readout = super::probe_runtime_readout_rect(probe_rect);
+
+        assert!(readout.left() > probe_rect.right());
+        assert_eq!(readout.height(), 32.0);
+        assert!(readout.width() < 160.0);
+    }
+
+    #[test]
+    fn probe_runtime_labels_are_truncated_to_fit_strip() {
+        assert_eq!(
+            super::compact_probe_runtime_label(" 12.0 V @ 1 ms ", 19).as_ref(),
+            "12.0 V @ 1 ms"
+        );
+        assert_eq!(
+            super::compact_probe_runtime_label("1234567890123456789012345", 10).as_ref(),
+            "1234567..."
         );
     }
 }

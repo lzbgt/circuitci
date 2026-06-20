@@ -110,7 +110,10 @@ pin, and optional manual `x`/`y` position. Pin- and wire-attached probes render
 from the actual schematic pin/wire geometry until the user drags the probe,
 which writes only display coordinates. Probe elements do not change electrical
 connectivity or replace the analog probe expression that drives runtime
-waveforms, assertions, and reports.
+waveforms, assertions, and reports. When a matching waveform is loaded, the
+placed probe draws a compact live strip beside the symbol with the current
+Cursor A sample, dominant frequency/period when available, and a bounded
+sparkline with the cursor marker.
 
 Sketch wire-route handles and active wire-mode bend clicks are schematic display
 metadata only. Completing a multi-bend wire, dragging, inserting, deleting, or
