@@ -177,6 +177,12 @@ absent or a symbol is unsupported.
 It must continue to persist only Board IR components, nets, pins, and optional
 schematic display metadata such as positions/styles/symbol ids;
 symbol-library rendering must not introduce a second connectivity model.
+When `board.schematic.node_positions` omits a graph item,
+`src/gui/sketch_layout.rs` may derive a classical schematic fallback position
+from Board IR roles: powered nets trend toward the top rail, ground nets toward
+the bottom rail, source components toward the left edge, and signal-path
+components/nets between those rails. This fallback is view-only; saving a
+position still requires explicit schematic metadata.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and

@@ -17,6 +17,15 @@ const MAX_SKETCH_GRID_STEP: f32 = 96.0;
 const MAX_SKETCH_ITEMS_PER_SIDE: usize = 512;
 const MAX_SKETCH_EDGES: usize = 512;
 const MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT: usize = 64;
+const SCHEMATIC_SIGNAL_Y_FRACTION: f32 = 0.38;
+const SCHEMATIC_GROUND_Y_FRACTION: f32 = 0.78;
+const SCHEMATIC_COLUMN_STEP: f32 = 150.0;
+
+#[derive(Debug, Default)]
+struct SchematicDefaultLayout {
+    component_positions: std::collections::BTreeMap<String, egui::Pos2>,
+    net_positions: std::collections::BTreeMap<String, egui::Pos2>,
+}
 
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
@@ -32,6 +41,15 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         .components_detail
         .len()
         .min(MAX_SKETCH_ITEMS_PER_SIDE);
+    let net_count = snapshot.nets_detail.len().min(MAX_SKETCH_ITEMS_PER_SIDE);
+    let default_layout = schematic_default_layout(
+        rect,
+        snapshot,
+        component_count,
+        net_count,
+        fallback_component_size,
+        fallback_net_size,
+    );
     let mut component_y = top;
     for component in snapshot.components_detail.iter().take(component_count) {
         let symbol = component_symbol_kind(component);
@@ -40,7 +58,11 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
             component.kicad_symbol_id.is_some(),
             fallback_component_size,
         );
-        let default = egui::pos2(left_x, component_y);
+        let default = default_layout
+            .component_positions
+            .get(&component.id)
+            .copied()
+            .unwrap_or_else(|| egui::pos2(left_x, component_y));
         component_y += size.y + row_gap;
         nodes.push(SketchNode {
             selection: SketchSelection::Component(component.id.clone()),
@@ -56,11 +78,14 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         });
     }
 
-    let net_count = snapshot.nets_detail.len().min(MAX_SKETCH_ITEMS_PER_SIDE);
     let mut net_y = top;
     for net in snapshot.nets_detail.iter().take(net_count) {
         let size = net_node_size(fallback_net_size);
-        let default = egui::pos2(right_x, net_y);
+        let default = default_layout
+            .net_positions
+            .get(&net.id)
+            .copied()
+            .unwrap_or_else(|| egui::pos2(right_x, net_y));
         net_y += size.y + row_gap;
         nodes.push(SketchNode {
             selection: SketchSelection::Net(net.id.clone()),
@@ -487,6 +512,179 @@ fn inverse_viewport_pos(
     canvas.min + (pos - canvas.min - viewport.pan) / zoom
 }
 
+fn schematic_default_layout(
+    rect: egui::Rect,
+    snapshot: &ProjectSnapshot,
+    component_count: usize,
+    net_count: usize,
+    fallback_component_size: egui::Vec2,
+    fallback_net_size: egui::Vec2,
+) -> SchematicDefaultLayout {
+    let mut layout = SchematicDefaultLayout::default();
+    let margin = 24.0;
+    let left = rect.left() + margin;
+    let right = rect.right() - margin;
+    let top_rail_y = rect.top() + margin;
+    let signal_y = rect.top() + rect.height() * SCHEMATIC_SIGNAL_Y_FRACTION;
+    let ground_y = rect.top() + rect.height() * SCHEMATIC_GROUND_Y_FRACTION;
+    let net_kinds = snapshot
+        .nets_detail
+        .iter()
+        .map(|net| (net.id.as_str(), net.kind.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
+
+    let mut source_row = 0usize;
+    let mut series_col = 0usize;
+    let mut shunt_col = 0usize;
+    let mut block_row = 0usize;
+    for component in snapshot.components_detail.iter().take(component_count) {
+        let symbol = component_symbol_kind(component);
+        let size = component_node_size(
+            symbol,
+            component.kicad_symbol_id.is_some(),
+            fallback_component_size,
+        );
+        let position = if is_source_component(component, symbol) {
+            let y = signal_y - size.y * 0.5 + source_row as f32 * (size.y + 12.0);
+            source_row += 1;
+            egui::pos2(left, y)
+        } else if is_ground_shunt_component(component, &net_kinds) {
+            let x = left + SCHEMATIC_COLUMN_STEP * (shunt_col as f32 + 1.8);
+            shunt_col += 1;
+            egui::pos2(
+                x.min(right - size.x),
+                (signal_y + ground_y) * 0.5 - size.y * 0.5,
+            )
+        } else if symbol.is_kicad_device_symbol() {
+            let x = left + SCHEMATIC_COLUMN_STEP * (series_col as f32 + 1.5);
+            series_col += 1;
+            egui::pos2(x.min(right - size.x), signal_y - size.y * 0.5)
+        } else {
+            let y = signal_y - size.y * 0.5 + block_row as f32 * (size.y + 16.0);
+            let x = left + SCHEMATIC_COLUMN_STEP * 1.5;
+            block_row += 1;
+            egui::pos2(x.min(right - size.x), y)
+        };
+        layout
+            .component_positions
+            .insert(component.id.clone(), position);
+    }
+
+    let component_centers = layout
+        .component_positions
+        .iter()
+        .filter_map(|(id, min)| {
+            let component = snapshot
+                .components_detail
+                .iter()
+                .find(|component| component.id == *id)?;
+            let size = component_node_size(
+                component_symbol_kind(component),
+                component.kicad_symbol_id.is_some(),
+                fallback_component_size,
+            );
+            Some((id.as_str(), *min + size * 0.5))
+        })
+        .collect::<std::collections::BTreeMap<_, _>>();
+
+    let mut power_index = 0usize;
+    let mut signal_index = 0usize;
+    let mut ground_index = 0usize;
+    for net in snapshot.nets_detail.iter().take(net_count) {
+        let size = net_node_size(fallback_net_size);
+        let connected_x = connected_component_average_x(net, &component_centers)
+            .unwrap_or(left + SCHEMATIC_COLUMN_STEP * (signal_index as f32 + 1.5));
+        let position = if is_power_net(net) {
+            let x = connected_x + power_index as f32 * 18.0 - size.x * 0.5;
+            power_index += 1;
+            egui::pos2(clamp_schematic_x(x, left, right - size.x), top_rail_y)
+        } else if is_ground_net(net) {
+            let x = connected_x + ground_index as f32 * 18.0 - size.x * 0.5;
+            ground_index += 1;
+            egui::pos2(clamp_schematic_x(x, left, right - size.x), ground_y)
+        } else {
+            let x = connected_x + signal_index as f32 * 10.0 - size.x * 0.5;
+            signal_index += 1;
+            egui::pos2(
+                clamp_schematic_x(x, left, right - size.x),
+                (signal_y - size.y - 26.0).max(top_rail_y + 42.0),
+            )
+        };
+        layout.net_positions.insert(net.id.clone(), position);
+    }
+
+    layout
+}
+
+fn clamp_schematic_x(x: f32, left: f32, right: f32) -> f32 {
+    if right < left {
+        left
+    } else {
+        x.clamp(left, right)
+    }
+}
+
+fn is_source_component(component: &SketchComponent, symbol: SketchSymbolKind) -> bool {
+    let model = component.model.to_ascii_lowercase();
+    let id_prefix = component
+        .id
+        .chars()
+        .next()
+        .map(|value| value.to_ascii_uppercase());
+    symbol == SketchSymbolKind::Source
+        || model.contains("source")
+        || matches!(id_prefix, Some('V') | Some('I'))
+}
+
+fn is_ground_shunt_component(
+    component: &SketchComponent,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> bool {
+    if component.pins.len() != 2 {
+        return false;
+    }
+    let ground_pins = component
+        .pins
+        .iter()
+        .filter(|pin| {
+            net_kinds
+                .get(pin.net.as_str())
+                .is_some_and(|kind| is_ground_kind(kind))
+        })
+        .count();
+    ground_pins == 1
+}
+
+fn connected_component_average_x(
+    net: &super::sketch::SketchNet,
+    component_centers: &std::collections::BTreeMap<&str, egui::Pos2>,
+) -> Option<f32> {
+    let mut sum = 0.0;
+    let mut count = 0usize;
+    for connection in &net.connections {
+        let Some((component_id, _)) = connection.split_once('.') else {
+            continue;
+        };
+        if let Some(center) = component_centers.get(component_id) {
+            sum += center.x;
+            count += 1;
+        }
+    }
+    (count > 0).then_some(sum / count as f32)
+}
+
+fn is_power_net(net: &super::sketch::SketchNet) -> bool {
+    net.powered.unwrap_or(false) || net.kind.eq_ignore_ascii_case("power")
+}
+
+fn is_ground_net(net: &super::sketch::SketchNet) -> bool {
+    is_ground_kind(&net.kind) || net.id.eq_ignore_ascii_case("gnd") || net.id == "0"
+}
+
+fn is_ground_kind(kind: &str) -> bool {
+    kind.eq_ignore_ascii_case("ground")
+}
+
 fn component_pin_anchors(
     component: &SketchComponent,
     rect: egui::Rect,
@@ -751,7 +949,7 @@ pub(super) fn compact_label(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gui::sketch::SketchPin;
+    use crate::gui::sketch::{ProjectSnapshot, SketchNet, SketchPin};
 
     fn test_component() -> SketchComponent {
         SketchComponent {
@@ -774,6 +972,145 @@ mod tests {
             kicad_symbol_id: Some("Device:R".to_string()),
             source_paths: Vec::new(),
         }
+    }
+
+    fn layout_test_snapshot() -> ProjectSnapshot {
+        ProjectSnapshot {
+            name: "classical_layout".to_string(),
+            components: 3,
+            nets: 3,
+            scenarios: 0,
+            libraries: Vec::new(),
+            components_detail: vec![
+                SketchComponent {
+                    id: "V1".to_string(),
+                    model: "generic.analog.voltage_source".to_string(),
+                    part_number: None,
+                    spice: None,
+                    pins: vec![
+                        SketchPin {
+                            pin: "P".to_string(),
+                            net: "vcc".to_string(),
+                        },
+                        SketchPin {
+                            pin: "N".to_string(),
+                            net: "gnd".to_string(),
+                        },
+                    ],
+                    position: None,
+                    style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
+                    source_paths: Vec::new(),
+                },
+                SketchComponent {
+                    id: "R1".to_string(),
+                    model: "generic.analog.resistor".to_string(),
+                    part_number: None,
+                    spice: None,
+                    pins: vec![
+                        SketchPin {
+                            pin: "A".to_string(),
+                            net: "vcc".to_string(),
+                        },
+                        SketchPin {
+                            pin: "B".to_string(),
+                            net: "sig".to_string(),
+                        },
+                    ],
+                    position: None,
+                    style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
+                    source_paths: Vec::new(),
+                },
+                SketchComponent {
+                    id: "C1".to_string(),
+                    model: "generic.analog.capacitor".to_string(),
+                    part_number: None,
+                    spice: None,
+                    pins: vec![
+                        SketchPin {
+                            pin: "A".to_string(),
+                            net: "sig".to_string(),
+                        },
+                        SketchPin {
+                            pin: "B".to_string(),
+                            net: "gnd".to_string(),
+                        },
+                    ],
+                    position: None,
+                    style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
+                    source_paths: Vec::new(),
+                },
+            ],
+            nets_detail: vec![
+                SketchNet {
+                    id: "vcc".to_string(),
+                    kind: "power".to_string(),
+                    nominal_voltage: Some(5.0),
+                    powered: Some(true),
+                    connections: vec!["V1.P".to_string(), "R1.A".to_string()],
+                    position: None,
+                },
+                SketchNet {
+                    id: "sig".to_string(),
+                    kind: "digital_or_analog".to_string(),
+                    nominal_voltage: None,
+                    powered: None,
+                    connections: vec!["R1.B".to_string(), "C1.A".to_string()],
+                    position: None,
+                },
+                SketchNet {
+                    id: "gnd".to_string(),
+                    kind: "ground".to_string(),
+                    nominal_voltage: Some(0.0),
+                    powered: None,
+                    connections: vec!["V1.N".to_string(), "C1.B".to_string()],
+                    position: None,
+                },
+            ],
+            probes: Vec::new(),
+            wire_routes: Default::default(),
+            net_labels: Default::default(),
+            component_labels: Default::default(),
+        }
+    }
+
+    #[test]
+    fn default_layout_uses_classical_power_signal_ground_roles() {
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+            &layout_test_snapshot(),
+        );
+        let source = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("V1".to_string()))
+            .unwrap();
+        let resistor = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+            .unwrap();
+        let power = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Net("vcc".to_string()))
+            .unwrap();
+        let signal = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Net("sig".to_string()))
+            .unwrap();
+        let ground = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Net("gnd".to_string()))
+            .unwrap();
+
+        assert!(source.rect.center().x < resistor.rect.center().x);
+        assert!(power.rect.center().y < signal.rect.center().y);
+        assert!(signal.rect.center().y < ground.rect.center().y);
     }
 
     #[test]

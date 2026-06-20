@@ -96,8 +96,12 @@ route waypoint metadata, shared sketch YAML helpers, and model-port default
 pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.rs`
 owns graph layout helpers, view-state transforms, schematic grid/snap helpers,
 fit-all and fit-selection bounds, bounded full-list logical layout for pannable
-imported designs, orthogonal wire geometry, wire hit-testing, and model-aware
-pin-anchor layout primitives. For installed or imported KiCad symbols,
+imported designs, role-aware fallback placement for projects without persisted
+schematic coordinates, orthogonal wire geometry, wire hit-testing, and
+model-aware pin-anchor layout primitives. The fallback follows a classical
+schematic shape: power nets near the top rail, ground nets near the bottom
+rail, source components on the left, and signal-path components/nets between
+those rails. For installed or imported KiCad symbols,
 matching pin anchors project from the symbol's own numbered pin lines, so wire
 starts and hit targets line up with the rendered schematic symbol instead of a
 generic component box. Pin anchors are colored from the connected Board IR net
