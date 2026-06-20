@@ -3,6 +3,7 @@ use eframe::egui;
 use super::sketch::{self, ProjectSnapshot, SketchSelection};
 use super::sketch_bundles::{derive_net_bundles, find_net_bundle, net_bundle_graph_bounds};
 use super::sketch_probes::SketchProbeTarget;
+use super::sketch_probes::probe_badge_interaction_rect;
 use super::{CircuitCiApp, ScopeProbeTarget};
 
 const MAX_NAVIGATOR_ROWS: usize = 96;
@@ -262,7 +263,7 @@ fn navigator_target_bounds(
             .find(|badge| {
                 badge.probe.scenario_name == *scenario && badge.probe.probe_name == *probe
             })
-            .map(|badge| badge.rect.expand(64.0)),
+            .map(|badge| probe_badge_interaction_rect(badge).expand(64.0)),
     }
 }
 

@@ -121,7 +121,9 @@ columns, assertions, and reports. When loaded waveforms contain the exact
 scenario/probe, `sketch_canvas` supplies `sketch_probes` with a compact runtime
 readout model so the placed symbol can paint a Cursor A sample, optional
 frequency/period label, and bounded sparkline without introducing another
-waveform cache.
+waveform cache. `sketch_probes::probe_badge_interaction_rect` is the shared
+visual-interaction bounds contract for fit, navigator, hit-test, context-menu,
+and drag routing over the probe body plus its live readout strip.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by

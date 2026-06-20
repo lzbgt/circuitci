@@ -757,7 +757,9 @@ placed EDA symbol without changing solver connectivity. After simulation, a
 loaded matching waveform paints a compact strip beside the probe with the
 current Cursor A sample, optional frequency/period readout, and a small
 sparkline; the strip is non-mutating and does not replace Scopes or measurement
-snapshots. Voltage
+snapshots. The strip is part of probe hit-testing and fit bounds, so users can
+click, right-click, or start dragging from the displayed waveform area without
+returning to Scopes. Voltage
 probe elements attach to Board IR nets only when the probe expression's SPICE
 node maps back through `analog.node_bindings`; current and power elements attach
 to components only when the expression references a generated/source branch

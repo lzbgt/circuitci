@@ -8,7 +8,7 @@ use super::sketch::{
     SketchPinAnchor, SketchPinSide, SketchPosition, SketchSelection, SketchViewport,
     SketchWireRouteEdit, wire_route_key,
 };
-use super::sketch_probes::layout_probe_badges;
+use super::sketch_probes::{layout_probe_badges, probe_badge_interaction_rect};
 use super::sketch_routes;
 use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, symbol_glyph_rect};
 
@@ -342,7 +342,7 @@ pub(super) fn sketch_graph_bounds(graph: &SketchGraph) -> Option<egui::Rect> {
         }
     }
     for badge in &graph.probe_badges {
-        include_rect(badge.rect);
+        include_rect(probe_badge_interaction_rect(badge));
     }
     bounds
 }

@@ -14,7 +14,7 @@ use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
-    edit_schematic_probe_element_position, hit_test_probe_badge,
+    edit_schematic_probe_element_position, hit_test_probe_badge, probe_badge_interaction_rect,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use super::{CircuitCiApp, SketchViewportCommand};
@@ -569,6 +569,40 @@ fn layout_places_pin_attached_probe_on_pin_anchor() {
 
     assert!(badge.anchor.distance(anchor.pos) < 0.01);
     assert!(hit_test_probe_badge(&graph.probe_badges, badge.rect.center()).is_some());
+}
+
+#[test]
+fn placed_probe_readout_area_is_hit_testable_and_in_graph_bounds() {
+    let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    snapshot.probes.push(SketchProbe {
+        element_id: Some("tran_net_a_voltage".to_string()),
+        attachment: SketchProbeAttachmentKind::Pin,
+        source: Some("R1.A".to_string()),
+        position: None,
+        scenario_name: "tran".to_string(),
+        probe_name: "net_a_voltage".to_string(),
+        expression: "V(net_a)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("net_a".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),
+        &snapshot,
+    );
+    let badge = graph.probe_badges.first().unwrap();
+    let interaction = probe_badge_interaction_rect(badge);
+    let bounds = sketch_graph_bounds(&graph).unwrap();
+
+    assert!(interaction.right() > badge.rect.right() + 80.0);
+    assert!(bounds.contains(interaction.right_center()));
+    assert_eq!(
+        hit_test_probe_badge(&graph.probe_badges, interaction.right_center())
+            .unwrap()
+            .probe
+            .probe_name,
+        "net_a_voltage"
+    );
 }
 
 #[test]

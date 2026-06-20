@@ -363,7 +363,16 @@ pub(super) fn hit_test_probe_badge(
 ) -> Option<&SketchProbeBadge> {
     badges
         .iter()
-        .find(|badge| badge.rect.expand(2.0).contains(position))
+        .find(|badge| probe_badge_interaction_rect(badge).contains(position))
+}
+
+pub(super) fn probe_badge_interaction_rect(badge: &SketchProbeBadge) -> egui::Rect {
+    let rect = badge.rect.expand(2.0);
+    if badge.probe.element_id.is_some() {
+        rect.union(probe_runtime_readout_rect(badge.rect).expand(2.0))
+    } else {
+        rect
+    }
 }
 
 pub(super) fn probe_assertion_status(
@@ -1026,6 +1035,32 @@ mod tests {
         assert!(readout.left() > probe_rect.right());
         assert_eq!(readout.height(), 32.0);
         assert!(readout.width() < 160.0);
+    }
+
+    #[test]
+    fn probe_interaction_rect_adds_readout_only_for_placed_elements() {
+        let rect = eframe::egui::Rect::from_min_size(
+            eframe::egui::pos2(20.0, 30.0),
+            eframe::egui::vec2(46.0, 34.0),
+        );
+        let mut probe = asserted_probe();
+        let badge = super::SketchProbeBadge {
+            probe: probe.clone(),
+            rect,
+            anchor: rect.left_center(),
+        };
+        assert_eq!(
+            super::probe_badge_interaction_rect(&badge),
+            rect.expand(2.0)
+        );
+
+        probe.element_id = Some("tran_rail_voltage".to_string());
+        let placed = super::SketchProbeBadge {
+            probe,
+            rect,
+            anchor: rect.left_center(),
+        };
+        assert!(super::probe_badge_interaction_rect(&placed).right() > rect.right() + 80.0);
     }
 
     #[test]
