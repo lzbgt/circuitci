@@ -27,6 +27,12 @@ struct SchematicDefaultLayout {
     net_positions: std::collections::BTreeMap<String, egui::Pos2>,
 }
 
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(super) struct SketchAutoLayoutPlan {
+    pub(super) positions: Vec<(SketchSelection, f64, f64)>,
+    pub(super) styles: Vec<(String, SketchNodeStyle)>,
+}
+
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
     let node_width = ((rect.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
@@ -214,6 +220,74 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         edges,
         probe_badges,
     }
+}
+
+pub(super) fn classical_sketch_auto_layout(
+    snapshot: &ProjectSnapshot,
+    canvas_size: egui::Vec2,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> SketchAutoLayoutPlan {
+    let size = egui::vec2(canvas_size.x.max(720.0), canvas_size.y.max(420.0));
+    let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+    let margin = 18.0;
+    let node_width = ((canvas.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
+    let fallback_component_size = egui::vec2(node_width, 92.0);
+    let fallback_net_size = egui::vec2(node_width, 44.0);
+    let component_count = snapshot
+        .components_detail
+        .len()
+        .min(MAX_SKETCH_ITEMS_PER_SIDE);
+    let net_count = snapshot.nets_detail.len().min(MAX_SKETCH_ITEMS_PER_SIDE);
+    let default_layout = schematic_default_layout(
+        canvas,
+        snapshot,
+        component_count,
+        net_count,
+        fallback_component_size,
+        fallback_net_size,
+    );
+
+    let mut positions = Vec::with_capacity(component_count + net_count);
+    for component in snapshot.components_detail.iter().take(component_count) {
+        if let Some(pos) = default_layout.component_positions.get(&component.id) {
+            let (x, y) = snap_schematic_position(
+                (pos.x - canvas.left()) as f64,
+                (pos.y - canvas.top()) as f64,
+                snap_enabled,
+                grid_step,
+            );
+            positions.push((SketchSelection::Component(component.id.clone()), x, y));
+        }
+    }
+    for net in snapshot.nets_detail.iter().take(net_count) {
+        if let Some(pos) = default_layout.net_positions.get(&net.id) {
+            let (x, y) = snap_schematic_position(
+                (pos.x - canvas.left()) as f64,
+                (pos.y - canvas.top()) as f64,
+                snap_enabled,
+                grid_step,
+            );
+            positions.push((SketchSelection::Net(net.id.clone()), x, y));
+        }
+    }
+
+    let net_kinds = snapshot
+        .nets_detail
+        .iter()
+        .map(|net| (net.id.as_str(), net.kind.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let styles = snapshot
+        .components_detail
+        .iter()
+        .take(component_count)
+        .filter_map(|component| {
+            let style = classical_component_style(component, &net_kinds)?;
+            (component.style != style).then(|| (component.id.clone(), style))
+        })
+        .collect();
+
+    SketchAutoLayoutPlan { positions, styles }
 }
 
 pub(super) fn layout_sketch_graph_viewport(
@@ -653,6 +727,29 @@ fn is_ground_shunt_component(
         })
         .count();
     ground_pins == 1
+}
+
+fn classical_component_style(
+    component: &SketchComponent,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> Option<SketchNodeStyle> {
+    let symbol = component_symbol_kind(component);
+    if !symbol.is_kicad_device_symbol()
+        || component.pins.len() != 2
+        || is_source_component(component, symbol)
+    {
+        return None;
+    }
+    let rotation_deg = if is_ground_shunt_component(component, net_kinds) {
+        90
+    } else {
+        0
+    };
+    Some(SketchNodeStyle {
+        rotation_deg,
+        mirrored: false,
+        pin_side: SketchPinSide::Auto,
+    })
 }
 
 fn connected_component_average_x(
@@ -1111,6 +1208,45 @@ mod tests {
         assert!(source.rect.center().x < resistor.rect.center().x);
         assert!(power.rect.center().y < signal.rect.center().y);
         assert!(signal.rect.center().y < ground.rect.center().y);
+    }
+
+    #[test]
+    fn classical_auto_layout_persists_positions_and_vertical_shunts() {
+        let plan = classical_sketch_auto_layout(
+            &layout_test_snapshot(),
+            egui::vec2(720.0, 420.0),
+            true,
+            16.0,
+        );
+
+        assert_eq!(plan.positions.len(), 6);
+        assert!(
+            plan.positions
+                .iter()
+                .any(|(selection, _, _)| *selection == SketchSelection::Component("V1".to_string()))
+        );
+        assert!(
+            plan.positions
+                .iter()
+                .any(|(selection, _, _)| *selection == SketchSelection::Net("gnd".to_string()))
+        );
+        assert!(plan.positions.iter().all(|(_, x, y)| {
+            *x >= 0.0
+                && *y >= 0.0
+                && (x % 16.0).abs() <= f64::EPSILON
+                && (y % 16.0).abs() <= f64::EPSILON
+        }));
+        assert_eq!(
+            plan.styles,
+            vec![(
+                "C1".to_string(),
+                SketchNodeStyle {
+                    rotation_deg: 90,
+                    mirrored: false,
+                    pin_side: SketchPinSide::Auto,
+                }
+            )]
+        );
     }
 
     #[test]

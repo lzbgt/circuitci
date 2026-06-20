@@ -118,6 +118,38 @@ fn board_ir_editor_rejects_invalid_project_yaml() {
 }
 
 #[test]
+fn classical_auto_layout_action_persists_positions_and_fit_command() {
+    let yaml = editable_project_yaml();
+    let mut app = CircuitCiApp {
+        project_yaml: yaml.to_string(),
+        project_snapshot: Some(super::sketch::load_project_snapshot_from_yaml(yaml).unwrap()),
+        ..Default::default()
+    };
+
+    app.apply_classical_sketch_auto_layout();
+
+    assert!(app.project_yaml_dirty);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitAll)
+    );
+    assert!(app.status.contains("Classical auto layout positioned"));
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(&app.project_yaml).unwrap();
+    let positions = &project.board.schematic.node_positions;
+    assert!(positions.contains_key("component:R1"));
+    assert!(positions.contains_key("net:net_a"));
+    assert!(positions.contains_key("net:gnd"));
+    let style = project
+        .board
+        .schematic
+        .node_styles
+        .get("component:R1")
+        .unwrap();
+    assert_eq!(style.rotation_deg, Some(90));
+}
+
+#[test]
 fn scope_voltage_action_creates_probe_and_opens_scopes() {
     let yaml = analog_scope_project_yaml();
     let mut app = CircuitCiApp {

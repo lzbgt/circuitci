@@ -101,7 +101,10 @@ schematic coordinates, orthogonal wire geometry, wire hit-testing, and
 model-aware pin-anchor layout primitives. The fallback follows a classical
 schematic shape: power nets near the top rail, ground nets near the bottom
 rail, source components on the left, and signal-path components/nets between
-those rails. For installed or imported KiCad symbols,
+those rails. The Sketch `Auto Layout` action persists that same classical
+placement into `board.schematic.node_positions` and writes standard
+two-terminal orientation metadata, including vertical shunts to ground and
+horizontal signal-path parts. For installed or imported KiCad symbols,
 matching pin anchors project from the symbol's own numbered pin lines, so wire
 starts and hit targets line up with the rendered schematic symbol instead of a
 generic component box. Pin anchors are colored from the connected Board IR net
@@ -565,8 +568,10 @@ The supported desktop simulation path is:
    structured controls,
 5. add components, add nets, or remove selected components and unreferenced
    nets through validated graph controls,
-6. drag component/net graph nodes to persist `board.schematic.node_positions`,
-7. snap dragged schematic positions to the visible grid when snap is enabled,
+6. drag component/net graph nodes or press Sketch `Auto Layout` to persist
+   `board.schematic.node_positions`,
+7. snap dragged or auto-laid schematic positions to the visible grid when snap
+   is enabled,
 8. pan, zoom, Home-reset, Fit All, or Fit Selection the sketch viewport without
    changing Board IR evidence,
 9. search components, net bundles, nets, wires, and probe elements in the object navigator,

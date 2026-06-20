@@ -1,6 +1,7 @@
 use super::sketch::{
-    self, ProjectSnapshot, SketchSelection, SketchViewport, edit_schematic_node_positions,
-    layout_sketch_graph, layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
+    self, ProjectSnapshot, SketchSelection, SketchViewport, classical_sketch_auto_layout,
+    edit_schematic_component_styles, edit_schematic_node_positions, layout_sketch_graph,
+    layout_sketch_graph_viewport, load_project_snapshot_from_yaml,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     remove_component, remove_net, sketch_graph_bounds,
 };
@@ -320,6 +321,40 @@ impl CircuitCiApp {
             .collect::<Vec<_>>();
         match edit_schematic_node_positions(&self.project_yaml, &updates) {
             Ok(updated) => self.apply_edited_project_yaml(updated, message),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_classical_sketch_auto_layout(&mut self) {
+        let Some(snapshot) = &self.project_snapshot else {
+            self.status = "Load a project before applying sketch auto layout.".to_string();
+            return;
+        };
+        let plan = classical_sketch_auto_layout(
+            snapshot,
+            egui::vec2(960.0, 640.0),
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        if plan.positions.is_empty() {
+            self.status = "No schematic nodes available for auto layout.".to_string();
+            return;
+        }
+        let updated = edit_schematic_node_positions(&self.project_yaml, &plan.positions)
+            .and_then(|yaml| edit_schematic_component_styles(&yaml, &plan.styles));
+        match updated {
+            Ok(updated) => {
+                let style_count = plan.styles.len();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Classical auto layout positioned {} node(s) and oriented {} component(s).",
+                        plan.positions.len(),
+                        style_count
+                    ),
+                );
+                self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+            }
             Err(error) => self.record_error(error),
         }
     }

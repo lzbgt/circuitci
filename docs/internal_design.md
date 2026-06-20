@@ -182,7 +182,11 @@ When `board.schematic.node_positions` omits a graph item,
 from Board IR roles: powered nets trend toward the top rail, ground nets toward
 the bottom rail, source components toward the left edge, and signal-path
 components/nets between those rails. This fallback is view-only; saving a
-position still requires explicit schematic metadata.
+position still requires explicit schematic metadata. The explicit Sketch
+`Auto Layout` action may persist the same classical placement into
+`board.schematic.node_positions` and may write standard non-default
+`board.schematic.node_styles` for textbook orientation rules such as vertical
+ground shunts and horizontal two-terminal signal-path parts.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and

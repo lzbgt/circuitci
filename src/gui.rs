@@ -768,6 +768,16 @@ impl CircuitCiApp {
             self.scope_auto_probe_button(ui);
             self.scope_auto_probe_run_toggle(ui);
             self.schematic_probe_toolbar_controls(ui);
+            if ui
+                .add_enabled(
+                    self.project_snapshot.is_some(),
+                    egui::Button::new("Auto Layout"),
+                )
+                .on_hover_text("Persist a classical textbook-style schematic layout with rails, signal flow, and vertical ground shunts.")
+                .clicked()
+            {
+                self.apply_classical_sketch_auto_layout();
+            }
             if ui.button("Fit All").clicked() {
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
             }
@@ -1147,6 +1157,16 @@ impl CircuitCiApp {
                 }
                 if ui.button("Fit All").clicked() {
                     self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+                }
+                if ui
+                    .add_enabled(
+                        self.project_snapshot.is_some(),
+                        egui::Button::new("Auto Layout"),
+                    )
+                    .on_hover_text("Write the classical schematic layout into Board IR node positions and standard two-terminal orientations.")
+                    .clicked()
+                {
+                    self.apply_classical_sketch_auto_layout();
                 }
                 if ui
                     .add_enabled(
