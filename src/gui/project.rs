@@ -8,6 +8,18 @@ use std::path::{Path, PathBuf};
 
 const PROJECT_YAML_HISTORY_LIMIT: usize = 64;
 const NE555_SCOPE_EXAMPLE_PROJECT: &str = "examples/ne555_astable_scope_smoke/project.yaml";
+const NE555_SCOPE_EXAMPLE_NAME: &str = "ne555_astable_scope";
+const NE555_SCOPE_EXPECTED_TRACES: [&str; 5] =
+    ["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"];
+const NE555_SCOPE_EXPECTED_FREQUENCY: &str = "about 1.46 kHz";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Ne555ScopeExampleWorkflowStatus {
+    pub(super) state: &'static str,
+    pub(super) action: &'static str,
+    pub(super) expected_traces: &'static [&'static str],
+    pub(super) expected_frequency: &'static str,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PendingProjectAction {
@@ -35,6 +47,36 @@ impl PendingProjectAction {
 }
 
 impl CircuitCiApp {
+    pub(super) fn ne555_scope_example_workflow_status(
+        &self,
+    ) -> Option<Ne555ScopeExampleWorkflowStatus> {
+        if !self.is_ne555_scope_example_project() {
+            return None;
+        }
+        let (state, action) = if self.background_job_elapsed_secs().is_some() {
+            (
+                "Validation running",
+                "Wait for waveform loading, then use Scope Activity or Scopes traces.",
+            )
+        } else if !self.waveforms.is_empty() {
+            (
+                "Waveforms loaded",
+                "Inspect Scope Activity rows, Cursor A, edge stepping, snapshots, or report bundles.",
+            )
+        } else {
+            (
+                "Ready",
+                "Use Run + Scopes to simulate and open oscilloscope traces.",
+            )
+        };
+        Some(Ne555ScopeExampleWorkflowStatus {
+            state,
+            action,
+            expected_traces: &NE555_SCOPE_EXPECTED_TRACES,
+            expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
+        })
+    }
+
     pub(super) fn request_ne555_scope_example_load(&mut self, ctx: Option<&egui::Context>) {
         self.request_project_action(
             PendingProjectAction::LoadProjectSummary {
@@ -54,6 +96,14 @@ impl CircuitCiApp {
             },
             ctx,
         );
+    }
+
+    fn is_ne555_scope_example_project(&self) -> bool {
+        self.project_path == NE555_SCOPE_EXAMPLE_PROJECT
+            || self
+                .project_snapshot
+                .as_ref()
+                .is_some_and(|snapshot| snapshot.name == NE555_SCOPE_EXAMPLE_NAME)
     }
 
     pub(super) fn handle_close_request(&mut self, ctx: &egui::Context) {

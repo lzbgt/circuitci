@@ -203,6 +203,7 @@ impl CircuitCiApp {
                 {
                     self.request_ne555_scope_example_load_and_run_scopes(Some(ui.ctx()));
                 }
+                self.ne555_scope_example_workflow_panel(ui);
                 ui.label("Output");
                 ui.horizontal(|ui| {
                     ui.text_edit_singleline(&mut self.output_dir);
@@ -313,6 +314,25 @@ impl CircuitCiApp {
                     ui.label("No project loaded.");
                 }
             });
+    }
+
+    fn ne555_scope_example_workflow_panel(&mut self, ui: &mut egui::Ui) {
+        let Some(status) = self.ne555_scope_example_workflow_status() else {
+            return;
+        };
+        ui.group(|ui| {
+            ui.strong("NE555 Scope Workflow");
+            ui.label(format!("State: {}", status.state));
+            ui.label(format!("Next: {}", status.action));
+            ui.label(format!(
+                "Expected traces: {}",
+                status.expected_traces.join(", ")
+            ));
+            ui.label(format!(
+                "Expected output frequency: {}",
+                status.expected_frequency
+            ));
+        });
     }
 
     pub(super) fn bottom_panel(&mut self, ctx: &egui::Context) {

@@ -282,6 +282,23 @@ fn ne555_scope_example_shortcut_loads_direct_project() {
 }
 
 #[test]
+fn ne555_scope_example_workflow_status_is_contextual() {
+    let mut app = CircuitCiApp::default();
+    assert!(app.ne555_scope_example_workflow_status().is_none());
+
+    app.request_ne555_scope_example_load(None);
+    let status = app.ne555_scope_example_workflow_status().unwrap();
+
+    assert_eq!(status.state, "Ready");
+    assert_eq!(
+        status.expected_traces,
+        &["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"]
+    );
+    assert_eq!(status.expected_frequency, "about 1.46 kHz");
+    assert!(status.action.contains("Run + Scopes"));
+}
+
+#[test]
 fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
     let mut app = CircuitCiApp {
         project_yaml_dirty: true,
@@ -316,6 +333,9 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
     assert_eq!(app.stage, Stage::Simulation);
     assert!(app.background_job_elapsed_secs().is_some());
     assert!(app.status.contains("Running validation in Scopes"));
+    let status = app.ne555_scope_example_workflow_status().unwrap();
+    assert_eq!(status.state, "Validation running");
+    assert!(status.action.contains("waveform loading"));
     assert!(app.project_yaml.contains("name: ne555_astable_scope"));
     let snapshot = app.project_snapshot.as_ref().unwrap();
     assert_eq!(snapshot.name, "ne555_astable_scope");
