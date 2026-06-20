@@ -109,7 +109,9 @@ horizontal signal-path parts. It also derives display-only
 power/ground connections route toward rail-like lines and signal connections
 route horizontally before vertical drops. It also positions placed probe
 elements into non-overlapping lanes near their pin/wire targets so live readout
-strips stay readable after Run. For installed or imported KiCad symbols,
+strips stay readable after Run; newly placed probes use the same collision-aware
+lane planner immediately, without requiring a separate Auto Layout pass. For
+installed or imported KiCad symbols,
 matching pin anchors project from the symbol's own numbered pin lines, so wire
 starts and hit targets line up with the rendered schematic symbol instead of a
 generic component box. Pin anchors are colored from the connected Board IR net
@@ -753,11 +755,12 @@ expressions, quantities, waveform columns, assertions, and reports;
 `board.schematic.probe_elements` stores the placed schematic element ID, target
 net/component, attachment kind (`node`, `pin`, or `wire`), and optional
 component-pin source when placement came from a pin or routed wire. Pin and
-wire placements render from actual pin/wire geometry; dragging a probe element
-writes optional display-only `x`/`y` coordinates so the probe behaves like a
-placed EDA symbol without changing solver connectivity. After simulation, a
-loaded matching waveform paints a compact strip beside the probe with the
-current Cursor A sample, optional frequency/period readout, and a small
+wire placements render from actual pin/wire geometry; creation writes a
+collision-aware default display-only `x`/`y` lane near the target, and dragging
+a probe element updates those coordinates so the probe behaves like a placed
+EDA symbol without changing solver connectivity. After simulation, a loaded
+matching waveform paints a compact strip beside the probe with the current
+Cursor A sample, optional frequency/period readout, and a small
 sparkline; the strip is non-mutating and does not replace Scopes or measurement
 snapshots. The strip is part of probe hit-testing and fit bounds, so users can
 click, right-click, or start dragging from the displayed waveform area without

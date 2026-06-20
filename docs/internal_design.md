@@ -205,6 +205,10 @@ metadata follows the rendered KiCad/imported symbol geometry while remaining
 display-only, and may derive `board.schematic.probe_elements[*].x/y` from the
 same post-layout graph so first-class probe symbols and their live readout
 strips land in non-overlapping schematic lanes near the target pin or wire.
+Probe creation reuses that lane planner for the newly inserted element only,
+using the current graph plus existing probe occupancy so ordinary placement is
+immediately readable while the full Auto Layout action can still recompute all
+positions later.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and

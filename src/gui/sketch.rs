@@ -13,8 +13,8 @@ use super::sketch_symbols::SketchSymbolKind;
 #[cfg(test)]
 pub(super) use super::sketch_layout::orthogonal_wire_points;
 pub(super) use super::sketch_layout::{
-    classical_sketch_auto_layout, compact_label, draw_sketch_grid, edge_label_position,
-    hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
+    classical_sketch_auto_layout, compact_label, default_probe_element_position, draw_sketch_grid,
+    edge_label_position, hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
     persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
     persisted_wire_route_point_from_screen_with_snap, screen_wire_route_point_from_persisted,
     sketch_graph_bounds, sketch_wire_points, snap_screen_point_to_grid,

@@ -109,14 +109,16 @@ probes. They persist under `board.schematic.probe_elements` with a placed
 element ID, target net/component, attachment kind, optional source component
 pin, and optional manual `x`/`y` position. Pin- and wire-attached probes render
 from the actual schematic pin/wire geometry until the user drags the probe,
-which writes only display coordinates. Probe elements do not change electrical
-connectivity or replace the analog probe expression that drives runtime
-waveforms, assertions, and reports. When a matching waveform is loaded, the
-placed probe draws a compact live strip beside the symbol with the current
-Cursor A sample, dominant frequency/period when available, and a bounded
-sparkline with the cursor marker. The strip is included in Sketch graph bounds
-and probe hit-testing so Fit All, navigator probe fit, clicks, context menus,
-and drag starts treat the displayed waveform area as part of the placed probe.
+which writes only display coordinates; new placed probes get collision-aware
+default `x`/`y` lanes near their pin/wire target immediately on creation.
+Probe elements do not change electrical connectivity or replace the analog
+probe expression that drives runtime waveforms, assertions, and reports. When a
+matching waveform is loaded, the placed probe draws a compact live strip beside
+the symbol with the current Cursor A sample, dominant frequency/period when
+available, and a bounded sparkline with the cursor marker. The strip is
+included in Sketch graph bounds and probe hit-testing so Fit All, navigator
+probe fit, clicks, context menus, and drag starts treat the displayed waveform
+area as part of the placed probe.
 
 Sketch wire-route handles and active wire-mode bend clicks are schematic display
 metadata only. Completing a multi-bend wire, dragging, inserting, deleting, or

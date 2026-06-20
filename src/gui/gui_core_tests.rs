@@ -212,6 +212,8 @@ fn scope_voltage_action_creates_probe_and_opens_scopes() {
         Some(crate::board_ir::SchematicProbeAttachmentKind::Wire)
     ));
     assert_eq!(element.target.source.as_deref(), Some("R1.B"));
+    assert!(element.x.is_some_and(f64::is_finite));
+    assert!(element.y.is_some_and(f64::is_finite));
 }
 
 #[test]
@@ -269,6 +271,8 @@ fn scope_component_actions_create_current_and_power_probes() {
         .get("gui_transient_V1_current")
         .unwrap();
     assert_eq!(current.probe, "V1_current");
+    assert!(current.x.is_some_and(f64::is_finite));
+    assert!(current.y.is_some_and(f64::is_finite));
     assert!(matches!(
         current.target.kind,
         crate::board_ir::SchematicProbeElementTargetKind::Component
@@ -281,6 +285,8 @@ fn scope_component_actions_create_current_and_power_probes() {
         .get("gui_transient_V1_power")
         .unwrap();
     assert_eq!(power.probe, "V1_power");
+    assert!(power.x.is_some_and(f64::is_finite));
+    assert!(power.y.is_some_and(f64::is_finite));
     assert!(matches!(
         power.target.kind,
         crate::board_ir::SchematicProbeElementTargetKind::Component

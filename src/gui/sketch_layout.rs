@@ -8,7 +8,7 @@ use super::sketch::{
     SketchPinAnchor, SketchPinSide, SketchPosition, SketchSelection, SketchViewport,
     SketchWireRouteEdit, wire_route_key,
 };
-use super::sketch_probes::{layout_probe_badges, probe_badge_interaction_rect};
+use super::sketch_probes::{SketchProbeBadge, layout_probe_badges, probe_badge_interaction_rect};
 use super::sketch_routes;
 use super::sketch_symbols::{SketchSymbolKind, component_symbol_kind, symbol_glyph_rect};
 
@@ -313,6 +313,29 @@ pub(super) fn classical_sketch_auto_layout(
         wire_routes,
         probe_positions,
     }
+}
+
+pub(super) fn default_probe_element_position(
+    snapshot: &ProjectSnapshot,
+    element_id: &str,
+    canvas_size: egui::Vec2,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> Option<(String, f64, f64)> {
+    let size = egui::vec2(canvas_size.x.max(720.0), canvas_size.y.max(420.0));
+    let canvas = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+    let graph = layout_sketch_graph(canvas, snapshot);
+    let mut occupied = probe_lane_occupied_rects(&graph);
+    for badge in &graph.probe_badges {
+        if badge.probe.element_id.as_deref() != Some(element_id) {
+            occupied.push(probe_badge_interaction_rect(badge).expand(8.0));
+        }
+    }
+    let badge = graph
+        .probe_badges
+        .iter()
+        .find(|badge| badge.probe.element_id.as_deref() == Some(element_id))?;
+    place_probe_badge_in_lane(badge, &mut occupied, canvas, snap_enabled, grid_step)
 }
 
 pub(super) fn layout_sketch_graph_viewport(
@@ -891,44 +914,61 @@ fn classical_auto_layout_probe_positions(
         probe.position = None;
     }
     let graph = layout_sketch_graph(canvas, &planned);
-    let mut occupied = Vec::new();
-    for node in &graph.nodes {
-        occupied.push(node.rect.expand(12.0));
-    }
+    let mut occupied = probe_lane_occupied_rects(&graph);
     let mut edits = Vec::new();
     for badge in graph
         .probe_badges
         .iter()
         .filter(|badge| badge.probe.element_id.is_some())
     {
-        let Some(element_id) = badge.probe.element_id.clone() else {
-            continue;
-        };
-        let mut rect = badge.rect;
-        let mut interaction = probe_badge_interaction_rect(badge);
-        let mut guard = 0;
-        while occupied
-            .iter()
-            .any(|existing| existing.intersects(interaction))
-            && guard < 18
+        if let Some(edit) =
+            place_probe_badge_in_lane(badge, &mut occupied, canvas, snap_enabled, grid_step)
         {
-            let delta = egui::vec2(0.0, 38.0);
-            rect = rect.translate(delta);
-            let mut shifted = badge.clone();
-            shifted.rect = rect;
-            interaction = probe_badge_interaction_rect(&shifted);
-            guard += 1;
+            edits.push(edit);
         }
-        occupied.push(interaction.expand(8.0));
-        let (x, y) = snap_schematic_position(
-            (rect.left() - canvas.left()) as f64,
-            (rect.top() - canvas.top()) as f64,
-            snap_enabled,
-            grid_step,
-        );
-        edits.push((element_id, x, y));
     }
     edits
+}
+
+fn probe_lane_occupied_rects(graph: &SketchGraph) -> Vec<egui::Rect> {
+    graph
+        .nodes
+        .iter()
+        .map(|node| node.rect.expand(12.0))
+        .collect::<Vec<_>>()
+}
+
+fn place_probe_badge_in_lane(
+    badge: &SketchProbeBadge,
+    occupied: &mut Vec<egui::Rect>,
+    canvas: egui::Rect,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> Option<(String, f64, f64)> {
+    let element_id = badge.probe.element_id.clone()?;
+    let mut rect = badge.rect;
+    let mut interaction = probe_badge_interaction_rect(badge);
+    let mut guard = 0;
+    while occupied
+        .iter()
+        .any(|existing| existing.intersects(interaction))
+        && guard < 18
+    {
+        let delta = egui::vec2(0.0, 38.0);
+        rect = rect.translate(delta);
+        let mut shifted = badge.clone();
+        shifted.rect = rect;
+        interaction = probe_badge_interaction_rect(&shifted);
+        guard += 1;
+    }
+    occupied.push(interaction.expand(8.0));
+    let (x, y) = snap_schematic_position(
+        (rect.left() - canvas.left()) as f64,
+        (rect.top() - canvas.top()) as f64,
+        snap_enabled,
+        grid_step,
+    );
+    Some((element_id, x, y))
 }
 
 fn classical_route_waypoint(
@@ -1514,6 +1554,78 @@ mod tests {
                 .nodes
                 .iter()
                 .all(|node| !probe_bounds.intersects(node.rect.expand(8.0)))
+        );
+    }
+
+    #[test]
+    fn default_probe_position_avoids_existing_probe_lane() {
+        let mut snapshot = layout_test_snapshot();
+        snapshot.probes.push(SketchProbe {
+            element_id: Some("tran_sig_voltage".to_string()),
+            attachment: SketchProbeAttachmentKind::Pin,
+            source: Some("R1.B".to_string()),
+            position: None,
+            scenario_name: "tran".to_string(),
+            probe_name: "sig_voltage".to_string(),
+            expression: "V(sig)".to_string(),
+            quantity: SketchProbeQuantity::Voltage,
+            target: SketchProbeTarget::Net("sig".to_string()),
+            assertion_names: Vec::new(),
+        });
+        let (_, first_x, first_y) = default_probe_element_position(
+            &snapshot,
+            "tran_sig_voltage",
+            egui::vec2(720.0, 420.0),
+            true,
+            16.0,
+        )
+        .unwrap();
+        snapshot.probes[0].position = Some(SketchPosition {
+            x: first_x,
+            y: first_y,
+        });
+        snapshot.probes.push(SketchProbe {
+            element_id: Some("tran_sig_voltage_2".to_string()),
+            attachment: SketchProbeAttachmentKind::Pin,
+            source: Some("R1.B".to_string()),
+            position: None,
+            scenario_name: "tran".to_string(),
+            probe_name: "sig_voltage_2".to_string(),
+            expression: "V(sig)".to_string(),
+            quantity: SketchProbeQuantity::Voltage,
+            target: SketchProbeTarget::Net("sig".to_string()),
+            assertion_names: Vec::new(),
+        });
+
+        let (element_id, x, y) = default_probe_element_position(
+            &snapshot,
+            "tran_sig_voltage_2",
+            egui::vec2(720.0, 420.0),
+            true,
+            16.0,
+        )
+        .unwrap();
+
+        assert_eq!(element_id, "tran_sig_voltage_2");
+        assert!((x % 16.0).abs() <= f64::EPSILON);
+        assert!((y % 16.0).abs() <= f64::EPSILON);
+        snapshot.probes[1].position = Some(SketchPosition { x, y });
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(720.0, 420.0)),
+            &snapshot,
+        );
+        let first = graph
+            .probe_badges
+            .iter()
+            .find(|badge| badge.probe.element_id.as_deref() == Some("tran_sig_voltage"))
+            .unwrap();
+        let second = graph
+            .probe_badges
+            .iter()
+            .find(|badge| badge.probe.element_id.as_deref() == Some("tran_sig_voltage_2"))
+            .unwrap();
+        assert!(
+            !probe_badge_interaction_rect(first).intersects(probe_badge_interaction_rect(second))
         );
     }
 

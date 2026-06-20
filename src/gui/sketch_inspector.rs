@@ -5,14 +5,15 @@ use super::analog::{
 };
 use super::sketch::{
     ProjectSnapshot, SketchNodeStyle, SketchPinSide, SketchSelection, add_component, add_net,
-    assign_component_pin, connect_component_pins, edit_component_model, edit_component_part_number,
-    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, edit_schematic_component_style,
-    edit_schematic_node_position, edit_schematic_wire_route, remove_component,
+    assign_component_pin, connect_component_pins, default_probe_element_position,
+    edit_component_model, edit_component_part_number, edit_net_kind, edit_net_nominal_voltage,
+    edit_net_powered, edit_schematic_component_style, edit_schematic_node_position,
+    edit_schematic_wire_route, load_project_snapshot_from_yaml, remove_component,
     remove_component_pin, remove_net,
 };
 use super::sketch_probes::{
     SketchProbeAttachmentKind, SketchProbeElementDraft, SketchProbeTarget,
-    upsert_schematic_probe_element,
+    edit_schematic_probe_element_position, upsert_schematic_probe_element,
 };
 use super::sketch_rename::{rename_component, rename_net};
 use super::sketch_spice::{
@@ -20,7 +21,7 @@ use super::sketch_spice::{
     replace_component_spice,
 };
 use super::{CircuitCiApp, Stage};
-use anyhow::Context;
+use anyhow::{Context, Result};
 use eframe::egui;
 
 impl CircuitCiApp {
@@ -936,7 +937,7 @@ impl CircuitCiApp {
             probe_name: self.analog_canvas_probe_name.clone(),
         };
         match append_analog_voltage_probe(&self.project_yaml, &draft).and_then(|updated| {
-            upsert_schematic_probe_element(
+            self.upsert_schematic_probe_element_with_default_position(
                 &updated,
                 &SketchProbeElementDraft {
                     element_id: schematic_probe_element_id(
@@ -998,7 +999,7 @@ impl CircuitCiApp {
             &draft,
         )
         .and_then(|updated| {
-            upsert_schematic_probe_element(
+            self.upsert_schematic_probe_element_with_default_position(
                 &updated,
                 &SketchProbeElementDraft {
                     element_id: schematic_probe_element_id(
@@ -1061,7 +1062,7 @@ impl CircuitCiApp {
             &draft,
         )
         .and_then(|updated| {
-            upsert_schematic_probe_element(
+            self.upsert_schematic_probe_element_with_default_position(
                 &updated,
                 &SketchProbeElementDraft {
                     element_id: schematic_probe_element_id(
@@ -1099,6 +1100,26 @@ impl CircuitCiApp {
                 false
             }
         }
+    }
+
+    fn upsert_schematic_probe_element_with_default_position(
+        &self,
+        text: &str,
+        draft: &SketchProbeElementDraft,
+    ) -> Result<String> {
+        let updated = upsert_schematic_probe_element(text, draft)?;
+        let snapshot = load_project_snapshot_from_yaml(&updated)?;
+        let canvas_size = egui::vec2(960.0, 640.0);
+        let Some((element_id, x, y)) = default_probe_element_position(
+            &snapshot,
+            &draft.element_id,
+            canvas_size,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        ) else {
+            return Ok(updated);
+        };
+        edit_schematic_probe_element_position(&updated, &element_id, x, y)
     }
 }
 
