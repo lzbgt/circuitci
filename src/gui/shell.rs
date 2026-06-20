@@ -154,8 +154,14 @@ impl CircuitCiApp {
     pub(super) fn workflow_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("workflow_bar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
+                ui.strong("Sketch workspace");
+                ui.separator();
                 for (index, stage) in Stage::ALL.iter().enumerate() {
-                    let label = format!("{}. {}", index + 1, stage.label());
+                    let label = if *stage == Stage::Sketch {
+                        "Main Sketch".to_string()
+                    } else {
+                        format!("{}. {}", index + 1, stage.label())
+                    };
                     if ui.selectable_label(self.stage == *stage, label).clicked() {
                         self.stage = *stage;
                     }
@@ -165,9 +171,14 @@ impl CircuitCiApp {
     }
 
     pub(super) fn left_panel(&mut self, ctx: &egui::Context) {
-        egui::SidePanel::left("project_panel")
+        let mut open = true;
+        egui::Window::new("Project Overlay")
+            .id(egui::Id::new("project_overlay"))
+            .default_pos(egui::pos2(28.0, 86.0))
+            .default_size(egui::vec2(380.0, 640.0))
             .resizable(true)
-            .default_width(310.0)
+            .collapsible(true)
+            .open(&mut open)
             .show(ctx, |ui| {
                 ui.heading("CircuitCI");
                 ui.separator();
@@ -293,6 +304,9 @@ impl CircuitCiApp {
                     ui.label("No project loaded.");
                 }
             });
+        if !open {
+            self.stage = Stage::Sketch;
+        }
     }
 
     fn project_examples_menu(&mut self, ui: &mut egui::Ui, can_start_job: bool) {
@@ -475,14 +489,41 @@ impl CircuitCiApp {
     }
 
     pub(super) fn central_panel(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| match self.stage {
-            Stage::Project => self.project_stage(ui),
-            Stage::Import => self.import_stage(ui),
-            Stage::Sketch => self.sketch_stage(ui),
-            Stage::Library => self.library_stage(ui),
-            Stage::Simulation => self.simulation_stage(ui),
-            Stage::Reports => self.reports_stage(ui),
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.sketch_stage(ui);
         });
+        self.stage_overlay_window(ctx);
+    }
+
+    fn stage_overlay_window(&mut self, ctx: &egui::Context) {
+        let stage = self.stage;
+        if matches!(stage, Stage::Sketch | Stage::Project) {
+            return;
+        }
+
+        let mut open = true;
+        egui::Window::new(format!("{} Overlay", stage.label()))
+            .id(egui::Id::new(("stage_overlay", stage.label())))
+            .default_pos(egui::pos2(360.0, 86.0))
+            .default_size(match stage {
+                Stage::Simulation => egui::vec2(1100.0, 700.0),
+                Stage::Library | Stage::Import => egui::vec2(860.0, 640.0),
+                Stage::Project | Stage::Reports | Stage::Sketch => egui::vec2(760.0, 560.0),
+            })
+            .resizable(true)
+            .collapsible(true)
+            .open(&mut open)
+            .show(ctx, |ui| match stage {
+                Stage::Project => self.project_stage(ui),
+                Stage::Import => self.import_stage(ui),
+                Stage::Library => self.library_stage(ui),
+                Stage::Simulation => self.simulation_stage(ui),
+                Stage::Reports => self.reports_stage(ui),
+                Stage::Sketch => {}
+            });
+        if !open {
+            self.stage = Stage::Sketch;
+        }
     }
 
     fn project_stage(&mut self, ui: &mut egui::Ui) {

@@ -17,8 +17,8 @@ const MAX_SKETCH_EDGES: usize = 512;
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
     let margin = 18.0;
     let node_width = ((rect.width() - 3.0 * margin) / 2.0).clamp(150.0, 260.0);
-    let component_height = 92.0;
-    let net_height = 44.0;
+    let fallback_component_size = egui::vec2(node_width, 92.0);
+    let fallback_net_size = egui::vec2(node_width, 44.0);
     let row_gap = 10.0;
     let left_x = rect.left() + margin;
     let right_x = rect.right() - margin - node_width;
@@ -28,13 +28,12 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         .components_detail
         .len()
         .min(MAX_SKETCH_ITEMS_PER_SIDE);
-    for (index, component) in snapshot
-        .components_detail
-        .iter()
-        .take(component_count)
-        .enumerate()
-    {
-        let default = egui::pos2(left_x, top + index as f32 * (component_height + row_gap));
+    let mut component_y = top;
+    for component in snapshot.components_detail.iter().take(component_count) {
+        let symbol = component_symbol_kind(component);
+        let size = component_node_size(symbol, fallback_component_size);
+        let default = egui::pos2(left_x, component_y);
+        component_y += size.y + row_gap;
         nodes.push(SketchNode {
             selection: SketchSelection::Component(component.id.clone()),
             label: component.id.clone(),
@@ -42,28 +41,25 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                 &format!("{} / {} pins", component.model, component.pins.len()),
                 34,
             ),
-            symbol: component_symbol_kind(component),
+            symbol,
             style: component.style,
-            rect: node_rect_from_position(
-                rect,
-                component.position,
-                default,
-                node_width,
-                component_height,
-            ),
+            rect: node_rect_from_position(rect, component.position, default, size.x, size.y),
         });
     }
 
     let net_count = snapshot.nets_detail.len().min(MAX_SKETCH_ITEMS_PER_SIDE);
-    for (index, net) in snapshot.nets_detail.iter().take(net_count).enumerate() {
-        let default = egui::pos2(right_x, top + index as f32 * (net_height + row_gap));
+    let mut net_y = top;
+    for net in snapshot.nets_detail.iter().take(net_count) {
+        let size = net_node_size(fallback_net_size);
+        let default = egui::pos2(right_x, net_y);
+        net_y += size.y + row_gap;
         nodes.push(SketchNode {
             selection: SketchSelection::Net(net.id.clone()),
             label: net.id.clone(),
             detail: format!("{} / {} conn", net.kind, net.connections.len()),
             symbol: SketchSymbolKind::Net,
             style: SketchNodeStyle::default(),
-            rect: node_rect_from_position(rect, net.position, default, node_width, net_height),
+            rect: node_rect_from_position(rect, net.position, default, size.x, size.y),
         });
     }
 
@@ -158,9 +154,9 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         push_overflow_hint(
             &mut nodes,
             left_x,
-            rect.bottom() - margin - component_height,
-            node_width,
-            component_height,
+            rect.bottom() - margin - fallback_component_size.y,
+            fallback_component_size.x,
+            fallback_component_size.y,
             snapshot.components_detail.len() - component_count,
             "more components",
         );
@@ -169,9 +165,9 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         push_overflow_hint(
             &mut nodes,
             right_x,
-            rect.bottom() - margin - net_height,
-            node_width,
-            net_height,
+            rect.bottom() - margin - fallback_net_size.y,
+            fallback_net_size.x,
+            fallback_net_size.y,
             snapshot.nets_detail.len() - net_count,
             "more nets",
         );
@@ -490,6 +486,30 @@ fn component_pin_anchors(
     if visible_count == 0 {
         return Vec::new();
     }
+    if component.pins.len() == 2 && component_symbol_kind(component).is_kicad_device_symbol() {
+        return component
+            .pins
+            .iter()
+            .enumerate()
+            .map(|(index, pin)| {
+                let (pos, label_pos, label_align) =
+                    two_terminal_pin_anchor(rect, index, component.style);
+                SketchPinAnchor {
+                    component_id: component.id.clone(),
+                    pin: pin.pin.clone(),
+                    net: pin.net.clone(),
+                    kind: net_kinds
+                        .get(pin.net.as_str())
+                        .copied()
+                        .unwrap_or("unresolved")
+                        .to_string(),
+                    pos,
+                    label_pos,
+                    label_align,
+                }
+            })
+            .collect();
+    }
     let pin_side = component_pin_side(component.style);
     component
         .pins
@@ -525,6 +545,60 @@ fn component_pin_anchors(
             }
         })
         .collect()
+}
+
+fn component_node_size(symbol: SketchSymbolKind, fallback: egui::Vec2) -> egui::Vec2 {
+    if symbol.is_kicad_device_symbol() {
+        egui::vec2(104.0, 72.0)
+    } else {
+        fallback
+    }
+}
+
+fn net_node_size(fallback: egui::Vec2) -> egui::Vec2 {
+    egui::vec2(fallback.x.min(150.0), 32.0)
+}
+
+fn two_terminal_pin_anchor(
+    rect: egui::Rect,
+    index: usize,
+    style: SketchNodeStyle,
+) -> (egui::Pos2, egui::Pos2, egui::Align2) {
+    let x = if index == 0 { -1.0 } else { 1.0 };
+    let terminal = styled_normalized_point(rect, x, 0.0, style);
+    let outward = terminal - rect.center();
+    let outward = if outward.length_sq() > 0.0 {
+        outward.normalized()
+    } else {
+        egui::vec2(if index == 0 { -1.0 } else { 1.0 }, 0.0)
+    };
+    let label_pos = terminal + outward * 10.0;
+    let label_align = if outward.x.abs() >= outward.y.abs() {
+        if outward.x < 0.0 {
+            egui::Align2::RIGHT_CENTER
+        } else {
+            egui::Align2::LEFT_CENTER
+        }
+    } else if outward.y < 0.0 {
+        egui::Align2::CENTER_BOTTOM
+    } else {
+        egui::Align2::CENTER_TOP
+    };
+    (terminal, label_pos, label_align)
+}
+
+fn styled_normalized_point(rect: egui::Rect, x: f32, y: f32, style: SketchNodeStyle) -> egui::Pos2 {
+    let x = if style.mirrored { -x } else { x };
+    let (x, y) = match style.rotation_deg.rem_euclid(360) {
+        90 => (-y, x),
+        180 => (-x, -y),
+        270 => (y, -x),
+        _ => (x, y),
+    };
+    egui::pos2(
+        rect.center().x + x * rect.width() * 0.5,
+        rect.center().y + y * rect.height() * 0.5,
+    )
 }
 
 fn component_pin_side(style: SketchNodeStyle) -> SketchPinSide {

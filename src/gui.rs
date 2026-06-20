@@ -673,7 +673,7 @@ impl eframe::App for CircuitCiApp {
         self.advance_waveform_playback(ctx);
         self.menu_bar(ctx);
         self.workflow_bar(ctx);
-        if self.stage != Stage::Sketch {
+        if self.stage == Stage::Project {
             self.left_panel(ctx);
         }
         self.bottom_panel(ctx);
@@ -1039,6 +1039,8 @@ impl CircuitCiApp {
             self.scope_run_readiness_panel(ui);
             ui.separator();
             self.sketch_primitive_palette(ui);
+            ui.separator();
+            self.sketch_probe_element_palette(ui);
             ui.separator();
             self.sketch_overlay_panel(ui, snapshot);
             ui.separator();

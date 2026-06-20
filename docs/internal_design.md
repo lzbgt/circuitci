@@ -12,12 +12,13 @@ same Board IR, library binding, scenario suggestion, validation, and report
 APIs used by the CLI. It must not grow a second project model, a second
 validation dispatcher, or an in-house analog solver.
 
-The GUI stages are allowed to organize user workflow around project loading,
-KiCad/SPICE import, sketch/model review, library suggestions, simulation
-artifact observation, and report viewing. Schematic-canvas editing and waveform
-plotting should still persist through Board IR, importer metadata, generated or
-file-backed SPICE decks, and report artifacts so headless agents can reproduce
-GUI actions.
+The GUI shell is schematic-first. Sketch is the mandatory central workspace,
+and project loading, KiCad/SPICE import, library selection, Scopes/Simulation,
+and Reports should appear as disposable floating overlays or secondary docks on
+demand instead of replacing the schematic canvas. Schematic-canvas editing and
+waveform plotting should still persist through Board IR, importer metadata,
+generated or file-backed SPICE decks, and report artifacts so headless agents
+can reproduce GUI actions.
 
 The Sketch stage should follow a schematic-first editor convention similar to
 modeling tools such as Simulink: the schematic canvas is the mandatory primary
@@ -25,18 +26,19 @@ scene, Run and scope/observation controls remain directly reachable from that
 scene, and project/library/import/YAML details must stay secondary or docked so
 they do not shrink the model view into a preview pane.
 
-The Simulation stage should follow the same convention from the runtime side:
-it is a Scopes workspace first, with the oscilloscope plot, waveform/probe
-selection, and play/scrub controls treated as the primary view. Analog scenario,
-model-file, assertion, deck, artifact, and finding editors may be available in
-secondary docks, but they must not force the runtime view back into a
-form-heavy page.
+The Simulation/Scopes overlay should follow the same convention from the
+runtime side: it is a floating Scopes workspace over Sketch, with the
+oscilloscope plot, waveform/probe selection, and play/scrub controls treated as
+the primary view. Analog scenario, model-file, assertion, deck, artifact, and
+finding editors may be available in secondary docks, but they must not force
+the runtime view back into a form-heavy page or hide the schematic as the
+application's main workspace.
 
 GUI implementation is split so the stage shell does not accumulate all desktop
 logic in one source file. `src/gui.rs` owns application state, the `eframe`
 update loop, and shared validation/report command helpers, with focused core
 GUI regressions split into `src/gui/gui_core_tests.rs`. `src/gui/shell.rs`
-owns menus, workflow stage routing, the left project panel, the status panel,
+owns menus, workflow overlay routing, the project overlay, the status panel,
 Project/Reports views, and finding/limitation rendering. `src/gui/jobs.rs` owns background GUI job
 state, worker-thread launch, channel polling, stale-result rejection, and
 cancel-request handling for validation, scenario suggestion, and KiCad/SPICE
@@ -161,9 +163,13 @@ mutation. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
-owns visual-only symbol-style rendering: it may infer common glyph classes from
-reference designators and model IDs, but it must continue to persist only Board
-IR components, nets, pins, and optional schematic node positions/styles.
+owns visual-only symbol-style rendering: it may infer symbol classes from
+reference designators and model IDs, and common primitives should follow the
+checked local KiCad Device symbol geometry documented in
+`docs/research/kicad/default_gui_symbol_reference.md`. It must continue to
+persist only Board IR components, nets, pins, and optional schematic node
+positions/styles; symbol-library rendering must not introduce a second
+connectivity model.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and

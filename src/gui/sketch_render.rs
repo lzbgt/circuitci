@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use super::sketch::{SketchNode, SketchPinAnchor, SketchSelection, compact_label};
-use super::sketch_symbols::draw_symbol_glyph;
+use super::sketch_symbols::{SketchSymbolKind, draw_symbol_glyph};
 
 pub(super) fn draw_sketch_node(
     painter: &egui::Painter,
@@ -12,6 +12,9 @@ pub(super) fn draw_sketch_node(
     opacity: f32,
 ) {
     let opacity = normalized_opacity(opacity);
+    let kicad_device_symbol = matches!(node.selection, SketchSelection::Component(_))
+        && node.symbol.is_kicad_device_symbol();
+    let lightweight_node = kicad_device_symbol || matches!(node.selection, SketchSelection::Net(_));
     let base_fill = match node.selection {
         SketchSelection::Component(_) => egui::Color32::from_rgb(36, 52, 70),
         SketchSelection::Net(_) => egui::Color32::from_rgb(42, 62, 46),
@@ -28,10 +31,21 @@ pub(super) fn draw_sketch_node(
     } else {
         egui::Stroke::new(1.0, with_opacity(egui::Color32::from_gray(108), opacity))
     };
-    painter.rect_filled(node.rect, 4.0, with_opacity(fill, opacity));
-    painter.rect_stroke(node.rect, 4.0, stroke, egui::StrokeKind::Inside);
+    if lightweight_node {
+        if selected || runtime_activity.is_some() {
+            painter.rect_filled(
+                node.rect.expand(4.0),
+                3.0,
+                with_opacity(fill.linear_multiply(0.45), opacity),
+            );
+            painter.rect_stroke(node.rect.expand(4.0), 3.0, stroke, egui::StrokeKind::Inside);
+        }
+    } else {
+        painter.rect_filled(node.rect, 4.0, with_opacity(fill, opacity));
+        painter.rect_stroke(node.rect, 4.0, stroke, egui::StrokeKind::Inside);
+    }
     draw_symbol_glyph(painter, node);
-    if opacity < 0.999 {
+    if opacity < 0.999 && !lightweight_node {
         let alpha = ((1.0 - opacity) * 170.0).round() as u8;
         painter.rect_filled(
             node.rect.shrink(1.0),
@@ -39,22 +53,59 @@ pub(super) fn draw_sketch_node(
             egui::Color32::from_rgba_unmultiplied(18, 18, 18, alpha),
         );
     }
-    painter.text(
-        node.rect.left_top() + egui::vec2(8.0, 9.0),
-        egui::Align2::LEFT_CENTER,
-        compact_label(&node.label, 24),
-        egui::FontId::monospace(13.0),
-        with_opacity(egui::Color32::WHITE, opacity),
-    );
-    painter.text(
-        node.rect.left_bottom() + egui::vec2(8.0, -12.0),
-        egui::Align2::LEFT_CENTER,
-        compact_label(&node.detail, 34),
-        egui::FontId::monospace(11.0),
-        with_opacity(egui::Color32::LIGHT_GRAY, opacity),
-    );
+    if kicad_device_symbol {
+        draw_kicad_device_labels(painter, node, opacity);
+    } else if matches!(node.selection, SketchSelection::Net(_)) {
+        draw_net_label(painter, node, opacity);
+    } else {
+        painter.text(
+            node.rect.left_top() + egui::vec2(8.0, 9.0),
+            egui::Align2::LEFT_CENTER,
+            compact_label(&node.label, 24),
+            egui::FontId::monospace(13.0),
+            with_opacity(egui::Color32::WHITE, opacity),
+        );
+        painter.text(
+            node.rect.left_bottom() + egui::vec2(8.0, -12.0),
+            egui::Align2::LEFT_CENTER,
+            compact_label(&node.detail, 34),
+            egui::FontId::monospace(11.0),
+            with_opacity(egui::Color32::LIGHT_GRAY, opacity),
+        );
+    }
     if runtime_activity.is_some() {
         draw_runtime_scope_chip(painter, node, runtime_scope_chip_hovered, opacity);
+    }
+}
+
+fn draw_net_label(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
+    painter.text(
+        node.rect.center_top() + egui::vec2(0.0, -3.0),
+        egui::Align2::CENTER_BOTTOM,
+        compact_label(&node.label, 18),
+        egui::FontId::monospace(11.0),
+        with_opacity(egui::Color32::from_rgb(182, 235, 191), opacity),
+    );
+}
+
+fn draw_kicad_device_labels(painter: &egui::Painter, node: &SketchNode, opacity: f32) {
+    let label_pos = node.rect.center_top() + egui::vec2(0.0, -8.0);
+    painter.text(
+        label_pos,
+        egui::Align2::CENTER_BOTTOM,
+        compact_label(&node.label, 18),
+        egui::FontId::monospace(12.0),
+        with_opacity(egui::Color32::WHITE, opacity),
+    );
+    let show_detail = !matches!(node.symbol, SketchSymbolKind::Source);
+    if show_detail {
+        painter.text(
+            node.rect.center_bottom() + egui::vec2(0.0, 8.0),
+            egui::Align2::CENTER_TOP,
+            compact_label(&node.detail, 22),
+            egui::FontId::monospace(10.0),
+            with_opacity(egui::Color32::LIGHT_GRAY, opacity),
+        );
     }
 }
 

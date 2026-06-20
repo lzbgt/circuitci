@@ -63,12 +63,12 @@ dependencies unless `--features gui` is explicitly enabled.
 `src/gui.rs` owns application state, the `eframe` update loop, and shared
 validation/report command helpers, with focused core GUI regressions split into
 `src/gui/gui_core_tests.rs`.
-`src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow stage bar,
-left project panel, status panel, central stage routing, Project landing view,
-Reports view, and finding/limitation rendering. The Sketch stage intentionally
-hides the project side panel so the schematic canvas becomes the primary model
-view, with project/import/library details available through other stages or
-docked secondary panels. `src/gui/import_flow.rs` owns
+`src/gui/shell.rs` owns the desktop shell chrome: menu bar, workflow overlay
+bar, project overlay, status panel, permanent Sketch central canvas,
+secondary overlay windows, Project landing view, Reports view, and
+finding/limitation rendering. Sketch is the mandatory main workspace: Project,
+Import, Library, Scopes/Simulation, and Reports open as disposable floating
+overlays on demand instead of replacing the schematic canvas. `src/gui/import_flow.rs` owns
 the Import stage UI and KiCad schematic, KiCad PCB, and SPICE deck import
 command wiring.
 `src/gui/file_dialogs.rs` owns native open/save/folder dialog integration for
@@ -174,8 +174,14 @@ affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_ca
 right-click menus for component, net, wire, probe-badge, and blank-canvas
 targets, including route-handle actions and named-net/off-page label placement
 actions.
-`src/gui/sketch_symbols.rs` owns model/id-inferred common-class
-symbol selection and the egui glyph drawing used by sketch nodes.
+`src/gui/sketch_symbols.rs` owns model/id-inferred symbol selection and
+KiCad Device-style default symbol drawing used by sketch nodes. Common
+two-terminal primitives use compact schematic footprints with opposite-end
+terminal anchors instead of large component cards; nets render as lightweight
+schematic labels/junction targets rather than green boxes. The checked local
+KiCad libraries documented in `docs/research/kicad/default_gui_symbol_reference.md`
+are the canonical visual reference; the GUI keeps deterministic built-in
+fallback geometry so the editor still opens on machines without KiCad.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
 fit-all/fit-selection/home viewport commands, multi-selected
 drag/nudge/alignment/distribution, and batched selected-item deletion as
@@ -374,14 +380,14 @@ form:
 
 - Project: choose a Board IR project and output directory by typing paths or
   using native file/folder pickers, then load or validate it. The File menu has
-  a registry-backed `Examples` command menu, and the Project panel has a
+  a registry-backed `Examples` command menu, and the Project overlay has a
   compact example picker that shows each entry's category, purpose, expected
   traces, and expected frequency before `Open` or `Run + Scopes`. The current
   entries cover the checked-in NE555 astable-style fixture and RC low-pass sine
   fixture; both direct-open projects include display-only routed schematic
   waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
   the first view is the readable connected network. When a scope-ready fixture
-  is active, the Project panel also shows a workflow status with direct `Run +
+  is active, the Project overlay also shows a workflow status with direct `Run +
   Scopes` / `Open Scope Activity` actions, and the Sketch side dock mirrors
   those compact workflow actions above Run Readiness.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
@@ -392,12 +398,12 @@ form:
   Run + Scopes and Scope Activity inspection; the same fixture also has a
   checked-in `examples/ne555_astable_scope_smoke/project.yaml` for direct GUI
   opening without an import step.
-- Sketch: shows a visual Board IR graph with selectable component/net nodes,
+- Sketch: is the always-visible main workspace and shows a visual Board IR graph with selectable component/net nodes,
   a schematic-first model-editor layout with a dominant canvas, compact Run
   control, secondary detail/navigation dock, and collapsed YAML editor,
-  common-class symbol-style rendering for resistors, capacitors, inductors,
-  diodes, sources, connectors, ICs, and generic blocks, rendered component pin
-  anchors, an inspector for component bindings and net connections, structured
+  KiCad Device-style default rendering for resistors, capacitors, inductors,
+  diodes, and sources, connector/IC/block rendering for larger parts, rendered
+  component pin anchors, an inspector for component bindings and net connections, structured
   scalar edits, rename controls, inline canvas component ID/value editing,
   visible draggable component reference/value labels with transient visibility
   and auto-arranged display positions, a primitive palette that places generic
@@ -405,7 +411,8 @@ form:
   voltage/current sources at the current view, a canvas click, drag/drop release
   with orientation-aware snap ghost feedback, or a context-menu pointer with
   pins, nets, SPICE evidence, schematic placement, and optional schematic
-  orientation, and
+  orientation, a Probe Elements palette that places voltage/current/power
+  oscilloscope probes on schematic targets with runtime Scopes binding, and
   component-level SPICE primitive/value editing for existing
   component properties, schematic-only
   rotate/flip/pin-side controls for selected components, add/remove controls
@@ -480,7 +487,7 @@ form:
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
-- Simulation/Scopes: presents a runtime-first oscilloscope workspace linked
+- Simulation/Scopes: opens as a floating overlay over Sketch and presents a runtime-first oscilloscope workspace linked
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform
   selection, searchable/grouped trace selection, transient selected-probe trace
   pinning, saved compare sets, and per-trace visibility/color styles for

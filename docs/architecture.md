@@ -75,6 +75,10 @@ transient voltage probe when a schematic has no analog probes, and the selected
 trace controls include a bounded frequency-domain peak readout for transient
 waveforms.
 
+The GUI shell keeps Sketch as the permanent central workspace. Project,
+Import, Library, Scopes/Simulation, and Reports open as floating overlays or
+secondary docks on demand rather than replacing the schematic canvas.
+
 The Sketch canvas implementation is split so the shell stays focused on event
 routing. `gui::sketch_canvas_hits` owns canvas hover and press-origin target
 projection for graph items, minimap exclusion, probe/bundle/label badges, and

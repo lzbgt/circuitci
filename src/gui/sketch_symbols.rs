@@ -16,6 +16,15 @@ pub(super) enum SketchSymbolKind {
     Overflow,
 }
 
+impl SketchSymbolKind {
+    pub(super) fn is_kicad_device_symbol(self) -> bool {
+        matches!(
+            self,
+            Self::Resistor | Self::Capacitor | Self::Inductor | Self::Diode | Self::Source
+        )
+    }
+}
+
 pub(super) fn component_symbol_kind(component: &SketchComponent) -> SketchSymbolKind {
     let model = component.model.to_ascii_lowercase();
     let id = component.id.to_ascii_uppercase();
@@ -62,10 +71,16 @@ pub(super) fn draw_symbol_glyph(painter: &egui::Painter, node: &SketchNode) {
         SketchSelection::Net(_) => egui::Color32::from_rgb(182, 235, 191),
         SketchSelection::Overflow(_) => egui::Color32::LIGHT_GRAY,
     };
-    let stroke = egui::Stroke::new(1.5, color);
-    let mut rect = node.rect.shrink2(egui::vec2(28.0, 26.0));
-    rect.min.y = rect.min.y.max(node.rect.top() + 26.0);
-    rect.max.y = rect.max.y.min(node.rect.bottom() - 20.0);
+    let stroke = egui::Stroke::new(1.7, color);
+    let mut rect = if node.symbol.is_kicad_device_symbol() {
+        node.rect.shrink2(egui::vec2(8.0, 18.0))
+    } else {
+        node.rect.shrink2(egui::vec2(28.0, 26.0))
+    };
+    if !node.symbol.is_kicad_device_symbol() {
+        rect.min.y = rect.min.y.max(node.rect.top() + 26.0);
+        rect.max.y = rect.max.y.min(node.rect.bottom() - 20.0);
+    }
     if rect.width() < 48.0 || rect.height() < 14.0 {
         return;
     }
@@ -102,30 +117,25 @@ fn draw_resistor_symbol(
     painter.line_segment(
         [
             symbol_point(rect, -1.0, 0.0, style),
-            symbol_point(rect, -0.56, 0.0, style),
+            symbol_point(rect, -0.36, 0.0, style),
         ],
         stroke,
     );
     painter.line_segment(
         [
-            symbol_point(rect, 0.56, 0.0, style),
+            symbol_point(rect, 0.36, 0.0, style),
             symbol_point(rect, 1.0, 0.0, style),
         ],
         stroke,
     );
-    let mut points = Vec::with_capacity(7);
-    for index in 0..=6 {
-        let x = -0.56 + 1.12 * index as f32 / 6.0;
-        let y = if index == 0 || index == 6 {
-            0.0
-        } else if index % 2 == 1 {
-            -0.42
-        } else {
-            0.42
-        };
-        points.push(symbol_point(rect, x, y, style));
-    }
-    painter.add(egui::Shape::line(points, stroke));
+    let body = [
+        symbol_point(rect, -0.36, -0.38, style),
+        symbol_point(rect, 0.36, -0.38, style),
+        symbol_point(rect, 0.36, 0.38, style),
+        symbol_point(rect, -0.36, 0.38, style),
+        symbol_point(rect, -0.36, -0.38, style),
+    ];
+    painter.add(egui::Shape::line(body.to_vec(), stroke));
 }
 
 fn draw_capacitor_symbol(

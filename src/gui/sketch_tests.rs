@@ -2,13 +2,13 @@ use super::sketch::{ProjectSnapshot, SketchComponent, SketchNet, SketchPin};
 use super::sketch::{
     SketchNodeStyle, SketchPinSide, SketchPosition, SketchSelection, SketchViewport, add_component,
     add_component_with_ports, add_net, assign_component_pin, connect_component_pins,
-    edge_label_position, edit_schematic_component_style, edit_schematic_component_styles,
-    edit_schematic_node_position, edit_schematic_node_positions, edit_schematic_wire_route,
-    hit_test_wire, layout_sketch_graph, layout_sketch_graph_viewport,
-    load_project_snapshot_from_yaml, orthogonal_wire_points, persisted_node_position_from_screen,
-    persisted_node_position_from_screen_with_snap, remove_component, remove_component_pin,
-    remove_net, remove_schematic_wire_route, runtime_scope_chip_rect, sketch_graph_bounds,
-    sketch_wire_points, snap_screen_point_to_grid, validate_board_ir_yaml_text, wire_route_key,
+    edit_schematic_component_style, edit_schematic_component_styles, edit_schematic_node_position,
+    edit_schematic_node_positions, edit_schematic_wire_route, hit_test_wire, layout_sketch_graph,
+    layout_sketch_graph_viewport, load_project_snapshot_from_yaml, orthogonal_wire_points,
+    persisted_node_position_from_screen, persisted_node_position_from_screen_with_snap,
+    remove_component, remove_component_pin, remove_net, remove_schematic_wire_route,
+    runtime_scope_chip_rect, sketch_graph_bounds, sketch_wire_points, snap_screen_point_to_grid,
+    validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
@@ -632,7 +632,7 @@ fn edit_schematic_component_styles_rotates_multiple_components_in_one_yaml_edit(
 }
 
 #[test]
-fn layout_uses_schematic_style_for_left_pin_anchors() {
+fn layout_uses_schematic_style_for_two_terminal_pin_anchors() {
     let edited = edit_schematic_component_style(
         editable_project_yaml(),
         "R1",
@@ -661,7 +661,7 @@ fn layout_uses_schematic_style_for_left_pin_anchors() {
 
     assert_eq!(component.style.rotation_deg, 180);
     assert_eq!(component.style.pin_side, SketchPinSide::Left);
-    assert_eq!(anchor.pos.x, component.rect.left());
+    assert_eq!(anchor.pos.x, component.rect.right());
     assert_eq!(anchor.label_align, egui::Align2::LEFT_CENTER);
 }
 
@@ -951,7 +951,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
 
     assert_eq!(component.rect.left(), 62.0);
     assert_eq!(component.rect.top(), 62.0);
-    assert!(component.rect.width() > 250.0);
+    assert_eq!(component.rect.width(), 208.0);
     assert_eq!(graph.edges.len(), 1);
 }
 
@@ -1075,10 +1075,55 @@ fn sketch_graph_edges_carry_net_metadata_for_wire_inspection() {
         .iter()
         .find(|edge| edge.net_id == "net_a" && edge.source == "R1.A")
         .unwrap();
-    let hit = hit_test_wire(&graph, edge_label_position(edge)).unwrap();
+    let hit_point = sketch_wire_points(edge)
+        .windows(2)
+        .map(|segment| segment[0] + (segment[1] - segment[0]) * 0.5)
+        .find(|point| {
+            hit_test_wire(&graph, *point)
+                .is_some_and(|hit| hit.net_id == "net_a" && hit.source == "R1.A")
+        })
+        .unwrap();
+    let hit = hit_test_wire(&graph, hit_point).unwrap();
 
     assert_eq!(hit.net_id, "net_a");
     assert_eq!(hit.source, "R1.A");
+}
+
+#[test]
+fn primitive_symbols_use_compact_kicad_style_footprints_and_opposite_pins() {
+    let snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    let canvas = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(640.0, 320.0));
+    let graph = layout_sketch_graph(canvas, &snapshot);
+    let resistor = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+        .unwrap();
+    let net = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Net("net_a".to_string()))
+        .unwrap();
+    let pin_a = graph
+        .pin_anchors
+        .iter()
+        .find(|anchor| anchor.component_id == "R1" && anchor.pin == "A")
+        .unwrap();
+    let pin_b = graph
+        .pin_anchors
+        .iter()
+        .find(|anchor| anchor.component_id == "R1" && anchor.pin == "B")
+        .unwrap();
+
+    assert_eq!(resistor.symbol, SketchSymbolKind::Resistor);
+    assert!(resistor.rect.width() <= 110.0);
+    assert!(resistor.rect.height() <= 76.0);
+    assert!(net.rect.width() <= 150.0);
+    assert!(net.rect.height() <= 34.0);
+    assert!(pin_a.pos.x < resistor.rect.center().x);
+    assert!(pin_b.pos.x > resistor.rect.center().x);
+    assert_eq!(pin_a.pos.y, resistor.rect.center().y);
+    assert_eq!(pin_b.pos.y, resistor.rect.center().y);
 }
 
 #[test]

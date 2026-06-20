@@ -126,6 +126,42 @@ impl CircuitCiApp {
         }
     }
 
+    pub(super) fn sketch_probe_element_palette(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new("Probe Elements")
+            .default_open(true)
+            .show(ui, |ui| {
+                ui.label(
+                    "Place oscilloscope probes on schematic wires, pins, nets, or components.",
+                );
+                for tool in SketchScopeProbeTool::ALL {
+                    let active = self.sketch_scope_probe_tool == Some(tool);
+                    let label = match tool {
+                        SketchScopeProbeTool::Voltage => "Voltage probe",
+                        SketchScopeProbeTool::Current => "Current probe",
+                        SketchScopeProbeTool::Power => "Power probe",
+                    };
+                    if ui
+                        .selectable_label(active, label)
+                        .on_hover_text(format!(
+                            "{}: {}. Shortcut: {}",
+                            tool.status_label(),
+                            tool.target_hint(),
+                            tool.shortcut_label()
+                        ))
+                        .clicked()
+                    {
+                        self.toggle_scope_probe_tool(tool);
+                    }
+                }
+                if self.sketch_scope_probe_tool.is_some() && ui.button("Cancel Probe").clicked() {
+                    self.cancel_scope_probe_tool();
+                }
+                ui.small(
+                    "A placed probe creates or focuses the matching Scopes trace after simulation.",
+                );
+            });
+    }
+
     pub(super) fn arm_scope_probe_tool(&mut self, tool: SketchScopeProbeTool) {
         self.sketch_scope_probe_tool = Some(tool);
         self.sketch_palette_place_armed = false;
