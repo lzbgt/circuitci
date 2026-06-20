@@ -296,8 +296,13 @@ fn gui_project_example_registry_lists_ne555_scope_fixture() {
     assert_eq!(examples.len(), 2);
     let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
+    assert_eq!(example.category, "Timer");
     assert_eq!(example.open_label, "Open NE555 Scope Example");
     assert_eq!(example.run_label, "Open NE555 + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "Astable-style timer output with timing-node and source-current traces."
+    );
     assert_eq!(
         example.project_path,
         "examples/ne555_astable_scope_smoke/project.yaml"
@@ -313,8 +318,13 @@ fn gui_project_example_registry_lists_ne555_scope_fixture() {
 fn gui_project_example_registry_lists_rc_lowpass_scope_fixture() {
     let example = gui_project_example_by_id("rc_lowpass_scope");
 
+    assert_eq!(example.category, "Filter");
     assert_eq!(example.open_label, "Open RC Low-Pass Scope Example");
     assert_eq!(example.run_label, "Open RC Low-Pass + Run Scopes");
+    assert_eq!(
+        example.summary,
+        "1 kHz sine into a first-order low-pass for input/output comparison."
+    );
     assert_eq!(
         example.project_path,
         "examples/rc_lowpass_scope/project.yaml"
@@ -328,6 +338,17 @@ fn gui_project_example_registry_lists_rc_lowpass_scope_fixture() {
         example.expected_frequency,
         "1.00 kHz sine, fc about 1.59 kHz"
     );
+}
+
+#[test]
+fn gui_project_example_picker_defaults_and_falls_back_to_valid_entry() {
+    let mut app = CircuitCiApp::default();
+
+    assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
+    app.selected_project_example_id = "rc_lowpass_scope".to_string();
+    assert_eq!(app.selected_project_example().id, "rc_lowpass_scope");
+    app.selected_project_example_id = "deleted_example".to_string();
+    assert_eq!(app.selected_project_example().id, "ne555_astable_scope");
 }
 
 #[test]

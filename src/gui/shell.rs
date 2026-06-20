@@ -181,7 +181,7 @@ impl CircuitCiApp {
                         self.pick_and_request_project_load(ui.ctx());
                     }
                 });
-                self.project_examples_menu(ui, self.background_job_elapsed_secs().is_none());
+                self.project_examples_picker(ui, self.background_job_elapsed_secs().is_none());
                 self.scope_example_workflow_panel(ui);
                 ui.label("Output");
                 ui.horizontal(|ui| {
@@ -310,6 +310,47 @@ impl CircuitCiApp {
                     ui.close();
                 }
             }
+        });
+    }
+
+    fn project_examples_picker(&mut self, ui: &mut egui::Ui, can_start_job: bool) {
+        let selected = self.selected_project_example();
+        ui.collapsing("Examples", |ui| {
+            egui::ComboBox::from_label("Scope example")
+                .selected_text(format!(
+                    "{} - {}",
+                    selected.category, selected.workflow_title
+                ))
+                .show_ui(ui, |ui| {
+                    for example in gui_project_examples() {
+                        ui.selectable_value(
+                            &mut self.selected_project_example_id,
+                            example.id.to_string(),
+                            format!("{} - {}", example.category, example.workflow_title),
+                        );
+                    }
+                });
+            let selected = self.selected_project_example();
+            ui.label(selected.summary);
+            ui.label(format!(
+                "Expected traces: {}",
+                selected.expected_traces.join(", ")
+            ));
+            ui.label(format!(
+                "Expected output frequency: {}",
+                selected.expected_frequency
+            ));
+            ui.horizontal(|ui| {
+                if ui.button("Open").clicked() {
+                    self.request_project_example_load(selected, Some(ui.ctx()));
+                }
+                if ui
+                    .add_enabled(can_start_job, egui::Button::new("Run + Scopes"))
+                    .clicked()
+                {
+                    self.request_project_example_load_and_run_scopes(selected, Some(ui.ctx()));
+                }
+            });
         });
     }
 

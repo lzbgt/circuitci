@@ -19,9 +19,11 @@ const RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY: &str = "1.00 kHz sine, fc about 1.59 
 const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     GuiProjectExample {
         id: "ne555_astable_scope",
+        category: "Timer",
         open_label: "Open NE555 Scope Example",
         run_label: "Open NE555 + Run Scopes",
         workflow_title: "NE555 Scope Workflow",
+        summary: "Astable-style timer output with timing-node and source-current traces.",
         project_path: NE555_SCOPE_EXAMPLE_PROJECT,
         project_name: NE555_SCOPE_EXAMPLE_NAME,
         expected_traces: NE555_SCOPE_EXPECTED_TRACES,
@@ -29,9 +31,11 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
     },
     GuiProjectExample {
         id: "rc_lowpass_scope",
+        category: "Filter",
         open_label: "Open RC Low-Pass Scope Example",
         run_label: "Open RC Low-Pass + Run Scopes",
         workflow_title: "RC Low-Pass Scope Workflow",
+        summary: "1 kHz sine into a first-order low-pass for input/output comparison.",
         project_path: RC_LOWPASS_SCOPE_EXAMPLE_PROJECT,
         project_name: RC_LOWPASS_SCOPE_EXAMPLE_NAME,
         expected_traces: RC_LOWPASS_SCOPE_EXPECTED_TRACES,
@@ -42,9 +46,11 @@ const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct GuiProjectExample {
     pub(super) id: &'static str,
+    pub(super) category: &'static str,
     pub(super) open_label: &'static str,
     pub(super) run_label: &'static str,
     pub(super) workflow_title: &'static str,
+    pub(super) summary: &'static str,
     pub(super) project_path: &'static str,
     pub(super) project_name: &'static str,
     pub(super) expected_traces: &'static [&'static str],
@@ -90,6 +96,14 @@ pub(super) fn gui_project_examples() -> &'static [GuiProjectExample] {
 }
 
 impl CircuitCiApp {
+    pub(super) fn selected_project_example(&self) -> GuiProjectExample {
+        GUI_PROJECT_EXAMPLES
+            .iter()
+            .copied()
+            .find(|example| example.id == self.selected_project_example_id)
+            .unwrap_or(GUI_PROJECT_EXAMPLES[0])
+    }
+
     pub(super) fn scope_example_workflow_status(&self) -> Option<ScopeExampleWorkflowStatus> {
         let example = self.active_scope_project_example()?;
         let (state, action) = if self.background_job_elapsed_secs().is_some() {

@@ -373,13 +373,13 @@ The first GUI slice provides EDA-style stages rather than a single command
 form:
 
 - Project: choose a Board IR project and output directory by typing paths or
-  using native file/folder pickers, then load or validate it. The File menu and
-  Project panel share an `Examples` menu backed by the GUI example registry;
-  the current entries open the checked-in NE555 astable-style fixture and RC
-  low-pass sine fixture, or load either one and start validation directly in
-  Scopes. When a scope-ready fixture is active, the Project panel shows a
-  compact workflow status with expected traces, approximate output frequency,
-  and direct `Run + Scopes` / `Open Scope Activity` actions.
+  using native file/folder pickers, then load or validate it. The File menu has
+  a registry-backed `Examples` command menu, and the Project panel has a
+  compact example picker that shows each entry's category, purpose, expected
+  traces, and expected frequency before `Open` or `Run + Scopes`. The current
+  entries cover the checked-in NE555 astable-style fixture and RC low-pass sine
+  fixture. When a scope-ready fixture is active, the Project panel also shows a
+  workflow status with direct `Run + Scopes` / `Open Scope Activity` actions.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native
