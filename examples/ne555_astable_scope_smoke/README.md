@@ -4,14 +4,17 @@ This fixture is a GUI scope workflow smoke test for a typical NE555 astable appl
 
 `deck.cir` uses an idealized `PULSE` source for the timer output rather than a vendor NE555 macro-model. The circuit is intended to verify schematic import, Run, scope waveform loading, voltage/current probes, and frequency-domain inspection with a familiar astable output/timing-node shape.
 
+`project.yaml` is the portable, direct-open Board IR version of the same deck.
+It keeps `deck.cir` as the solver source, uses relative paths, and names the
+schematic nets `out`, `timing`, `vcc`, and `gnd` for easier GUI inspection.
+
 Expected workflow:
 
-1. In the GUI Import stage, click `Use NE555 Astable` to fill the SPICE import
-   fields, or `Import NE555` to start the import directly.
-2. Open the generated project in Sketch or Scopes.
-3. Use `Run + Scopes` or Scopes `Run`; Auto-before-Run should keep useful V/I
+1. Open `project.yaml` directly in the GUI, or import `deck.cir` from the
+   Import stage with `Use NE555 Astable` / `Import NE555`.
+2. Use `Run + Scopes` or Scopes `Run`; Auto-before-Run should keep useful V/I
    probes available.
-4. Inspect `v(out)`, `v(timing)`, and supply/load current traces, including the
+3. Inspect `v(out)`, `v(timing)`, and supply/load current traces, including the
    Scope Activity overlay on the schematic.
 
 The same deck can still be imported headlessly with `circuitci import-spice`.

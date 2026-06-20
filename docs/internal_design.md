@@ -62,7 +62,9 @@ should only route those events to the status panel.
 `src/gui/import_flow.rs` owns the Import stage UI plus KiCad
 schematic, KiCad PCB, and SPICE deck import command wiring, including the
 scope-ready NE555 astable SPICE preset used to exercise Run + Scopes and Scope
-Activity workflows from a typical analog example.
+Activity workflows from a typical analog example. The NE555 fixture also keeps
+a direct-open Board IR `project.yaml` beside the deck so GUI smoke workflows do
+not depend on regenerating import output first.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`

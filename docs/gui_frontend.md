@@ -379,7 +379,9 @@ form:
   evidence. Import source and output paths can be typed or selected with native
   open/save dialogs. The SPICE import panel includes a scope-ready NE555
   astable preset that fills or directly imports the verified transient deck for
-  Run + Scopes and Scope Activity inspection.
+  Run + Scopes and Scope Activity inspection; the same fixture also has a
+  checked-in `examples/ne555_astable_scope_smoke/project.yaml` for direct GUI
+  opening without an import step.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   a schematic-first model-editor layout with a dominant canvas, compact Run
   control, secondary detail/navigation dock, and collapsed YAML editor,
