@@ -3,6 +3,7 @@ use super::sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
     SketchPin, SketchSelection, edit_component_model, edit_component_part_number, edit_net_kind,
     edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
+    wire_route_key,
 };
 use super::sketch_canvas_render::component_context_pin;
 use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, Stage, egui};
@@ -287,6 +288,64 @@ fn ne555_scope_example_shortcut_loads_direct_project() {
     assert_eq!(snapshot.components, 5);
     assert_eq!(snapshot.nets, 4);
     assert_eq!(snapshot.scenarios, 1);
+}
+
+#[test]
+fn scope_examples_load_routed_schematic_edges() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+
+    assert_eq!(snapshot.wire_routes.len(), 10);
+    assert_eq!(
+        snapshot
+            .wire_routes
+            .get(&wire_route_key("VCC.P", "vcc"))
+            .unwrap()[0],
+        super::sketch::SketchPosition {
+            x: -120.0,
+            y: -180.0
+        }
+    );
+    assert_eq!(
+        snapshot
+            .wire_routes
+            .get(&wire_route_key("RLOAD.B", "gnd"))
+            .unwrap()
+            .last()
+            .copied(),
+        Some(super::sketch::SketchPosition { x: 230.0, y: 230.0 })
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("RTIM.B", "timing"))
+    );
+
+    app.request_project_example_load(gui_project_example_by_id("rc_lowpass_scope"), None);
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+
+    assert_eq!(snapshot.wire_routes.len(), 6);
+    assert_eq!(
+        snapshot
+            .wire_routes
+            .get(&wire_route_key("VSIN.N", "gnd"))
+            .unwrap()
+            .last()
+            .copied(),
+        Some(super::sketch::SketchPosition { x: 90.0, y: 130.0 })
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("RIN.B", "filtered"))
+    );
+    assert!(
+        snapshot
+            .wire_routes
+            .contains_key(&wire_route_key("COUT.B", "gnd"))
+    );
 }
 
 #[test]

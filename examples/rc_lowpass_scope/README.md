@@ -21,3 +21,6 @@ Expected workflow:
 
 This fixture intentionally keeps the sine source in the file-backed deck while
 the Board IR shell provides a connected schematic and named probes for GUI work.
+The direct-open project includes display-only schematic wire-route waypoints so
+the Sketch canvas opens as a readable source-resistor-capacitor network without
+changing the SPICE deck or the component pin-to-net connectivity model.

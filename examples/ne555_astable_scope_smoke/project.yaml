@@ -22,6 +22,40 @@ board:
       net:out: { x: -10.0, y: 20.0 }
       net:timing: { x: 230.0, y: -20.0 }
       net:gnd: { x: 230.0, y: 210.0 }
+    wire_routes:
+      VCC.P->vcc:
+        points:
+          - { x: -120.0, y: -180.0 }
+      VCC.N->gnd:
+        points:
+          - { x: -220.0, y: 230.0 }
+          - { x: 230.0, y: 230.0 }
+      VOUT.P->out:
+        points:
+          - { x: -120.0, y: 20.0 }
+      VOUT.N->gnd:
+        points:
+          - { x: -220.0, y: 230.0 }
+          - { x: 230.0, y: 230.0 }
+      RTIM.A->out:
+        points:
+          - { x: 20.0, y: 20.0 }
+      RTIM.B->timing:
+        points:
+          - { x: 120.0, y: -20.0 }
+      CTIM.A->timing:
+        points:
+          - { x: 230.0, y: 20.0 }
+      CTIM.B->gnd:
+        points:
+          - { x: 230.0, y: 150.0 }
+      RLOAD.A->out:
+        points:
+          - { x: 20.0, y: 80.0 }
+      RLOAD.B->gnd:
+        points:
+          - { x: 20.0, y: 230.0 }
+          - { x: 230.0, y: 230.0 }
   components:
     VCC:
       model: generic.analog.imported_spice_device

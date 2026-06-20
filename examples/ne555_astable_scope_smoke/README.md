@@ -7,6 +7,9 @@ This fixture is a GUI scope workflow smoke test for a typical NE555 astable appl
 `project.yaml` is the portable, direct-open Board IR version of the same deck.
 It keeps `deck.cir` as the solver source, uses relative paths, and names the
 schematic nets `out`, `timing`, `vcc`, and `gnd` for easier GUI inspection.
+It also includes display-only schematic wire-route waypoints so the Sketch view
+opens as a connected, readable circuit; electrical connectivity still comes
+from the component pin-to-net bindings and the file-backed SPICE deck.
 
 Expected workflow:
 

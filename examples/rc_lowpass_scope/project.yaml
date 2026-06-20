@@ -18,6 +18,27 @@ board:
       net:input: { x: -120.0, y: -80.0 }
       net:filtered: { x: 150.0, y: -80.0 }
       net:gnd: { x: 90.0, y: 180.0 }
+    wire_routes:
+      VSIN.P->input:
+        points:
+          - { x: -180.0, y: -70.0 }
+      VSIN.N->gnd:
+        points:
+          - { x: -240.0, y: 130.0 }
+          - { x: 90.0, y: 130.0 }
+      RIN.A->input:
+        points:
+          - { x: -70.0, y: -70.0 }
+      RIN.B->filtered:
+        points:
+          - { x: 70.0, y: -70.0 }
+      COUT.A->filtered:
+        points:
+          - { x: 200.0, y: -20.0 }
+      COUT.B->gnd:
+        points:
+          - { x: 200.0, y: 150.0 }
+          - { x: 90.0, y: 150.0 }
   components:
     VSIN:
       model: generic.analog.imported_spice_device
