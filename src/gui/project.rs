@@ -12,6 +12,7 @@ const NE555_SCOPE_EXAMPLE_PROJECT: &str = "examples/ne555_astable_scope_smoke/pr
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PendingProjectAction {
     LoadProjectSummary { path: String },
+    LoadProjectSummaryAndRunScopes { path: String },
     LoadProjectYaml { path: String },
     ImportKiCadSchematic,
     ImportKiCadPcb,
@@ -23,6 +24,7 @@ impl PendingProjectAction {
     fn label(&self) -> &'static str {
         match self {
             Self::LoadProjectSummary { .. } => "load another project",
+            Self::LoadProjectSummaryAndRunScopes { .. } => "load another project and run scopes",
             Self::LoadProjectYaml { .. } => "reload project YAML",
             Self::ImportKiCadSchematic => "import a KiCad schematic",
             Self::ImportKiCadPcb => "import KiCad PCB evidence",
@@ -36,6 +38,18 @@ impl CircuitCiApp {
     pub(super) fn request_ne555_scope_example_load(&mut self, ctx: Option<&egui::Context>) {
         self.request_project_action(
             PendingProjectAction::LoadProjectSummary {
+                path: NE555_SCOPE_EXAMPLE_PROJECT.to_string(),
+            },
+            ctx,
+        );
+    }
+
+    pub(super) fn request_ne555_scope_example_load_and_run_scopes(
+        &mut self,
+        ctx: Option<&egui::Context>,
+    ) {
+        self.request_project_action(
+            PendingProjectAction::LoadProjectSummaryAndRunScopes {
                 path: NE555_SCOPE_EXAMPLE_PROJECT.to_string(),
             },
             ctx,
@@ -132,6 +146,12 @@ impl CircuitCiApp {
                 self.project_path = path;
                 self.load_project_summary_unchecked();
             }
+            PendingProjectAction::LoadProjectSummaryAndRunScopes { path } => {
+                self.project_path = path;
+                if self.load_project_summary_unchecked() {
+                    self.run_schematic_model_open_scopes();
+                }
+            }
             PendingProjectAction::LoadProjectYaml { path } => {
                 self.project_path = path;
                 self.load_project_yaml_unchecked();
@@ -159,23 +179,25 @@ impl CircuitCiApp {
         self.status = "Discarded unsaved edits.".to_string();
     }
 
-    pub(super) fn load_project_summary_unchecked(&mut self) {
+    pub(super) fn load_project_summary_unchecked(&mut self) -> bool {
         match load_project_snapshot(Path::new(&self.project_path)) {
             Ok(snapshot) => {
                 let loaded_name = snapshot.name.clone();
                 self.status = format!("Loaded {}", snapshot.name);
                 self.project_snapshot = Some(snapshot);
                 self.set_single_sketch_selection(None);
-                if !self.project_yaml_dirty {
-                    self.load_project_yaml_unchecked();
-                }
+                let yaml_loaded = self.project_yaml_dirty || self.load_project_yaml_unchecked();
                 self.push_diagnostic(&format!("Project summary loaded for {loaded_name}."));
+                yaml_loaded
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 
-    pub(super) fn load_project_yaml_unchecked(&mut self) {
+    pub(super) fn load_project_yaml_unchecked(&mut self) -> bool {
         match std::fs::read_to_string(Path::new(&self.project_path))
             .with_context(|| format!("Failed to read {}.", self.project_path))
             .and_then(|text| {
@@ -199,8 +221,12 @@ impl CircuitCiApp {
                 self.stage = Stage::Sketch;
                 self.status = "Project YAML loaded.".to_string();
                 self.push_diagnostic("Project YAML loaded into Sketch workspace.");
+                true
             }
-            Err(error) => self.record_error(error),
+            Err(error) => {
+                self.record_error(error);
+                false
+            }
         }
     }
 

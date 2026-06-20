@@ -304,6 +304,44 @@ fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
 }
 
 #[test]
+fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_ne555_scope_example_load_and_run_scopes(None);
+
+    assert_eq!(
+        app.project_path,
+        "examples/ne555_astable_scope_smoke/project.yaml"
+    );
+    assert_eq!(app.stage, Stage::Simulation);
+    assert!(app.background_job_elapsed_secs().is_some());
+    assert!(app.status.contains("Running validation in Scopes"));
+    assert!(app.project_yaml.contains("name: ne555_astable_scope"));
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+    assert_eq!(snapshot.name, "ne555_astable_scope");
+}
+
+#[test]
+fn ne555_scope_example_run_shortcut_uses_unsaved_project_guard() {
+    let mut app = CircuitCiApp {
+        project_yaml_dirty: true,
+        ..Default::default()
+    };
+
+    app.request_ne555_scope_example_load_and_run_scopes(None);
+
+    assert_eq!(
+        app.pending_project_action,
+        Some(PendingProjectAction::LoadProjectSummaryAndRunScopes {
+            path: "examples/ne555_astable_scope_smoke/project.yaml".to_string()
+        })
+    );
+    assert!(app.status.contains("Confirm unsaved changes"));
+    assert_ne!(app.stage, Stage::Simulation);
+    assert!(app.background_job_elapsed_secs().is_none());
+}
+
+#[test]
 fn validate_from_gui_emits_phase_progress() {
     let output = tempfile::tempdir().unwrap();
     let mut stages = Vec::new();

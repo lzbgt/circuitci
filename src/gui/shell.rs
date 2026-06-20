@@ -47,6 +47,13 @@ impl CircuitCiApp {
                         self.request_ne555_scope_example_load(Some(ui.ctx()));
                         ui.close();
                     }
+                    if ui
+                        .add_enabled(can_start_job, egui::Button::new("Open NE555 + Run Scopes"))
+                        .clicked()
+                    {
+                        self.request_ne555_scope_example_load_and_run_scopes(Some(ui.ctx()));
+                        ui.close();
+                    }
                     if ui.button("Load Project").clicked() {
                         self.request_project_action(
                             PendingProjectAction::LoadProjectSummary {
@@ -186,6 +193,15 @@ impl CircuitCiApp {
                 });
                 if ui.button("Open NE555 Scope Example").clicked() {
                     self.request_ne555_scope_example_load(Some(ui.ctx()));
+                }
+                if ui
+                    .add_enabled(
+                        self.background_job_elapsed_secs().is_none(),
+                        egui::Button::new("Open NE555 + Run Scopes"),
+                    )
+                    .clicked()
+                {
+                    self.request_ne555_scope_example_load_and_run_scopes(Some(ui.ctx()));
                 }
                 ui.label("Output");
                 ui.horizontal(|ui| {

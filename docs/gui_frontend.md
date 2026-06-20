@@ -375,7 +375,8 @@ form:
 - Project: choose a Board IR project and output directory by typing paths or
   using native file/folder pickers, then load or validate it. The File menu and
   Project panel include `Open NE555 Scope Example` for the checked-in
-  scope-ready analog fixture.
+  scope-ready analog fixture plus `Open NE555 + Run Scopes` for loading that
+  fixture and starting validation directly in Scopes.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native
