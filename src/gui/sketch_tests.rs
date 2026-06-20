@@ -14,7 +14,8 @@ use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
     SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
-    edit_schematic_probe_element_position, hit_test_probe_badge, probe_badge_interaction_rect,
+    edit_schematic_probe_element_position, edit_schematic_probe_element_positions,
+    hit_test_probe_badge, probe_badge_interaction_rect,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use super::{CircuitCiApp, SketchViewportCommand};
@@ -658,6 +659,60 @@ scenarios:
     );
     assert!((badge.rect.left() - 154.0).abs() < 0.01);
     assert!((badge.rect.top() - 108.0).abs() < 0.01);
+}
+
+#[test]
+fn edit_schematic_probe_element_positions_batches_display_coordinates() {
+    let yaml = "project:
+  name: probe_position_batch
+  version: 0.1.0
+board:
+  schematic:
+    probe_elements:
+      tran_a:
+        scenario: tran
+        probe: a
+        target: { kind: net, id: a, attach: node }
+      tran_b:
+        scenario: tran
+        probe: b
+        target: { kind: net, id: b, attach: node }
+  components: {}
+  nets:
+    a: { kind: digital_or_analog }
+    b: { kind: digital_or_analog }
+scenarios: []
+";
+    let edited = edit_schematic_probe_element_positions(
+        yaml,
+        &[
+            ("tran_a".to_string(), 32.0, 48.0),
+            ("tran_b".to_string(), 96.0, 112.0),
+        ],
+    )
+    .unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+
+    assert_eq!(
+        project
+            .board
+            .schematic
+            .probe_elements
+            .get("tran_a")
+            .unwrap()
+            .x,
+        Some(32.0)
+    );
+    assert_eq!(
+        project
+            .board
+            .schematic
+            .probe_elements
+            .get("tran_b")
+            .unwrap()
+            .y,
+        Some(112.0)
+    );
 }
 
 #[test]

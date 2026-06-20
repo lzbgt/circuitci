@@ -285,16 +285,40 @@ pub(super) fn edit_schematic_probe_element_position(
     x: f64,
     y: f64,
 ) -> Result<String> {
-    let element_id = validated_graph_id(element_id, "probe element")?;
+    edit_schematic_probe_element_positions(text, &[(element_id.to_string(), x, y)])
+}
+
+pub(super) fn edit_schematic_probe_element_positions(
+    text: &str,
+    positions: &[(String, f64, f64)],
+) -> Result<String> {
+    if positions.is_empty() {
+        return Ok(text.to_string());
+    }
+    let positions = positions
+        .iter()
+        .map(|(element_id, x, y)| {
+            if !x.is_finite() || !y.is_finite() {
+                anyhow::bail!("Schematic probe element position must be finite.");
+            }
+            Ok((
+                validated_graph_id(element_id, "probe element")?.to_string(),
+                *x,
+                *y,
+            ))
+        })
+        .collect::<Result<Vec<_>>>()?;
     let project: crate::board_ir::BoardProject =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
-    if !project
-        .board
-        .schematic
-        .probe_elements
-        .contains_key(element_id)
-    {
-        anyhow::bail!("Schematic probe element {element_id} was not found.");
+    for (element_id, _, _) in &positions {
+        if !project
+            .board
+            .schematic
+            .probe_elements
+            .contains_key(element_id)
+        {
+            anyhow::bail!("Schematic probe element {element_id} was not found.");
+        }
     }
     let mut yaml: serde_yaml_ng::Value =
         serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
@@ -309,13 +333,15 @@ pub(super) fn edit_schematic_probe_element_position(
         let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
         let elements =
             ensure_child_mapping_mut(schematic, "probe_elements", "schematic probe elements")?;
-        let element = elements
-            .get_mut(serde_yaml_ng::Value::String(element_id.to_string()))
-            .with_context(|| format!("Schematic probe element {element_id} was not found."))?
-            .as_mapping_mut()
-            .context("Schematic probe element must be an object.")?;
-        element.insert(key("x"), serde_yaml_ng::to_value(x)?);
-        element.insert(key("y"), serde_yaml_ng::to_value(y)?);
+        for (element_id, x, y) in positions {
+            let element = elements
+                .get_mut(serde_yaml_ng::Value::String(element_id.to_string()))
+                .with_context(|| format!("Schematic probe element {element_id} was not found."))?
+                .as_mapping_mut()
+                .context("Schematic probe element must be an object.")?;
+            element.insert(key("x"), serde_yaml_ng::to_value(x)?);
+            element.insert(key("y"), serde_yaml_ng::to_value(y)?);
+        }
     }
     encode_edited_project_yaml(yaml)
 }

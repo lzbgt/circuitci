@@ -107,7 +107,9 @@ two-terminal orientation metadata, including vertical shunts to ground and
 horizontal signal-path parts. It also derives display-only
 `board.schematic.wire_routes` waypoints from the post-layout pin anchors so
 power/ground connections route toward rail-like lines and signal connections
-route horizontally before vertical drops. For installed or imported KiCad symbols,
+route horizontally before vertical drops. It also positions placed probe
+elements into non-overlapping lanes near their pin/wire targets so live readout
+strips stay readable after Run. For installed or imported KiCad symbols,
 matching pin anchors project from the symbol's own numbered pin lines, so wire
 starts and hit targets line up with the rendered schematic symbol instead of a
 generic component box. Pin anchors are colored from the connected Board IR net
@@ -576,8 +578,8 @@ The supported desktop simulation path is:
    nets through validated graph controls,
 6. drag component/net graph nodes or press Sketch `Auto Layout` to persist
    `board.schematic.node_positions`; Auto Layout also writes standard
-   orientation metadata and display-only route waypoints for the generated
-   textbook-style wiring,
+   orientation metadata, display-only route waypoints for the generated
+   textbook-style wiring, and display-only placed-probe positions,
 7. snap dragged or auto-laid schematic positions and generated route waypoints
    to the visible grid when snap is enabled,
 8. pan, zoom, Home-reset, Fit All, or Fit Selection the sketch viewport without

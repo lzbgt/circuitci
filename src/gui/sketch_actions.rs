@@ -7,6 +7,7 @@ use super::sketch::{
 };
 use super::sketch_canvas_interaction::SketchSelectionBoxMode;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
+use super::sketch_probes::edit_schematic_probe_element_positions;
 use super::{CircuitCiApp, SketchGroupAction, SketchViewportCommand};
 use eframe::egui;
 
@@ -342,18 +343,21 @@ impl CircuitCiApp {
         }
         let updated = edit_schematic_node_positions(&self.project_yaml, &plan.positions)
             .and_then(|yaml| edit_schematic_component_styles(&yaml, &plan.styles))
-            .and_then(|yaml| edit_schematic_wire_routes(&yaml, &plan.wire_routes));
+            .and_then(|yaml| edit_schematic_wire_routes(&yaml, &plan.wire_routes))
+            .and_then(|yaml| edit_schematic_probe_element_positions(&yaml, &plan.probe_positions));
         match updated {
             Ok(updated) => {
                 let style_count = plan.styles.len();
                 let route_count = plan.wire_routes.len();
+                let probe_count = plan.probe_positions.len();
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
-                        "Classical auto layout positioned {} node(s), oriented {} component(s), and routed {} wire(s).",
+                        "Classical auto layout positioned {} node(s), oriented {} component(s), routed {} wire(s), and placed {} probe(s).",
                         plan.positions.len(),
                         style_count,
-                        route_count
+                        route_count,
+                        probe_count
                     ),
                 );
                 self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);

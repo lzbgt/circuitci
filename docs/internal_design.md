@@ -202,7 +202,9 @@ position still requires explicit schematic metadata. The explicit Sketch
 ground shunts and horizontal two-terminal signal-path parts. It may also
 derive `board.schematic.wire_routes` from the post-layout pin anchors so route
 metadata follows the rendered KiCad/imported symbol geometry while remaining
-display-only.
+display-only, and may derive `board.schematic.probe_elements[*].x/y` from the
+same post-layout graph so first-class probe symbols and their live readout
+strips land in non-overlapping schematic lanes near the target pin or wire.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and

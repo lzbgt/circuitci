@@ -32,6 +32,7 @@ pub(super) struct SketchAutoLayoutPlan {
     pub(super) positions: Vec<(SketchSelection, f64, f64)>,
     pub(super) styles: Vec<(String, SketchNodeStyle)>,
     pub(super) wire_routes: Vec<SketchWireRouteEdit>,
+    pub(super) probe_positions: Vec<(String, f64, f64)>,
 }
 
 pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) -> SketchGraph {
@@ -296,11 +297,21 @@ pub(super) fn classical_sketch_auto_layout(
         snap_enabled,
         grid_step,
     );
+    let probe_positions = classical_auto_layout_probe_positions(
+        snapshot,
+        &positions,
+        &styles,
+        &wire_routes,
+        canvas,
+        snap_enabled,
+        grid_step,
+    );
 
     SketchAutoLayoutPlan {
         positions,
         styles,
         wire_routes,
+        probe_positions,
     }
 }
 
@@ -828,6 +839,98 @@ fn classical_auto_layout_wire_routes(
         .collect()
 }
 
+fn classical_auto_layout_probe_positions(
+    snapshot: &ProjectSnapshot,
+    positions: &[(SketchSelection, f64, f64)],
+    styles: &[(String, SketchNodeStyle)],
+    wire_routes: &[SketchWireRouteEdit],
+    canvas: egui::Rect,
+    snap_enabled: bool,
+    grid_step: f32,
+) -> Vec<(String, f64, f64)> {
+    let mut planned = snapshot.clone();
+    for (selection, x, y) in positions {
+        match selection {
+            SketchSelection::Component(id) => {
+                if let Some(component) = planned
+                    .components_detail
+                    .iter_mut()
+                    .find(|component| component.id == *id)
+                {
+                    component.position = Some(SketchPosition { x: *x, y: *y });
+                }
+            }
+            SketchSelection::Net(id) => {
+                if let Some(net) = planned.nets_detail.iter_mut().find(|net| net.id == *id) {
+                    net.position = Some(SketchPosition { x: *x, y: *y });
+                }
+            }
+            SketchSelection::Overflow(_) => {}
+        }
+    }
+    for (component_id, style) in styles {
+        if let Some(component) = planned
+            .components_detail
+            .iter_mut()
+            .find(|component| component.id == *component_id)
+        {
+            component.style = *style;
+        }
+    }
+    planned.wire_routes.clear();
+    for (source, net_id, points) in wire_routes {
+        planned.wire_routes.insert(
+            wire_route_key(source, net_id),
+            points
+                .iter()
+                .map(|(x, y)| SketchPosition { x: *x, y: *y })
+                .collect(),
+        );
+    }
+    for probe in &mut planned.probes {
+        probe.position = None;
+    }
+    let graph = layout_sketch_graph(canvas, &planned);
+    let mut occupied = Vec::new();
+    for node in &graph.nodes {
+        occupied.push(node.rect.expand(12.0));
+    }
+    let mut edits = Vec::new();
+    for badge in graph
+        .probe_badges
+        .iter()
+        .filter(|badge| badge.probe.element_id.is_some())
+    {
+        let Some(element_id) = badge.probe.element_id.clone() else {
+            continue;
+        };
+        let mut rect = badge.rect;
+        let mut interaction = probe_badge_interaction_rect(badge);
+        let mut guard = 0;
+        while occupied
+            .iter()
+            .any(|existing| existing.intersects(interaction))
+            && guard < 18
+        {
+            let delta = egui::vec2(0.0, 38.0);
+            rect = rect.translate(delta);
+            let mut shifted = badge.clone();
+            shifted.rect = rect;
+            interaction = probe_badge_interaction_rect(&shifted);
+            guard += 1;
+        }
+        occupied.push(interaction.expand(8.0));
+        let (x, y) = snap_schematic_position(
+            (rect.left() - canvas.left()) as f64,
+            (rect.top() - canvas.top()) as f64,
+            snap_enabled,
+            grid_step,
+        );
+        edits.push((element_id, x, y));
+    }
+    edits
+}
+
 fn classical_route_waypoint(
     start: egui::Pos2,
     end: egui::Pos2,
@@ -1143,6 +1246,9 @@ pub(super) fn compact_label(value: &str, max_chars: usize) -> String {
 mod tests {
     use super::*;
     use crate::gui::sketch::{ProjectSnapshot, SketchNet, SketchPin};
+    use crate::gui::sketch_probes::{
+        SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
+    };
 
     fn test_component() -> SketchComponent {
         SketchComponent {
@@ -1351,6 +1457,63 @@ mod tests {
             plan.wire_routes
                 .iter()
                 .all(|(_, _, points)| points.iter().all(|(x, y)| *x >= 0.0 && *y >= 0.0))
+        );
+    }
+
+    #[test]
+    fn classical_auto_layout_places_probe_elements_in_readout_lanes() {
+        let mut snapshot = layout_test_snapshot();
+        snapshot.probes.push(SketchProbe {
+            element_id: Some("tran_sig_voltage".to_string()),
+            attachment: SketchProbeAttachmentKind::Pin,
+            source: Some("R1.B".to_string()),
+            position: None,
+            scenario_name: "tran".to_string(),
+            probe_name: "sig_voltage".to_string(),
+            expression: "V(sig)".to_string(),
+            quantity: SketchProbeQuantity::Voltage,
+            target: SketchProbeTarget::Net("sig".to_string()),
+            assertion_names: Vec::new(),
+        });
+        let plan = classical_sketch_auto_layout(&snapshot, egui::vec2(720.0, 420.0), true, 16.0);
+
+        assert_eq!(plan.probe_positions.len(), 1);
+        let (element_id, x, y) = &plan.probe_positions[0];
+        assert_eq!(element_id, "tran_sig_voltage");
+        assert!(*x >= 0.0 && *y >= 0.0);
+        assert!((x % 16.0).abs() <= f64::EPSILON);
+        assert!((y % 16.0).abs() <= f64::EPSILON);
+
+        snapshot.probes[0].position = Some(SketchPosition { x: *x, y: *y });
+        for (selection, x, y) in &plan.positions {
+            match selection {
+                SketchSelection::Component(id) => {
+                    if let Some(component) = snapshot
+                        .components_detail
+                        .iter_mut()
+                        .find(|component| component.id == *id)
+                    {
+                        component.position = Some(SketchPosition { x: *x, y: *y });
+                    }
+                }
+                SketchSelection::Net(id) => {
+                    if let Some(net) = snapshot.nets_detail.iter_mut().find(|net| net.id == *id) {
+                        net.position = Some(SketchPosition { x: *x, y: *y });
+                    }
+                }
+                SketchSelection::Overflow(_) => {}
+            }
+        }
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(720.0, 420.0)),
+            &snapshot,
+        );
+        let probe_bounds = probe_badge_interaction_rect(graph.probe_badges.first().unwrap());
+        assert!(
+            graph
+                .nodes
+                .iter()
+                .all(|node| !probe_bounds.intersects(node.rect.expand(8.0)))
         );
     }
 
