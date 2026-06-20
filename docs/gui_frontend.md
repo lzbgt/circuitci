@@ -377,7 +377,9 @@ form:
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native
-  open/save dialogs.
+  open/save dialogs. The SPICE import panel includes a scope-ready NE555
+  astable preset that fills or directly imports the verified transient deck for
+  Run + Scopes and Scope Activity inspection.
 - Sketch: shows a visual Board IR graph with selectable component/net nodes,
   a schematic-first model-editor layout with a dominant canvas, compact Run
   control, secondary detail/navigation dock, and collapsed YAML editor,

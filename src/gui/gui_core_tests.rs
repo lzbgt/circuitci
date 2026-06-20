@@ -241,6 +241,27 @@ fn armed_scope_current_tool_rejects_net_without_mutation() {
 }
 
 #[test]
+fn ne555_scope_example_import_preset_sets_scope_ready_spice_fields() {
+    let mut app = CircuitCiApp::default();
+
+    app.use_ne555_scope_example_import_preset();
+
+    assert_eq!(
+        app.import_spice_deck_path,
+        "examples/ne555_astable_scope_smoke/deck.cir"
+    );
+    assert_eq!(
+        app.import_spice_output_path,
+        "out/gui_import/ne555_astable_scope.project.yaml"
+    );
+    assert_eq!(app.import_spice_project_name, "ne555_astable_scope");
+    assert_eq!(app.import_spice_backend, "auto");
+    assert_eq!(app.import_spice_stop_time_us, 5_000.0);
+    assert_eq!(app.import_spice_max_step_us, 2.0);
+    assert!(app.status.contains("NE555 astable scope example"));
+}
+
+#[test]
 fn validate_from_gui_emits_phase_progress() {
     let output = tempfile::tempdir().unwrap();
     let mut stages = Vec::new();

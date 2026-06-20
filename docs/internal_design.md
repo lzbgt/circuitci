@@ -60,7 +60,9 @@ importer entry points that parse source files, load mappings or Board IR
 inputs, build or merge Board IR evidence, and write output YAML; GUI jobs
 should only route those events to the status panel.
 `src/gui/import_flow.rs` owns the Import stage UI plus KiCad
-schematic, KiCad PCB, and SPICE deck import command wiring.
+schematic, KiCad PCB, and SPICE deck import command wiring, including the
+scope-ready NE555 astable SPICE preset used to exercise Run + Scopes and Scope
+Activity workflows from a typical analog example.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, and the shared Board IR edit history. `src/gui/sketch.rs`
