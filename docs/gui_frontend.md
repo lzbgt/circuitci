@@ -373,7 +373,9 @@ The first GUI slice provides EDA-style stages rather than a single command
 form:
 
 - Project: choose a Board IR project and output directory by typing paths or
-  using native file/folder pickers, then load or validate it.
+  using native file/folder pickers, then load or validate it. The File menu and
+  Project panel include `Open NE555 Scope Example` for the checked-in
+  scope-ready analog fixture.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

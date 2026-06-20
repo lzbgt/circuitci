@@ -43,6 +43,10 @@ impl CircuitCiApp {
                         self.pick_and_request_project_load(ui.ctx());
                         ui.close();
                     }
+                    if ui.button("Open NE555 Scope Example").clicked() {
+                        self.request_ne555_scope_example_load(Some(ui.ctx()));
+                        ui.close();
+                    }
                     if ui.button("Load Project").clicked() {
                         self.request_project_action(
                             PendingProjectAction::LoadProjectSummary {
@@ -180,6 +184,9 @@ impl CircuitCiApp {
                         self.pick_and_request_project_load(ui.ctx());
                     }
                 });
+                if ui.button("Open NE555 Scope Example").clicked() {
+                    self.request_ne555_scope_example_load(Some(ui.ctx()));
+                }
                 ui.label("Output");
                 ui.horizontal(|ui| {
                     ui.text_edit_singleline(&mut self.output_dir);

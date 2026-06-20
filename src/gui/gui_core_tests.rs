@@ -1,3 +1,4 @@
+use super::project::PendingProjectAction;
 use super::sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
     SketchPin, SketchSelection, edit_component_model, edit_component_part_number, edit_net_kind,
@@ -259,6 +260,47 @@ fn ne555_scope_example_import_preset_sets_scope_ready_spice_fields() {
     assert_eq!(app.import_spice_stop_time_us, 5_000.0);
     assert_eq!(app.import_spice_max_step_us, 2.0);
     assert!(app.status.contains("NE555 astable scope example"));
+}
+
+#[test]
+fn ne555_scope_example_shortcut_loads_direct_project() {
+    let mut app = CircuitCiApp::default();
+
+    app.request_ne555_scope_example_load(None);
+
+    assert_eq!(
+        app.project_path,
+        "examples/ne555_astable_scope_smoke/project.yaml"
+    );
+    assert!(app.project_yaml.contains("name: ne555_astable_scope"));
+    assert!(!app.project_yaml_dirty);
+    let snapshot = app.project_snapshot.as_ref().unwrap();
+    assert_eq!(snapshot.name, "ne555_astable_scope");
+    assert_eq!(snapshot.components, 5);
+    assert_eq!(snapshot.nets, 4);
+    assert_eq!(snapshot.scenarios, 1);
+}
+
+#[test]
+fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
+    let mut app = CircuitCiApp {
+        project_yaml_dirty: true,
+        ..Default::default()
+    };
+
+    app.request_ne555_scope_example_load(None);
+
+    assert_eq!(
+        app.pending_project_action,
+        Some(PendingProjectAction::LoadProjectSummary {
+            path: "examples/ne555_astable_scope_smoke/project.yaml".to_string()
+        })
+    );
+    assert!(app.status.contains("Confirm unsaved changes"));
+    assert_ne!(
+        app.project_path,
+        "examples/ne555_astable_scope_smoke/project.yaml"
+    );
 }
 
 #[test]

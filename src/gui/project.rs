@@ -7,6 +7,7 @@ use eframe::egui;
 use std::path::{Path, PathBuf};
 
 const PROJECT_YAML_HISTORY_LIMIT: usize = 64;
+const NE555_SCOPE_EXAMPLE_PROJECT: &str = "examples/ne555_astable_scope_smoke/project.yaml";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PendingProjectAction {
@@ -32,6 +33,15 @@ impl PendingProjectAction {
 }
 
 impl CircuitCiApp {
+    pub(super) fn request_ne555_scope_example_load(&mut self, ctx: Option<&egui::Context>) {
+        self.request_project_action(
+            PendingProjectAction::LoadProjectSummary {
+                path: NE555_SCOPE_EXAMPLE_PROJECT.to_string(),
+            },
+            ctx,
+        );
+    }
+
     pub(super) fn handle_close_request(&mut self, ctx: &egui::Context) {
         if ctx.input(|input| input.viewport().close_requested()) && self.has_unsaved_project_work()
         {
