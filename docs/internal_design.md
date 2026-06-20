@@ -145,7 +145,7 @@ overlay; they must not persist into Board IR.
 `src/gui/sketch_canvas_render.rs` owns the
 canvas-local paint and tooltip helpers for wires, route handles, wire previews,
 wire target affordances, snap/free target feedback, and placement ghosts. `src/gui/sketch_canvas_menus.rs` owns
-right-click menus for component, net, wire, probe badge, route-handle, and
+right-click menus for component, net, wire, probe element, route-handle, and
 blank-canvas targets, including route handle insertion/deletion,
 custom-route clearing, and runtime Scopes jumps for nodes that match loaded
 waveform probes. The Sketch canvas also routes primary clicks on runtime
@@ -163,16 +163,19 @@ mutation. Inserted library
 components may create generated per-pin nets from source-backed model port
 declarations, but those nets are still ordinary Board IR sketch connections
 that the user can rewire. `src/gui/sketch_symbols.rs`
-owns visual-only symbol-style rendering: it may infer symbol classes from
-reference designators and model IDs, and common primitives should follow the
-checked local KiCad Device symbol geometry documented in
+owns visual-only symbol-style rendering: it first honors persisted
+`board.schematic.component_symbols` KiCad `Library:Symbol` ids, may infer
+symbol classes from reference designators and model IDs when no explicit symbol
+is present, and common primitives should follow the checked local KiCad Device
+symbol geometry documented in
 `docs/research/kicad/default_gui_symbol_reference.md`.
 `src/gui/kicad_symbol_library.rs` owns installed KiCad symbol-library discovery,
-one-time `.kicad_sym` drawing parse/cache, and deterministic fallback routing
-when KiCad is absent or a symbol is unsupported. It must continue to persist
-only Board IR components, nets, pins, and optional schematic node
-positions/styles; symbol-library rendering must not introduce a second
-connectivity model.
+installed and user-imported `.kicad_sym` catalog parsing, pin metadata
+extraction for schematic insertion, on-demand drawing parse/cache, and
+deterministic fallback routing when KiCad is absent or a symbol is unsupported.
+It must continue to persist only Board IR components, nets, pins, and optional
+schematic display metadata such as positions/styles/symbol ids;
+symbol-library rendering must not introduce a second connectivity model.
 `src/gui/sketch_actions.rs`
 owns sketch canvas selection, fit-content, multi-selected movement/alignment/distribution,
 selected-item deletion, transient selected-component clipboard state, and
@@ -240,8 +243,8 @@ on-canvas selected-group frame/move handle and quick toolbar, and quick actions;
 it must reuse existing viewport, group-action, orientation, clipboard,
 duplication, and delete paths instead of creating another mutation model.
 `src/gui/sketch_probes.rs`
-owns derived schematic voltage/current/power probe badge targeting, layout,
-hit-testing, and drawing. Rendered pin anchors are UI affordances derived from
+owns derived schematic voltage/current/power probe-element targeting, layout,
+hit-testing, KiCad meter/scope drawing, and fallback drawing. Rendered pin anchors are UI affordances derived from
 component pin bindings and connected net kind. They may show color and
 pin/kind chips for hover, selection, connectivity, and active wire targeting,
 but must not persist a second port or connectivity model. Clicking or dragging
@@ -433,27 +436,27 @@ app-level Scopes context, lane, probe, and runtime behavior, with
 trace styles, and saved compare-set behavior;
 production waveform code should stay in `src/gui/waveform.rs` /
 `src/gui/waveform/waveform_plot.rs` and avoid depending on test-only helpers.
-Schematic probe badges are derived in `src/gui/sketch_probes.rs` from existing
+Schematic probe elements are derived in `src/gui/sketch_probes.rs` from existing
 analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
 components only when their `I(...)` branch maps to a generated/source branch
-name CircuitCI can prove. Badge assertion-status markers are derived from the
-latest loaded `ValidationReport`, not from live simulation state. A badge is
+name CircuitCI can prove. Probe assertion-status markers are derived from the
+latest loaded `ValidationReport`, not from live simulation state. A probe element is
 unasserted when no Board IR assertion references its probe, unknown when no
 report is loaded or the scenario had a non-assertion failure, failed when a
 report finding names one of the probe's assertions, and passed only when the
-latest report has no matching assertion failure. Badge clicks, object-navigator
+latest report has no matching assertion failure. Probe-element clicks, object-navigator
 probe rows, and primary-toolbar scope actions select the existing scenario/probe
 in the Simulation stage and may focus a matching waveform trace when loaded; the
 selected-probe assertion table must still be derived from Board IR assertions
 plus the latest `ValidationReport` and must not cache a parallel assertion
-model. Pressing `A` on a hovered badge
+model. Pressing `A` on a hovered probe element
 may append a normal Board IR assertion using the current assertion-editor
-settings. Pressing Shift+A or Shift+B on a hovered badge may append a normal
+settings. Pressing Shift+A or Shift+B on a hovered probe element may append a normal
 sample assertion whose threshold is derived from an exact loaded waveform probe
 match at the current cursor with a small pass-at-current-sample margin; if no
 matching waveform column is loaded, the quick action must fail closed without
-editing Board IR. The probe badge right-click menu may expose these same
+editing Board IR. The probe-element right-click menu may expose these same
 actions, but it must call the same validated mutation paths as the keyboard
 shortcuts rather than creating separate menu-only behavior. Pressing `X` may
 remove assertions for that probe while keeping the probe, and Delete/Backspace
@@ -547,8 +550,10 @@ enrich these evidence families:
 - schematic GUI evidence: `board.schematic.node_positions`, which stores
   component/net graph positions for editor usability, and
   `board.schematic.node_styles`, which stores schematic-only symbol rotation,
-  mirror, and pin-side preferences, and `board.schematic.wire_routes`, which
-  stores display-only pin-to-net route waypoints, and
+  mirror, and pin-side preferences, and `board.schematic.component_symbols`,
+  which stores optional display-only KiCad `Library:Symbol` ids for existing
+  Board IR components, and `board.schematic.wire_routes`, which stores
+  display-only pin-to-net route waypoints, and
   `board.schematic.component_labels`, which stores display-only reference/value
   label positions for existing Board IR components, and
   `board.schematic.net_labels`, which stores display-only local/off-page labels

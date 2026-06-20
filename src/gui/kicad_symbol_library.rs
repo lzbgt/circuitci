@@ -5,8 +5,8 @@ use crate::importers::kicad_sch::sexp::{
 };
 use eframe::egui;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct KiCadPoint {
@@ -62,6 +62,22 @@ struct KiCadSymbolSpec {
     library: &'static str,
     symbol: &'static str,
     rotation_offset_deg: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct KiCadSymbolCatalogEntry {
+    pub(super) id: String,
+    pub(super) library: String,
+    pub(super) name: String,
+    pub(super) source: String,
+    pub(super) pins: Vec<KiCadSymbolPin>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct KiCadSymbolPin {
+    pub(super) id: String,
+    pub(super) name: String,
+    pub(super) electrical_type: String,
 }
 
 #[derive(Clone, Copy)]
@@ -128,6 +144,9 @@ const DEFAULT_SYMBOL_SPECS: &[KiCadSymbolSpec] = &[
 
 static DEFAULT_KICAD_SYMBOLS: OnceLock<BTreeMap<&'static str, KiCadSymbolDrawing>> =
     OnceLock::new();
+static INSTALLED_KICAD_SYMBOL_CATALOG: OnceLock<Vec<KiCadSymbolCatalogEntry>> = OnceLock::new();
+static KICAD_SYMBOL_DRAWINGS: OnceLock<Mutex<BTreeMap<String, Option<KiCadSymbolDrawing>>>> =
+    OnceLock::new();
 
 pub(super) fn draw_kicad_default_symbol(
     painter: &egui::Painter,
@@ -154,6 +173,83 @@ pub(super) fn draw_kicad_default_symbol(
     true
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum KiCadProbeSymbolKind {
+    Voltage,
+    Current,
+    Power,
+}
+
+pub(super) fn draw_kicad_probe_symbol(
+    painter: &egui::Painter,
+    kind: KiCadProbeSymbolKind,
+    rect: egui::Rect,
+    stroke: egui::Stroke,
+    color: egui::Color32,
+) -> bool {
+    let Some(spec) = symbol_spec_for_probe(kind) else {
+        return false;
+    };
+    let Some(drawing) = default_symbol_cache().get(spec.key) else {
+        return false;
+    };
+    drawing.draw(
+        painter,
+        rect,
+        SketchNodeStyle::default(),
+        spec.rotation_offset_deg,
+        stroke,
+        color,
+    );
+    true
+}
+
+pub(super) fn draw_kicad_symbol_by_id(
+    painter: &egui::Painter,
+    symbol_id: &str,
+    rect: egui::Rect,
+    style: SketchNodeStyle,
+    stroke: egui::Stroke,
+    color: egui::Color32,
+) -> bool {
+    let Some(drawing) = cached_kicad_symbol_drawing(symbol_id) else {
+        return false;
+    };
+    drawing.draw(painter, rect, style, 0, stroke, color);
+    true
+}
+
+pub(super) fn installed_kicad_symbol_catalog() -> &'static [KiCadSymbolCatalogEntry] {
+    INSTALLED_KICAD_SYMBOL_CATALOG.get_or_init(load_installed_kicad_symbol_catalog)
+}
+
+pub(super) fn kicad_symbol_catalog(
+    imported_files: &[String],
+) -> (Vec<KiCadSymbolCatalogEntry>, Vec<String>) {
+    let mut entries = installed_kicad_symbol_catalog().to_vec();
+    let mut diagnostics = Vec::new();
+    for path in imported_files {
+        match parse_kicad_symbol_catalog_file(Path::new(path)) {
+            Ok(mut imported) => entries.append(&mut imported),
+            Err(error) => diagnostics.push(format!("{path}: {error}")),
+        }
+    }
+    entries.sort_by(|left, right| left.id.cmp(&right.id));
+    entries.dedup_by(|left, right| left.id == right.id);
+    (entries, diagnostics)
+}
+
+pub(super) fn import_kicad_symbol_file(
+    path: &Path,
+) -> anyhow::Result<Vec<KiCadSymbolCatalogEntry>> {
+    let entries = parse_kicad_symbol_catalog_file(path)?;
+    let cached = cache_kicad_symbol_drawings_from_file(path)?;
+    if cached == 0 {
+        anyhow::bail!("KiCad symbol file contains no drawable top-level symbols.");
+    }
+    Ok(entries)
+}
+
 fn symbol_spec_for_kind(kind: SketchSymbolKind) -> Option<KiCadSymbolSpec> {
     match kind {
         SketchSymbolKind::Resistor => spec_by_key("Device:R"),
@@ -162,6 +258,14 @@ fn symbol_spec_for_kind(kind: SketchSymbolKind) -> Option<KiCadSymbolSpec> {
         SketchSymbolKind::Diode => spec_by_key("Device:D"),
         SketchSymbolKind::Source => spec_by_key("Simulation_SPICE:VDC"),
         _ => None,
+    }
+}
+
+fn symbol_spec_for_probe(kind: KiCadProbeSymbolKind) -> Option<KiCadSymbolSpec> {
+    match kind {
+        KiCadProbeSymbolKind::Voltage => spec_by_key("Device:Voltmeter_DC"),
+        KiCadProbeSymbolKind::Current => spec_by_key("Device:Ammeter_DC"),
+        KiCadProbeSymbolKind::Power => spec_by_key("Device:Oscilloscope"),
     }
 }
 
@@ -205,6 +309,27 @@ fn load_default_symbol_cache() -> BTreeMap<&'static str, KiCadSymbolDrawing> {
     loaded
 }
 
+fn load_installed_kicad_symbol_catalog() -> Vec<KiCadSymbolCatalogEntry> {
+    let mut entries = Vec::new();
+    for root in installed_kicad_symbol_library_paths() {
+        let Ok(read_dir) = std::fs::read_dir(&root) else {
+            continue;
+        };
+        for entry in read_dir.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("kicad_sym") {
+                continue;
+            }
+            if let Ok(mut catalog) = parse_kicad_symbol_catalog_file(&path) {
+                entries.append(&mut catalog);
+            }
+        }
+    }
+    entries.sort_by(|left, right| left.id.cmp(&right.id));
+    entries.dedup_by(|left, right| left.id == right.id);
+    entries
+}
+
 pub(super) fn installed_kicad_symbol_library_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
     for var in [
@@ -236,6 +361,80 @@ fn push_unique_existing_dir(paths: &mut Vec<PathBuf>, path: PathBuf) {
     }
 }
 
+fn parse_kicad_symbol_catalog_file(path: &Path) -> anyhow::Result<Vec<KiCadSymbolCatalogEntry>> {
+    let library = path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("KiCad symbol file name is not valid UTF-8."))?
+        .to_string();
+    let text = std::fs::read_to_string(path)
+        .map_err(|error| anyhow::anyhow!("failed to read KiCad symbol file: {error}"))?;
+    parse_kicad_symbol_catalog(&text, &library, &path.display().to_string())
+}
+
+pub(super) fn parse_kicad_symbol_catalog(
+    text: &str,
+    library: &str,
+    source: &str,
+) -> anyhow::Result<Vec<KiCadSymbolCatalogEntry>> {
+    let sexp = parse_sexp_document(text)?;
+    let root =
+        as_list(&sexp).ok_or_else(|| anyhow::anyhow!("KiCad symbol file root must be a list."))?;
+    let mut entries = Vec::new();
+    for symbol in list_children(root, "symbol") {
+        let Some(name) = string_at(symbol, 1).filter(|value| !value.trim().is_empty()) else {
+            continue;
+        };
+        let mut pins = Vec::new();
+        collect_symbol_pins(symbol, &mut pins);
+        pins.sort_by(|left, right| left.id.cmp(&right.id));
+        pins.dedup_by(|left, right| left.id == right.id);
+        entries.push(KiCadSymbolCatalogEntry {
+            id: format!("{library}:{name}"),
+            library: library.to_string(),
+            name: name.to_string(),
+            source: source.to_string(),
+            pins,
+        });
+    }
+    if entries.is_empty() {
+        anyhow::bail!("KiCad symbol file contains no top-level symbols.");
+    }
+    Ok(entries)
+}
+
+fn collect_symbol_pins(list: &[Sexp], pins: &mut Vec<KiCadSymbolPin>) {
+    for child in list
+        .iter()
+        .skip(1)
+        .filter_map(crate::importers::kicad_sch::sexp::maybe_list)
+    {
+        match tag(child) {
+            Some("pin") => {
+                let Some(id) = child_list(child, "number")
+                    .and_then(|number| string_at(number, 1))
+                    .or_else(|| child_list(child, "name").and_then(|name| string_at(name, 1)))
+                    .filter(|value| !value.trim().is_empty())
+                else {
+                    continue;
+                };
+                let name = child_list(child, "name")
+                    .and_then(|name| string_at(name, 1))
+                    .unwrap_or("")
+                    .to_string();
+                pins.push(KiCadSymbolPin {
+                    id: id.to_string(),
+                    name,
+                    electrical_type: string_at(child, 1).unwrap_or("passive").to_string(),
+                });
+            }
+            Some("symbol") => collect_symbol_pins(child, pins),
+            _ => {}
+        }
+    }
+}
+
 pub(super) fn parse_kicad_symbol_drawing(
     text: &str,
     symbol_name: &str,
@@ -244,9 +443,79 @@ pub(super) fn parse_kicad_symbol_drawing(
     let root = as_list(&sexp)?;
     let symbol =
         list_children(root, "symbol").find(|symbol| string_at(symbol, 1) == Some(symbol_name))?;
+    parse_kicad_symbol_drawing_from_list(symbol)
+}
+
+fn parse_kicad_symbol_drawing_from_list(symbol: &[Sexp]) -> Option<KiCadSymbolDrawing> {
     let mut primitives = Vec::new();
     collect_symbol_primitives(symbol, &mut primitives);
     KiCadSymbolDrawing::from_primitives(primitives)
+}
+
+fn cached_kicad_symbol_drawing(symbol_id: &str) -> Option<KiCadSymbolDrawing> {
+    if let Some(cached) = kicad_symbol_drawing_cache()
+        .lock()
+        .ok()
+        .and_then(|cache| cache.get(symbol_id).cloned())
+    {
+        return cached;
+    }
+    let loaded = load_installed_kicad_symbol_drawing(symbol_id);
+    if let Ok(mut cache) = kicad_symbol_drawing_cache().lock() {
+        cache.insert(symbol_id.to_string(), loaded.clone());
+    }
+    loaded
+}
+
+fn kicad_symbol_drawing_cache() -> &'static Mutex<BTreeMap<String, Option<KiCadSymbolDrawing>>> {
+    KICAD_SYMBOL_DRAWINGS.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+fn load_installed_kicad_symbol_drawing(symbol_id: &str) -> Option<KiCadSymbolDrawing> {
+    let (library, symbol) = symbol_id.split_once(':')?;
+    for root in installed_kicad_symbol_library_paths() {
+        let path = root.join(format!("{library}.kicad_sym"));
+        if !path.exists() {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        if let Some(drawing) = parse_kicad_symbol_drawing(&text, symbol) {
+            return Some(drawing);
+        }
+    }
+    None
+}
+
+fn cache_kicad_symbol_drawings_from_file(path: &Path) -> anyhow::Result<usize> {
+    let library = path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("KiCad symbol file name is not valid UTF-8."))?
+        .to_string();
+    let text = std::fs::read_to_string(path)
+        .map_err(|error| anyhow::anyhow!("failed to read KiCad symbol file: {error}"))?;
+    let sexp = parse_sexp_document(&text)?;
+    let root =
+        as_list(&sexp).ok_or_else(|| anyhow::anyhow!("KiCad symbol file root must be a list."))?;
+    let mut count = 0;
+    let mut cache = kicad_symbol_drawing_cache()
+        .lock()
+        .map_err(|_| anyhow::anyhow!("KiCad symbol drawing cache is unavailable."))?;
+    for symbol in list_children(root, "symbol") {
+        let Some(name) = string_at(symbol, 1).filter(|value| !value.trim().is_empty()) else {
+            continue;
+        };
+        let id = format!("{library}:{name}");
+        let drawing = parse_kicad_symbol_drawing_from_list(symbol);
+        if drawing.is_some() {
+            count += 1;
+        }
+        cache.insert(id, drawing);
+    }
+    Ok(count)
 }
 
 fn collect_symbol_primitives(list: &[Sexp], primitives: &mut Vec<KiCadSymbolPrimitive>) {
@@ -648,6 +917,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_kicad_symbol_catalog_entries_and_pin_numbers() {
+        let entries = parse_kicad_symbol_catalog(TEST_LIB, "Device", "test.kicad_sym").unwrap();
+        let resistor = entries.iter().find(|entry| entry.id == "Device:R").unwrap();
+
+        assert_eq!(resistor.library, "Device");
+        assert_eq!(resistor.name, "R");
+        assert_eq!(resistor.source, "test.kicad_sym");
+        assert!(resistor.pins.iter().any(|pin| pin.id == "1"));
+        assert!(resistor.pins.iter().any(|pin| pin.id == "2"));
+    }
+
+    #[test]
     fn installed_kicad_library_loads_common_symbols_when_available() {
         if installed_kicad_symbol_library_paths().is_empty() {
             return;
@@ -657,5 +938,8 @@ mod tests {
         assert!(cache.contains_key("Device:C"));
         assert!(cache.contains_key("Device:L"));
         assert!(cache.contains_key("Device:D"));
+        assert!(cache.contains_key("Device:Voltmeter_DC"));
+        assert!(cache.contains_key("Device:Ammeter_DC"));
+        assert!(cache.contains_key("Device:Oscilloscope"));
     }
 }

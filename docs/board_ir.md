@@ -101,14 +101,15 @@ waveforms require an `analog_transient` scenario and a SPICE-class backend.
 
 Desktop schematic editing may persist display metadata under `board.schematic`.
 `node_positions` stores component/net graph positions, `node_styles` stores
-schematic-only symbol orientation and pin-side preferences, `wire_routes`
-stores optional display waypoints keyed by `component.pin->net`, and
-`net_labels` stores named-net/off-page connector badges with a target net and
-schematic position. A `wire_routes` entry changes how the Sketch canvas draws
-that one pin-to-net edge, while a `net_labels` entry changes how a named
-connection is annotated. The electrical connection remains the component pin's
-net binding in `board.components`; these fields are not PCB traces, routes,
-buses, sheet ports, or a second connectivity model.
+schematic-only symbol orientation and pin-side preferences,
+`component_symbols` stores optional KiCad `Library:Symbol` ids for component
+glyph display, `wire_routes` stores optional display waypoints keyed by
+`component.pin->net`, and `net_labels` stores named-net/off-page connector
+badges with a target net and schematic position. A `wire_routes` entry changes
+how the Sketch canvas draws that one pin-to-net edge, while a `net_labels`
+entry changes how a named connection is annotated. The electrical connection
+remains the component pin's net binding in `board.components`; these fields are
+not PCB traces, routes, buses, sheet ports, or a second connectivity model.
 
 ## Manufacturing Metadata
 

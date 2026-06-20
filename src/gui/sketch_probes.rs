@@ -1,5 +1,6 @@
 use eframe::egui;
 
+use super::kicad_symbol_library::{KiCadProbeSymbolKind, draw_kicad_probe_symbol};
 use super::sketch::{ProjectSnapshot, SketchNode, SketchSelection, with_opacity};
 
 #[derive(Debug, Clone)]
@@ -39,6 +40,7 @@ pub(super) enum SketchProbeTarget {
 pub(super) struct SketchProbeBadge {
     pub(super) probe: SketchProbe,
     pub(super) rect: egui::Rect,
+    pub(super) anchor: egui::Pos2,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,11 +127,12 @@ pub(super) fn layout_probe_badges(
             continue;
         };
         let offset_index = target_counts.entry(probe.target.clone()).or_insert(0);
-        let rect = probe_badge_rect(node.rect, *offset_index, probe.quantity);
+        let (rect, anchor) = probe_badge_geometry(node.rect, *offset_index, probe.quantity);
         *offset_index += 1;
         badges.push(SketchProbeBadge {
             probe: probe.clone(),
             rect,
+            anchor,
         });
     }
     badges
@@ -200,37 +203,89 @@ pub(super) fn draw_probe_badge(
         SketchProbeStatus::Pass => egui::Color32::from_rgb(86, 190, 112),
         SketchProbeStatus::Fail => egui::Color32::from_rgb(232, 83, 83),
     };
-    painter.rect_filled(badge.rect, 3.0, with_opacity(fill, opacity));
-    painter.rect_stroke(
+    let stroke = egui::Stroke::new(
+        if hovered { 2.1 } else { 1.5 },
+        with_opacity(stroke_color, opacity),
+    );
+    painter.line_segment(
+        [
+            badge.anchor,
+            egui::pos2(badge.rect.left(), badge.rect.center().y),
+        ],
+        egui::Stroke::new(1.2, with_opacity(stroke_color, opacity)),
+    );
+    painter.rect_filled(
+        badge.rect.expand(2.0),
+        2.0,
+        with_opacity(egui::Color32::from_rgb(13, 18, 24), opacity * 0.72),
+    );
+    if !draw_kicad_probe_symbol(
+        painter,
+        probe_symbol_kind(badge.probe.quantity),
         badge.rect,
-        3.0,
-        egui::Stroke::new(
-            if hovered { 2.0 } else { 1.0 },
-            with_opacity(stroke_color, opacity),
-        ),
+        stroke,
+        with_opacity(fill, opacity),
+    ) {
+        draw_fallback_probe_symbol(
+            painter,
+            badge.rect,
+            badge.probe.quantity,
+            stroke,
+            fill,
+            opacity,
+        );
+    }
+    painter.rect_stroke(
+        badge.rect.expand(2.0),
+        2.0,
+        egui::Stroke::new(0.7, with_opacity(stroke_color, opacity * 0.55)),
         egui::StrokeKind::Inside,
     );
-    painter.text(
-        badge.rect.center(),
-        egui::Align2::CENTER_CENTER,
-        badge.probe.quantity.label(),
-        egui::FontId::monospace(11.0),
-        with_opacity(egui::Color32::WHITE, opacity),
-    );
     painter.circle_filled(
-        egui::pos2(badge.rect.right() - 3.5, badge.rect.top() + 3.5),
+        egui::pos2(badge.rect.right() - 1.5, badge.rect.top() + 1.5),
         3.0,
         with_opacity(status_color, opacity),
     );
     if status == SketchProbeStatus::Fail {
         painter.text(
-            egui::pos2(badge.rect.right() - 3.5, badge.rect.top() + 3.2),
+            egui::pos2(badge.rect.right() - 1.5, badge.rect.top() + 1.2),
             egui::Align2::CENTER_CENTER,
             "!",
             egui::FontId::monospace(7.0),
             with_opacity(egui::Color32::WHITE, opacity),
         );
     }
+}
+
+fn probe_symbol_kind(quantity: SketchProbeQuantity) -> KiCadProbeSymbolKind {
+    match quantity {
+        SketchProbeQuantity::Voltage => KiCadProbeSymbolKind::Voltage,
+        SketchProbeQuantity::Current => KiCadProbeSymbolKind::Current,
+        SketchProbeQuantity::Power => KiCadProbeSymbolKind::Power,
+    }
+}
+
+fn draw_fallback_probe_symbol(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    quantity: SketchProbeQuantity,
+    stroke: egui::Stroke,
+    fill: egui::Color32,
+    opacity: f32,
+) {
+    let color = with_opacity(fill, opacity);
+    painter.circle_stroke(
+        rect.center(),
+        rect.height().min(rect.width()) * 0.32,
+        stroke,
+    );
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        quantity.label(),
+        egui::FontId::monospace(12.0),
+        color,
+    );
 }
 
 fn finding_mentions_assertion(finding: &crate::reports::Finding, assertion_name: &str) -> bool {
@@ -304,19 +359,20 @@ fn expression_without_whitespace(expression: &str) -> String {
         .collect()
 }
 
-fn probe_badge_rect(
+fn probe_badge_geometry(
     node_rect: egui::Rect,
     offset_index: usize,
     quantity: SketchProbeQuantity,
-) -> egui::Rect {
+) -> (egui::Rect, egui::Pos2) {
     let size = match quantity {
-        SketchProbeQuantity::Voltage => egui::vec2(22.0, 18.0),
-        SketchProbeQuantity::Current => egui::vec2(22.0, 18.0),
-        SketchProbeQuantity::Power => egui::vec2(24.0, 18.0),
+        SketchProbeQuantity::Voltage | SketchProbeQuantity::Current => egui::vec2(46.0, 34.0),
+        SketchProbeQuantity::Power => egui::vec2(52.0, 36.0),
     };
-    let x = node_rect.right() - size.x - 6.0;
-    let y = node_rect.top() + 6.0 + offset_index as f32 * (size.y + 3.0);
-    egui::Rect::from_min_size(egui::pos2(x, y), size)
+    let y = node_rect.top() + 2.0 + offset_index as f32 * (size.y + 6.0);
+    let center_y = (y + size.y * 0.5).clamp(node_rect.top(), node_rect.bottom());
+    let anchor = egui::pos2(node_rect.right(), center_y);
+    let rect = egui::Rect::from_min_size(egui::pos2(node_rect.right() + 8.0, y), size);
+    (rect, anchor)
 }
 
 fn generated_current_sense_name(device_prefix: &str, component_id: &str) -> String {

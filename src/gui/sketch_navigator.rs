@@ -320,6 +320,7 @@ mod tests {
                 ],
                 position: Some(SketchPosition { x: 10.0, y: 20.0 }),
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             }],
             nets_detail: vec![

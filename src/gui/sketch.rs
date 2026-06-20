@@ -46,6 +46,7 @@ pub(super) struct SketchComponent {
     pub(super) pins: Vec<SketchPin>,
     pub(super) position: Option<SketchPosition>,
     pub(super) style: SketchNodeStyle,
+    pub(super) kicad_symbol_id: Option<String>,
     pub(super) source_paths: Vec<String>,
 }
 
@@ -168,6 +169,7 @@ pub(super) struct SketchNode {
     pub(super) label: String,
     pub(super) detail: String,
     pub(super) symbol: SketchSymbolKind,
+    pub(super) kicad_symbol_id: Option<String>,
     pub(super) style: SketchNodeStyle,
     pub(super) rect: egui::Rect,
 }
@@ -206,6 +208,7 @@ pub(super) fn load_project_snapshot_from_yaml(text: &str) -> Result<ProjectSnaps
 fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> ProjectSnapshot {
     let positions = &project.board.schematic.node_positions;
     let styles = &project.board.schematic.node_styles;
+    let component_symbols = &project.board.schematic.component_symbols;
     let component_labels = &project.board.schematic.component_labels;
     let wire_routes = &project.board.schematic.wire_routes;
     let net_labels = &project.board.schematic.net_labels;
@@ -224,6 +227,7 @@ fn project_snapshot_from_project(project: crate::board_ir::BoardProject) -> Proj
                 .map(SketchComponentSpice::from_board),
             position: sketch_position_for(positions, &SketchSelection::Component(id.clone())),
             style: sketch_style_for(styles, &SketchSelection::Component(id.clone())),
+            kicad_symbol_id: component_symbols.get(id).cloned(),
             source_paths: component
                 .source
                 .as_ref()
@@ -1021,7 +1025,7 @@ fn named_child_mapping_mut<'a>(
         .with_context(|| format!("Board IR {label} {id} must be an object."))
 }
 
-fn ensure_child_mapping_mut<'a>(
+pub(super) fn ensure_child_mapping_mut<'a>(
     mapping: &'a mut serde_yaml_ng::Mapping,
     field: &str,
     label: &str,

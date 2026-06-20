@@ -265,6 +265,7 @@ mod tests {
             label: id.to_string(),
             detail: String::new(),
             symbol: SketchSymbolKind::Block,
+            kicad_symbol_id: None,
             style: SketchNodeStyle::default(),
             rect,
         }

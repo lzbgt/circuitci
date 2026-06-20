@@ -712,7 +712,7 @@ impl CircuitCiApp {
             if self.analog_assertion_scenario.trim().is_empty()
                 || self.analog_assertion_probe.trim().is_empty()
             {
-                ui.label("Select a schematic probe badge to inspect its assertions.");
+                ui.label("Select a schematic probe element to inspect its assertions.");
                 return;
             }
             ui.horizontal(|ui| {
@@ -1107,7 +1107,7 @@ impl CircuitCiApp {
                 self.analog_assertion_edit_original.clear();
                 self.apply_edited_project_yaml(
                     updated,
-                    &format!("Analog assertion {assertion_name} added from canvas probe badge."),
+                    &format!("Analog assertion {assertion_name} added from canvas probe element."),
                 );
             }
             Err(error) => self.record_error(error),

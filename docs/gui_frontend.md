@@ -252,10 +252,17 @@ copy, duplicate, and delete; these actions reuse existing canvas selection and
 validated Board IR edit paths.
 `src/gui/sketch_probes.rs` owns derived schematic voltage/current/power probe
 badge targeting, badge layout, badge hit-testing, and badge drawing.
-`src/gui/library.rs` owns component model browsing over the active project
-library set, text filtering, selected-model staging, selected-component model
-assignment, and model-backed component insertion/placement through the same
-Board IR YAML mutation path. Inserted components use the selected model's
+`src/gui/library.rs` owns installed/imported KiCad symbol browsing plus
+component model browsing over the active project library set. The KiCad symbol
+browser scans installed `.kicad_sym` files, accepts user-imported
+`.kicad_sym` files, filters by library/symbol/pin metadata, can apply a KiCad
+`Library:Symbol` id to a selected component, and can insert a generic
+schematic component with default pins derived from KiCad pin numbers while
+persisting the display glyph under `board.schematic.component_symbols`. The
+model browser remains the source of Board IR model semantics: it filters
+component models, stages selected models, assigns models to selected
+components, and inserts model-backed components through the same Board IR YAML
+mutation path. Inserted model-backed components use the selected model's
 declared ports to seed editable Board IR pin bindings and generated per-pin
 nets, and Sketch-stage placement can target the current view center, an armed
 blank-canvas click, a drag/drop release with live ghost and snap feedback, or
@@ -471,12 +478,13 @@ form:
   net, wire, pin, label, or component before normal selection/wire routing,
   with canvas-hover `V`/`I`/`P` shortcuts, valid/invalid hover target feedback
   before the click, and same-key/Esc cancellation,
-  visible voltage/current/power probe badges derived from analog scenario
-  probes, badge pass/fail/unknown/unasserted markers derived from the latest
-  validation report, badge clicks that open and focus the corresponding
-  Simulation-stage scope/probe context, right-click probe-badge action menus,
-  right-click component/net/wire action menus, hovered-badge assertion
-  creation/clearing, hovered-badge deletion that removes the probe and
+  visible voltage/current/power probe elements derived from analog scenario
+  probes and rendered with KiCad meter/scope symbols when available, probe
+  pass/fail/unknown/unasserted markers derived from the latest validation
+  report, probe-element clicks that open and focus the corresponding
+  Simulation-stage scope/probe context, right-click probe-element action menus,
+  right-click component/net/wire action menus, hovered-probe assertion
+  creation/clearing, hovered-probe deletion that removes the probe and
   dependent assertions through a validated Board IR edit, selected-net
   voltage-probe insertion into existing analog scenarios,
   selected-component current-probe insertion for
@@ -511,11 +519,11 @@ form:
   coverage plus readiness gaps with quick editor navigation, edit generated
   scenario stop time/max step, ground net, SPICE node bindings, and component
   membership, add selected-net voltage probes to existing analog scenarios,
-  inspect a selected probe badge's assertion rows with
+  inspect a selected probe element's assertion rows with
   threshold/timing/status/failure details, edit or delete one assertion without
   clearing sibling checks on that selected probe, add or clear assertions for
   that selected probe, quick-add cursor-sampled above/below assertions from a
-  hovered schematic probe badge, add sample/min/max probe assertions, edit
+  hovered schematic probe element, add sample/min/max probe assertions, edit
   file-backed SPICE decks declared by analog scenarios, run validation through
   the engine, plot emitted CSV waveforms, add GUI-only derived
   difference/sum/product/ratio channels, promote representable derived channels
@@ -552,7 +560,7 @@ The supported desktop simulation path is:
 7. snap dragged schematic positions to the visible grid when snap is enabled,
 8. pan, zoom, Home-reset, Fit All, or Fit Selection the sketch viewport without
    changing Board IR evidence,
-9. search components, net bundles, nets, wires, and probe badges in the object navigator,
+9. search components, net bundles, nets, wires, and probe elements in the object navigator,
    select matching canvas targets, and fit the viewport to visible targets
    without changing Board IR evidence,
 10. use the schematic hierarchy panel to select, fit, focus, or isolate derived
@@ -639,15 +647,15 @@ The supported desktop simulation path is:
 40. hover graph nodes to inspect matching voltage/current/power probe values at
    the current waveform cursor,
 41. add schematic probes from the primary toolbar for the selected net or
-   component, use visible schematic probe badges to find voltage/current/power
+   component, use visible schematic probe elements to find voltage/current/power
    probes, see latest assertion pass/fail/unknown/unasserted status, jump to
    their Simulation-stage scope trace and selected-probe assertion panel after
    waveform data is loaded, add an assertion from the current assertion-editor
    settings with `A`, edit or delete one assertion row from the selected-probe
    panel, quick-add an above-current-sample check with Shift+A or a
    below-current-sample check with Shift+B, clear assertions for the probe with
-   `X`, use the right-click badge menu for the same probe actions, or remove a
-   hovered probe badge with Delete/Backspace,
+   `X`, use the right-click probe menu for the same probe actions, or remove a
+   hovered probe element with Delete/Backspace,
 42. use right-click component, net, and wire menus for common sketch actions
    such as inspect/select, start wire, connect an active wire, add voltage,
    current, or power probes, place local/off-page net labels, and delete
@@ -713,12 +721,12 @@ for the same supported component set by composing explicit branch voltage and
 branch current expressions. Subcircuit internals and file-backed deck branch
 probes still require explicit deck/model evidence.
 
-Schematic probe badges are derived overlays over existing analog scenario
-probes. Voltage badges attach to Board IR nets only when the probe expression's
-SPICE node maps back through `analog.node_bindings`; current and power badges
+Schematic probe elements are derived overlays over existing analog scenario
+probes. Voltage probe elements attach to Board IR nets only when the probe expression's
+SPICE node maps back through `analog.node_bindings`; current and power elements
 attach to components only when the expression references a generated/source
-branch that CircuitCI can map back to a Board IR component. The badges are not a
-second persisted probe model. Badge status markers are derived from the latest
+branch that CircuitCI can map back to a Board IR component. The elements are not a
+second persisted probe model. Probe status markers are derived from the latest
 loaded `ValidationReport`: unasserted probes are grey, asserted probes without a
 loaded report are unknown, assertion failures are red, non-assertion scenario
 failures remain unknown, and asserted probes pass only when the latest report
@@ -732,7 +740,7 @@ with a small 1% threshold margin so the current sample initially satisfies the
 new strict `above` or `below` check. If no waveform column matches the probe
 expression at the cursor, the quick action fails closed and leaves Board IR
 unchanged.
-Clicking a probe badge, choosing a probe row in the object navigator, using
+Clicking a probe element, choosing a probe row in the object navigator, using
 the primary toolbar/context-menu scope actions, or arming `Scope Tool` V/I/P
 or pressing `V`, `I`, or `P` while the canvas is hovered and clicking the
 schematic records the selected scenario/probe as the runtime scope target.
@@ -821,7 +829,7 @@ from the current filtered Scopes state into that same
 `scope_report_bundle_*` under the configured output directory; `Confirm Cleanup`
 then removes only those previewed bundle folders, preserving the newest bounded
 set and unrelated output folders.
-Right-clicking a probe badge
+Right-clicking a probe element
 opens an explicit action menu for opening the probe in Simulation, adding an
 assertion from current settings, quick adding above/below cursor-sample
 assertions, clearing assertions, or removing the probe. These menu actions call

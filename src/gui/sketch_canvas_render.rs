@@ -86,7 +86,7 @@ pub(super) fn sketch_probe_badge_tooltip(
         ));
     }
     ui.separator();
-    ui.label("Click to open this probe in the Simulation stage.");
+    ui.label("Click to open this probe in the Scopes overlay.");
     ui.label("Right-click to open probe actions.");
     ui.label("Press A while hovering to add an assertion from current settings.");
     ui.label("Press Shift+A while hovering to require above the cursor sample.");

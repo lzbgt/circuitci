@@ -24,6 +24,7 @@ pub(super) fn probe_snapshot() -> ProjectSnapshot {
                 },
             ],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![

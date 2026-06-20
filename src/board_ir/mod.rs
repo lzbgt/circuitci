@@ -46,6 +46,8 @@ pub struct BoardSchematic {
     #[serde(default)]
     pub node_styles: BTreeMap<String, SchematicNodeStyle>,
     #[serde(default)]
+    pub component_symbols: BTreeMap<String, String>,
+    #[serde(default)]
     pub component_labels: BTreeMap<String, SchematicComponentLabels>,
     #[serde(default)]
     pub wire_routes: BTreeMap<String, SchematicWireRoute>,

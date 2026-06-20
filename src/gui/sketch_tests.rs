@@ -478,6 +478,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -488,6 +489,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -498,6 +500,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -508,6 +511,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -518,6 +522,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -528,6 +533,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -538,6 +544,7 @@ fn layout_assigns_common_component_symbol_kinds() {
                 pins: Vec::new(),
                 position: None,
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
         ],
@@ -795,6 +802,7 @@ fn sketch_graph_layout_uses_saved_node_position() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
@@ -852,6 +860,7 @@ fn sketch_graph_layout_renders_pin_anchors() {
                 },
             ],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![
@@ -919,6 +928,7 @@ fn sketch_graph_viewport_transforms_nodes_and_edges() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
@@ -974,6 +984,7 @@ fn sketch_graph_bounds_excludes_overflow_hints() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {
@@ -1470,6 +1481,7 @@ fn sketch_layout_keeps_offscreen_rows_pannable_for_navigator_fit() {
             }],
             position: None,
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         })
         .collect();
@@ -1525,6 +1537,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -1538,6 +1551,7 @@ fn fit_sketch_content_places_transformed_bounds_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
         ],
@@ -1587,6 +1601,7 @@ fn fit_selected_sketch_content_places_selection_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
             SketchComponent {
@@ -1600,6 +1615,7 @@ fn fit_selected_sketch_content_places_selection_inside_canvas() {
                     net: "far_net".to_string(),
                 }],
                 style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
                 source_paths: Vec::new(),
             },
         ],

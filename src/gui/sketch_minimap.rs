@@ -133,6 +133,7 @@ mod tests {
                 label: "sig".to_string(),
                 detail: "net".to_string(),
                 symbol: SketchSymbolKind::Net,
+                kicad_symbol_id: None,
                 style: Default::default(),
                 rect: egui::Rect::from_min_size(egui::pos2(100.0, 120.0), egui::vec2(80.0, 50.0)),
             }],

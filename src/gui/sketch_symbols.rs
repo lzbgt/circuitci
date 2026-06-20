@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use super::kicad_symbol_library::draw_kicad_default_symbol;
+use super::kicad_symbol_library::{draw_kicad_default_symbol, draw_kicad_symbol_by_id};
 use super::sketch::{SketchComponent, SketchNode, SketchNodeStyle, SketchSelection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,16 +73,22 @@ pub(super) fn draw_symbol_glyph(painter: &egui::Painter, node: &SketchNode) {
         SketchSelection::Overflow(_) => egui::Color32::LIGHT_GRAY,
     };
     let stroke = egui::Stroke::new(1.7, color);
-    let mut rect = if node.symbol.is_kicad_device_symbol() {
+    let has_explicit_kicad_symbol = node.kicad_symbol_id.is_some();
+    let mut rect = if node.symbol.is_kicad_device_symbol() || has_explicit_kicad_symbol {
         node.rect.shrink2(egui::vec2(8.0, 18.0))
     } else {
         node.rect.shrink2(egui::vec2(28.0, 26.0))
     };
-    if !node.symbol.is_kicad_device_symbol() {
+    if !node.symbol.is_kicad_device_symbol() && !has_explicit_kicad_symbol {
         rect.min.y = rect.min.y.max(node.rect.top() + 26.0);
         rect.max.y = rect.max.y.min(node.rect.bottom() - 20.0);
     }
     if rect.width() < 48.0 || rect.height() < 14.0 {
+        return;
+    }
+    if let Some(symbol_id) = &node.kicad_symbol_id
+        && draw_kicad_symbol_by_id(painter, symbol_id, rect, node.style, stroke, color)
+    {
         return;
     }
     if node.symbol.is_kicad_device_symbol()

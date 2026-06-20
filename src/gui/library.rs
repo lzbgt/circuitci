@@ -1,4 +1,7 @@
 use super::CircuitCiApp;
+use super::kicad_symbol_library::{
+    KiCadSymbolCatalogEntry, KiCadSymbolPin, import_kicad_symbol_file, kicad_symbol_catalog,
+};
 use super::sketch::{
     SketchNodeStyle, SketchSelection, add_component_with_ports, edit_component_model,
     edit_schematic_component_style, edit_schematic_node_positions,
@@ -48,6 +51,7 @@ impl CircuitCiApp {
             }
         }
 
+        self.kicad_symbol_browser(ui);
         self.model_browser(ui);
 
         if !self.suggestions_yaml.is_empty() {
@@ -199,6 +203,164 @@ impl CircuitCiApp {
             });
     }
 
+    fn kicad_symbol_browser(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        ui.strong("KiCad Symbol Library");
+        ui.label(
+            "Browse installed KiCad symbols or import a .kicad_sym file. Symbol placement is schematic display metadata; assign Board IR models separately for validation.",
+        );
+        ui.horizontal(|ui| {
+            ui.label("Import file");
+            ui.text_edit_singleline(&mut self.kicad_symbol_import_path);
+            if ui.button("Import .kicad_sym").clicked() {
+                self.import_kicad_symbol_library_file();
+            }
+        });
+        if !self.imported_kicad_symbol_files.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Imported");
+                for path in &self.imported_kicad_symbol_files {
+                    ui.monospace(path);
+                }
+            });
+        }
+
+        let (entries, diagnostics) = kicad_symbol_catalog(&self.imported_kicad_symbol_files);
+        for diagnostic in diagnostics {
+            ui.colored_label(egui::Color32::from_rgb(232, 160, 90), diagnostic);
+        }
+        ui.horizontal(|ui| {
+            ui.label("Search");
+            ui.text_edit_singleline(&mut self.kicad_symbol_search);
+            if ui.button("Clear").clicked() {
+                self.kicad_symbol_search.clear();
+            }
+        });
+
+        let selected_component =
+            selected_component_id(self.selected_sketch_item.as_ref()).map(str::to_string);
+        let selected_entry = entries
+            .iter()
+            .find(|entry| entry.id == self.selected_kicad_symbol_id)
+            .cloned();
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Selected symbol");
+            if self.selected_kicad_symbol_id.is_empty() {
+                ui.label("none");
+            } else {
+                ui.monospace(&self.selected_kicad_symbol_id);
+            }
+            if let Some(entry) = &selected_entry {
+                ui.label(format!("{} pin(s)", entry.pins.len()));
+            }
+        });
+        ui.horizontal(|ui| {
+            let can_apply =
+                selected_component.is_some() && !self.selected_kicad_symbol_id.trim().is_empty();
+            if ui
+                .add_enabled(can_apply, egui::Button::new("Use Symbol For Selected"))
+                .clicked()
+                && let Some(component_id) = &selected_component
+            {
+                self.apply_selected_kicad_symbol(component_id.clone());
+            }
+            let can_insert = selected_entry.is_some() && !self.new_component_id.trim().is_empty();
+            if ui
+                .add_enabled(can_insert, egui::Button::new("Insert Symbol Component"))
+                .clicked()
+                && let Some(entry) = selected_entry.clone()
+            {
+                self.apply_insert_kicad_symbol_component_at_view(entry);
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Insert ID");
+            ui.text_edit_singleline(&mut self.new_component_id);
+            if ui.button("Next Symbol ID").clicked()
+                && let Some(entry) = selected_entry.as_ref()
+            {
+                self.new_component_id = next_kicad_symbol_component_id(&self.project_yaml, entry)
+                    .unwrap_or_else(|| self.new_component_id.clone());
+            }
+        });
+
+        let filtered = filtered_kicad_symbol_entries(&entries, &self.kicad_symbol_search);
+        ui.label(format!(
+            "{} of {} KiCad symbol(s)",
+            filtered.len(),
+            entries.len()
+        ));
+        egui::ScrollArea::vertical()
+            .max_height(220.0)
+            .show(ui, |ui| {
+                egui::Grid::new("kicad_symbol_browser_grid")
+                    .num_columns(5)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.strong("Symbol");
+                        ui.strong("Library");
+                        ui.strong("Pins");
+                        ui.strong("Source");
+                        ui.strong("Action");
+                        ui.end_row();
+                        for entry in filtered.into_iter().take(400) {
+                            ui.monospace(&entry.name);
+                            ui.label(&entry.library);
+                            ui.label(entry.pins.len().to_string());
+                            ui.label(compact_source_label(&entry.source));
+                            if ui.button("Select").clicked() {
+                                self.selected_kicad_symbol_id = entry.id.clone();
+                                self.selected_library_model.clear();
+                                self.new_component_model =
+                                    "generic.schematic.imported_component".to_string();
+                                self.new_component_id =
+                                    next_kicad_symbol_component_id(&self.project_yaml, entry)
+                                        .unwrap_or_else(|| self.new_component_id.clone());
+                            }
+                            ui.end_row();
+                        }
+                    });
+            });
+    }
+
+    fn import_kicad_symbol_library_file(&mut self) {
+        let path = self.kicad_symbol_import_path.trim();
+        if path.is_empty() {
+            self.status = "Enter a .kicad_sym path before importing symbols.".to_string();
+            return;
+        }
+        match import_kicad_symbol_file(Path::new(path)) {
+            Ok(entries) => {
+                if !self
+                    .imported_kicad_symbol_files
+                    .iter()
+                    .any(|entry| entry == path)
+                {
+                    self.imported_kicad_symbol_files.push(path.to_string());
+                }
+                self.status = format!("Imported {} KiCad symbol(s) from {path}.", entries.len());
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_selected_kicad_symbol(&mut self, component_id: String) {
+        match edit_schematic_component_symbol(
+            &self.project_yaml,
+            &component_id,
+            &self.selected_kicad_symbol_id,
+        ) {
+            Ok(updated) => self.apply_edited_project_yaml(
+                updated,
+                &format!(
+                    "Component {component_id} schematic symbol set to {}.",
+                    self.selected_kicad_symbol_id
+                ),
+            ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
     fn apply_selected_library_model(&mut self, component_id: String) {
         match edit_component_model(
             &self.project_yaml,
@@ -318,6 +480,62 @@ impl CircuitCiApp {
             egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(960.0, 640.0))
         });
         self.apply_insert_selected_library_model_at(canvas, canvas.center());
+    }
+
+    fn apply_insert_kicad_symbol_component_at_view(&mut self, entry: KiCadSymbolCatalogEntry) {
+        let canvas = self.sketch_last_canvas_rect.unwrap_or_else(|| {
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(960.0, 640.0))
+        });
+        self.apply_insert_kicad_symbol_component_at(entry, canvas, canvas.center());
+    }
+
+    fn apply_insert_kicad_symbol_component_at(
+        &mut self,
+        entry: KiCadSymbolCatalogEntry,
+        canvas: egui::Rect,
+        target: egui::Pos2,
+    ) {
+        if self.new_component_id.trim().is_empty() {
+            self.new_component_id = next_kicad_symbol_component_id(&self.project_yaml, &entry)
+                .unwrap_or_else(|| "U1".to_string());
+        }
+        let component_id = self.new_component_id.trim().to_string();
+        let node_rect = egui::Rect::from_center_size(target, egui::vec2(180.0, 96.0));
+        let (x, y) = persisted_node_position_from_screen_with_snap(
+            canvas,
+            target,
+            node_rect,
+            self.sketch_viewport(),
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        match insert_kicad_symbol_component_at(
+            &self.project_yaml,
+            &component_id,
+            &entry,
+            x,
+            y,
+            self.placement_node_style(),
+        ) {
+            Ok(updated) => {
+                self.selected_kicad_symbol_id = entry.id.clone();
+                self.selected_library_model.clear();
+                self.new_component_model = "generic.schematic.imported_component".to_string();
+                self.set_single_sketch_selection(Some(SketchSelection::Component(
+                    component_id.clone(),
+                )));
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!(
+                        "Component {component_id} inserted with KiCad symbol {}.",
+                        entry.id
+                    ),
+                );
+                self.new_component_id = next_kicad_symbol_component_id(&self.project_yaml, &entry)
+                    .unwrap_or(component_id);
+            }
+            Err(error) => self.record_error(error),
+        }
     }
 
     pub(super) fn apply_insert_selected_library_model_at(
@@ -444,6 +662,80 @@ fn insert_library_model_component_at(
     }
 }
 
+fn insert_kicad_symbol_component_at(
+    text: &str,
+    component_id: &str,
+    entry: &KiCadSymbolCatalogEntry,
+    x: f64,
+    y: f64,
+    style: SketchNodeStyle,
+) -> Result<String> {
+    let ports = kicad_symbol_ports(entry);
+    let inserted = add_component_with_ports(
+        text,
+        component_id,
+        "generic.schematic.imported_component",
+        &ports,
+    )?;
+    let positioned = edit_schematic_node_positions(
+        &inserted,
+        &[(
+            SketchSelection::Component(component_id.trim().to_string()),
+            x,
+            y,
+        )],
+    )?;
+    let styled = if style == SketchNodeStyle::default() {
+        positioned
+    } else {
+        edit_schematic_component_style(&positioned, component_id, style)?
+    };
+    edit_schematic_component_symbol(&styled, component_id, &entry.id)
+}
+
+fn edit_schematic_component_symbol(
+    text: &str,
+    component_id: &str,
+    symbol_id: &str,
+) -> Result<String> {
+    let component_id = component_id.trim();
+    let symbol_id = symbol_id.trim();
+    if component_id.is_empty() {
+        anyhow::bail!("Component id must not be blank.");
+    }
+    if symbol_id.is_empty() {
+        anyhow::bail!("KiCad symbol id must not be blank.");
+    }
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project.board.components.contains_key(component_id) {
+        anyhow::bail!("Board IR component {component_id} was not found.");
+    }
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let board = yaml
+            .as_mapping_mut()
+            .context("Board IR project must be a YAML object.")?
+            .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+            .context("Board IR project is missing board.")?
+            .as_mapping_mut()
+            .context("Board IR field board must be an object.")?;
+        let schematic =
+            super::sketch::ensure_child_mapping_mut(board, "schematic", "board schematic")?;
+        let symbols = super::sketch::ensure_child_mapping_mut(
+            schematic,
+            "component_symbols",
+            "schematic component symbols",
+        )?;
+        symbols.insert(
+            serde_yaml_ng::Value::String(component_id.to_string()),
+            serde_yaml_ng::Value::String(symbol_id.to_string()),
+        );
+    }
+    super::sketch::encode_edited_project_yaml(yaml)
+}
+
 fn model_browser_entries(
     project_yaml: &str,
     project_path: &Path,
@@ -516,11 +808,58 @@ fn filtered_entries<'a>(
         .collect()
 }
 
+fn filtered_kicad_symbol_entries<'a>(
+    entries: &'a [KiCadSymbolCatalogEntry],
+    query: &str,
+) -> Vec<&'a KiCadSymbolCatalogEntry> {
+    let terms: Vec<String> = query
+        .split_whitespace()
+        .map(|term| term.to_ascii_lowercase())
+        .collect();
+    entries
+        .iter()
+        .filter(|entry| {
+            if terms.is_empty() {
+                return true;
+            }
+            let haystack = format!(
+                "{} {} {} {}",
+                entry.id,
+                entry.library,
+                entry.name,
+                entry
+                    .pins
+                    .iter()
+                    .map(|pin| format!("{} {} {}", pin.id, pin.name, pin.electrical_type))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            )
+            .to_ascii_lowercase();
+            terms.iter().all(|term| haystack.contains(term))
+        })
+        .collect()
+}
+
 fn selected_component_id(selection: Option<&SketchSelection>) -> Option<&str> {
     match selection {
         Some(SketchSelection::Component(component_id)) => Some(component_id.as_str()),
         _ => None,
     }
+}
+
+fn next_kicad_symbol_component_id(
+    project_yaml: &str,
+    entry: &KiCadSymbolCatalogEntry,
+) -> Option<String> {
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(project_yaml).ok()?;
+    let prefix = kicad_symbol_component_prefix(entry);
+    for index in 1..10_000 {
+        let candidate = format!("{prefix}{index}");
+        if !project.board.components.contains_key(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
 }
 
 fn next_component_id(project_yaml: &str, entry: &ModelBrowserEntry) -> Option<String> {
@@ -533,6 +872,27 @@ fn next_component_id(project_yaml: &str, entry: &ModelBrowserEntry) -> Option<St
         }
     }
     None
+}
+
+fn kicad_symbol_component_prefix(entry: &KiCadSymbolCatalogEntry) -> &'static str {
+    let haystack = format!("{} {}", entry.library, entry.name).to_ascii_lowercase();
+    if haystack.contains("connector") || haystack.contains("header") || haystack.contains("jack") {
+        "J"
+    } else if haystack.contains("resistor") || entry.name.starts_with('R') {
+        "R"
+    } else if haystack.contains("capacitor") || entry.name.starts_with('C') {
+        "C"
+    } else if haystack.contains("inductor") || entry.name.starts_with('L') {
+        "L"
+    } else if haystack.contains("diode") || entry.name.starts_with('D') {
+        "D"
+    } else if haystack.contains("transistor") || entry.name.starts_with('Q') {
+        "Q"
+    } else if haystack.contains("voltage") || haystack.contains("current") {
+        "V"
+    } else {
+        "U"
+    }
 }
 
 fn component_prefix(entry: &ModelBrowserEntry) -> &'static str {
@@ -557,6 +917,24 @@ fn component_prefix(entry: &ModelBrowserEntry) -> &'static str {
     }
 }
 
+fn kicad_symbol_ports(entry: &KiCadSymbolCatalogEntry) -> Vec<(String, String)> {
+    entry
+        .pins
+        .iter()
+        .map(|pin| (pin.id.clone(), kicad_pin_kind_name(pin).to_string()))
+        .collect()
+}
+
+fn kicad_pin_kind_name(pin: &KiCadSymbolPin) -> &'static str {
+    match pin.electrical_type.as_str() {
+        "input" => "digital_electrical_input",
+        "output" => "digital_electrical_output",
+        "bidirectional" | "tri_state" => "digital_electrical_io",
+        "power_in" | "power_out" => "electrical_power",
+        _ => "passive",
+    }
+}
+
 fn port_kind_name(kind: &crate::library::PortKind) -> &'static str {
     match kind {
         crate::library::PortKind::ElectricalPower => "electrical_power",
@@ -566,6 +944,14 @@ fn port_kind_name(kind: &crate::library::PortKind) -> &'static str {
         crate::library::PortKind::DigitalElectricalIo => "digital_electrical_io",
         crate::library::PortKind::Passive => "passive",
     }
+}
+
+fn compact_source_label(source: &str) -> String {
+    Path::new(source)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(source)
+        .to_string()
 }
 
 fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
@@ -618,10 +1004,13 @@ fn model_features(model: &crate::library::ComponentModel) -> Vec<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        filtered_entries, insert_library_model_component_at, model_browser_entries,
-        next_component_id,
+        ModelBrowserEntry, edit_schematic_component_symbol, filtered_entries,
+        filtered_kicad_symbol_entries, insert_kicad_symbol_component_at,
+        insert_library_model_component_at, kicad_symbol_ports, model_browser_entries,
+        next_component_id, next_kicad_symbol_component_id,
     };
     use crate::gui::CircuitCiApp;
+    use crate::gui::kicad_symbol_library::{KiCadSymbolCatalogEntry, KiCadSymbolPin};
     use crate::gui::sketch::{SketchSelection, load_project_snapshot_from_yaml};
     use eframe::egui;
     use std::path::Path;
@@ -636,6 +1025,27 @@ board:
   components: {}
   nets: {}
 "
+    }
+
+    fn kicad_resistor_entry() -> KiCadSymbolCatalogEntry {
+        KiCadSymbolCatalogEntry {
+            id: "Device:R".to_string(),
+            library: "Device".to_string(),
+            name: "R".to_string(),
+            source: "Device.kicad_sym".to_string(),
+            pins: vec![
+                KiCadSymbolPin {
+                    id: "1".to_string(),
+                    name: "".to_string(),
+                    electrical_type: "passive".to_string(),
+                },
+                KiCadSymbolPin {
+                    id: "2".to_string(),
+                    name: "".to_string(),
+                    electrical_type: "passive".to_string(),
+                },
+            ],
+        }
     }
 
     #[test]
@@ -695,6 +1105,107 @@ board:
             .unwrap();
 
         assert_eq!(next_component_id(project_yaml(), entry).unwrap(), "U1");
+    }
+
+    #[test]
+    fn kicad_symbol_filter_matches_library_symbol_and_pins() {
+        let entries = vec![kicad_resistor_entry()];
+        let filtered = filtered_kicad_symbol_entries(&entries, "device passive");
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "Device:R");
+    }
+
+    #[test]
+    fn kicad_symbol_insert_at_persists_symbol_and_default_pin_nets() {
+        let entry = kicad_resistor_entry();
+        let edited = insert_kicad_symbol_component_at(
+            project_yaml(),
+            "R1",
+            &entry,
+            144.0,
+            96.0,
+            Default::default(),
+        )
+        .unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "R1")
+            .unwrap();
+
+        assert_eq!(component.model, "generic.schematic.imported_component");
+        assert_eq!(component.kicad_symbol_id.as_deref(), Some("Device:R"));
+        assert!(component.pins.iter().any(|pin| pin.pin == "1"));
+        assert!(component.pins.iter().any(|pin| pin.pin == "2"));
+        assert!(edited.contains("component_symbols:"));
+        assert!(edited.contains("R1: Device:R"));
+    }
+
+    #[test]
+    fn kicad_symbol_can_be_applied_to_existing_component() {
+        let with_component = super::insert_library_model_component(
+            project_yaml(),
+            "U1",
+            &ModelBrowserEntry {
+                id: "generic.schematic.imported_component".to_string(),
+                category: "generic".to_string(),
+                source: "builtin".to_string(),
+                confidence: "low".to_string(),
+                ports: Vec::new(),
+                features: vec!["basic"],
+            },
+        )
+        .unwrap();
+        let edited =
+            edit_schematic_component_symbol(&with_component, "U1", "Device:OpAmp").unwrap();
+        let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+        let component = snapshot
+            .components_detail
+            .iter()
+            .find(|component| component.id == "U1")
+            .unwrap();
+
+        assert_eq!(component.kicad_symbol_id.as_deref(), Some("Device:OpAmp"));
+    }
+
+    #[test]
+    fn kicad_symbol_ports_keep_pin_numbers_and_kind_mapping() {
+        let ports = kicad_symbol_ports(&KiCadSymbolCatalogEntry {
+            id: "Device:Example".to_string(),
+            library: "Device".to_string(),
+            name: "Example".to_string(),
+            source: "test".to_string(),
+            pins: vec![
+                KiCadSymbolPin {
+                    id: "1".to_string(),
+                    name: "IN".to_string(),
+                    electrical_type: "input".to_string(),
+                },
+                KiCadSymbolPin {
+                    id: "2".to_string(),
+                    name: "VCC".to_string(),
+                    electrical_type: "power_in".to_string(),
+                },
+            ],
+        });
+
+        assert_eq!(
+            ports,
+            vec![
+                ("1".to_string(), "digital_electrical_input".to_string()),
+                ("2".to_string(), "electrical_power".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn next_kicad_symbol_component_id_uses_symbol_prefix() {
+        assert_eq!(
+            next_kicad_symbol_component_id(project_yaml(), &kicad_resistor_entry()).unwrap(),
+            "R1"
+        );
     }
 
     #[test]

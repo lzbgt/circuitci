@@ -635,6 +635,7 @@ fn component_context_pin_prefers_existing_wire_pin_then_first_pin() {
                 },
             ],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: Vec::new(),
@@ -677,6 +678,7 @@ fn sketch_graph_layout_connects_component_to_net() {
                 net: "net_a".to_string(),
             }],
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         }],
         nets_detail: vec![SketchNet {

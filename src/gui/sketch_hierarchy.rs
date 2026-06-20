@@ -668,6 +668,7 @@ mod tests {
                     }],
                     position: None,
                     style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
                     source_paths: Vec::new(),
                 },
                 SketchComponent {
@@ -681,6 +682,7 @@ mod tests {
                     }],
                     position: None,
                     style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
                     source_paths: Vec::new(),
                 },
                 SketchComponent {
@@ -694,6 +696,7 @@ mod tests {
                     }],
                     position: None,
                     style: SketchNodeStyle::default(),
+                    kicad_symbol_id: None,
                     source_paths: vec!["/frontend".to_string()],
                 },
             ],
@@ -814,6 +817,7 @@ mod tests {
                 assertion_names: Vec::new(),
             },
             rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+            anchor: egui::pos2(0.0, 5.0),
         };
         let unrelated_probe = SketchProbeBadge {
             probe: SketchProbe {
@@ -825,6 +829,7 @@ mod tests {
                 assertion_names: Vec::new(),
             },
             rect: egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+            anchor: egui::pos2(0.0, 5.0),
         };
         assert!(isolate.probe_badge_visible(&focused_probe));
         assert!(!isolate.probe_badge_visible(&unrelated_probe));
@@ -881,6 +886,7 @@ mod tests {
             }],
             position: None,
             style: SketchNodeStyle::default(),
+            kicad_symbol_id: None,
             source_paths: Vec::new(),
         });
         snapshot.components += 1;

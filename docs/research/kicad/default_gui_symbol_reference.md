@@ -7,11 +7,14 @@ Local KiCad install inspected on this host:
 - `/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Device.kicad_sym`
 - `/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Simulation_SPICE.kicad_sym`
 
-The GUI Sketch defaults treat these libraries as the canonical source for
-built-in schematic symbols. Runtime rendering discovers installed KiCad symbol
-directories, parses the needed `.kicad_sym` drawing primitives once, caches
-them, and falls back to checked-in geometry only when KiCad is unavailable or a
-symbol cannot be parsed.
+The GUI Sketch defaults treat installed KiCad symbol libraries as the canonical
+source for built-in schematic symbols. Runtime rendering discovers installed
+KiCad symbol directories, catalogs every top-level symbol from `.kicad_sym`
+files for the Library panel, parses selected drawing primitives on demand,
+caches them, and falls back to checked-in geometry only when KiCad is
+unavailable or a symbol cannot be parsed. User-provided `.kicad_sym` files can
+also be imported into the GUI library; imported symbols share the same catalog,
+pin extraction, insertion, and drawing cache path.
 
 ## Symbols Checked
 
@@ -27,7 +30,8 @@ symbol cannot be parsed.
 
 - Common two-terminal primitives render as compact KiCad-style schematic
   symbols, not large component cards.
-- Installed KiCad library drawings are preferred for the default R/C/L/D/source
+- Installed KiCad library drawings are preferred for explicit
+  `board.schematic.component_symbols` glyphs and for default R/C/L/D/source
   glyphs; built-in geometry is a compatibility fallback, not the primary
   source.
 - Their pins attach to opposite symbol terminals, with rotation/mirroring

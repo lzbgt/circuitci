@@ -31,7 +31,11 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
     let mut component_y = top;
     for component in snapshot.components_detail.iter().take(component_count) {
         let symbol = component_symbol_kind(component);
-        let size = component_node_size(symbol, fallback_component_size);
+        let size = component_node_size(
+            symbol,
+            component.kicad_symbol_id.is_some(),
+            fallback_component_size,
+        );
         let default = egui::pos2(left_x, component_y);
         component_y += size.y + row_gap;
         nodes.push(SketchNode {
@@ -42,6 +46,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
                 34,
             ),
             symbol,
+            kicad_symbol_id: component.kicad_symbol_id.clone(),
             style: component.style,
             rect: node_rect_from_position(rect, component.position, default, size.x, size.y),
         });
@@ -58,6 +63,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
             label: net.id.clone(),
             detail: format!("{} / {} conn", net.kind, net.connections.len()),
             symbol: SketchSymbolKind::Net,
+            kicad_symbol_id: None,
             style: SketchNodeStyle::default(),
             rect: node_rect_from_position(rect, net.position, default, size.x, size.y),
         });
@@ -547,9 +553,15 @@ fn component_pin_anchors(
         .collect()
 }
 
-fn component_node_size(symbol: SketchSymbolKind, fallback: egui::Vec2) -> egui::Vec2 {
+fn component_node_size(
+    symbol: SketchSymbolKind,
+    has_explicit_kicad_symbol: bool,
+    fallback: egui::Vec2,
+) -> egui::Vec2 {
     if symbol.is_kicad_device_symbol() {
         egui::vec2(104.0, 72.0)
+    } else if has_explicit_kicad_symbol {
+        egui::vec2(fallback.x.min(180.0), fallback.y.max(96.0))
     } else {
         fallback
     }
@@ -650,6 +662,7 @@ fn push_overflow_hint(
         label: format!("+{count}"),
         detail: label.to_string(),
         symbol: SketchSymbolKind::Overflow,
+        kicad_symbol_id: None,
         style: SketchNodeStyle::default(),
         rect: egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(width, height)),
     });
