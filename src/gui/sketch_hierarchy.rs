@@ -809,6 +809,7 @@ mod tests {
 
         let focused_probe = SketchProbeBadge {
             probe: SketchProbe {
+                element_id: None,
                 scenario_name: "analog".to_string(),
                 probe_name: "v_filter".to_string(),
                 expression: "V(filter)".to_string(),
@@ -821,6 +822,7 @@ mod tests {
         };
         let unrelated_probe = SketchProbeBadge {
             probe: SketchProbe {
+                element_id: None,
                 scenario_name: "analog".to_string(),
                 probe_name: "v_root".to_string(),
                 expression: "V(root)".to_string(),

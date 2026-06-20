@@ -172,7 +172,11 @@ fn scope_voltage_action_creates_probe_and_opens_scopes() {
         ..Default::default()
     };
 
-    app.open_or_create_scope_voltage_probe_for_net("out");
+    app.open_or_create_scope_voltage_probe_for_net_with_attachment(
+        "out",
+        super::sketch_probes::SketchProbeAttachmentKind::Wire,
+        Some("R1.B".to_string()),
+    );
 
     assert_eq!(app.stage, Stage::Simulation);
     assert_eq!(
@@ -190,6 +194,24 @@ fn scope_voltage_action_creates_probe_and_opens_scopes() {
             && probe.expression == "V(out)"
             && probe.quantity == crate::board_ir::AnalogQuantity::Voltage
     }));
+    let element = project
+        .board
+        .schematic
+        .probe_elements
+        .get("gui_transient_out_voltage")
+        .unwrap();
+    assert_eq!(element.scenario, "gui_transient");
+    assert_eq!(element.probe, "out_voltage");
+    assert!(matches!(
+        element.target.kind,
+        crate::board_ir::SchematicProbeElementTargetKind::Net
+    ));
+    assert_eq!(element.target.id, "out");
+    assert!(matches!(
+        element.target.attach,
+        Some(crate::board_ir::SchematicProbeAttachmentKind::Wire)
+    ));
+    assert_eq!(element.target.source.as_deref(), Some("R1.B"));
 }
 
 #[test]
@@ -213,9 +235,11 @@ fn scope_component_actions_create_current_and_power_probes() {
             probe_name: "V1_current".to_string(),
         })
     );
-    app.open_or_create_scope_component_probe(
+    app.open_or_create_scope_component_probe_with_attachment(
         "V1",
         super::sketch_probes::SketchProbeQuantity::Power,
+        super::sketch_probes::SketchProbeAttachmentKind::Pin,
+        Some("V1.P".to_string()),
     );
     assert_eq!(
         app.pending_scope_probe,
@@ -238,6 +262,35 @@ fn scope_component_actions_create_current_and_power_probes() {
             && probe.expression == "V(rail,0)*I(V1)"
             && probe.quantity == crate::board_ir::AnalogQuantity::Power
     }));
+    let current = project
+        .board
+        .schematic
+        .probe_elements
+        .get("gui_transient_V1_current")
+        .unwrap();
+    assert_eq!(current.probe, "V1_current");
+    assert!(matches!(
+        current.target.kind,
+        crate::board_ir::SchematicProbeElementTargetKind::Component
+    ));
+    assert_eq!(current.target.id, "V1");
+    let power = project
+        .board
+        .schematic
+        .probe_elements
+        .get("gui_transient_V1_power")
+        .unwrap();
+    assert_eq!(power.probe, "V1_power");
+    assert!(matches!(
+        power.target.kind,
+        crate::board_ir::SchematicProbeElementTargetKind::Component
+    ));
+    assert_eq!(power.target.id, "V1");
+    assert!(matches!(
+        power.target.attach,
+        Some(crate::board_ir::SchematicProbeAttachmentKind::Pin)
+    ));
+    assert_eq!(power.target.source.as_deref(), Some("V1.P"));
 }
 
 #[test]
@@ -250,9 +303,11 @@ fn armed_scope_voltage_tool_creates_probe_from_net_click() {
     };
 
     app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Voltage);
-    assert!(
-        app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
-    );
+    assert!(app.apply_scope_probe_tool_to_selection(Some(
+        super::sketch_scope_tools::SketchScopeProbePlacement::node(SketchSelection::Net(
+            "out".to_string(),
+        ))
+    )));
 
     assert_eq!(app.stage, Stage::Simulation);
     assert!(!app.scope_probe_tool_armed());
@@ -286,9 +341,11 @@ fn armed_scope_current_tool_rejects_net_without_mutation() {
     };
 
     app.arm_scope_probe_tool(super::sketch_scope_tools::SketchScopeProbeTool::Current);
-    assert!(
-        app.apply_scope_probe_tool_to_selection(Some(SketchSelection::Net("out".to_string(),)))
-    );
+    assert!(app.apply_scope_probe_tool_to_selection(Some(
+        super::sketch_scope_tools::SketchScopeProbePlacement::node(SketchSelection::Net(
+            "out".to_string(),
+        ))
+    )));
 
     assert_ne!(app.stage, Stage::Simulation);
     assert!(app.scope_probe_tool_armed());

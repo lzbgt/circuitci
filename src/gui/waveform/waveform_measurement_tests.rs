@@ -159,6 +159,7 @@ fn scope_snapshot_focus_selects_originating_schematic_context() {
     let event = scope_trigger_events(&waveform, 0, 1.0, ScopeTriggerEdge::Rising)[0];
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -267,6 +268,7 @@ fn waveform_probe_value_for_badge_matches_probe_expression() {
     )
     .unwrap();
     let probe = SketchProbe {
+        element_id: None,
         scenario_name: "gui_transient".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),

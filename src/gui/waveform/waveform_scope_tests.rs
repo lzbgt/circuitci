@@ -764,6 +764,7 @@ fn selected_scope_trace_focuses_originating_schematic_net() {
     .unwrap();
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -809,6 +810,7 @@ fn selected_scope_trace_focuses_originating_schematic_component() {
     .unwrap();
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "R1_power".to_string(),
         expression: "V(out)*I(VSENSE_R1)".to_string(),
@@ -847,6 +849,7 @@ fn scope_schematic_context_opens_sketch_with_selected_target() {
     .unwrap();
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -882,6 +885,7 @@ fn scope_schematic_context_fit_queues_sketch_fit_selection() {
     .unwrap();
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "R1_power".to_string(),
         expression: "V(out)*I(VSENSE_R1)".to_string(),

@@ -103,6 +103,12 @@ and Alt/Option-drag subtracts them without mutating Board IR; holding `L` while
 starting the same drag chords uses a freehand lasso instead of a rectangular
 box.
 
+Sketch probe elements are schematic display metadata over analog scenario
+probes. They persist under `board.schematic.probe_elements` with a placed
+element ID, target net/component, attachment kind, and optional source
+component pin, but they do not change electrical connectivity or replace the
+analog probe expression that drives runtime waveforms, assertions, and reports.
+
 Sketch wire-route handles and active wire-mode bend clicks are schematic display
 metadata only. Completing a multi-bend wire, dragging, inserting, deleting, or
 clearing route handles updates `board.schematic.wire_routes`; electrical

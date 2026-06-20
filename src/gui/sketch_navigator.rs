@@ -187,10 +187,20 @@ pub(super) fn sketch_navigator_rows(
         });
     }
     for probe in &snapshot.probes {
+        let element_detail = probe
+            .element_id
+            .as_deref()
+            .map(|element_id| format!(" / element {element_id}"))
+            .unwrap_or_default();
         rows.push(SketchNavigatorRow {
             kind: "probe",
             label: format!("{}:{}", probe.scenario_name, probe.probe_name),
-            detail: format!("{} {}", probe.quantity.label(), probe.expression),
+            detail: format!(
+                "{} {}{}",
+                probe.quantity.label(),
+                probe.expression,
+                element_detail
+            ),
             target: SketchNavigatorTarget::Probe {
                 scenario: probe.scenario_name.clone(),
                 probe: probe.probe_name.clone(),
@@ -350,6 +360,7 @@ mod tests {
                 },
             ],
             probes: vec![SketchProbe {
+                element_id: None,
                 scenario_name: "tran".to_string(),
                 probe_name: "rail_v".to_string(),
                 expression: "V(rail)".to_string(),

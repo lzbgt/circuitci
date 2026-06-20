@@ -111,6 +111,12 @@ compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loa
 drawing, direct wire-route edits, component placement orientation controls,
 selected-component orientation transforms, canvas probe defaults, and viewport
 pan/zoom input.
+`src/gui/sketch_probes.rs` owns schematic voltage/current/power probe element
+projection over analog probes plus validated `board.schematic.probe_elements`
+upserts. Probe elements are display metadata: they record the placed
+node/pin/wire attachment and schematic target, while the analog scenario probe
+remains the source of truth for solver expressions, waveform columns,
+assertions, and reports.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by

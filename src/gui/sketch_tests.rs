@@ -374,6 +374,12 @@ fn snapshot_derives_probe_badges_from_analog_probes() {
   name: probe_badge_test
   version: 0.1.0
 board:
+  schematic:
+    probe_elements:
+      tran_rail_voltage:
+        scenario: tran
+        probe: rail_voltage
+        target: { kind: net, id: rail, attach: wire, source: R1.A }
   components:
     R1:
       model: generic.analog.resistor
@@ -423,6 +429,7 @@ scenarios:
     assert_eq!(snapshot.probes.len(), 3);
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "rail_voltage"
+            && probe.element_id == Some("tran_rail_voltage".to_string())
             && probe.quantity.label() == "V"
             && probe.assertion_names == ["rail_voltage_min".to_string()]
             && matches!(probe.target, SketchProbeTarget::Net(ref id) if id == "rail")
@@ -443,6 +450,7 @@ scenarios:
 fn layout_places_hit_testable_probe_badges() {
     let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
     snapshot.probes.push(SketchProbe {
+        element_id: None,
         scenario_name: "tran".to_string(),
         probe_name: "net_a_voltage".to_string(),
         expression: "V(net_a)".to_string(),

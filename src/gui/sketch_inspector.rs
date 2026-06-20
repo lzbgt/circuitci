@@ -10,6 +10,10 @@ use super::sketch::{
     edit_schematic_node_position, edit_schematic_wire_route, remove_component,
     remove_component_pin, remove_net,
 };
+use super::sketch_probes::{
+    SketchProbeAttachmentKind, SketchProbeElementDraft, SketchProbeTarget,
+    upsert_schematic_probe_element,
+};
 use super::sketch_rename::{rename_component, rename_net};
 use super::sketch_spice::{
     SketchComponentSpice, SketchSpiceDraft, SketchSpiceKind, draft_from_existing,
@@ -913,12 +917,40 @@ impl CircuitCiApp {
     }
 
     pub(super) fn apply_add_voltage_probe_for_net(&mut self, net_id: &str) -> bool {
+        self.apply_add_voltage_probe_for_net_with_attachment(
+            net_id,
+            SketchProbeAttachmentKind::Node,
+            None,
+        )
+    }
+
+    pub(super) fn apply_add_voltage_probe_for_net_with_attachment(
+        &mut self,
+        net_id: &str,
+        attachment: SketchProbeAttachmentKind,
+        source: Option<String>,
+    ) -> bool {
         let draft = AnalogProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             net_id: net_id.to_string(),
             probe_name: self.analog_canvas_probe_name.clone(),
         };
-        match append_analog_voltage_probe(&self.project_yaml, &draft) {
+        match append_analog_voltage_probe(&self.project_yaml, &draft).and_then(|updated| {
+            upsert_schematic_probe_element(
+                &updated,
+                &SketchProbeElementDraft {
+                    element_id: schematic_probe_element_id(
+                        &self.analog_probe_scenario,
+                        &self.analog_canvas_probe_name,
+                    ),
+                    scenario_name: self.analog_probe_scenario.clone(),
+                    probe_name: self.analog_canvas_probe_name.clone(),
+                    target: SketchProbeTarget::Net(net_id.to_string()),
+                    attachment,
+                    source,
+                },
+            )
+        }) {
             Ok(updated) => {
                 self.analog_assertion_scenario = self.analog_probe_scenario.clone();
                 self.analog_assertion_probe = self.analog_canvas_probe_name.trim().to_string();
@@ -942,6 +974,19 @@ impl CircuitCiApp {
     }
 
     pub(super) fn apply_add_current_probe_for_component(&mut self, component_id: &str) -> bool {
+        self.apply_add_current_probe_for_component_with_attachment(
+            component_id,
+            SketchProbeAttachmentKind::Node,
+            None,
+        )
+    }
+
+    pub(super) fn apply_add_current_probe_for_component_with_attachment(
+        &mut self,
+        component_id: &str,
+        attachment: SketchProbeAttachmentKind,
+        source: Option<String>,
+    ) -> bool {
         let draft = AnalogCurrentProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -951,7 +996,23 @@ impl CircuitCiApp {
             &self.project_yaml,
             std::path::Path::new(&self.project_path),
             &draft,
-        ) {
+        )
+        .and_then(|updated| {
+            upsert_schematic_probe_element(
+                &updated,
+                &SketchProbeElementDraft {
+                    element_id: schematic_probe_element_id(
+                        &self.analog_probe_scenario,
+                        &self.analog_canvas_component_probe_name,
+                    ),
+                    scenario_name: self.analog_probe_scenario.clone(),
+                    probe_name: self.analog_canvas_component_probe_name.clone(),
+                    target: SketchProbeTarget::Component(component_id.to_string()),
+                    attachment,
+                    source,
+                },
+            )
+        }) {
             Ok(updated) => {
                 self.analog_assertion_scenario = self.analog_probe_scenario.clone();
                 self.analog_assertion_probe =
@@ -976,6 +1037,19 @@ impl CircuitCiApp {
     }
 
     pub(super) fn apply_add_power_probe_for_component(&mut self, component_id: &str) -> bool {
+        self.apply_add_power_probe_for_component_with_attachment(
+            component_id,
+            SketchProbeAttachmentKind::Node,
+            None,
+        )
+    }
+
+    pub(super) fn apply_add_power_probe_for_component_with_attachment(
+        &mut self,
+        component_id: &str,
+        attachment: SketchProbeAttachmentKind,
+        source: Option<String>,
+    ) -> bool {
         let draft = AnalogPowerProbeDraft {
             scenario_name: self.analog_probe_scenario.clone(),
             component_id: component_id.to_string(),
@@ -985,7 +1059,23 @@ impl CircuitCiApp {
             &self.project_yaml,
             std::path::Path::new(&self.project_path),
             &draft,
-        ) {
+        )
+        .and_then(|updated| {
+            upsert_schematic_probe_element(
+                &updated,
+                &SketchProbeElementDraft {
+                    element_id: schematic_probe_element_id(
+                        &self.analog_probe_scenario,
+                        &self.analog_canvas_component_power_probe_name,
+                    ),
+                    scenario_name: self.analog_probe_scenario.clone(),
+                    probe_name: self.analog_canvas_component_power_probe_name.clone(),
+                    target: SketchProbeTarget::Component(component_id.to_string()),
+                    attachment,
+                    source,
+                },
+            )
+        }) {
             Ok(updated) => {
                 self.analog_assertion_scenario = self.analog_probe_scenario.clone();
                 self.analog_assertion_probe = self
@@ -1010,6 +1100,10 @@ impl CircuitCiApp {
             }
         }
     }
+}
+
+fn schematic_probe_element_id(scenario_name: &str, probe_name: &str) -> String {
+    format!("{}_{}", scenario_name.trim(), probe_name.trim())
 }
 
 fn apply_wire_route_if_present(

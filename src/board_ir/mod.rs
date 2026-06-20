@@ -53,6 +53,8 @@ pub struct BoardSchematic {
     pub wire_routes: BTreeMap<String, SchematicWireRoute>,
     #[serde(default)]
     pub net_labels: BTreeMap<String, SchematicNetLabel>,
+    #[serde(default)]
+    pub probe_elements: BTreeMap<String, SchematicProbeElement>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -102,6 +104,42 @@ pub enum SchematicNetLabelKind {
     #[default]
     Local,
     OffPage,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicProbeElement {
+    pub scenario: String,
+    pub probe: String,
+    pub target: SchematicProbeElementTarget,
+    #[serde(default)]
+    pub x: Option<f64>,
+    #[serde(default)]
+    pub y: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SchematicProbeElementTarget {
+    pub kind: SchematicProbeElementTargetKind,
+    pub id: String,
+    #[serde(default)]
+    pub attach: Option<SchematicProbeAttachmentKind>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SchematicProbeElementTargetKind {
+    Net,
+    Component,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SchematicProbeAttachmentKind {
+    Node,
+    Pin,
+    Wire,
 }
 
 #[derive(Debug, Clone, Deserialize)]

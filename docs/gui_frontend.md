@@ -257,14 +257,17 @@ mutations, selected-net voltage-probe insertion controls, and selected-component
 current-probe insertion for
 generated source branches, generated passive current-sense branches, or
 generated semiconductor current-sense branches, plus selected-component power
-probe insertion for those same supported branches.
+probe insertion for those same supported branches. Probe insertion writes both
+the analog scenario probe and a display-only schematic probe element binding in
+one validated YAML edit.
 `src/gui/sketch_selection_inspector.rs` owns the multi-selection inspector
 summary, on-canvas selection frame/move handle, quick toolbar, and quick
 actions for fitting, clearing, nudge, align, distribute, orientation changes,
 copy, duplicate, and delete; these actions reuse existing canvas selection and
 validated Board IR edit paths.
-`src/gui/sketch_probes.rs` owns derived schematic voltage/current/power probe
-badge targeting, badge layout, badge hit-testing, and badge drawing.
+`src/gui/sketch_probes.rs` owns schematic voltage/current/power probe element
+targeting, `board.schematic.probe_elements` upserts, badge layout, badge
+hit-testing, and badge drawing.
 `src/gui/library.rs` owns installed/imported KiCad symbol browsing plus
 component model browsing over the active project library set. The KiCad symbol
 browser scans installed `.kicad_sym` files, accepts user-imported
@@ -730,22 +733,28 @@ pending bend, and Escape cancels the in-progress route.
 Canvas probe insertion is also a Board IR scenario edit, not a hidden runtime
 probe layer. The selected-net inspector appends a voltage probe to an existing
 analog scenario only when that scenario already declares a node binding for the
-selected Board IR net. The selected-component inspector appends a current probe
+selected Board IR net, then persists a matching schematic probe element under
+`board.schematic.probe_elements`. The selected-component inspector appends a current probe
 only for generated-from-Board analog scenarios and only when the component
 branch is source-backed by a Board IR voltage/current source primitive, by a
 Board IR resistor/capacitor/inductor primitive with a generated zero-volt
 current-sense source, or by a bound diode/BJT/MOSFET model branch with
 CircuitCI's generated zero-volt current-sense source. It appends power probes
 for the same supported component set by composing explicit branch voltage and
-branch current expressions. Subcircuit internals and file-backed deck branch
-probes still require explicit deck/model evidence.
+branch current expressions, then persists matching schematic probe elements for
+the selected component. Subcircuit internals and file-backed deck branch probes
+still require explicit deck/model evidence.
 
-Schematic probe elements are derived overlays over existing analog scenario
-probes. Voltage probe elements attach to Board IR nets only when the probe expression's
-SPICE node maps back through `analog.node_bindings`; current and power elements
-attach to components only when the expression references a generated/source
-branch that CircuitCI can map back to a Board IR component. The elements are not a
-second persisted probe model. Probe status markers are derived from the latest
+Schematic probe elements are first-class display metadata over existing analog
+scenario probes. The analog probe remains the runtime source of truth for SPICE
+expressions, quantities, waveform columns, assertions, and reports;
+`board.schematic.probe_elements` stores the placed schematic element ID, target
+net/component, attachment kind (`node`, `pin`, or `wire`), and optional
+component-pin source when placement came from a pin or routed wire. Voltage
+probe elements attach to Board IR nets only when the probe expression's SPICE
+node maps back through `analog.node_bindings`; current and power elements attach
+to components only when the expression references a generated/source branch
+that CircuitCI can map back to a Board IR component. Probe status markers are derived from the latest
 loaded `ValidationReport`: unasserted probes are grey, asserted probes without a
 loaded report are unknown, assertion failures are red, non-assertion scenario
 failures remain unknown, and asserted probes pass only when the latest report

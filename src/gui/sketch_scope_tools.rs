@@ -2,13 +2,46 @@ use eframe::egui;
 
 use super::CircuitCiApp;
 use super::sketch::SketchSelection;
-use super::sketch_probes::SketchProbeQuantity;
+use super::sketch_probes::{SketchProbeAttachmentKind, SketchProbeQuantity};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::gui) enum SketchScopeProbeTool {
     Voltage,
     Current,
     Power,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct SketchScopeProbePlacement {
+    pub(super) selection: SketchSelection,
+    pub(super) attachment: SketchProbeAttachmentKind,
+    pub(super) source: Option<String>,
+}
+
+impl SketchScopeProbePlacement {
+    pub(super) fn node(selection: SketchSelection) -> Self {
+        Self {
+            selection,
+            attachment: SketchProbeAttachmentKind::Node,
+            source: None,
+        }
+    }
+
+    pub(super) fn pin(selection: SketchSelection, component_id: &str, pin: &str) -> Self {
+        Self {
+            selection,
+            attachment: SketchProbeAttachmentKind::Pin,
+            source: Some(format!("{component_id}.{pin}")),
+        }
+    }
+
+    pub(super) fn wire(net_id: String, source: String) -> Self {
+        Self {
+            selection: SketchSelection::Net(net_id),
+            attachment: SketchProbeAttachmentKind::Wire,
+            source: Some(source),
+        }
+    }
 }
 
 impl SketchScopeProbeTool {
@@ -195,33 +228,42 @@ impl CircuitCiApp {
 
     pub(super) fn apply_scope_probe_tool_to_selection(
         &mut self,
-        selection: Option<SketchSelection>,
+        placement: Option<SketchScopeProbePlacement>,
     ) -> bool {
         let Some(tool) = self.sketch_scope_probe_tool else {
             return false;
         };
-        let Some(selection) = selection else {
+        let Some(placement) = placement else {
             self.status = tool.armed_status();
             return true;
         };
+        let selection = placement.selection;
         match (tool, selection) {
             (SketchScopeProbeTool::Voltage, SketchSelection::Net(net_id)) => {
-                self.open_or_create_scope_voltage_probe_for_net(&net_id);
+                self.open_or_create_scope_voltage_probe_for_net_with_attachment(
+                    &net_id,
+                    placement.attachment,
+                    placement.source,
+                );
                 self.sketch_scope_probe_tool = None;
                 true
             }
             (SketchScopeProbeTool::Current, SketchSelection::Component(component_id)) => {
-                self.open_or_create_scope_component_probe(
+                self.open_or_create_scope_component_probe_with_attachment(
                     &component_id,
                     SketchProbeQuantity::Current,
+                    placement.attachment,
+                    placement.source,
                 );
                 self.sketch_scope_probe_tool = None;
                 true
             }
             (SketchScopeProbeTool::Power, SketchSelection::Component(component_id)) => {
-                self.open_or_create_scope_component_probe(
+                self.open_or_create_scope_component_probe_with_attachment(
                     &component_id,
                     SketchProbeQuantity::Power,
+                    placement.attachment,
+                    placement.source,
                 );
                 self.sketch_scope_probe_tool = None;
                 true

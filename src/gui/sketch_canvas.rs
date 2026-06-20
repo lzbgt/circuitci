@@ -28,7 +28,7 @@ use super::sketch_routes;
 use super::sketch_scope_feedback::{
     ScopeProbeToolHoverInput, draw_scope_probe_tool_feedback, scope_probe_tool_hover_feedback,
 };
-use super::sketch_scope_tools::SketchScopeProbeTool;
+use super::sketch_scope_tools::{SketchScopeProbePlacement, SketchScopeProbeTool};
 use super::waveform::{
     runtime_probe_activity_for_selection, runtime_probe_lines_for_selection,
     runtime_scope_probe_target_for_selection, waveform_probe_value_for_badge,
@@ -743,26 +743,49 @@ impl CircuitCiApp {
             let scope_tool_target = if let Some(badge) = clicked_probe_badge.as_ref() {
                 match &badge.probe.target {
                     SketchProbeTarget::Component(component_id) => {
-                        Some(SketchSelection::Component(component_id.clone()))
+                        Some(SketchScopeProbePlacement::node(SketchSelection::Component(
+                            component_id.clone(),
+                        )))
                     }
-                    SketchProbeTarget::Net(net_id) => Some(SketchSelection::Net(net_id.clone())),
+                    SketchProbeTarget::Net(net_id) => Some(SketchScopeProbePlacement::node(
+                        SketchSelection::Net(net_id.clone()),
+                    )),
                 }
             } else if let Some(anchor) = clicked_anchor {
                 Some(match self.sketch_scope_probe_tool {
-                    Some(SketchScopeProbeTool::Voltage) => SketchSelection::Net(anchor.net.clone()),
+                    Some(SketchScopeProbeTool::Voltage) => SketchScopeProbePlacement::pin(
+                        SketchSelection::Net(anchor.net.clone()),
+                        &anchor.component_id,
+                        &anchor.pin,
+                    ),
                     Some(SketchScopeProbeTool::Current | SketchScopeProbeTool::Power) => {
-                        SketchSelection::Component(anchor.component_id.clone())
+                        SketchScopeProbePlacement::pin(
+                            SketchSelection::Component(anchor.component_id.clone()),
+                            &anchor.component_id,
+                            &anchor.pin,
+                        )
                     }
-                    None => SketchSelection::Component(anchor.component_id.clone()),
+                    None => SketchScopeProbePlacement::pin(
+                        SketchSelection::Component(anchor.component_id.clone()),
+                        &anchor.component_id,
+                        &anchor.pin,
+                    ),
                 })
             } else if let Some(badge) = clicked_net_label_badge.as_ref() {
-                Some(SketchSelection::Net(badge.net_id.clone()))
+                Some(SketchScopeProbePlacement::node(SketchSelection::Net(
+                    badge.net_id.clone(),
+                )))
             } else if let Some(badge) = clicked_component_label_badge.as_ref() {
-                Some(SketchSelection::Component(badge.component_id.clone()))
+                Some(SketchScopeProbePlacement::node(SketchSelection::Component(
+                    badge.component_id.clone(),
+                )))
             } else if let Some(edge) = clicked_wire.as_ref() {
-                Some(SketchSelection::Net(edge.net_id.clone()))
+                Some(SketchScopeProbePlacement::wire(
+                    edge.net_id.clone(),
+                    edge.source.clone(),
+                ))
             } else {
-                clicked.clone()
+                clicked.clone().map(SketchScopeProbePlacement::node)
             };
             if self.apply_scope_probe_tool_to_selection(scope_tool_target) {
                 placement_applied = true;

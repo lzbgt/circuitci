@@ -1,10 +1,15 @@
 use eframe::egui;
 
 use super::kicad_symbol_library::{KiCadProbeSymbolKind, draw_kicad_probe_symbol};
-use super::sketch::{ProjectSnapshot, SketchNode, SketchSelection, with_opacity};
+use super::sketch::{
+    ProjectSnapshot, SketchNode, SketchSelection, encode_edited_project_yaml,
+    ensure_child_mapping_mut, validated_graph_id, with_opacity,
+};
+use anyhow::{Context, Result};
 
 #[derive(Debug, Clone)]
 pub(super) struct SketchProbe {
+    pub(super) element_id: Option<String>,
     pub(super) scenario_name: String,
     pub(super) probe_name: String,
     pub(super) expression: String,
@@ -36,6 +41,23 @@ pub(super) enum SketchProbeTarget {
     Net(String),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SketchProbeAttachmentKind {
+    Node,
+    Pin,
+    Wire,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct SketchProbeElementDraft {
+    pub(super) element_id: String,
+    pub(super) scenario_name: String,
+    pub(super) probe_name: String,
+    pub(super) target: SketchProbeTarget,
+    pub(super) attachment: SketchProbeAttachmentKind,
+    pub(super) source: Option<String>,
+}
+
 #[derive(Debug)]
 pub(super) struct SketchProbeBadge {
     pub(super) probe: SketchProbe,
@@ -64,6 +86,19 @@ impl SketchProbeStatus {
 
 pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> Vec<SketchProbe> {
     let branch_targets = component_branch_targets(project);
+    let schematic_probe_elements = project
+        .board
+        .schematic
+        .probe_elements
+        .iter()
+        .filter_map(|(element_id, element)| {
+            let target = schematic_probe_element_target(project, element)?;
+            Some((
+                (element.scenario.as_str(), element.probe.as_str()),
+                (element_id, target),
+            ))
+        })
+        .collect::<std::collections::BTreeMap<_, _>>();
     let mut probes = Vec::new();
     for scenario in &project.scenarios {
         let Some(analog) = scenario.analog.as_ref() else {
@@ -87,7 +122,13 @@ pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> 
             let Some(target) = target else {
                 continue;
             };
+            let element_id = schematic_probe_elements
+                .get(&(scenario.name.as_str(), probe.name.as_str()))
+                .and_then(|(element_id, element_target)| {
+                    (element_target == &target).then(|| (*element_id).clone())
+                });
             probes.push(SketchProbe {
+                element_id,
                 scenario_name: scenario.name.clone(),
                 probe_name: probe.name.clone(),
                 expression: probe.expression.clone(),
@@ -103,6 +144,98 @@ pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> 
         }
     }
     probes
+}
+
+pub(super) fn upsert_schematic_probe_element(
+    text: &str,
+    draft: &SketchProbeElementDraft,
+) -> Result<String> {
+    let element_id = validated_graph_id(&draft.element_id, "probe element")?;
+    let scenario_name = validated_graph_id(&draft.scenario_name, "scenario")?;
+    let probe_name = validated_graph_id(&draft.probe_name, "probe")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    let scenario = project
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.name == scenario_name)
+        .with_context(|| format!("Scenario {scenario_name} was not found."))?;
+    let analog = scenario
+        .analog
+        .as_ref()
+        .with_context(|| format!("Scenario {scenario_name} is not an analog scenario."))?;
+    if !analog.probes.iter().any(|probe| probe.name == probe_name) {
+        anyhow::bail!("Analog probe {probe_name} was not found in scenario {scenario_name}.");
+    }
+    match &draft.target {
+        SketchProbeTarget::Net(net_id) => {
+            if !project.board.nets.contains_key(net_id) {
+                anyhow::bail!("Probe target net {net_id} was not found.");
+            }
+        }
+        SketchProbeTarget::Component(component_id) => {
+            if !project.board.components.contains_key(component_id) {
+                anyhow::bail!("Probe target component {component_id} was not found.");
+            }
+        }
+    }
+    if let Some(source) = &draft.source {
+        validate_probe_source(source)?;
+    }
+
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let board = yaml
+            .as_mapping_mut()
+            .context("Board IR project must be a YAML object.")?
+            .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+            .context("Board IR project is missing board.")?
+            .as_mapping_mut()
+            .context("Board IR field board must be an object.")?;
+        let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
+        let elements =
+            ensure_child_mapping_mut(schematic, "probe_elements", "schematic probe elements")?;
+        let mut target = serde_yaml_ng::Mapping::new();
+        match &draft.target {
+            SketchProbeTarget::Net(net_id) => {
+                target.insert(key("kind"), serde_yaml_ng::Value::String("net".to_string()));
+                target.insert(key("id"), serde_yaml_ng::Value::String(net_id.clone()));
+            }
+            SketchProbeTarget::Component(component_id) => {
+                target.insert(
+                    key("kind"),
+                    serde_yaml_ng::Value::String("component".to_string()),
+                );
+                target.insert(
+                    key("id"),
+                    serde_yaml_ng::Value::String(component_id.clone()),
+                );
+            }
+        }
+        target.insert(
+            key("attach"),
+            serde_yaml_ng::Value::String(draft.attachment.as_str().to_string()),
+        );
+        if let Some(source) = &draft.source {
+            target.insert(key("source"), serde_yaml_ng::Value::String(source.clone()));
+        }
+        let mut element = serde_yaml_ng::Mapping::new();
+        element.insert(
+            key("scenario"),
+            serde_yaml_ng::Value::String(scenario_name.to_string()),
+        );
+        element.insert(
+            key("probe"),
+            serde_yaml_ng::Value::String(probe_name.to_string()),
+        );
+        element.insert(key("target"), serde_yaml_ng::Value::Mapping(target));
+        elements.insert(
+            serde_yaml_ng::Value::String(element_id.to_string()),
+            serde_yaml_ng::Value::Mapping(element),
+        );
+    }
+    encode_edited_project_yaml(yaml)
 }
 
 pub(super) fn layout_probe_badges(
@@ -331,6 +464,24 @@ fn component_probe_target(
         .map(|(_, component_id)| SketchProbeTarget::Component(component_id.clone()))
 }
 
+fn schematic_probe_element_target(
+    project: &crate::board_ir::BoardProject,
+    element: &crate::board_ir::SchematicProbeElement,
+) -> Option<SketchProbeTarget> {
+    match element.target.kind {
+        crate::board_ir::SchematicProbeElementTargetKind::Net => project
+            .board
+            .nets
+            .contains_key(&element.target.id)
+            .then(|| SketchProbeTarget::Net(element.target.id.clone())),
+        crate::board_ir::SchematicProbeElementTargetKind::Component => project
+            .board
+            .components
+            .contains_key(&element.target.id)
+            .then(|| SketchProbeTarget::Component(element.target.id.clone())),
+    }
+}
+
 fn component_branch_targets(
     project: &crate::board_ir::BoardProject,
 ) -> std::collections::BTreeMap<String, String> {
@@ -350,6 +501,29 @@ fn component_branch_targets(
         }
     }
     targets
+}
+
+impl SketchProbeAttachmentKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Node => "node",
+            Self::Pin => "pin",
+            Self::Wire => "wire",
+        }
+    }
+}
+
+fn validate_probe_source(source: &str) -> Result<()> {
+    let (component_id, pin_id) = source
+        .split_once('.')
+        .context("Probe element source must use component.pin form.")?;
+    validated_graph_id(component_id, "probe source component")?;
+    validated_graph_id(pin_id, "probe source pin")?;
+    Ok(())
+}
+
+fn key(name: &str) -> serde_yaml_ng::Value {
+    serde_yaml_ng::Value::String(name.to_string())
 }
 
 fn expression_without_whitespace(expression: &str) -> String {
@@ -413,6 +587,7 @@ mod tests {
 
     fn asserted_probe() -> SketchProbe {
         SketchProbe {
+            element_id: None,
             scenario_name: "tran".to_string(),
             probe_name: "rail_voltage".to_string(),
             expression: "V(rail)".to_string(),

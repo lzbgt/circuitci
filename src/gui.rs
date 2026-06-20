@@ -866,6 +866,19 @@ impl CircuitCiApp {
     }
 
     fn open_or_create_scope_voltage_probe_for_net(&mut self, net_id: &str) {
+        self.open_or_create_scope_voltage_probe_for_net_with_attachment(
+            net_id,
+            sketch_probes::SketchProbeAttachmentKind::Node,
+            None,
+        );
+    }
+
+    fn open_or_create_scope_voltage_probe_for_net_with_attachment(
+        &mut self,
+        net_id: &str,
+        attachment: sketch_probes::SketchProbeAttachmentKind,
+        source: Option<String>,
+    ) {
         if let Some(target) = self.scope_probe_for_selected_net(net_id) {
             self.open_scope_probe_target(target);
             return;
@@ -875,7 +888,7 @@ impl CircuitCiApp {
             scenario_name: self.analog_probe_scenario.trim().to_string(),
             probe_name: self.analog_canvas_probe_name.trim().to_string(),
         };
-        if self.apply_add_voltage_probe_for_net(net_id) {
+        if self.apply_add_voltage_probe_for_net_with_attachment(net_id, attachment, source) {
             self.open_scope_probe_target(target);
         }
     }
@@ -884,6 +897,21 @@ impl CircuitCiApp {
         &mut self,
         component_id: &str,
         quantity: sketch_probes::SketchProbeQuantity,
+    ) {
+        self.open_or_create_scope_component_probe_with_attachment(
+            component_id,
+            quantity,
+            sketch_probes::SketchProbeAttachmentKind::Node,
+            None,
+        );
+    }
+
+    fn open_or_create_scope_component_probe_with_attachment(
+        &mut self,
+        component_id: &str,
+        quantity: sketch_probes::SketchProbeQuantity,
+        attachment: sketch_probes::SketchProbeAttachmentKind,
+        source: Option<String>,
     ) {
         if let Some(target) =
             self.scope_probe_for_selected_component_quantity(component_id, quantity)
@@ -908,12 +936,18 @@ impl CircuitCiApp {
         };
         let added = match quantity {
             sketch_probes::SketchProbeQuantity::Voltage => false,
-            sketch_probes::SketchProbeQuantity::Current => {
-                self.apply_add_current_probe_for_component(component_id)
-            }
-            sketch_probes::SketchProbeQuantity::Power => {
-                self.apply_add_power_probe_for_component(component_id)
-            }
+            sketch_probes::SketchProbeQuantity::Current => self
+                .apply_add_current_probe_for_component_with_attachment(
+                    component_id,
+                    attachment,
+                    source,
+                ),
+            sketch_probes::SketchProbeQuantity::Power => self
+                .apply_add_power_probe_for_component_with_attachment(
+                    component_id,
+                    attachment,
+                    source,
+                ),
         };
         if added {
             self.open_scope_probe_target(target);
