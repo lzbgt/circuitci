@@ -363,16 +363,7 @@ impl CircuitCiApp {
             ui.label(format!("State: {}", status.state));
             ui.label(format!("Next: {}", status.action));
             ui.horizontal(|ui| {
-                let can_start_run = self.background_job_elapsed_secs().is_none();
-                if ui
-                    .add_enabled(can_start_run, egui::Button::new("Run + Scopes"))
-                    .clicked()
-                {
-                    self.run_scope_example_workflow_scopes();
-                }
-                if ui.button("Open Scope Activity").clicked() {
-                    self.open_scope_example_workflow_activity();
-                }
+                self.scope_example_workflow_action_buttons(ui);
             });
             ui.label(format!(
                 "Expected traces: {}",

@@ -187,6 +187,39 @@ impl CircuitCiApp {
         true
     }
 
+    pub(super) fn scope_example_workflow_action_buttons(&mut self, ui: &mut egui::Ui) {
+        let can_start_run = self.background_job_elapsed_secs().is_none();
+        if ui
+            .add_enabled(can_start_run, egui::Button::new("Run + Scopes"))
+            .clicked()
+        {
+            self.run_scope_example_workflow_scopes();
+        }
+        if ui.button("Open Scope Activity").clicked() {
+            self.open_scope_example_workflow_activity();
+        }
+    }
+
+    pub(super) fn sketch_scope_example_workflow_strip(&mut self, ui: &mut egui::Ui) -> bool {
+        let Some(status) = self.scope_example_workflow_status() else {
+            return false;
+        };
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong(status.title);
+                ui.label(format!("State: {}", status.state));
+                self.scope_example_workflow_action_buttons(ui);
+            });
+            ui.label(format!("Next: {}", status.action));
+            ui.label(format!(
+                "Expected: {} | {}",
+                status.expected_traces.join(", "),
+                status.expected_frequency
+            ));
+        });
+        true
+    }
+
     fn active_scope_project_example(&self) -> Option<GuiProjectExample> {
         GUI_PROJECT_EXAMPLES.iter().copied().find(|example| {
             self.project_path == example.project_path

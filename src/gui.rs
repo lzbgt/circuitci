@@ -1033,6 +1033,9 @@ impl CircuitCiApp {
 
     fn schematic_side_dock(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
         egui::ScrollArea::vertical().show(ui, |ui| {
+            if self.sketch_scope_example_workflow_strip(ui) {
+                ui.separator();
+            }
             self.scope_run_readiness_panel(ui);
             ui.separator();
             self.sketch_primitive_palette(ui);
