@@ -13,8 +13,10 @@ source-file rule.
 - Shared CLI helpers live in `tests/common/mod.rs`.
 - Behavioral CLI, schema-walk, and suite acceptance tests stay in
   `tests/backdrive_cli.rs`.
-- Power-tree, regulator, interface-protection, and datasheet-backed power
-  model tests live in `tests/board_power_cli.rs`.
+- Power-tree, regulator, reset-supervisor, bootstrap, module-power, and
+  datasheet-backed power model tests live in `tests/board_power_cli.rs`.
+- Interface-protection, USB ESD, connector placement, route geometry, return
+  path, and VBUS route tests live in `tests/board_interface_protection_cli.rs`.
 - Analog SPICE, embedded-ngspice, generated-netlist, operating-limit, and
   SPICE-deck importer tests live in `tests/analog_spice_cli.rs`.
 - Scenario suggestion CLI tests live in `tests/scenario_suggestions_cli.rs`.
@@ -28,8 +30,10 @@ source-file rule.
 - Native KiCad symbol metadata, symbol inheritance, multi-unit, and hidden-pin
   parser-rule tests live in `tests/kicad_symbol_rules_cli.rs`.
 - KiCad XML netlist importer tests live in `tests/kicad_xml_import_cli.rs`.
-- KiCad PCB layout-evidence enrichment tests live in
-  `tests/kicad_pcb_import_cli.rs`.
+- KiCad PCB layout-evidence enrichment, edge, cutout, route, and library
+  rewrite tests live in `tests/kicad_pcb_import_cli.rs`.
+- The large KiCad PCB placement/footprint/import-to-suggestions regression
+  lives in `tests/kicad_pcb_import_layout_cli.rs`.
 - The split is mechanical: no fixture semantics, report assertions, CLI
   arguments, or schema checks change.
 - Each integration file remains executable by Cargo as an independent test

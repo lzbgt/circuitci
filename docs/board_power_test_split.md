@@ -7,8 +7,15 @@
 - regulator dropout, output-current, support-capacitance, support-inductance,
   metadata, and startup timing checks,
 - reset-supervisor threshold checks,
-- interface-protection channel checks,
 - datasheet-backed USB-UART and level-shifter power-limit regressions.
+
+`tests/board_interface_protection_cli.rs` owns the interface-focused coverage
+split out of the same historical file:
+
+- interface-protection channel checks,
+- USB ESD clamp static review,
+- USB connector placement/orientation/edge/entry checks,
+- USB data/VBUS route geometry and return-path checks.
 
 These tests used to live in `tests/backdrive_cli.rs`, which also contains
 behavioral, firmware, schema-walk, and suite-runner coverage. Moving the

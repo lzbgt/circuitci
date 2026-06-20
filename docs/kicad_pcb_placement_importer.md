@@ -155,12 +155,13 @@ Fixture coverage:
 - `examples/import_kicad_usb_curved_board_edge_suggestions/`
 - `examples/import_kicad_usb_cutout_board_edge_suggestions/`
 - `tests/kicad_pcb_import_cli.rs`
+- `tests/kicad_pcb_import_layout_cli.rs`
 
-The regression imports the matching native KiCad schematic, enriches it with
-PCB placements, footprint drawing evidence, connected pad geometry, sampled
-straight/rectangular/polygonal/curved board-outline evidence, routed USB net geometry, copper-zone
-outline/fill evidence, connector entry-aperture mapping metadata and footprint
-properties, and routing-rule evidence, then proves
+The layout regression imports the matching native KiCad schematic, enriches it
+with PCB placements, footprint drawing evidence, connected pad geometry,
+sampled straight/rectangular/polygonal/curved board-outline evidence, routed
+USB net geometry, copper-zone outline/fill evidence, connector entry-aperture
+mapping metadata and footprint properties, and routing-rule evidence, then proves
 `suggest-scenarios` emits USB placement, route, and return-path templates with
 measured layout evidence.
 
