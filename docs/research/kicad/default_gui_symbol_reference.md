@@ -7,9 +7,11 @@ Local KiCad install inspected on this host:
 - `/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Device.kicad_sym`
 - `/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Simulation_SPICE.kicad_sym`
 
-The GUI Sketch defaults should treat these libraries as the canonical reference
-for built-in schematic symbols. Runtime rendering keeps a checked-in geometry
-fallback so the GUI remains deterministic on machines without KiCad installed.
+The GUI Sketch defaults treat these libraries as the canonical source for
+built-in schematic symbols. Runtime rendering discovers installed KiCad symbol
+directories, parses the needed `.kicad_sym` drawing primitives once, caches
+them, and falls back to checked-in geometry only when KiCad is unavailable or a
+symbol cannot be parsed.
 
 ## Symbols Checked
 
@@ -25,6 +27,9 @@ fallback so the GUI remains deterministic on machines without KiCad installed.
 
 - Common two-terminal primitives render as compact KiCad-style schematic
   symbols, not large component cards.
+- Installed KiCad library drawings are preferred for the default R/C/L/D/source
+  glyphs; built-in geometry is a compatibility fallback, not the primary
+  source.
 - Their pins attach to opposite symbol terminals, with rotation/mirroring
   applied to the terminal positions.
 - Nets render as lightweight schematic labels/junction targets, not green

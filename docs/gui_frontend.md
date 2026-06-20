@@ -23,6 +23,7 @@ circuitci-gui
   -> src/gui/import_flow.rs
   -> src/gui/file_dialogs.rs
   -> src/gui/jobs.rs
+  -> src/gui/kicad_symbol_library.rs
   -> src/gui/project.rs
   -> src/gui/sketch.rs
   -> src/gui/sketch_layout.rs
@@ -180,8 +181,10 @@ two-terminal primitives use compact schematic footprints with opposite-end
 terminal anchors instead of large component cards; nets render as lightweight
 schematic labels/junction targets rather than green boxes. The checked local
 KiCad libraries documented in `docs/research/kicad/default_gui_symbol_reference.md`
-are the canonical visual reference; the GUI keeps deterministic built-in
-fallback geometry so the editor still opens on machines without KiCad.
+are the canonical visual source. `src/gui/kicad_symbol_library.rs` discovers
+installed KiCad symbol directories, parses and caches the needed `.kicad_sym`
+drawing primitives, and leaves deterministic built-in fallback geometry for
+machines without KiCad.
 `src/gui/sketch_actions.rs` owns canvas selection state operations,
 fit-all/fit-selection/home viewport commands, multi-selected
 drag/nudge/alignment/distribution, and batched selected-item deletion as

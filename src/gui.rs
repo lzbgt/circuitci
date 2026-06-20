@@ -19,6 +19,7 @@ mod file_dialogs;
 mod gui_core_tests;
 mod import_flow;
 mod jobs;
+mod kicad_symbol_library;
 mod library;
 mod project;
 mod scope_auto_probes;

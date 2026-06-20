@@ -166,8 +166,11 @@ that the user can rewire. `src/gui/sketch_symbols.rs`
 owns visual-only symbol-style rendering: it may infer symbol classes from
 reference designators and model IDs, and common primitives should follow the
 checked local KiCad Device symbol geometry documented in
-`docs/research/kicad/default_gui_symbol_reference.md`. It must continue to
-persist only Board IR components, nets, pins, and optional schematic node
+`docs/research/kicad/default_gui_symbol_reference.md`.
+`src/gui/kicad_symbol_library.rs` owns installed KiCad symbol-library discovery,
+one-time `.kicad_sym` drawing parse/cache, and deterministic fallback routing
+when KiCad is absent or a symbol is unsupported. It must continue to persist
+only Board IR components, nets, pins, and optional schematic node
 positions/styles; symbol-library rendering must not introduce a second
 connectivity model.
 `src/gui/sketch_actions.rs`

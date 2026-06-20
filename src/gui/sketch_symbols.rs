@@ -1,5 +1,6 @@
 use eframe::egui;
 
+use super::kicad_symbol_library::draw_kicad_default_symbol;
 use super::sketch::{SketchComponent, SketchNode, SketchNodeStyle, SketchSelection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +83,11 @@ pub(super) fn draw_symbol_glyph(painter: &egui::Painter, node: &SketchNode) {
         rect.max.y = rect.max.y.min(node.rect.bottom() - 20.0);
     }
     if rect.width() < 48.0 || rect.height() < 14.0 {
+        return;
+    }
+    if node.symbol.is_kicad_device_symbol()
+        && draw_kicad_default_symbol(painter, node.symbol, rect, node.style, stroke, color)
+    {
         return;
     }
     match node.symbol {
