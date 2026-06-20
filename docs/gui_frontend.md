@@ -379,9 +379,10 @@ form:
   traces, and expected frequency before `Open` or `Run + Scopes`. The current
   entries cover the checked-in NE555 astable-style fixture and RC low-pass sine
   fixture; both direct-open projects include display-only routed schematic
-  waypoints so Sketch opens as a readable connected network. When a scope-ready
-  fixture is active, the Project panel also shows a workflow status with direct
-  `Run + Scopes` / `Open Scope Activity` actions.
+  waypoints. Opening one lands directly in Sketch with a deferred Fit All, so
+  the first view is the readable connected network. When a scope-ready fixture
+  is active, the Project panel also shows a workflow status with direct `Run +
+  Scopes` / `Open Scope Activity` actions.
 - Import: import native KiCad schematic evidence or SPICE decks into Board IR,
   or enrich an imported Board IR project with KiCad PCB placement/routing
   evidence. Import source and output paths can be typed or selected with native

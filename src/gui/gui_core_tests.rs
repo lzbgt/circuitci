@@ -6,7 +6,7 @@ use super::sketch::{
     wire_route_key,
 };
 use super::sketch_canvas_render::component_context_pin;
-use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, Stage, egui};
+use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, SketchViewportCommand, Stage, egui};
 use std::path::Path;
 
 fn editable_project_yaml() -> &'static str {
@@ -288,6 +288,12 @@ fn ne555_scope_example_shortcut_loads_direct_project() {
     assert_eq!(snapshot.components, 5);
     assert_eq!(snapshot.nets, 4);
     assert_eq!(snapshot.scenarios, 1);
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitAll)
+    );
+    assert!(app.status.contains("fitting routed schematic"));
 }
 
 #[test]
@@ -327,6 +333,11 @@ fn scope_examples_load_routed_schematic_edges() {
     let snapshot = app.project_snapshot.as_ref().unwrap();
 
     assert_eq!(snapshot.wire_routes.len(), 6);
+    assert_eq!(app.stage, Stage::Sketch);
+    assert_eq!(
+        app.sketch_viewport_command,
+        Some(SketchViewportCommand::FitAll)
+    );
     assert_eq!(
         snapshot
             .wire_routes
@@ -465,6 +476,7 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
     );
     assert_eq!(app.stage, Stage::Simulation);
     assert!(app.background_job_elapsed_secs().is_some());
+    assert_eq!(app.sketch_viewport_command, None);
     assert!(app.status.contains("Running validation in Scopes"));
     let status = app.scope_example_workflow_status().unwrap();
     assert_eq!(status.state, "Validation running");

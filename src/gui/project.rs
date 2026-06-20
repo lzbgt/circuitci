@@ -1,7 +1,7 @@
 use super::sketch::{
     load_project_snapshot, load_project_snapshot_from_yaml, validate_board_ir_yaml_text,
 };
-use super::{CircuitCiApp, Stage};
+use super::{CircuitCiApp, SketchViewportCommand, Stage};
 use anyhow::Context;
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -197,6 +197,23 @@ impl CircuitCiApp {
         })
     }
 
+    fn prepare_scope_example_sketch_open(&mut self) -> bool {
+        let Some(example) = self.active_scope_project_example() else {
+            return false;
+        };
+        self.stage = Stage::Sketch;
+        self.sketch_viewport_command = Some(SketchViewportCommand::FitAll);
+        self.status = format!(
+            "Opened {} in Sketch; fitting routed schematic.",
+            example.project_name
+        );
+        self.push_diagnostic(&format!(
+            "Opened scope-ready example {} in Sketch with routed schematic fit requested.",
+            example.project_name
+        ));
+        true
+    }
+
     pub(super) fn handle_close_request(&mut self, ctx: &egui::Context) {
         if ctx.input(|input| input.viewport().close_requested()) && self.has_unsaved_project_work()
         {
@@ -285,7 +302,9 @@ impl CircuitCiApp {
         match action {
             PendingProjectAction::LoadProjectSummary { path } => {
                 self.project_path = path;
-                self.load_project_summary_unchecked();
+                if self.load_project_summary_unchecked() {
+                    self.prepare_scope_example_sketch_open();
+                }
             }
             PendingProjectAction::LoadProjectSummaryAndRunScopes { path } => {
                 self.project_path = path;
