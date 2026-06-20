@@ -64,7 +64,9 @@ schematic, KiCad PCB, and SPICE deck import command wiring, including the
 scope-ready NE555 astable SPICE preset used to exercise Run + Scopes and Scope
 Activity workflows from a typical analog example. The NE555 fixture also keeps
 a direct-open Board IR `project.yaml` beside the deck so GUI smoke workflows do
-not depend on regenerating import output first.
+not depend on regenerating import output first. `examples/rc_lowpass_scope`
+provides a second direct-open scope fixture with a 1 kHz sine-driven RC
+low-pass filter for comparing input/output traces and frequency readouts.
 `src/gui/project.rs`
 owns project summary/YAML load, save, parse validation, import path/name
 helpers, the GUI direct-open example registry, guarded example load and

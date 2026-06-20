@@ -1,0 +1,87 @@
+# Scope-ready RC low-pass GUI example.
+#
+# The file-backed SPICE deck keeps the sine source explicit while this Board IR
+# shell gives the GUI a connected, editable schematic and named scope probes.
+project:
+  name: rc_lowpass_scope
+  version: 0.1.0
+
+libraries:
+  - ../../libs/generic/analog
+
+board:
+  schematic:
+    node_positions:
+      component:VSIN: { x: -240.0, y: 0.0 }
+      component:RIN: { x: -20.0, y: 0.0 }
+      component:COUT: { x: 200.0, y: 90.0 }
+      net:input: { x: -120.0, y: -80.0 }
+      net:filtered: { x: 150.0, y: -80.0 }
+      net:gnd: { x: 90.0, y: 180.0 }
+  components:
+    VSIN:
+      model: generic.analog.imported_spice_device
+      pins:
+        P: input
+        N: gnd
+    RIN:
+      model: generic.analog.resistor
+      pins:
+        A: input
+        B: filtered
+      spice:
+        primitive: resistor
+        value_ohm: 1000.0
+    COUT:
+      model: generic.analog.capacitor
+      pins:
+        A: filtered
+        B: gnd
+      spice:
+        primitive: capacitor
+        value_f: 1e-7
+  nets:
+    input:
+      kind: digital_or_analog
+    filtered:
+      kind: digital_or_analog
+    gnd:
+      kind: ground
+
+scenarios:
+  - name: rc_lowpass_sine_transient
+    type: analog_transient
+    checks:
+      - SPICE_TRANSIENT_ANALYSIS
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck.cir
+      model_files: []
+      node_bindings:
+        - { node: "0", net: gnd }
+        - { node: input, net: input }
+        - { node: filtered, net: filtered }
+      pin_bindings:
+        - { node: input, endpoint: { component: VSIN, pin: P } }
+        - { node: "0", endpoint: { component: VSIN, pin: N } }
+        - { node: input, endpoint: { component: RIN, pin: A } }
+        - { node: filtered, endpoint: { component: RIN, pin: B } }
+        - { node: filtered, endpoint: { component: COUT, pin: A } }
+        - { node: "0", endpoint: { component: COUT, pin: B } }
+      analysis:
+        type: tran
+        stop_time_us: 10000.0
+        max_step_us: 5.0
+      stimuli:
+        - name: sine_input
+          description: 1 kHz, 1 V peak sine source defined in deck.cir.
+      probes:
+        - name: v_input
+          expression: V(input)
+        - name: v_filtered
+          expression: V(filtered)
+        - name: i_vsin
+          expression: I(VSIN)
+          quantity: current
+      assertions: []

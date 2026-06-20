@@ -12,16 +12,32 @@ const NE555_SCOPE_EXAMPLE_NAME: &str = "ne555_astable_scope";
 const NE555_SCOPE_EXPECTED_TRACES: &[&str] =
     &["v(out)", "v(timing)", "v(vcc)", "i(VCC)", "i(VOUT)"];
 const NE555_SCOPE_EXPECTED_FREQUENCY: &str = "about 1.46 kHz";
-const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[GuiProjectExample {
-    id: "ne555_astable_scope",
-    open_label: "Open NE555 Scope Example",
-    run_label: "Open NE555 + Run Scopes",
-    workflow_title: "NE555 Scope Workflow",
-    project_path: NE555_SCOPE_EXAMPLE_PROJECT,
-    project_name: NE555_SCOPE_EXAMPLE_NAME,
-    expected_traces: NE555_SCOPE_EXPECTED_TRACES,
-    expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
-}];
+const RC_LOWPASS_SCOPE_EXAMPLE_PROJECT: &str = "examples/rc_lowpass_scope/project.yaml";
+const RC_LOWPASS_SCOPE_EXAMPLE_NAME: &str = "rc_lowpass_scope";
+const RC_LOWPASS_SCOPE_EXPECTED_TRACES: &[&str] = &["v(input)", "v(filtered)", "i(VSIN)"];
+const RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY: &str = "1.00 kHz sine, fc about 1.59 kHz";
+const GUI_PROJECT_EXAMPLES: &[GuiProjectExample] = &[
+    GuiProjectExample {
+        id: "ne555_astable_scope",
+        open_label: "Open NE555 Scope Example",
+        run_label: "Open NE555 + Run Scopes",
+        workflow_title: "NE555 Scope Workflow",
+        project_path: NE555_SCOPE_EXAMPLE_PROJECT,
+        project_name: NE555_SCOPE_EXAMPLE_NAME,
+        expected_traces: NE555_SCOPE_EXPECTED_TRACES,
+        expected_frequency: NE555_SCOPE_EXPECTED_FREQUENCY,
+    },
+    GuiProjectExample {
+        id: "rc_lowpass_scope",
+        open_label: "Open RC Low-Pass Scope Example",
+        run_label: "Open RC Low-Pass + Run Scopes",
+        workflow_title: "RC Low-Pass Scope Workflow",
+        project_path: RC_LOWPASS_SCOPE_EXAMPLE_PROJECT,
+        project_name: RC_LOWPASS_SCOPE_EXAMPLE_NAME,
+        expected_traces: RC_LOWPASS_SCOPE_EXPECTED_TRACES,
+        expected_frequency: RC_LOWPASS_SCOPE_EXPECTED_FREQUENCY,
+    },
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct GuiProjectExample {

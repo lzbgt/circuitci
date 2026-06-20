@@ -83,6 +83,14 @@ scenarios:
 "
 }
 
+fn gui_project_example_by_id(id: &str) -> super::project::GuiProjectExample {
+    gui_project_examples()
+        .iter()
+        .copied()
+        .find(|example| example.id == id)
+        .unwrap()
+}
+
 #[test]
 fn board_ir_editor_accepts_minimal_project_yaml() {
     validate_board_ir_yaml_text(
@@ -266,7 +274,7 @@ fn ne555_scope_example_import_preset_sets_scope_ready_spice_fields() {
 fn ne555_scope_example_shortcut_loads_direct_project() {
     let mut app = CircuitCiApp::default();
 
-    app.request_project_example_load(gui_project_examples()[0], None);
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
 
     assert_eq!(
         app.project_path,
@@ -285,8 +293,8 @@ fn ne555_scope_example_shortcut_loads_direct_project() {
 fn gui_project_example_registry_lists_ne555_scope_fixture() {
     let examples = gui_project_examples();
 
-    assert_eq!(examples.len(), 1);
-    let example = examples[0];
+    assert_eq!(examples.len(), 2);
+    let example = gui_project_example_by_id("ne555_astable_scope");
     assert_eq!(example.id, "ne555_astable_scope");
     assert_eq!(example.open_label, "Open NE555 Scope Example");
     assert_eq!(example.run_label, "Open NE555 + Run Scopes");
@@ -302,11 +310,32 @@ fn gui_project_example_registry_lists_ne555_scope_fixture() {
 }
 
 #[test]
+fn gui_project_example_registry_lists_rc_lowpass_scope_fixture() {
+    let example = gui_project_example_by_id("rc_lowpass_scope");
+
+    assert_eq!(example.open_label, "Open RC Low-Pass Scope Example");
+    assert_eq!(example.run_label, "Open RC Low-Pass + Run Scopes");
+    assert_eq!(
+        example.project_path,
+        "examples/rc_lowpass_scope/project.yaml"
+    );
+    assert_eq!(example.project_name, "rc_lowpass_scope");
+    assert_eq!(
+        example.expected_traces,
+        &["v(input)", "v(filtered)", "i(VSIN)"]
+    );
+    assert_eq!(
+        example.expected_frequency,
+        "1.00 kHz sine, fc about 1.59 kHz"
+    );
+}
+
+#[test]
 fn ne555_scope_example_workflow_status_is_contextual() {
     let mut app = CircuitCiApp::default();
     assert!(app.scope_example_workflow_status().is_none());
 
-    app.request_project_example_load(gui_project_examples()[0], None);
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
     let status = app.scope_example_workflow_status().unwrap();
 
     assert_eq!(status.title, "NE555 Scope Workflow");
@@ -326,7 +355,7 @@ fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
         ..Default::default()
     };
 
-    app.request_project_example_load(gui_project_examples()[0], None);
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
 
     assert_eq!(
         app.pending_project_action,
@@ -345,7 +374,10 @@ fn ne555_scope_example_shortcut_uses_unsaved_project_guard() {
 fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
     let mut app = CircuitCiApp::default();
 
-    app.request_project_example_load_and_run_scopes(gui_project_examples()[0], None);
+    app.request_project_example_load_and_run_scopes(
+        gui_project_example_by_id("ne555_astable_scope"),
+        None,
+    );
 
     assert_eq!(
         app.project_path,
@@ -366,7 +398,7 @@ fn ne555_scope_example_run_shortcut_loads_and_starts_scopes_validation() {
 fn ne555_scope_example_workflow_run_action_starts_scopes_validation() {
     let mut app = CircuitCiApp::default();
 
-    app.request_project_example_load(gui_project_examples()[0], None);
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
 
     assert!(app.run_scope_example_workflow_scopes());
     assert_eq!(app.stage, Stage::Simulation);
@@ -384,7 +416,7 @@ fn ne555_scope_example_workflow_activity_action_opens_sketch_overlay() {
         ..Default::default()
     };
 
-    app.request_project_example_load(gui_project_examples()[0], None);
+    app.request_project_example_load(gui_project_example_by_id("ne555_astable_scope"), None);
 
     assert!(app.open_scope_example_workflow_activity());
     assert_eq!(app.stage, Stage::Sketch);
@@ -399,7 +431,10 @@ fn ne555_scope_example_run_shortcut_uses_unsaved_project_guard() {
         ..Default::default()
     };
 
-    app.request_project_example_load_and_run_scopes(gui_project_examples()[0], None);
+    app.request_project_example_load_and_run_scopes(
+        gui_project_example_by_id("ne555_astable_scope"),
+        None,
+    );
 
     assert_eq!(
         app.pending_project_action,

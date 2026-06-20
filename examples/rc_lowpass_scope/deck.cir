@@ -1,0 +1,9 @@
+* Scope-ready RC low-pass sine response GUI example.
+* R=1 kOhm and C=100 nF set fc = 1/(2*pi*R*C) ~= 1.59 kHz.
+* A 1 kHz sine source lets Scope Activity and Scopes show input/output
+* attenuation and a clear dominant-frequency readout.
+VSIN input 0 SIN(0 1 1k)
+RIN input filtered 1k
+COUT filtered 0 100n
+.tran 5u 10m
+.end
