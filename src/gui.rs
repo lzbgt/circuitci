@@ -50,6 +50,8 @@ mod sketch_minimap;
 mod sketch_navigator;
 mod sketch_net_labels;
 mod sketch_palette;
+#[cfg(test)]
+mod sketch_probe_tests;
 mod sketch_probes;
 mod sketch_rename;
 #[cfg(test)]

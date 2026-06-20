@@ -123,7 +123,10 @@ readout model so the placed symbol can paint a Cursor A sample, optional
 frequency/period label, and bounded sparkline without introducing another
 waveform cache. `sketch_probes::probe_badge_interaction_rect` is the shared
 visual-interaction bounds contract for fit, navigator, hit-test, context-menu,
-and drag routing over the probe body plus its live readout strip.
+and drag routing over the probe body plus its live readout strip. Focused
+schematic probe projection, hit-test, and display-coordinate regressions live
+in `src/gui/sketch_probe_tests.rs` instead of the broader Sketch graph test
+module.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by
