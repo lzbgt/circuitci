@@ -158,6 +158,12 @@ struct SketchComponentLabelDrag {
 }
 
 #[derive(Debug, Clone)]
+struct SketchProbeElementDrag {
+    element_id: String,
+    current_center: egui::Pos2,
+}
+
+#[derive(Debug, Clone)]
 struct SketchSelectionBoxDrag {
     start: egui::Pos2,
     mode: SketchSelectionBoxMode,
@@ -392,6 +398,7 @@ pub struct CircuitCiApp {
     sketch_wire_route_drag: Option<SketchWireRouteDrag>,
     sketch_net_label_drag: Option<SketchNetLabelDrag>,
     sketch_component_label_drag: Option<SketchComponentLabelDrag>,
+    sketch_probe_element_drag: Option<SketchProbeElementDrag>,
     waveforms: Vec<WaveformView>,
     waveform_load_diagnostics: Vec<WaveformLoadDiagnostic>,
     waveform_load_filter: String,
@@ -606,6 +613,7 @@ impl Default for CircuitCiApp {
             sketch_wire_route_drag: None,
             sketch_net_label_drag: None,
             sketch_component_label_drag: None,
+            sketch_probe_element_drag: None,
             waveforms: Vec::new(),
             waveform_load_diagnostics: Vec::new(),
             waveform_load_filter: String::new(),

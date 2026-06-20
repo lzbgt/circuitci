@@ -2,8 +2,9 @@ use eframe::egui;
 
 use super::sketch::{
     self, SketchNodeStyle, SketchPinSide, SketchSelection, edit_schematic_component_styles,
-    edit_schematic_wire_route, persisted_wire_route_point_from_screen_with_snap,
-    remove_schematic_wire_route, snap_screen_point_to_grid,
+    edit_schematic_wire_route, persisted_node_position_from_screen_with_snap,
+    persisted_wire_route_point_from_screen_with_snap, remove_schematic_wire_route,
+    snap_screen_point_to_grid,
 };
 use super::sketch_canvas_interaction::{
     SketchSelectionBoxMode, WireDragTarget, next_pin_side, normalize_canvas_rotation,
@@ -14,6 +15,7 @@ use super::sketch_inspector::{
     default_current_probe_name_for_component, default_power_probe_name_for_component,
     default_probe_name_for_net,
 };
+use super::sketch_probes::{SketchProbeBadge, edit_schematic_probe_element_position};
 use super::{CircuitCiApp, analog, sketch_alignment};
 
 impl CircuitCiApp {
@@ -137,6 +139,36 @@ impl CircuitCiApp {
                     &format!("Wire route {} -> {} cleared.", edge.source, edge.net_id),
                 );
                 self.set_single_sketch_selection(Some(SketchSelection::Net(edge.net_id.clone())));
+            }
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    pub(super) fn apply_move_schematic_probe_element_to(
+        &mut self,
+        canvas: egui::Rect,
+        viewport: sketch::SketchViewport,
+        badge: &SketchProbeBadge,
+        current_center: egui::Pos2,
+    ) {
+        let Some(element_id) = badge.probe.element_id.as_deref() else {
+            self.status = "Only placed schematic probe elements can be moved.".to_string();
+            return;
+        };
+        let (x, y) = persisted_node_position_from_screen_with_snap(
+            canvas,
+            current_center,
+            badge.rect,
+            viewport,
+            self.sketch_snap_enabled,
+            self.sketch_grid_step,
+        );
+        match edit_schematic_probe_element_position(&self.project_yaml, element_id, x, y) {
+            Ok(updated) => {
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Probe element {element_id} moved."),
+                );
             }
             Err(error) => self.record_error(error),
         }

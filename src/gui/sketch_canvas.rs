@@ -594,6 +594,7 @@ impl CircuitCiApp {
             && self.sketch_wire_route_drag.is_none()
             && self.sketch_net_label_drag.is_none()
             && self.sketch_component_label_drag.is_none()
+            && self.sketch_probe_element_drag.is_none()
             && self.sketch_selection_box_drag.is_none()
             && self.sketch_selection_lasso_drag.is_none()
         {
@@ -621,6 +622,18 @@ impl CircuitCiApp {
             sketch_hierarchy::draw_hierarchy_connector_badge(&painter, badge, hovered);
         }
         for badge in &graph.probe_badges {
+            let badge = if let Some(drag) = self
+                .sketch_probe_element_drag
+                .as_ref()
+                .filter(|drag| badge.probe.element_id.as_deref() == Some(drag.element_id.as_str()))
+            {
+                let mut badge = badge.clone();
+                badge.rect = egui::Rect::from_center_size(drag.current_center, badge.rect.size());
+                std::borrow::Cow::Owned(badge)
+            } else {
+                std::borrow::Cow::Borrowed(badge)
+            };
+            let badge = badge.as_ref();
             let opacity = if let Some(view) = &hierarchy_view {
                 if !view.probe_badge_visible(badge) {
                     continue;
@@ -980,6 +993,12 @@ impl CircuitCiApp {
                         ))
                     })
                 });
+            let clicked_probe_badge =
+                hit_test_probe_badge(&graph.probe_badges, position).filter(|badge| {
+                    hierarchy_view
+                        .as_ref()
+                        .is_none_or(|view| view.probe_badge_visible(badge))
+                });
             let clicked_wire = if clicked_anchor.is_none()
                 && clicked_node.is_none()
                 && clicked_net_label_badge.is_none()
@@ -995,6 +1014,18 @@ impl CircuitCiApp {
             };
             if let Some(anchor) = clicked_anchor {
                 self.start_visual_wire_from_anchor(anchor);
+            } else if self.wire_from_component.is_none()
+                && !self.sketch_palette_place_armed
+                && !self.sketch_library_place_armed
+                && !self.sketch_net_label_place_armed
+                && let Some(badge) = clicked_probe_badge
+                && let Some(element_id) = badge.probe.element_id.as_deref()
+            {
+                self.sketch_probe_element_drag = Some(super::SketchProbeElementDrag {
+                    element_id: element_id.to_string(),
+                    current_center: badge.rect.center(),
+                });
+                self.status = format!("Moving probe element {element_id}.");
             } else if self.wire_from_component.is_none()
                 && !self.sketch_palette_place_armed
                 && !self.sketch_library_place_armed
@@ -1202,11 +1233,23 @@ impl CircuitCiApp {
                 self.sketch_grid_step,
             );
         } else if response.dragged_by(egui::PointerButton::Primary)
+            && let Some(position) = response.interact_pointer_pos()
+            && let Some(drag) = &mut self.sketch_probe_element_drag
+        {
+            drag.current_center = snap_screen_point_to_grid(
+                rect,
+                position,
+                viewport,
+                self.sketch_snap_enabled,
+                self.sketch_grid_step,
+            );
+        } else if response.dragged_by(egui::PointerButton::Primary)
             && !self.sketch_pan_drag_active
             && self.wire_from_component.is_none()
             && self.sketch_wire_route_drag.is_none()
             && self.sketch_net_label_drag.is_none()
             && self.sketch_component_label_drag.is_none()
+            && self.sketch_probe_element_drag.is_none()
             && let (Some(selection), Some(position)) = (
                 self.selected_sketch_item.clone(),
                 response.interact_pointer_pos(),
@@ -1333,6 +1376,15 @@ impl CircuitCiApp {
             );
         }
         if response.drag_stopped_by(egui::PointerButton::Primary)
+            && let Some(drag) = self.sketch_probe_element_drag.take()
+            && let Some(badge) = graph
+                .probe_badges
+                .iter()
+                .find(|badge| badge.probe.element_id.as_deref() == Some(drag.element_id.as_str()))
+        {
+            self.apply_move_schematic_probe_element_to(rect, viewport, badge, drag.current_center);
+        }
+        if response.drag_stopped_by(egui::PointerButton::Primary)
             && self.wire_from_component.is_some()
             && let Some(position) = response
                 .interact_pointer_pos()
@@ -1448,6 +1500,9 @@ impl CircuitCiApp {
         } else if cancel_canvas_mode_pressed && self.sketch_component_label_drag.is_some() {
             self.sketch_component_label_drag = None;
             self.status = "Component label move canceled.".to_string();
+        } else if cancel_canvas_mode_pressed && self.sketch_probe_element_drag.is_some() {
+            self.sketch_probe_element_drag = None;
+            self.status = "Probe element move canceled.".to_string();
         } else if rotate_clockwise_pressed && self.component_placement_armed() {
             self.rotate_canvas_placement(90);
         } else if rotate_counter_clockwise_pressed && self.component_placement_armed() {

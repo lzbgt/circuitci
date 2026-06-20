@@ -408,6 +408,7 @@ impl CircuitCiApp {
                 self.sketch_net_label_edit = None;
                 self.sketch_component_inline_edit = None;
                 self.sketch_component_label_drag = None;
+                self.sketch_probe_element_drag = None;
                 self.sketch_selection_box_drag = None;
                 self.sketch_selection_lasso_drag = None;
                 self.clear_project_yaml_history();

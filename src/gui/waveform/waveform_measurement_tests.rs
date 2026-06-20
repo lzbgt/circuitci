@@ -7,7 +7,9 @@ use super::{
     waveform_measurement, waveform_probe_value_for_badge, waveform_spectrum_peaks_from_samples,
 };
 use crate::gui::sketch::SketchSelection;
-use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
+use crate::gui::sketch_probes::{
+    SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
+};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget};
 use std::f64::consts::PI;
 
@@ -160,6 +162,9 @@ fn scope_snapshot_focus_selects_originating_schematic_context() {
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -269,6 +274,9 @@ fn waveform_probe_value_for_badge_matches_probe_expression() {
     .unwrap();
     let probe = SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "gui_transient".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),

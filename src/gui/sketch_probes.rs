@@ -2,14 +2,17 @@ use eframe::egui;
 
 use super::kicad_symbol_library::{KiCadProbeSymbolKind, draw_kicad_probe_symbol};
 use super::sketch::{
-    ProjectSnapshot, SketchNode, SketchSelection, encode_edited_project_yaml,
-    ensure_child_mapping_mut, validated_graph_id, with_opacity,
+    ProjectSnapshot, SketchEdge, SketchNode, SketchPinAnchor, SketchPosition, SketchSelection,
+    encode_edited_project_yaml, ensure_child_mapping_mut, validated_graph_id, with_opacity,
 };
 use anyhow::{Context, Result};
 
 #[derive(Debug, Clone)]
 pub(super) struct SketchProbe {
     pub(super) element_id: Option<String>,
+    pub(super) attachment: SketchProbeAttachmentKind,
+    pub(super) source: Option<String>,
+    pub(super) position: Option<SketchPosition>,
     pub(super) scenario_name: String,
     pub(super) probe_name: String,
     pub(super) expression: String,
@@ -41,7 +44,7 @@ pub(super) enum SketchProbeTarget {
     Net(String),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum SketchProbeAttachmentKind {
     Node,
     Pin,
@@ -58,11 +61,20 @@ pub(super) struct SketchProbeElementDraft {
     pub(super) source: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct SketchProbeBadge {
     pub(super) probe: SketchProbe,
     pub(super) rect: egui::Rect,
     pub(super) anchor: egui::Pos2,
+}
+
+#[derive(Debug, Clone)]
+struct SchematicProbeElementPlacement {
+    element_id: String,
+    target: SketchProbeTarget,
+    attachment: SketchProbeAttachmentKind,
+    source: Option<String>,
+    position: Option<SketchPosition>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,7 +107,13 @@ pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> 
             let target = schematic_probe_element_target(project, element)?;
             Some((
                 (element.scenario.as_str(), element.probe.as_str()),
-                (element_id, target),
+                SchematicProbeElementPlacement {
+                    element_id: element_id.clone(),
+                    target,
+                    attachment: schematic_probe_attachment(element.target.attach.as_ref()),
+                    source: element.target.source.clone(),
+                    position: schematic_probe_position(element),
+                },
             ))
         })
         .collect::<std::collections::BTreeMap<_, _>>();
@@ -124,11 +142,26 @@ pub(super) fn derive_project_probes(project: &crate::board_ir::BoardProject) -> 
             };
             let element_id = schematic_probe_elements
                 .get(&(scenario.name.as_str(), probe.name.as_str()))
-                .and_then(|(element_id, element_target)| {
-                    (element_target == &target).then(|| (*element_id).clone())
-                });
+                .filter(|placement| placement.target == target)
+                .map(|placement| placement.element_id.clone());
+            let attachment = schematic_probe_elements
+                .get(&(scenario.name.as_str(), probe.name.as_str()))
+                .filter(|placement| placement.target == target)
+                .map(|placement| placement.attachment)
+                .unwrap_or(SketchProbeAttachmentKind::Node);
+            let source = schematic_probe_elements
+                .get(&(scenario.name.as_str(), probe.name.as_str()))
+                .filter(|placement| placement.target == target)
+                .and_then(|placement| placement.source.clone());
+            let position = schematic_probe_elements
+                .get(&(scenario.name.as_str(), probe.name.as_str()))
+                .filter(|placement| placement.target == target)
+                .and_then(|placement| placement.position);
             probes.push(SketchProbe {
                 element_id,
+                attachment,
+                source,
+                position,
                 scenario_name: scenario.name.clone(),
                 probe_name: probe.name.clone(),
                 expression: probe.expression.clone(),
@@ -238,9 +271,53 @@ pub(super) fn upsert_schematic_probe_element(
     encode_edited_project_yaml(yaml)
 }
 
+pub(super) fn edit_schematic_probe_element_position(
+    text: &str,
+    element_id: &str,
+    x: f64,
+    y: f64,
+) -> Result<String> {
+    let element_id = validated_graph_id(element_id, "probe element")?;
+    let project: crate::board_ir::BoardProject =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid Board IR.")?;
+    if !project
+        .board
+        .schematic
+        .probe_elements
+        .contains_key(element_id)
+    {
+        anyhow::bail!("Schematic probe element {element_id} was not found.");
+    }
+    let mut yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(text).context("Project YAML is not valid YAML.")?;
+    {
+        let board = yaml
+            .as_mapping_mut()
+            .context("Board IR project must be a YAML object.")?
+            .get_mut(serde_yaml_ng::Value::String("board".to_string()))
+            .context("Board IR project is missing board.")?
+            .as_mapping_mut()
+            .context("Board IR field board must be an object.")?;
+        let schematic = ensure_child_mapping_mut(board, "schematic", "board schematic")?;
+        let elements =
+            ensure_child_mapping_mut(schematic, "probe_elements", "schematic probe elements")?;
+        let element = elements
+            .get_mut(serde_yaml_ng::Value::String(element_id.to_string()))
+            .with_context(|| format!("Schematic probe element {element_id} was not found."))?
+            .as_mapping_mut()
+            .context("Schematic probe element must be an object.")?;
+        element.insert(key("x"), serde_yaml_ng::to_value(x)?);
+        element.insert(key("y"), serde_yaml_ng::to_value(y)?);
+    }
+    encode_edited_project_yaml(yaml)
+}
+
 pub(super) fn layout_probe_badges(
     snapshot: &ProjectSnapshot,
+    canvas: egui::Rect,
     nodes: &[SketchNode],
+    pin_anchors: &[SketchPinAnchor],
+    edges: &[SketchEdge],
 ) -> Vec<SketchProbeBadge> {
     let mut target_counts = std::collections::BTreeMap::<SketchProbeTarget, usize>::new();
     let mut badges = Vec::new();
@@ -260,7 +337,8 @@ pub(super) fn layout_probe_badges(
             continue;
         };
         let offset_index = target_counts.entry(probe.target.clone()).or_insert(0);
-        let (rect, anchor) = probe_badge_geometry(node.rect, *offset_index, probe.quantity);
+        let (rect, anchor) =
+            probe_badge_geometry(probe, canvas, node.rect, pin_anchors, edges, *offset_index);
         *offset_index += 1;
         badges.push(SketchProbeBadge {
             probe: probe.clone(),
@@ -482,6 +560,29 @@ fn schematic_probe_element_target(
     }
 }
 
+fn schematic_probe_attachment(
+    attachment: Option<&crate::board_ir::SchematicProbeAttachmentKind>,
+) -> SketchProbeAttachmentKind {
+    match attachment {
+        Some(crate::board_ir::SchematicProbeAttachmentKind::Pin) => SketchProbeAttachmentKind::Pin,
+        Some(crate::board_ir::SchematicProbeAttachmentKind::Wire) => {
+            SketchProbeAttachmentKind::Wire
+        }
+        Some(crate::board_ir::SchematicProbeAttachmentKind::Node) | None => {
+            SketchProbeAttachmentKind::Node
+        }
+    }
+}
+
+fn schematic_probe_position(
+    element: &crate::board_ir::SchematicProbeElement,
+) -> Option<SketchPosition> {
+    Some(SketchPosition {
+        x: element.x?,
+        y: element.y?,
+    })
+}
+
 fn component_branch_targets(
     project: &crate::board_ir::BoardProject,
 ) -> std::collections::BTreeMap<String, String> {
@@ -534,19 +635,121 @@ fn expression_without_whitespace(expression: &str) -> String {
 }
 
 fn probe_badge_geometry(
+    probe: &SketchProbe,
+    canvas: egui::Rect,
     node_rect: egui::Rect,
+    pin_anchors: &[SketchPinAnchor],
+    edges: &[SketchEdge],
     offset_index: usize,
-    quantity: SketchProbeQuantity,
 ) -> (egui::Rect, egui::Pos2) {
-    let size = match quantity {
+    let size = probe_badge_size(probe.quantity);
+    let anchor = probe_attachment_anchor(probe, node_rect, pin_anchors, edges);
+    if let Some(position) = probe.position {
+        let rect = egui::Rect::from_min_size(
+            egui::pos2(
+                canvas.left() + position.x as f32,
+                canvas.top() + position.y as f32,
+            ),
+            size,
+        );
+        return (rect, anchor);
+    }
+    let rect = match probe.attachment {
+        SketchProbeAttachmentKind::Pin => {
+            let side = if anchor.x <= node_rect.center().x {
+                -1.0
+            } else {
+                1.0
+            };
+            egui::Rect::from_center_size(anchor + egui::vec2(side * 32.0, -24.0), size)
+        }
+        SketchProbeAttachmentKind::Wire => {
+            egui::Rect::from_center_size(anchor + egui::vec2(0.0, -30.0), size)
+        }
+        SketchProbeAttachmentKind::Node => {
+            let y = node_rect.top() + 2.0 + offset_index as f32 * (size.y + 6.0);
+            egui::Rect::from_min_size(egui::pos2(node_rect.right() + 8.0, y), size)
+        }
+    };
+    (rect, anchor)
+}
+
+fn probe_badge_size(quantity: SketchProbeQuantity) -> egui::Vec2 {
+    match quantity {
         SketchProbeQuantity::Voltage | SketchProbeQuantity::Current => egui::vec2(46.0, 34.0),
         SketchProbeQuantity::Power => egui::vec2(52.0, 36.0),
-    };
-    let y = node_rect.top() + 2.0 + offset_index as f32 * (size.y + 6.0);
-    let center_y = (y + size.y * 0.5).clamp(node_rect.top(), node_rect.bottom());
-    let anchor = egui::pos2(node_rect.right(), center_y);
-    let rect = egui::Rect::from_min_size(egui::pos2(node_rect.right() + 8.0, y), size);
-    (rect, anchor)
+    }
+}
+
+fn probe_attachment_anchor(
+    probe: &SketchProbe,
+    node_rect: egui::Rect,
+    pin_anchors: &[SketchPinAnchor],
+    edges: &[SketchEdge],
+) -> egui::Pos2 {
+    match probe.attachment {
+        SketchProbeAttachmentKind::Pin => probe
+            .source
+            .as_deref()
+            .and_then(|source| {
+                let (component_id, pin_id) = source.split_once('.')?;
+                pin_anchors
+                    .iter()
+                    .find(|anchor| anchor.component_id == component_id && anchor.pin == pin_id)
+                    .map(|anchor| anchor.pos)
+            })
+            .unwrap_or_else(|| fallback_probe_anchor(node_rect)),
+        SketchProbeAttachmentKind::Wire => probe
+            .source
+            .as_deref()
+            .and_then(|source| {
+                let target_net = match &probe.target {
+                    SketchProbeTarget::Net(net_id) => Some(net_id.as_str()),
+                    SketchProbeTarget::Component(_) => None,
+                };
+                edges
+                    .iter()
+                    .find(|edge| {
+                        edge.source == source && target_net.is_none_or(|net| edge.net_id == net)
+                    })
+                    .map(edge_midpoint)
+            })
+            .unwrap_or_else(|| fallback_probe_anchor(node_rect)),
+        SketchProbeAttachmentKind::Node => fallback_probe_anchor(node_rect),
+    }
+}
+
+fn fallback_probe_anchor(node_rect: egui::Rect) -> egui::Pos2 {
+    egui::pos2(node_rect.right(), node_rect.center().y)
+}
+
+fn edge_midpoint(edge: &SketchEdge) -> egui::Pos2 {
+    let points = edge_points(edge);
+    let total: f32 = points
+        .windows(2)
+        .map(|segment| segment[0].distance(segment[1]))
+        .sum();
+    if total <= f32::EPSILON {
+        return edge.start;
+    }
+    let mut remaining = total * 0.5;
+    for segment in points.windows(2) {
+        let length = segment[0].distance(segment[1]);
+        if remaining <= length {
+            let t = (remaining / length).clamp(0.0, 1.0);
+            return segment[0].lerp(segment[1], t);
+        }
+        remaining -= length;
+    }
+    edge.end
+}
+
+fn edge_points(edge: &SketchEdge) -> Vec<egui::Pos2> {
+    let mut points = Vec::with_capacity(edge.route.len() + 2);
+    points.push(edge.start);
+    points.extend(edge.route.iter().copied());
+    points.push(edge.end);
+    points
 }
 
 fn generated_current_sense_name(device_prefix: &str, component_id: &str) -> String {
@@ -580,14 +783,17 @@ fn spice_element_suffix(component_id: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        SketchProbe, SketchProbeQuantity, SketchProbeStatus, SketchProbeTarget,
-        probe_assertion_status,
+        SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeStatus,
+        SketchProbeTarget, probe_assertion_status,
     };
     use crate::reports::{Finding, ValidationReport};
 
     fn asserted_probe() -> SketchProbe {
         SketchProbe {
             element_id: None,
+            attachment: SketchProbeAttachmentKind::Node,
+            source: None,
+            position: None,
             scenario_name: "tran".to_string(),
             probe_name: "rail_voltage".to_string(),
             expression: "V(rail)".to_string(),

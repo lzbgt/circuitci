@@ -304,7 +304,9 @@ mod tests {
     use crate::gui::sketch::{
         ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle, SketchPin, SketchPosition,
     };
-    use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
+    use crate::gui::sketch_probes::{
+        SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
+    };
 
     fn snapshot() -> ProjectSnapshot {
         ProjectSnapshot {
@@ -361,6 +363,9 @@ mod tests {
             ],
             probes: vec![SketchProbe {
                 element_id: None,
+                attachment: SketchProbeAttachmentKind::Node,
+                source: None,
+                position: None,
                 scenario_name: "tran".to_string(),
                 probe_name: "rail_v".to_string(),
                 expression: "V(rail)".to_string(),

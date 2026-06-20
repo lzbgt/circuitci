@@ -267,7 +267,7 @@ copy, duplicate, and delete; these actions reuse existing canvas selection and
 validated Board IR edit paths.
 `src/gui/sketch_probes.rs` owns schematic voltage/current/power probe element
 targeting, `board.schematic.probe_elements` upserts, badge layout, badge
-hit-testing, and badge drawing.
+hit-testing, badge drawing, and manual probe-element position edits.
 `src/gui/library.rs` owns installed/imported KiCad symbol browsing plus
 component model browsing over the active project library set. The KiCad symbol
 browser scans installed `.kicad_sym` files, accepts user-imported
@@ -750,7 +750,10 @@ scenario probes. The analog probe remains the runtime source of truth for SPICE
 expressions, quantities, waveform columns, assertions, and reports;
 `board.schematic.probe_elements` stores the placed schematic element ID, target
 net/component, attachment kind (`node`, `pin`, or `wire`), and optional
-component-pin source when placement came from a pin or routed wire. Voltage
+component-pin source when placement came from a pin or routed wire. Pin and
+wire placements render from actual pin/wire geometry; dragging a probe element
+writes optional display-only `x`/`y` coordinates so the probe behaves like a
+placed EDA symbol without changing solver connectivity. Voltage
 probe elements attach to Board IR nets only when the probe expression's SPICE
 node maps back through `analog.node_bindings`; current and power elements attach
 to components only when the expression references a generated/source branch

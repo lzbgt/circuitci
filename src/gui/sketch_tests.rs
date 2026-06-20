@@ -13,7 +13,8 @@ use super::sketch::{
 use super::sketch_canvas_interaction::schematic_canvas_size;
 use super::sketch_duplicate::duplicate_components_with_local_nets;
 use super::sketch_probes::{
-    SketchProbe, SketchProbeQuantity, SketchProbeTarget, hit_test_probe_badge,
+    SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
+    edit_schematic_probe_element_position, hit_test_probe_badge,
 };
 use super::sketch_symbols::SketchSymbolKind;
 use super::{CircuitCiApp, SketchViewportCommand};
@@ -430,6 +431,8 @@ scenarios:
     assert!(snapshot.probes.iter().any(|probe| {
         probe.probe_name == "rail_voltage"
             && probe.element_id == Some("tran_rail_voltage".to_string())
+            && probe.attachment == SketchProbeAttachmentKind::Wire
+            && probe.source.as_deref() == Some("R1.A")
             && probe.quantity.label() == "V"
             && probe.assertion_names == ["rail_voltage_min".to_string()]
             && matches!(probe.target, SketchProbeTarget::Net(ref id) if id == "rail")
@@ -451,6 +454,9 @@ fn layout_places_hit_testable_probe_badges() {
     let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran".to_string(),
         probe_name: "net_a_voltage".to_string(),
         expression: "V(net_a)".to_string(),
@@ -467,6 +473,157 @@ fn layout_places_hit_testable_probe_badges() {
     let badge =
         hit_test_probe_badge(&graph.probe_badges, graph.probe_badges[0].rect.center()).unwrap();
     assert_eq!(badge.probe.probe_name, "net_a_voltage");
+}
+
+#[test]
+fn layout_places_wire_attached_probe_on_wire_midpoint() {
+    let snapshot = load_project_snapshot_from_yaml(
+        "project:
+  name: wire_probe_layout
+  version: 0.1.0
+board:
+  schematic:
+    node_positions:
+      component:R1: { x: 80, y: 120 }
+      net:rail: { x: 360, y: 132 }
+    probe_elements:
+      tran_rail_voltage:
+        scenario: tran
+        probe: rail_voltage
+        target: { kind: net, id: rail, attach: wire, source: R1.A }
+  components:
+    R1:
+      model: generic.analog.resistor
+      spice: { primitive: resistor, value_ohm: 1000 }
+      pins: { A: rail, B: rail }
+  nets:
+    rail: { kind: power }
+    gnd: { kind: ground }
+scenarios:
+  - name: tran
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated: { ground_net: gnd, components: [R1] }
+      model_files: []
+      node_bindings:
+        - { net: rail, node: rail }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: rail }
+        - { endpoint: { component: R1, pin: B }, node: rail }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: rail_voltage, expression: 'V(rail)', quantity: voltage }
+      assertions: []
+",
+    )
+    .unwrap();
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),
+        &snapshot,
+    );
+    let edge = graph
+        .edges
+        .iter()
+        .find(|edge| edge.source == "R1.A" && edge.net_id == "rail")
+        .unwrap();
+    let badge = graph
+        .probe_badges
+        .iter()
+        .find(|badge| badge.probe.element_id.as_deref() == Some("tran_rail_voltage"))
+        .unwrap();
+
+    assert!(badge.anchor.distance(edge.start.lerp(edge.end, 0.5)) < 0.01);
+    assert!(badge.rect.center().y < badge.anchor.y);
+}
+
+#[test]
+fn layout_places_pin_attached_probe_on_pin_anchor() {
+    let mut snapshot = load_project_snapshot_from_yaml(editable_project_yaml()).unwrap();
+    snapshot.probes.push(SketchProbe {
+        element_id: Some("tran_net_a_voltage".to_string()),
+        attachment: SketchProbeAttachmentKind::Pin,
+        source: Some("R1.A".to_string()),
+        position: None,
+        scenario_name: "tran".to_string(),
+        probe_name: "net_a_voltage".to_string(),
+        expression: "V(net_a)".to_string(),
+        quantity: SketchProbeQuantity::Voltage,
+        target: SketchProbeTarget::Net("net_a".to_string()),
+        assertion_names: Vec::new(),
+    });
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(620.0, 360.0)),
+        &snapshot,
+    );
+    let anchor = graph
+        .pin_anchors
+        .iter()
+        .find(|anchor| anchor.component_id == "R1" && anchor.pin == "A")
+        .unwrap();
+    let badge = graph.probe_badges.first().unwrap();
+
+    assert!(badge.anchor.distance(anchor.pos) < 0.01);
+    assert!(hit_test_probe_badge(&graph.probe_badges, badge.rect.center()).is_some());
+}
+
+#[test]
+fn persisted_probe_element_position_overrides_attachment_layout() {
+    let yaml = "project:
+  name: probe_position
+  version: 0.1.0
+board:
+  schematic:
+    probe_elements:
+      tran_net_a_voltage:
+        scenario: tran
+        probe: net_a_voltage
+        target: { kind: net, id: net_a, attach: pin, source: R1.A }
+  components:
+    R1:
+      model: generic.analog.resistor
+      pins: { A: net_a, B: gnd }
+  nets:
+    net_a: { kind: digital_or_analog }
+    gnd: { kind: ground }
+scenarios:
+  - name: tran
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: generated_from_board
+      generated: { ground_net: gnd, components: [R1] }
+      model_files: []
+      node_bindings:
+        - { net: net_a, node: net_a }
+        - { net: gnd, node: '0' }
+      pin_bindings:
+        - { endpoint: { component: R1, pin: A }, node: net_a }
+        - { endpoint: { component: R1, pin: B }, node: '0' }
+      analysis: { type: tran, stop_time_us: 10, max_step_us: 1 }
+      stimuli: []
+      probes:
+        - { name: net_a_voltage, expression: 'V(net_a)', quantity: voltage }
+      assertions: []
+";
+    let edited =
+        edit_schematic_probe_element_position(yaml, "tran_net_a_voltage", 144.0, 88.0).unwrap();
+    let snapshot = load_project_snapshot_from_yaml(&edited).unwrap();
+    let canvas = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(620.0, 360.0));
+    let graph = layout_sketch_graph(canvas, &snapshot);
+    let badge = graph.probe_badges.first().unwrap();
+
+    assert_eq!(
+        badge.probe.position,
+        Some(SketchPosition { x: 144.0, y: 88.0 })
+    );
+    assert!((badge.rect.left() - 154.0).abs() < 0.01);
+    assert!((badge.rect.top() - 108.0).abs() < 0.01);
 }
 
 #[test]

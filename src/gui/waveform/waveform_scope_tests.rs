@@ -17,7 +17,9 @@ use crate::gui::sketch::{
 use crate::gui::sketch_canvas_hits::{
     SketchCanvasHitContext, hover_targets, runtime_scope_activity_targets,
 };
-use crate::gui::sketch_probes::{SketchProbe, SketchProbeQuantity, SketchProbeTarget};
+use crate::gui::sketch_probes::{
+    SketchProbe, SketchProbeAttachmentKind, SketchProbeQuantity, SketchProbeTarget,
+};
 use crate::gui::{CircuitCiApp, ScopeProbeTarget, SketchViewportCommand, Stage};
 use eframe::egui;
 
@@ -765,6 +767,9 @@ fn selected_scope_trace_focuses_originating_schematic_net() {
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -811,6 +816,9 @@ fn selected_scope_trace_focuses_originating_schematic_component() {
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "R1_power".to_string(),
         expression: "V(out)*I(VSENSE_R1)".to_string(),
@@ -850,6 +858,9 @@ fn scope_schematic_context_opens_sketch_with_selected_target() {
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "out_voltage".to_string(),
         expression: "V(out)".to_string(),
@@ -886,6 +897,9 @@ fn scope_schematic_context_fit_queues_sketch_fit_selection() {
     let mut snapshot = probe_snapshot();
     snapshot.probes.push(SketchProbe {
         element_id: None,
+        attachment: SketchProbeAttachmentKind::Node,
+        source: None,
+        position: None,
         scenario_name: "tran_main".to_string(),
         probe_name: "R1_power".to_string(),
         expression: "V(out)*I(VSENSE_R1)".to_string(),

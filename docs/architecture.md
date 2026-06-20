@@ -105,9 +105,12 @@ box.
 
 Sketch probe elements are schematic display metadata over analog scenario
 probes. They persist under `board.schematic.probe_elements` with a placed
-element ID, target net/component, attachment kind, and optional source
-component pin, but they do not change electrical connectivity or replace the
-analog probe expression that drives runtime waveforms, assertions, and reports.
+element ID, target net/component, attachment kind, optional source component
+pin, and optional manual `x`/`y` position. Pin- and wire-attached probes render
+from the actual schematic pin/wire geometry until the user drags the probe,
+which writes only display coordinates. Probe elements do not change electrical
+connectivity or replace the analog probe expression that drives runtime
+waveforms, assertions, and reports.
 
 Sketch wire-route handles and active wire-mode bend clicks are schematic display
 metadata only. Completing a multi-bend wire, dragging, inserting, deleting, or

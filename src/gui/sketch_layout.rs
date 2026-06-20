@@ -190,7 +190,7 @@ pub(super) fn layout_sketch_graph(rect: egui::Rect, snapshot: &ProjectSnapshot) 
         }
     }
 
-    let probe_badges = layout_probe_badges(snapshot, &nodes);
+    let probe_badges = layout_probe_badges(snapshot, rect, &nodes, &pin_anchors, &edges);
 
     if snapshot.components_detail.len() > component_count {
         push_overflow_hint(
@@ -568,6 +568,7 @@ fn transform_sketch_graph(graph: &mut SketchGraph, canvas: egui::Rect, viewport:
     }
     for badge in &mut graph.probe_badges {
         badge.rect = transform_viewport_rect(badge.rect, canvas, viewport);
+        badge.anchor = transform_viewport_pos(badge.anchor, canvas, viewport);
     }
 }
 

@@ -108,15 +108,16 @@ source-filtered Open Snapshots routing, and
 direct Scopes trace-open,
 compare pin/unpin/clear/named-save/load/delete, and Open Compare actions for loaded schematic targets.
 `src/gui/sketch_canvas_tools.rs` owns helper actions for active multi-bend wire
-drawing, direct wire-route edits, component placement orientation controls,
-selected-component orientation transforms, canvas probe defaults, and viewport
-pan/zoom input.
+drawing, direct wire-route edits, persisted probe-element moves, component
+placement orientation controls, selected-component orientation transforms,
+canvas probe defaults, and viewport pan/zoom input.
 `src/gui/sketch_probes.rs` owns schematic voltage/current/power probe element
 projection over analog probes plus validated `board.schematic.probe_elements`
-upserts. Probe elements are display metadata: they record the placed
-node/pin/wire attachment and schematic target, while the analog scenario probe
-remains the source of truth for solver expressions, waveform columns,
-assertions, and reports.
+upserts and display-position edits. Probe elements are display metadata: they
+record the placed node/pin/wire attachment, schematic target, optional
+component-pin source, and optional manual `x`/`y` placement, while the analog
+scenario probe remains the source of truth for solver expressions, waveform
+columns, assertions, and reports.
 `src/gui/sketch_scope_feedback.rs` owns armed scope-probe hover target
 projection, valid/invalid feedback geometry, and canvas feedback painting for
 the V/I/P scope placement tools. Canvas-hover V/I/P shortcuts are handled by
@@ -463,8 +464,11 @@ Schematic probe elements are derived in `src/gui/sketch_probes.rs` from existing
 analog scenario probes: voltage expressions attach to Board IR nets through
 `analog.node_bindings`, while current and power expressions attach to
 components only when their `I(...)` branch maps to a generated/source branch
-name CircuitCI can prove. Probe assertion-status markers are derived from the
-latest loaded `ValidationReport`, not from live simulation state. A probe element is
+name CircuitCI can prove. Persisted `pin` attachments anchor to the matching
+rendered component pin, persisted `wire` attachments anchor to the matching
+component-pin-to-net edge, and a stored `x`/`y` position overrides both so users
+can drag probes as normal schematic elements. Probe assertion-status markers
+are derived from the latest loaded `ValidationReport`, not from live simulation state. A probe element is
 unasserted when no Board IR assertion references its probe, unknown when no
 report is loaded or the scenario had a non-assertion failure, failed when a
 report finding names one of the probe's assertions, and passed only when the
