@@ -32,6 +32,8 @@ struct SchematicDefaultLayout {
 struct SchematicFlowLayout {
     component_ranks: std::collections::BTreeMap<String, usize>,
     net_ranks: std::collections::BTreeMap<String, usize>,
+    component_orders: std::collections::BTreeMap<String, usize>,
+    net_orders: std::collections::BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -664,7 +666,7 @@ fn schematic_default_layout(
         .collect::<std::collections::BTreeMap<_, _>>();
     let flow = schematic_flow_layout(snapshot, &net_kinds);
 
-    let mut source_row = 0usize;
+    let mut source_rows = std::collections::BTreeMap::<usize, usize>::new();
     let mut rank_rows = std::collections::BTreeMap::<usize, usize>::new();
     let mut signal_fallback_col = 0usize;
     let mut block_row = 0usize;
@@ -682,8 +684,8 @@ fn schematic_default_layout(
                 .copied()
                 .unwrap_or(0);
             let x = schematic_rank_x(left, right, size.x, rank);
-            let y = signal_y - size.y * 0.5 + source_row as f32 * (size.y + 12.0);
-            source_row += 1;
+            let row = component_rank_row(&flow, &mut source_rows, &component.id, rank);
+            let y = signal_y - size.y * 0.5 + row as f32 * (size.y + 12.0);
             egui::pos2(x, y)
         } else if is_ground_shunt_component(component, &net_kinds) {
             let rank = component_signal_rank(component, &flow, &net_kinds)
@@ -692,7 +694,7 @@ fn schematic_default_layout(
                     signal_fallback_col += 1;
                     signal_fallback_col
                 });
-            let row = next_rank_row(&mut rank_rows, rank);
+            let row = component_rank_row(&flow, &mut rank_rows, &component.id, rank);
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(
                 x,
@@ -705,7 +707,7 @@ fn schematic_default_layout(
                     signal_fallback_col += 1;
                     signal_fallback_col
                 });
-            let row = next_rank_row(&mut rank_rows, rank);
+            let row = component_rank_row(&flow, &mut rank_rows, &component.id, rank);
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(
                 x,
@@ -721,11 +723,11 @@ fn schematic_default_layout(
                     signal_fallback_col += 1;
                     signal_fallback_col
                 });
-            let row = next_rank_row(&mut rank_rows, rank);
+            let row = component_rank_row(&flow, &mut rank_rows, &component.id, rank);
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(x, signal_y - size.y * 0.5 + row as f32 * (size.y + 12.0))
         } else if let Some(rank) = flow.component_ranks.get(&component.id).copied() {
-            let row = next_rank_row(&mut rank_rows, rank);
+            let row = component_rank_row(&flow, &mut rank_rows, &component.id, rank);
             let y = signal_y - size.y * 0.5 + row as f32 * (size.y + 16.0);
             let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(x, y)
@@ -778,8 +780,12 @@ fn schematic_default_layout(
                 .get(&net.id)
                 .map(|rank| schematic_rank_x(left, right, size.x, *rank))
                 .unwrap_or(connected_x - size.x * 0.5);
-            let x = ranked_x + signal_index as f32 * 10.0;
-            signal_index += 1;
+            let lane = flow.net_orders.get(&net.id).copied().unwrap_or_else(|| {
+                let lane = signal_index;
+                signal_index += 1;
+                lane
+            });
+            let x = ranked_x + lane as f32 * 10.0;
             egui::pos2(
                 clamp_schematic_x(x, left, right - size.x),
                 (signal_y - size.y - 26.0).max(top_rail_y + 42.0),
@@ -812,6 +818,21 @@ fn next_rank_row(rows: &mut std::collections::BTreeMap<usize, usize>, rank: usiz
     let value = *row;
     *row += 1;
     value
+}
+
+fn component_rank_row(
+    flow: &SchematicFlowLayout,
+    rows: &mut std::collections::BTreeMap<usize, usize>,
+    component_id: &str,
+    rank: usize,
+) -> usize {
+    if let Some(order) = flow.component_orders.get(component_id).copied() {
+        let row = rows.entry(rank).or_insert(0);
+        *row = (*row).max(order.saturating_add(1));
+        order
+    } else {
+        next_rank_row(rows, rank)
+    }
 }
 
 fn schematic_flow_layout(
@@ -897,7 +918,159 @@ fn schematic_flow_layout(
         }
     }
 
+    assign_barycentric_lane_orders(snapshot, net_kinds, &mut flow);
     flow
+}
+
+fn assign_barycentric_lane_orders(
+    snapshot: &ProjectSnapshot,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+    flow: &mut SchematicFlowLayout,
+) {
+    let component_index = snapshot
+        .components_detail
+        .iter()
+        .enumerate()
+        .map(|(index, component)| (component.id.as_str(), index))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let net_index = snapshot
+        .nets_detail
+        .iter()
+        .enumerate()
+        .map(|(index, net)| (net.id.as_str(), index))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    flow.component_orders = initial_rank_orders(&flow.component_ranks, &component_index);
+    flow.net_orders = initial_rank_orders(&flow.net_ranks, &net_index);
+    for _ in 0..4 {
+        flow.component_orders = barycentric_component_orders(
+            snapshot,
+            net_kinds,
+            &flow.component_ranks,
+            &flow.net_orders,
+            &component_index,
+        );
+        flow.net_orders = barycentric_net_orders(
+            snapshot,
+            &flow.net_ranks,
+            &flow.component_orders,
+            &net_index,
+        );
+    }
+}
+
+fn initial_rank_orders(
+    ranks: &std::collections::BTreeMap<String, usize>,
+    original_index: &std::collections::BTreeMap<&str, usize>,
+) -> std::collections::BTreeMap<String, usize> {
+    let mut by_rank = std::collections::BTreeMap::<usize, Vec<&str>>::new();
+    for (id, rank) in ranks {
+        by_rank.entry(*rank).or_default().push(id.as_str());
+    }
+    let mut orders = std::collections::BTreeMap::new();
+    for ids in by_rank.values_mut() {
+        ids.sort_by_key(|id| original_index.get(id).copied().unwrap_or(usize::MAX));
+        for (order, id) in ids.iter().enumerate() {
+            orders.insert((*id).to_string(), order);
+        }
+    }
+    orders
+}
+
+fn barycentric_component_orders(
+    snapshot: &ProjectSnapshot,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+    ranks: &std::collections::BTreeMap<String, usize>,
+    net_orders: &std::collections::BTreeMap<String, usize>,
+    original_index: &std::collections::BTreeMap<&str, usize>,
+) -> std::collections::BTreeMap<String, usize> {
+    let mut by_rank = std::collections::BTreeMap::<usize, Vec<(&str, f64, usize)>>::new();
+    for component in &snapshot.components_detail {
+        let Some(rank) = ranks.get(&component.id).copied() else {
+            continue;
+        };
+        let mut sum = 0.0;
+        let mut count = 0usize;
+        for pin in &component.pins {
+            if is_power_or_ground_net(pin.net.as_str(), net_kinds) {
+                continue;
+            }
+            if let Some(order) = net_orders.get(&pin.net) {
+                sum += *order as f64;
+                count += 1;
+            }
+        }
+        let fallback = original_index
+            .get(component.id.as_str())
+            .copied()
+            .unwrap_or(usize::MAX);
+        let barycenter = if count == 0 {
+            fallback as f64
+        } else {
+            sum / count as f64
+        };
+        by_rank
+            .entry(rank)
+            .or_default()
+            .push((component.id.as_str(), barycenter, fallback));
+    }
+    rank_orders_from_barycenters(by_rank)
+}
+
+fn barycentric_net_orders(
+    snapshot: &ProjectSnapshot,
+    ranks: &std::collections::BTreeMap<String, usize>,
+    component_orders: &std::collections::BTreeMap<String, usize>,
+    original_index: &std::collections::BTreeMap<&str, usize>,
+) -> std::collections::BTreeMap<String, usize> {
+    let mut by_rank = std::collections::BTreeMap::<usize, Vec<(&str, f64, usize)>>::new();
+    for net in &snapshot.nets_detail {
+        let Some(rank) = ranks.get(&net.id).copied() else {
+            continue;
+        };
+        let mut sum = 0.0;
+        let mut count = 0usize;
+        for connection in &net.connections {
+            let Some((component_id, _)) = connection.split_once('.') else {
+                continue;
+            };
+            if let Some(order) = component_orders.get(component_id) {
+                sum += *order as f64;
+                count += 1;
+            }
+        }
+        let fallback = original_index
+            .get(net.id.as_str())
+            .copied()
+            .unwrap_or(usize::MAX);
+        let barycenter = if count == 0 {
+            fallback as f64
+        } else {
+            sum / count as f64
+        };
+        by_rank
+            .entry(rank)
+            .or_default()
+            .push((net.id.as_str(), barycenter, fallback));
+    }
+    rank_orders_from_barycenters(by_rank)
+}
+
+fn rank_orders_from_barycenters(
+    mut by_rank: std::collections::BTreeMap<usize, Vec<(&str, f64, usize)>>,
+) -> std::collections::BTreeMap<String, usize> {
+    let mut orders = std::collections::BTreeMap::new();
+    for ids in by_rank.values_mut() {
+        ids.sort_by(|left, right| {
+            left.1
+                .total_cmp(&right.1)
+                .then_with(|| left.2.cmp(&right.2))
+                .then_with(|| left.0.cmp(right.0))
+        });
+        for (order, (id, _, _)) in ids.iter().enumerate() {
+            orders.insert((*id).to_string(), order);
+        }
+    }
+    orders
 }
 
 fn insert_min_rank(

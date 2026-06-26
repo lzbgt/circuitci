@@ -129,6 +129,133 @@ fn layout_test_snapshot() -> ProjectSnapshot {
     }
 }
 
+fn crossing_reduction_snapshot() -> ProjectSnapshot {
+    ProjectSnapshot {
+        name: "crossing_reduction".to_string(),
+        components: 4,
+        nets: 3,
+        scenarios: 0,
+        libraries: Vec::new(),
+        components_detail: vec![
+            SketchComponent {
+                id: "VTOP".to_string(),
+                model: "generic.analog.voltage_source".to_string(),
+                part_number: None,
+                spice: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "P".to_string(),
+                        net: "top".to_string(),
+                    },
+                    SketchPin {
+                        pin: "N".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+                position: None,
+                style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
+                source_paths: Vec::new(),
+            },
+            SketchComponent {
+                id: "VBOT".to_string(),
+                model: "generic.analog.voltage_source".to_string(),
+                part_number: None,
+                spice: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "P".to_string(),
+                        net: "bottom".to_string(),
+                    },
+                    SketchPin {
+                        pin: "N".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+                position: None,
+                style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
+                source_paths: Vec::new(),
+            },
+            SketchComponent {
+                id: "RBOT".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                spice: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "A".to_string(),
+                        net: "bottom".to_string(),
+                    },
+                    SketchPin {
+                        pin: "B".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+                position: None,
+                style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
+                source_paths: Vec::new(),
+            },
+            SketchComponent {
+                id: "RTOP".to_string(),
+                model: "generic.analog.resistor".to_string(),
+                part_number: None,
+                spice: None,
+                pins: vec![
+                    SketchPin {
+                        pin: "A".to_string(),
+                        net: "top".to_string(),
+                    },
+                    SketchPin {
+                        pin: "B".to_string(),
+                        net: "gnd".to_string(),
+                    },
+                ],
+                position: None,
+                style: SketchNodeStyle::default(),
+                kicad_symbol_id: None,
+                source_paths: Vec::new(),
+            },
+        ],
+        nets_detail: vec![
+            SketchNet {
+                id: "top".to_string(),
+                kind: "analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["VTOP.P".to_string(), "RTOP.A".to_string()],
+                position: None,
+            },
+            SketchNet {
+                id: "bottom".to_string(),
+                kind: "analog".to_string(),
+                nominal_voltage: None,
+                powered: None,
+                connections: vec!["VBOT.P".to_string(), "RBOT.A".to_string()],
+                position: None,
+            },
+            SketchNet {
+                id: "gnd".to_string(),
+                kind: "ground".to_string(),
+                nominal_voltage: Some(0.0),
+                powered: None,
+                connections: vec![
+                    "VTOP.N".to_string(),
+                    "VBOT.N".to_string(),
+                    "RTOP.B".to_string(),
+                    "RBOT.B".to_string(),
+                ],
+                position: None,
+            },
+        ],
+        probes: Vec::new(),
+        wire_routes: Default::default(),
+        net_labels: Default::default(),
+        component_labels: Default::default(),
+    }
+}
+
 #[test]
 fn default_layout_uses_classical_power_signal_ground_roles() {
     let graph = layout_sketch_graph(
@@ -191,6 +318,26 @@ fn default_layout_uses_signal_flow_ranks_for_series_paths() {
     assert!(source.rect.center().x < resistor.rect.center().x);
     assert!(resistor.rect.center().x <= capacitor.rect.center().x);
     assert!(resistor.rect.center().y < capacitor.rect.center().y);
+}
+
+#[test]
+fn default_layout_reduces_parallel_branch_crossings_with_barycentric_order() {
+    let graph = layout_sketch_graph(
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+        &crossing_reduction_snapshot(),
+    );
+    let rtop = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("RTOP".to_string()))
+        .unwrap();
+    let rbot = graph
+        .nodes
+        .iter()
+        .find(|node| node.selection == SketchSelection::Component("RBOT".to_string()))
+        .unwrap();
+
+    assert!(rtop.rect.center().y < rbot.rect.center().y);
 }
 
 #[test]

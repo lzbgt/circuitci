@@ -199,9 +199,11 @@ When `board.schematic.node_positions` omits a graph item,
 `src/gui/sketch_layout.rs` may derive a classical schematic fallback position
 from a source-seeded layered circuit-flow pass: powered nets trend toward the
 top rail, ground nets toward the bottom rail, source components toward the left
-edge, series signal components/nets advance by rank left-to-right, and one-rail
-shunts land vertically between the signal lane and the rail. This fallback is
-view-only; saving a position still requires explicit schematic metadata. The
+edge, series signal components/nets advance by rank left-to-right, sibling
+branches in the same rank are ordered with a bounded barycentric sweep to reduce
+crossings, and one-rail shunts land vertically between the signal lane and the
+rail. This fallback is view-only; saving a position still requires explicit
+schematic metadata. The
 explicit Sketch `Auto Layout` action may persist the same classical placement
 into `board.schematic.node_positions` and may write standard non-default
 `board.schematic.node_styles` for textbook orientation rules such as vertical

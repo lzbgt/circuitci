@@ -101,10 +101,11 @@ persisted schematic coordinates, orthogonal wire geometry, wire hit-testing,
 and model-aware pin-anchor layout primitives. The fallback follows a
 classical schematic shape using the same graph-drawing primitives used by ELK,
 Graphviz, and OGDF: source-seeded signal-flow ranks, explicit KiCad pin-anchor
-ports, power and ground rails, and orthogonal routes. Power nets stay near the
-top rail, ground nets near the bottom rail, source components stay on the left,
-series signal-path components/nets advance left-to-right by rank, and shunts
-land vertically between signal and rail. The Sketch `Auto Layout` action
+ports, bounded barycentric ordering inside each rank to reduce sibling branch
+crossings, power and ground rails, and orthogonal routes. Power nets stay near
+the top rail, ground nets near the bottom rail, source components stay on the
+left, series signal-path components/nets advance left-to-right by rank, and
+shunts land vertically between signal and rail. The Sketch `Auto Layout` action
 persists that same classical placement into `board.schematic.node_positions`
 and writes standard two-terminal orientation metadata, including vertical
 shunts to ground and horizontal signal-path parts. It also derives display-only
