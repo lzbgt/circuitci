@@ -20,11 +20,18 @@ const MAX_SKETCH_PIN_ANCHORS_PER_COMPONENT: usize = 64;
 const SCHEMATIC_SIGNAL_Y_FRACTION: f32 = 0.38;
 const SCHEMATIC_GROUND_Y_FRACTION: f32 = 0.78;
 const SCHEMATIC_COLUMN_STEP: f32 = 150.0;
+const SCHEMATIC_LAYER_STEP: f32 = 118.0;
 
 #[derive(Debug, Default)]
 struct SchematicDefaultLayout {
     component_positions: std::collections::BTreeMap<String, egui::Pos2>,
     net_positions: std::collections::BTreeMap<String, egui::Pos2>,
+}
+
+#[derive(Debug, Default)]
+struct SchematicFlowLayout {
+    component_ranks: std::collections::BTreeMap<String, usize>,
+    net_ranks: std::collections::BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -655,10 +662,11 @@ fn schematic_default_layout(
         .iter()
         .map(|net| (net.id.as_str(), net.kind.as_str()))
         .collect::<std::collections::BTreeMap<_, _>>();
+    let flow = schematic_flow_layout(snapshot, &net_kinds);
 
     let mut source_row = 0usize;
-    let mut series_col = 0usize;
-    let mut shunt_col = 0usize;
+    let mut rank_rows = std::collections::BTreeMap::<usize, usize>::new();
+    let mut signal_fallback_col = 0usize;
     let mut block_row = 0usize;
     for component in snapshot.components_detail.iter().take(component_count) {
         let symbol = component_symbol_kind(component);
@@ -668,20 +676,59 @@ fn schematic_default_layout(
             fallback_component_size,
         );
         let position = if is_source_component(component, symbol) {
+            let rank = flow
+                .component_ranks
+                .get(&component.id)
+                .copied()
+                .unwrap_or(0);
+            let x = schematic_rank_x(left, right, size.x, rank);
             let y = signal_y - size.y * 0.5 + source_row as f32 * (size.y + 12.0);
             source_row += 1;
-            egui::pos2(left, y)
+            egui::pos2(x, y)
         } else if is_ground_shunt_component(component, &net_kinds) {
-            let x = left + SCHEMATIC_COLUMN_STEP * (shunt_col as f32 + 1.8);
-            shunt_col += 1;
+            let rank = component_signal_rank(component, &flow, &net_kinds)
+                .or_else(|| flow.component_ranks.get(&component.id).copied())
+                .unwrap_or_else(|| {
+                    signal_fallback_col += 1;
+                    signal_fallback_col
+                });
+            let row = next_rank_row(&mut rank_rows, rank);
+            let x = schematic_rank_x(left, right, size.x, rank);
             egui::pos2(
-                x.min(right - size.x),
-                (signal_y + ground_y) * 0.5 - size.y * 0.5,
+                x,
+                (signal_y + ground_y) * 0.5 - size.y * 0.5 + row as f32 * 18.0,
+            )
+        } else if is_power_shunt_component(component, &net_kinds) {
+            let rank = component_signal_rank(component, &flow, &net_kinds)
+                .or_else(|| flow.component_ranks.get(&component.id).copied())
+                .unwrap_or_else(|| {
+                    signal_fallback_col += 1;
+                    signal_fallback_col
+                });
+            let row = next_rank_row(&mut rank_rows, rank);
+            let x = schematic_rank_x(left, right, size.x, rank);
+            egui::pos2(
+                x,
+                (top_rail_y + signal_y) * 0.5 - size.y * 0.5 - row as f32 * 18.0,
             )
         } else if symbol.is_kicad_device_symbol() {
-            let x = left + SCHEMATIC_COLUMN_STEP * (series_col as f32 + 1.5);
-            series_col += 1;
-            egui::pos2(x.min(right - size.x), signal_y - size.y * 0.5)
+            let rank = flow
+                .component_ranks
+                .get(&component.id)
+                .copied()
+                .or_else(|| component_signal_rank(component, &flow, &net_kinds))
+                .unwrap_or_else(|| {
+                    signal_fallback_col += 1;
+                    signal_fallback_col
+                });
+            let row = next_rank_row(&mut rank_rows, rank);
+            let x = schematic_rank_x(left, right, size.x, rank);
+            egui::pos2(x, signal_y - size.y * 0.5 + row as f32 * (size.y + 12.0))
+        } else if let Some(rank) = flow.component_ranks.get(&component.id).copied() {
+            let row = next_rank_row(&mut rank_rows, rank);
+            let y = signal_y - size.y * 0.5 + row as f32 * (size.y + 16.0);
+            let x = schematic_rank_x(left, right, size.x, rank);
+            egui::pos2(x, y)
         } else {
             let y = signal_y - size.y * 0.5 + block_row as f32 * (size.y + 16.0);
             let x = left + SCHEMATIC_COLUMN_STEP * 1.5;
@@ -726,7 +773,12 @@ fn schematic_default_layout(
             ground_index += 1;
             egui::pos2(clamp_schematic_x(x, left, right - size.x), ground_y)
         } else {
-            let x = connected_x + signal_index as f32 * 10.0 - size.x * 0.5;
+            let ranked_x = flow
+                .net_ranks
+                .get(&net.id)
+                .map(|rank| schematic_rank_x(left, right, size.x, *rank))
+                .unwrap_or(connected_x - size.x * 0.5);
+            let x = ranked_x + signal_index as f32 * 10.0;
             signal_index += 1;
             egui::pos2(
                 clamp_schematic_x(x, left, right - size.x),
@@ -745,6 +797,149 @@ fn clamp_schematic_x(x: f32, left: f32, right: f32) -> f32 {
     } else {
         x.clamp(left, right)
     }
+}
+
+fn schematic_rank_x(left: f32, right: f32, width: f32, rank: usize) -> f32 {
+    clamp_schematic_x(
+        left + SCHEMATIC_LAYER_STEP * rank as f32,
+        left,
+        right - width,
+    )
+}
+
+fn next_rank_row(rows: &mut std::collections::BTreeMap<usize, usize>, rank: usize) -> usize {
+    let row = rows.entry(rank).or_insert(0);
+    let value = *row;
+    *row += 1;
+    value
+}
+
+fn schematic_flow_layout(
+    snapshot: &ProjectSnapshot,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> SchematicFlowLayout {
+    let component_by_id = snapshot
+        .components_detail
+        .iter()
+        .map(|component| (component.id.as_str(), component))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let net_by_id = snapshot
+        .nets_detail
+        .iter()
+        .map(|net| (net.id.as_str(), net))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let mut flow = SchematicFlowLayout::default();
+    let mut queue = std::collections::VecDeque::<(String, usize)>::new();
+
+    for component in &snapshot.components_detail {
+        let symbol = component_symbol_kind(component);
+        if !is_source_component(component, symbol) {
+            continue;
+        }
+        insert_min_rank(&mut flow.component_ranks, component.id.clone(), 0);
+        for pin in &component.pins {
+            if is_power_or_ground_net(pin.net.as_str(), net_kinds) {
+                continue;
+            }
+            if insert_min_rank(&mut flow.net_ranks, pin.net.clone(), 1) {
+                queue.push_back((pin.net.clone(), 1));
+            }
+        }
+    }
+
+    if queue.is_empty()
+        && snapshot
+            .components_detail
+            .iter()
+            .any(|component| component_symbol_kind(component).is_kicad_device_symbol())
+        && let Some(net) = snapshot
+            .nets_detail
+            .iter()
+            .find(|net| !is_power_net(net) && !is_ground_net(net))
+    {
+        insert_min_rank(&mut flow.net_ranks, net.id.clone(), 1);
+        queue.push_back((net.id.clone(), 1));
+    }
+
+    while let Some((net_id, net_rank)) = queue.pop_front() {
+        let Some(net) = net_by_id.get(net_id.as_str()) else {
+            continue;
+        };
+        for connection in &net.connections {
+            let Some((component_id, _)) = connection.split_once('.') else {
+                continue;
+            };
+            let Some(component) = component_by_id.get(component_id) else {
+                continue;
+            };
+            let symbol = component_symbol_kind(component);
+            let component_rank = if is_source_component(component, symbol) {
+                0
+            } else {
+                net_rank.saturating_add(1)
+            };
+            insert_min_rank(
+                &mut flow.component_ranks,
+                component.id.clone(),
+                component_rank,
+            );
+            for pin in &component.pins {
+                if pin.net == net_id || is_power_or_ground_net(pin.net.as_str(), net_kinds) {
+                    continue;
+                }
+                let next_rank = component_rank.saturating_add(1);
+                if next_rank <= 24
+                    && insert_min_rank(&mut flow.net_ranks, pin.net.clone(), next_rank)
+                {
+                    queue.push_back((pin.net.clone(), next_rank));
+                }
+            }
+        }
+    }
+
+    flow
+}
+
+fn insert_min_rank(
+    ranks: &mut std::collections::BTreeMap<String, usize>,
+    id: String,
+    rank: usize,
+) -> bool {
+    match ranks.get_mut(&id) {
+        Some(existing) if rank < *existing => {
+            *existing = rank;
+            true
+        }
+        Some(_) => false,
+        None => {
+            ranks.insert(id, rank);
+            true
+        }
+    }
+}
+
+fn component_signal_rank(
+    component: &SketchComponent,
+    flow: &SchematicFlowLayout,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> Option<usize> {
+    component
+        .pins
+        .iter()
+        .filter(|pin| !is_power_or_ground_net(pin.net.as_str(), net_kinds))
+        .filter_map(|pin| flow.net_ranks.get(&pin.net).copied())
+        .min()
+}
+
+fn is_power_or_ground_net(
+    net_id: &str,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> bool {
+    let kind = net_kinds.get(net_id).copied().unwrap_or("");
+    is_ground_kind(kind)
+        || net_id.eq_ignore_ascii_case("gnd")
+        || net_id == "0"
+        || kind.eq_ignore_ascii_case("power")
 }
 
 fn is_source_component(component: &SketchComponent, symbol: SketchSymbolKind) -> bool {
@@ -776,6 +971,25 @@ fn is_ground_shunt_component(
         })
         .count();
     ground_pins == 1
+}
+
+fn is_power_shunt_component(
+    component: &SketchComponent,
+    net_kinds: &std::collections::BTreeMap<&str, &str>,
+) -> bool {
+    if component.pins.len() != 2 {
+        return false;
+    }
+    let power_pins = component
+        .pins
+        .iter()
+        .filter(|pin| {
+            net_kinds
+                .get(pin.net.as_str())
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("power"))
+        })
+        .count();
+    power_pins == 1
 }
 
 fn classical_component_style(
@@ -1450,6 +1664,33 @@ mod tests {
         assert!(source.rect.center().x < resistor.rect.center().x);
         assert!(power.rect.center().y < signal.rect.center().y);
         assert!(signal.rect.center().y < ground.rect.center().y);
+    }
+
+    #[test]
+    fn default_layout_uses_signal_flow_ranks_for_series_paths() {
+        let graph = layout_sketch_graph(
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(720.0, 420.0)),
+            &layout_test_snapshot(),
+        );
+        let source = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("V1".to_string()))
+            .unwrap();
+        let resistor = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("R1".to_string()))
+            .unwrap();
+        let capacitor = graph
+            .nodes
+            .iter()
+            .find(|node| node.selection == SketchSelection::Component("C1".to_string()))
+            .unwrap();
+
+        assert!(source.rect.center().x < resistor.rect.center().x);
+        assert!(resistor.rect.center().x <= capacitor.rect.center().x);
+        assert!(resistor.rect.center().y < capacitor.rect.center().y);
     }
 
     #[test]

@@ -7,9 +7,10 @@ This fixture is a GUI scope workflow smoke test for a typical NE555 astable appl
 `project.yaml` is the portable, direct-open Board IR version of the same deck.
 It keeps `deck.cir` as the solver source, uses relative paths, and names the
 schematic nets `out`, `timing`, `vcc`, and `gnd` for easier GUI inspection.
-It also includes display-only schematic wire-route waypoints so the Sketch view
-opens as a connected, readable circuit; electrical connectivity still comes
-from the component pin-to-net bindings and the file-backed SPICE deck.
+It also includes display-only KiCad symbol bindings, textbook orientation
+metadata, and schematic wire-route waypoints so the Sketch view opens as a
+connected, readable circuit; electrical connectivity still comes from the
+component pin-to-net bindings and the file-backed SPICE deck.
 
 Expected workflow:
 
@@ -17,8 +18,8 @@ Expected workflow:
    Import stage with `Use NE555 Astable` / `Import NE555`.
 2. Use `Run + Scopes` or Scopes `Run`; Auto-before-Run should keep useful V/I
    probes available.
-3. Inspect `v(out)`, `v(timing)`, and supply/load current traces, including the
-   Scope Activity overlay on the schematic.
+3. Inspect `v(out)`, `v(timing)`, and supply/load current traces in Scopes or
+   the closeable Scope Activity window from Sketch.
 
 The same deck can still be imported headlessly with `circuitci import-spice`.
 

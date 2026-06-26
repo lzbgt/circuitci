@@ -12,6 +12,18 @@ libraries:
 
 board:
   schematic:
+    component_symbols:
+      VCC: Simulation_SPICE:VDC
+      VOUT: Simulation_SPICE:VPULSE
+      RTIM: Device:R
+      CTIM: Device:C
+      RLOAD: Device:R
+    node_styles:
+      component:VCC: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:VOUT: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RTIM: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:CTIM: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
       component:VCC: { x: -220.0, y: -160.0 }
       component:VOUT: { x: -220.0, y: 20.0 }

@@ -16,11 +16,12 @@ Expected workflow:
 
 1. Open `project.yaml` from the GUI `Examples` menu.
 2. Use `Run + Scopes` to validate and open waveform inspection.
-3. Compare `v(input)`, `v(filtered)`, and `i(VSIN)` in Scopes or the Scope
-   Activity overlay.
+3. Compare `v(input)`, `v(filtered)`, and `i(VSIN)` in Scopes or the closeable
+   Scope Activity window from Sketch.
 
 This fixture intentionally keeps the sine source in the file-backed deck while
 the Board IR shell provides a connected schematic and named probes for GUI work.
-The direct-open project includes display-only schematic wire-route waypoints so
-the Sketch canvas opens as a readable source-resistor-capacitor network without
-changing the SPICE deck or the component pin-to-net connectivity model.
+The direct-open project includes display-only KiCad symbol bindings, textbook
+orientation metadata, and schematic wire-route waypoints so the Sketch canvas
+opens as a readable source-resistor-capacitor network without changing the
+SPICE deck or the component pin-to-net connectivity model.

@@ -177,13 +177,14 @@ impl CircuitCiApp {
         }
         self.stage = Stage::Sketch;
         self.sketch_runtime_scope_overlay_visible = true;
+        self.sketch_scope_activity_window_open = true;
         if self.waveforms.is_empty() {
             self.status =
-                "Scope Activity is visible; run validation to load waveform traces.".to_string();
+                "Scope Activity window opened; run validation to load waveform traces.".to_string();
         } else {
-            self.status = "Opened Scope Activity on the schematic.".to_string();
+            self.status = "Opened the floating Scope Activity window.".to_string();
         }
-        self.push_diagnostic("Example workflow opened the Scope Activity schematic overlay.");
+        self.push_diagnostic("Example workflow opened the floating Scope Activity window.");
         true
     }
 
@@ -409,6 +410,7 @@ impl CircuitCiApp {
                 self.sketch_component_inline_edit = None;
                 self.sketch_component_label_drag = None;
                 self.sketch_probe_element_drag = None;
+                self.sketch_scope_activity_window_open = false;
                 self.sketch_selection_box_drag = None;
                 self.sketch_selection_lasso_drag = None;
                 self.clear_project_yaml_history();

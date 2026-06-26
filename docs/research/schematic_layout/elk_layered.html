@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>ELK Layered</title>
+
+	<link rel="stylesheet" href="/docgen/css/main.css">
+	<link rel="canonical" href="http://DAGobertGans.github.io/docgen/_pages/org-eclipse-elk-layered.html">
+	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,700,800,600' rel='stylesheet' type='text/css'>
+	<link href='https://fonts.googleapis.com/css?family=Muli:400,300' rel='stylesheet' type='text/css'>
+	<link rel="icon" type="image/png" href="/docgen/favicon.png">
+
+</head> 
+
+
+<body>
+<div class="flex-container">
+	<header>
+	<h1><a href="/docgen/">Eclipse Layout Kernel Documentation</a></h1>
+</header>
+ 
+
+	
+	<div class="flex-top-nav">
+	
+	    <nav>
+
+	        <ul>
+	            
+	                                                                                                                                                                                                                                                                                                                                                                                                         
+	                     
+	                                                 
+	               
+	            <li><a  href="/docgen/_pages/org-eclipse-elk-layered-nodePlacement-bk.html">Groups</a></li>
+	            <li><a  href="/docgen/_pages/org-eclipse-elk-insideSelfLoops-activate.html">Options</a></li>
+	            <li><a class="active" href="/docgen/_pages/org-eclipse-elk-box.html">Algorithms</a></li>
+	            <li><a  href="/docgen/_elk-wiki/01_Home.html">Wiki</a></li>
+	        </ul>
+	    </nav>
+	</div>
+	
+	<aside>
+	<div class="flex-nav">
+		<nav>
+		    <input type="checkbox" id="menu-toggle">
+            <label for="menu-toggle" class="label-toggle"></label>
+            </input>
+			<ul>
+			    
+				                                   
+				<li><a  href="/docgen/_pages/org-eclipse-elk-box.html">Box Layout</a></li>
+				    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-graphviz-circo.html">Circo</a></li>
+				                                        
+				<li><a  href="/docgen/_pages/org-eclipse-elk-graphviz-dot.html">Dot</a></li>
+				    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-conn-gmf-layouter-Draw2D.html">Draw2D Layout</a></li>
+				    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-force.html">ELK Force</a></li>
+				  
+				<li><a class="active" href="/docgen/_pages/org-eclipse-elk-layered.html">ELK Layered</a></li>
+				    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-mrtree.html">ELK Mr. Tree</a></li>
+				  
+				<li><a  href="/docgen/_pages/org-eclipse-elk-stress.html">ELK Stress</a></li>
+				                                    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-graphviz-fdp.html">FDP</a></li>
+				        
+				<li><a  href="/docgen/_pages/org-eclipse-elk-fixed.html">Fixed Layout</a></li>
+				                                                                                                                    
+				<li><a  href="/docgen/_pages/org-eclipse-elk-graphviz-neato.html">Neato</a></li>
+				                                                                      
+				<li><a  href="/docgen/_pages/org-eclipse-elk-random.html">Randomizer</a></li>
+				                                  
+				<li><a  href="/docgen/_pages/org-eclipse-elk-graphviz-twopi.html">Twopi</a></li>
+				                                                                           
+			</ul>
+		</nav>
+	</div>
+</aside>
+
+<div class="flex-main">
+	<main>
+		<article>
+            <h2 id="elk-layered">ELK Layered</h2>
+
+<p><img src="images/org-eclipse-elk-layered_preview_layered.png" alt="" /><br />
+<strong>Identifier:</strong> org.eclipse.elk.layered<br />
+<strong>Meta Data Provider:</strong> properties.LayeredMetaDataProvider</p>
+
+<h3 id="description">Description</h3>
+
+<p>Layer-based algorithm provided by the Eclipse Layout Kernel. Arranges as many edges as possible into one direction by placing nodes into subsequent layers. This implementation supports different routing styles (straight, orthogonal, splines); if orthogonal routing is selected, arbitrary port constraints are respected, thus enabling the layout of block diagrams such as actor-oriented models or circuit schematics. Furthermore, full layout of compound graphs with cross-hierarchy edges is supported when the respective option is activated on the top level.</p>
+
+<h2 id="category-layered">Category: Layered</h2>
+
+<p>The layer-based method was introduced by Sugiyama, Tagawa and Toda in 1981. It emphasizes the direction of edges by pointing as many edges as possible into the same direction. The nodes are arranged in layers, which are sometimes called “hierarchies”, and then reordered such that the number of edge crossings is minimized. Afterwards, concrete coordinates are computed for the nodes and edge bend points.</p>
+
+<h2 id="supported-graph-features">Supported Graph Features</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Self Loops</td>
+      <td>Edges connecting a node with itself.</td>
+    </tr>
+    <tr>
+      <td>Inside Self Loops</td>
+      <td>Self-loops routed through a node instead of around it.</td>
+    </tr>
+    <tr>
+      <td>Multi Edges</td>
+      <td>Multiple edges with the same source and target node.</td>
+    </tr>
+    <tr>
+      <td>Edge Labels</td>
+      <td>Labels that are associated with edges.</td>
+    </tr>
+    <tr>
+      <td>Ports</td>
+      <td>Edges are connected to nodes over ports.</td>
+    </tr>
+    <tr>
+      <td>Compound</td>
+      <td>Edges that connect nodes from different hierarchy levels and are incident to compound nodes.</td>
+    </tr>
+    <tr>
+      <td>Clusters</td>
+      <td>Edges that connect nodes from different clusters, but not the cluster parent nodes.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="supported-options">Supported Options</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Type</th>
+      <th>Default Value</th>
+      <th>Identifier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="org-eclipse-elk-insideSelfLoops-activate">Activate Inside Self Loops</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.insideSelfLoops​.activate</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-unnecessaryBendpoints">Add Unnecessary Bendpoints</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.unnecessaryBendpoints</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-alignment">Alignment</a></td>
+      <td><code class="highlighter-rouge">Alignment</code></td>
+      <td><code class="highlighter-rouge">Alignment.AUTOMATIC</code></td>
+      <td>org​.eclipse​.elk​.alignment</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-aspectRatio">Aspect Ratio</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">1.6f</code></td>
+      <td>org​.eclipse​.elk​.aspectRatio</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-nodePlacement-bk-edgeStraightening">BK Edge Straightening</a></td>
+      <td><code class="highlighter-rouge">EdgeStraighteningStrategy</code></td>
+      <td><code class="highlighter-rouge">EdgeStraighteningStrategy.IMPROVE_STRAIGHTNESS</code></td>
+      <td>org​.eclipse​.elk​.layered​.nodePlacement​.bk​.edgeStraightening</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-nodePlacement-bk-fixedAlignment">BK Fixed Alignment</a></td>
+      <td><code class="highlighter-rouge">FixedAlignment</code></td>
+      <td><code class="highlighter-rouge">FixedAlignment.NONE</code></td>
+      <td>org​.eclipse​.elk​.layered​.nodePlacement​.bk​.fixedAlignment</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-commentBox">Comment Box</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.commentBox</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-componentComponent">Components Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">12f</code></td>
+      <td>org​.eclipse​.elk​.spacing​.componentComponent</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-compaction-connectedComponents">Connected Components Compaction</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.compaction​.connectedComponents</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-contentAlignment">Content Alignment</a></td>
+      <td><code class="highlighter-rouge">EnumSet&lt;ContentAlignment&gt;</code></td>
+      <td><code class="highlighter-rouge">EnumSet.noneOf(ContentAlignment)</code></td>
+      <td>org​.eclipse​.elk​.layered​.contentAlignment</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-crossingMinimization-strategy">Crossing Minimization Strategy</a></td>
+      <td><code class="highlighter-rouge">CrossingMinimizationStrategy</code></td>
+      <td><code class="highlighter-rouge">CrossingMinimizationStrategy.LAYER_SWEEP</code></td>
+      <td>org​.eclipse​.elk​.layered​.crossingMinimization​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-cycleBreaking-strategy">Cycle Breaking Strategy</a></td>
+      <td><code class="highlighter-rouge">CycleBreakingStrategy</code></td>
+      <td><code class="highlighter-rouge">CycleBreakingStrategy.GREEDY</code></td>
+      <td>org​.eclipse​.elk​.layered​.cycleBreaking​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-debugMode">Debug Mode</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.debugMode</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-direction">Direction</a></td>
+      <td><code class="highlighter-rouge">Direction</code></td>
+      <td><code class="highlighter-rouge">Direction.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.direction</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-priority-direction">Direction Priority</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.layered​.priority​.direction</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-distributeNodes">Distribute Nodes (Deprecated)</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.distributeNodes</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-spacing-edgeEdgeBetweenLayers">Edge Edge Between Layer Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">10</code></td>
+      <td>org​.eclipse​.elk​.layered​.spacing​.edgeEdgeBetweenLayers</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-edgeLabels-placement">Edge Label Placement</a></td>
+      <td><code class="highlighter-rouge">EdgeLabelPlacement</code></td>
+      <td><code class="highlighter-rouge">EdgeLabelPlacement.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.edgeLabels​.placement</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-edgeCenterLabelPlacementStrategy">Edge Label Placement Strategy</a></td>
+      <td><code class="highlighter-rouge">EdgeLabelPlacementStrategy</code></td>
+      <td><code class="highlighter-rouge">EdgeLabelPlacementStrategy.CENTER</code></td>
+      <td>org​.eclipse​.elk​.layered​.edgeCenterLabelPlacementStrategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-edgeLabelSideSelection">Edge Label Side Selection</a></td>
+      <td><code class="highlighter-rouge">EdgeLabelSideSelection</code></td>
+      <td><code class="highlighter-rouge">EdgeLabelSideSelection.ALWAYS_DOWN</code></td>
+      <td>org​.eclipse​.elk​.layered​.edgeLabelSideSelection</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-edgeLabel">Edge Label Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">5</code></td>
+      <td>org​.eclipse​.elk​.spacing​.edgeLabel</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-spacing-edgeNodeBetweenLayers">Edge Node Between Layers Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">10</code></td>
+      <td>org​.eclipse​.elk​.layered​.spacing​.edgeNodeBetweenLayers</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-edgeNode">Edge Node Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">10</code></td>
+      <td>org​.eclipse​.elk​.spacing​.edgeNode</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-edgeRouting">Edge Routing</a></td>
+      <td><code class="highlighter-rouge">EdgeRouting</code></td>
+      <td><code class="highlighter-rouge">EdgeRouting.ORTHOGONAL</code></td>
+      <td>org​.eclipse​.elk​.edgeRouting</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-edgeEdge">Edge Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">10</code></td>
+      <td>org​.eclipse​.elk​.spacing​.edgeEdge</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-edge-thickness">Edge Thickness</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">1</code></td>
+      <td>org​.eclipse​.elk​.edge​.thickness</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-nodePlacement-favorStraightEdges">Favor Straight Edges Over Balancing</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.layered​.nodePlacement​.favorStraightEdges</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-feedbackEdges">Feedback Edges</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.feedbackEdges</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-crossingMinimization-greedySwitch-activationThreshold">Greedy Switch Activation Threshold</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">40</code></td>
+      <td>org​.eclipse​.elk​.layered​.crossingMinimization​.greedySwitch​.activationThreshold</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-crossingMinimization-greedySwitch-type">Greedy Switch Crossing Minimization</a></td>
+      <td><code class="highlighter-rouge">GreedySwitchType</code></td>
+      <td><code class="highlighter-rouge">GreedySwitchType.TWO_SIDED</code></td>
+      <td>org​.eclipse​.elk​.layered​.crossingMinimization​.greedySwitch​.type</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-crossingMinimization-hierarchicalSweepiness">Hierarchical Sweepiness</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0.1</code></td>
+      <td>org​.eclipse​.elk​.layered​.crossingMinimization​.hierarchicalSweepiness</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-hierarchyHandling">Hierarchy Handling</a></td>
+      <td><code class="highlighter-rouge">HierarchyHandling</code></td>
+      <td><code class="highlighter-rouge">HierarchyHandling.INHERIT</code></td>
+      <td>org​.eclipse​.elk​.hierarchyHandling</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-highDegreeNodes-treeHeight">High Degree Node Maximum Tree Height</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">5</code></td>
+      <td>org​.eclipse​.elk​.layered​.highDegreeNodes​.treeHeight</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-highDegreeNodes-threshold">High Degree Node Threshold</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">16</code></td>
+      <td>org​.eclipse​.elk​.layered​.highDegreeNodes​.threshold</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-highDegreeNodes-treatment">High Degree Node Treatment</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.highDegreeNodes​.treatment</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-hypernode">Hypernode</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.hypernode</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-individualOverride(org.eclipse.elk.layered)">Individual Spacing Override</a></td>
+      <td><code class="highlighter-rouge">IndividualSpacings</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.spacing​.individualOverride</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-insideSelfLoops-yo">Inside Self Loop</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.insideSelfLoops​.yo</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-interactiveReferencePoint">Interactive Reference Point</a></td>
+      <td><code class="highlighter-rouge">InteractiveReferencePoint</code></td>
+      <td><code class="highlighter-rouge">InteractiveReferencePoint.CENTER</code></td>
+      <td>org​.eclipse​.elk​.layered​.interactiveReferencePoint</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-junctionPoints">Junction Points</a></td>
+      <td><code class="highlighter-rouge">KVectorChain</code></td>
+      <td><code class="highlighter-rouge">new KVectorChain()</code></td>
+      <td>org​.eclipse​.elk​.junctionPoints</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-labelNode">Label Node Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">5</code></td>
+      <td>org​.eclipse​.elk​.spacing​.labelNode</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-labelPort">Label Port Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">5</code></td>
+      <td>org​.eclipse​.elk​.spacing​.labelPort</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-labelLabel">Label Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.spacing​.labelLabel</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-coffmanGraham-layerBound">Layer Bound</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">Integer.MAX_VALUE</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.coffmanGraham​.layerBound</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-layerConstraint">Layer Constraint</a></td>
+      <td><code class="highlighter-rouge">LayerConstraint</code></td>
+      <td><code class="highlighter-rouge">LayerConstraint.NONE</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.layerConstraint</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layoutHierarchy">Layout Hierarchy</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layoutHierarchy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-partitioning-partition">Layout Partition</a></td>
+      <td><code class="highlighter-rouge">Integer</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.partitioning​.partition</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-partitioning-activate">Layout Partitioning</a></td>
+      <td><code class="highlighter-rouge">Boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.partitioning​.activate</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-nodePlacement-linearSegments-deflectionDampening">Linear Segments Deflection Dampening</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0.3</code></td>
+      <td>org​.eclipse​.elk​.layered​.nodePlacement​.linearSegments​.deflectionDampening</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-margins">Margins</a></td>
+      <td><code class="highlighter-rouge">ElkMargin</code></td>
+      <td><code class="highlighter-rouge">new ElkMargin()</code></td>
+      <td>org​.eclipse​.elk​.margins</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-nodePromotion-maxIterations">Max Node Promotion Iterations</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.nodePromotion​.maxIterations</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-mergeEdges">Merge Edges</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.mergeEdges</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-mergeHierarchyEdges">Merge Hierarchy-Crossing Edges</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">true</code></td>
+      <td>org​.eclipse​.elk​.layered​.mergeHierarchyEdges</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeSize-minHeight">Minimum Height</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.nodeSize​.minHeight</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeSize-minWidth">Minimum Width</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.nodeSize​.minWidth</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-noLayout">No Layout</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.noLayout</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeLabels-placement">Node Label Placement</a></td>
+      <td><code class="highlighter-rouge">EnumSet&lt;NodeLabelPlacement&gt;</code></td>
+      <td><code class="highlighter-rouge">NodeLabelPlacement.fixed()</code></td>
+      <td>org​.eclipse​.elk​.nodeLabels​.placement</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-strategy">Node Layering Strategy</a></td>
+      <td><code class="highlighter-rouge">LayeringStrategy</code></td>
+      <td><code class="highlighter-rouge">LayeringStrategy.NETWORK_SIMPLEX</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-spacing-nodeNodeBetweenLayers">Node Node Between Layers Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">20</code></td>
+      <td>org​.eclipse​.elk​.layered​.spacing​.nodeNodeBetweenLayers</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-nodePlacement-strategy">Node Placement Strategy</a></td>
+      <td><code class="highlighter-rouge">NodePlacementStrategy</code></td>
+      <td><code class="highlighter-rouge">NodePlacementStrategy.BRANDES_KOEPF</code></td>
+      <td>org​.eclipse​.elk​.layered​.nodePlacement​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-nodePromotion-strategy">Node Promotion Strategy</a></td>
+      <td><code class="highlighter-rouge">NodePromotionStrategy</code></td>
+      <td><code class="highlighter-rouge">NodePromotionStrategy.NONE</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.nodePromotion​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeSize-constraints">Node Size Constraints</a></td>
+      <td><code class="highlighter-rouge">EnumSet&lt;SizeConstraint&gt;</code></td>
+      <td><code class="highlighter-rouge">EnumSet.noneOf(SizeConstraint)</code></td>
+      <td>org​.eclipse​.elk​.nodeSize​.constraints</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeSize-minimum">Node Size Minimum</a></td>
+      <td><code class="highlighter-rouge">KVector</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.nodeSize​.minimum</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-nodeSize-options">Node Size Options</a></td>
+      <td><code class="highlighter-rouge">EnumSet&lt;SizeOptions&gt;</code></td>
+      <td><code class="highlighter-rouge">EnumSet.of(SizeOptions.DEFAULT_MINIMUM_SIZE, SizeOptions.APPLY_ADDITIONAL_PADDING)</code></td>
+      <td>org​.eclipse​.elk​.nodeSize​.options</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-nodeNode">Node Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">20</code></td>
+      <td>org​.eclipse​.elk​.spacing​.nodeNode</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-northOrSouthPort">North or South Port</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.northOrSouthPort</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-padding">Padding</a></td>
+      <td><code class="highlighter-rouge">ElkPadding</code></td>
+      <td><code class="highlighter-rouge">new ElkPadding(12)</code></td>
+      <td>org​.eclipse​.elk​.padding</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portAlignment-basic">Port Alignment</a></td>
+      <td><code class="highlighter-rouge">PortAlignment</code></td>
+      <td><code class="highlighter-rouge">PortAlignment.JUSTIFIED</code></td>
+      <td>org​.eclipse​.elk​.portAlignment​.basic</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portAlignment-east">Port Alignment (East)</a></td>
+      <td><code class="highlighter-rouge">PortAlignment</code></td>
+      <td><code class="highlighter-rouge">PortAlignment.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.portAlignment​.east</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portAlignment-north">Port Alignment (North)</a></td>
+      <td><code class="highlighter-rouge">PortAlignment</code></td>
+      <td><code class="highlighter-rouge">PortAlignment.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.portAlignment​.north</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portAlignment-south">Port Alignment (South)</a></td>
+      <td><code class="highlighter-rouge">PortAlignment</code></td>
+      <td><code class="highlighter-rouge">PortAlignment.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.portAlignment​.south</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portAlignment-west">Port Alignment (West)</a></td>
+      <td><code class="highlighter-rouge">PortAlignment</code></td>
+      <td><code class="highlighter-rouge">PortAlignment.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.portAlignment​.west</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-port-anchor">Port Anchor Offset</a></td>
+      <td><code class="highlighter-rouge">KVector</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.port​.anchor</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-port-borderOffset">Port Border Offset</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.port​.borderOffset</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portConstraints">Port Constraints</a></td>
+      <td><code class="highlighter-rouge">PortConstraints</code></td>
+      <td><code class="highlighter-rouge">PortConstraints.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.portConstraints</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-port-index">Port Index</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.port​.index</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-portLabels-placement">Port Label Placement</a></td>
+      <td><code class="highlighter-rouge">PortLabelPlacement</code></td>
+      <td><code class="highlighter-rouge">PortLabelPlacement.OUTSIDE</code></td>
+      <td>org​.eclipse​.elk​.portLabels​.placement</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-port-side">Port Side</a></td>
+      <td><code class="highlighter-rouge">PortSide</code></td>
+      <td><code class="highlighter-rouge">PortSide.UNDEFINED</code></td>
+      <td>org​.eclipse​.elk​.port​.side</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-spacing-portPort">Port Spacing</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">10</code></td>
+      <td>org​.eclipse​.elk​.spacing​.portPort</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-position">Position</a></td>
+      <td><code class="highlighter-rouge">KVector</code></td>
+      <td><code class="highlighter-rouge">&lt;not defined&gt;</code></td>
+      <td>org​.eclipse​.elk​.position</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-compaction-postCompaction-constraints">Post Compaction Constraint Calculation</a></td>
+      <td><code class="highlighter-rouge">ConstraintCalculationStrategy</code></td>
+      <td><code class="highlighter-rouge">ConstraintCalculationStrategy.SCANLINE</code></td>
+      <td>org​.eclipse​.elk​.layered​.compaction​.postCompaction​.constraints</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-compaction-postCompaction-strategy">Post Compaction Strategy</a></td>
+      <td><code class="highlighter-rouge">GraphCompactionStrategy</code></td>
+      <td><code class="highlighter-rouge">GraphCompactionStrategy.NONE</code></td>
+      <td>org​.eclipse​.elk​.layered​.compaction​.postCompaction​.strategy</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-priority(org.eclipse.elk.layered)">Priority</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.priority</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-randomSeed">Randomization Seed</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">1</code></td>
+      <td>org​.eclipse​.elk​.randomSeed</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-sausageFolding">Sausage Folding</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.sausageFolding</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-crossingMinimization-semiInteractive">Semi-Interactive Crossing Minimization</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">false</code></td>
+      <td>org​.eclipse​.elk​.layered​.crossingMinimization​.semiInteractive</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-separateConnectedComponents">Separate Connected Components</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">true</code></td>
+      <td>org​.eclipse​.elk​.separateConnectedComponents</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-priority-shortness(org.eclipse.elk.layered)">Shortness Priority</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.layered​.priority​.shortness</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-edgeRouting-sloppySplineLayerSpacing">Sloppy Spline Layer Spacing Factor</a></td>
+      <td><code class="highlighter-rouge">double</code></td>
+      <td><code class="highlighter-rouge">0.4</code></td>
+      <td>org​.eclipse​.elk​.layered​.edgeRouting​.sloppySplineLayerSpacing</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-edgeRouting-sloppySplineRouting">Sloppy Spline Routing</a></td>
+      <td><code class="highlighter-rouge">boolean</code></td>
+      <td><code class="highlighter-rouge">true</code></td>
+      <td>org​.eclipse​.elk​.layered​.edgeRouting​.sloppySplineRouting</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-edgeRouting-selfLoopPlacement">Spline Self-Loop Placement</a></td>
+      <td><code class="highlighter-rouge">SelfLoopPlacement</code></td>
+      <td><code class="highlighter-rouge">SelfLoopPlacement.NORTH_STACKED</code></td>
+      <td>org​.eclipse​.elk​.layered​.edgeRouting​.selfLoopPlacement</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-priority-straightness">Straightness Priority</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">0</code></td>
+      <td>org​.eclipse​.elk​.layered​.priority​.straightness</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-thoroughness">Thoroughness</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">7</code></td>
+      <td>org​.eclipse​.elk​.layered​.thoroughness</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-minWidth-upperBoundOnWidth">Upper Bound On Width [MinWidth Layerer]</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">4</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.minWidth​.upperBoundOnWidth</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-minWidth-upperLayerEstimationScalingFactor">Upper Layer Estimation Scaling Factor [MinWidth Layerer]</a></td>
+      <td><code class="highlighter-rouge">int</code></td>
+      <td><code class="highlighter-rouge">2</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.minWidth​.upperLayerEstimationScalingFactor</td>
+    </tr>
+    <tr>
+      <td><a href="org-eclipse-elk-layered-layering-wideNodesOnMultipleLayers">Wide Nodes on Multiple Layers</a></td>
+      <td><code class="highlighter-rouge">WideNodesStrategy</code></td>
+      <td><code class="highlighter-rouge">WideNodesStrategy.OFF</code></td>
+      <td>org​.eclipse​.elk​.layered​.layering​.wideNodesOnMultipleLayers</td>
+    </tr>
+  </tbody>
+</table>
+
+
+		</article>
+	</main>
+</div>
+
+
+</div>
+</body>
+
+</html>

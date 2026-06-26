@@ -1,9 +1,9 @@
 use super::project::{PendingProjectAction, gui_project_examples};
 use super::sketch::{
     DEFAULT_SKETCH_GRID_STEP, ProjectSnapshot, SketchComponent, SketchNet, SketchNodeStyle,
-    SketchPin, SketchSelection, edit_component_model, edit_component_part_number, edit_net_kind,
-    edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph, validate_board_ir_yaml_text,
-    wire_route_key,
+    SketchPin, SketchPinSide, SketchSelection, edit_component_model, edit_component_part_number,
+    edit_net_kind, edit_net_nominal_voltage, edit_net_powered, layout_sketch_graph,
+    validate_board_ir_yaml_text, wire_route_key,
 };
 use super::sketch_canvas_render::component_context_pin;
 use super::{CircuitCiApp, ScopeProbeTarget, SketchSnapMode, SketchViewportCommand, Stage, egui};
@@ -437,6 +437,29 @@ fn scope_examples_load_routed_schematic_edges() {
             .wire_routes
             .contains_key(&wire_route_key("RTIM.B", "timing"))
     );
+    let vout = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "VOUT")
+        .unwrap();
+    assert_eq!(
+        vout.kicad_symbol_id.as_deref(),
+        Some("Simulation_SPICE:VPULSE")
+    );
+    let ctim = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "CTIM")
+        .unwrap();
+    assert_eq!(ctim.kicad_symbol_id.as_deref(), Some("Device:C"));
+    assert_eq!(
+        ctim.style,
+        SketchNodeStyle {
+            rotation_deg: 90,
+            mirrored: false,
+            pin_side: SketchPinSide::Auto,
+        }
+    );
 
     app.request_project_example_load(gui_project_example_by_id("rc_lowpass_scope"), None);
     let snapshot = app.project_snapshot.as_ref().unwrap();
@@ -465,6 +488,29 @@ fn scope_examples_load_routed_schematic_edges() {
         snapshot
             .wire_routes
             .contains_key(&wire_route_key("COUT.B", "gnd"))
+    );
+    let source = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "VSIN")
+        .unwrap();
+    assert_eq!(
+        source.kicad_symbol_id.as_deref(),
+        Some("Simulation_SPICE:VSIN")
+    );
+    let capacitor = snapshot
+        .components_detail
+        .iter()
+        .find(|component| component.id == "COUT")
+        .unwrap();
+    assert_eq!(capacitor.kicad_symbol_id.as_deref(), Some("Device:C"));
+    assert_eq!(
+        capacitor.style,
+        SketchNodeStyle {
+            rotation_deg: 90,
+            mirrored: false,
+            pin_side: SketchPinSide::Auto,
+        }
     );
 }
 
@@ -622,6 +668,7 @@ fn ne555_scope_example_workflow_activity_action_opens_sketch_overlay() {
     assert!(app.open_scope_example_workflow_activity());
     assert_eq!(app.stage, Stage::Sketch);
     assert!(app.sketch_runtime_scope_overlay_visible);
+    assert!(app.sketch_scope_activity_window_open);
     assert!(app.status.contains("Scope Activity"));
 }
 

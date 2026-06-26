@@ -28,11 +28,41 @@ impl CircuitCiApp {
                 -(legend_size.x + 12.0),
                 12.0 + self.sketch_hierarchy_focus.as_ref().map_or(0.0, |_| 30.0),
             );
-        egui::Area::new(egui::Id::new("sketch_runtime_scope_activity_legend"))
-            .order(egui::Order::Foreground)
-            .fixed_pos(pos)
+        if !self.sketch_scope_activity_window_open {
+            let button_size = egui::vec2(156.0, 28.0);
+            let button_pos = canvas_rect.right_top()
+                + egui::vec2(
+                    -(button_size.x + 12.0),
+                    12.0 + self.sketch_hierarchy_focus.as_ref().map_or(0.0, |_| 30.0),
+                );
+            egui::Area::new(egui::Id::new("sketch_runtime_scope_activity_reopen"))
+                .order(egui::Order::Foreground)
+                .fixed_pos(button_pos)
+                .show(ui.ctx(), |ui| {
+                    if ui
+                        .add_sized(
+                            button_size,
+                            egui::Button::new(format!("Scope Activity ({})", targets.len())),
+                        )
+                        .on_hover_text("Open the floating Scope Activity inspection window.")
+                        .clicked()
+                    {
+                        self.sketch_scope_activity_window_open = true;
+                    }
+                });
+            return;
+        }
+
+        let mut open = self.sketch_scope_activity_window_open;
+        egui::Window::new("Scope Activity")
+            .id(egui::Id::new("sketch_runtime_scope_activity_window"))
+            .default_pos(pos)
+            .default_size(legend_size)
+            .min_width(legend_size.x)
+            .resizable(true)
+            .collapsible(false)
+            .open(&mut open)
             .show(ui.ctx(), |ui| {
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
                     ui.set_min_width(legend_size.x);
                     ui.horizontal(|ui| {
                         let (swatch_rect, _) = ui
@@ -583,8 +613,8 @@ impl CircuitCiApp {
                                 });
                             }
                         });
-                });
             });
+        self.sketch_scope_activity_window_open = open;
     }
 
     pub(super) fn open_scope_activity_snapshots_from_sketch(&mut self) {

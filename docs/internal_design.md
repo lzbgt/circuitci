@@ -97,8 +97,8 @@ completion, overview-minimap event routing, and runtime tint routing.
 `src/gui/sketch_canvas_hits.rs` owns canvas hover and press-origin hit target
 projection for graph items, minimap exclusion, probe/bundle/label badges, and
 runtime `scope` chip hit-testing.
-`src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
-legend, overlay visibility checkbox, searchable loaded-trace browser,
+`src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity floating
+window, small reopen button, schematic-chip visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
@@ -148,7 +148,7 @@ viewport zoom math, schematic canvas sizing, wire target hit-testing,
 route-handle hit-testing, and placement orientation cycling. `src/gui/sketch_render.rs` owns graph node and pin-anchor
 painting, including runtime tinting, transient loaded-waveform `scope` chips
 with shared paint/hit-test geometry, opacity handling, symbol glyph dispatch,
-and kind-aware pin chips. The on-canvas Scope Activity legend, searchable
+and kind-aware pin chips. The floating Scope Activity window, searchable
 loaded-trace jump rows, Cursor A scrub control, cursor-sampled value/time
 readouts, compact frequency/period readouts, bounded per-trace sparklines,
 per-trace edge stepping, compare
@@ -195,12 +195,13 @@ schematic display metadata such as positions/styles/symbol ids;
 symbol-library rendering must not introduce a second connectivity model.
 When `board.schematic.node_positions` omits a graph item,
 `src/gui/sketch_layout.rs` may derive a classical schematic fallback position
-from Board IR roles: powered nets trend toward the top rail, ground nets toward
-the bottom rail, source components toward the left edge, and signal-path
-components/nets between those rails. This fallback is view-only; saving a
-position still requires explicit schematic metadata. The explicit Sketch
-`Auto Layout` action may persist the same classical placement into
-`board.schematic.node_positions` and may write standard non-default
+from a source-seeded layered circuit-flow pass: powered nets trend toward the
+top rail, ground nets toward the bottom rail, source components toward the left
+edge, series signal components/nets advance by rank left-to-right, and one-rail
+shunts land vertically between the signal lane and the rail. This fallback is
+view-only; saving a position still requires explicit schematic metadata. The
+explicit Sketch `Auto Layout` action may persist the same classical placement
+into `board.schematic.node_positions` and may write standard non-default
 `board.schematic.node_styles` for textbook orientation rules such as vertical
 ground shunts and horizontal two-terminal signal-path parts. It may also
 derive `board.schematic.wire_routes` from the post-layout pin anchors so route

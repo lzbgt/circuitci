@@ -96,15 +96,18 @@ route waypoint metadata, shared sketch YAML helpers, and model-port default
 pin/net seeding for library-backed component insertion. `src/gui/sketch_layout.rs`
 owns graph layout helpers, view-state transforms, schematic grid/snap helpers,
 fit-all and fit-selection bounds, bounded full-list logical layout for pannable
-imported designs, role-aware fallback placement for projects without persisted
-schematic coordinates, orthogonal wire geometry, wire hit-testing, and
-model-aware pin-anchor layout primitives. The fallback follows a classical
-schematic shape: power nets near the top rail, ground nets near the bottom
-rail, source components on the left, and signal-path components/nets between
-those rails. The Sketch `Auto Layout` action persists that same classical
-placement into `board.schematic.node_positions` and writes standard
-two-terminal orientation metadata, including vertical shunts to ground and
-horizontal signal-path parts. It also derives display-only
+imported designs, layered circuit-flow fallback placement for projects without
+persisted schematic coordinates, orthogonal wire geometry, wire hit-testing,
+and model-aware pin-anchor layout primitives. The fallback follows a
+classical schematic shape using the same graph-drawing primitives used by ELK,
+Graphviz, and OGDF: source-seeded signal-flow ranks, explicit KiCad pin-anchor
+ports, power and ground rails, and orthogonal routes. Power nets stay near the
+top rail, ground nets near the bottom rail, source components stay on the left,
+series signal-path components/nets advance left-to-right by rank, and shunts
+land vertically between signal and rail. The Sketch `Auto Layout` action
+persists that same classical placement into `board.schematic.node_positions`
+and writes standard two-terminal orientation metadata, including vertical
+shunts to ground and horizontal signal-path parts. It also derives display-only
 `board.schematic.wire_routes` waypoints from the post-layout pin anchors so
 power/ground connections route toward rail-like lines and signal connections
 route horizontally before vertical drops. It also positions placed probe
@@ -151,8 +154,8 @@ completion, overview-minimap event routing, and graph hover/runtime routing.
 `src/gui/sketch_canvas_hits.rs` owns canvas hover and press-origin target
 projection for rendered graph items, minimap exclusion, probe/bundle/label
 badges, and runtime `scope` chip hit-testing.
-`src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity canvas
-legend, overlay visibility checkbox, searchable loaded-trace browser,
+`src/gui/sketch_scope_activity.rs` owns the runtime Scope Activity floating
+window, small reopen button, schematic-chip visibility checkbox, searchable loaded-trace browser,
 Cursor A scrub control, per-trace previous/next edge stepping, cursor-sampled
 value/time readouts, compact frequency/period readouts, bounded per-trace
 sparklines, activity-snapshot status plus
@@ -222,8 +225,8 @@ navigation aid over scalar Board IR nets and do not persist bus evidence; the
 Sketch canvas defaults them off so imported examples open as a connected
 schematic network first, with the `Circuit View` toggle enabling the helper
 overlay only when users explicitly audit derived groups. The same panel owns
-the runtime-only Scope Activity overlay toggle and searchable loaded-trace jump
-browser with Cursor A scrubbing, per-trace edge stepping, cursor-sampled
+the runtime-only Scope Activity floating window and searchable loaded-trace jump
+browser with schematic-chip visibility control, Cursor A scrubbing, per-trace edge stepping, cursor-sampled
 value/time readouts, row-level/visible-list report bundle export/index-open, and recent-bundle reopen/path-copy shortcuts; those chips and tints mark loaded waveform trace targets
 and are not schematic components, pins, or nets.
 `src/gui/sketch_net_labels.rs` owns persisted schematic named-net and off-page
@@ -481,7 +484,7 @@ form:
   menus, placed net-label/off-page connector badges that select the underlying
   Board IR net, can be moved by dragging, accept active-wire drops onto their
   underlying net, and can be converted or deleted from their context menu,
-  runtime tinting, an on-canvas Scope Activity legend/toggle with a searchable
+  runtime tinting, a closeable floating Scope Activity window with a small reopen button and searchable
   loaded-trace jump browser, Cursor A scrub control, per-trace edge stepping,
   cursor-sampled value/time rows, compact frequency/period readouts,
   bounded per-trace sparklines, row-level and visible-list sample and frequency snapshot capture plus row-level and visible-list CSV/Markdown copy with a live

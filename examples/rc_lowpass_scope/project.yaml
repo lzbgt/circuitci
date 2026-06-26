@@ -11,6 +11,14 @@ libraries:
 
 board:
   schematic:
+    component_symbols:
+      VSIN: Simulation_SPICE:VSIN
+      RIN: Device:R
+      COUT: Device:C
+    node_styles:
+      component:VSIN: { rotation_deg: 90, mirrored: false, pin_side: auto }
+      component:RIN: { rotation_deg: 0, mirrored: false, pin_side: auto }
+      component:COUT: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
       component:VSIN: { x: -240.0, y: 0.0 }
       component:RIN: { x: -20.0, y: 0.0 }
