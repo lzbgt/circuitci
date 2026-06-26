@@ -85,6 +85,8 @@ for library-backed component insertion. `src/gui/sketch_layout.rs` owns graph
 layout helpers, bounded full-list logical layout for pannable imported designs,
 view-state transforms, schematic grid/snap helpers, orthogonal wire geometry,
 wire hit-testing, fit bounds, and model-aware pin-anchor layout primitives.
+Focused classical-layout regressions live beside it in
+`src/gui/sketch_layout_tests.rs`.
 `src/gui/sketch_routes.rs` owns shared
 orthogonal wire-route geometry helpers so display, hit-testing, insertion,
 active wire preview, and drag preview all use the same route semantics.

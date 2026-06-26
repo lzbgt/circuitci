@@ -113,7 +113,8 @@ power/ground connections route toward rail-like lines and signal connections
 route horizontally before vertical drops. It also positions placed probe
 elements into non-overlapping lanes near their pin/wire targets so live readout
 strips stay readable after Run; newly placed probes use the same collision-aware
-lane planner immediately, without requiring a separate Auto Layout pass. For
+lane planner immediately, without requiring a separate Auto Layout pass.
+Focused classical-layout regressions live in `src/gui/sketch_layout_tests.rs`. For
 installed or imported KiCad symbols,
 matching pin anchors project from the symbol's own numbered pin lines, so wire
 starts and hit targets line up with the rendered schematic symbol instead of a
