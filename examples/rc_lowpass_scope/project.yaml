@@ -20,33 +20,31 @@ board:
       component:RIN: { rotation_deg: 0, mirrored: false, pin_side: auto }
       component:COUT: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
-      component:VSIN: { x: -240.0, y: 0.0 }
-      component:RIN: { x: -20.0, y: 0.0 }
-      component:COUT: { x: 200.0, y: 90.0 }
-      net:input: { x: -120.0, y: -80.0 }
-      net:filtered: { x: 150.0, y: -80.0 }
-      net:gnd: { x: 90.0, y: 180.0 }
+      component:VSIN: { x: 32.0, y: 208.0 }
+      component:RIN: { x: 256.0, y: 208.0 }
+      component:COUT: { x: 384.0, y: 336.0 }
+      net:input: { x: 160.0, y: 192.0 }
+      net:filtered: { x: 384.0, y: 192.0 }
+      net:gnd: { x: 176.0, y: 496.0 }
     wire_routes:
       VSIN.P->input:
         points:
-          - { x: -180.0, y: -70.0 }
+          - { x: 240.0, y: 288.0 }
       VSIN.N->gnd:
         points:
-          - { x: -240.0, y: 130.0 }
-          - { x: 90.0, y: 130.0 }
+          - { x: 80.0, y: 512.0 }
       RIN.A->input:
         points:
-          - { x: -70.0, y: -70.0 }
+          - { x: 240.0, y: 240.0 }
       RIN.B->filtered:
         points:
-          - { x: 70.0, y: -70.0 }
+          - { x: 464.0, y: 240.0 }
       COUT.A->filtered:
         points:
-          - { x: 200.0, y: -20.0 }
+          - { x: 464.0, y: 336.0 }
       COUT.B->gnd:
         points:
-          - { x: 200.0, y: 150.0 }
-          - { x: 90.0, y: 150.0 }
+          - { x: 432.0, y: 512.0 }
   components:
     VSIN:
       model: generic.analog.imported_spice_device

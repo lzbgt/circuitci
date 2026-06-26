@@ -418,10 +418,7 @@ fn scope_examples_load_routed_schematic_edges() {
             .wire_routes
             .get(&wire_route_key("VCC.P", "vcc"))
             .unwrap()[0],
-        super::sketch::SketchPosition {
-            x: -120.0,
-            y: -180.0
-        }
+        super::sketch::SketchPosition { x: 80.0, y: 48.0 }
     );
     assert_eq!(
         snapshot
@@ -430,7 +427,7 @@ fn scope_examples_load_routed_schematic_edges() {
             .unwrap()
             .last()
             .copied(),
-        Some(super::sketch::SketchPosition { x: 230.0, y: 230.0 })
+        Some(super::sketch::SketchPosition { x: 192.0, y: 512.0 })
     );
     assert!(
         snapshot
@@ -477,7 +474,7 @@ fn scope_examples_load_routed_schematic_edges() {
             .unwrap()
             .last()
             .copied(),
-        Some(super::sketch::SketchPosition { x: 90.0, y: 130.0 })
+        Some(super::sketch::SketchPosition { x: 80.0, y: 512.0 })
     );
     assert!(
         snapshot

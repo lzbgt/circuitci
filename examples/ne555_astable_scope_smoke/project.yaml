@@ -25,49 +25,46 @@ board:
       component:CTIM: { rotation_deg: 90, mirrored: false, pin_side: auto }
       component:RLOAD: { rotation_deg: 90, mirrored: false, pin_side: auto }
     node_positions:
-      component:VCC: { x: -220.0, y: -160.0 }
-      component:VOUT: { x: -220.0, y: 20.0 }
-      component:RTIM: { x: 20.0, y: -20.0 }
-      component:CTIM: { x: 230.0, y: 80.0 }
-      component:RLOAD: { x: 20.0, y: 170.0 }
-      net:vcc: { x: -20.0, y: -180.0 }
-      net:out: { x: -10.0, y: 20.0 }
-      net:timing: { x: 230.0, y: -20.0 }
-      net:gnd: { x: 230.0, y: 210.0 }
+      component:VCC: { x: 32.0, y: 208.0 }
+      component:VOUT: { x: 32.0, y: 288.0 }
+      component:RTIM: { x: 256.0, y: 208.0 }
+      component:CTIM: { x: 384.0, y: 336.0 }
+      component:RLOAD: { x: 144.0, y: 336.0 }
+      net:vcc: { x: 32.0, y: 32.0 }
+      net:out: { x: 144.0, y: 192.0 }
+      net:timing: { x: 384.0, y: 192.0 }
+      net:gnd: { x: 112.0, y: 496.0 }
     wire_routes:
       VCC.P->vcc:
         points:
-          - { x: -120.0, y: -180.0 }
+          - { x: 80.0, y: 48.0 }
       VCC.N->gnd:
         points:
-          - { x: -220.0, y: 230.0 }
-          - { x: 230.0, y: 230.0 }
+          - { x: 80.0, y: 512.0 }
       VOUT.P->out:
         points:
-          - { x: -120.0, y: 20.0 }
+          - { x: 224.0, y: 368.0 }
       VOUT.N->gnd:
         points:
-          - { x: -220.0, y: 230.0 }
-          - { x: 230.0, y: 230.0 }
+          - { x: 80.0, y: 512.0 }
       RTIM.A->out:
         points:
-          - { x: 20.0, y: 20.0 }
+          - { x: 224.0, y: 240.0 }
       RTIM.B->timing:
         points:
-          - { x: 120.0, y: -20.0 }
+          - { x: 464.0, y: 240.0 }
       CTIM.A->timing:
         points:
-          - { x: 230.0, y: 20.0 }
+          - { x: 464.0, y: 336.0 }
       CTIM.B->gnd:
         points:
-          - { x: 230.0, y: 150.0 }
+          - { x: 432.0, y: 512.0 }
       RLOAD.A->out:
         points:
-          - { x: 20.0, y: 80.0 }
+          - { x: 224.0, y: 336.0 }
       RLOAD.B->gnd:
         points:
-          - { x: 20.0, y: 230.0 }
-          - { x: 230.0, y: 230.0 }
+          - { x: 192.0, y: 512.0 }
   components:
     VCC:
       model: generic.analog.imported_spice_device
