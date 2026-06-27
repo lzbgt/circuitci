@@ -26,6 +26,7 @@ pub(super) struct AnalogAssertionDraft {
     pub(super) end_us: f64,
     pub(super) time_limit_us: f64,
     pub(super) duty_limit_percent: f64,
+    pub(super) count_limit: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -257,6 +258,7 @@ pub(super) fn analog_probe_assertion_summaries(
                     end_us: assertion.end_us.unwrap_or_default(),
                     time_limit_us: assertion.time_limit_us.unwrap_or_default(),
                     duty_limit_percent: assertion.duty_limit_percent.unwrap_or_default(),
+                    count_limit: assertion.count_limit.unwrap_or_default(),
                 },
                 status,
                 failure_message: failure.map(|finding| finding.message.clone()),
@@ -859,6 +861,9 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "min_high_pulse_width"
             | "min_low_pulse_width"
             | "duty_cycle"
+            | "crossing_count"
+            | "rising_crossing_count"
+            | "falling_crossing_count"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1067,6 +1072,20 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
+        "crossing_count" | "rising_crossing_count" | "falling_crossing_count" => {
+            if !draft.start_us.is_finite()
+                || !draft.end_us.is_finite()
+                || draft.start_us < 0.0
+                || draft.end_us < draft.start_us
+                || draft.end_us > stop_time_us
+                || !draft.count_limit.is_finite()
+                || draft.count_limit < 0.0
+            {
+                anyhow::bail!(
+                    "Crossing-count assertion bounds must be finite and ordered, and count limit must be nonnegative."
+                );
+            }
+        }
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1084,6 +1103,9 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
         crate::board_ir::AnalogAggregation::MinLowPulseWidth => "min_low_pulse_width",
         crate::board_ir::AnalogAggregation::DutyCycle => "duty_cycle",
+        crate::board_ir::AnalogAggregation::CrossingCount => "crossing_count",
+        crate::board_ir::AnalogAggregation::RisingCrossingCount => "rising_crossing_count",
+        crate::board_ir::AnalogAggregation::FallingCrossingCount => "falling_crossing_count",
     }
 }
 
@@ -1157,6 +1179,16 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 assertion.start_us.unwrap_or_default(),
                 assertion.end_us.unwrap_or_default(),
                 assertion.duty_limit_percent.unwrap_or_default()
+            )
+        }
+        crate::board_ir::AnalogAggregation::CrossingCount
+        | crate::board_ir::AnalogAggregation::RisingCrossingCount
+        | crate::board_ir::AnalogAggregation::FallingCrossingCount => {
+            format!(
+                "{:.6}..{:.6} us, limit {:.6} crossings",
+                assertion.start_us.unwrap_or_default(),
+                assertion.end_us.unwrap_or_default(),
+                assertion.count_limit.unwrap_or_default()
             )
         }
     }
@@ -1383,6 +1415,11 @@ fn assertion_value(
                 "duty_limit_percent",
                 draft.duty_limit_percent,
             )?;
+        }
+        "crossing_count" | "rising_crossing_count" | "falling_crossing_count" => {
+            insert_number(&mut assertion, "start_us", draft.start_us)?;
+            insert_number(&mut assertion, "end_us", draft.end_us)?;
+            insert_number(&mut assertion, "count_limit", draft.count_limit)?;
         }
         _ => unreachable!("aggregation was validated"),
     }

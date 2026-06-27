@@ -68,6 +68,7 @@ fn assertion_draft() -> AnalogAssertionDraft {
         end_us: 100.0,
         time_limit_us: 50.0,
         duty_limit_percent: 50.0,
+        count_limit: 1.0,
     }
 }
 
@@ -182,6 +183,31 @@ fn append_analog_assertion_emits_duty_cycle_yaml() {
     assert_eq!(assertion.start_us, Some(0.0));
     assert_eq!(assertion.end_us, Some(100.0));
     assert_eq!(assertion.duty_limit_percent, Some(55.0));
+    assert_eq!(assertion.at_us, None);
+}
+
+#[test]
+fn append_analog_assertion_emits_crossing_count_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut draft = assertion_draft();
+    draft.assertion_name = "out_no_recross".to_string();
+    draft.aggregation = "crossing_count".to_string();
+    draft.relation = "below".to_string();
+    draft.start_us = 10.0;
+    draft.end_us = 100.0;
+    draft.count_limit = 1.0;
+    let edited = append_analog_assertion(&edited, &draft).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(assertion.name, "out_no_recross");
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::CrossingCount
+    );
+    assert_eq!(assertion.threshold_v, Some(1.0));
+    assert_eq!(assertion.start_us, Some(10.0));
+    assert_eq!(assertion.end_us, Some(100.0));
+    assert_eq!(assertion.count_limit, Some(1.0));
     assert_eq!(assertion.at_us, None);
 }
 

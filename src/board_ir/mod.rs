@@ -1078,6 +1078,8 @@ pub struct AnalogAssertion {
     pub time_limit_us: Option<f64>,
     #[serde(default, rename = "duty_limit_percent")]
     pub duty_limit_percent: Option<f64>,
+    #[serde(default, rename = "count_limit")]
+    pub count_limit: Option<f64>,
     #[serde(default)]
     pub aggregation: AnalogAggregation,
     pub relation: AnalogRelation,
@@ -1105,6 +1107,9 @@ pub enum AnalogAggregation {
     MinHighPulseWidth,
     MinLowPulseWidth,
     DutyCycle,
+    CrossingCount,
+    RisingCrossingCount,
+    FallingCrossingCount,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

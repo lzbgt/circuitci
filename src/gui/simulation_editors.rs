@@ -634,6 +634,9 @@ impl CircuitCiApp {
                             "min_high_pulse_width",
                             "min_low_pulse_width",
                             "duty_cycle",
+                            "crossing_count",
+                            "rising_crossing_count",
+                            "falling_crossing_count",
                         ],
                     );
                     ui.end_row();
@@ -718,6 +721,18 @@ impl CircuitCiApp {
                                     .speed(0.5)
                                     .range(0.0..=100.0)
                                     .suffix("%"),
+                            );
+                            ui.end_row();
+                        } else if matches!(
+                            self.analog_assertion_aggregation.as_str(),
+                            "crossing_count" | "rising_crossing_count" | "falling_crossing_count"
+                        ) {
+                            ui.label("Count limit");
+                            ui.add(
+                                egui::DragValue::new(&mut self.analog_assertion_count_limit)
+                                    .speed(1.0)
+                                    .range(0.0..=1_000_000.0)
+                                    .suffix(" crossings"),
                             );
                             ui.end_row();
                         }
@@ -859,6 +874,7 @@ impl CircuitCiApp {
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
+            count_limit: self.analog_assertion_count_limit,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(
@@ -1054,6 +1070,7 @@ impl CircuitCiApp {
                 end_us: self.analog_assertion_end_us,
                 time_limit_us: self.analog_assertion_time_limit_us,
                 duty_limit_percent: self.analog_assertion_duty_limit_percent,
+                count_limit: self.analog_assertion_count_limit,
             },
         };
         match replace_analog_assertion(&self.project_yaml, &draft) {
@@ -1081,6 +1098,7 @@ impl CircuitCiApp {
         self.analog_assertion_end_us = draft.end_us;
         self.analog_assertion_time_limit_us = draft.time_limit_us;
         self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
+        self.analog_assertion_count_limit = draft.count_limit;
         self.status = format!("Editing analog assertion {original_name}.");
     }
 
@@ -1143,6 +1161,7 @@ impl CircuitCiApp {
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
+            count_limit: self.analog_assertion_count_limit,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1211,6 +1230,7 @@ impl CircuitCiApp {
             end_us: self.analog_assertion_end_us,
             time_limit_us: self.analog_assertion_time_limit_us,
             duty_limit_percent: self.analog_assertion_duty_limit_percent,
+            count_limit: self.analog_assertion_count_limit,
         };
         match append_analog_assertion(&self.project_yaml, &draft) {
             Ok(updated) => {
@@ -1224,6 +1244,7 @@ impl CircuitCiApp {
                 self.analog_assertion_at_us = draft.at_us;
                 self.analog_assertion_time_limit_us = draft.time_limit_us;
                 self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
+                self.analog_assertion_count_limit = draft.count_limit;
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(

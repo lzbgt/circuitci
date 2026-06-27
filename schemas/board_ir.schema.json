@@ -1501,7 +1501,8 @@
                     "end_us": { "type": "number", "minimum": 0 },
                     "time_limit_us": { "type": "number", "minimum": 0 },
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle"] },
+                    "count_limit": { "type": "number", "minimum": 0 },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1523,7 +1524,8 @@
                           "anyOf": [
                             { "required": ["at_us"] },
                             { "required": ["time_limit_us"] },
-                            { "required": ["duty_limit_percent"] }
+                            { "required": ["duty_limit_percent"] },
+                            { "required": ["count_limit"] }
                           ]
                         }
                       },
@@ -1537,7 +1539,8 @@
                           "not": {
                             "anyOf": [
                               { "required": ["at_us"] },
-                              { "required": ["duty_limit_percent"] }
+                              { "required": ["duty_limit_percent"] },
+                              { "required": ["count_limit"] }
                             ]
                           }
                         },
@@ -1551,19 +1554,37 @@
                             "not": {
                               "anyOf": [
                                 { "required": ["at_us"] },
-                                { "required": ["time_limit_us"] }
+                                { "required": ["time_limit_us"] },
+                                { "required": ["count_limit"] }
                               ]
                             }
                           },
                           "else": {
-                            "required": ["at_us"],
-                            "not": {
-                              "anyOf": [
-                                { "required": ["start_us"] },
-                                { "required": ["end_us"] },
-                                { "required": ["time_limit_us"] },
-                                { "required": ["duty_limit_percent"] }
-                              ]
+                            "if": {
+                              "required": ["aggregation"],
+                              "properties": { "aggregation": { "enum": ["crossing_count", "rising_crossing_count", "falling_crossing_count"] } }
+                            },
+                            "then": {
+                              "required": ["start_us", "end_us", "count_limit"],
+                              "not": {
+                                "anyOf": [
+                                  { "required": ["at_us"] },
+                                  { "required": ["time_limit_us"] },
+                                  { "required": ["duty_limit_percent"] }
+                                ]
+                              }
+                            },
+                            "else": {
+                              "required": ["at_us"],
+                              "not": {
+                                "anyOf": [
+                                  { "required": ["start_us"] },
+                                  { "required": ["end_us"] },
+                                  { "required": ["time_limit_us"] },
+                                  { "required": ["duty_limit_percent"] },
+                                  { "required": ["count_limit"] }
+                                ]
+                              }
                             }
                           }
                         }

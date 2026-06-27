@@ -49,9 +49,10 @@ missing-file diagnostics during bring-up.
 Assertions can sample a named probe at `at_us`, evaluate
 `min`/`max`/`mean`/`rms` over a `start_us` to `end_us` window, or measure the
 first rising/falling threshold-crossing time, minimum high/low pulse width, or
-duty cycle in a window. If a requested boundary or threshold event is between
-solver samples, CircuitCI uses linear interpolation between adjacent samples.
-Probe
+duty cycle in a window. It can also count any/rising/falling threshold
+crossings in a window for no-recross, bounce, and ringing checks. If a requested
+boundary or threshold event is between solver samples, CircuitCI uses linear
+interpolation between adjacent samples. Probe
 `quantity` selects the required threshold unit:
 
 - `voltage`: `threshold_v`
@@ -71,6 +72,10 @@ and `time_limit_us`; duty-cycle assertions use `aggregation: duty_cycle`,
 `start_us`, `end_us`, and `duty_limit_percent`. For all timing/duty assertions,
 the voltage/current/power threshold is the decision level, while
 `time_limit_us` or `duty_limit_percent` is compared with `relation`.
+Crossing-count assertions use
+`aggregation: crossing_count|rising_crossing_count|falling_crossing_count`,
+`start_us`, `end_us`, and `count_limit`; the voltage/current/power threshold is
+again the decision level, while `count_limit` is compared with `relation`.
 
 Assertions may optionally declare `suggested_fixes`. When that assertion fails,
 the strings are copied into the emitted `SPICE_TRANSIENT_ANALYSIS` finding. If
@@ -103,7 +108,7 @@ The runner fails closed. These conditions are critical failures:
 - declared model-file SHA-256 mismatch.
 
 This is intentionally minimal but real. Later assertion forms must add
-setup/hold, no-recross, integration/energy, and corner sweeps.
+setup/hold, integration/energy, and corner sweeps.
 
 ## Evidence Requirements
 

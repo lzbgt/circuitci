@@ -188,6 +188,14 @@ scenarios:
           start_us: 0.0
           end_us: 5000.0
           time_limit_us: 300.0
+        - name: output_no_recross_during_high
+          probe: v_out
+          aggregation: crossing_count
+          relation: below
+          threshold_v: 2.5
+          start_us: 2.0
+          end_us: 300.0
+          count_limit: 1.0
         - name: output_duty_below_50_percent
           probe: v_out
           aggregation: duty_cycle

@@ -15,7 +15,8 @@ engine can grow without returning to a monolithic validator.
   probe expression validation, assertion contract validation, interpolation,
   time-weighted window aggregation for min/max/mean/RMS measurements, first
   rising/falling threshold-crossing timing, threshold-derived pulse-width and
-  duty-cycle timing, and `SPICE_TRANSIENT_ANALYSIS` assertion findings.
+  duty-cycle timing, threshold crossing counts for no-recross/ringing checks,
+  and `SPICE_TRANSIENT_ANALYSIS` assertion findings.
 - `src/validation/analog_operating_limits.rs` owns automatic datasheet-derived
   semiconductor stress checks for MOSFETs, BJTs, diodes, temperature derating,
   scalar pulse qualifier checks, shared operating-limit probe metadata, and

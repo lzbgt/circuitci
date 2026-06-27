@@ -654,8 +654,8 @@ The supported desktop simulation path is:
 31. select a supported component branch and append a power probe that composes
    the branch voltage and branch current as an explicit Board IR power probe,
 32. add sample, windowed min/max/mean/RMS, rising/falling crossing-time,
-   minimum high/low pulse-width, or duty-cycle waveform assertions against
-   declared probes,
+   minimum high/low pulse-width, duty-cycle, or crossing-count waveform
+   assertions against declared probes,
 33. load, edit, save, and rerun file-backed SPICE decks from declared analog
    scenarios,
 34. browse, hash, add, and remove SHA-backed SPICE model/include files for

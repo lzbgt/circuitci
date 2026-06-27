@@ -772,12 +772,21 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
             assertion.aggregation,
             Some(AssertionAggregationYaml::DutyCycle)
         );
+        let is_count = matches!(
+            assertion.aggregation,
+            Some(
+                AssertionAggregationYaml::CrossingCount
+                    | AssertionAggregationYaml::RisingCrossingCount
+                    | AssertionAggregationYaml::FallingCrossingCount
+            )
+        );
         if is_window {
             if assertion.start_us.is_none()
                 || assertion.end_us.is_none()
                 || assertion.at_us.is_some()
                 || assertion.time_limit_us.is_some()
                 || assertion.duty_limit_percent.is_some()
+                || assertion.count_limit.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid window/sample timing contract.",
@@ -791,6 +800,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.time_limit_us.is_none()
                 || assertion.at_us.is_some()
                 || assertion.duty_limit_percent.is_some()
+                || assertion.count_limit.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid timing assertion contract.",
@@ -804,9 +814,24 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
                 || assertion.duty_limit_percent.is_none()
                 || assertion.at_us.is_some()
                 || assertion.time_limit_us.is_some()
+                || assertion.count_limit.is_some()
             {
                 bail!(
                     "KiCad analog scenario {} assertion {} has an invalid duty-cycle assertion contract.",
+                    scenario.name,
+                    assertion.name
+                );
+            }
+        } else if is_count {
+            if assertion.start_us.is_none()
+                || assertion.end_us.is_none()
+                || assertion.count_limit.is_none()
+                || assertion.at_us.is_some()
+                || assertion.time_limit_us.is_some()
+                || assertion.duty_limit_percent.is_some()
+            {
+                bail!(
+                    "KiCad analog scenario {} assertion {} has an invalid crossing-count assertion contract.",
                     scenario.name,
                     assertion.name
                 );
@@ -816,6 +841,7 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
             || assertion.end_us.is_some()
             || assertion.time_limit_us.is_some()
             || assertion.duty_limit_percent.is_some()
+            || assertion.count_limit.is_some()
         {
             bail!(
                 "KiCad analog scenario {} assertion {} has an invalid sample timing contract.",

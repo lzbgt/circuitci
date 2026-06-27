@@ -62,6 +62,7 @@ fn assertion_draft(name: &str, threshold: f64) -> AnalogAssertionDraft {
         end_us: 100.0,
         time_limit_us: 50.0,
         duty_limit_percent: 50.0,
+        count_limit: 1.0,
     }
 }
 

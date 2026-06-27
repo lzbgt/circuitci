@@ -485,6 +485,8 @@ pub(super) struct AssertionYaml {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) duty_limit_percent: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) count_limit: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) aggregation: Option<AssertionAggregationYaml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_v: Option<f64>,
@@ -514,4 +516,7 @@ pub(super) enum AssertionAggregationYaml {
     MinHighPulseWidth,
     MinLowPulseWidth,
     DutyCycle,
+    CrossingCount,
+    RisingCrossingCount,
+    FallingCrossingCount,
 }
