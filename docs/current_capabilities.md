@@ -97,7 +97,9 @@ Current analog support:
   with per-assertion worst-corner margin info findings.
 - GUI Run Input Sweeps editing for analog run setups, including sweep creation
   with an executable first parameter, extra parameter add/remove controls, and
-  declared corner-count summaries without editing YAML by hand.
+  declared corner-count summaries without editing YAML by hand. Built-in corner
+  presets add common supply, load, temperature, model-selector, and RC-tolerance
+  sweeps; `TEMP_C` and `TEMPERATURE_C` also drive ngspice `.temp`.
 - GUI generated run-setup overview rows for completed sweep worst-corner
   assertion margins, including limiting corner, parameter values, measured
   value, limit, margin, pass/fail state, and evaluated corner count.

@@ -141,7 +141,9 @@ sweep name, corner name, and parameter values on generated findings. Swept
 assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify
 the worst evaluated corner, parameter values, measured value, limit, relation,
 and numeric margin for each assertion. A complete physical acceptance language
-still needs richer temperature/model/load corner sources.
+still needs richer vendor model-section switching and load-source inference.
+When a sweep declares `TEMP_C` or `TEMPERATURE_C`, CircuitCI emits both the
+matching `.param` and an ngspice `.temp` card for that corner.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode

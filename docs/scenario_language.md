@@ -2589,6 +2589,12 @@ tags assertion findings with the sweep name, corner name, and parameter values.
 For every assertion that is evaluated across a sweep, the report also emits an
 `ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the worst margin
 corner, measured value, limit, relation, and parameter values.
+GUI Run Inputs expose presets that persist as this same `analog.sweeps`
+structure: supply (`SUPPLY_V`), load (`LOAD_OHM`), temperature (`TEMP_C`),
+model-selector (`MODEL_CORNER`), and RC tolerance (`RIN_VALUE` x
+`COUT_VALUE`). Temperature presets are special-cased by the ngspice wrapper:
+`TEMP_C` or `TEMPERATURE_C` remains available as a `.param` and also becomes
+the corner's `.temp` card.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

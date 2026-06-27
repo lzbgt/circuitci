@@ -769,6 +769,11 @@ fn build_ngspice_wrapper(
             text.push_str(&format!("{:.12e}", override_.value));
             text.push('\n');
         }
+        if let Some(temperature_c) = sweep_temperature_c(parameter_overrides) {
+            text.push_str(".temp ");
+            text.push_str(&format!("{:.12e}", temperature_c));
+            text.push('\n');
+        }
     }
     if !include_control {
         text.push_str(".end\n");
@@ -800,6 +805,16 @@ fn build_ngspice_wrapper(
     }
     text.push_str("\n.endc\n.end\n");
     Ok(text)
+}
+
+fn sweep_temperature_c(parameter_overrides: &[ParameterOverride]) -> Option<f64> {
+    parameter_overrides
+        .iter()
+        .find(|override_| {
+            override_.name.eq_ignore_ascii_case("TEMP_C")
+                || override_.name.eq_ignore_ascii_case("TEMPERATURE_C")
+        })
+        .map(|override_| override_.value)
 }
 
 fn uses_capacitor_initial_conditions(bound: &BoundBoard<'_>, scenario: &Scenario) -> bool {
@@ -1163,6 +1178,38 @@ mod tests {
         .unwrap();
         assert!(wrapper.contains(".param R_LOAD=1.234000000000e3"));
         assert!(wrapper.contains("R1 in out {R_LOAD}"));
+    }
+
+    #[test]
+    fn wrapper_maps_temp_c_override_to_ngspice_temperature() {
+        let project_path = Path::new("examples/rc_lowpass_scope/project.yaml");
+        let project = load_project(project_path).unwrap();
+        let (library, findings) = load_library(project_path, &project);
+        assert!(findings.is_empty());
+        let bound = bind_project(&project, library, findings);
+        let scenario = &project.scenarios[0];
+
+        let dir = tempfile::tempdir().unwrap();
+        let netlist = dir.path().join("source.cir");
+        std::fs::write(&netlist, "R1 in out 1k\n.end\n").unwrap();
+        let wrapper = build_ngspice_wrapper(
+            &bound,
+            scenario,
+            &netlist,
+            Path::new("waveform.csv"),
+            NgspiceWrapperOptions {
+                parameter_overrides: &[ParameterOverride {
+                    name: "TEMP_C".to_string(),
+                    value: 85.0,
+                }],
+                operating_probe_expressions: &[],
+                include_control: true,
+                include_quit: true,
+            },
+        )
+        .unwrap();
+        assert!(wrapper.contains(".param TEMP_C=8.500000000000e1"));
+        assert!(wrapper.contains(".temp 8.500000000000e1"));
     }
 
     #[test]

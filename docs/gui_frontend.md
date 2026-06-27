@@ -304,7 +304,10 @@ scope-run preparation.
 editors and their Board IR YAML mutation helpers, including the user-facing
 Run Input Sweeps panel. Sweep creation is valid-by-construction: adding a new
 sweep also adds its first SPICE `.param` input and comma-separated value list,
-while extra parameters can be added or removed without editing YAML.
+while extra parameters can be added or removed without editing YAML. The same
+panel exposes one-click corner presets for supply, load, temperature,
+model-selector, and RC-tolerance sweeps, all persisted as ordinary
+`analog.sweeps` data.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
@@ -664,8 +667,9 @@ The supported desktop simulation path is:
    settling-time, overshoot, two-probe phase-delay, or setup/hold waveform
    observation checks against declared probes,
 33. author bounded SPICE `.param` run-input sweeps from the Observations
-   overlay, including executable first-parameter creation, extra parameter
-   add/remove controls, declared corner counts, and Board IR YAML persistence,
+   overlay, including executable first-parameter creation, supply/load/
+   temperature/model-selector/RC corner presets, extra parameter add/remove
+   controls, declared corner counts, and Board IR YAML persistence,
 34. load, edit, save, and rerun file-backed SPICE decks from declared analog
    run setups,
 35. browse, hash, add, and remove SHA-backed SPICE model/include files for

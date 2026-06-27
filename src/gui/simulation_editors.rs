@@ -21,8 +21,9 @@ use super::analog_stimulus::{
 };
 use super::analog_sweeps::{
     AnalogSweepDraft, AnalogSweepParameterDraft, AnalogSweepScenario, AnalogSweepSummary,
-    analog_sweep_scenarios, append_analog_sweep_parameter, append_analog_sweep_with_parameter,
-    remove_analog_sweep, remove_analog_sweep_parameter,
+    analog_sweep_presets, analog_sweep_scenarios, append_analog_sweep_parameter,
+    append_analog_sweep_preset, append_analog_sweep_with_parameter, remove_analog_sweep,
+    remove_analog_sweep_parameter,
 };
 use super::simulation_forms::*;
 use super::sketch::ProjectSnapshot;
@@ -917,6 +918,25 @@ impl CircuitCiApp {
                     self.apply_remove_analog_sweep();
                 }
             });
+            ui.add_space(4.0);
+            ui.strong("Corner presets");
+            egui::Grid::new("analog_sweep_presets")
+                .num_columns(3)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.strong("Preset");
+                    ui.strong("Inputs");
+                    ui.strong("Add");
+                    ui.end_row();
+                    for preset in analog_sweep_presets() {
+                        ui.label(preset.label);
+                        ui.label(preset.summary);
+                        if ui.button("Add").clicked() {
+                            self.apply_add_analog_sweep_preset(preset.id, preset.sweep_name);
+                        }
+                        ui.end_row();
+                    }
+                });
 
             if let Some(selected_scenario) =
                 selected_analog_sweep_scenario(&scenarios, &self.analog_sweep_scenario)
@@ -1091,6 +1111,20 @@ impl CircuitCiApp {
                     draft.parameter_name.trim()
                 ),
             ),
+            Err(error) => self.record_error(error),
+        }
+    }
+
+    fn apply_add_analog_sweep_preset(&mut self, preset_id: &str, sweep_name: &str) {
+        match append_analog_sweep_preset(&self.project_yaml, &self.analog_sweep_scenario, preset_id)
+        {
+            Ok(updated) => {
+                self.analog_sweep_name = sweep_name.to_string();
+                self.apply_edited_project_yaml(
+                    updated,
+                    &format!("Run input corner preset {sweep_name} added."),
+                );
+            }
             Err(error) => self.record_error(error),
         }
     }
