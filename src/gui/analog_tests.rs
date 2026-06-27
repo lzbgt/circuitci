@@ -212,6 +212,64 @@ fn append_analog_assertion_emits_crossing_count_yaml() {
 }
 
 #[test]
+fn append_analog_assertion_emits_integral_threshold_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let mut draft = assertion_draft();
+    draft.assertion_name = "out_volt_seconds".to_string();
+    draft.aggregation = "integral".to_string();
+    draft.relation = "below".to_string();
+    draft.start_us = 0.0;
+    draft.end_us = 100.0;
+    draft.threshold = 2.5e-4;
+    let edited = append_analog_assertion(&edited, &draft).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let assertion = &project.scenarios[0].analog.as_ref().unwrap().assertions[0];
+    assert_eq!(assertion.name, "out_volt_seconds");
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Integral
+    );
+    assert_eq!(assertion.threshold_vs, Some(2.5e-4));
+    assert_eq!(assertion.threshold_v, None);
+    assert_eq!(assertion.start_us, Some(0.0));
+    assert_eq!(assertion.end_us, Some(100.0));
+}
+
+#[test]
+fn append_analog_assertion_emits_power_energy_threshold_yaml() {
+    let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
+    let edited = append_analog_expression_probe(
+        &edited,
+        &AnalogExpressionProbeDraft {
+            scenario_name: "gui_transient".to_string(),
+            probe_name: "load_power".to_string(),
+            expression: "V(out)*I(V1)".to_string(),
+            quantity: "power".to_string(),
+        },
+    )
+    .unwrap();
+    let mut draft = assertion_draft();
+    draft.assertion_name = "load_energy_limit".to_string();
+    draft.probe_name = "load_power".to_string();
+    draft.aggregation = "energy".to_string();
+    draft.relation = "below".to_string();
+    draft.start_us = 0.0;
+    draft.end_us = 100.0;
+    draft.threshold = 1.0e-6;
+    let edited = append_analog_assertion(&edited, &draft).unwrap();
+    let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+    let analog = project.scenarios[0].analog.as_ref().unwrap();
+    let assertion = &analog.assertions[0];
+    assert_eq!(assertion.name, "load_energy_limit");
+    assert_eq!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Energy
+    );
+    assert_eq!(assertion.threshold_j, Some(1.0e-6));
+    assert_eq!(assertion.threshold_w, None);
+}
+
+#[test]
 fn append_analog_assertion_rejects_duplicate_assertion() {
     let edited = append_analog_transient_scenario(editable_project_yaml(), &draft()).unwrap();
     let edited = append_analog_assertion(&edited, &assertion_draft()).unwrap();

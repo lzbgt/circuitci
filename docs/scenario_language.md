@@ -2589,3 +2589,11 @@ tags assertion findings with the sweep name, corner name, and parameter values.
 For every assertion that is evaluated across a sweep, the report also emits an
 `ANALOG_SWEEP_MARGIN_SUMMARY` info finding that points at the worst margin
 corner, measured value, limit, relation, and parameter values.
+
+Analog waveform assertions can also use window aggregations for executable
+design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`
+require `start_us` and `end_us`. `integral` performs signed trapezoidal
+integration over the interpolated waveform window and compares voltage probes
+with `threshold_vs`, current probes with `threshold_c`, and power probes with
+`threshold_j`. `energy` is power-probe-only and also compares with
+`threshold_j`.

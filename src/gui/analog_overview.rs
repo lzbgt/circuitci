@@ -640,6 +640,12 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
         format!("{} A", compact_number(value))
     } else if let Some(value) = assertion.threshold_w {
         format!("{} W", compact_number(value))
+    } else if let Some(value) = assertion.threshold_vs {
+        format!("{} V*s", compact_number(value))
+    } else if let Some(value) = assertion.threshold_c {
+        format!("{} C", compact_number(value))
+    } else if let Some(value) = assertion.threshold_j {
+        format!("{} J", compact_number(value))
     } else {
         "missing threshold".to_string()
     }
@@ -703,6 +709,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",
         crate::board_ir::AnalogAggregation::Rms => "rms",
+        crate::board_ir::AnalogAggregation::Integral => "integral",
+        crate::board_ir::AnalogAggregation::Energy => "energy",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising crossing",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling crossing",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min high pulse",

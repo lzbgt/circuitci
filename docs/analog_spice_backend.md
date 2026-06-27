@@ -129,15 +129,16 @@ The physical assertion should check waveforms such as:
   corners are available.
 
 Executable assertions now support single-point samples, min/max/mean/RMS
-windows, rising/falling crossing-time checks, minimum high/low pulse-width
-checks, duty-cycle checks, and threshold crossing-count checks for no-recross or
-ringing budgets with voltage/current/power decision thresholds. Analog run
+windows, signed integration/energy windows, rising/falling crossing-time checks,
+minimum high/low pulse-width checks, duty-cycle checks, and threshold
+crossing-count checks for no-recross or ringing budgets with
+voltage/current/power decision thresholds. Analog run
 setups can also declare bounded SPICE `.param` sweeps; each corner records the
 sweep name, corner name, and parameter values on generated findings. Swept
 assertions also emit `ANALOG_SWEEP_MARGIN_SUMMARY` info findings that identify
 the worst evaluated corner, parameter values, measured value, limit, relation,
 and numeric margin for each assertion. A complete physical acceptance language
-still needs setup/hold, integration/energy, and richer temperature/model/load
+still needs setup/hold and richer temperature/model/load
 corner sources.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT

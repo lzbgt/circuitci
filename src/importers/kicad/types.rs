@@ -494,6 +494,12 @@ pub(super) struct AssertionYaml {
     pub(super) threshold_a: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) threshold_w: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) threshold_vs: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) threshold_c: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) threshold_j: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -511,6 +517,8 @@ pub(super) enum AssertionAggregationYaml {
     Max,
     Mean,
     Rms,
+    Integral,
+    Energy,
     RisingCrossingTime,
     FallingCrossingTime,
     MinHighPulseWidth,

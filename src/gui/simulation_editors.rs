@@ -633,6 +633,8 @@ impl CircuitCiApp {
                             "max",
                             "mean",
                             "rms",
+                            "integral",
+                            "energy",
                             "rising_crossing_time",
                             "falling_crossing_time",
                             "min_high_pulse_width",
@@ -655,19 +657,30 @@ impl CircuitCiApp {
                     ui.end_row();
 
                     ui.label("Threshold");
-                    let unit = selected_scenario
+                    let probe_quantity = selected_scenario
                         .and_then(|scenario| {
                             scenario
                                 .probes
                                 .iter()
                                 .find(|probe| probe.name == self.analog_assertion_probe)
                         })
-                        .map(|probe| match probe.quantity.as_str() {
+                        .map(|probe| probe.quantity.as_str());
+                    let unit = probe_quantity
+                        .map(|quantity| match quantity {
                             "current" => " A",
                             "power" => " W",
                             _ => " V",
                         })
                         .unwrap_or(" V");
+                    let unit = match self.analog_assertion_aggregation.as_str() {
+                        "energy" => " J",
+                        "integral" => match probe_quantity {
+                            Some("current") => " C",
+                            Some("power") => " J",
+                            _ => " V*s",
+                        },
+                        _ => unit,
+                    };
                     ui.add(
                         egui::DragValue::new(&mut self.analog_assertion_threshold)
                             .speed(0.1)

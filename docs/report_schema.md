@@ -110,6 +110,9 @@ Typical fields:
 - `measured.assertion`, `measured.probe`, `measured.measured_value`,
   `measured.measured_unit`, `measured.margin`, `measured.passed`, and
   `measured.evaluated_corners`.
+- `measured.measured_unit` is the compared assertion unit. Analog waveform
+  checks may therefore report instantaneous units (`V`, `A`, `W`), timing/count
+  units (`us`, `%`, `crossings`), or integrated units (`V*s`, `C`, `J`).
 - `limit.relation`, `limit.limit_value`, `limit.limit_unit`, and
   `limit.minimum_margin`.
 

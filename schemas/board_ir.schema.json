@@ -1540,11 +1540,14 @@
                     "time_limit_us": { "type": "number", "minimum": 0 },
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
                     "threshold_w": { "type": "number" },
+                    "threshold_vs": { "type": "number" },
+                    "threshold_c": { "type": "number" },
+                    "threshold_j": { "type": "number" },
                     "suggested_fixes": {
                       "type": "array",
                       "items": { "type": "string", "minLength": 1 }
@@ -1554,7 +1557,7 @@
                     {
                       "if": {
                         "required": ["aggregation"],
-                        "properties": { "aggregation": { "enum": ["min", "max", "mean", "rms"] } }
+                        "properties": { "aggregation": { "enum": ["min", "max", "mean", "rms", "integral", "energy"] } }
                       },
                       "then": {
                         "required": ["start_us", "end_us"],
@@ -1632,7 +1635,10 @@
                       "oneOf": [
                         { "required": ["threshold_v"] },
                         { "required": ["threshold_a"] },
-                        { "required": ["threshold_w"] }
+                        { "required": ["threshold_w"] },
+                        { "required": ["threshold_vs"] },
+                        { "required": ["threshold_c"] },
+                        { "required": ["threshold_j"] }
                       ]
                     }
                   ],

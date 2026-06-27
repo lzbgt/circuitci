@@ -47,24 +47,30 @@ missing-file diagnostics during bring-up.
 ## Assertion Semantics
 
 Assertions can sample a named probe at `at_us`, evaluate
-`min`/`max`/`mean`/`rms` over a `start_us` to `end_us` window, or measure the
-first rising/falling threshold-crossing time, minimum high/low pulse width, or
-duty cycle in a window. It can also count any/rising/falling threshold
-crossings in a window for no-recross, bounce, and ringing checks. If a requested
-boundary or threshold event is between solver samples, CircuitCI uses linear
-interpolation between adjacent samples. Probe
-`quantity` selects the required threshold unit:
+`min`/`max`/`mean`/`rms` over a `start_us` to `end_us` window, integrate a
+waveform over a window, or measure the first rising/falling threshold-crossing
+time, minimum high/low pulse width, or duty cycle in a window. It can also count
+any/rising/falling threshold crossings in a window for no-recross, bounce, and
+ringing checks. If a requested boundary or threshold event is between solver
+samples, CircuitCI uses linear interpolation between adjacent samples. Probe
+`quantity` selects the required threshold unit for non-integrated assertions:
 
 - `voltage`: `threshold_v`
 - `current`: `threshold_a`
 - `power`: `threshold_w`
 
+Integrated assertions use signed trapezoidal integration over the interpolated
+window. `aggregation: integral` compares voltage probes against `threshold_vs`,
+current probes against `threshold_c`, and power probes against `threshold_j`.
+`aggregation: energy` is a power-probe-only convenience form and compares
+against `threshold_j`.
+
 Exactly one threshold field is allowed on each assertion. Sample assertions use
 `at_us` and must not also declare a window. Window assertions use
-`aggregation: min|max|mean|rms` with `start_us` and `end_us`, and must not also
-declare `at_us`. Mean and RMS are time-weighted over the linearly interpolated
-waveform segment, so nonuniform solver sample spacing does not bias the
-measurement. Crossing-time assertions use
+`aggregation: min|max|mean|rms|integral|energy` with `start_us` and `end_us`,
+and must not also declare `at_us`. Mean, RMS, integral, and energy are computed
+over the linearly interpolated waveform segment, so nonuniform solver sample
+spacing does not bias the measurement. Crossing-time assertions use
 `aggregation: rising_crossing_time|falling_crossing_time`, `start_us`,
 `end_us`, and `time_limit_us`; pulse-width assertions use
 `aggregation: min_high_pulse_width|min_low_pulse_width`, `start_us`, `end_us`,

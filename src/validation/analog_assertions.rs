@@ -245,6 +245,8 @@ pub(super) fn validate_assertion_contract(
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -345,6 +347,9 @@ pub(super) fn threshold_count(assertion: &AnalogAssertion) -> usize {
         assertion.threshold_v,
         assertion.threshold_a,
         assertion.threshold_w,
+        assertion.threshold_vs,
+        assertion.threshold_c,
+        assertion.threshold_j,
     ]
     .into_iter()
     .filter(|threshold| threshold.is_some_and(f64::is_finite))
@@ -355,10 +360,23 @@ pub(super) fn threshold_for(
     assertion: &AnalogAssertion,
     probe: &AnalogProbe,
 ) -> Option<AssertionThreshold> {
-    let (value, unit, limit_key) = match probe.quantity {
-        AnalogQuantity::Voltage => (assertion.threshold_v?, "V", "_V"),
-        AnalogQuantity::Current => (assertion.threshold_a?, "A", "_A"),
-        AnalogQuantity::Power => (assertion.threshold_w?, "W", "_W"),
+    let (value, unit, limit_key) = if matches!(assertion.aggregation, AnalogAggregation::Energy) {
+        if !matches!(probe.quantity, AnalogQuantity::Power) {
+            return None;
+        }
+        (assertion.threshold_j?, "J", "_J")
+    } else if matches!(assertion.aggregation, AnalogAggregation::Integral) {
+        match probe.quantity {
+            AnalogQuantity::Voltage => (assertion.threshold_vs?, "V*s", "_V_s"),
+            AnalogQuantity::Current => (assertion.threshold_c?, "C", "_C"),
+            AnalogQuantity::Power => (assertion.threshold_j?, "J", "_J"),
+        }
+    } else {
+        match probe.quantity {
+            AnalogQuantity::Voltage => (assertion.threshold_v?, "V", "_V"),
+            AnalogQuantity::Current => (assertion.threshold_a?, "A", "_A"),
+            AnalogQuantity::Power => (assertion.threshold_w?, "W", "_W"),
+        }
     };
     value.is_finite().then_some(AssertionThreshold {
         value,
@@ -412,7 +430,9 @@ fn measured_assertion_value(
         AnalogAggregation::Min
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
-        | AnalogAggregation::Rms => {
+        | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy => {
             let start = assertion.start_us? / 1_000_000.0;
             let end = assertion.end_us? / 1_000_000.0;
             aggregate_window(times, values, start, end, &assertion.aggregation)
@@ -470,7 +490,10 @@ fn aggregate_window(
             .into_iter()
             .map(|(_, value)| value)
             .reduce(f64::max),
-        AnalogAggregation::Mean | AnalogAggregation::Rms => {
+        AnalogAggregation::Mean
+        | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy => {
             let duration = end - start;
             if duration <= 0.0 {
                 return None;
@@ -490,7 +513,8 @@ fn aggregate_window(
             match aggregation {
                 AnalogAggregation::Mean => Some(integral / duration),
                 AnalogAggregation::Rms => Some((square_integral / duration).sqrt()),
-                _ => unreachable!("window aggregate branch filters mean/rms"),
+                AnalogAggregation::Integral | AnalogAggregation::Energy => Some(integral),
+                _ => unreachable!("window aggregate branch filters mean/rms/integral/energy"),
             }
         }
         AnalogAggregation::Sample
@@ -713,6 +737,8 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::Max => "maximum",
         AnalogAggregation::Mean => "mean",
         AnalogAggregation::Rms => "RMS",
+        AnalogAggregation::Integral => "integral",
+        AnalogAggregation::Energy => "energy",
         AnalogAggregation::RisingCrossingTime => "rising crossing-time",
         AnalogAggregation::FallingCrossingTime => "falling crossing-time",
         AnalogAggregation::MinHighPulseWidth => "minimum high pulse width",
@@ -736,7 +762,15 @@ fn measured_quantity_name(
     assertion: &AnalogAssertion,
     probe_quantity: &AnalogQuantity,
 ) -> &'static str {
-    if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
+    if matches!(assertion.aggregation, AnalogAggregation::Energy) {
+        "energy"
+    } else if matches!(assertion.aggregation, AnalogAggregation::Integral) {
+        match probe_quantity {
+            AnalogQuantity::Voltage => "voltage integral",
+            AnalogQuantity::Current => "charge",
+            AnalogQuantity::Power => "energy",
+        }
+    } else if matches!(assertion.aggregation, AnalogAggregation::DutyCycle) {
         "duty cycle"
     } else if is_crossing_count_aggregation(&assertion.aggregation) {
         "count"
@@ -754,6 +788,8 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -782,6 +818,8 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -830,6 +868,8 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
         | AnalogAggregation::Max
         | AnalogAggregation::Mean
         | AnalogAggregation::Rms
+        | AnalogAggregation::Integral
+        | AnalogAggregation::Energy
         | AnalogAggregation::RisingCrossingTime
         | AnalogAggregation::FallingCrossingTime
         | AnalogAggregation::MinHighPulseWidth
@@ -910,7 +950,7 @@ pub(super) fn interpolate_at(times: &[f64], values: &[f64], target: f64) -> Opti
 mod tests {
     use super::{
         aggregate_window, crossing_count, crossing_time_us, duty_cycle_percent, min_pulse_width_us,
-        threshold_count, validate_assertion_contract, validate_probe_contract,
+        threshold_count, threshold_for, validate_assertion_contract, validate_probe_contract,
     };
     use crate::board_ir::{
         AnalogAggregation, AnalogAssertion, AnalogProbe, AnalogQuantity, AnalogRelation,
@@ -935,6 +975,19 @@ mod tests {
 
         assert!((mean - (5.0 / 3.0)).abs() < 1.0e-12);
         assert!((rms - (28.0_f64 / 9.0).sqrt()).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn window_aggregation_computes_interpolated_integral_and_energy() {
+        let times = [0.0, 1.0, 3.0];
+        let values = [0.0, 2.0, 2.0];
+        let integral =
+            aggregate_window(&times, &values, 0.5, 2.0, &AnalogAggregation::Integral).unwrap();
+        let energy =
+            aggregate_window(&times, &values, 0.5, 2.0, &AnalogAggregation::Energy).unwrap();
+
+        assert!((integral - 2.75).abs() < 1.0e-12);
+        assert!((energy - integral).abs() < 1.0e-12);
     }
 
     #[test]
@@ -1067,6 +1120,63 @@ mod tests {
     }
 
     #[test]
+    fn integral_and_energy_thresholds_use_integrated_units() {
+        let current_probe = AnalogProbe {
+            name: "load_current".to_string(),
+            expression: "I(VLOAD)".to_string(),
+            quantity: AnalogQuantity::Current,
+        };
+        let current_integral = AnalogAssertion {
+            name: "charge_limit".to_string(),
+            probe: "load_current".to_string(),
+            at_us: None,
+            start_us: Some(0.0),
+            end_us: Some(100.0),
+            time_limit_us: None,
+            duty_limit_percent: None,
+            count_limit: None,
+            aggregation: AnalogAggregation::Integral,
+            relation: AnalogRelation::Below,
+            threshold_v: None,
+            threshold_a: None,
+            threshold_w: None,
+            threshold_vs: None,
+            threshold_c: Some(1.0e-6),
+            threshold_j: None,
+            suggested_fixes: Vec::new(),
+        };
+        let threshold = threshold_for(&current_integral, &current_probe).unwrap();
+        assert_eq!(threshold.unit, "C");
+        assert_eq!(threshold.limit_key, "_C");
+
+        let power_probe = AnalogProbe {
+            name: "load_power".to_string(),
+            expression: "V(out)*I(VLOAD)".to_string(),
+            quantity: AnalogQuantity::Power,
+        };
+        let energy = AnalogAssertion {
+            name: "energy_limit".to_string(),
+            probe: "load_power".to_string(),
+            at_us: None,
+            start_us: Some(0.0),
+            end_us: Some(100.0),
+            time_limit_us: None,
+            duty_limit_percent: None,
+            count_limit: None,
+            aggregation: AnalogAggregation::Energy,
+            relation: AnalogRelation::Below,
+            threshold_v: None,
+            threshold_a: None,
+            threshold_w: Some(1.0),
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
+            suggested_fixes: Vec::new(),
+        };
+        assert!(threshold_for(&energy, &power_probe).is_none());
+    }
+
+    #[test]
     fn probe_contract_rejects_mismatched_quantity_expression() {
         let probe = AnalogProbe {
             name: "bad_current".to_string(),
@@ -1099,6 +1209,9 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: None,
             threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1117,6 +1230,9 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: Some(0.001),
             threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
             suggested_fixes: Vec::new(),
         };
         assert_eq!(threshold_count(&assertion), 2);
@@ -1135,6 +1251,9 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: None,
             threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1153,6 +1272,9 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: None,
             threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());
@@ -1171,6 +1293,9 @@ mod tests {
             threshold_v: Some(1.0),
             threshold_a: None,
             threshold_w: None,
+            threshold_vs: None,
+            threshold_c: None,
+            threshold_j: None,
             suggested_fixes: Vec::new(),
         };
         assert!(validate_assertion_contract(&assertion, 1000.0).is_err());

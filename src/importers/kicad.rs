@@ -739,6 +739,9 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
             assertion.threshold_v,
             assertion.threshold_a,
             assertion.threshold_w,
+            assertion.threshold_vs,
+            assertion.threshold_c,
+            assertion.threshold_j,
         ]
         .into_iter()
         .filter(|value| value.is_some_and(f64::is_finite))

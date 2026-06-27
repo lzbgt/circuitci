@@ -301,6 +301,7 @@ pub(super) fn append_analog_assertion(text: &str, draft: &AnalogAssertionDraft) 
                 draft.probe_name, scenario.name
             )
         })?;
+    validate_assertion_probe_quantity(draft, &probe.quantity)?;
     validate_assertion_timing(draft, analog.analysis.stop_time_us)?;
 
     let mut yaml: serde_yaml_ng::Value =
@@ -754,6 +755,7 @@ pub(super) fn replace_analog_assertion(
                 draft.replacement.probe_name, scenario.name
             )
         })?;
+    validate_assertion_probe_quantity(&draft.replacement, &probe.quantity)?;
     validate_assertion_timing(&draft.replacement, analog.analysis.stop_time_us)?;
 
     let mut yaml: serde_yaml_ng::Value =
@@ -856,6 +858,8 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "max"
             | "mean"
             | "rms"
+            | "integral"
+            | "energy"
             | "rising_crossing_time"
             | "falling_crossing_time"
             | "min_high_pulse_width"
@@ -1028,7 +1032,7 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
-        "min" | "max" | "mean" | "rms" => {
+        "min" | "max" | "mean" | "rms" | "integral" | "energy" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1091,6 +1095,17 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
     Ok(())
 }
 
+fn validate_assertion_probe_quantity(
+    draft: &AnalogAssertionDraft,
+    quantity: &crate::board_ir::AnalogQuantity,
+) -> Result<()> {
+    if draft.aggregation == "energy" && !matches!(quantity, crate::board_ir::AnalogQuantity::Power)
+    {
+        anyhow::bail!("Energy assertions require a power probe.");
+    }
+    Ok(())
+}
+
 fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'static str {
     match aggregation {
         crate::board_ir::AnalogAggregation::Sample => "sample",
@@ -1098,6 +1113,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Max => "max",
         crate::board_ir::AnalogAggregation::Mean => "mean",
         crate::board_ir::AnalogAggregation::Rms => "rms",
+        crate::board_ir::AnalogAggregation::Integral => "integral",
+        crate::board_ir::AnalogAggregation::Energy => "energy",
         crate::board_ir::AnalogAggregation::RisingCrossingTime => "rising_crossing_time",
         crate::board_ir::AnalogAggregation::FallingCrossingTime => "falling_crossing_time",
         crate::board_ir::AnalogAggregation::MinHighPulseWidth => "min_high_pulse_width",
@@ -1120,6 +1137,34 @@ fn assertion_threshold_label(
     assertion: &crate::board_ir::AnalogAssertion,
     quantity: &crate::board_ir::AnalogQuantity,
 ) -> String {
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Energy
+    ) {
+        return assertion
+            .threshold_j
+            .map(|value| format!("{value:.6} J"))
+            .unwrap_or_else(|| "missing energy threshold".to_string());
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Integral
+    ) {
+        return match quantity {
+            crate::board_ir::AnalogQuantity::Voltage => assertion
+                .threshold_vs
+                .map(|value| format!("{value:.6} V*s"))
+                .unwrap_or_else(|| "missing voltage integral threshold".to_string()),
+            crate::board_ir::AnalogQuantity::Current => assertion
+                .threshold_c
+                .map(|value| format!("{value:.6} C"))
+                .unwrap_or_else(|| "missing charge threshold".to_string()),
+            crate::board_ir::AnalogQuantity::Power => assertion
+                .threshold_j
+                .map(|value| format!("{value:.6} J"))
+                .unwrap_or_else(|| "missing energy threshold".to_string()),
+        };
+    }
     match quantity {
         crate::board_ir::AnalogQuantity::Voltage => assertion
             .threshold_v
@@ -1140,6 +1185,22 @@ fn assertion_threshold_value(
     assertion: &crate::board_ir::AnalogAssertion,
     quantity: &crate::board_ir::AnalogQuantity,
 ) -> Option<f64> {
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Energy
+    ) {
+        return assertion.threshold_j;
+    }
+    if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::Integral
+    ) {
+        return match quantity {
+            crate::board_ir::AnalogQuantity::Voltage => assertion.threshold_vs,
+            crate::board_ir::AnalogQuantity::Current => assertion.threshold_c,
+            crate::board_ir::AnalogQuantity::Power => assertion.threshold_j,
+        };
+    }
     match quantity {
         crate::board_ir::AnalogQuantity::Voltage => assertion.threshold_v,
         crate::board_ir::AnalogQuantity::Current => assertion.threshold_a,
@@ -1155,7 +1216,9 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         crate::board_ir::AnalogAggregation::Min
         | crate::board_ir::AnalogAggregation::Max
         | crate::board_ir::AnalogAggregation::Mean
-        | crate::board_ir::AnalogAggregation::Rms => {
+        | crate::board_ir::AnalogAggregation::Rms
+        | crate::board_ir::AnalogAggregation::Integral
+        | crate::board_ir::AnalogAggregation::Energy => {
             format!(
                 "{:.6}..{:.6} us",
                 assertion.start_us.unwrap_or_default(),
@@ -1395,7 +1458,7 @@ fn assertion_value(
     }
     match draft.aggregation.as_str() {
         "sample" => insert_number(&mut assertion, "at_us", draft.at_us)?,
-        "min" | "max" | "mean" | "rms" => {
+        "min" | "max" | "mean" | "rms" | "integral" | "energy" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
         }
@@ -1424,11 +1487,25 @@ fn assertion_value(
         _ => unreachable!("aggregation was validated"),
     }
     insert_string(&mut assertion, "relation", &draft.relation);
-    insert_number(&mut assertion, threshold_field(quantity), draft.threshold)?;
+    insert_number(
+        &mut assertion,
+        threshold_field(&draft.aggregation, quantity),
+        draft.threshold,
+    )?;
     Ok(serde_yaml_ng::Value::Mapping(assertion))
 }
 
-fn threshold_field(quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+fn threshold_field(aggregation: &str, quantity: &crate::board_ir::AnalogQuantity) -> &'static str {
+    if aggregation == "energy" {
+        return "threshold_j";
+    }
+    if aggregation == "integral" {
+        return match quantity {
+            crate::board_ir::AnalogQuantity::Voltage => "threshold_vs",
+            crate::board_ir::AnalogQuantity::Current => "threshold_c",
+            crate::board_ir::AnalogQuantity::Power => "threshold_j",
+        };
+    }
     match quantity {
         crate::board_ir::AnalogQuantity::Voltage => "threshold_v",
         crate::board_ir::AnalogQuantity::Current => "threshold_a",
