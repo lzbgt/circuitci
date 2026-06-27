@@ -27,6 +27,14 @@ simulation:
     valid_operating_notes:
       - Generic smooth-threshold comparator for preliminary threshold and timing observation checks.
       - Omits propagation-delay distribution, input common-mode limits, hysteresis, open-drain behavior, output drive strength, and metastability.
+analog_function:
+  kind: comparator
+  positive_input_pin: INP
+  negative_input_pin: INN
+  output_pin: OUT
+  positive_supply_pin: VCC
+  negative_supply_pin: VEE
+  default_logic_margin_V: 0.5
 model_quality:
   source: generic
   confidence: low

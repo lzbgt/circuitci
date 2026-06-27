@@ -30,6 +30,8 @@ pub struct ComponentModel {
     #[serde(default)]
     pub reset_supervisor: Option<ResetSupervisor>,
     #[serde(default)]
+    pub analog_function: Option<AnalogFunction>,
+    #[serde(default)]
     pub usb_connector: Option<UsbConnector>,
     #[serde(default)]
     pub connector: Option<Connector>,
@@ -192,6 +194,32 @@ pub struct ResetSupervisor {
 pub enum ResetSupervisorActive {
     High,
     Low,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogFunction {
+    pub kind: AnalogFunctionKind,
+    #[serde(default)]
+    pub positive_input_pin: Option<String>,
+    #[serde(default)]
+    pub negative_input_pin: Option<String>,
+    #[serde(default)]
+    pub output_pin: Option<String>,
+    #[serde(default)]
+    pub positive_supply_pin: Option<String>,
+    #[serde(default)]
+    pub negative_supply_pin: Option<String>,
+    #[serde(default, rename = "default_output_tolerance_V")]
+    pub default_output_tolerance_v: Option<f64>,
+    #[serde(default, rename = "default_logic_margin_V")]
+    pub default_logic_margin_v: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalogFunctionKind {
+    OpAmp,
+    Comparator,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -920,5 +948,19 @@ board: {}
             assert_eq!(spice.pin_order, pin_order);
             assert_eq!(model.model_quality.confidence, "low");
         }
+        assert_eq!(
+            library
+                .get("generic.analog.ideal_opamp")
+                .and_then(|model| model.analog_function.as_ref())
+                .map(|function| &function.kind),
+            Some(&AnalogFunctionKind::OpAmp)
+        );
+        assert_eq!(
+            library
+                .get("generic.analog.ideal_comparator")
+                .and_then(|model| model.analog_function.as_ref())
+                .map(|function| &function.kind),
+            Some(&AnalogFunctionKind::Comparator)
+        );
     }
 }

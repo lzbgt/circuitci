@@ -638,6 +638,30 @@ vendor-part sign-off, op-amp stability/noise/slew/current analysis,
 comparator propagation-delay/hysteresis/open-drain sign-off, or regulator
 loop-stability/current-limit/thermal/PSRR analysis.
 
+Analog function models can also declare workflow semantics used by GUI
+observation presets:
+
+```yaml
+analog_function:
+  kind: op_amp
+  positive_input_pin: INP
+  negative_input_pin: INN
+  output_pin: OUT
+  positive_supply_pin: VCC
+  negative_supply_pin: VEE
+  default_output_tolerance_V: 0.05
+```
+
+`kind` is currently `op_amp` or `comparator`. The pin fields identify analog
+function roles independently from SPICE subcircuit pin order. Observation
+presets use this metadata only when the surrounding circuit is inferable. For
+example, an op-amp whose inverting input is tied to the output and whose
+non-inverting input is driven by a Board IR pulse source receives output
+tracking sample checks. A comparator whose one input is pulse-driven and the
+other is a fixed DC/reference net receives output low/high state checks against
+the positive supply rail. These checks are starter observations, not vendor
+dynamic-performance sign-off.
+
 Vendor component models may also point at these shared behavioral subcircuits
 when the datasheet-backed package/pin/limit metadata is still explicit and the
 simulation notes state the reduced fidelity. For example,

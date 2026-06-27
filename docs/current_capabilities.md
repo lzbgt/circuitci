@@ -147,8 +147,9 @@ Current analog support:
   observation preset that includes the board context, binds ground, voltage
   probes the component's non-ground pin nets, infers required model files, and
   adds model-aware default checks for regulator output voltage limits or
-  pulse-driven reset-supervisor output behavior when the needed metadata is
-  present.
+  pulse-driven reset-supervisor, op-amp follower, and comparator output
+  behavior when the needed metadata and surrounding stimulus/reference topology
+  are present.
 - Critical findings for missing backends, missing decks, missing model files,
   non-convergence, missing required analog model evidence, and failed waveform
   assertions.

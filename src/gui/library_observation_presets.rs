@@ -94,9 +94,20 @@ pub(super) fn create_component_observation_preset(
 
 #[derive(Debug, Clone)]
 struct ObservationProbeSpec {
-    pin: String,
     probe_name: String,
     net: String,
+}
+
+struct ComparatorPulseCheck<'a> {
+    scenario_name: &'a str,
+    output_probe_name: &'a str,
+    name_stem: &'a str,
+    pulse: &'a crate::board_ir::SpicePulseSpec,
+    reference_v: f64,
+    high_level_v: f64,
+    margin_v: f64,
+    pulse_above_reference_drives_output_high: bool,
+    stop_time_us: f64,
 }
 
 fn observation_ground_net(
@@ -160,7 +171,6 @@ fn observation_voltage_probe_specs(
             continue;
         }
         probes.push(ObservationProbeSpec {
-            pin: pin.clone(),
             probe_name: sanitize_observation_id(&format!("v_{component_id}_{pin}")),
             net: net.clone(),
         });
@@ -178,7 +188,7 @@ fn observation_default_assertions(
 ) -> Vec<AnalogAssertionDraft> {
     let mut assertions = Vec::new();
     if let Some(power) = &model.power_conversion
-        && let Some(output_probe) = probe_for_pin(probes, &power.output_pin)
+        && let Some(output_probe) = probe_for_component_pin(probes, component, &power.output_pin)
         && let Some(output_port) = model.ports.get(&power.output_pin)
     {
         if let Some(min_v) = output_port.electrical.operating_voltage_min_v {
@@ -205,7 +215,8 @@ fn observation_default_assertions(
         }
     }
     if let Some(reset) = &model.reset_supervisor
-        && let Some(output_probe) = probe_for_pin(probes, &reset.reset_output_pin)
+        && let Some(output_probe) =
+            probe_for_component_pin(probes, component, &reset.reset_output_pin)
         && let Some(monitored_net) = component.pins.get(&reset.monitored_pin)
         && let Some(pulse) = pulse_source_for_net(project, monitored_net)
     {
@@ -253,14 +264,275 @@ fn observation_default_assertions(
             }
         }
     }
+    if let Some(function) = &model.analog_function {
+        match function.kind {
+            crate::library::AnalogFunctionKind::OpAmp => {
+                add_op_amp_observation_assertions(
+                    project,
+                    component,
+                    function,
+                    probes,
+                    scenario_name,
+                    stop_time_us,
+                    &mut assertions,
+                );
+            }
+            crate::library::AnalogFunctionKind::Comparator => {
+                add_comparator_observation_assertions(
+                    project,
+                    component,
+                    function,
+                    probes,
+                    scenario_name,
+                    stop_time_us,
+                    &mut assertions,
+                );
+            }
+        }
+    }
     assertions
 }
 
-fn probe_for_pin<'a>(
+fn add_op_amp_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    function: &crate::library::AnalogFunction,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let (Some(non_inverting_pin), Some(inverting_pin), Some(output_pin)) = (
+        function.positive_input_pin.as_deref(),
+        function.negative_input_pin.as_deref(),
+        function.output_pin.as_deref(),
+    ) else {
+        return;
+    };
+    let Some(non_inverting_net) = component.pins.get(non_inverting_pin) else {
+        return;
+    };
+    let Some(inverting_net) = component.pins.get(inverting_pin) else {
+        return;
+    };
+    let Some(output_net) = component.pins.get(output_pin) else {
+        return;
+    };
+    if inverting_net != output_net {
+        return;
+    }
+    let Some(output_probe) = probe_for_net(probes, output_net) else {
+        return;
+    };
+    let Some(input_pulse) = pulse_source_for_net(project, non_inverting_net) else {
+        return;
+    };
+    let tolerance = function.default_output_tolerance_v.unwrap_or(0.05);
+    add_tracks_pulse_assertions(
+        scenario_name,
+        &output_probe.probe_name,
+        "tracks_input",
+        input_pulse,
+        tolerance,
+        stop_time_us,
+        assertions,
+    );
+}
+
+fn add_comparator_observation_assertions(
+    project: &crate::board_ir::BoardProject,
+    component: &crate::board_ir::ComponentSpec,
+    function: &crate::library::AnalogFunction,
+    probes: &[ObservationProbeSpec],
+    scenario_name: &str,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let (Some(non_inverting_pin), Some(inverting_pin), Some(output_pin), Some(supply_pin)) = (
+        function.positive_input_pin.as_deref(),
+        function.negative_input_pin.as_deref(),
+        function.output_pin.as_deref(),
+        function.positive_supply_pin.as_deref(),
+    ) else {
+        return;
+    };
+    let Some(non_inverting_net) = component.pins.get(non_inverting_pin) else {
+        return;
+    };
+    let Some(inverting_net) = component.pins.get(inverting_pin) else {
+        return;
+    };
+    let Some(output_net) = component.pins.get(output_pin) else {
+        return;
+    };
+    let Some(supply_net) = component.pins.get(supply_pin) else {
+        return;
+    };
+    let Some(output_probe) = probe_for_net(probes, output_net) else {
+        return;
+    };
+    let Some(high_level) = dc_voltage_for_net(project, supply_net)
+        .or_else(|| nominal_voltage_for_net(project, supply_net))
+    else {
+        return;
+    };
+    let margin = function.default_logic_margin_v.unwrap_or(0.5);
+    if let Some(pulse) = pulse_source_for_net(project, non_inverting_net)
+        && let Some(reference) = dc_voltage_for_net(project, inverting_net)
+            .or_else(|| nominal_voltage_for_net(project, inverting_net))
+    {
+        add_comparator_pulse_assertions(
+            &ComparatorPulseCheck {
+                scenario_name,
+                output_probe_name: &output_probe.probe_name,
+                name_stem: "positive_input",
+                pulse,
+                reference_v: reference,
+                high_level_v: high_level,
+                margin_v: margin,
+                pulse_above_reference_drives_output_high: true,
+                stop_time_us,
+            },
+            assertions,
+        );
+    } else if let Some(pulse) = pulse_source_for_net(project, inverting_net)
+        && let Some(reference) = dc_voltage_for_net(project, non_inverting_net)
+            .or_else(|| nominal_voltage_for_net(project, non_inverting_net))
+    {
+        add_comparator_pulse_assertions(
+            &ComparatorPulseCheck {
+                scenario_name,
+                output_probe_name: &output_probe.probe_name,
+                name_stem: "negative_input",
+                pulse,
+                reference_v: reference,
+                high_level_v: high_level,
+                margin_v: margin,
+                pulse_above_reference_drives_output_high: false,
+                stop_time_us,
+            },
+            assertions,
+        );
+    }
+}
+
+fn add_tracks_pulse_assertions(
+    scenario_name: &str,
+    output_probe_name: &str,
+    name_stem: &str,
+    pulse: &crate::board_ir::SpicePulseSpec,
+    tolerance: f64,
+    stop_time_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let low_time = (pulse.delay_us * 0.5).clamp(0.0, stop_time_us);
+    let high_time = pulse_high_sample_time(pulse, stop_time_us);
+    assertions.push(default_sample_assertion(
+        scenario_name,
+        &format!("{output_probe_name}_{name_stem}_low_above"),
+        output_probe_name,
+        "above",
+        pulse.initial_v - tolerance,
+        low_time,
+    ));
+    assertions.push(default_sample_assertion(
+        scenario_name,
+        &format!("{output_probe_name}_{name_stem}_low_below"),
+        output_probe_name,
+        "below",
+        pulse.initial_v + tolerance,
+        low_time,
+    ));
+    assertions.push(default_sample_assertion(
+        scenario_name,
+        &format!("{output_probe_name}_{name_stem}_high_above"),
+        output_probe_name,
+        "above",
+        pulse.pulsed_v - tolerance,
+        high_time,
+    ));
+    assertions.push(default_sample_assertion(
+        scenario_name,
+        &format!("{output_probe_name}_{name_stem}_high_below"),
+        output_probe_name,
+        "below",
+        pulse.pulsed_v + tolerance,
+        high_time,
+    ));
+}
+
+fn add_comparator_pulse_assertions(
+    check: &ComparatorPulseCheck<'_>,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let low_time = (check.pulse.delay_us * 0.5).clamp(0.0, check.stop_time_us);
+    let high_time = pulse_high_sample_time(check.pulse, check.stop_time_us);
+    let low_relation = if (check.pulse.initial_v > check.reference_v)
+        == check.pulse_above_reference_drives_output_high
+    {
+        "above"
+    } else {
+        "below"
+    };
+    let high_relation = if (check.pulse.pulsed_v > check.reference_v)
+        == check.pulse_above_reference_drives_output_high
+    {
+        "above"
+    } else {
+        "below"
+    };
+    push_comparator_state_assertion(
+        check,
+        &format!("{}_low_state", check.name_stem),
+        low_relation,
+        low_time,
+        assertions,
+    );
+    push_comparator_state_assertion(
+        check,
+        &format!("{}_high_state", check.name_stem),
+        high_relation,
+        high_time,
+        assertions,
+    );
+}
+
+fn push_comparator_state_assertion(
+    check: &ComparatorPulseCheck<'_>,
+    assertion_name: &str,
+    input_relation_to_reference: &str,
+    at_us: f64,
+    assertions: &mut Vec<AnalogAssertionDraft>,
+) {
+    let (relation, threshold) = if input_relation_to_reference == "above" {
+        ("above", check.high_level_v - check.margin_v)
+    } else {
+        ("below", check.margin_v)
+    };
+    assertions.push(default_sample_assertion(
+        check.scenario_name,
+        &format!("{}_{}", check.output_probe_name, assertion_name),
+        check.output_probe_name,
+        relation,
+        threshold,
+        at_us,
+    ));
+}
+
+fn probe_for_component_pin<'a>(
     probes: &'a [ObservationProbeSpec],
+    component: &crate::board_ir::ComponentSpec,
     pin: &str,
 ) -> Option<&'a ObservationProbeSpec> {
-    probes.iter().find(|probe| probe.pin == pin)
+    let net = component.pins.get(pin)?;
+    probe_for_net(probes, net)
+}
+
+fn probe_for_net<'a>(
+    probes: &'a [ObservationProbeSpec],
+    net: &str,
+) -> Option<&'a ObservationProbeSpec> {
+    probes.iter().find(|probe| probe.net == net)
 }
 
 fn pulse_source_for_net<'a>(
@@ -278,6 +550,33 @@ fn pulse_source_for_net<'a>(
             None
         }
     })
+}
+
+fn dc_voltage_for_net(project: &crate::board_ir::BoardProject, net_id: &str) -> Option<f64> {
+    project.board.components.values().find_map(|component| {
+        let spice = component.spice.as_ref()?;
+        if spice.primitive != crate::board_ir::SpicePrimitive::DcVoltageSource {
+            return None;
+        }
+        if component.pins.get("P").is_some_and(|net| net == net_id) {
+            spice.dc_v
+        } else {
+            None
+        }
+    })
+}
+
+fn nominal_voltage_for_net(project: &crate::board_ir::BoardProject, net_id: &str) -> Option<f64> {
+    project
+        .board
+        .nets
+        .get(net_id)
+        .and_then(|net| net.nominal_voltage)
+}
+
+fn pulse_high_sample_time(pulse: &crate::board_ir::SpicePulseSpec, stop_time_us: f64) -> f64 {
+    let high_time = pulse.delay_us + pulse.rise_us + pulse.width_us * 0.5;
+    high_time.clamp(0.0, stop_time_us)
 }
 
 fn default_voltage_assertion(
@@ -458,6 +757,91 @@ board:
 "
     }
 
+    fn opamp_buffer_project_yaml() -> &'static str {
+        "project:
+  name: opamp_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins: { P: vcc_5v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins: { P: input, N: gnd }
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.5
+          pulsed_v: 2.5
+          delay_us: 10.0
+          rise_us: 1.0
+          fall_us: 1.0
+          width_us: 40.0
+          period_us: 80.0
+    XU1:
+      model: generic.analog.ideal_opamp
+      pins: { INP: input, INN: output, VCC: vcc_5v, VEE: gnd, OUT: output }
+    RLOAD:
+      model: generic.analog.resistor
+      pins: { A: output, B: gnd }
+      spice: { primitive: resistor, value_ohm: 10000.0 }
+  nets:
+    vcc_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    input: { kind: digital_or_analog }
+    output: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
+    fn comparator_project_yaml() -> &'static str {
+        "project:
+  name: comparator_observation_preset_test
+  version: 0.1.0
+libraries:
+  - libs/generic/analog
+board:
+  components:
+    VCC:
+      model: generic.analog.dc_voltage_source
+      pins: { P: vcc_5v, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 5.0 }
+    VIN:
+      model: generic.analog.pulse_voltage_source
+      pins: { P: input, N: gnd }
+      spice:
+        primitive: pulse_voltage_source
+        pulse:
+          initial_v: 0.5
+          pulsed_v: 2.5
+          delay_us: 10.0
+          rise_us: 1.0
+          fall_us: 1.0
+          width_us: 40.0
+          period_us: 80.0
+    VREF:
+      model: generic.analog.dc_voltage_source
+      pins: { P: reference, N: gnd }
+      spice: { primitive: dc_voltage_source, dc_v: 1.2 }
+    XU1:
+      model: generic.analog.ideal_comparator
+      pins: { INP: input, INN: reference, VCC: vcc_5v, VEE: gnd, OUT: output }
+    RLOAD:
+      model: generic.analog.resistor
+      pins: { A: output, B: gnd }
+      spice: { primitive: resistor, value_ohm: 10000.0 }
+  nets:
+    vcc_5v: { kind: power, nominal_voltage: 5.0, powered: true }
+    input: { kind: digital_or_analog }
+    reference: { kind: digital_or_analog, nominal_voltage: 1.2 }
+    output: { kind: digital_or_analog }
+    gnd: { kind: ground }
+"
+    }
+
     #[test]
     fn observation_preset_creates_generated_spice_setup_for_component_pins() {
         let result =
@@ -555,6 +939,130 @@ board:
                     crate::board_ir::AnalogRelation::Above,
                     Some(21.0),
                     Some(2.9699999999999998)
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_op_amp_follower_tracking_checks_for_pulsed_input() {
+        let result =
+            create_component_observation_preset(opamp_buffer_project_yaml(), Path::new("."), "XU1")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "xu1_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_xu1_inp", "v_xu1_inn", "v_xu1_vcc"]
+        );
+        assert_eq!(
+            analog
+                .assertions
+                .iter()
+                .map(|assertion| {
+                    (
+                        assertion.name.as_str(),
+                        assertion.probe.as_str(),
+                        assertion.relation.clone(),
+                        assertion.at_us,
+                        assertion.threshold_v,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "v_xu1_inn_tracks_input_low_above",
+                    "v_xu1_inn",
+                    crate::board_ir::AnalogRelation::Above,
+                    Some(5.0),
+                    Some(0.45)
+                ),
+                (
+                    "v_xu1_inn_tracks_input_low_below",
+                    "v_xu1_inn",
+                    crate::board_ir::AnalogRelation::Below,
+                    Some(5.0),
+                    Some(0.55)
+                ),
+                (
+                    "v_xu1_inn_tracks_input_high_above",
+                    "v_xu1_inn",
+                    crate::board_ir::AnalogRelation::Above,
+                    Some(31.0),
+                    Some(2.45)
+                ),
+                (
+                    "v_xu1_inn_tracks_input_high_below",
+                    "v_xu1_inn",
+                    crate::board_ir::AnalogRelation::Below,
+                    Some(31.0),
+                    Some(2.55)
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn observation_preset_adds_comparator_output_state_checks_for_pulsed_input() {
+        let result =
+            create_component_observation_preset(comparator_project_yaml(), Path::new("."), "XU1")
+                .unwrap();
+        let project: crate::board_ir::BoardProject =
+            serde_yaml_ng::from_str(&result.project_yaml).unwrap();
+        let scenario = project
+            .scenarios
+            .iter()
+            .find(|scenario| scenario.name == "xu1_observation")
+            .unwrap();
+        let analog = scenario.analog.as_ref().unwrap();
+
+        assert_eq!(
+            analog
+                .probes
+                .iter()
+                .map(|probe| probe.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["v_xu1_inp", "v_xu1_inn", "v_xu1_vcc", "v_xu1_out"]
+        );
+        assert_eq!(
+            analog
+                .assertions
+                .iter()
+                .map(|assertion| {
+                    (
+                        assertion.name.as_str(),
+                        assertion.probe.as_str(),
+                        assertion.relation.clone(),
+                        assertion.at_us,
+                        assertion.threshold_v,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "v_xu1_out_positive_input_low_state",
+                    "v_xu1_out",
+                    crate::board_ir::AnalogRelation::Below,
+                    Some(5.0),
+                    Some(0.5)
+                ),
+                (
+                    "v_xu1_out_positive_input_high_state",
+                    "v_xu1_out",
+                    crate::board_ir::AnalogRelation::Above,
+                    Some(31.0),
+                    Some(4.5)
                 )
             ]
         );

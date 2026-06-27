@@ -160,6 +160,21 @@
       },
       "additionalProperties": false
     },
+    "analog_function": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["op_amp", "comparator"] },
+        "positive_input_pin": { "type": "string", "minLength": 1 },
+        "negative_input_pin": { "type": "string", "minLength": 1 },
+        "output_pin": { "type": "string", "minLength": 1 },
+        "positive_supply_pin": { "type": "string", "minLength": 1 },
+        "negative_supply_pin": { "type": "string", "minLength": 1 },
+        "default_output_tolerance_V": { "type": "number", "exclusiveMinimum": 0 },
+        "default_logic_margin_V": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "usb_connector": {
       "type": "object",
       "required": ["standard", "vbus_pin", "dp_pin", "dm_pin", "gnd_pin"],

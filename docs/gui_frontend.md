@@ -301,15 +301,18 @@ order, reuses the generated model-file inference path for SHA-pinned
 `analog.model_files`, and adds model-aware default checks when metadata supports
 them. Regulator presets check output min/max voltage from the output port
 electrical limits; reset-supervisor presets add active/released output samples
-when the monitored rail is driven by a detectable pulse source. Inserted
-model-backed components use the selected model's declared ports to seed
-editable Board IR pin bindings and generated per-pin nets, and Sketch-stage
-placement can target the current view center, an armed blank-canvas click, a
-drag/drop release with live ghost and snap feedback, or the blank-canvas
-context-menu pointer. `R` / `Shift+R` rotate armed component placement ghosts
-before insertion, `F` flips them, and `Shift+F` cycles the previewed pin side.
-The accepted placement persists that schematic-only orientation under
-`board.schematic.node_styles`.
+when the monitored rail is driven by a detectable pulse source; op-amp presets
+add follower tracking checks when feedback ties the inverting input to the
+output and the non-inverting input is pulse-driven; comparator presets add
+output-state checks when one input is pulse-driven and the other is a fixed
+reference. Inserted model-backed components use the selected model's declared
+ports to seed editable Board IR pin bindings and generated per-pin nets, and
+Sketch-stage placement can target the current view center, an armed blank-canvas
+click, a drag/drop release with live ghost and snap feedback, or the
+blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
+placement ghosts before insertion, `F` flips them, and `Shift+F` cycles the
+previewed pin side. The accepted placement persists that schematic-only
+orientation under `board.schematic.node_styles`.
 `src/gui/simulation.rs` owns the Observations/Scopes overlay shell: a runtime-first
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
