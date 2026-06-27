@@ -2685,6 +2685,12 @@ assertions are:
 - `rising_gain_crossing_frequency` and `falling_gain_crossing_frequency`:
   require `threshold_db` and `frequency_limit_hz`; compare the first
   interpolated gain crossing frequency against the frequency limit.
+- `phase_margin_deg`: requires `threshold_deg`; finds the first falling
+  0 dB gain crossing, interpolates `{probe}_phase_deg` at that frequency, and
+  compares `180 + phase_deg` as the phase margin.
+- `gain_margin_db`: requires `threshold_db`; finds the first falling
+  -180 degree phase crossing, interpolates `{probe}_mag_db` at that frequency,
+  and compares `-gain_db` as the gain margin.
 
 Analog waveform assertions can also use window aggregations for executable
 design measurements. `min`, `max`, `mean`, `rms`, `integral`, and `energy`

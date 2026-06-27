@@ -1602,7 +1602,7 @@
                     "duty_limit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
                     "count_limit": { "type": "number", "minimum": 0 },
                     "overshoot_limit_percent": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency"] },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms", "integral", "energy", "settling_time", "overshoot_percent", "rising_phase_delay", "falling_phase_delay", "rising_setup_time", "rising_hold_time", "falling_setup_time", "falling_hold_time", "rising_crossing_time", "falling_crossing_time", "min_high_pulse_width", "min_low_pulse_width", "duty_cycle", "crossing_count", "rising_crossing_count", "falling_crossing_count", "gain_db_at_frequency", "phase_deg_at_frequency", "rising_gain_crossing_frequency", "falling_gain_crossing_frequency", "phase_margin_deg", "gain_margin_db"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1747,18 +1747,39 @@
                                     }
                                   },
                                   "else": {
-                                    "required": ["at_us"],
-                                    "not": {
-                                      "anyOf": [
-                                        { "required": ["at_hz"] },
-                                        { "required": ["start_us"] },
-                                        { "required": ["end_us"] },
-                                        { "required": ["time_limit_us"] },
-                                        { "required": ["frequency_limit_hz"] },
-                                        { "required": ["duty_limit_percent"] },
-                                        { "required": ["count_limit"] },
-                                        { "required": ["overshoot_limit_percent"] }
-                                      ]
+                                    "if": {
+                                      "required": ["aggregation"],
+                                      "properties": { "aggregation": { "enum": ["phase_margin_deg", "gain_margin_db"] } }
+                                    },
+                                    "then": {
+                                      "not": {
+                                        "anyOf": [
+                                          { "required": ["at_us"] },
+                                          { "required": ["at_hz"] },
+                                          { "required": ["start_us"] },
+                                          { "required": ["end_us"] },
+                                          { "required": ["time_limit_us"] },
+                                          { "required": ["frequency_limit_hz"] },
+                                          { "required": ["duty_limit_percent"] },
+                                          { "required": ["count_limit"] },
+                                          { "required": ["overshoot_limit_percent"] }
+                                        ]
+                                      }
+                                    },
+                                    "else": {
+                                      "required": ["at_us"],
+                                      "not": {
+                                        "anyOf": [
+                                          { "required": ["at_hz"] },
+                                          { "required": ["start_us"] },
+                                          { "required": ["end_us"] },
+                                          { "required": ["time_limit_us"] },
+                                          { "required": ["frequency_limit_hz"] },
+                                          { "required": ["duty_limit_percent"] },
+                                          { "required": ["count_limit"] },
+                                          { "required": ["overshoot_limit_percent"] }
+                                        ]
+                                      }
                                     }
                                   }
                                 }

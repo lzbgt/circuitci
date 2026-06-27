@@ -844,6 +844,8 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
             | "phase_deg_at_frequency"
             | "rising_gain_crossing_frequency"
             | "falling_gain_crossing_frequency"
+            | "phase_margin_deg"
+            | "gain_margin_db"
     ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
@@ -1111,6 +1113,7 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 anyhow::bail!("AC crossing frequency limit must be finite and positive.");
             }
         }
+        "phase_margin_deg" | "gain_margin_db" => {}
         _ => unreachable!("aggregation was validated"),
     }
     Ok(())
@@ -1188,6 +1191,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => {
             "falling_gain_crossing_frequency"
         }
+        crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase_margin_deg",
+        crate::board_ir::AnalogAggregation::GainMarginDb => "gain_margin_db",
     }
 }
 
@@ -1207,6 +1212,7 @@ fn assertion_threshold_label(
         crate::board_ir::AnalogAggregation::GainDbAtFrequency
             | crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
             | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency
+            | crate::board_ir::AnalogAggregation::GainMarginDb
     ) {
         return assertion
             .threshold_db
@@ -1216,6 +1222,7 @@ fn assertion_threshold_label(
     if matches!(
         assertion.aggregation,
         crate::board_ir::AnalogAggregation::PhaseDegAtFrequency
+            | crate::board_ir::AnalogAggregation::PhaseMarginDeg
     ) {
         return assertion
             .threshold_deg
@@ -1295,12 +1302,14 @@ fn assertion_threshold_value(
         crate::board_ir::AnalogAggregation::GainDbAtFrequency
             | crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
             | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency
+            | crate::board_ir::AnalogAggregation::GainMarginDb
     ) {
         return assertion.threshold_db;
     }
     if matches!(
         assertion.aggregation,
         crate::board_ir::AnalogAggregation::PhaseDegAtFrequency
+            | crate::board_ir::AnalogAggregation::PhaseMarginDeg
     ) {
         return assertion.threshold_deg;
     }
@@ -1442,6 +1451,8 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
                 assertion.frequency_limit_hz.unwrap_or_default()
             )
         }
+        crate::board_ir::AnalogAggregation::PhaseMarginDeg => "unity-gain crossing".to_string(),
+        crate::board_ir::AnalogAggregation::GainMarginDb => "phase -180 deg crossing".to_string(),
     }
 }
 
@@ -1536,6 +1547,7 @@ fn assertion_value(
                 draft.frequency_limit_hz,
             )?;
         }
+        "phase_margin_deg" | "gain_margin_db" => {}
         _ => unreachable!("aggregation was validated"),
     }
     insert_string(&mut assertion, "relation", &draft.relation);
@@ -1586,10 +1598,11 @@ fn threshold_field(aggregation: &str, quantity: &crate::board_ir::AnalogQuantity
         "gain_db_at_frequency"
             | "rising_gain_crossing_frequency"
             | "falling_gain_crossing_frequency"
+            | "gain_margin_db"
     ) {
         return "threshold_db";
     }
-    if aggregation == "phase_deg_at_frequency" {
+    if matches!(aggregation, "phase_deg_at_frequency" | "phase_margin_deg") {
         return "threshold_deg";
     }
     if aggregation == "energy" {

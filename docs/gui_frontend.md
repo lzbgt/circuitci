@@ -341,13 +341,14 @@ component inclusion, ground binding, and an initial voltage probe, so a
 frequency-response observation can be authored from the GUI without a
 hand-authored SPICE deck.
 The check editor can author transient assertions and AC/Bode assertions. AC
-checks expose frequency fields for gain or phase at a frequency and gain
-crossing-frequency limits, then serialize normal `analog.assertions` entries
-with `at_hz`, `frequency_limit_hz`, `threshold_db`, or `threshold_deg`. For
-AC/Bode run setups, the same editor offers Bode check presets that append
-ordinary assertion rows for common low-pass and unity-gain observations, so
-the checks automatically participate in sweep worst-corner margin summaries,
-reports, and scope bundles.
+checks expose frequency fields for gain or phase at a frequency, gain
+crossing-frequency limits, and threshold-only phase/gain margin checks, then
+serialize normal `analog.assertions` entries with `at_hz`,
+`frequency_limit_hz`, `threshold_db`, or `threshold_deg`. For AC/Bode run
+setups, the same editor offers Bode check presets that append ordinary
+assertion rows for common low-pass, unity-gain, and loop-stability
+observations, so the checks automatically participate in sweep worst-corner
+margin summaries, reports, and scope bundles.
 `src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
 run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the

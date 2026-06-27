@@ -718,6 +718,8 @@ impl CircuitCiApp {
                             "phase_deg_at_frequency",
                             "rising_gain_crossing_frequency",
                             "falling_gain_crossing_frequency",
+                            "phase_margin_deg",
+                            "gain_margin_db",
                         ][..]
                     } else {
                         &[
@@ -835,8 +837,9 @@ impl CircuitCiApp {
                         },
                         "gain_db_at_frequency"
                         | "rising_gain_crossing_frequency"
-                        | "falling_gain_crossing_frequency" => " dB",
-                        "phase_deg_at_frequency" => " deg",
+                        | "falling_gain_crossing_frequency"
+                        | "gain_margin_db" => " dB",
+                        "phase_deg_at_frequency" | "phase_margin_deg" => " deg",
                         _ => unit,
                     };
                     ui.add(

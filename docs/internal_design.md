@@ -576,7 +576,8 @@ not introduce a second analog netlist or sign-off model.
 AC/Bode scenario creation, including derived node/pin bindings and generated
 model-file inference. `src/gui/analog_ac_presets.rs` owns GUI Bode check
 presets that append ordinary AC assertion rows for common low-pass and
-unity-gain observations. `src/gui/analog.rs` owns selected-net voltage-probe
+unity-gain observations plus loop-stability phase/gain margin checks.
+`src/gui/analog.rs` owns selected-net voltage-probe
 insertion, selected-component source/passive/semiconductor current-probe
 insertion, selected-component source/passive/semiconductor power-probe
 insertion into existing analog scenarios, and structured

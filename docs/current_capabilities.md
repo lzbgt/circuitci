@@ -88,12 +88,14 @@ Current analog support:
 - `analog_ac` scenarios with `SPICE_AC_ANALYSIS` for external-ngspice
   small-signal Bode exports. AC runs write `bode.csv` artifacts with
   frequency, per-probe magnitude in dB, phase in degrees, and linear
-  magnitude. AC assertions support gain and phase at a frequency plus rising
-  or falling gain-crossing frequency checks. The GUI Scopes loader treats
+  magnitude. AC assertions support gain and phase at a frequency, rising or
+  falling gain-crossing frequency checks, and loop-stability phase/gain
+  margin checks. The GUI Scopes loader treats
   `bode.csv` as a frequency-axis artifact, shows magnitude/phase/linear
   traces in unit-aware lanes, and reuses sweep-corner and worst-corner compare
   pinning for Bode corners. The GUI observation-check editor also offers
-  low-pass and unity-gain Bode check presets that write normal AC assertions.
+  low-pass, unity-gain, and loop-stability Bode check presets that write
+  normal AC assertions.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by

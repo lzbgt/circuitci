@@ -1226,6 +1226,8 @@ pub enum AnalogAggregation {
     PhaseDegAtFrequency,
     RisingGainCrossingFrequency,
     FallingGainCrossingFrequency,
+    PhaseMarginDeg,
+    GainMarginDb,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

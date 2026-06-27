@@ -20,6 +20,11 @@ const ANALOG_AC_ASSERTION_PRESETS: &[AnalogAcAssertionPreset] = &[
         label: "Unity gain 1 kHz",
         summary: "-0.5..0.5 dB gain and -10..10 deg phase at 1 kHz",
     },
+    AnalogAcAssertionPreset {
+        id: "loop_stability",
+        label: "Loop stability",
+        summary: "Phase margin > 45 deg and gain margin > 6 dB",
+    },
 ];
 
 pub(super) fn analog_ac_assertion_presets() -> &'static [AnalogAcAssertionPreset] {
@@ -166,6 +171,32 @@ fn preset_assertions(
                 },
             ),
         ],
+        "loop_stability" => vec![
+            ac_assertion(
+                scenario_name,
+                probe_name,
+                AcAssertionSpec {
+                    name_suffix: "phase_margin_above_45deg",
+                    aggregation: "phase_margin_deg",
+                    relation: "above",
+                    threshold: 45.0,
+                    at_hz: 0.0,
+                    frequency_limit_hz: 0.0,
+                },
+            ),
+            ac_assertion(
+                scenario_name,
+                probe_name,
+                AcAssertionSpec {
+                    name_suffix: "gain_margin_above_6db",
+                    aggregation: "gain_margin_db",
+                    relation: "above",
+                    threshold: 6.0,
+                    at_hz: 0.0,
+                    frequency_limit_hz: 0.0,
+                },
+            ),
+        ],
         _ => Vec::new(),
     }
 }
@@ -299,5 +330,27 @@ scenarios:
         let error = append_analog_ac_assertion_preset(&edited, "bode", "filtered", "unity_1khz")
             .unwrap_err();
         assert!(error.to_string().contains("already exists"));
+    }
+
+    #[test]
+    fn stability_preset_appends_margin_checks() {
+        let edited =
+            append_analog_ac_assertion_preset(project_yaml(), "bode", "filtered", "loop_stability")
+                .unwrap();
+        let project: crate::board_ir::BoardProject = serde_yaml_ng::from_str(&edited).unwrap();
+        let assertions = &project.scenarios[0].analog.as_ref().unwrap().assertions;
+        assert_eq!(assertions.len(), 2);
+        assert_eq!(assertions[0].name, "filtered_phase_margin_above_45deg");
+        assert_eq!(
+            assertions[0].aggregation,
+            crate::board_ir::AnalogAggregation::PhaseMarginDeg
+        );
+        assert_eq!(assertions[0].threshold_deg, Some(45.0));
+        assert_eq!(assertions[1].name, "filtered_gain_margin_above_6db");
+        assert_eq!(
+            assertions[1].aggregation,
+            crate::board_ir::AnalogAggregation::GainMarginDb
+        );
+        assert_eq!(assertions[1].threshold_db, Some(6.0));
     }
 }

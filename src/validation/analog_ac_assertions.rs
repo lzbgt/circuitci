@@ -83,6 +83,26 @@ pub(super) fn validate_ac_assertion_contract(
             }
             reject_field(assertion.threshold_deg, "threshold_deg")?;
         }
+        AnalogAggregation::PhaseMarginDeg => {
+            if assertion.at_hz.is_some() || assertion.frequency_limit_hz.is_some() {
+                return Err(
+                    "phase-margin aggregation must not declare at_hz or frequency_limit_hz"
+                        .to_string(),
+                );
+            }
+            finite_field(assertion.threshold_deg, "threshold_deg")?;
+            reject_field(assertion.threshold_db, "threshold_db")?;
+        }
+        AnalogAggregation::GainMarginDb => {
+            if assertion.at_hz.is_some() || assertion.frequency_limit_hz.is_some() {
+                return Err(
+                    "gain-margin aggregation must not declare at_hz or frequency_limit_hz"
+                        .to_string(),
+                );
+            }
+            finite_field(assertion.threshold_db, "threshold_db")?;
+            reject_field(assertion.threshold_deg, "threshold_deg")?;
+        }
         AnalogAggregation::Sample
         | AnalogAggregation::Min
         | AnalogAggregation::Max
@@ -216,6 +236,11 @@ pub(super) fn evaluate_ac_assertions(
                     .measured
                     .insert("decision_threshold_db".to_string(), json!(threshold_db));
             }
+            if let Some(threshold_deg) = assertion.threshold_deg {
+                finding
+                    .measured
+                    .insert("decision_threshold_deg".to_string(), json!(threshold_deg));
+            }
             finding
                 .limit
                 .insert(format!("{relation}_{unit}"), json!(limit));
@@ -273,6 +298,8 @@ fn is_ac_aggregation(aggregation: &AnalogAggregation) -> bool {
             | AnalogAggregation::PhaseDegAtFrequency
             | AnalogAggregation::RisingGainCrossingFrequency
             | AnalogAggregation::FallingGainCrossingFrequency
+            | AnalogAggregation::PhaseMarginDeg
+            | AnalogAggregation::GainMarginDb
     )
 }
 
@@ -305,6 +332,8 @@ fn measure_ac_assertion(
             finite_field(assertion.threshold_db, "threshold_db")?,
             CrossingDirection::Falling,
         ),
+        AnalogAggregation::PhaseMarginDeg => phase_margin_deg(response, &probe_key),
+        AnalogAggregation::GainMarginDb => gain_margin_db(response, &probe_key),
         AnalogAggregation::Sample
         | AnalogAggregation::Min
         | AnalogAggregation::Max
@@ -349,6 +378,16 @@ fn comparison_limit(assertion: &AnalogAssertion) -> (f64, &'static str, String) 
             "Hz",
             "frequency".to_string(),
         ),
+        AnalogAggregation::PhaseMarginDeg => (
+            assertion.threshold_deg.unwrap_or_default(),
+            "deg",
+            "phase_margin".to_string(),
+        ),
+        AnalogAggregation::GainMarginDb => (
+            assertion.threshold_db.unwrap_or_default(),
+            "dB",
+            "gain_margin".to_string(),
+        ),
         _ => unreachable!("only AC aggregations are evaluated here"),
     }
 }
@@ -359,6 +398,8 @@ fn ac_aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::PhaseDegAtFrequency => "phase at frequency",
         AnalogAggregation::RisingGainCrossingFrequency => "rising gain crossing frequency",
         AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing frequency",
+        AnalogAggregation::PhaseMarginDeg => "phase margin",
+        AnalogAggregation::GainMarginDb => "gain margin",
         _ => "AC response",
     }
 }
@@ -484,8 +525,27 @@ fn gain_crossing_frequency(
     threshold_db: f64,
     direction: CrossingDirection,
 ) -> Result<f64, String> {
-    if !threshold_db.is_finite() {
-        return Err("threshold_db must be finite".to_string());
+    crossing_frequency(response, column, threshold_db, direction, "gain crossing")
+}
+
+fn phase_crossing_frequency(
+    response: &BodeResponse,
+    column: &str,
+    threshold_deg: f64,
+    direction: CrossingDirection,
+) -> Result<f64, String> {
+    crossing_frequency(response, column, threshold_deg, direction, "phase crossing")
+}
+
+fn crossing_frequency(
+    response: &BodeResponse,
+    column: &str,
+    threshold: f64,
+    direction: CrossingDirection,
+    label: &str,
+) -> Result<f64, String> {
+    if !threshold.is_finite() {
+        return Err(format!("{label} threshold must be finite"));
     }
     let values = response
         .columns
@@ -495,17 +555,17 @@ fn gain_crossing_frequency(
         let y0 = value_pair[0];
         let y1 = value_pair[1];
         let crosses = match direction {
-            CrossingDirection::Rising => y0 < threshold_db && y1 >= threshold_db,
-            CrossingDirection::Falling => y0 > threshold_db && y1 <= threshold_db,
+            CrossingDirection::Rising => y0 < threshold && y1 >= threshold,
+            CrossingDirection::Falling => y0 > threshold && y1 <= threshold,
         };
         if crosses {
             let dy = y1 - y0;
             if dy.abs() <= f64::EPSILON {
                 return Ok(frequency_pair[1]);
             }
-            let fraction = (threshold_db - y0) / dy;
+            let fraction = (threshold - y0) / dy;
             if !(0.0..=1.0).contains(&fraction) {
-                return Err("gain crossing interpolation fell outside its segment".to_string());
+                return Err(format!("{label} interpolation fell outside its segment"));
             }
             let log_f0 = frequency_pair[0].log10();
             let log_f1 = frequency_pair[1].log10();
@@ -513,8 +573,32 @@ fn gain_crossing_frequency(
         }
     }
     Err(format!(
-        "Bode response never crossed {threshold_db} dB for {column}"
+        "Bode response never crossed {threshold} for {column}"
     ))
+}
+
+fn phase_margin_deg(response: &BodeResponse, probe_key: &str) -> Result<f64, String> {
+    let unity_hz = gain_crossing_frequency(
+        response,
+        &format!("{probe_key}_mag_db"),
+        0.0,
+        CrossingDirection::Falling,
+    )?;
+    let phase_deg =
+        interpolate_log_frequency(response, &format!("{probe_key}_phase_deg"), unity_hz)?;
+    Ok(180.0 + phase_deg)
+}
+
+fn gain_margin_db(response: &BodeResponse, probe_key: &str) -> Result<f64, String> {
+    let phase_cross_hz = phase_crossing_frequency(
+        response,
+        &format!("{probe_key}_phase_deg"),
+        -180.0,
+        CrossingDirection::Falling,
+    )?;
+    let gain_db =
+        interpolate_log_frequency(response, &format!("{probe_key}_mag_db"), phase_cross_hz)?;
+    Ok(-gain_db)
 }
 
 fn sanitize_csv_column(name: &str) -> String {
@@ -617,6 +701,77 @@ scenarios:
         assert!(measurements.iter().any(|measurement| {
             measurement.assertion_name == "cutoff_above_1k"
                 && (1500.0..1700.0).contains(&measurement.measured)
+        }));
+    }
+
+    #[test]
+    fn ac_assertions_measure_stability_margins() {
+        let project: BoardProject = serde_yaml_ng::from_str(
+            r#"
+project: { name: ac_margin_test, version: 0.1.0 }
+board: { components: {}, nets: {} }
+scenarios:
+  - name: loop_ac
+    type: analog_ac
+    checks: [SPICE_AC_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: loop_ac.cir
+      model_files: []
+      node_bindings: []
+      pin_bindings: []
+      analysis:
+        type: ac
+        start_frequency_hz: 10.0
+        stop_frequency_hz: 100000.0
+      stimuli: []
+      probes:
+        - name: loop
+          expression: V(loop)
+      assertions:
+        - name: phase_margin_above_40
+          probe: loop
+          aggregation: phase_margin_deg
+          relation: above
+          threshold_deg: 40.0
+        - name: gain_margin_above_6
+          probe: loop
+          aggregation: gain_margin_db
+          relation: above
+          threshold_db: 6.0
+"#,
+        )
+        .unwrap();
+        let scenario = &project.scenarios[0];
+        for assertion in &scenario.analog.as_ref().unwrap().assertions {
+            validate_ac_assertion_contract(assertion, 10.0, 100000.0).unwrap();
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let bode = dir.path().join("bode.csv");
+        std::fs::write(
+            &bode,
+            "frequency_hz,loop_mag_db,loop_phase_deg,loop_mag
+1.000000000000e1,4.000000000000e1,-4.500000000000e1,1.000000000000e2
+1.000000000000e2,2.000000000000e1,-1.000000000000e2,1.000000000000e1
+1.000000000000e3,0.000000000000e0,-1.350000000000e2,1.000000000000e0
+1.000000000000e4,-2.000000000000e1,-2.200000000000e2,1.000000000000e-1
+",
+        )
+        .unwrap();
+        let mut findings = Vec::<Finding>::new();
+
+        let measurements = evaluate_ac_assertions(scenario, &bode, &mut findings);
+
+        assert!(findings.is_empty());
+        assert_eq!(measurements.len(), 2);
+        assert!(measurements.iter().any(|measurement| {
+            measurement.assertion_name == "phase_margin_above_40"
+                && (44.9..45.1).contains(&measurement.measured)
+        }));
+        assert!(measurements.iter().any(|measurement| {
+            measurement.assertion_name == "gain_margin_above_6"
+                && (10.0..11.0).contains(&measurement.measured)
         }));
     }
 }

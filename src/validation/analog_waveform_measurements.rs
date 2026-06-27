@@ -61,7 +61,9 @@ pub(super) fn measured_assertion_value(
         | AnalogAggregation::GainDbAtFrequency
         | AnalogAggregation::PhaseDegAtFrequency
         | AnalogAggregation::RisingGainCrossingFrequency
-        | AnalogAggregation::FallingGainCrossingFrequency => None,
+        | AnalogAggregation::FallingGainCrossingFrequency
+        | AnalogAggregation::PhaseMarginDeg
+        | AnalogAggregation::GainMarginDb => None,
     }
 }
 
@@ -222,7 +224,9 @@ fn aggregate_window(
         | AnalogAggregation::GainDbAtFrequency
         | AnalogAggregation::PhaseDegAtFrequency
         | AnalogAggregation::RisingGainCrossingFrequency
-        | AnalogAggregation::FallingGainCrossingFrequency => None,
+        | AnalogAggregation::FallingGainCrossingFrequency
+        | AnalogAggregation::PhaseMarginDeg
+        | AnalogAggregation::GainMarginDb => None,
     }
 }
 

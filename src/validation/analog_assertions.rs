@@ -322,7 +322,9 @@ pub(super) fn validate_assertion_contract(
         AnalogAggregation::GainDbAtFrequency
         | AnalogAggregation::PhaseDegAtFrequency
         | AnalogAggregation::RisingGainCrossingFrequency
-        | AnalogAggregation::FallingGainCrossingFrequency => {
+        | AnalogAggregation::FallingGainCrossingFrequency
+        | AnalogAggregation::PhaseMarginDeg
+        | AnalogAggregation::GainMarginDb => {
             return Err("AC aggregations are only valid for analog_ac scenarios".to_string());
         }
         AnalogAggregation::Sample => {
@@ -776,6 +778,8 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::PhaseDegAtFrequency => "phase at frequency",
         AnalogAggregation::RisingGainCrossingFrequency => "rising gain crossing frequency",
         AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing frequency",
+        AnalogAggregation::PhaseMarginDeg => "phase margin",
+        AnalogAggregation::GainMarginDb => "gain margin",
     }
 }
 
@@ -855,6 +859,8 @@ fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
                 assertion.threshold_db.unwrap_or_default()
             )
         }
+        AnalogAggregation::PhaseMarginDeg => " at unity-gain crossing".to_string(),
+        AnalogAggregation::GainMarginDb => " at -180 deg phase crossing".to_string(),
     }
 }
 
@@ -1000,6 +1006,20 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("frequency_limit_hz".to_string(), json!(frequency_limit_hz));
             }
         }
+        AnalogAggregation::PhaseMarginDeg => {
+            if let Some(threshold_deg) = assertion.threshold_deg {
+                finding
+                    .limit
+                    .insert("threshold_deg".to_string(), json!(threshold_deg));
+            }
+        }
+        AnalogAggregation::GainMarginDb => {
+            if let Some(threshold_db) = assertion.threshold_db {
+                finding
+                    .limit
+                    .insert("threshold_db".to_string(), json!(threshold_db));
+            }
+        }
     }
 }
 
@@ -1056,6 +1076,7 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("threshold_db".to_string(), json!(threshold_db));
             }
         }
+        AnalogAggregation::PhaseMarginDeg | AnalogAggregation::GainMarginDb => {}
     }
 }
 

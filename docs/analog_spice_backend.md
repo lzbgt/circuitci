@@ -129,9 +129,10 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
    `bode.csv` with `frequency_hz`, per-probe magnitude in dB, phase in degrees,
    and linear magnitude columns.
 6. Evaluate AC/Bode assertions over `bode.csv`, including gain and phase at a
-   frequency plus rising or falling gain-crossing frequency checks. Failed
-   assertions emit critical `SPICE_AC_ANALYSIS` findings with measured and
-   limit data.
+   frequency, rising or falling gain-crossing frequency checks, phase margin at
+   the falling 0 dB gain crossing, and gain margin at the falling -180 degree
+   phase crossing. Failed assertions emit critical `SPICE_AC_ANALYSIS` findings
+   with measured and limit data.
 7. Preserve `bode.csv` paths in the report `waveforms` list so the GUI Scopes
    view can load them as frequency-axis traces with magnitude/phase lanes and
    sweep-corner comparison support.

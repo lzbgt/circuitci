@@ -806,6 +806,10 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
         format!("{} C", compact_number(value))
     } else if let Some(value) = assertion.threshold_j {
         format!("{} J", compact_number(value))
+    } else if let Some(value) = assertion.threshold_db {
+        format!("{} dB", compact_number(value))
+    } else if let Some(value) = assertion.threshold_deg {
+        format!("{} deg", compact_number(value))
     } else if let Some(value) = assertion.target_v {
         format!("target {} V", compact_number(value))
     } else if let Some(value) = assertion.target_a {
@@ -820,6 +824,27 @@ fn assertion_threshold_label(assertion: &crate::board_ir::AnalogAssertion) -> St
 fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> String {
     if let Some(at_us) = assertion.at_us {
         format!("at {} us", compact_number(at_us))
+    } else if let Some(at_hz) = assertion.at_hz {
+        format!("at {} Hz", compact_number(at_hz))
+    } else if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency
+            | crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency
+    ) {
+        format!(
+            "frequency limit {} Hz",
+            compact_number(assertion.frequency_limit_hz.unwrap_or_default())
+        )
+    } else if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::PhaseMarginDeg
+    ) {
+        "at unity-gain crossing".to_string()
+    } else if matches!(
+        assertion.aggregation,
+        crate::board_ir::AnalogAggregation::GainMarginDb
+    ) {
+        "at -180 deg phase crossing".to_string()
     } else if let (Some(start_us), Some(end_us)) = (assertion.start_us, assertion.end_us) {
         if matches!(
             assertion.aggregation,
@@ -914,6 +939,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::PhaseDegAtFrequency => "phase at frequency",
         crate::board_ir::AnalogAggregation::RisingGainCrossingFrequency => "rising gain crossing",
         crate::board_ir::AnalogAggregation::FallingGainCrossingFrequency => "falling gain crossing",
+        crate::board_ir::AnalogAggregation::PhaseMarginDeg => "phase margin",
+        crate::board_ir::AnalogAggregation::GainMarginDb => "gain margin",
     }
 }
 
