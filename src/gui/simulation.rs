@@ -173,7 +173,7 @@ impl CircuitCiApp {
                 .show(ui, |ui| {
                     ui.label("Waveforms");
                     if report.waveforms.is_empty() {
-                        ui.label("No waveform artifacts were emitted by the current scenario set.");
+                        ui.label("No waveform artifacts were emitted by the current run setup.");
                     } else {
                         for waveform in &report.waveforms {
                             ui.monospace(waveform);
@@ -239,14 +239,14 @@ impl ScopeRunPreparation {
                 probe_name,
                 net_id,
             } => format!(
-                "Run created transient scope scenario {scenario_name} with voltage probe {probe_name} on net {net_id}."
+                "Run created transient setup {scenario_name} with voltage probe {probe_name} on net {net_id}."
             ),
             Self::AddedProbe {
                 scenario_name,
                 probe_name,
                 net_id,
             } => format!(
-                "Run added voltage probe {probe_name} on net {net_id} to scope scenario {scenario_name}."
+                "Run added voltage probe {probe_name} on net {net_id} to run setup {scenario_name}."
             ),
         }
     }
@@ -339,7 +339,7 @@ fn scope_probe_for_existing_analog_scenario(
             })
         else {
             anyhow::bail!(
-                "Analog scenario {} has no node bindings; add a voltage probe manually after binding schematic nets.",
+                "Run setup {} has no node bindings; add a voltage probe manually after binding schematic nets.",
                 scenario.name
             );
         };
@@ -359,7 +359,7 @@ fn default_scope_ground_net(project: &crate::board_ir::BoardProject) -> Result<S
         .nets
         .iter()
         .find_map(|(id, net)| (net.kind == crate::board_ir::NetKind::Ground).then(|| id.clone()))
-        .context("Run needs a ground net before it can create a default scope scenario.")
+        .context("Run needs a ground net before it can create a default transient setup.")
 }
 
 fn default_scope_probe_net(project: &crate::board_ir::BoardProject) -> Result<String> {

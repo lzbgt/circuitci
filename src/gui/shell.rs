@@ -119,11 +119,11 @@ impl CircuitCiApp {
                         }
                     }
                 });
-                ui.menu_button("Simulation", |ui| {
+                ui.menu_button("Observe", |ui| {
                     if ui
                         .add_enabled(
                             self.background_job_elapsed_secs().is_none(),
-                            egui::Button::new("Run Validation + Analog Scenarios"),
+                            egui::Button::new("Run Inputs + Observations"),
                         )
                         .clicked()
                     {
@@ -290,7 +290,7 @@ impl CircuitCiApp {
                     ui.label(format!("Name: {}", snapshot.name));
                     ui.label(format!("Components: {}", snapshot.components));
                     ui.label(format!("Nets: {}", snapshot.nets));
-                    ui.label(format!("Scenarios: {}", snapshot.scenarios));
+                    ui.label(format!("Run setups: {}", snapshot.scenarios));
                     if self.project_yaml_dirty {
                         ui.label("YAML: unsaved edits");
                     }

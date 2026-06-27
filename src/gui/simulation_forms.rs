@@ -319,7 +319,7 @@ pub(super) fn analog_scenario_combo(
 ) {
     egui::ComboBox::from_id_salt(id)
         .selected_text(if selected.is_empty() {
-            "select scenario"
+            "select run setup"
         } else {
             selected.as_str()
         })
@@ -338,7 +338,7 @@ pub(super) fn analog_model_scenario_combo(
 ) {
     egui::ComboBox::from_id_salt(id)
         .selected_text(if selected.is_empty() {
-            "select scenario"
+            "select run setup"
         } else {
             selected.as_str()
         })
@@ -356,7 +356,7 @@ pub(super) fn generated_scenario_combo(
 ) {
     egui::ComboBox::from_id_salt("analog_generated_scenario")
         .selected_text(if selected.is_empty() {
-            "select scenario"
+            "select run setup"
         } else {
             selected.as_str()
         })

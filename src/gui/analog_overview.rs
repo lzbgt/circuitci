@@ -42,7 +42,7 @@ impl AnalogOverviewAction {
             Self::GeneratedComponent { .. } => "Open component",
             Self::GeneratedBinding { .. } => "Open binding",
             Self::ModelFile { .. } => "Open model",
-            Self::AssertionProbe { .. } => "Open assertion",
+            Self::AssertionProbe { .. } => "Open check",
             Self::ProbeAuthoring => "Open probe",
         }
     }
@@ -145,7 +145,7 @@ impl CircuitCiApp {
         };
         ui.collapsing("Generated Analog Overview", |ui| {
             if overviews.is_empty() {
-                ui.label("No generated_from_board analog scenario is available.");
+                ui.label("No generated-from-board run setup is available.");
                 return;
             }
             initialize_generated_overview_default(&overviews, &mut self.analog_generated_scenario);
@@ -189,7 +189,7 @@ impl CircuitCiApp {
             self.analog_readiness_rows(ui, selected);
             analog_overview_rows(ui, "Sources", &selected.source_rows);
             analog_overview_rows(ui, "Probes", &selected.probe_rows);
-            analog_overview_rows(ui, "Assertions", &selected.assertion_rows);
+            analog_overview_rows(ui, "Checks", &selected.assertion_rows);
             analog_overview_rows(ui, "Model files", &selected.model_file_rows);
             analog_overview_rows(ui, "Node bindings", &selected.binding_rows);
         });
@@ -228,13 +228,13 @@ impl CircuitCiApp {
                 self.analog_stimulus_scenario = scenario_name.to_string();
                 self.analog_stimulus_component = component_id.clone();
                 self.status =
-                    format!("Selected component {component_id} for generated scenario editing.");
+                    format!("Selected component {component_id} for generated run setup editing.");
             }
             AnalogOverviewAction::GeneratedBinding { net, node } => {
                 self.analog_generated_node_net = net.clone();
                 self.analog_generated_node_name = node.clone();
                 self.status =
-                    format!("Selected node binding {net} for generated scenario editing.");
+                    format!("Selected node binding {net} for generated run setup editing.");
             }
             AnalogOverviewAction::ModelFile { path } => {
                 self.analog_model_scenario = scenario_name.to_string();
@@ -250,7 +250,7 @@ impl CircuitCiApp {
                 if self.analog_assertion_name.trim().is_empty() {
                     self.analog_assertion_name = "probe_check".to_string();
                 }
-                self.status = "Selected assertion editor context for this scenario.".to_string();
+                self.status = "Selected observation-check context for this run setup.".to_string();
             }
             AnalogOverviewAction::ProbeAuthoring => {
                 self.analog_probe_scenario = scenario_name.to_string();
@@ -290,7 +290,7 @@ fn generated_overview_combo(
 ) {
     egui::ComboBox::from_id_salt("analog_generated_overview_scenario")
         .selected_text(if selected.is_empty() {
-            "select scenario".to_string()
+            "select run setup".to_string()
         } else {
             selected.clone()
         })
@@ -398,8 +398,8 @@ fn readiness_diagnostics(
     }
     if analog.assertions.is_empty() {
         diagnostics.push(diagnostic(
-            "Missing assertions",
-            "No pass/fail waveform assertions are declared.",
+            "Missing checks",
+            "No pass/fail waveform checks are declared.",
             Some(AnalogOverviewAction::AssertionProbe {
                 probe_name: analog.probes.first().map(|probe| probe.name.clone()),
             }),
@@ -868,7 +868,7 @@ scenarios:
             .map(|row| row.name.as_str())
             .collect();
         assert!(diagnostics.contains(&"Missing probes"));
-        assert!(diagnostics.contains(&"Missing assertions"));
+        assert!(diagnostics.contains(&"Missing checks"));
         assert!(diagnostics.contains(&"Missing model SHA"));
         assert!(diagnostics.contains(&"Missing pin bindings"));
         let missing_probes = overview
@@ -880,13 +880,13 @@ scenarios:
             &missing_probes.action,
             Some(AnalogOverviewAction::ProbeAuthoring)
         ));
-        let missing_assertions = overview
+        let missing_checks = overview
             .diagnostic_rows
             .iter()
-            .find(|row| row.name == "Missing assertions")
+            .find(|row| row.name == "Missing checks")
             .unwrap();
         assert!(matches!(
-            &missing_assertions.action,
+            &missing_checks.action,
             Some(AnalogOverviewAction::AssertionProbe { probe_name }) if probe_name.is_none()
         ));
         let missing_model_sha = overview

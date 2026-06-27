@@ -322,7 +322,7 @@ impl CircuitCiApp {
                 });
                 if self.spice_deck_dirty {
                     ui.label(
-                        "Save SPICE deck edits from Simulation > File-backed SPICE Deck before continuing.",
+                        "Save SPICE deck edits from Observations > File-backed SPICE Deck before continuing.",
                     );
                 }
             });

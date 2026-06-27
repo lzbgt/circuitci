@@ -131,7 +131,7 @@ impl Stage {
             Self::Import => "Import",
             Self::Sketch => "Sketch",
             Self::Library => "Library",
-            Self::Simulation => "Simulation",
+            Self::Simulation => "Observations",
             Self::Reports => "Reports",
         }
     }
@@ -754,7 +754,7 @@ impl CircuitCiApp {
             ui.heading("Schematic");
             if let Some(snapshot) = &self.project_snapshot {
                 ui.label(format!(
-                    "{} components / {} nets / {} scenarios",
+                    "{} components / {} nets / {} run setups",
                     snapshot.components, snapshot.nets, snapshot.scenarios
                 ));
             } else {

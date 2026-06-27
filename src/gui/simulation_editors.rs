@@ -28,7 +28,7 @@ use std::path::Path;
 
 impl CircuitCiApp {
     pub(super) fn analog_scenario_editor(&mut self, ui: &mut egui::Ui, snapshot: &ProjectSnapshot) {
-        ui.collapsing("Analog Transient Scenario", |ui| {
+        ui.collapsing("Run Setup", |ui| {
             initialize_analog_net_defaults(
                 snapshot,
                 &mut self.analog_ground_net,
@@ -38,7 +38,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Input set");
                     ui.text_edit_singleline(&mut self.analog_scenario_name);
                     ui.end_row();
 
@@ -77,7 +77,7 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
                 });
-            if ui.button("Add Analog Scenario").clicked() {
+            if ui.button("Add Run Setup").clicked() {
                 self.apply_add_analog_scenario();
             }
         });
@@ -95,7 +95,7 @@ impl CircuitCiApp {
         };
         ui.collapsing("Generated Components", |ui| {
             if scenarios.is_empty() {
-                ui.label("No generated_from_board analog scenario is available.");
+                ui.label("No generated-from-board run setup is available.");
                 return;
             }
             initialize_generated_component_defaults(
@@ -113,7 +113,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Run setup");
                     let previous_scenario = self.analog_generated_scenario.clone();
                     generated_scenario_combo(ui, &mut self.analog_generated_scenario, &scenarios);
                     if self.analog_generated_scenario != previous_scenario {
@@ -187,15 +187,15 @@ impl CircuitCiApp {
         let scenarios = match analog_generated_scenarios(&self.project_yaml) {
             Ok(scenarios) => scenarios,
             Err(error) => {
-                ui.collapsing("Generated Scenario Settings", |ui| {
+                ui.collapsing("Generated Run Settings", |ui| {
                     ui.label(format!("Generated settings unavailable: {error}"));
                 });
                 return;
             }
         };
-        ui.collapsing("Generated Scenario Settings", |ui| {
+        ui.collapsing("Generated Run Settings", |ui| {
             if scenarios.is_empty() {
-                ui.label("No generated_from_board analog scenario is available.");
+                ui.label("No generated-from-board run setup is available.");
                 return;
             }
             initialize_generated_settings_defaults(
@@ -217,7 +217,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Run setup");
                     let previous_scenario = self.analog_generated_scenario.clone();
                     generated_scenario_combo(ui, &mut self.analog_generated_scenario, &scenarios);
                     if self.analog_generated_scenario != previous_scenario {
@@ -338,8 +338,7 @@ impl CircuitCiApp {
         };
         ui.collapsing("Source Stimulus", |ui| {
             if choices.is_empty() {
-                ui.label("No generated analog scenario source primitives are available.");
-                ui.label("Add a generated scenario containing DC or pulse source components.");
+                ui.label("No generated run setup source primitives are available.");
                 return;
             }
             initialize_analog_stimulus_defaults(
@@ -479,7 +478,7 @@ impl CircuitCiApp {
         };
         ui.collapsing("SPICE Model Files", |ui| {
             if scenarios.is_empty() {
-                ui.label("No analog scenario is available. Add one first.");
+                ui.label("No analog run setup is available. Add one first.");
                 return;
             }
             initialize_model_file_scenario_default(&scenarios, &mut self.analog_model_scenario);
@@ -487,7 +486,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Run setup");
                     analog_model_scenario_combo(
                         ui,
                         "analog_model_file_scenario",
@@ -537,7 +536,7 @@ impl CircuitCiApp {
                 ui.separator();
                 ui.strong(format!("{} model files", scenario.name));
                 if scenario.model_files.is_empty() {
-                    ui.label("No model/include files declared for this scenario.");
+                    ui.label("No model/include files declared for this run setup.");
                 } else {
                     egui::Grid::new("analog_model_file_list")
                         .num_columns(3)
@@ -572,15 +571,15 @@ impl CircuitCiApp {
         let choices = match analog_scenario_choices(&self.project_yaml) {
             Ok(choices) => choices,
             Err(error) => {
-                ui.collapsing("Analog Assertion", |ui| {
-                    ui.label(format!("Analog scenarios unavailable: {error}"));
+                ui.collapsing("Observation Check", |ui| {
+                    ui.label(format!("Run setups unavailable: {error}"));
                 });
                 return;
             }
         };
-        ui.collapsing("Analog Assertion", |ui| {
+        ui.collapsing("Observation Check", |ui| {
             if choices.is_empty() {
-                ui.label("No analog scenario is available. Add one first.");
+                ui.label("No analog run setup is available. Add one first.");
                 return;
             }
             initialize_analog_assertion_defaults(
@@ -596,7 +595,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Run setup");
                     analog_scenario_combo(
                         ui,
                         "analog_assertion_scenario",
@@ -605,7 +604,7 @@ impl CircuitCiApp {
                     );
                     ui.end_row();
 
-                    ui.label("Assertion");
+                    ui.label("Check");
                     ui.text_edit_singleline(&mut self.analog_assertion_name);
                     ui.end_row();
 
@@ -739,7 +738,7 @@ impl CircuitCiApp {
                     }
                 });
             if self.analog_assertion_edit_original.trim().is_empty() {
-                if ui.button("Add Analog Assertion").clicked() {
+                if ui.button("Add Check").clicked() {
                     self.apply_add_analog_assertion();
                 }
             } else {
@@ -748,7 +747,7 @@ impl CircuitCiApp {
                         "Editing {}",
                         self.analog_assertion_edit_original.trim()
                     ));
-                    if ui.button("Save Assertion").clicked() {
+                    if ui.button("Save Check").clicked() {
                         self.apply_replace_analog_assertion();
                     }
                     if ui.button("Cancel Edit").clicked() {
@@ -760,11 +759,11 @@ impl CircuitCiApp {
     }
 
     pub(super) fn selected_probe_assertions_panel(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Selected Probe Assertions", |ui| {
+        ui.collapsing("Selected Probe Checks", |ui| {
             if self.analog_assertion_scenario.trim().is_empty()
                 || self.analog_assertion_probe.trim().is_empty()
             {
-                ui.label("Select a schematic probe element to inspect its assertions.");
+                ui.label("Select a schematic probe element to inspect its checks.");
                 return;
             }
             ui.horizontal(|ui| {
@@ -777,7 +776,7 @@ impl CircuitCiApp {
                     let probe_name = self.analog_assertion_probe.clone();
                     self.apply_add_canvas_probe_assertion(&scenario_name, &probe_name);
                 }
-                if ui.button("Clear assertions").clicked() {
+                if ui.button("Clear checks").clicked() {
                     let scenario_name = self.analog_assertion_scenario.clone();
                     let probe_name = self.analog_assertion_probe.clone();
                     self.apply_remove_canvas_probe_assertions(&scenario_name, &probe_name);
@@ -796,7 +795,7 @@ impl CircuitCiApp {
                 }
             };
             if rows.is_empty() {
-                ui.label("No assertions reference this probe.");
+                ui.label("No checks reference this probe.");
                 return;
             }
             egui::Grid::new("selected_probe_assertions")
@@ -804,7 +803,7 @@ impl CircuitCiApp {
                 .striped(true)
                 .show(ui, |ui| {
                     ui.strong("Status");
-                    ui.strong("Assertion");
+                    ui.strong("Check");
                     ui.strong("Check");
                     ui.strong("Timing");
                     ui.strong("Failure");
@@ -852,10 +851,7 @@ impl CircuitCiApp {
         match append_analog_transient_scenario(&self.project_yaml, &draft) {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
-                &format!(
-                    "Analog scenario {} added.",
-                    self.analog_scenario_name.trim()
-                ),
+                &format!("Run setup {} added.", self.analog_scenario_name.trim()),
             ),
             Err(error) => self.record_error(error),
         }
@@ -880,7 +876,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Analog assertion {} added.",
+                    "Observation check {} added.",
                     self.analog_assertion_name.trim()
                 ),
             ),
@@ -903,7 +899,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Component {} included in generated scenario {}.",
+                    "Component {} included in generated run setup {}.",
                     draft.component_id, draft.scenario_name
                 ),
             ),
@@ -926,7 +922,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Component {} excluded from generated scenario {}.",
+                    "Component {} excluded from generated run setup {}.",
                     draft.component_id, draft.scenario_name
                 ),
             ),
@@ -945,7 +941,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Generated scenario {} settings updated.",
+                    "Generated run setup {} settings updated.",
                     draft.scenario_name
                 ),
             ),
@@ -963,7 +959,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Generated scenario {} node binding for {} updated.",
+                    "Generated run setup {} node binding for {} updated.",
                     draft.scenario_name, draft.net
                 ),
             ),
@@ -991,7 +987,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Source stimulus {} in scenario {} updated.",
+                    "Source stimulus {} in run setup {} updated.",
                     draft.component_id.trim(),
                     draft.scenario_name.trim()
                 ),
@@ -1027,7 +1023,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Analog model file {} added to scenario {}.",
+                    "Analog model file {} added to run setup {}.",
                     draft.path.trim(),
                     draft.scenario_name.trim()
                 ),
@@ -1045,7 +1041,7 @@ impl CircuitCiApp {
             Ok(updated) => self.apply_edited_project_yaml(
                 updated,
                 &format!(
-                    "Analog model file {} removed from scenario {}.",
+                    "Analog model file {} removed from run setup {}.",
                     draft.path, draft.scenario_name
                 ),
             ),
@@ -1078,7 +1074,7 @@ impl CircuitCiApp {
                 self.analog_assertion_edit_original.clear();
                 self.apply_edited_project_yaml(
                     updated,
-                    &format!("Analog assertion {original_assertion_name} updated."),
+                    &format!("Observation check {original_assertion_name} updated."),
                 );
             }
             Err(error) => self.record_error(error),
@@ -1099,7 +1095,7 @@ impl CircuitCiApp {
         self.analog_assertion_time_limit_us = draft.time_limit_us;
         self.analog_assertion_duty_limit_percent = draft.duty_limit_percent;
         self.analog_assertion_count_limit = draft.count_limit;
-        self.status = format!("Editing analog assertion {original_name}.");
+        self.status = format!("Editing observation check {original_name}.");
     }
 
     fn apply_remove_analog_assertion(&mut self, scenario_name: &str, assertion_name: &str) {
@@ -1117,7 +1113,7 @@ impl CircuitCiApp {
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
-                        "Removed assertion {} in scenario {}.",
+                        "Removed check {} in run setup {}.",
                         draft.assertion_name, draft.scenario_name
                     ),
                 );
@@ -1171,7 +1167,7 @@ impl CircuitCiApp {
                 self.analog_assertion_edit_original.clear();
                 self.apply_edited_project_yaml(
                     updated,
-                    &format!("Analog assertion {assertion_name} added from canvas probe element."),
+                    &format!("Observation check {assertion_name} added from canvas probe element."),
                 );
             }
             Err(error) => self.record_error(error),
@@ -1201,7 +1197,7 @@ impl CircuitCiApp {
             "below" => measured + margin,
             _ => {
                 self.record_error(anyhow::anyhow!(
-                    "Quick assertion relation {relation} is not supported."
+                    "Quick check relation {relation} is not supported."
                 ));
                 return;
             }
@@ -1248,7 +1244,7 @@ impl CircuitCiApp {
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
-                        "Quick assertion {assertion_name} added from {} = {}.",
+                        "Quick check {assertion_name} added from {} = {}.",
                         probe.probe_name,
                         format_value(measured)
                     ),
@@ -1278,7 +1274,7 @@ impl CircuitCiApp {
                 self.apply_edited_project_yaml(
                     updated,
                     &format!(
-                        "Removed assertions for probe {} in scenario {}.",
+                        "Removed checks for probe {} in run setup {}.",
                         draft.probe_name, draft.scenario_name
                     ),
                 );

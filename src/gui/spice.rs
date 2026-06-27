@@ -26,7 +26,7 @@ impl CircuitCiApp {
                     }
                 };
             if choices.is_empty() {
-                ui.label("No file-backed analog scenario is declared in this project.");
+                ui.label("No file-backed analog run setup is declared in this project.");
                 return;
             }
             if !choices
@@ -43,7 +43,7 @@ impl CircuitCiApp {
                 .num_columns(2)
                 .spacing([12.0, 6.0])
                 .show(ui, |ui| {
-                    ui.label("Scenario");
+                    ui.label("Run setup");
                     egui::ComboBox::from_id_salt("spice_deck_scenario")
                         .selected_text(&self.spice_deck_scenario)
                         .show_ui(ui, |ui| {
@@ -134,7 +134,7 @@ impl CircuitCiApp {
                 self.spice_deck_text = text;
                 self.spice_deck_dirty = false;
                 self.status = format!("Loaded SPICE deck {}.", self.spice_deck_path);
-                self.push_diagnostic("SPICE deck loaded into Simulation editor.");
+                self.push_diagnostic("SPICE deck loaded into the observation editor.");
             }
             Err(error) => self.record_error(error),
         }

@@ -387,14 +387,14 @@ history before executing the action; canceled actions must leave the current
 workspace untouched. Native path pickers in `src/gui/file_dialogs.rs` only
 populate existing project/import/output path fields or request the same guarded
 project load action; they must not bypass validation, import, save, or the
-dirty-state guard. `src/gui/simulation.rs` owns the Simulation/Scopes stage
+dirty-state guard. `src/gui/simulation.rs` owns the Observations/Scopes overlay
 shell, keeping the runtime oscilloscope primary while docked editors remain
 secondary controls. It also owns scope-run preparation:
 when no analog probes exist, Run may add a generated transient voltage probe
-or add a voltage probe to the first analog scenario with node bindings before
+or add a voltage probe to the first analog run setup with node bindings before
 saving and validating. `src/gui/simulation_editors.rs` owns the docked
-scenario/model/source/assertion editors and their Board IR YAML mutation
-helpers. `src/gui/simulation_forms.rs` owns shared Simulation/Scopes form
+run-setup/model/source/check editors and their Board IR YAML mutation helpers.
+`src/gui/simulation_forms.rs` owns shared Observations/Scopes form
 defaults, combo widgets, stimulus field loading, and status-color helpers for
 those docked editors. `src/gui/waveform.rs` owns Scopes state orchestration, simulation-time scrub/playback
 controls, cursor readouts, selected-plus-pinned cursor readout rows, cursor/visible-window region statistics with snapshot capture, actionable transient cursor-region, region-stat, trigger-event, and Scope Activity sample and frequency measurement snapshots with editable labels/notes, search/source filters for Scope Activity samples and frequency rows, sort/group controls, plot markers, and filtered CSV/Markdown copy/export,
@@ -531,19 +531,19 @@ context menu pointer.
 additions must hash the selected file and write an explicit SHA-256 alongside
 the path, while removal must only delete the selected model-file entry from the
 target analog scenario.
-`src/gui/analog_overview.rs` owns read-only generated analog scenario audit
-snapshots for Simulation-stage display. It may summarize timing/backend,
-included components, source primitives, probes, assertions, model files, and
+`src/gui/analog_overview.rs` owns read-only generated analog run-setup audit
+snapshots for Observations-stage display. It may summarize timing/backend,
+included components, source primitives, probes, checks, model files, and
 node bindings from Board IR, and it may derive readiness diagnostics for missing
-source primitive, probe, assertion, model SHA, node binding, and pin binding
-coverage. Readiness actions may preselect existing Simulation-stage editor
+source primitive, probe, check, model SHA, node binding, and pin binding
+coverage. Readiness actions may preselect existing Observations-stage editor
 fields for those gaps, but they must not mutate Board IR by themselves. It must
 not introduce a second analog netlist or sign-off model.
 `src/gui/analog.rs` owns generated-from-Board analog transient scenario creation,
 selected-net voltage-probe insertion, selected-component source, passive, and
 semiconductor current-probe insertion, selected-component source, passive, and
 semiconductor power-probe insertion into existing analog scenarios, and
-structured sample/window/timing/duty/count assertion authoring. Its focused regression tests live
+structured sample/window/timing/duty/count check authoring. Its focused regression tests live
 in `src/gui/analog_tests.rs` so the production module stays below the source
 line guard. It may derive node and pin bindings from Board IR for observation
 scenarios. Selected-net probe insertion must fail
@@ -556,7 +556,7 @@ sense source, or a bound diode/BJT/MOSFET model branch with CircuitCI's
 generated current-sense source. Selected-component power-probe insertion must
 use the same component set and compose explicit branch voltage and current
 expressions rather than relying on hidden waveform math.
-Generated scenario settings and component membership editing lives in
+Generated run-setup settings and component membership editing lives in
 `src/gui/analog_generated.rs`. It may mutate `analog.analysis` timing,
 `analog.generated.ground_net`, `analog.node_bindings`,
 `analog.generated.components`, and the scenario pin bindings needed for included
@@ -568,7 +568,7 @@ The branch expression derivation itself lives in `src/gui/analog_branches.rs`
 and must fail closed for unsupported subcircuits, file-backed deck internals, or
 components that lack the required model/pin evidence.
 Structured source-stimulus editing lives in `src/gui/analog_stimulus.rs` and
-mutates only existing generated-scenario source primitives on Board IR
+mutates only existing generated run-setup source primitives on Board IR
 components (`dc_v`, `dc_a`, `pulse`, or `current_pulse`). It must not create a
 second scenario-local stimulus store, and it must reject stale UI state when the
 scenario, component, or primitive kind no longer matches the current Board IR.
@@ -577,11 +577,11 @@ than creating a GUI-only probe list; selected-probe assertion summaries must be
 recomputed from Board IR plus the latest report, assertion clearing for a probe
 must leave the probe itself intact, row-level assertion edits/deletes must
 replace or remove exactly one named Board IR assertion after revalidation, and
-probe removal must drop dependent assertions so analog scenarios do not retain
+probe removal must drop dependent checks so analog scenarios do not retain
 dangling assertion references.
 `src/gui/spice.rs` owns
 file-backed SPICE deck discovery, loading, saving, and save-and-run actions for
-analog scenarios. It must resolve relative deck paths from the project YAML
+analog run setups. It must resolve relative deck paths from the project YAML
 directory and keep the Board IR analog scenario as the source of truth, rather
 than introducing a second analog project model. GUI-derived waveform math channels must remain observation-only until explicitly
 promoted. Promotion may only create Board IR analog probes for representable

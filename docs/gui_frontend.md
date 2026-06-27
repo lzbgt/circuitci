@@ -297,15 +297,15 @@ the blank-canvas context-menu pointer. `R` / `Shift+R` rotate armed component
 placement ghosts before insertion, `F` flips them, and `Shift+F` cycles the
 previewed pin side. The accepted placement persists that schematic-only
 orientation under `board.schematic.node_styles`.
-`src/gui/simulation.rs` owns the Simulation/Scopes stage shell: a runtime-first
+`src/gui/simulation.rs` owns the Observations/Scopes overlay shell: a runtime-first
 oscilloscope workspace, model-run controls, side-dock orchestration, and
 scope-run preparation.
-`src/gui/simulation_editors.rs` owns the docked scenario/model/source/assertion
+`src/gui/simulation_editors.rs` owns the docked run-setup/model/source/check
 editors and their Board IR YAML mutation helpers.
-`src/gui/simulation_forms.rs` owns shared Simulation/Scopes form defaults,
-scenario/net/probe combo widgets, stimulus field loading, and status-color
+`src/gui/simulation_forms.rs` owns shared Observations/Scopes form defaults,
+run-setup/net/probe combo widgets, stimulus field loading, and status-color
 helpers used by those docked editors. `src/gui/analog_overview.rs` owns the
-read-only generated scenario audit snapshot, readiness diagnostics, and quick
+read-only generated run-setup audit snapshot, readiness diagnostics, and quick
 editor navigation actions shown before edit panels.
 `src/gui/waveform.rs` owns Scopes state orchestration,
 simulation-time scrub/playback controls, value-scale controls, cursor
@@ -500,20 +500,20 @@ form:
   voltage/source-current probe population before validation, Run Readiness
   preview rows for the probes Run will create,
   plus direct `Scope V`, `Scope I`, and `Scope P` actions that create the
-  missing probe when needed and open the Simulation-stage Scopes workspace,
+  missing probe when needed and open the Observations-stage Scopes workspace,
   armed `Scope Tool` V/I/P placement buttons that consume a canvas click on a
   net, wire, pin, label, or component before normal selection/wire routing,
   with canvas-hover `V`/`I`/`P` shortcuts, valid/invalid hover target feedback
   before the click, and same-key/Esc cancellation,
-  visible voltage/current/power probe elements derived from analog scenario
+  visible voltage/current/power probe elements derived from analog run-setup
   probes and rendered with KiCad meter/scope symbols when available, probe
   pass/fail/unknown/unasserted markers derived from the latest validation
   report, probe-element clicks that open and focus the corresponding
-  Simulation-stage scope/probe context, right-click probe-element action menus,
-  right-click component/net/wire action menus, hovered-probe assertion
+  Observations-stage scope/probe context, right-click probe-element action menus,
+  right-click component/net/wire action menus, hovered-probe check
   creation/clearing, hovered-probe deletion that removes the probe and
-  dependent assertions through a validated Board IR edit, selected-net
-  voltage-probe insertion into existing analog scenarios,
+  dependent checks through a validated Board IR edit, selected-net
+  voltage-probe insertion into existing analog run setups,
   selected-component current-probe insertion for
   supported generated SPICE branches, selected-component power-probe insertion
   for supported generated SPICE branches, shared undo/redo for Board IR
@@ -525,7 +525,7 @@ form:
   stages a model for new components, inserts selected models as Board IR
   components with generated default pin nets, assigns a selected model to the
   selected component, and shows scenario suggestion YAML.
-- Simulation/Scopes: opens as a floating overlay over Sketch and presents a runtime-first oscilloscope workspace linked
+- Observations/Scopes: opens as a floating overlay over Sketch and presents a runtime-first oscilloscope workspace linked
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform
   selection, searchable/grouped trace selection, transient selected-probe trace
   pinning, saved compare sets, and per-trace visibility/color styles for
@@ -540,22 +540,22 @@ form:
   by adding a generated transient voltage probe on the default non-ground net
   before validation. The selected trace side dock also includes a bounded
   frequency-domain peak readout derived from the loaded transient waveform.
-  Scenario setup is secondary and docked: users can append a generated-from-Board
-  `analog_transient` scenario with ground/probe net selection, audit generated
-  scenario timing/backend, source/probe/assertion/model-file/node-binding
-  coverage plus readiness gaps with quick editor navigation, edit generated
-  scenario stop time/max step, ground net, SPICE node bindings, and component
-  membership, add selected-net voltage probes to existing analog scenarios,
-  inspect a selected probe element's assertion rows with
-  threshold/timing/status/failure details, edit or delete one assertion without
-  clearing sibling checks on that selected probe, add or clear assertions for
-  that selected probe, quick-add cursor-sampled above/below assertions from a
+  Input and observation setup is secondary and docked: users can append a
+  generated-from-Board `analog_transient` run setup with ground/probe net
+  selection, audit generated run timing/backend,
+  source/probe/check/model-file/node-binding coverage plus readiness gaps with
+  quick editor navigation, edit generated run stop time/max step, ground net,
+  SPICE node bindings, and component membership, add selected-net voltage probes
+  to existing analog run setups, inspect a selected probe element's check rows
+  with threshold/timing/status/failure details, edit or delete one check without
+  clearing sibling checks on that selected probe, add or clear checks for that
+  selected probe, quick-add cursor-sampled above/below checks from a
   hovered schematic probe element, add sample/window/timing/duty probe
-  assertions, edit
-  file-backed SPICE decks declared by analog scenarios, run validation through
+  checks, edit
+  file-backed SPICE decks declared by analog run setups, run validation through
   the engine, plot emitted CSV waveforms, add GUI-only derived
   difference/sum/product/ratio channels, promote representable derived channels
-  to explicit analog probes or probes plus assertions, and inspect generated
+  to explicit analog probes or probes plus checks, and inspect generated
   SPICE decks, artifacts, findings, and limitations without turning the scope
   view into a form-first page.
 - Reports: displays the generated Markdown validation report.
@@ -655,15 +655,15 @@ The supported desktop simulation path is:
    the branch voltage and branch current as an explicit Board IR power probe,
 32. add sample, windowed min/max/mean/RMS, rising/falling crossing-time,
    minimum high/low pulse-width, duty-cycle, or crossing-count waveform
-   assertions against declared probes,
+   observation checks against declared probes,
 33. load, edit, save, and rerun file-backed SPICE decks from declared analog
-   scenarios,
+   run setups,
 34. browse, hash, add, and remove SHA-backed SPICE model/include files for
    declared analog scenarios,
 35. run KiCad/SPICE imports, scenario suggestions, declared validation, and
    `analog_transient` scenarios in background workers while the desktop shell
    remains responsive,
-36. cancel a running background job from the Simulation menu, left project
+36. cancel a running background job from the Observe menu, left project
    panel, or status panel; external ngspice validation subprocesses are
    terminated where possible, scenario suggestions and importers stop at safe
    phase checkpoints, and embedded backend calls still finish before their
@@ -682,12 +682,12 @@ The supported desktop simulation path is:
    the current waveform cursor,
 41. add schematic probes from the primary toolbar for the selected net or
    component, use visible schematic probe elements to find voltage/current/power
-   probes, see latest assertion pass/fail/unknown/unasserted status, jump to
-   their Simulation-stage scope trace and selected-probe assertion panel after
-   waveform data is loaded, add an assertion from the current assertion-editor
-   settings with `A`, edit or delete one assertion row from the selected-probe
-   panel, quick-add an above-current-sample check with Shift+A or a
-   below-current-sample check with Shift+B, clear assertions for the probe with
+   probes, see latest check pass/fail/unknown/unasserted status, jump to
+   their Observations-stage scope trace and selected-probe check panel after
+   waveform data is loaded, add a check from the current check-editor settings
+   with `A`, edit or delete one check row from the selected-probe panel,
+   quick-add an above-current-sample check with Shift+A or a
+   below-current-sample check with Shift+B, clear checks for the probe with
    `X`, use the right-click probe menu for the same probe actions, or remove a
    hovered probe element with Delete/Backspace,
 42. use right-click component, net, and wire menus for common sketch actions
@@ -894,10 +894,10 @@ existing net-removal rules; a wire is still just a rendered view of Board IR pin
 bindings, optionally with schematic-only route waypoints that can be cleared
 from the same wire menu, not a separate persisted electrical edge model.
 Removing a hovered badge deletes the underlying Board IR analog probe and any
-analog assertions that reference it, then re-parses the edited Board IR before
-updating the canvas. The Simulation stage mirrors the selected badge context in
-a compact assertion table that shows each assertion name, aggregation, relation,
+analog checks that reference it, then re-parses the edited Board IR before
+updating the canvas. The Observations stage mirrors the selected badge context in
+a compact check table that shows each check name, aggregation, relation,
 threshold, timing, latest status, and matching failure message when one exists.
-Each row can be loaded into the structured assertion editor for name,
-threshold, aggregation, relation, or timing changes, or deleted without removing
-the probe or sibling assertions.
+Each row can be loaded into the structured check editor for name, threshold,
+aggregation, relation, or timing changes, or deleted without removing the probe
+or sibling checks.
