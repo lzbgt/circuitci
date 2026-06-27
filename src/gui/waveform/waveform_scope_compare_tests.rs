@@ -162,6 +162,42 @@ fn pin_selected_sweep_corner_traces_pins_matching_probe_from_loaded_corners() {
 }
 
 #[test]
+fn pin_selected_bode_sweep_corner_traces_pins_matching_probe_from_loaded_corners() {
+    let corner_001 = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,0,0\n1000,-3,-45\n",
+        "out/analog/rc_lowpass_bode_ac/rc_tolerance_corner_001/bode.csv",
+    )
+    .unwrap();
+    let corner_002 = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,-0.1,-1\n1000,-2.8,-42\n",
+        "out/analog/rc_lowpass_bode_ac/rc_tolerance_corner_002/bode.csv",
+    )
+    .unwrap();
+    let other_sweep = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,-0.2,-2\n1000,-2.6,-40\n",
+        "out/analog/rc_lowpass_bode_ac/load_corner_001/bode.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![corner_001, corner_002, other_sweep],
+        selected_waveform: 0,
+        selected_probe: 0,
+        ..Default::default()
+    };
+
+    assert!(app.pin_selected_sweep_corner_traces());
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0
+        }]
+    );
+    assert!(app.status.contains("1 loaded sweep-corner"));
+}
+
+#[test]
 fn pin_selected_sweep_worst_corner_traces_uses_report_margin_probe_and_corner() {
     let corner_001 = parse_waveform_csv_text(
         "time,v(filtered),i(load)
@@ -204,6 +240,51 @@ fn pin_selected_sweep_worst_corner_traces_uses_report_margin_probe_and_corner() 
                 "corner_003",
                 "i_load",
             ),
+        ])),
+        ..Default::default()
+    };
+
+    assert!(app.pin_selected_sweep_worst_corner_traces());
+
+    assert_eq!(
+        app.waveform_pinned_traces,
+        vec![WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 0
+        }]
+    );
+    assert!(app.status.contains("1 worst-corner"));
+}
+
+#[test]
+fn pin_selected_bode_worst_corner_traces_matches_report_probe_base_name() {
+    let corner_001 = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,0,0\n1000,-3,-45\n",
+        "out/analog/rc_lowpass_bode_ac/rc_tolerance_corner_001/bode.csv",
+    )
+    .unwrap();
+    let corner_002 = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,-0.1,-1\n1000,-2.8,-42\n",
+        "out/analog/rc_lowpass_bode_ac/rc_tolerance_corner_002/bode.csv",
+    )
+    .unwrap();
+    let corner_003 = parse_waveform_csv_text(
+        "frequency_hz,filtered_mag_db,filtered_phase_deg\n10,-0.2,-2\n1000,-2.6,-40\n",
+        "out/analog/rc_lowpass_bode_ac/rc_tolerance_corner_003/bode.csv",
+    )
+    .unwrap();
+    let mut app = CircuitCiApp {
+        waveforms: vec![corner_001, corner_002, corner_003],
+        selected_waveform: 0,
+        selected_probe: 0,
+        report: Some(report(vec![
+            sweep_margin(
+                "rc_lowpass_bode_ac",
+                "rc_tolerance",
+                "corner_002",
+                "filtered",
+            ),
+            sweep_margin("rc_lowpass_bode_ac", "rc_tolerance", "corner_003", "input"),
         ])),
         ..Default::default()
     };
@@ -505,6 +586,44 @@ fn scope_visible_traces_keep_selected_first_and_dedupe_pins() {
             },
             WaveformTraceRef {
                 waveform_index: 0,
+                probe_index: 1,
+            },
+        ]
+    );
+}
+
+#[test]
+fn scope_visible_traces_do_not_mix_time_and_frequency_axes() {
+    let transient = parse_waveform_csv_text(
+        "time,v(out)\n0,0\n0.000001,1\n",
+        "out/gui/tran_main/waveform.csv",
+    )
+    .unwrap();
+    let bode = parse_waveform_csv_text(
+        "frequency_hz,v(out)_mag_db,v(out)_phase_deg\n10,0,0\n1000,-3,-45\n",
+        "out/gui/ac_main/bode.csv",
+    )
+    .unwrap();
+    let pinned = vec![
+        WaveformTraceRef {
+            waveform_index: 0,
+            probe_index: 0,
+        },
+        WaveformTraceRef {
+            waveform_index: 1,
+            probe_index: 1,
+        },
+    ];
+
+    assert_eq!(
+        scope_visible_trace_refs(&[transient, bode], 1, 0, &pinned),
+        vec![
+            WaveformTraceRef {
+                waveform_index: 1,
+                probe_index: 0,
+            },
+            WaveformTraceRef {
+                waveform_index: 1,
                 probe_index: 1,
             },
         ]

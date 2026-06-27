@@ -128,11 +128,17 @@ For a scenario with check `SPICE_AC_ANALYSIS`:
 5. Run `ac dec`, export ngspice complex probe data, and convert it to
    `bode.csv` with `frequency_hz`, per-probe magnitude in dB, phase in degrees,
    and linear magnitude columns.
-6. Keep AC assertions empty for now. Magnitude/phase gain-margin assertions are
-   a future sign-off layer; current AC output is design-observation evidence.
+6. Evaluate AC/Bode assertions over `bode.csv`, including gain and phase at a
+   frequency plus rising or falling gain-crossing frequency checks. Failed
+   assertions emit critical `SPICE_AC_ANALYSIS` findings with measured and
+   limit data.
+7. Preserve `bode.csv` paths in the report `waveforms` list so the GUI Scopes
+   view can load them as frequency-axis traces with magnitude/phase lanes and
+   sweep-corner comparison support.
 
-Until steps 5-7 are implemented for a real backend, CircuitCI must not present
-the UM USB downloader physical acceptance as passing.
+Until the real-backend transient and AC contracts above are satisfied for the
+target circuit, CircuitCI must not present the UM USB downloader physical
+acceptance as passing.
 
 ## UM Downloader Physical Acceptance Target
 

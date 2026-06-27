@@ -635,11 +635,12 @@ pub(super) fn draw_waveform_plot_sized(
         egui::pos2(plot_rect.left(), rect.bottom() - 22.0),
         egui::Align2::LEFT_CENTER,
         format!(
-            "t {:.3e}..{:.3e} s  (full {:.3e}..{:.3e} s)",
-            x_min,
-            x_max,
-            full_start_us / 1e6,
-            full_end_us / 1e6
+            "{} {}..{}  (full {}..{})",
+            primary.0.x_axis.short_label(),
+            primary.0.x_axis.format_cursor_us(window_start_us),
+            primary.0.x_axis.format_cursor_us(window_end_us),
+            primary.0.x_axis.format_cursor_us(full_start_us),
+            primary.0.x_axis.format_cursor_us(full_end_us)
         ),
         font,
         egui::Color32::LIGHT_GRAY,
@@ -870,8 +871,17 @@ pub(super) fn scope_visible_trace_refs(
     if valid_waveform_trace(waveforms, selected) {
         traces.push(selected);
     }
+    let selected_axis = waveforms
+        .get(selected_waveform)
+        .map(|waveform| waveform.x_axis)
+        .unwrap_or_default();
     for trace in pinned.iter().copied() {
-        if valid_waveform_trace(waveforms, trace) && !traces.contains(&trace) {
+        if valid_waveform_trace(waveforms, trace)
+            && waveforms
+                .get(trace.waveform_index)
+                .is_some_and(|waveform| waveform.x_axis == selected_axis)
+            && !traces.contains(&trace)
+        {
             traces.push(trace);
         }
     }

@@ -563,8 +563,84 @@ impl CircuitCiApp {
 pub(super) struct WaveformView {
     label: String,
     path: String,
+    x_axis: WaveformXAxis,
     time_s: Vec<f64>,
     probes: Vec<WaveformProbe>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum WaveformXAxis {
+    TimeSeconds,
+    FrequencyHz,
+}
+
+impl Default for WaveformXAxis {
+    fn default() -> Self {
+        Self::TimeSeconds
+    }
+}
+
+impl WaveformXAxis {
+    fn display_name(self) -> &'static str {
+        match self {
+            Self::TimeSeconds => "time",
+            Self::FrequencyHz => "frequency",
+        }
+    }
+
+    fn short_label(self) -> &'static str {
+        match self {
+            Self::TimeSeconds => "t",
+            Self::FrequencyHz => "f",
+        }
+    }
+
+    fn input_suffix(self) -> &'static str {
+        match self {
+            Self::TimeSeconds => " us",
+            Self::FrequencyHz => " Hz",
+        }
+    }
+
+    fn storage_from_csv_value(self, value: f64) -> f64 {
+        match self {
+            Self::TimeSeconds => value,
+            Self::FrequencyHz => value / 1.0e6,
+        }
+    }
+
+    fn display_from_cursor_us(self, cursor_us: f64) -> f64 {
+        match self {
+            Self::TimeSeconds => cursor_us / 1.0e6,
+            Self::FrequencyHz => cursor_us,
+        }
+    }
+
+    fn display_from_storage(self, value: f64) -> f64 {
+        match self {
+            Self::TimeSeconds => value,
+            Self::FrequencyHz => value * 1.0e6,
+        }
+    }
+
+    fn format_display_value(self, value: f64) -> String {
+        match self {
+            Self::TimeSeconds => format_time_s(value),
+            Self::FrequencyHz => format_frequency_hz(value),
+        }
+    }
+
+    fn format_cursor_us(self, cursor_us: f64) -> String {
+        self.format_display_value(self.display_from_cursor_us(cursor_us))
+    }
+
+    fn format_storage_value(self, value: f64) -> String {
+        self.format_display_value(self.display_from_storage(value))
+    }
+
+    fn format_delta_storage(self, value: f64) -> String {
+        self.format_storage_value(value)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -802,7 +878,13 @@ pub(super) fn waveform_probe_value_for_badge(
 
 fn probe_unit(label: &str) -> &'static str {
     let normalized = label.trim().to_ascii_lowercase();
-    if normalized.starts_with("i(")
+    if normalized.contains("mag_db") || normalized.contains("magnitude db") {
+        "dB"
+    } else if normalized.contains("phase_deg") || normalized.contains("phase") {
+        "deg"
+    } else if normalized.ends_with("_mag") || normalized.contains("linear magnitude") {
+        "ratio"
+    } else if normalized.starts_with("i(")
         || normalized.starts_with("i_")
         || normalized.contains("current")
     {
@@ -1068,8 +1150,9 @@ fn waveform_measurement_panel(
         ui.horizontal_wrapped(|ui| {
             ui.strong("Measurements");
             ui.label(format!(
-                "range {}",
-                format_time_s((end_us - start_us) / 1e6)
+                "{} range {}",
+                waveform.x_axis.display_name(),
+                waveform.x_axis.format_cursor_us((end_us - start_us).abs())
             ));
         });
         ui.horizontal_wrapped(|ui| {
@@ -1078,14 +1161,14 @@ fn waveform_measurement_panel(
                 egui::DragValue::new(cursor_a_us)
                     .speed(((end_us - start_us) / 200.0).max(0.001))
                     .range(start_us..=end_us)
-                    .suffix(" us"),
+                    .suffix(waveform.x_axis.input_suffix()),
             );
             ui.label("Cursor B");
             ui.add(
                 egui::DragValue::new(cursor_b_us)
                     .speed(((end_us - start_us) / 200.0).max(0.001))
                     .range(start_us..=end_us)
-                    .suffix(" us"),
+                    .suffix(waveform.x_axis.input_suffix()),
             );
         });
 
@@ -1097,19 +1180,27 @@ fn waveform_measurement_panel(
                 .striped(true)
                 .show(ui, |ui| {
                     ui.label("A");
-                    ui.monospace(format_time_s(measurement.cursor_a.time_s));
+                    ui.monospace(
+                        waveform
+                            .x_axis
+                            .format_storage_value(measurement.cursor_a.time_s),
+                    );
                     ui.label("value");
                     ui.monospace(format_value(measurement.cursor_a.value));
                     ui.end_row();
 
                     ui.label("B");
-                    ui.monospace(format_time_s(measurement.cursor_b.time_s));
+                    ui.monospace(
+                        waveform
+                            .x_axis
+                            .format_storage_value(measurement.cursor_b.time_s),
+                    );
                     ui.label("value");
                     ui.monospace(format_value(measurement.cursor_b.value));
                     ui.end_row();
 
                     ui.label("Delta");
-                    ui.monospace(format_time_s(measurement.delta_t_s));
+                    ui.monospace(waveform.x_axis.format_delta_storage(measurement.delta_t_s));
                     ui.label("value");
                     ui.monospace(format_value(measurement.delta_value));
                     ui.end_row();
@@ -1131,6 +1222,9 @@ fn waveform_measurement_panel(
 }
 
 fn waveform_frequency_panel(ui: &mut egui::Ui, waveform: &WaveformView, probe_index: usize) {
+    if waveform.x_axis == WaveformXAxis::FrequencyHz {
+        return;
+    }
     let Some(peaks) = waveform_spectrum_peaks(waveform, probe_index, 5) else {
         return;
     };

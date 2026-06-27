@@ -7,8 +7,7 @@ use super::waveform_plot::{
     waveform_trace_bounds_in_window, zoom_time_window,
 };
 use super::{
-    format_time_s, format_value, scope_cursor_legend_rows, scope_region_stats_rows,
-    waveform_time_range_for_view,
+    format_value, scope_cursor_legend_rows, scope_region_stats_rows, waveform_time_range_for_view,
 };
 use crate::gui::{CircuitCiApp, WaveformViewWindow};
 use eframe::egui;
@@ -222,10 +221,15 @@ impl CircuitCiApp {
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Cursor Readout");
+                let axis = self
+                    .waveforms
+                    .get(self.selected_waveform)
+                    .map(|waveform| waveform.x_axis)
+                    .unwrap_or_default();
                 ui.label(format!(
                     "A {}  B {}",
-                    format_time_s(self.waveform_cursor_a_us / 1e6),
-                    format_time_s(self.waveform_cursor_b_us / 1e6)
+                    axis.format_cursor_us(self.waveform_cursor_a_us),
+                    axis.format_cursor_us(self.waveform_cursor_b_us)
                 ));
                 if ui.button("Snapshot").clicked() {
                     self.capture_scope_cursor_snapshots();
@@ -275,10 +279,15 @@ impl CircuitCiApp {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Region Statistics");
                 ui.label(source);
+                let axis = self
+                    .waveforms
+                    .get(self.selected_waveform)
+                    .map(|waveform| waveform.x_axis)
+                    .unwrap_or_default();
                 ui.label(format!(
                     "{} to {}",
-                    format_time_s(start_us / 1e6),
-                    format_time_s(end_us / 1e6)
+                    axis.format_cursor_us(start_us),
+                    axis.format_cursor_us(end_us)
                 ));
                 if ui.button("Snapshot").clicked() {
                     self.capture_scope_region_stat_snapshots(&rows, start_us, end_us);
@@ -334,16 +343,26 @@ impl CircuitCiApp {
         {
             self.waveform_cursor_a_us = window_start_us;
         }
+        let axis = self
+            .waveforms
+            .get(self.selected_waveform)
+            .map(|waveform| waveform.x_axis)
+            .unwrap_or_default();
         ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.strong("Simulation Time");
-                if ui
-                    .button(if self.waveform_playing {
-                        "Pause"
-                    } else {
-                        "Play"
-                    })
-                    .clicked()
+                ui.strong(if axis == super::WaveformXAxis::FrequencyHz {
+                    "Frequency Axis"
+                } else {
+                    "Simulation Time"
+                });
+                if axis == super::WaveformXAxis::TimeSeconds
+                    && ui
+                        .button(if self.waveform_playing {
+                            "Pause"
+                        } else {
+                            "Play"
+                        })
+                        .clicked()
                 {
                     self.waveform_playing = !self.waveform_playing;
                 }
@@ -357,21 +376,27 @@ impl CircuitCiApp {
                         &mut self.waveform_cursor_a_us,
                         window_start_us..=window_end_us,
                     )
-                    .text("time")
-                    .suffix(" us")
+                    .text(axis.display_name())
+                    .suffix(axis.input_suffix())
                     .show_value(true),
                 );
                 self.waveform_cursor_b_us = self.waveform_cursor_a_us;
-                ui.label("speed");
-                ui.add(
-                    egui::DragValue::new(&mut self.waveform_playback_speed)
-                        .speed(0.1)
-                        .range(0.1..=1000.0)
-                        .suffix("x"),
-                );
+                if axis == super::WaveformXAxis::TimeSeconds {
+                    ui.label("speed");
+                    ui.add(
+                        egui::DragValue::new(&mut self.waveform_playback_speed)
+                            .speed(0.1)
+                            .range(0.1..=1000.0)
+                            .suffix("x"),
+                    );
+                }
             });
             ui.horizontal_wrapped(|ui| {
-                ui.strong("Time Window");
+                ui.strong(if axis == super::WaveformXAxis::FrequencyHz {
+                    "Frequency Window"
+                } else {
+                    "Time Window"
+                });
                 if ui
                     .add_enabled(
                         !self.waveform_view_back_stack.is_empty(),
@@ -390,7 +415,14 @@ impl CircuitCiApp {
                 {
                     self.restore_next_waveform_view_window();
                 }
-                if ui.button("Fit Time").clicked() {
+                if ui
+                    .button(if axis == super::WaveformXAxis::FrequencyHz {
+                        "Fit Frequency"
+                    } else {
+                        "Fit Time"
+                    })
+                    .clicked()
+                {
                     self.apply_waveform_view_change(|app| app.fit_waveform_time_window());
                 }
                 if ui.button("Zoom In").clicked() {
@@ -414,7 +446,7 @@ impl CircuitCiApp {
                     .add(
                         egui::DragValue::new(&mut edited_start)
                             .speed(1.0)
-                            .suffix(" us"),
+                            .suffix(axis.input_suffix()),
                     )
                     .changed();
                 ui.label("end");
@@ -422,7 +454,7 @@ impl CircuitCiApp {
                     .add(
                         egui::DragValue::new(&mut edited_end)
                             .speed(1.0)
-                            .suffix(" us"),
+                            .suffix(axis.input_suffix()),
                     )
                     .changed();
                 if start_changed || end_changed {

@@ -111,11 +111,12 @@ pub(super) fn scope_plot_svg(
     ));
     svg.push('\n');
     svg.push_str(&format!(
-        r##"<text x="{:.1}" y="{:.1}" fill="#aeb6c2" font-family="monospace" font-size="12">t {}..{} s</text>"##,
+        r##"<text x="{:.1}" y="{:.1}" fill="#aeb6c2" font-family="monospace" font-size="12">{} {}..{}</text>"##,
         plot.x,
         svg_height - 22.0,
-        format_value(x_min),
-        format_value(x_max)
+        primary.0.x_axis.short_label(),
+        primary.0.x_axis.format_cursor_us(window_start_us),
+        primary.0.x_axis.format_cursor_us(window_end_us)
     ));
     svg.push('\n');
     svg.push_str(&format!(

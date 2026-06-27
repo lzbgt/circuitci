@@ -89,7 +89,10 @@ Current analog support:
   small-signal Bode exports. AC runs write `bode.csv` artifacts with
   frequency, per-probe magnitude in dB, phase in degrees, and linear
   magnitude. AC assertions support gain and phase at a frequency plus rising
-  or falling gain-crossing frequency checks.
+  or falling gain-crossing frequency checks. The GUI Scopes loader treats
+  `bode.csv` as a frequency-axis artifact, shows magnitude/phase/linear
+  traces in unit-aware lanes, and reuses sweep-corner and worst-corner compare
+  pinning for Bode corners.
 - External `ngspice`, dynamic `libngspice`, and fail-closed backend selection.
 - File-backed SPICE deck import through `import-spice`.
 - GUI editing and save-and-run for file-backed SPICE decks referenced by
@@ -99,7 +102,8 @@ Current analog support:
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Bounded analog run-input sweeps, with each sweep corner exported as its own
   waveform or Bode artifact set, tagged on findings, and summarized with
-  per-assertion worst-corner margin info findings for transient assertions.
+  per-assertion worst-corner margin info findings for transient and AC/Bode
+  assertions.
   Sweeps can use raw SPICE `.param` values, generated component value inputs
   such as `RLOAD.value_ohm` or `VSUPPLY.dc_v`, and vendor model-library
   sections through section-specific ngspice `.lib` cards.

@@ -362,7 +362,7 @@ be force-loaded individually, all visible matches, or all deferred files through
 the same background waveform loader without changing Board IR or the validation
 report. Matching-column, remaining-preview-column, and searchable exact preview-column picker loads append selected traces, mark loaded preview labels, skip already loaded columns, and preserve the full
 deferred artifact placeholder for later all-column loading. Loaded full artifacts and selected-column loads can be inspected through footprint readouts with compact source memory totals that can be copied as CSV or Markdown, classified/grouped/filtered as full CSV, selected-column, or runtime-only views, sorted/filtered by runtime cost, copied/exported as visible-row CSV memory diagnostics, warned when the estimated f64 data footprint exceeds the runtime budget, and unloaded individually or through guarded visible-row/largest-first preview/confirmation from the runtime Scopes state to free memory; full loads become deferred reload placeholders again, and selected-column loads mark those preview columns unloaded without changing Board IR or reports.
-`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
+`src/gui/waveform/waveform_io.rs` owns streaming, cancel-aware waveform CSV parsing, report/path/request loading, and selected-column waveform requests used by deferred artifact loads. It recognizes `bode.csv` headers with `frequency_hz`, converts them into frequency-axis Scopes artifacts, and maps AC magnitude/phase/linear columns into unit-aware trace labels so Bode output reuses the same plot, compare, and bundle pipeline as transient waveform CSVs. `src/gui/waveform/waveform_load.rs` owns bounded CSV preflight estimates, header-only trace previews, selected-column diagnostic merging that marks loaded preview labels, skips duplicate selected-column reloads, preserves full deferred placeholders until full load, and converts unloaded full artifacts back into deferred diagnostics. `src/gui/waveform/waveform_load_diagnostics.rs` owns filterable/copyable transient waveform-load diagnostics for loaded/deferred/skipped CSV artifacts, including preview-column loaded/unloaded audit metadata, preview-load-state filtering, row-level selected-column load shortcuts, exact preview-column picking, and runtime unload controls for loaded rows.
 `src/gui/waveform/waveform_deferred.rs` owns deferred waveform artifact
 placeholders with header-only probe previews, selector-side filtering, and
 row/visible/all, matching-column, remaining-preview-column, or exact
@@ -386,14 +386,16 @@ owns the primary scope plot drawing, draggable/click-set A/B cursor handles,
 direct plot drag/wheel/Shift-wheel interactions, Alt/Option-drag box zoom,
 trace overlay selection, min/max decimated trace-point caching for large CSVs,
 transient measurement snapshot marker chips with hover and click actions, and
-shared-axis or per-unit lane axis scaling.
+shared-axis or per-unit lane axis scaling. It filters selected/pinned overlays
+by x-axis kind so time-domain waveform traces and frequency-domain Bode traces
+do not share an invalid cursor scale.
 `src/gui/waveform/waveform_export.rs` owns deterministic runtime SVG rendering
 for the current Scopes plot, including visible traces, split-unit lanes,
 cursors, trigger markers, snapshot chips, and bounded decimated trace polylines
 for copy/export workflows. Export options stay transient and cover report-size
 presets plus independent cursor, trigger, and snapshot annotation inclusion.
 `src/gui/waveform/waveform_view.rs` owns the Scopes plot orchestration, cursor
-readout table, playback controls, transient visible time-window and
+readout table, playback controls, visible time/frequency-window and
 value-window fit/zoom/pan helpers, Back/Forward view-window history, scope plot
 SVG copy/export actions, and measurement snapshot display.
 `src/gui/waveform/waveform_snapshots.rs` owns transient cursor-region,
@@ -574,13 +576,13 @@ form:
   selected component, and shows scenario suggestion YAML.
 - Observations/Scopes: opens as a floating overlay over Sketch and presents a runtime-first oscilloscope workspace linked
   from the schematic `Run`/`Scopes` controls, with a dominant plot, waveform
-  selection, searchable/grouped trace selection, transient selected-probe trace
+  selection, searchable/grouped trace selection, transient and AC/Bode selected-probe trace
   pinning, saved compare sets, and per-trace visibility/color styles for
   multi-trace comparison overlays, optional per-unit split lanes for mixed
-  voltage/current/power compares, Alt/Option-drag box zoom for shared-axis
-  time/value windows or split-lane time windows, Back/Forward view-window
+  voltage/current/power or Bode magnitude/phase compares, Alt/Option-drag box zoom for shared-axis
+  time/frequency/value windows or split-lane time/frequency windows, Back/Forward view-window
   history, direct
-  plot drag time/value-window panning, wheel time zoom, Shift-wheel value zoom, explicit time-window and value-scale controls,
+  plot drag time/frequency/value-window panning, wheel time/frequency zoom, Shift-wheel value zoom, explicit time/frequency-window and value-scale controls,
   draggable/click-set A/B cursor handles, selected-trace trigger threshold markers, exact event readout rows, previous/next or row-level edge jumps, trace/edge-to-schematic focus with context strip `Open Sketch`/`Fit Context` actions, play/scrub controls,
   selected-plus-pinned A/B cursor readouts, cursor/visible-window region statistics with min/max/mean/RMS rows and snapshot capture, current-plot SVG copy/export for reports, and searchable/source-filtered transient measurement snapshots from cursor regions, region stats, or trigger events with editable labels/notes, interactive plot marker chips plus row-level Jump, schematic Focus, filtered CSV/Markdown copy/export actions, and timestamped report bundles containing the configured plot SVG, filtered snapshot CSV/Markdown, local index page, and README manifest with loaded-waveform footprint source totals.
   If a schematic has no analog scope probes, `Run` prepares the Scopes workflow
@@ -600,10 +602,11 @@ form:
   hovered schematic probe element, add sample/window/timing/duty probe
   checks, edit
   file-backed SPICE decks declared by analog run setups, run validation through
-  the engine, plot emitted CSV waveforms, add GUI-only derived
+  the engine, plot emitted transient waveform CSVs and AC `bode.csv`
+  magnitude/phase/linear traces, add GUI-only derived
   difference/sum/product/ratio channels, promote representable derived channels
   to explicit analog probes or probes plus checks, pin the selected trace across
-  all loaded sweep corners, pin report-identified worst-corner traces for the
+  all loaded transient or Bode sweep corners, pin report-identified worst-corner traces for the
   selected probe, and inspect generated SPICE decks, artifacts, findings, and
   limitations without turning the scope view into a form-first page.
 - Reports: displays the generated Markdown validation report.

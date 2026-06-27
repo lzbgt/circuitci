@@ -2,7 +2,7 @@ use super::merge_waveform_load_diagnostics;
 use super::{
     WaveformFootprintSortKey, WaveformFootprintSourceFilter, WaveformLoadDiagnostic,
     WaveformLoadPreviewFilter, WaveformLoadRequest, WaveformLoadStatusFilter, WaveformTraceColor,
-    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle,
+    WaveformTracePreset, WaveformTraceRef, WaveformTraceStyle, WaveformXAxis,
 };
 use super::{
     clear_deferred_waveform_column_picks,
@@ -92,6 +92,50 @@ fn waveform_request_loader_reads_only_selected_probe_columns() {
     assert_eq!(diagnostics[0].probes, 1);
     assert_eq!(diagnostics[0].probe_preview, vec!["i(load)"]);
     assert!(diagnostics[0].detail.contains("selected probe column"));
+}
+
+#[test]
+fn waveform_csv_loader_maps_bode_artifacts_to_frequency_axis() {
+    let waveform = parse_waveform_csv_text(
+        "frequency_hz,v(input)_mag_db,v(input)_phase_deg,v(filtered)_mag_db,v(filtered)_phase_deg,v(filtered)_mag\n10,0,0,-0.00017,-0.36,0.99998\n1000,0,0,-1.445,-32.14,0.8467\n10000,0,0,-16.07,-80.95,0.1573\n",
+        "bode.csv",
+    )
+    .unwrap();
+
+    assert_eq!(waveform.x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveform.time_s, vec![10.0e-6, 1000.0e-6, 10000.0e-6]);
+    assert_eq!(waveform.probes.len(), 5);
+    assert_eq!(waveform.probes[0].label, "v(input) magnitude dB");
+    assert_eq!(waveform.probes[1].label, "v(input) phase deg");
+    assert_eq!(super::probe_unit(&waveform.probes[0].label), "dB");
+    assert_eq!(super::probe_unit(&waveform.probes[1].label), "deg");
+    assert_eq!(super::probe_unit(&waveform.probes[4].label), "ratio");
+}
+
+#[test]
+fn waveform_request_loader_selects_raw_bode_header_names() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    use std::io::Write;
+
+    writeln!(file, "frequency_hz,v(out)_mag_db,v(out)_phase_deg").unwrap();
+    writeln!(file, "100,-0.1,-5").unwrap();
+    writeln!(file, "1000,-3,-45").unwrap();
+    let path = file.path().to_string_lossy().into_owned();
+    let requests = vec![WaveformLoadRequest::selected_columns(
+        path,
+        vec!["v(out)_phase_deg".to_string()],
+    )];
+
+    let (waveforms, diagnostics) =
+        load_waveform_requests_with_progress_and_cancel(&requests, |_, _| {}, || false, false)
+            .unwrap();
+
+    assert_eq!(waveforms.len(), 1);
+    assert_eq!(waveforms[0].x_axis, WaveformXAxis::FrequencyHz);
+    assert_eq!(waveforms[0].probes.len(), 1);
+    assert_eq!(waveforms[0].probes[0].label, "v(out) phase deg");
+    assert_eq!(waveforms[0].probes[0].values, vec![-5.0, -45.0]);
+    assert!(diagnostics[0].loaded);
 }
 
 #[test]

@@ -1,5 +1,7 @@
 use super::waveform_load::waveform_load_preflight;
-use super::{WaveformLoadDiagnostic, WaveformProbe, WaveformProbeQuantity, WaveformView};
+use super::{
+    WaveformLoadDiagnostic, WaveformProbe, WaveformProbeQuantity, WaveformView, WaveformXAxis,
+};
 use crate::reports::ValidationReport;
 use anyhow::{Context, Result};
 use std::path::Path;
@@ -282,6 +284,7 @@ pub(super) fn parse_waveform_csv_text(text: &str, label: &str) -> Result<Wavefor
 
 #[derive(Default)]
 struct WaveformCsvBuilder {
+    x_axis: WaveformXAxis,
     time_s: Vec<f64>,
     probe_labels: Vec<String>,
     probe_values: Vec<Vec<f64>>,
@@ -308,10 +311,11 @@ impl WaveformCsvBuilder {
         }
         let Some(time) = parse_waveform_float(fields[0]) else {
             if self.time_s.is_empty() {
+                self.x_axis = waveform_x_axis_from_header(fields[0]);
                 let labels: Vec<_> = fields
                     .iter()
                     .skip(1)
-                    .map(|field| (*field).to_string())
+                    .map(|field| waveform_probe_label_from_header(field))
                     .collect();
                 self.apply_header_labels(labels)?;
                 return Ok(());
@@ -322,8 +326,9 @@ impl WaveformCsvBuilder {
                 fields[0]
             );
         };
+        let x_value = self.x_axis.storage_from_csv_value(time);
         if let Some(previous) = self.time_s.last()
-            && time <= *previous
+            && x_value <= *previous
         {
             anyhow::bail!(
                 "Waveform row {} has non-increasing time value {}.",
@@ -402,7 +407,7 @@ impl WaveformCsvBuilder {
                 self.probe_values.len()
             );
         }
-        self.time_s.push(time);
+        self.time_s.push(x_value);
         let selected_columns = self
             .selected_probe_columns
             .clone()
@@ -429,6 +434,7 @@ impl WaveformCsvBuilder {
         let mut columns = Vec::new();
         let mut selected_labels = Vec::new();
         for requested in &self.selected_probe_labels {
+            let requested = waveform_probe_label_from_header(requested);
             let Some((index, label)) = labels
                 .iter()
                 .enumerate()
@@ -457,6 +463,7 @@ impl WaveformCsvBuilder {
             time_s,
             probe_labels,
             probe_values,
+            x_axis,
             ..
         } = self;
         if time_s.is_empty() {
@@ -477,9 +484,35 @@ impl WaveformCsvBuilder {
         Ok(WaveformView {
             label: label.to_string(),
             path: label.to_string(),
+            x_axis,
             time_s,
             probes,
         })
+    }
+}
+
+fn waveform_x_axis_from_header(header: &str) -> WaveformXAxis {
+    let normalized = header.trim().to_ascii_lowercase();
+    if matches!(
+        normalized.as_str(),
+        "frequency" | "frequency_hz" | "freq" | "freq_hz" | "hz"
+    ) {
+        WaveformXAxis::FrequencyHz
+    } else {
+        WaveformXAxis::TimeSeconds
+    }
+}
+
+fn waveform_probe_label_from_header(header: &str) -> String {
+    let label = header.trim();
+    if let Some(stem) = label.strip_suffix("_mag_db") {
+        format!("{stem} magnitude dB")
+    } else if let Some(stem) = label.strip_suffix("_phase_deg") {
+        format!("{stem} phase deg")
+    } else if let Some(stem) = label.strip_suffix("_mag") {
+        format!("{stem} linear magnitude")
+    } else {
+        label.to_string()
     }
 }
 

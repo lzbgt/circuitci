@@ -955,7 +955,7 @@ fn waveform_sweep_corner(path: &str) -> Option<WaveformSweepCorner> {
         .split('/')
         .filter(|part| !part.is_empty())
         .collect();
-    if parts.len() < 4 || parts.last().copied()? != "waveform.csv" {
+    if parts.len() < 4 || !matches!(parts.last().copied()?, "waveform.csv" | "bode.csv") {
         return None;
     }
     let corner_dir = parts.get(parts.len() - 2)?;
@@ -990,12 +990,12 @@ fn waveform_probe_labels_match(left: &WaveformProbe, right: &WaveformProbe) -> b
 
 fn sweep_margin_finding_matches_probe(finding: &Finding, selected_probe: &WaveformProbe) -> bool {
     json_string(&finding.measured, "probe").is_some_and(|probe| {
-        normalized_probe_label(&probe) == normalized_probe_label(&selected_probe.label)
+        normalized_probe_label(&probe) == normalized_bode_probe_base_label(&selected_probe.label)
             || selected_probe
                 .expression
                 .as_deref()
                 .is_some_and(|expression| {
-                    normalized_probe_label(&probe) == normalized_probe_label(expression)
+                    normalized_probe_label(&probe) == normalized_bode_probe_base_label(expression)
                 })
     })
 }
@@ -1015,4 +1015,22 @@ fn normalized_probe_label(label: &str) -> String {
         .filter(|ch| ch.is_ascii_alphanumeric())
         .flat_map(char::to_lowercase)
         .collect()
+}
+
+fn normalized_bode_probe_base_label(label: &str) -> String {
+    let mut normalized = normalized_probe_label(label);
+    for suffix in [
+        "magnitudedb",
+        "magdb",
+        "phasedeg",
+        "linearmagnitude",
+        "linearmag",
+        "mag",
+    ] {
+        if normalized.ends_with(&suffix) {
+            normalized.truncate(normalized.len() - suffix.len());
+            break;
+        }
+    }
+    normalized
 }
