@@ -92,6 +92,8 @@ Current analog support:
 - Board IR bindings from SPICE nodes and pins back to board nets/components.
 - Generated Board IR transient decks for passives, independent voltage and
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
+- Bounded SPICE `.param` sweeps for analog run inputs, with each sweep corner
+  exported as its own waveform/artifact set and tagged on findings.
 - Required model-file existence and SHA-256 checks.
 - Voltage/current/power probes and waveform assertions, including single-point
   samples, min/max/mean/RMS windows, rising/falling crossing-time checks,

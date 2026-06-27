@@ -977,6 +977,8 @@ pub struct AnalogScenario {
     pub pin_bindings: Vec<AnalogPinBinding>,
     pub analysis: AnalogTransientAnalysis,
     pub stimuli: Vec<AnalogStimulus>,
+    #[serde(default)]
+    pub sweeps: Vec<AnalogParameterSweep>,
     pub probes: Vec<AnalogProbe>,
     pub assertions: Vec<AnalogAssertion>,
 }
@@ -1045,6 +1047,18 @@ pub struct AnalogPinBinding {
 pub struct AnalogStimulus {
     pub name: String,
     pub description: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogParameterSweep {
+    pub name: String,
+    pub parameters: Vec<AnalogSweepParameter>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnalogSweepParameter {
+    pub name: String,
+    pub values: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -2,7 +2,7 @@ use crate::board_ir::{AnalogNetlistSource, AnalogRelation, Scenario};
 use crate::library::BoundBoard;
 use crate::reports::Finding;
 use serde_json::json;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,13 +15,15 @@ use super::analog_operating_limits::{
     evaluate_operating_limits, operating_limit_probes, operating_probe_expressions,
 };
 use super::analog_runner::{
-    BackendSelection, NgspiceRunOptions, backend_name, embedded_solver_unavailable,
-    external_backend_unavailable, run_ngspice, select_backend,
+    BackendSelection, NgspiceRunOptions, ParameterOverride, backend_name,
+    embedded_solver_unavailable, external_backend_unavailable, run_ngspice, select_backend,
 };
 use super::analog_soa::evaluate_soa_limits;
 use super::analog_util::{file_sha256_hex, push_artifact, safe_artifact_name};
 use super::common::validation_input_missing;
 use super::spice_netlist::generate_board_netlist;
+
+const MAX_ANALOG_SWEEP_CORNERS: usize = 64;
 
 pub(super) struct AnalogTransientSinks<'a> {
     pub(super) findings: &'a mut Vec<Finding>,
@@ -331,6 +333,13 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
         push_canceled_finding(findings, scenario);
         return;
     }
+    let run_plans = match analog_run_plans(analog) {
+        Ok(run_plans) => run_plans,
+        Err(message) => {
+            validation_input_missing(findings, scenario, message);
+            return;
+        }
+    };
 
     let run_dir = output
         .join("analog")
@@ -430,64 +439,77 @@ pub(super) fn validate_spice_transient_with_progress<F, C>(
     }
 
     let operating_expressions = operating_probe_expressions(&operating_limits);
-    match run_ngspice(
-        bound,
-        scenario,
-        backend,
-        &source_netlist,
-        NgspiceRunOptions {
-            output,
-            operating_probe_expressions: &operating_expressions,
-            on_progress: &mut on_progress,
-            should_cancel,
-        },
-    ) {
-        Ok(run) => {
-            on_progress(
-                "Recording analog artifacts",
-                format!(
-                    "{} artifact(s), waveform {}.",
-                    run.artifacts.len(),
-                    run.waveform.to_string_lossy()
-                ),
-            );
-            for artifact in &run.artifacts {
-                push_artifact(artifacts, artifact);
-            }
-            push_artifact(waveforms, &run.waveform);
-            on_progress(
-                "Evaluating analog assertions",
-                format!(
-                    "{} user probe(s), {} assertion(s).",
-                    run.user_probe_count,
-                    analog.assertions.len()
-                ),
-            );
-            evaluate_waveform_assertions(scenario, &run, findings);
-            on_progress(
-                "Evaluating analog limits",
-                format!("{} operating probe(s).", operating_limits.probes.len()),
-            );
-            evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
-            evaluate_soa_limits(scenario, &run, &operating_limits, findings);
+    for run_plan in run_plans {
+        if should_cancel() {
+            push_canceled_finding(findings, scenario);
+            return;
         }
-        Err(error) => {
-            for artifact in &error.artifacts {
-                push_artifact(artifacts, artifact);
+        on_progress("Running analog input corner", run_plan.progress_label());
+        match run_ngspice(
+            bound,
+            scenario,
+            backend,
+            &source_netlist,
+            NgspiceRunOptions {
+                output,
+                run_subdir: run_plan.run_subdir.as_deref(),
+                parameter_overrides: &run_plan.parameter_overrides,
+                operating_probe_expressions: &operating_expressions,
+                on_progress: &mut on_progress,
+                should_cancel: &should_cancel,
+            },
+        ) {
+            Ok(run) => {
+                let finding_start = findings.len();
+                on_progress(
+                    "Recording analog artifacts",
+                    format!(
+                        "{} artifact(s), waveform {}.",
+                        run.artifacts.len(),
+                        run.waveform.to_string_lossy()
+                    ),
+                );
+                for artifact in &run.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                push_artifact(waveforms, &run.waveform);
+                on_progress(
+                    "Evaluating analog assertions",
+                    format!(
+                        "{} user probe(s), {} assertion(s).",
+                        run.user_probe_count,
+                        analog.assertions.len()
+                    ),
+                );
+                evaluate_waveform_assertions(scenario, &run, findings);
+                on_progress(
+                    "Evaluating analog limits",
+                    format!("{} operating probe(s).", operating_limits.probes.len()),
+                );
+                evaluate_operating_limits(scenario, &run, &operating_limits.probes, findings);
+                evaluate_soa_limits(scenario, &run, &operating_limits, findings);
+                tag_corner_findings(findings, finding_start, &run_plan);
             }
-            let mut finding =
-                Finding::critical(SPICE_TRANSIENT_ANALYSIS, &scenario.name, error.message);
-            finding
-                .measured
-                .insert("selected_backend".to_string(), json!(backend));
-            finding.limit.insert(
-                "required_evidence".to_string(),
-                json!("ngspice_waveform_csv"),
-            );
-            finding.suggested_fixes.push(
-                "Inspect the generated ngspice wrapper deck and solver log artifacts.".to_string(),
-            );
-            findings.push(finding);
+            Err(error) => {
+                for artifact in &error.artifacts {
+                    push_artifact(artifacts, artifact);
+                }
+                let mut finding =
+                    Finding::critical(SPICE_TRANSIENT_ANALYSIS, &scenario.name, error.message);
+                finding
+                    .measured
+                    .insert("selected_backend".to_string(), json!(backend));
+                finding.limit.insert(
+                    "required_evidence".to_string(),
+                    json!("ngspice_waveform_csv"),
+                );
+                tag_corner_finding(&mut finding, &run_plan);
+                finding.suggested_fixes.push(
+                    "Inspect the generated ngspice wrapper deck and solver log artifacts."
+                        .to_string(),
+                );
+                findings.push(finding);
+            }
         }
     }
 }
@@ -498,6 +520,167 @@ fn push_canceled_finding(findings: &mut Vec<Finding>, scenario: &Scenario) {
         &scenario.name,
         "Analog transient validation was canceled before completion.",
     ));
+}
+
+#[derive(Debug, Clone)]
+struct AnalogRunPlan {
+    sweep_name: Option<String>,
+    corner_name: String,
+    run_subdir: Option<String>,
+    parameter_overrides: Vec<ParameterOverride>,
+}
+
+impl AnalogRunPlan {
+    fn nominal() -> Self {
+        Self {
+            sweep_name: None,
+            corner_name: "nominal".to_string(),
+            run_subdir: None,
+            parameter_overrides: Vec::new(),
+        }
+    }
+
+    fn progress_label(&self) -> String {
+        if let Some(sweep_name) = &self.sweep_name {
+            format!(
+                "{} / {} with {} override(s).",
+                sweep_name,
+                self.corner_name,
+                self.parameter_overrides.len()
+            )
+        } else {
+            "nominal input set.".to_string()
+        }
+    }
+}
+
+fn analog_run_plans(
+    analog: &crate::board_ir::AnalogScenario,
+) -> Result<Vec<AnalogRunPlan>, String> {
+    if analog.sweeps.is_empty() {
+        return Ok(vec![AnalogRunPlan::nominal()]);
+    }
+    let mut plans = Vec::new();
+    for sweep in &analog.sweeps {
+        if sweep.name.trim().is_empty() {
+            return Err("analog sweep names must not be empty.".to_string());
+        }
+        if sweep.parameters.is_empty() {
+            return Err(format!(
+                "Analog sweep {} must declare at least one parameter.",
+                sweep.name
+            ));
+        }
+        let mut seen = BTreeSet::new();
+        let mut parameter_values = Vec::new();
+        for parameter in &sweep.parameters {
+            if !valid_spice_parameter_name(&parameter.name) {
+                return Err(format!(
+                    "Analog sweep {} has invalid SPICE parameter name {}.",
+                    sweep.name, parameter.name
+                ));
+            }
+            if !seen.insert(parameter.name.clone()) {
+                return Err(format!(
+                    "Analog sweep {} declares parameter {} more than once.",
+                    sweep.name, parameter.name
+                ));
+            }
+            if parameter.values.is_empty() {
+                return Err(format!(
+                    "Analog sweep {} parameter {} must declare at least one value.",
+                    sweep.name, parameter.name
+                ));
+            }
+            if parameter.values.iter().any(|value| !value.is_finite()) {
+                return Err(format!(
+                    "Analog sweep {} parameter {} contains a non-finite value.",
+                    sweep.name, parameter.name
+                ));
+            }
+            parameter_values.push((parameter.name.clone(), parameter.values.clone()));
+        }
+        let mut combinations = Vec::new();
+        expand_parameter_combinations(&parameter_values, 0, Vec::new(), &mut combinations)?;
+        for (index, overrides) in combinations.into_iter().enumerate() {
+            if plans.len() >= MAX_ANALOG_SWEEP_CORNERS {
+                return Err(format!(
+                    "Analog sweeps exceed the {MAX_ANALOG_SWEEP_CORNERS}-corner execution cap."
+                ));
+            }
+            let corner_name = format!("corner_{:03}", index + 1);
+            plans.push(AnalogRunPlan {
+                sweep_name: Some(sweep.name.clone()),
+                run_subdir: Some(format!("{}_{}", sweep.name, corner_name)),
+                corner_name,
+                parameter_overrides: overrides,
+            });
+        }
+    }
+    Ok(plans)
+}
+
+fn expand_parameter_combinations(
+    parameters: &[(String, Vec<f64>)],
+    index: usize,
+    current: Vec<ParameterOverride>,
+    output: &mut Vec<Vec<ParameterOverride>>,
+) -> Result<(), String> {
+    if output.len() >= MAX_ANALOG_SWEEP_CORNERS {
+        return Err(format!(
+            "Analog sweeps exceed the {MAX_ANALOG_SWEEP_CORNERS}-corner execution cap."
+        ));
+    }
+    let Some((name, values)) = parameters.get(index) else {
+        output.push(current);
+        return Ok(());
+    };
+    for value in values {
+        let mut next = current.clone();
+        next.push(ParameterOverride {
+            name: name.clone(),
+            value: *value,
+        });
+        expand_parameter_combinations(parameters, index + 1, next, output)?;
+    }
+    Ok(())
+}
+
+fn valid_spice_parameter_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn tag_corner_findings(findings: &mut [Finding], start: usize, run_plan: &AnalogRunPlan) {
+    for finding in findings.iter_mut().skip(start) {
+        tag_corner_finding(finding, run_plan);
+    }
+}
+
+fn tag_corner_finding(finding: &mut Finding, run_plan: &AnalogRunPlan) {
+    if let Some(sweep_name) = &run_plan.sweep_name {
+        finding
+            .measured
+            .insert("analog_sweep".to_string(), json!(sweep_name));
+        finding
+            .measured
+            .insert("analog_corner".to_string(), json!(run_plan.corner_name));
+        finding.measured.insert(
+            "analog_parameters".to_string(),
+            json!(parameter_override_map(&run_plan.parameter_overrides)),
+        );
+    }
+}
+
+fn parameter_override_map(overrides: &[ParameterOverride]) -> BTreeMap<String, f64> {
+    overrides
+        .iter()
+        .map(|override_| (override_.name.clone(), override_.value))
+        .collect()
 }
 
 fn netlist_source_name(source: &AnalogNetlistSource) -> &'static str {
@@ -586,5 +769,142 @@ fn prepare_source_netlist(
             generate_board_netlist(bound, analog, &path)?;
             Ok(path)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AnalogRunPlan, MAX_ANALOG_SWEEP_CORNERS, ParameterOverride, analog_run_plans,
+        tag_corner_finding,
+    };
+    use crate::board_ir::BoardProject;
+    use crate::reports::Finding;
+
+    fn rc_sweep_project_yaml(parameter_yaml: &str) -> String {
+        format!(
+            r#"
+project:
+  name: sweep_test
+  version: 0.1.0
+board:
+  name: sweep_test
+  components: {{}}
+  nets: {{}}
+scenarios:
+  - name: analog_sweep
+    type: analog_transient
+    checks: [SPICE_TRANSIENT_ANALYSIS]
+    analog:
+      backend: auto
+      netlist_source: file
+      netlist: deck.cir
+      model_files: []
+      node_bindings:
+        - {{ node: "0", net: gnd }}
+      pin_bindings:
+        - {{ node: "0", endpoint: {{ component: U1, pin: GND }} }}
+      analysis:
+        type: tran
+        stop_time_us: 1000.0
+        max_step_us: 1.0
+      stimuli: []
+      sweeps:
+        - name: rc_tolerance
+          parameters:
+{parameter_yaml}
+      probes:
+        - name: v_out
+          expression: V(out)
+      assertions: []
+"#
+        )
+    }
+
+    #[test]
+    fn analog_run_plans_expand_parameter_sweeps() {
+        let yaml = rc_sweep_project_yaml(
+            r#"            - name: RIN_VALUE
+              values: [950.0, 1000.0]
+            - name: COUT_VALUE
+              values: [0.000000095, 0.0000001]
+"#,
+        );
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let plans = analog_run_plans(analog).unwrap();
+
+        assert_eq!(plans.len(), 4);
+        assert_eq!(plans[0].sweep_name.as_deref(), Some("rc_tolerance"));
+        assert_eq!(plans[0].corner_name, "corner_001");
+        assert_eq!(
+            plans[0].run_subdir.as_deref(),
+            Some("rc_tolerance_corner_001")
+        );
+        assert_eq!(plans[0].parameter_overrides[0].name, "RIN_VALUE");
+        assert_eq!(plans[0].parameter_overrides[0].value, 950.0);
+        assert_eq!(plans[0].parameter_overrides[1].name, "COUT_VALUE");
+        assert_eq!(plans[0].parameter_overrides[1].value, 0.000000095);
+        assert_eq!(plans[3].parameter_overrides[0].value, 1000.0);
+        assert_eq!(plans[3].parameter_overrides[1].value, 0.0000001);
+    }
+
+    #[test]
+    fn analog_run_plans_reject_invalid_parameter_names() {
+        let yaml = rc_sweep_project_yaml(
+            r#"            - name: 1BAD
+              values: [1.0]
+"#,
+        );
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let error = analog_run_plans(analog).unwrap_err();
+
+        assert!(error.contains("invalid SPICE parameter name"));
+    }
+
+    #[test]
+    fn analog_run_plans_enforce_corner_cap() {
+        let values = (0..=MAX_ANALOG_SWEEP_CORNERS)
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let yaml = rc_sweep_project_yaml(&format!(
+            r#"            - name: RIN_VALUE
+              values: [{values}]
+"#
+        ));
+        let project: BoardProject = serde_yaml_ng::from_str(&yaml).unwrap();
+        let analog = project.scenarios[0].analog.as_ref().unwrap();
+
+        let error = analog_run_plans(analog).unwrap_err();
+
+        assert!(error.contains("64-corner execution cap"));
+    }
+
+    #[test]
+    fn sweep_corner_tags_findings_with_parameter_values() {
+        let run_plan = AnalogRunPlan {
+            sweep_name: Some("rc_tolerance".to_string()),
+            corner_name: "corner_007".to_string(),
+            run_subdir: Some("rc_tolerance_corner_007".to_string()),
+            parameter_overrides: vec![ParameterOverride {
+                name: "RIN_VALUE".to_string(),
+                value: 1050.0,
+            }],
+        };
+        let mut finding = Finding::critical(
+            "SPICE_TRANSIENT_ANALYSIS",
+            "rc_lowpass",
+            "filtered output exceeded the attenuation limit",
+        );
+
+        tag_corner_finding(&mut finding, &run_plan);
+
+        assert_eq!(finding.measured["analog_sweep"], "rc_tolerance");
+        assert_eq!(finding.measured["analog_corner"], "corner_007");
+        assert_eq!(finding.measured["analog_parameters"]["RIN_VALUE"], 1050.0);
     }
 }

@@ -196,7 +196,7 @@ fn rc_lowpass_scope_direct_project_validates_with_waveforms() {
         assert_eq!(report["result"], "pass");
         assert_eq!(report["summary"]["critical"], 0);
         assert!(report["failures"].as_array().unwrap().is_empty());
-        assert!(!report["waveforms"].as_array().unwrap().is_empty());
+        assert_eq!(report["waveforms"].as_array().unwrap().len(), 9);
         let artifacts = report["artifacts"].as_array().unwrap();
         assert!(
             artifacts

@@ -185,6 +185,13 @@
                 "additionalProperties": false
               }
             },
+            "component_symbols": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
             "component_labels": {
               "type": "object",
               "additionalProperties": {
@@ -1466,6 +1473,37 @@
                   "properties": {
                     "name": { "type": "string", "minLength": 1 },
                     "description": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "sweeps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "parameters"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "parameters": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": ["name", "values"],
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                          },
+                          "values": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": { "type": "number" }
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
                   },
                   "additionalProperties": false
                 }

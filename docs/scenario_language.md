@@ -2557,6 +2557,13 @@ scenarios:
       stimuli:
         - name: host_control_release
           description: DTR_N and RTS_N release sequence encoded in the deck.
+      sweeps:
+        - name: supply_and_pullup
+          parameters:
+            - name: VCC_VALUE
+              values: [3.0, 3.3, 3.6]
+            - name: R_PULLUP
+              values: [9000.0, 10000.0, 11000.0]
       probes:
         - name: boot0
           expression: V(boot0)
@@ -2573,3 +2580,9 @@ scenarios:
 This scenario type is the physical analog path. If no SPICE-class backend is
 available, or if the runtime cannot execute the deck and evaluate waveforms, the
 scenario must fail with a critical analog finding.
+
+The optional `analog.sweeps` list runs the same deck and assertions across a
+bounded Cartesian product of explicit SPICE parameter values. Parameter names
+must be valid SPICE `.param` identifiers, and sweep execution is capped to keep
+GUI and CI runs predictable. Each corner writes separate waveform artifacts and
+tags assertion findings with the sweep name, corner name, and parameter values.

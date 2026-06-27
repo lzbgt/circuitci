@@ -103,6 +103,13 @@ scenarios:
       stimuli:
         - name: sine_input
           description: 1 kHz, 1 V peak sine source defined in deck.cir.
+      sweeps:
+        - name: rc_tolerance
+          parameters:
+            - name: RIN_VALUE
+              values: [950.0, 1000.0, 1050.0]
+            - name: COUT_VALUE
+              values: [0.000000095, 0.0000001, 0.000000105]
       probes:
         - name: v_input
           expression: V(input)

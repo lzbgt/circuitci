@@ -83,7 +83,9 @@ For a scenario with check `SPICE_TRANSIENT_ANALYSIS`:
    `ANALOG_NETLIST_UNAVAILABLE` finding.
 5. Validate that node and pin bindings map to real Board IR nets and component
    pins.
-6. Run transient analysis and export machine-readable waveform data.
+6. Expand any declared analog parameter sweeps into bounded input corners, run
+   transient analysis for each corner, and export machine-readable waveform
+   data.
 7. If the backend exits nonzero or reports non-convergence, emit a critical
    `SPICE_TRANSIENT_ANALYSIS` finding.
 8. Evaluate waveform assertions. Failed assertions emit critical
@@ -129,9 +131,11 @@ The physical assertion should check waveforms such as:
 Executable assertions now support single-point samples, min/max/mean/RMS
 windows, rising/falling crossing-time checks, minimum high/low pulse-width
 checks, duty-cycle checks, and threshold crossing-count checks for no-recross or
-ringing budgets with voltage/current/power decision thresholds. A complete
-physical acceptance language also needs setup/hold, integration/energy, and
-corner-sweep assertions.
+ringing budgets with voltage/current/power decision thresholds. Analog run
+setups can also declare bounded SPICE `.param` sweeps; each corner records the
+sweep name, corner name, and parameter values on generated findings. A complete
+physical acceptance language still needs setup/hold, integration/energy, and
+worst-case margin summaries across richer temperature/model/load corners.
 
 Quantitative correctness depends on model quality. For saturation-dominated BJT
 release timing, model inputs must cover transistor storage/recovery, diode

@@ -17,6 +17,12 @@ use std::time::{Duration, Instant};
 
 use super::analog_util::{absolute_path, executable_on_path, normalize_path, safe_artifact_name};
 
+#[derive(Debug, Clone)]
+pub(super) struct ParameterOverride {
+    pub(super) name: String,
+    pub(super) value: f64,
+}
+
 pub(super) struct NgspiceRun {
     pub(super) artifacts: Vec<PathBuf>,
     pub(super) waveform: PathBuf,
@@ -41,9 +47,18 @@ where
     C: Fn() -> bool,
 {
     pub(super) output: &'a Path,
+    pub(super) run_subdir: Option<&'a str>,
+    pub(super) parameter_overrides: &'a [ParameterOverride],
     pub(super) operating_probe_expressions: &'a [String],
     pub(super) on_progress: F,
     pub(super) should_cancel: C,
+}
+
+struct NgspiceWrapperOptions<'a> {
+    parameter_overrides: &'a [ParameterOverride],
+    operating_probe_expressions: &'a [String],
+    include_control: bool,
+    include_quit: bool,
 }
 
 pub(super) fn run_ngspice<F, C>(
@@ -59,6 +74,8 @@ where
 {
     let NgspiceRunOptions {
         output,
+        run_subdir,
+        parameter_overrides,
         operating_probe_expressions,
         mut on_progress,
         should_cancel,
@@ -67,9 +84,12 @@ where
         .analog
         .as_ref()
         .expect("analog was validated before run");
-    let run_dir = output
+    let mut run_dir = output
         .join("analog")
         .join(safe_artifact_name(&scenario.name));
+    if let Some(run_subdir) = run_subdir {
+        run_dir = run_dir.join(safe_artifact_name(run_subdir));
+    }
     fs::create_dir_all(&run_dir).map_err(|error| {
         ngspice_error(
             format!(
@@ -93,9 +113,12 @@ where
         scenario,
         source_netlist,
         Path::new("waveform.csv"),
-        operating_probe_expressions,
-        !embedded_backend,
-        !embedded_backend,
+        NgspiceWrapperOptions {
+            parameter_overrides,
+            operating_probe_expressions,
+            include_control: !embedded_backend,
+            include_quit: !embedded_backend,
+        },
     )
     .map_err(|message| ngspice_error(message, artifacts.clone()))?;
     fs::write(&wrapper, wrapper_text).map_err(|error| {
@@ -703,10 +726,14 @@ fn build_ngspice_wrapper(
     scenario: &Scenario,
     netlist: &Path,
     waveform: &Path,
-    operating_probe_expressions: &[String],
-    include_control: bool,
-    include_quit: bool,
+    options: NgspiceWrapperOptions<'_>,
 ) -> Result<String, String> {
+    let NgspiceWrapperOptions {
+        parameter_overrides,
+        operating_probe_expressions,
+        include_control,
+        include_quit,
+    } = options;
     let analog = scenario
         .analog
         .as_ref()
@@ -732,6 +759,16 @@ fn build_ngspice_wrapper(
         }
         text.push_str(&rewrite_include_line(line, include_base));
         text.push('\n');
+    }
+    if !parameter_overrides.is_empty() {
+        text.push_str("* CircuitCI sweep parameter overrides.\n");
+        for override_ in parameter_overrides {
+            text.push_str(".param ");
+            text.push_str(&override_.name);
+            text.push('=');
+            text.push_str(&format!("{:.12e}", override_.value));
+            text.push('\n');
+        }
     }
     if !include_control {
         text.push_str(".end\n");
@@ -992,7 +1029,8 @@ pub(super) fn backend_name(backend: &AnalogBackend) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_ngspice_wrapper, detect_nonconvergence, parse_waveform_csv, rewrite_include_line,
+        NgspiceWrapperOptions, ParameterOverride, build_ngspice_wrapper, detect_nonconvergence,
+        parse_waveform_csv, rewrite_include_line,
     };
     use crate::board_ir::load_project;
     use crate::library::{bind_project, load_library};
@@ -1078,9 +1116,12 @@ mod tests {
             scenario,
             &netlist,
             Path::new("waveform.csv"),
-            &operating_expressions,
-            true,
-            true,
+            NgspiceWrapperOptions {
+                parameter_overrides: &[],
+                operating_probe_expressions: &operating_expressions,
+                include_control: true,
+                include_quit: true,
+            },
         )
         .unwrap();
         let wrdata = wrapper
@@ -1090,6 +1131,38 @@ mod tests {
         let user_probe = wrdata.find("V(sw)").unwrap();
         let operating_probe = wrdata.find("abs(I(VCCI_M1))").unwrap();
         assert!(user_probe < operating_probe);
+    }
+
+    #[test]
+    fn wrapper_injects_parameter_overrides() {
+        let project_path = Path::new("examples/rc_lowpass_scope/project.yaml");
+        let project = load_project(project_path).unwrap();
+        let (library, findings) = load_library(project_path, &project);
+        assert!(findings.is_empty());
+        let bound = bind_project(&project, library, findings);
+        let scenario = &project.scenarios[0];
+
+        let dir = tempfile::tempdir().unwrap();
+        let netlist = dir.path().join("source.cir");
+        std::fs::write(&netlist, "R1 in out {R_LOAD}\n.end\n").unwrap();
+        let wrapper = build_ngspice_wrapper(
+            &bound,
+            scenario,
+            &netlist,
+            Path::new("waveform.csv"),
+            NgspiceWrapperOptions {
+                parameter_overrides: &[ParameterOverride {
+                    name: "R_LOAD".to_string(),
+                    value: 1234.0,
+                }],
+                operating_probe_expressions: &[],
+                include_control: true,
+                include_quit: true,
+            },
+        )
+        .unwrap();
+        assert!(wrapper.contains(".param R_LOAD=1.234000000000e3"));
+        assert!(wrapper.contains("R1 in out {R_LOAD}"));
     }
 
     #[test]
