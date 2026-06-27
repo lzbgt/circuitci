@@ -175,7 +175,10 @@ pub(super) fn validate_assertion_contract(
                 );
             }
         }
-        AnalogAggregation::Min | AnalogAggregation::Max => {
+        AnalogAggregation::Min
+        | AnalogAggregation::Max
+        | AnalogAggregation::Mean
+        | AnalogAggregation::Rms => {
             if assertion.at_us.is_some() {
                 return Err("window aggregation must not declare at_us".to_string());
             }
@@ -232,7 +235,10 @@ fn measured_assertion_value(
 ) -> Option<f64> {
     match assertion.aggregation {
         AnalogAggregation::Sample => interpolate_at(times, values, assertion.at_us? / 1_000_000.0),
-        AnalogAggregation::Min | AnalogAggregation::Max => {
+        AnalogAggregation::Min
+        | AnalogAggregation::Max
+        | AnalogAggregation::Mean
+        | AnalogAggregation::Rms => {
             let start = assertion.start_us? / 1_000_000.0;
             let end = assertion.end_us? / 1_000_000.0;
             aggregate_window(times, values, start, end, &assertion.aggregation)
@@ -251,16 +257,45 @@ fn aggregate_window(
         return None;
     }
     let mut selected = Vec::new();
-    selected.push(interpolate_at(times, values, start)?);
+    selected.push((start, interpolate_at(times, values, start)?));
     for (time, value) in times.iter().copied().zip(values.iter().copied()) {
         if time > start && time < end {
-            selected.push(value);
+            selected.push((time, value));
         }
     }
-    selected.push(interpolate_at(times, values, end)?);
+    selected.push((end, interpolate_at(times, values, end)?));
     match aggregation {
-        AnalogAggregation::Min => selected.into_iter().reduce(f64::min),
-        AnalogAggregation::Max => selected.into_iter().reduce(f64::max),
+        AnalogAggregation::Min => selected
+            .into_iter()
+            .map(|(_, value)| value)
+            .reduce(f64::min),
+        AnalogAggregation::Max => selected
+            .into_iter()
+            .map(|(_, value)| value)
+            .reduce(f64::max),
+        AnalogAggregation::Mean | AnalogAggregation::Rms => {
+            let duration = end - start;
+            if duration <= 0.0 {
+                return None;
+            }
+            let mut integral = 0.0;
+            let mut square_integral = 0.0;
+            for segment in selected.windows(2) {
+                let (t0, y0) = segment[0];
+                let (t1, y1) = segment[1];
+                let dt = t1 - t0;
+                if dt <= 0.0 {
+                    return None;
+                }
+                integral += dt * (y0 + y1) * 0.5;
+                square_integral += dt * (y0 * y0 + y0 * y1 + y1 * y1) / 3.0;
+            }
+            match aggregation {
+                AnalogAggregation::Mean => Some(integral / duration),
+                AnalogAggregation::Rms => Some((square_integral / duration).sqrt()),
+                _ => unreachable!("window aggregate branch filters mean/rms"),
+            }
+        }
         AnalogAggregation::Sample => None,
     }
 }
@@ -270,6 +305,8 @@ fn aggregation_label(aggregation: &AnalogAggregation) -> &'static str {
         AnalogAggregation::Sample => "sampled",
         AnalogAggregation::Min => "minimum",
         AnalogAggregation::Max => "maximum",
+        AnalogAggregation::Mean => "mean",
+        AnalogAggregation::Rms => "RMS",
     }
 }
 
@@ -284,7 +321,10 @@ pub(super) fn quantity_name(quantity: &AnalogQuantity) -> &'static str {
 fn assertion_time_phrase(assertion: &AnalogAssertion) -> String {
     match assertion.aggregation {
         AnalogAggregation::Sample => format!(" at {} us", assertion.at_us.unwrap_or_default()),
-        AnalogAggregation::Min | AnalogAggregation::Max => format!(
+        AnalogAggregation::Min
+        | AnalogAggregation::Max
+        | AnalogAggregation::Mean
+        | AnalogAggregation::Rms => format!(
             " from {} us to {} us",
             assertion.start_us.unwrap_or_default(),
             assertion.end_us.unwrap_or_default()
@@ -301,7 +341,10 @@ fn insert_time_limit(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("sample_time_us".to_string(), json!(at_us));
             }
         }
-        AnalogAggregation::Min | AnalogAggregation::Max => {
+        AnalogAggregation::Min
+        | AnalogAggregation::Max
+        | AnalogAggregation::Mean
+        | AnalogAggregation::Rms => {
             if let Some(start_us) = assertion.start_us {
                 finding
                     .limit
@@ -323,7 +366,10 @@ fn insert_measured_time(assertion: &AnalogAssertion, finding: &mut Finding) {
                     .insert("sample_time_us".to_string(), json!(at_us));
             }
         }
-        AnalogAggregation::Min | AnalogAggregation::Max => {
+        AnalogAggregation::Min
+        | AnalogAggregation::Max
+        | AnalogAggregation::Mean
+        | AnalogAggregation::Rms => {
             if let Some(start_us) = assertion.start_us {
                 finding
                     .measured
@@ -379,11 +425,23 @@ mod tests {
     }
 
     #[test]
+    fn window_aggregation_computes_time_weighted_mean_and_rms() {
+        let times = [0.0, 1.0, 3.0];
+        let values = [0.0, 2.0, 2.0];
+        let mean = aggregate_window(&times, &values, 0.0, 3.0, &AnalogAggregation::Mean).unwrap();
+        let rms = aggregate_window(&times, &values, 0.0, 3.0, &AnalogAggregation::Rms).unwrap();
+
+        assert!((mean - (5.0 / 3.0)).abs() < 1.0e-12);
+        assert!((rms - (28.0_f64 / 9.0).sqrt()).abs() < 1.0e-12);
+    }
+
+    #[test]
     fn window_aggregation_rejects_out_of_range_window() {
         let times = [0.0, 1.0];
         let values = [0.0, 1.0];
         assert!(aggregate_window(&times, &values, -0.1, 0.5, &AnalogAggregation::Min).is_none());
         assert!(aggregate_window(&times, &values, 0.5, 1.1, &AnalogAggregation::Max).is_none());
+        assert!(aggregate_window(&times, &values, 0.5, 0.5, &AnalogAggregation::Mean).is_none());
     }
 
     #[test]

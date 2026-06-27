@@ -843,7 +843,10 @@ fn validate_assertion_draft(draft: &AnalogAssertionDraft) -> Result<()> {
     validated_id(&draft.scenario_name, "scenario name")?;
     validated_id(&draft.assertion_name, "assertion name")?;
     validated_id(&draft.probe_name, "probe name")?;
-    if !matches!(draft.aggregation.as_str(), "sample" | "min" | "max") {
+    if !matches!(
+        draft.aggregation.as_str(),
+        "sample" | "min" | "max" | "mean" | "rms"
+    ) {
         anyhow::bail!(
             "Analog assertion aggregation {} is not supported.",
             draft.aggregation
@@ -1007,7 +1010,7 @@ fn validate_assertion_timing(draft: &AnalogAssertionDraft, stop_time_us: f64) ->
                 );
             }
         }
-        "min" | "max" => {
+        "min" | "max" | "mean" | "rms" => {
             if !draft.start_us.is_finite()
                 || !draft.end_us.is_finite()
                 || draft.start_us < 0.0
@@ -1029,6 +1032,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Sample => "sample",
         crate::board_ir::AnalogAggregation::Min => "min",
         crate::board_ir::AnalogAggregation::Max => "max",
+        crate::board_ir::AnalogAggregation::Mean => "mean",
+        crate::board_ir::AnalogAggregation::Rms => "rms",
     }
 }
 
@@ -1075,7 +1080,10 @@ fn assertion_timing_label(assertion: &crate::board_ir::AnalogAssertion) -> Strin
         crate::board_ir::AnalogAggregation::Sample => {
             format!("at {:.6} us", assertion.at_us.unwrap_or_default())
         }
-        crate::board_ir::AnalogAggregation::Min | crate::board_ir::AnalogAggregation::Max => {
+        crate::board_ir::AnalogAggregation::Min
+        | crate::board_ir::AnalogAggregation::Max
+        | crate::board_ir::AnalogAggregation::Mean
+        | crate::board_ir::AnalogAggregation::Rms => {
             format!(
                 "{:.6}..{:.6} us",
                 assertion.start_us.unwrap_or_default(),
@@ -1286,7 +1294,7 @@ fn assertion_value(
     }
     match draft.aggregation.as_str() {
         "sample" => insert_number(&mut assertion, "at_us", draft.at_us)?,
-        "min" | "max" => {
+        "min" | "max" | "mean" | "rms" => {
             insert_number(&mut assertion, "start_us", draft.start_us)?;
             insert_number(&mut assertion, "end_us", draft.end_us)?;
         }

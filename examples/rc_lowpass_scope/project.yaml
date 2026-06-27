@@ -111,4 +111,18 @@ scenarios:
         - name: i_vsin
           expression: I(VSIN)
           quantity: current
-      assertions: []
+      assertions:
+        - name: input_rms_present
+          probe: v_input
+          aggregation: rms
+          relation: above
+          threshold_v: 0.69
+          start_us: 5000.0
+          end_us: 10000.0
+        - name: filtered_rms_attenuated
+          probe: v_filtered
+          aggregation: rms
+          relation: below
+          threshold_v: 0.62
+          start_us: 5000.0
+          end_us: 10000.0

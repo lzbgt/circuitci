@@ -1094,6 +1094,8 @@ pub enum AnalogAggregation {
     Sample,
     Min,
     Max,
+    Mean,
+    Rms,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

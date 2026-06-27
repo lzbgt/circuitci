@@ -623,7 +623,7 @@ impl CircuitCiApp {
                         ui,
                         "analog_assertion_aggregation",
                         &mut self.analog_assertion_aggregation,
-                        &["sample", "min", "max"],
+                        &["sample", "min", "max", "mean", "rms"],
                     );
                     ui.end_row();
 

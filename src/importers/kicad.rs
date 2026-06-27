@@ -752,7 +752,12 @@ fn validate_probe_assertion_contract(scenario: &AnalogScenarioMapping) -> Result
         }
         let is_window = matches!(
             assertion.aggregation,
-            Some(AssertionAggregationYaml::Min | AssertionAggregationYaml::Max)
+            Some(
+                AssertionAggregationYaml::Min
+                    | AssertionAggregationYaml::Max
+                    | AssertionAggregationYaml::Mean
+                    | AssertionAggregationYaml::Rms
+            )
         );
         if is_window {
             if assertion.start_us.is_none()

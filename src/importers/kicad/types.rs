@@ -503,4 +503,6 @@ pub(super) enum AssertionAggregationYaml {
     Sample,
     Min,
     Max,
+    Mean,
+    Rms,
 }

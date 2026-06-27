@@ -10,7 +10,9 @@ fc = 1 / (2*pi*R*C) = 1 / (2*pi*1000*100e-9) ~= 1.59 kHz
 
 Because the input is below cutoff, `v(filtered)` should keep the same dominant
 frequency near `1 kHz` while showing lower amplitude and phase lag relative to
-`v(input)`.
+`v(input)`. The project includes steady-state RMS assertions over the final
+`5 ms` of the transient: `v(input)` must remain above `0.69 Vrms`, and
+`v(filtered)` must stay below `0.62 Vrms`.
 
 Expected workflow:
 

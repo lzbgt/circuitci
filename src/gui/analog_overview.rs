@@ -664,6 +664,8 @@ fn aggregation_label(aggregation: &crate::board_ir::AnalogAggregation) -> &'stat
         crate::board_ir::AnalogAggregation::Sample => "sample",
         crate::board_ir::AnalogAggregation::Min => "min",
         crate::board_ir::AnalogAggregation::Max => "max",
+        crate::board_ir::AnalogAggregation::Mean => "mean",
+        crate::board_ir::AnalogAggregation::Rms => "rms",
     }
 }
 

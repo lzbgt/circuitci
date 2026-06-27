@@ -1499,7 +1499,7 @@
                     "at_us": { "type": "number", "minimum": 0 },
                     "start_us": { "type": "number", "minimum": 0 },
                     "end_us": { "type": "number", "minimum": 0 },
-                    "aggregation": { "enum": ["sample", "min", "max"] },
+                    "aggregation": { "enum": ["sample", "min", "max", "mean", "rms"] },
                     "relation": { "enum": ["below", "above"] },
                     "threshold_v": { "type": "number" },
                     "threshold_a": { "type": "number" },
@@ -1513,7 +1513,7 @@
                     {
                       "if": {
                         "required": ["aggregation"],
-                        "properties": { "aggregation": { "enum": ["min", "max"] } }
+                        "properties": { "aggregation": { "enum": ["min", "max", "mean", "rms"] } }
                       },
                       "then": {
                         "required": ["start_us", "end_us"],

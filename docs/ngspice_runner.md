@@ -57,8 +57,10 @@ samples, CircuitCI uses linear interpolation between adjacent samples. Probe
 
 Exactly one threshold field is allowed on each assertion. Sample assertions use
 `at_us` and must not also declare a window. Window assertions use
-`aggregation: min|max` with `start_us` and `end_us`, and must not also declare
-`at_us`.
+`aggregation: min|max|mean|rms` with `start_us` and `end_us`, and must not also
+declare `at_us`. Mean and RMS are time-weighted over the linearly interpolated
+waveform segment, so nonuniform solver sample spacing does not bias the
+measurement.
 
 Assertions may optionally declare `suggested_fixes`. When that assertion fails,
 the strings are copied into the emitted `SPICE_TRANSIENT_ANALYSIS` finding. If

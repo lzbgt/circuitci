@@ -93,7 +93,8 @@ Current analog support:
 - Generated Board IR transient decks for passives, independent voltage and
   current sources, sourced diodes/BJTs/MOSFETs, and subcircuits.
 - Required model-file existence and SHA-256 checks.
-- Voltage/current/power probes and waveform assertions.
+- Voltage/current/power probes and waveform assertions, including single-point
+  samples plus min/max/mean/RMS windows.
 - Automatic `SPICE_OPERATING_LIMIT` checks for supported generated Board IR
   semiconductor stress limits, including selected derating, pulse, and SOA
   metadata paths.
